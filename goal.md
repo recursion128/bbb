@@ -89,8 +89,8 @@
   字段名与顺序由 serde 形状测试锁定。
 - control 层是纯派生视图：`ControlSnapshot` 只承载 runtime counters 与发布
   generation，world 查询走同 generation 的 `SharedWorld` ArcSwap 不可变副本；
-  输入请求走 `ControlRequests`。live `WorldStore` 只归 native 所有，不得把它或
-  请求队列塞进 `ControlSnapshot`。
+  控制写请求经 `SharedControlRequests` sink 进入单一 simulation mailbox。live
+  `WorldStore` 只归 native 所有，不得把它或请求队列塞进 `ControlSnapshot`。
 - `bbb-world` 可序列化状态路径不得引入 wall-clock（SystemTime/Instant）；
   音效 seed 走 `ClientAudioState.sound_seed_random` 确定性链。
 - 大文件布局：particle_runtime / particles / item_models 为 facade + 域
@@ -466,8 +466,8 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
    渲染按帧消费快照；已增量化的 terrain 慢帧自此只影响画面。动 runtime.rs 单线程
    所有权假设，属大型重构；所有权、命令/快照/副作用协议、串行阶段、门禁与安全
    停点已冻结在 `docs/simulation-render-thread-design.md`，后续必须按该工程切片推进；
-   phase 1 owner shell 与 phase 2 effect isolation 已归档，当前继续 phase 3 single input
-   mailbox；
+   phase 1 owner shell、phase 2 effect isolation 与 phase 3 single input mailbox 已归档，
+   当前继续 phase 4 immutable render publication；
    canonical 输入路径与 tick 语义不得分叉（P0 红线）。
 1. **rust/tokio/hecs 特性驱动的持续优化**（长期方向，随 slice 顺带落地）：rust 用
    类型状态/newtype 收紧协议状态机非法空间、`Arc` 共享替代克隆；tokio 连接/控制

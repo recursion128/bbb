@@ -1894,6 +1894,13 @@ impl Renderer {
         hud_plain_text_display_start_for_width(text, scroll_to, width, &self.hud_font_glyphs)
     }
 
+    /// Clones the pure font-advance projection used by input layout. The
+    /// simulation owner may keep this value; it contains no renderer/GPU
+    /// resource and is refreshed after resource reloads.
+    pub fn hud_text_measurements(&self) -> HudFontGlyphMap {
+        self.hud_font_glyphs.clone()
+    }
+
     pub fn upload_hud_inventory_background(
         &mut self,
         width: u32,

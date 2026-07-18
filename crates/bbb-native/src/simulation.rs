@@ -4,7 +4,7 @@
 //! borrowed backend context with value commands and move this same core to the
 //! dedicated simulation thread; they must not introduce a second mutation path.
 
-use bbb_control::{AudioCounters, NetCounters, SharedControlRequests, SharedSnapshot};
+use bbb_control::{AudioCounters, NetCounters, SharedSnapshot};
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{HudDebugProfilerChart, Renderer};
@@ -12,7 +12,9 @@ use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
+pub(crate) mod commands;
 pub(crate) mod effects;
+pub(crate) mod input_commands;
 
 use crate::{
     audio_runtime::AudioEventSink,
@@ -20,9 +22,8 @@ use crate::{
     entity_variant_textures::NativeEntityVariantTextureRuntime,
     input::ClientInputState,
     level_load_runtime::LevelLoadRuntime,
-    particle_runtime::{NativeParticleRuntime, ParticleEventSink},
+    particle_runtime::NativeParticleRuntime,
     resource_pack_runtime::ServerResourcePackRuntime,
-    resource_reload::ResourceReloadAck,
     runtime::{
         advance_simulation, audio_registry_snapshot_from_world, update_renderer_from_simulation,
         CameraFovTickState, ClientAnimationTickState, DebugCollisionCache,
@@ -32,12 +33,15 @@ use crate::{
     },
     terrain_runtime::{TerrainTextureState, TerrainUploadState},
 };
+use commands::SimulationMailbox;
+use input_commands::SimulationInputRuntime;
 
 /// The single mutable owner of canonical state and the current client-tick path.
 ///
 /// Fields stay crate-visible during the synchronous migration phases because
-/// existing winit input callbacks still call the canonical helpers directly.
-/// Phase three replaces those accesses with the typed command mailbox.
+/// render extraction still borrows the live owner. Winit and control mutation
+/// already enter through the typed command mailbox; phase four replaces the
+/// remaining render-side reads with an immutable publication.
 pub(crate) struct SimulationCore {
     pub(crate) net_events: Option<mpsc::Receiver<NetEvent>>,
     pub(crate) net_commands: Option<mpsc::Sender<NetCommand>>,
@@ -56,6 +60,8 @@ pub(crate) struct SimulationCore {
     pub(crate) lightmap_ticks: LightmapTickState,
     pub(crate) level_event_sound_random: LevelEventSoundRandomState,
     pub(crate) particle_runtime: Option<NativeParticleRuntime>,
+    pub(crate) command_mailbox: SimulationMailbox,
+    pub(crate) input_runtime: SimulationInputRuntime,
     pub(crate) next_effect_sequence: u64,
 }
 
@@ -66,12 +72,9 @@ pub(crate) struct SimulationCore {
 pub(crate) struct SimulationStepContext<'a> {
     pub(crate) audio_enabled: bool,
     pub(crate) audio_status: &'a AudioCounters,
-    pub(crate) surface_size: PhysicalSize<u32>,
     pub(crate) terrain_textures: &'a mut TerrainTextureState,
     pub(crate) item_runtime: Option<&'a NativeItemRuntime>,
-    pub(crate) control_requests: &'a SharedControlRequests,
     pub(crate) code_of_conduct: Option<&'a mut CodeOfConductAcceptance>,
-    pub(crate) code_of_conduct_overlay_visible: bool,
     pub(crate) render_distance_chunks: u32,
     pub(crate) hide_lightning_flash: bool,
 }
@@ -108,6 +111,8 @@ impl SimulationCore {
             effects::RenderEffectCollector::new(effect_sequence, context.audio_status.clone());
         let mut audio_effects = effects.audio();
         let mut particle_batches = effects.particles();
+        let mut platform_effects = effects.platform();
+        let commands = self.command_mailbox.drain_through_barrier();
         let frame = advance_simulation(
             &mut self.net_events,
             &self.net_commands,
@@ -115,13 +120,10 @@ impl SimulationCore {
             context
                 .audio_enabled
                 .then_some(&mut audio_effects as &mut dyn AudioEventSink),
-            self.particle_runtime
-                .as_mut()
-                .map(|runtime| runtime as &mut dyn ParticleEventSink),
+            &mut self.particle_runtime,
             &mut particle_batches,
             &mut self.input,
             &mut self.world,
-            context.surface_size,
             &mut self.net_counters,
             &mut self.client_animation_ticks,
             &mut self.camera_fov_ticks,
@@ -132,13 +134,14 @@ impl SimulationCore {
             &mut self.level_event_sound_random,
             context.terrain_textures,
             context.item_runtime,
-            context.control_requests,
             context.code_of_conduct,
-            context.code_of_conduct_overlay_visible,
+            commands,
+            &mut self.input_runtime,
+            &mut platform_effects,
             context.render_distance_chunks,
             context.hide_lightning_flash,
         );
-        drop((audio_effects, particle_batches));
+        drop((audio_effects, particle_batches, platform_effects));
         let resource_reload = self.server_resource_packs.take_reload().map(|request| {
             let (sound_events, jukebox_songs) = audio_registry_snapshot_from_world(&self.world);
             effects::ResourceReloadEffect {
@@ -191,42 +194,16 @@ impl SimulationCore {
         )
     }
 
-    pub(crate) fn acknowledge_resource_reload(&mut self, ack: ResourceReloadAck) -> bool {
-        let status = ack.result.as_ref().map(|_| ()).map_err(ToString::to_string);
-        if !self
-            .server_resource_packs
-            .finish_reload(ack.generation, status)
-        {
-            tracing::warn!(
-                generation = ack.generation,
-                "ignored stale server resource pack reload acknowledgement"
-            );
-            return false;
-        }
-        match ack.result {
-            Ok(commit) => {
-                commit.item_defaults.apply(&mut self.world);
-                self.world
-                    .set_default_block_destroy_profiles(commit.block_destroy_profiles);
-                self.world
-                    .set_default_block_sound_profiles(commit.block_sound_profiles);
-                self.particle_runtime = Some(commit.particle_runtime);
-                tracing::info!(
-                    generation = ack.generation,
-                    "applied server resource pack reload"
-                );
-            }
-            Err(error) => {
-                tracing::warn!(
-                    generation = ack.generation,
-                    error = %error,
-                    "server resource pack reload failed; retained previous resources"
-                );
-            }
-        }
-        self.server_resource_packs
-            .publish_runtime_diagnostics(&mut self.world);
-        true
+    pub(crate) fn update_code_of_conduct_overlay_renderer(
+        &mut self,
+        renderer: &mut Renderer,
+        accepted_current_code_of_conduct: bool,
+    ) {
+        self.input_runtime.update_code_of_conduct_overlay_renderer(
+            renderer,
+            &self.world,
+            accepted_current_code_of_conduct,
+        );
     }
 }
 
@@ -240,12 +217,12 @@ impl SimulationStepResult {
         self,
         consumer: &mut effects::RenderEffectConsumer,
         audio: Option<&mut dyn AudioEventSink>,
-        particles: &mut dyn effects::ParticleBatchSink,
+        render: &mut dyn effects::RenderEffectSink,
     ) -> Result<
         (SimulationFrameState, Option<effects::ResourceReloadEffect>),
         effects::RenderEffectSequenceError,
     > {
-        let reload = consumer.consume(self.effects, audio, particles)?;
+        let reload = consumer.consume(self.effects, audio, render)?;
         Ok((self.frame, reload))
     }
 }
@@ -260,5 +237,36 @@ mod tests {
         assert_eq!(source.matches(".consume_render_effects(").count(), 2);
         assert!(!source.contains("pump_network_and_terrain("));
         assert!(!source.contains(".server_resource_packs.take_reload("));
+    }
+
+    #[test]
+    fn winit_input_callbacks_only_enqueue_typed_simulation_commands() {
+        let source = include_str!("main.rs");
+        let start = source
+            .find("Event::WindowEvent { event, window_id }")
+            .expect("window event dispatcher");
+        let end = source[start..]
+            .find("WindowEvent::RedrawRequested")
+            .map(|offset| start + offset)
+            .expect("redraw boundary");
+        let input_callbacks = &source[start..end];
+        assert!(input_callbacks.contains("enqueue_simulation_window_event("));
+        assert!(!input_callbacks.contains("simulation.input"));
+        assert!(!input_callbacks.contains("simulation.world"));
+        assert!(!input_callbacks.contains("simulation.net_counters"));
+        assert!(!input_callbacks.contains("handle_key_input"));
+        assert!(!input_callbacks.contains("handle_mouse_"));
+
+        let runtime = include_str!("runtime.rs");
+        let advance = runtime
+            .split_once("pub(crate) fn advance_simulation(")
+            .expect("advance_simulation")
+            .1
+            .split_once("pub(crate) fn update_renderer_from_simulation(")
+            .expect("advance_simulation end")
+            .0;
+        assert!(advance.contains("input_runtime.apply_commands("));
+        assert!(!advance.contains("pump_control_input_requests("));
+        assert!(!advance.contains("pump_control_net_requests("));
     }
 }

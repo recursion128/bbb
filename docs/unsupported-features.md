@@ -607,12 +607,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-control`
   described by `docs/simulation-render-thread-design.md`; renderer and control
   must consume the same immutable world generation, and no render-side cache may
   become a mutable gameplay authority.
-- Route every remaining winit/control mutation through the single typed
-  simulation mailbox, including lossless key/mouse releases and explicit
-  renderer-measurement/platform result commands; source guards must reject
-  direct event-callback mutation before immutable publication or thread
-  activation.
-
 ## Signed chat and chat acknowledgement production
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`

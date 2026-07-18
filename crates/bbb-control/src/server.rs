@@ -11,8 +11,9 @@ use tokio::{
 use crate::types::{
     AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest,
     ContainerClickSlotControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
-    ControlState, ControlWorldSnapshot, CreativeModeSlotControlRequest, InputControlRequest,
-    InputKeyControl, InputMouseButtonControl, NetControlRequest, SharedSnapshot,
+    ControlState, ControlWorldSnapshot, ControlWriteRequest, CreativeModeSlotControlRequest,
+    InputControlRequest, InputKeyControl, InputMouseButtonControl, NetControlRequest,
+    SharedSnapshot,
 };
 
 mod params;
@@ -76,11 +77,7 @@ async fn handle_client(stream: TcpStream, state: ControlState) -> Result<()> {
 
 fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     if request.method == "app.quit" {
-        state.snapshot.rcu(|current| {
-            let mut next = (**current).clone();
-            next.app.running = false;
-            next
-        });
+        state.requests.submit(ControlWriteRequest::Shutdown);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({"running": false})),
@@ -97,8 +94,9 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
             };
         };
         let path = path.to_string();
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard.screenshot_request = Some(path.clone());
+        state
+            .requests
+            .submit(ControlWriteRequest::Screenshot { path: path.clone() });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({"queued": true, "path": path})),
@@ -108,46 +106,43 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
 
     if request.method == "net.accept_code_of_conduct" {
         let remember = bool_param(&request.params, "remember").unwrap_or(false);
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .code_of_conduct_requests
-            .push(CodeOfConductControlRequest::Accept { remember });
+        let pending = state.requests.submit(ControlWriteRequest::CodeOfConduct(
+            CodeOfConductControlRequest::Accept { remember },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
                 "remember": remember,
-                "pending": requests_guard.code_of_conduct_requests.len()
+                "pending": pending
             })),
             error: None,
         };
     }
 
     if request.method == "net.decline_code_of_conduct" {
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .code_of_conduct_requests
-            .push(CodeOfConductControlRequest::Decline);
+        let pending = state.requests.submit(ControlWriteRequest::CodeOfConduct(
+            CodeOfConductControlRequest::Decline,
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.code_of_conduct_requests.len()
+                "pending": pending
             })),
             error: None,
         };
     }
 
     if request.method == "net.clear_code_of_conduct_acceptance" {
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .code_of_conduct_requests
-            .push(CodeOfConductControlRequest::ClearAcceptance);
+        let pending = state.requests.submit(ControlWriteRequest::CodeOfConduct(
+            CodeOfConductControlRequest::ClearAcceptance,
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.code_of_conduct_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -163,17 +158,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::ChatCommand {
-                command: command.to_string(),
-            });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::ChatCommand {
+                    command: command.to_string(),
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -199,18 +194,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::CommandSuggestionRequest {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::CommandSuggestionRequest {
                 id,
                 command: command.to_string(),
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -247,20 +241,19 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.query_block_entity_tag requires integer param z".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::QueryBlockEntityTag {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::QueryBlockEntityTag {
                 transaction_id,
                 x,
                 y,
                 z,
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -283,18 +276,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.query_entity_tag requires integer param entity_id".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::QueryEntityTag {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::QueryEntityTag {
                 transaction_id,
                 entity_id,
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -308,15 +300,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.spectate_entity requires integer param entity_id".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SpectateEntity { entity_id });
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::SpectateEntity { entity_id },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -342,15 +333,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::TeleportToEntity { uuid });
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::TeleportToEntity { uuid },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -367,13 +357,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard.net_requests.push(change_difficulty);
+        let pending = state
+            .requests
+            .submit(ControlWriteRequest::Net(change_difficulty));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -390,13 +381,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard.net_requests.push(change_game_mode);
+        let pending = state
+            .requests
+            .submit(ControlWriteRequest::Net(change_game_mode));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -410,15 +402,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.lock_difficulty requires boolean param locked".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::LockDifficulty { locked });
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::LockDifficulty { locked },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -440,15 +431,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
             };
         }
         let slot = slot as u8;
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SetHeldSlot { slot });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::SetHeldSlot {
+                    slot,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -462,15 +455,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.set_flying requires boolean param flying".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SetFlying { flying });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::SetFlying {
+                    flying,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -484,15 +479,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.focus requires boolean param focused".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .input_requests
-            .push(InputControlRequest::Focus { focused });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Input(InputControlRequest::Focus {
+                    focused,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.input_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -518,15 +515,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.key requires boolean param pressed".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .input_requests
-            .push(InputControlRequest::Key { key, pressed });
+        let pending = state
+            .requests
+            .submit(ControlWriteRequest::Input(InputControlRequest::Key {
+                key,
+                pressed,
+            }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.input_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -551,15 +550,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.mouse_button requires boolean param pressed".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .input_requests
-            .push(InputControlRequest::MouseButton { button, pressed });
+        let pending = state.requests.submit(ControlWriteRequest::Input(
+            InputControlRequest::MouseButton { button, pressed },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.input_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -576,60 +574,60 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.look_delta requires finite number params dx and dy".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .input_requests
-            .push(InputControlRequest::LookDelta { dx, dy });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Input(InputControlRequest::LookDelta {
+                    dx,
+                    dy,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.input_requests.len()
+                "pending": pending
             })),
             error: None,
         };
     }
 
     if request.method == "net.perform_respawn" {
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::PerformRespawn);
+        let pending = state
+            .requests
+            .submit(ControlWriteRequest::Net(NetControlRequest::PerformRespawn));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
     }
 
     if request.method == "net.request_stats" {
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::RequestStats);
+        let pending = state
+            .requests
+            .submit(ControlWriteRequest::Net(NetControlRequest::RequestStats));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
     }
 
     if request.method == "net.request_game_rule_values" {
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::RequestGameRuleValues);
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::RequestGameRuleValues,
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -657,19 +655,19 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.place_recipe requires boolean param use_max_items".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::PlaceRecipe {
-                container_id,
-                recipe_index,
-                use_max_items,
-            });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::PlaceRecipe {
+                    container_id,
+                    recipe_index,
+                    use_max_items,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -704,19 +702,18 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::ChangeRecipeBookSettings {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::ChangeRecipeBookSettings {
                 book_type,
                 open,
                 filtering,
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -730,15 +727,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.mark_recipe_seen requires integer param recipe_index".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::MarkRecipeSeen { recipe_index });
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::MarkRecipeSeen { recipe_index },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -761,17 +757,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 )),
             };
         }
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::RenameItem {
-                name: name.to_string(),
-            });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::RenameItem {
+                    name: name.to_string(),
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -805,15 +801,19 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::EditBook { slot, pages, title });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::EditBook {
+                    slot,
+                    pages,
+                    title,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -858,21 +858,21 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SignUpdate {
-                x,
-                y,
-                z,
-                is_front_text,
-                lines,
-            });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::SignUpdate {
+                    x,
+                    y,
+                    z,
+                    is_front_text,
+                    lines,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -896,32 +896,30 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         }
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::OpenAdvancementsTab {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::OpenAdvancementsTab {
                 tab: tab.to_string(),
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
     }
 
     if request.method == "net.close_advancements_screen" {
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::CloseAdvancementsScreen);
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::CloseAdvancementsScreen,
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -942,15 +940,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.select_trade requires item >= 0".to_string()),
             };
         }
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SelectTrade { item });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::SelectTrade {
+                    item,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -977,18 +977,18 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SetBeacon {
-                primary_effect,
-                secondary_effect,
-            });
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::SetBeacon {
+                    primary_effect,
+                    secondary_effect,
+                }));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -1014,15 +1014,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some(err),
             };
         }
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SetCreativeModeSlot(request));
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::SetCreativeModeSlot(request),
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -1054,18 +1053,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         }
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::SelectBundleItem {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::SelectBundleItem {
                 slot_id,
                 selected_item_index,
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -1090,18 +1088,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::ContainerButtonClick {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::ContainerButtonClick {
                 container_id,
                 button_id,
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -1119,15 +1116,17 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                     };
                 }
             };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::ContainerClick(click));
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::ContainerClick(
+                    click,
+                )));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -1146,15 +1145,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::ContainerClickSlot(click));
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::ContainerClickSlot(click),
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -1168,15 +1166,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.container_close requires integer param container_id".to_string()),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::ContainerClose { container_id });
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::ContainerClose { container_id },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };
@@ -1211,19 +1208,18 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
-        requests_guard
-            .net_requests
-            .push(NetControlRequest::ContainerSlotStateChanged {
+        let pending = state.requests.submit(ControlWriteRequest::Net(
+            NetControlRequest::ContainerSlotStateChanged {
                 slot_id,
                 container_id,
                 new_state,
-            });
+            },
+        ));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": requests_guard.net_requests.len()
+                "pending": pending
             })),
             error: None,
         };

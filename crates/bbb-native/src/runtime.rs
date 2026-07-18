@@ -1,15 +1,13 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{
-    AudioCounters, ControlWorldSnapshot, NetCounters, RendererCounters, SharedControlRequests,
-    SharedSnapshot, SharedWorld,
+    AudioCounters, ControlWorldSnapshot, NetCounters, RendererCounters, SharedSnapshot, SharedWorld,
 };
 use bbb_item_model::{
     ItemModelKeybindContext, NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipOptions,
@@ -156,7 +154,7 @@ use crate::{
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
     narrator_runtime::{NarratedElementKind, ScreenNarrationFrame, SystemNarrator},
-    particle_runtime::ParticleEventSink,
+    particle_runtime::{NativeParticleRuntime, ParticleEventSink},
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
         crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
@@ -207,7 +205,7 @@ pub(crate) use dialog_screen::{
     dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
     handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
-    handle_dialog_text_input_with_measurer,
+    handle_dialog_text_input_with_measurer, DialogTextMeasurer,
 };
 use dialog_screen::{
     hud_dialog_confirm_link_screen, hud_dialog_screen_with_measurer, hud_dialog_warning_screen,
@@ -2033,15 +2031,6 @@ fn queue_client_tick_end_commands(
     }
 }
 
-pub(crate) fn take_control_screenshot(requests: &SharedControlRequests) -> Option<PathBuf> {
-    requests
-        .lock()
-        .ok()?
-        .screenshot_request
-        .take()
-        .map(PathBuf::from)
-}
-
 pub(crate) struct SimulationFrameState {
     pump_started_at: Instant,
     pump_net_drained_at: Instant,
@@ -2067,11 +2056,10 @@ pub(crate) fn advance_simulation(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     server_resource_packs: &mut ServerResourcePackRuntime,
     audio_events: Option<&mut dyn AudioEventSink>,
-    particle_events: Option<&mut dyn ParticleEventSink>,
+    particle_runtime: &mut Option<NativeParticleRuntime>,
     particle_batches: &mut dyn ParticleBatchSink,
     input: &mut ClientInputState,
     world: &mut WorldStore,
-    surface_size: winit::dpi::PhysicalSize<u32>,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
     camera_fov_ticks: &mut CameraFovTickState,
@@ -2082,23 +2070,23 @@ pub(crate) fn advance_simulation(
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_textures: &mut TerrainTextureState,
     item_runtime: Option<&NativeItemRuntime>,
-    control_requests: &SharedControlRequests,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
-    code_of_conduct_overlay_visible: bool,
+    commands: Vec<crate::simulation::commands::SequencedSimulationCommand>,
+    input_runtime: &mut crate::simulation::input_commands::SimulationInputRuntime,
+    platform_effects: &mut crate::simulation::effects::PlatformEffectCollector<'_>,
     render_distance_chunks: u32,
     hide_lightning_flash: bool,
 ) -> SimulationFrameState {
     let pump_started_at = Instant::now();
     let mut audio_events = audio_events;
-    let mut particle_events = particle_events;
     let input_screen_was_open = input_screen_is_open(input, world);
     if let Some(rx) = net_events.as_mut() {
         let audio_events_for_drain = audio_events
             .as_mut()
             .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
-        let particle_events_for_drain = particle_events
+        let particle_events_for_drain = particle_runtime
             .as_mut()
-            .map(|particle_events| &mut **particle_events as &mut dyn ParticleEventSink);
+            .map(|particle_events| particle_events as &mut dyn ParticleEventSink);
         events::drain_net_events_with_sinks_and_debug(
             rx,
             world,
@@ -2118,7 +2106,7 @@ pub(crate) fn advance_simulation(
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed {
-        if let Some(particle_events) = particle_events.as_mut() {
+        if let Some(particle_events) = particle_runtime.as_mut() {
             particle_events.synchronize_terrain_textures(terrain_textures);
         }
     }
@@ -2129,23 +2117,20 @@ pub(crate) fn advance_simulation(
         net_counters,
         net_commands,
     );
-    pump_control_net_requests(
-        control_requests,
-        net_commands,
-        net_counters,
-        world,
-        code_of_conduct,
-    );
-    pump_control_input_requests(
-        control_requests,
-        input,
-        net_counters,
-        world,
-        net_commands,
-        item_runtime,
-        code_of_conduct_overlay_visible,
-        surface_size,
-        client_animation_ticks.entity_partial_tick(),
+    input_runtime.apply_commands(
+        commands,
+        &mut crate::simulation::input_commands::SimulationInputContext {
+            input,
+            world,
+            net_counters,
+            net_commands,
+            server_resource_packs,
+            particle_runtime,
+            item_runtime,
+            code_of_conduct,
+            entity_partial_tick: client_animation_ticks.entity_partial_tick(),
+            platform: platform_effects,
+        },
     );
     let pump_control_synced_at = Instant::now();
     let now = Instant::now();
@@ -2282,6 +2267,9 @@ pub(crate) fn advance_simulation(
     let particle_player_motion_contexts = particle_player_motion_contexts(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
     submit_primed_tnt_smoke_particles(particle_batches, world, advanced_ticks);
+    let mut particle_events = particle_runtime
+        .as_mut()
+        .map(|runtime| runtime as &mut dyn ParticleEventSink);
     submit_entity_client_tick_particles(particle_batches, world, &mut particle_events);
     submit_ominous_item_spawner_particles(particle_batches, world, &mut particle_events);
     if let Some(audio_events) = audio_events.as_deref_mut() {

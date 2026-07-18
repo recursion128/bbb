@@ -336,6 +336,80 @@ impl HudFontGlyphMap {
     pub fn iter(&self) -> impl Iterator<Item = (char, HudAsciiGlyph)> + '_ {
         self.entries.iter().copied()
     }
+
+    /// Measures one unstyled HUD line with this immutable glyph projection.
+    pub fn plain_text_width(&self, text: &str) -> u32 {
+        text.chars().fold(0u32, |width, ch| {
+            width.saturating_add(self.plain_glyph(ch).styled_advance(HudTextStyle::default()))
+        })
+    }
+
+    /// Returns the character cursor reached by consuming at most `width`
+    /// pixels from `display_start`, or `None` before a font projection loads.
+    pub fn plain_text_cursor_for_width_from(
+        &self,
+        text: &str,
+        display_start: usize,
+        width: u32,
+    ) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+        let text_len = text.chars().count();
+        let display_start = display_start.min(text_len);
+        let mut used_width = 0u32;
+        let mut display_len = 0usize;
+        for ch in text.chars().skip(display_start) {
+            let advance = self.plain_glyph(ch).styled_advance(HudTextStyle::default());
+            if used_width.saturating_add(advance) > width {
+                break;
+            }
+            used_width = used_width.saturating_add(advance);
+            display_len += 1;
+        }
+        Some(display_start.saturating_add(display_len))
+    }
+
+    /// Returns the first character that keeps `scroll_to` visible in the
+    /// supplied width, matching the renderer's text-input layout.
+    pub fn plain_text_display_start_for_width(
+        &self,
+        text: &str,
+        scroll_to: usize,
+        width: u32,
+    ) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+        let scroll_to = scroll_to.min(text.chars().count());
+        let prefix_width = text.chars().take(scroll_to).fold(0u32, |used, ch| {
+            used.saturating_add(self.plain_glyph(ch).styled_advance(HudTextStyle::default()))
+        });
+        if prefix_width <= width {
+            return Some(0);
+        }
+
+        let chars = text.chars().take(scroll_to).collect::<Vec<_>>();
+        let mut start = chars.len();
+        let mut used_width = 0u32;
+        while start > 0 {
+            let advance = self
+                .plain_glyph(chars[start - 1])
+                .styled_advance(HudTextStyle::default());
+            if used_width.saturating_add(advance) > width {
+                break;
+            }
+            used_width = used_width.saturating_add(advance);
+            start -= 1;
+        }
+        Some(start)
+    }
+
+    fn plain_glyph(&self, codepoint: char) -> HudAsciiGlyph {
+        self.get(codepoint)
+            .or_else(|| self.get('?'))
+            .unwrap_or_default()
+    }
 }
 
 /// Vanilla `LegacyRandomSource` (`RandomSource.create()`) 48-bit LCG constants.
@@ -476,6 +550,35 @@ mod tests {
         assert_eq!(map.get('é'), Some(first));
         assert_eq!(map.get('e'), None);
         assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn immutable_plain_text_projection_matches_loaded_advances_and_scrolling() {
+        let mut map = HudFontGlyphMap::new();
+        for (ch, advance) in [('i', 2), ('w', 7), ('?', 5)] {
+            map.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance,
+                    width: advance,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+
+        assert_eq!(map.plain_text_width("iwx"), 14);
+        assert_eq!(map.plain_text_cursor_for_width_from("iwx", 0, 8), Some(1));
+        assert_eq!(map.plain_text_cursor_for_width_from("iwx", 1, 12), Some(3));
+        assert_eq!(
+            map.plain_text_display_start_for_width("iiwww", 5, 14),
+            Some(3)
+        );
+
+        let empty = HudFontGlyphMap::new();
+        assert_eq!(empty.plain_text_width("iwx"), 0);
+        assert_eq!(empty.plain_text_cursor_for_width_from("iwx", 0, 8), None);
+        assert_eq!(empty.plain_text_display_start_for_width("iwx", 3, 8), None);
     }
 
     fn styled_glyph() -> HudAsciiGlyph {

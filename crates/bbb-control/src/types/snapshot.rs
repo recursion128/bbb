@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::{Arc, Mutex},
+    fmt,
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use arc_swap::ArcSwap;
@@ -147,6 +148,27 @@ pub enum InputControlRequest {
         button: InputMouseButtonControl,
         pressed: bool,
     },
+}
+
+/// One ordered control-plane write submitted to the native simulation owner.
+///
+/// The control crate owns these external DTOs, while the installed sink owns
+/// their runtime ordering and application. Keeping all write families in one
+/// enum prevents the native runtime from polling independent per-family
+/// vectors and accidentally reordering requests from concurrent producers.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ControlWriteRequest {
+    Shutdown,
+    Screenshot { path: String },
+    CodeOfConduct(CodeOfConductControlRequest),
+    Net(NetControlRequest),
+    Input(InputControlRequest),
+}
+
+/// Runtime-installed destination for ordered control writes.
+pub trait ControlRequestSink: Send + Sync {
+    /// Submits one request and returns the destination's pending depth.
+    fn submit(&self, request: ControlWriteRequest) -> usize;
 }
 
 /// In-world mouse buttons the control API can drive; replayed through the
@@ -373,13 +395,98 @@ pub type SharedWorld = Arc<ArcSwap<ControlWorldSnapshot>>;
 /// stays a pure derived view.
 #[derive(Debug, Default)]
 pub struct ControlRequests {
+    pub shutdown_requested: bool,
     pub screenshot_request: Option<String>,
     pub code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
     pub net_requests: Vec<NetControlRequest>,
     pub input_requests: Vec<InputControlRequest>,
 }
 
-pub type SharedControlRequests = Arc<Mutex<ControlRequests>>;
+/// Shared control write producer.
+///
+/// Unit tests and standalone control users retain inspectable compatibility
+/// queues. The native client installs its simulation mailbox before starting
+/// the control server, after which every write goes directly to that one
+/// ordered destination.
+#[derive(Clone, Default)]
+pub struct SharedControlRequests {
+    compatibility: Arc<Mutex<ControlRequests>>,
+    sink: Arc<OnceLock<Arc<dyn ControlRequestSink>>>,
+}
+
+impl SharedControlRequests {
+    pub fn lock(&self) -> std::sync::LockResult<std::sync::MutexGuard<'_, ControlRequests>> {
+        self.compatibility.lock()
+    }
+
+    pub fn install_sink(&self, sink: Arc<dyn ControlRequestSink>) {
+        let compatibility = self
+            .compatibility
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        assert!(
+            !compatibility.shutdown_requested
+                && compatibility.screenshot_request.is_none()
+                && compatibility.code_of_conduct_requests.is_empty()
+                && compatibility.net_requests.is_empty()
+                && compatibility.input_requests.is_empty(),
+            "control request sink must be installed before producers start"
+        );
+        self.sink
+            .set(sink)
+            .unwrap_or_else(|_| panic!("control request sink may only be installed once"));
+    }
+
+    pub fn submit(&self, request: ControlWriteRequest) -> usize {
+        if let Some(sink) = self.sink.get() {
+            return sink.submit(request);
+        }
+
+        let mut compatibility = self
+            .compatibility
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        // Installation holds the compatibility mutex while publishing the OnceLock.
+        // Rechecking here closes the only transition race for a producer that
+        // observed the empty OnceLock immediately before installation.
+        if let Some(sink) = self.sink.get() {
+            drop(compatibility);
+            return sink.submit(request);
+        }
+        match request {
+            ControlWriteRequest::Shutdown => {
+                compatibility.shutdown_requested = true;
+                usize::from(compatibility.shutdown_requested)
+            }
+            ControlWriteRequest::Screenshot { path } => {
+                compatibility.screenshot_request = Some(path);
+                usize::from(compatibility.screenshot_request.is_some())
+            }
+            ControlWriteRequest::CodeOfConduct(request) => {
+                compatibility.code_of_conduct_requests.push(request);
+                compatibility.code_of_conduct_requests.len()
+            }
+            ControlWriteRequest::Net(request) => {
+                compatibility.net_requests.push(request);
+                compatibility.net_requests.len()
+            }
+            ControlWriteRequest::Input(request) => {
+                compatibility.input_requests.push(request);
+                compatibility.input_requests.len()
+            }
+        }
+    }
+}
+
+impl fmt::Debug for SharedControlRequests {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SharedControlRequests")
+            .field("compatibility", &self.compatibility)
+            .field("sink_installed", &self.sink.get().is_some())
+            .finish()
+    }
+}
 
 /// Bundle of the shared control-plane handles served by the control API.
 #[derive(Debug, Clone, Default)]
@@ -401,5 +508,55 @@ impl ControlState {
             })),
             ..Self::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Default)]
+    struct RecordingSink {
+        requests: Mutex<Vec<ControlWriteRequest>>,
+    }
+
+    impl ControlRequestSink for RecordingSink {
+        fn submit(&self, request: ControlWriteRequest) -> usize {
+            let mut requests = self
+                .requests
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            requests.push(request);
+            requests.len()
+        }
+    }
+
+    #[test]
+    fn installed_sink_receives_writes_without_touching_compatibility_queues() {
+        let requests = SharedControlRequests::default();
+        let sink = Arc::new(RecordingSink::default());
+        requests.install_sink(sink.clone());
+
+        assert_eq!(
+            requests.submit(ControlWriteRequest::Screenshot {
+                path: "ordered.png".to_string(),
+            }),
+            1
+        );
+        assert_eq!(
+            *sink
+                .requests
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+            [ControlWriteRequest::Screenshot {
+                path: "ordered.png".to_string(),
+            }]
+        );
+        let compatibility = requests
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        assert!(compatibility.screenshot_request.is_none());
+        assert!(compatibility.net_requests.is_empty());
+        assert!(compatibility.input_requests.is_empty());
     }
 }

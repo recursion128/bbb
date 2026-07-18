@@ -212,7 +212,10 @@ Owns external control-facing types, reports, and snapshots.
   The target simulation owner publishes independently of frame cadence and
   control reuses that exact world `Arc` and generation. Control reads retry on
   a generation mismatch and never lock or own the live world.
-- `ControlRequests` remains the separate control-to-native write queue; a read
+- `SharedControlRequests` is a producer facade: native installs the single
+  simulation mailbox sink before the control server starts, so all control
+  writes share the same ordered command path as winit input. Its compatibility
+  queues exist only for focused tests and compatibility adapters; a read
   snapshot never becomes a second gameplay authority.
 - New packet behavior should not add native-only snapshot ownership when a world
   canonical state can own it.
@@ -237,17 +240,21 @@ ordered effects. Migration phases must not create selectable direct/threaded
 gameplay paths. The current synchronous `SimulationCore` is the sole field
 owner for the live world, input, network receiver/counters, and tick state.
 `SimulationCore::step` borrows no renderer, audio backend, particle renderer,
-or resource uploader. It resolves packet/tick side effects into one owned,
-sequence-numbered `RenderEffectBatch`; the winit owner consumes audio and
-particle values at most once in FIFO order before render extraction. Resource
-reload is the terminal batch effect: render-owned asset/GPU work returns a
-generation acknowledgement, and only a matching acknowledgement commits world
-defaults and the simulation particle resolver. The simulation-side resolver and
-render-side particle atlas runtime are distinct owners; the reload ack carries
-only `Send` world-default value tables and never shares the render-owned item
-asset runtime. `SimulationRenderContext` remains the synchronous render adapter
-until publication migration; the next phase routes all direct winit/control
-input mutation through the single typed simulation mailbox.
+or resource uploader. It drains one monotonic `SimulationMailbox` after network
+application and before client ticks; winit events, control writes, immutable
+font metrics, platform results, reload acknowledgements, and shutdown all use
+that path. It resolves packet/tick/platform side effects into one owned,
+sequence-numbered `RenderEffectBatch`; the winit owner consumes audio,
+particles, window, clipboard, URI, stats-screen narration input, debug-renderer,
+screenshot, and reload work at most once in FIFO order before render extraction.
+Resource reload is the terminal batch effect: render-owned asset/GPU work returns a
+generation acknowledgement, and only a matching mailbox acknowledgement
+commits world defaults and the simulation particle resolver. The
+simulation-side resolver and render-side particle atlas runtime are distinct
+owners; the reload ack carries only `Send` world-default value tables and never
+shares the render-owned item asset runtime. `SimulationRenderContext` remains
+the synchronous render adapter until phase four replaces render-thread live
+world/input reads with one immutable publication.
 
 ### `bbb-item-model`
 

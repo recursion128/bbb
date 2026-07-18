@@ -241,6 +241,16 @@ pub(crate) use mouse::{
 pub(crate) use movement::advance_player_input;
 pub(crate) use movement::advance_player_input_for_client_ticks;
 
+pub(crate) trait TerrainReloadRequestSink {
+    fn request_reload_all_chunks(&mut self);
+}
+
+impl TerrainReloadRequestSink for TerrainUploadState {
+    fn request_reload_all_chunks(&mut self) {
+        TerrainUploadState::request_reload_all_chunks(self);
+    }
+}
+
 const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
 const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
 const SPRINT_TRIGGER_TICKS: u8 = 7;
@@ -2759,7 +2769,7 @@ impl ClientInputState {
         physical_key: PhysicalKey,
         state: ElementState,
         world: Option<&mut WorldStore>,
-        terrain_upload: Option<&mut TerrainUploadState>,
+        terrain_upload: Option<&mut dyn TerrainReloadRequestSink>,
     ) -> bool {
         self.handle_debug_overlay_key_with_clipboard(
             physical_key,
@@ -2776,7 +2786,7 @@ impl ClientInputState {
         physical_key: PhysicalKey,
         state: ElementState,
         world: Option<&mut WorldStore>,
-        terrain_upload: Option<&mut TerrainUploadState>,
+        terrain_upload: Option<&mut dyn TerrainReloadRequestSink>,
         clipboard: Option<&mut dyn DebugClipboard>,
     ) -> bool {
         self.handle_debug_overlay_key_inner(
@@ -2795,7 +2805,7 @@ impl ClientInputState {
         physical_key: PhysicalKey,
         state: ElementState,
         world: Option<&mut WorldStore>,
-        terrain_upload: Option<&mut TerrainUploadState>,
+        terrain_upload: Option<&mut dyn TerrainReloadRequestSink>,
         clipboard: Option<&mut dyn DebugClipboard>,
         item_runtime: Option<&NativeItemRuntime>,
         counters: &mut NetCounters,
@@ -2820,7 +2830,7 @@ impl ClientInputState {
         physical_key: PhysicalKey,
         state: ElementState,
         mut world: Option<&mut WorldStore>,
-        terrain_upload: Option<&mut TerrainUploadState>,
+        terrain_upload: Option<&mut dyn TerrainReloadRequestSink>,
         clipboard: Option<&mut dyn DebugClipboard>,
         item_runtime: Option<&NativeItemRuntime>,
         mut net_context: Option<DebugNetContext<'_>>,
@@ -2893,7 +2903,7 @@ impl ClientInputState {
         &mut self,
         code: KeyCode,
         mut world: Option<&mut WorldStore>,
-        mut terrain_upload: Option<&mut TerrainUploadState>,
+        mut terrain_upload: Option<&mut dyn TerrainReloadRequestSink>,
         mut clipboard: Option<&mut dyn DebugClipboard>,
         item_runtime: Option<&NativeItemRuntime>,
         net_context: Option<&mut DebugNetContext<'_>>,

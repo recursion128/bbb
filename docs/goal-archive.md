@@ -19326,3 +19326,25 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `Minecraft.tick` 的 particle/tick-end 顺序与冻结合同均有源码守卫。完整 `bbb-native`
   2125 项回归通过；本 phase 按工程计划在提交 tip 运行 full gate，下一阶段仅推进 typed
   single input mailbox。
+
+## 2026-07-18：模拟/渲染拆分 phase 3 single input mailbox
+
+- [x] 对照本地 vanilla 26.1 `KeyboardHandler` / `MouseHandler` 的 GLFW callback 经
+  `Minecraft.execute` 进入 client owner，以及 `Minecraft.setScreen` 调用
+  `KeyMapping.releaseAll` 的失焦/换屏释放边界，新增短锁、多生产者单消费者
+  `SimulationMailbox`：winit 的 focus/key/mouse/IME/resize、control 全部写请求、renderer
+  字体测量、platform 结果、resource reload ack 与 shutdown 共用全局单调序号；network
+  drain 后、client tick 前只按捕获 barrier 应用一次。
+  饱和时仅相邻 motion/wheel/resize/cursor latest-value 可在不跨离散 barrier 时合并，
+  key/mouse release、control action、文本和 shutdown 保持 lossless。
+- [x] canonical 输入 helper 迁入 simulation-owned dispatcher；窗口 callback 不再直接改
+  `ClientInputState`、`WorldStore` 或 counters。纯 `HudFontGlyphMap` 投影替代 renderer 借用；
+  cursor/clipboard/URI/stats-screen narration input/debug renderer/screenshot/terrain reload 转为
+  有序 platform effects，结果重新入 mailbox。server resource reload acknowledgement 也不再
+  从 render owner 直写 simulation。
+- [x] `bbb-control` 用安装期 `OnceLock` sink 原子切换到相同 mailbox，`app.quit` 只排入
+  idempotent shutdown，不再抢写发布快照。并发生产者连续序号、coalescing barrier、饱和
+  release/control/shutdown、effect FIFO/at-most-once、字体投影和 callback source guard 均有
+  focused regression；`bbb-control` 110 项与 `bbb-native` 2131 项完整回归通过。本 phase 因
+  新增并发 mailbox 按 forced checkpoint 在提交 tip 运行 full gate，下一阶段只推进
+  immutable render publication。

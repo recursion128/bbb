@@ -73,7 +73,7 @@ fn publish_test_world(state: &ControlState, world: WorldStore) {
 }
 
 #[test]
-fn app_quit_marks_snapshot_not_running() {
+fn app_quit_queues_shutdown_for_the_simulation_owner() {
     let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
@@ -84,7 +84,8 @@ fn app_quit_marks_snapshot_not_running() {
     );
 
     assert!(response.ok);
-    assert!(!state.snapshot.load().app.running);
+    assert!(state.snapshot.load().app.running);
+    assert!(state.requests.lock().unwrap().shutdown_requested);
 }
 
 #[test]
@@ -212,6 +213,10 @@ fn dispatcher_read_methods_have_no_live_world_or_blocking_pool_path() {
     let source = include_str!("../server.rs");
     assert!(!source.contains("state.world.read"));
     assert!(!source.contains("spawn_blocking"));
+    assert!(source.contains("state.requests.submit("));
+    assert!(!source.contains(".net_requests.push("));
+    assert!(!source.contains(".input_requests.push("));
+    assert!(!source.contains(".code_of_conduct_requests.push("));
 }
 
 #[test]

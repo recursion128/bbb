@@ -59,6 +59,10 @@
 ^crates/bbb-native/src/particle_runtime(/.*)?[.]rs$	fallback
 ^crates/bbb-native/src/(runtime|input|item_frames|banner_scene|debug_entries|main)[.]rs$	fallback
 ^crates/bbb-native/src/input/.*[.]rs$	fallback
+# Simulation input uses the existing bounded fixed-width text fallback only
+# before the immutable renderer glyph projection has loaded; it is layout
+# compatibility, not a renderer submission or canonical gameplay fallback.
+^crates/bbb-native/src/simulation/input_commands[.]rs$	debug_options_search_(display_start_for_width|cursor_for_text_offset_from_display_start)_fallback
 # Synchronized jukebox audio completes only data-less known-pack stubs by resource
 # identity; server payloads and holder order never use a bootstrap ordinal fallback.
 ^crates/bbb-native/src/runtime/events/dispatcher[.]rs$	let fallback = world|JukeboxSongRegistryEntry::new[(]song_id, fallback, None[)]

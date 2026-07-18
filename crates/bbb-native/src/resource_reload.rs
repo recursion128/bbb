@@ -58,6 +58,16 @@ pub(crate) struct ResourceReloadAck {
     pub(crate) result: std::result::Result<ResourceReloadSimulationCommit, String>,
 }
 
+impl std::fmt::Debug for ResourceReloadAck {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ResourceReloadAck")
+            .field("generation", &self.generation)
+            .field("success", &self.result.is_ok())
+            .finish()
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_server_resource_pack_reload_effect(
     effect: ResourceReloadEffect,

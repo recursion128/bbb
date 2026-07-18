@@ -1,0 +1,363 @@
+//! Ordered commands entering the native simulation owner.
+
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex, PoisonError},
+};
+
+use bbb_control::{ControlRequestSink, ControlWriteRequest};
+use bbb_renderer::HudFontGlyphMap;
+use winit::{
+    dpi::{PhysicalPosition, PhysicalSize},
+    event::{ElementState, MouseButton, MouseScrollDelta},
+    keyboard::PhysicalKey,
+};
+
+const DEFAULT_COALESCING_THRESHOLD: usize = 256;
+
+/// One platform or control value applied by [`super::SimulationCore`].
+#[derive(Debug)]
+pub(crate) enum SimulationCommand {
+    FocusChanged(bool),
+    Key {
+        physical_key: PhysicalKey,
+        state: ElementState,
+        clipboard_text: Option<String>,
+    },
+    MouseButton {
+        button: MouseButton,
+        state: ElementState,
+    },
+    MouseMotion {
+        delta: (f64, f64),
+    },
+    MouseWheel {
+        delta: MouseScrollDelta,
+    },
+    CursorMoved {
+        position: PhysicalPosition<f64>,
+    },
+    ImePreedit {
+        text: String,
+        cursor_range: Option<(usize, usize)>,
+    },
+    ImeCommit(String),
+    ImeDisabled,
+    SurfaceResized(PhysicalSize<u32>),
+    TextMeasurements(HudFontGlyphMap),
+    CursorCaptureResult {
+        captured: bool,
+    },
+    ClipboardWriteResult {
+        success: bool,
+    },
+    OpenUriResult {
+        url: String,
+        success: bool,
+    },
+    ResourceReloadAck(crate::resource_reload::ResourceReloadAck),
+    Control(ControlWriteRequest),
+    Shutdown,
+}
+
+/// A command with the global producer sequence assigned while holding the
+/// mailbox's short mutex.
+#[derive(Debug)]
+pub(crate) struct SequencedSimulationCommand {
+    pub(crate) sequence: u64,
+    pub(crate) command: SimulationCommand,
+}
+
+#[derive(Debug)]
+struct SimulationMailboxState {
+    next_sequence: u64,
+    coalescing_threshold: usize,
+    commands: VecDeque<SequencedSimulationCommand>,
+}
+
+impl Default for SimulationMailboxState {
+    fn default() -> Self {
+        Self {
+            next_sequence: 1,
+            coalescing_threshold: DEFAULT_COALESCING_THRESHOLD,
+            commands: VecDeque::new(),
+        }
+    }
+}
+
+/// Multi-producer, single-consumer command mailbox.
+///
+/// The capacity is deliberately soft: once the threshold is reached,
+/// adjacent high-rate values coalesce at the queue tail, but discrete values
+/// still append. A key release, mouse release, control action, or shutdown is
+/// therefore never silently lost and producers never wait for simulation.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SimulationMailbox {
+    state: Arc<Mutex<SimulationMailboxState>>,
+}
+
+impl SimulationMailbox {
+    #[cfg(test)]
+    fn with_coalescing_threshold(coalescing_threshold: usize) -> Self {
+        Self {
+            state: Arc::new(Mutex::new(SimulationMailboxState {
+                coalescing_threshold,
+                ..SimulationMailboxState::default()
+            })),
+        }
+    }
+
+    /// Enqueues one command and returns its assigned monotonic sequence.
+    pub(crate) fn enqueue(&self, command: SimulationCommand) -> u64 {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        let sequence = state.next_sequence;
+        state.next_sequence = state
+            .next_sequence
+            .checked_add(1)
+            .expect("simulation command sequence exhausted");
+
+        if state.commands.len() >= state.coalescing_threshold
+            && try_coalesce_tail(&mut state.commands, sequence, &command)
+        {
+            return sequence;
+        }
+        state
+            .commands
+            .push_back(SequencedSimulationCommand { sequence, command });
+        sequence
+    }
+
+    /// Captures the current producer barrier and drains only commands at or
+    /// before it. Producers that acquire the mutex afterwards remain queued
+    /// for the next simulation step.
+    pub(crate) fn drain_through_barrier(&self) -> Vec<SequencedSimulationCommand> {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        let barrier = state.next_sequence.saturating_sub(1);
+        let drain_len = state
+            .commands
+            .iter()
+            .take_while(|command| command.sequence <= barrier)
+            .count();
+        state.commands.drain(..drain_len).collect()
+    }
+
+    pub(crate) fn pending_len(&self) -> usize {
+        self.state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .commands
+            .len()
+    }
+}
+
+impl ControlRequestSink for SimulationMailbox {
+    fn submit(&self, request: ControlWriteRequest) -> usize {
+        let command = match request {
+            ControlWriteRequest::Shutdown => SimulationCommand::Shutdown,
+            request => SimulationCommand::Control(request),
+        };
+        self.enqueue(command);
+        self.pending_len()
+    }
+}
+
+fn try_coalesce_tail(
+    commands: &mut VecDeque<SequencedSimulationCommand>,
+    sequence: u64,
+    incoming: &SimulationCommand,
+) -> bool {
+    let Some(tail) = commands.back_mut() else {
+        return false;
+    };
+    let coalesced = match (&mut tail.command, incoming) {
+        (
+            SimulationCommand::MouseMotion { delta },
+            SimulationCommand::MouseMotion {
+                delta: incoming_delta,
+            },
+        ) => {
+            delta.0 += incoming_delta.0;
+            delta.1 += incoming_delta.1;
+            true
+        }
+        (
+            SimulationCommand::MouseWheel { delta },
+            SimulationCommand::MouseWheel {
+                delta: incoming_delta,
+            },
+        ) => coalesce_wheel_delta(delta, incoming_delta),
+        (
+            SimulationCommand::CursorMoved { position },
+            SimulationCommand::CursorMoved {
+                position: incoming_position,
+            },
+        ) => {
+            *position = *incoming_position;
+            true
+        }
+        (
+            SimulationCommand::SurfaceResized(size),
+            SimulationCommand::SurfaceResized(incoming_size),
+        ) => {
+            *size = *incoming_size;
+            true
+        }
+        _ => false,
+    };
+    if coalesced {
+        tail.sequence = sequence;
+    }
+    coalesced
+}
+
+fn coalesce_wheel_delta(current: &mut MouseScrollDelta, incoming: &MouseScrollDelta) -> bool {
+    match (current, incoming) {
+        (MouseScrollDelta::LineDelta(x, y), MouseScrollDelta::LineDelta(dx, dy)) => {
+            *x += dx;
+            *y += dy;
+            true
+        }
+        (MouseScrollDelta::PixelDelta(position), MouseScrollDelta::PixelDelta(delta)) => {
+            position.x += delta.x;
+            position.y += delta.y;
+            true
+        }
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_control::{InputControlRequest, InputKeyControl, NetControlRequest};
+    use winit::keyboard::KeyCode;
+
+    #[test]
+    fn commands_from_winit_and_control_share_one_monotonic_sequence() {
+        let mailbox = SimulationMailbox::default();
+        assert_eq!(mailbox.enqueue(SimulationCommand::FocusChanged(true)), 1);
+        ControlRequestSink::submit(
+            &mailbox,
+            ControlWriteRequest::Net(NetControlRequest::RequestStats),
+        );
+        mailbox.enqueue(SimulationCommand::Key {
+            physical_key: PhysicalKey::Code(KeyCode::KeyW),
+            state: ElementState::Released,
+            clipboard_text: None,
+        });
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(
+            drained
+                .iter()
+                .map(|command| command.sequence)
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+        assert!(matches!(
+            drained[1].command,
+            SimulationCommand::Control(ControlWriteRequest::Net(NetControlRequest::RequestStats))
+        ));
+    }
+
+    #[test]
+    fn saturated_mailbox_never_drops_key_mouse_or_control_releases() {
+        let mailbox = SimulationMailbox::with_coalescing_threshold(1);
+        mailbox.enqueue(SimulationCommand::MouseMotion { delta: (1.0, 2.0) });
+        mailbox.enqueue(SimulationCommand::Key {
+            physical_key: PhysicalKey::Code(KeyCode::KeyW),
+            state: ElementState::Released,
+            clipboard_text: None,
+        });
+        mailbox.enqueue(SimulationCommand::MouseButton {
+            button: MouseButton::Left,
+            state: ElementState::Released,
+        });
+        ControlRequestSink::submit(
+            &mailbox,
+            ControlWriteRequest::Input(InputControlRequest::Key {
+                key: InputKeyControl::Forward,
+                pressed: false,
+            }),
+        );
+        ControlRequestSink::submit(&mailbox, ControlWriteRequest::Shutdown);
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(drained.len(), 5);
+        assert!(matches!(
+            drained[1].command,
+            SimulationCommand::Key {
+                state: ElementState::Released,
+                ..
+            }
+        ));
+        assert!(matches!(
+            drained[2].command,
+            SimulationCommand::MouseButton {
+                state: ElementState::Released,
+                ..
+            }
+        ));
+        assert!(matches!(drained[4].command, SimulationCommand::Shutdown));
+    }
+
+    #[test]
+    fn high_rate_values_coalesce_only_without_a_discrete_barrier() {
+        let mailbox = SimulationMailbox::with_coalescing_threshold(1);
+        mailbox.enqueue(SimulationCommand::MouseMotion { delta: (1.0, 2.0) });
+        mailbox.enqueue(SimulationCommand::MouseMotion { delta: (3.0, 4.0) });
+        mailbox.enqueue(SimulationCommand::FocusChanged(true));
+        mailbox.enqueue(SimulationCommand::MouseMotion { delta: (5.0, 6.0) });
+        mailbox.enqueue(SimulationCommand::MouseMotion { delta: (7.0, 8.0) });
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(drained.len(), 3);
+        assert_eq!(drained[0].sequence, 2);
+        assert_eq!(drained[2].sequence, 5);
+        assert!(matches!(
+            drained[0].command,
+            SimulationCommand::MouseMotion { delta: (4.0, 6.0) }
+        ));
+        assert!(matches!(
+            drained[2].command,
+            SimulationCommand::MouseMotion {
+                delta: (12.0, 14.0)
+            }
+        ));
+    }
+
+    #[test]
+    fn mailbox_and_commands_are_send() {
+        fn assert_send<T: Send>() {}
+        assert_send::<SimulationMailbox>();
+        assert_send::<SequencedSimulationCommand>();
+    }
+
+    #[test]
+    fn concurrent_producers_share_one_contiguous_sequence() {
+        let mailbox = SimulationMailbox::default();
+        let control_mailbox = mailbox.clone();
+        let producer = std::thread::spawn(move || {
+            for _ in 0..32 {
+                ControlRequestSink::submit(
+                    &control_mailbox,
+                    ControlWriteRequest::Net(NetControlRequest::RequestStats),
+                );
+            }
+        });
+        for index in 0..32 {
+            mailbox.enqueue(SimulationCommand::FocusChanged(index % 2 == 0));
+        }
+        producer.join().expect("control producer");
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(drained.len(), 64);
+        assert_eq!(
+            drained
+                .iter()
+                .map(|command| command.sequence)
+                .collect::<Vec<_>>(),
+            (1..=64).collect::<Vec<_>>()
+        );
+    }
+}

@@ -1,4 +1,4 @@
-use bbb_control::{CodeOfConductControlRequest, SharedControlRequests};
+use bbb_control::CodeOfConductControlRequest;
 use bbb_world::{CodeOfConductState, WorldStore};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -49,6 +49,12 @@ enum OverlayAction {
     Decline,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CodeOfConductOverlayInput {
+    pub(crate) consumed: bool,
+    pub(crate) request: Option<CodeOfConductControlRequest>,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct OverlayRect {
     x: u32,
@@ -92,25 +98,36 @@ impl CodeOfConductOverlayState {
     pub(crate) fn handle_mouse_input(
         &mut self,
         world: &WorldStore,
-        control_requests: &SharedControlRequests,
         button: MouseButton,
         state: ElementState,
         cursor: Option<PhysicalPosition<f64>>,
         surface_size: PhysicalSize<u32>,
-    ) -> bool {
+    ) -> CodeOfConductOverlayInput {
         let Some(code_of_conduct) = self.visible_code_of_conduct(world) else {
-            return false;
+            return CodeOfConductOverlayInput {
+                consumed: false,
+                request: None,
+            };
         };
 
         if button != MouseButton::Left || state != ElementState::Pressed {
-            return true;
+            return CodeOfConductOverlayInput {
+                consumed: true,
+                request: None,
+            };
         };
 
         let Some(cursor) = cursor else {
-            return true;
+            return CodeOfConductOverlayInput {
+                consumed: true,
+                request: None,
+            };
         };
         let Some(action) = hit_test_overlay_action(cursor, surface_size) else {
-            return true;
+            return CodeOfConductOverlayInput {
+                consumed: true,
+                request: None,
+            };
         };
 
         let request = match action {
@@ -118,12 +135,11 @@ impl CodeOfConductOverlayState {
             OverlayAction::Remember => CodeOfConductControlRequest::Accept { remember: true },
             OverlayAction::Decline => CodeOfConductControlRequest::Decline,
         };
-        let Ok(mut guard) = control_requests.lock() else {
-            return true;
-        };
-        guard.code_of_conduct_requests.push(request);
         self.dismissed_hash = Some(code_of_conduct.text_hash);
-        true
+        CodeOfConductOverlayInput {
+            consumed: true,
+            request: Some(request),
+        }
     }
 
     pub(crate) fn is_visible(&self, world: &WorldStore) -> bool {
@@ -528,68 +544,59 @@ mod tests {
     }
 
     #[test]
-    fn click_queues_accept_request_and_dismisses_current_overlay() {
+    fn click_returns_accept_request_and_dismisses_current_overlay() {
         let mut world = WorldStore::new();
         world.apply_code_of_conduct("Keep chat friendly.".to_string());
-        let requests = bbb_control::SharedControlRequests::default();
         let mut overlay = CodeOfConductOverlayState::default();
         let surface = PhysicalSize::new(800, 600);
         let (origin_x, origin_y) = overlay_origin(surface);
 
-        assert!(overlay.handle_mouse_input(
+        let input = overlay.handle_mouse_input(
             &world,
-            &requests,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(origin_x + 30.0, origin_y + 252.0)),
             surface,
-        ));
-
+        );
+        assert!(input.consumed);
         assert_eq!(
-            requests.lock().unwrap().code_of_conduct_requests,
-            vec![CodeOfConductControlRequest::Accept { remember: false }]
+            input.request,
+            Some(CodeOfConductControlRequest::Accept { remember: false })
         );
         assert!(overlay.visible_code_of_conduct(&world).is_none());
     }
 
     #[test]
-    fn click_queues_remember_and_decline_requests() {
+    fn click_returns_remember_and_decline_requests() {
         let surface = PhysicalSize::new(800, 600);
         let (origin_x, origin_y) = overlay_origin(surface);
 
         let mut remember_world = WorldStore::new();
         remember_world.apply_code_of_conduct("Remember this server.".to_string());
-        let remember_requests = bbb_control::SharedControlRequests::default();
         let mut remember_overlay = CodeOfConductOverlayState::default();
-        assert!(remember_overlay.handle_mouse_input(
+        let remember = remember_overlay.handle_mouse_input(
             &remember_world,
-            &remember_requests,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(origin_x + 180.0, origin_y + 252.0)),
             surface,
-        ));
+        );
         assert_eq!(
-            remember_requests.lock().unwrap().code_of_conduct_requests,
-            vec![CodeOfConductControlRequest::Accept { remember: true }]
+            remember.request,
+            Some(CodeOfConductControlRequest::Accept { remember: true })
         );
 
         let mut decline_world = WorldStore::new();
         decline_world.apply_code_of_conduct("Decline this server.".to_string());
-        let decline_requests = bbb_control::SharedControlRequests::default();
         let mut decline_overlay = CodeOfConductOverlayState::default();
-        assert!(decline_overlay.handle_mouse_input(
+        let decline = decline_overlay.handle_mouse_input(
             &decline_world,
-            &decline_requests,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(origin_x + 380.0, origin_y + 252.0)),
             surface,
-        ));
-        assert_eq!(
-            decline_requests.lock().unwrap().code_of_conduct_requests,
-            vec![CodeOfConductControlRequest::Decline]
         );
+        assert_eq!(decline.request, Some(CodeOfConductControlRequest::Decline));
     }
 
     #[test]

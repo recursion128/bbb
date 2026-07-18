@@ -1,4 +1,4 @@
-use std::{cell::RefCell, error::Error, fmt};
+use std::{cell::RefCell, error::Error, fmt, path::PathBuf};
 
 use bbb_audio::TickEntitySoundPositionsCommand;
 use bbb_control::AudioCounters;
@@ -19,6 +19,44 @@ pub(crate) trait ParticleBatchSink {
     fn submit_particle_batch(&mut self, batch: ParticleSpawnBatch);
 }
 
+/// Render/winit-owned work requested by the simulation input path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum PlatformEffect {
+    SetCursorCapture(bool),
+    ClipboardWrite(String),
+    OpenUri(String),
+    Screenshot(PathBuf),
+    ReloadTerrain,
+    DumpDynamicTextures {
+        requests: u32,
+    },
+    ProfilingToggled {
+        requests: usize,
+        starts: usize,
+        stops: usize,
+    },
+    NavigateProfiler {
+        digits: Vec<u8>,
+    },
+    StatsScreenInput(StatsScreenInput),
+    Exit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StatsScreenInput {
+    MouseMove,
+    MouseAction,
+    KeyboardAction,
+}
+
+pub(crate) trait PlatformEffectSink {
+    fn apply_platform_effect(&mut self, effect: PlatformEffect);
+}
+
+pub(crate) trait RenderEffectSink: ParticleBatchSink + PlatformEffectSink {}
+
+impl<T> RenderEffectSink for T where T: ParticleBatchSink + PlatformEffectSink {}
+
 impl ParticleBatchSink for Renderer {
     fn submit_particle_batch(&mut self, batch: ParticleSpawnBatch) {
         self.submit_particle_spawns(batch);
@@ -28,6 +66,7 @@ impl ParticleBatchSink for Renderer {
 enum RenderEffect {
     Audio(AudioEffect),
     Particles(ParticleSpawnBatch),
+    Platform(PlatformEffect),
 }
 
 /// Terminal resource reload request sealed after a simulation step's ordinary
@@ -72,6 +111,10 @@ impl RenderEffectCollector {
 
     pub(crate) fn particles(&self) -> ParticleEffectCollector<'_> {
         ParticleEffectCollector { collector: self }
+    }
+
+    pub(crate) fn platform(&self) -> PlatformEffectCollector<'_> {
+        PlatformEffectCollector { collector: self }
     }
 
     pub(crate) fn finish(self, resource_reload: Option<ResourceReloadEffect>) -> RenderEffectBatch {
@@ -168,6 +211,16 @@ impl ParticleBatchSink for ParticleEffectCollector<'_> {
     }
 }
 
+pub(crate) struct PlatformEffectCollector<'a> {
+    collector: &'a RenderEffectCollector,
+}
+
+impl PlatformEffectCollector<'_> {
+    pub(crate) fn submit(&mut self, effect: PlatformEffect) {
+        self.collector.push(RenderEffect::Platform(effect));
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RenderEffectSequenceError {
     pub(crate) expected: u64,
@@ -196,7 +249,7 @@ impl RenderEffectConsumer {
         &mut self,
         batch: RenderEffectBatch,
         mut audio: Option<&mut dyn AudioEventSink>,
-        particles: &mut dyn ParticleBatchSink,
+        render: &mut dyn RenderEffectSink,
     ) -> Result<Option<ResourceReloadEffect>, RenderEffectSequenceError> {
         if batch.sequence <= self.last_sequence {
             return Ok(None);
@@ -215,7 +268,8 @@ impl RenderEffectConsumer {
                         effect.replay(audio);
                     }
                 }
-                RenderEffect::Particles(batch) => particles.submit_particle_batch(batch),
+                RenderEffect::Particles(batch) => render.submit_particle_batch(batch),
+                RenderEffect::Platform(effect) => render.apply_platform_effect(effect),
             }
         }
         self.last_sequence = batch.sequence;
@@ -276,6 +330,12 @@ mod tests {
         log: Rc<RefCell<Vec<&'static str>>>,
     }
 
+    impl PlatformEffectSink for RecordingParticles {
+        fn apply_platform_effect(&mut self, _effect: PlatformEffect) {
+            self.log.borrow_mut().push("platform");
+        }
+    }
+
     impl ParticleBatchSink for RecordingParticles {
         fn submit_particle_batch(&mut self, _batch: ParticleSpawnBatch) {
             self.log.borrow_mut().push("particles");
@@ -303,6 +363,9 @@ mod tests {
         let mut particles = collector.particles();
         audio.play_local_sound(&local_sound());
         particles.submit_particle_batch(ParticleSpawnBatch::default());
+        collector
+            .platform()
+            .submit(PlatformEffect::SetCursorCapture(false));
         audio.play_local_sound(&local_sound());
         drop((audio, particles));
         collector.finish(None)
@@ -332,14 +395,14 @@ mod tests {
         let mut consumer = RenderEffectConsumer::default();
 
         assert!(consumer
-            .consume(ordered_batch(1), Some(&mut audio), &mut particles)
+            .consume(ordered_batch(1), Some(&mut audio), &mut particles,)
             .unwrap()
             .is_none());
         assert!(consumer
-            .consume(ordered_batch(1), Some(&mut audio), &mut particles)
+            .consume(ordered_batch(1), Some(&mut audio), &mut particles,)
             .unwrap()
             .is_none());
-        assert_eq!(*log.borrow(), ["audio", "particles", "audio"]);
+        assert_eq!(*log.borrow(), ["audio", "particles", "platform", "audio"]);
     }
 
     #[test]
@@ -375,7 +438,7 @@ mod tests {
             .unwrap();
         assert_eq!(reload.request.generation, 7);
         assert!(consumer
-            .consume(reload_batch(1, 7), Some(&mut audio), &mut particles)
+            .consume(reload_batch(1, 7), Some(&mut audio), &mut particles,)
             .unwrap()
             .is_none());
     }

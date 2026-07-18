@@ -59,22 +59,12 @@ use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use bbb_item_model::default_player_skin_cache_dir;
 use bbb_item_model::NativeItemRuntime;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
-use code_of_conduct_overlay::CodeOfConductOverlayState;
 use debug_entries::DebugScreenEntryList;
 use debug_profiler::{DebugProfiler, DebugProfilerSectionSample};
 use entity_assets::load_entity_model_textures;
 use entity_variant_textures::NativeEntityVariantTextureRuntime;
 use hud_assets::load_hud_textures;
-use input::{
-    handle_advancements_screen_cursor_moved, handle_advancements_screen_mouse_input,
-    handle_advancements_screen_mouse_wheel, handle_book_screen_mouse_input, handle_focus_change,
-    handle_inventory_cursor_moved, handle_inventory_mouse_input_with_item_runtime,
-    handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
-    handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
-    handle_text_input_with_item_runtime, queue_debug_recreate_server_query_request,
-    release_active_input, ClientInputState, DebugClipboard, DebugFeatureCountRequest,
-    DebugFrustumRequest, DebugProfilingToggleRequest, PauseScreenLinkRequest,
-};
+use input::{ClientInputState, DebugClipboard};
 use level_load_runtime::LevelLoadRuntime;
 use narrator_runtime::{
     NarratorStatus, NativeNarratorRuntime, ScreenNarrationInput, ScreenNarrationRuntime,
@@ -86,17 +76,19 @@ use resource_reload::{
     block_destroy_profiles_for_world, block_sound_profiles_for_world, item_particle_sprite_uvs,
 };
 use runtime::{
-    control_renderer_counters, dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
-    handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
-    handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
-    handle_dialog_text_input_with_measurer, narrate_command_suggestion_change, publish_snapshot,
-    request_net_disconnect, snapshot_is_running, take_control_screenshot, CameraFovTickState,
+    control_renderer_counters, dialog_ime_cursor_area, narrate_command_suggestion_change,
+    publish_snapshot, request_net_disconnect, snapshot_is_running, CameraFovTickState,
     ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
     DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
     LevelEventSoundRandomState, LightmapTickState,
 };
 use simulation::{
-    effects::RenderEffectConsumer, SimulationCore, SimulationRenderContext, SimulationStepContext,
+    commands::{SimulationCommand, SimulationMailbox},
+    effects::{
+        ParticleBatchSink, PlatformEffect, PlatformEffectSink, RenderEffectConsumer,
+        StatsScreenInput,
+    },
+    SimulationCore, SimulationRenderContext, SimulationStepContext,
 };
 use sky_assets::load_sky_textures;
 use startup::{
@@ -188,6 +180,115 @@ impl DebugClipboard for NativeDebugClipboard {
     }
 }
 
+struct NativeRenderEffectSink<'a> {
+    renderer: &'a mut bbb_renderer::Renderer,
+    window: &'a Window,
+    cursor_captured: &'a mut bool,
+    mailbox: &'a SimulationMailbox,
+    clipboard: &'a mut NativeDebugClipboard,
+    terrain_upload: &'a mut TerrainUploadState,
+    debug_profiler: &'a mut DebugProfiler,
+    stats_screen_narration: &'a mut ScreenNarrationRuntime,
+    control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
+    exit_requested: &'a mut bool,
+}
+
+impl ParticleBatchSink for NativeRenderEffectSink<'_> {
+    fn submit_particle_batch(&mut self, batch: bbb_renderer::ParticleSpawnBatch) {
+        self.renderer.submit_particle_spawns(batch);
+    }
+}
+
+impl PlatformEffectSink for NativeRenderEffectSink<'_> {
+    fn apply_platform_effect(&mut self, effect: PlatformEffect) {
+        match effect {
+            PlatformEffect::SetCursorCapture(capture) => {
+                set_cursor_capture(self.window, self.cursor_captured, capture);
+                self.mailbox
+                    .enqueue(SimulationCommand::CursorCaptureResult {
+                        captured: *self.cursor_captured,
+                    });
+            }
+            PlatformEffect::ClipboardWrite(text) => {
+                let success = self.clipboard.set_debug_clipboard_text(&text);
+                self.mailbox
+                    .enqueue(SimulationCommand::ClipboardWriteResult { success });
+            }
+            PlatformEffect::OpenUri(url) => {
+                let success = platform::open_uri(&url)
+                    .map_err(|err| tracing::warn!(?err, %url, "failed to open dialog URI"))
+                    .is_ok();
+                self.mailbox
+                    .enqueue(SimulationCommand::OpenUriResult { url, success });
+            }
+            PlatformEffect::Screenshot(path) => self.control_screenshots.push_back(path),
+            PlatformEffect::ReloadTerrain => self.terrain_upload.request_reload_all_chunks(),
+            PlatformEffect::DumpDynamicTextures { requests } => {
+                let path = std::path::Path::new(input::DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH);
+                match self.renderer.dump_dynamic_textures(path) {
+                    Ok(summary) => tracing::info!(
+                        requests,
+                        files_written = summary.files_written,
+                        dynamic_player_skin_atlas = summary.dynamic_player_skin_atlas,
+                        dynamic_player_texture_atlas = summary.dynamic_player_texture_atlas,
+                        path = %path.display(),
+                        "dumped dynamic textures requested by debug hotkey"
+                    ),
+                    Err(err) => tracing::warn!(
+                        ?err,
+                        requests,
+                        path = %path.display(),
+                        "failed to dump dynamic textures requested by debug hotkey"
+                    ),
+                }
+            }
+            PlatformEffect::ProfilingToggled {
+                requests,
+                starts,
+                stops,
+            } => {
+                if stops > 0 {
+                    let path = std::path::Path::new(input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR);
+                    if let Err(err) = std::fs::create_dir_all(path) {
+                        tracing::warn!(?err, path = %path.display(), "failed to create profiling feedback directory");
+                    }
+                }
+                tracing::info!(
+                    requests,
+                    starts,
+                    stops,
+                    "profiling toggled by debug hotkey; native profiler output is not implemented"
+                );
+            }
+            PlatformEffect::NavigateProfiler { digits } => {
+                let requests = digits.len();
+                let last_digit = digits.last().copied();
+                for digit in digits {
+                    self.debug_profiler.navigate(digit);
+                }
+                if let Some(last_digit) = last_digit {
+                    tracing::info!(
+                        requests,
+                        last_digit,
+                        current_path = self.debug_profiler.current_path(),
+                        "profiler chart navigation requested"
+                    );
+                }
+            }
+            PlatformEffect::StatsScreenInput(input) => {
+                let input = match input {
+                    StatsScreenInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    StatsScreenInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    StatsScreenInput::KeyboardAction => ScreenNarrationInput::KeyboardAction,
+                };
+                self.stats_screen_narration
+                    .after_input(input, Instant::now());
+            }
+            PlatformEffect::Exit => *self.exit_requested = true,
+        }
+    }
+}
+
 fn main() -> Result<()> {
     init_tracing();
     let args = parse_args();
@@ -210,7 +311,10 @@ fn main() -> Result<()> {
     ));
     let snapshot = control.snapshot.clone();
     let published_world = control.world.clone();
-    let control_requests = control.requests.clone();
+    let simulation_mailbox = SimulationMailbox::default();
+    control
+        .requests
+        .install_sink(std::sync::Arc::new(simulation_mailbox.clone()));
     let mut world = WorldStore::new();
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
     let net_counters = NetCounters::default();
@@ -416,6 +520,9 @@ fn main() -> Result<()> {
         }
     }
     load_hud_textures(&mut renderer, pack_roots.as_ref());
+    simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
+        renderer.hud_text_measurements(),
+    ));
     load_entity_model_textures(&mut renderer, pack_roots.as_ref());
     load_sky_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = &particle_render_runtime {
@@ -458,13 +565,13 @@ fn main() -> Result<()> {
     );
     let level_event_sound_random = LevelEventSoundRandomState::with_seed(world.next_sound_seed());
     let mut net_disconnect_requested = false;
-    let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
-    let mut cursor_position = None;
     let mut cursor_captured = false;
     let frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
+    let mut pending_control_screenshots = std::collections::VecDeque::new();
+    let mut platform_exit_requested = false;
     let mut render_effect_consumer = RenderEffectConsumer::default();
     let mut simulation = SimulationCore {
         net_events,
@@ -484,6 +591,11 @@ fn main() -> Result<()> {
         lightmap_ticks,
         level_event_sound_random,
         particle_runtime,
+        command_mailbox: simulation_mailbox.clone(),
+        input_runtime: simulation::input_commands::SimulationInputRuntime::new(
+            window.inner_size(),
+            false,
+        ),
         next_effect_sequence: 1,
     };
 
@@ -506,752 +618,65 @@ fn main() -> Result<()> {
         );
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
-                WindowEvent::CloseRequested => target.exit(),
-                WindowEvent::Resized(size) => renderer.resize(size),
-                WindowEvent::CursorMoved { position, .. } => {
-                    let previous_cursor_position = cursor_position;
-                    cursor_position = Some(position);
-                    if simulation.input.handle_debug_game_mode_switcher_cursor_moved(
-                        cursor_position,
-                        window.inner_size(),
-                    ) {
-                        return;
-                    }
-                    if simulation.input.debug_options_screen_is_open() {
-                        simulation.input.handle_debug_options_screen_cursor_moved_with_text_measurer(
-                            cursor_position,
-                            window.inner_size(),
-                            &renderer,
-                        );
-                        return;
-                    }
-                    if simulation.input.handle_debug_pause_screen_cursor_moved(cursor_position) {
-                        return;
-                    }
-                    if simulation.world.dialog_screen_is_open() {
-                        simulation.input.update_screen_cursor_position(cursor_position);
-                        handle_dialog_cursor_moved_with_measurer(
-                            &mut simulation.world,
-                            cursor_position,
-                            window.inner_size(),
-                            &renderer,
-                        );
-                        return;
-                    }
-                    if simulation.input.handle_command_suggestion_cursor_moved(&simulation.world, cursor_position) {
-                        return;
-                    }
-                    if simulation.input.handle_stats_screen_cursor_moved(
-                        &simulation.world,
-                        cursor_position,
-                        window.inner_size(),
-                    ) {
-                        stats_screen_narration
-                            .after_input(ScreenNarrationInput::MouseMove, Instant::now());
-                        return;
-                    }
-                    if simulation.world.advancements_screen_is_open() {
-                        handle_advancements_screen_cursor_moved(
-                            &mut simulation.input,
-                            &simulation.world,
-                            previous_cursor_position,
-                            cursor_position,
-                        );
-                    }
-                    handle_inventory_cursor_moved(
-                        &mut simulation.input,
-                        &mut simulation.world,
-                        &mut simulation.net_counters,
-                        &simulation.net_commands,
-                        cursor_position,
-                        window.inner_size(),
-                    );
+                WindowEvent::Resized(size) => {
+                    renderer.resize(size);
+                    simulation_mailbox.enqueue(SimulationCommand::SurfaceResized(size));
                 }
-                WindowEvent::Focused(focused) => {
-                    if !focused {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                    }
-                    handle_focus_change(
-                        &mut simulation.input,
-                        &mut simulation.world,
-                        &mut simulation.net_counters,
-                        &simulation.net_commands,
-                        focused,
-                    );
-                }
-                WindowEvent::KeyboardInput { event, .. } => {
-                    if code_of_conduct_overlay.is_visible(&simulation.world) {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    let pause_was_open = simulation.input.debug_pause_screen_is_open();
-                    if simulation.input.handle_debug_pause_screen_key(event.physical_key, event.state) {
-                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, false);
-                        } else if pause_was_open {
-                            set_cursor_capture(&window, &mut cursor_captured, true);
-                        }
-                        return;
-                    }
-                    if simulation.input.handle_debug_options_screen_key_with_clipboard(
-                        event.physical_key,
-                        event.state,
-                        Some(&mut debug_clipboard),
-                    ) {
-                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, false);
-                        }
-                        return;
-                    }
-                    if simulation.input.handle_debug_overlay_key_with_clipboard_and_net(
-                        event.physical_key,
-                        event.state,
-                        Some(&mut simulation.world),
-                        Some(&mut terrain_upload),
-                        Some(&mut debug_clipboard),
-                        item_runtime.as_ref(),
-                        &mut simulation.net_counters,
-                        &simulation.net_commands,
-                    ) {
-                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, false);
-                        }
-                        let reload_requests = simulation.input.take_debug_resource_pack_reload_requests();
-                        if reload_requests > 0 {
-                            simulation.server_resource_packs.request_reload();
-                            tracing::info!(
-                                reload_requests,
-                                "resource pack reload requested by debug hotkey"
-                            );
-                        }
-                        let dynamic_texture_dump_requests =
-                            simulation.input.take_debug_dynamic_texture_dump_requests();
-                        if dynamic_texture_dump_requests > 0 {
-                            let debug_texture_path = std::path::Path::new(
-                                input::DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH,
-                            );
-                            match renderer.dump_dynamic_textures(&debug_texture_path) {
-                                Ok(summary) => {
-                                    tracing::info!(
-                                        dynamic_texture_dump_requests,
-                                        files_written = summary.files_written,
-                                        dynamic_player_skin_atlas =
-                                            summary.dynamic_player_skin_atlas,
-                                        dynamic_player_texture_atlas =
-                                            summary.dynamic_player_texture_atlas,
-                                        path = %debug_texture_path.display(),
-                                        "dumped dynamic textures requested by debug hotkey"
-                                    );
-                                }
-                                Err(err) => {
-                                    tracing::warn!(
-                                        ?err,
-                                        dynamic_texture_dump_requests,
-                                        path = %debug_texture_path.display(),
-                                        "failed to dump dynamic textures requested by debug hotkey"
-                                    );
-                                }
-                            }
-                        }
-                        let profiling_toggle_requests = simulation.input.take_debug_profiling_toggle_requests();
-                        if !profiling_toggle_requests.is_empty() {
-                            let profiling_start_requests = profiling_toggle_requests
-                                .iter()
-                                .filter(|request| {
-                                    matches!(request, DebugProfilingToggleRequest::Start)
-                                })
-                                .count();
-                            let profiling_stop_requests = profiling_toggle_requests
-                                .iter()
-                                .filter(|request| matches!(request, DebugProfilingToggleRequest::Stop))
-                                .count();
-                            if profiling_stop_requests > 0 {
-                                let profiling_results_dir = std::path::Path::new(
-                                    input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR,
-                                );
-                                if let Err(err) = std::fs::create_dir_all(profiling_results_dir) {
-                                    tracing::warn!(
-                                        ?err,
-                                        path = %profiling_results_dir.display(),
-                                        "failed to create profiling feedback directory"
-                                    );
-                                }
-                            }
-                            tracing::info!(
-                                profiling_toggle_requests = profiling_toggle_requests.len(),
-                                profiling_start_requests,
-                                profiling_stop_requests,
-                                "profiling toggled by debug hotkey; native profiler output is not implemented"
-                            );
-                        }
-                        let profiler_chart_navigation_requests =
-                            simulation.input.take_debug_profiler_chart_navigation_requests();
-                        let profiler_chart_navigation_request_count =
-                            profiler_chart_navigation_requests.len();
-                        let last_digit = profiler_chart_navigation_requests.last().copied();
-                        for digit in profiler_chart_navigation_requests {
-                            debug_profiler.navigate(digit);
-                        }
-                        if let Some(last_digit) = last_digit {
-                            tracing::info!(
-                                navigation_requests = profiler_chart_navigation_request_count,
-                                last_digit,
-                                current_path = debug_profiler.current_path(),
-                                "profiler chart navigation requested"
-                            );
-                        }
-                        let debug_frustum_requests = simulation.input.take_debug_frustum_requests();
-                        if !debug_frustum_requests.is_empty() {
-                            let capture_requests = debug_frustum_requests
-                                .iter()
-                                .filter(|request| matches!(request, DebugFrustumRequest::Capture))
-                                .count();
-                            let kill_requests = debug_frustum_requests
-                                .iter()
-                                .filter(|request| matches!(request, DebugFrustumRequest::Kill))
-                                .count();
-                            tracing::info!(
-                                debug_frustum_requests = debug_frustum_requests.len(),
-                                capture_requests,
-                                kill_requests,
-                                "debug frustum hotkey requested; native captured frustum is not implemented"
-                            );
-                        }
-                        let debug_feature_count_requests =
-                            simulation.input.take_debug_feature_count_requests();
-                        if !debug_feature_count_requests.is_empty() {
-                            let log_requests = debug_feature_count_requests
-                                .iter()
-                                .filter(|request| matches!(request, DebugFeatureCountRequest::Log))
-                                .count();
-                            let clear_requests = debug_feature_count_requests
-                                .iter()
-                                .filter(|request| {
-                                    matches!(request, DebugFeatureCountRequest::Clear)
-                                })
-                                .count();
-                            tracing::info!(
-                                debug_feature_count_requests = debug_feature_count_requests.len(),
-                                log_requests,
-                                clear_requests,
-                                "feature-count debug hotkey requested; native FeatureCountTracker is not implemented"
-                            );
-                        }
-                        let debug_options_screen_requests =
-                            simulation.input.take_debug_options_screen_requests();
-                        if debug_options_screen_requests > 0 {
-                            for _ in 0..debug_options_screen_requests {
-                                if simulation.input.debug_options_screen_is_open() {
-                                    simulation.input.close_debug_options_screen();
-                                } else {
-                                    release_active_input(
-                                        &mut simulation.input,
-                                        &mut simulation.world,
-                                        &mut simulation.net_counters,
-                                        &simulation.net_commands,
-                                    );
-                                    simulation.input.open_debug_options_screen();
-                                }
-                            }
-                            set_cursor_capture(&window, &mut cursor_captured, false);
-                            tracing::info!(
-                                debug_options_screen_requests,
-                                open = simulation.input.debug_options_screen_is_open(),
-                                "debug options screen toggled by debug hotkey"
-                            );
-                        }
-                        let recreate_server_query_requests =
-                            simulation.input.take_debug_recreate_server_query_requests_for_level(
-                                simulation.world.client_level_generation(),
-                            );
-                        let recreate_server_query_request_count =
-                            recreate_server_query_requests.len();
-                        for request in recreate_server_query_requests {
-                            queue_debug_recreate_server_query_request(
-                                &mut simulation.net_counters,
-                                &simulation.net_commands,
-                                request,
-                            );
-                        }
-                        if recreate_server_query_request_count > 0 {
-                            tracing::info!(
-                                recreate_server_query_request_count,
-                                "debug recreate server query requested by F3+I"
-                            );
-                        }
-                        let pause_without_menu_requests =
-                            simulation.input.take_debug_pause_without_menu_requests();
-                        if pause_without_menu_requests > 0 {
-                            release_active_input(
-                                &mut simulation.input,
-                                &mut simulation.world,
-                                &mut simulation.net_counters,
-                                &simulation.net_commands,
-                            );
-                            simulation.input.open_debug_pause_screen_without_menu();
-                            set_cursor_capture(&window, &mut cursor_captured, false);
-                            tracing::info!(
-                                pause_without_menu_requests,
-                                "opened no-menu pause screen requested by debug hotkey"
-                            );
-                        }
-                        return;
-                    }
-                    let container_open = simulation.world.open_container_id().is_some();
-                    let dialog_open = simulation.world.dialog_screen_is_open();
-                    let sign_editor_open = simulation.input.sign_editor_is_active_or_pending(&simulation.world);
-                    let book_open = simulation.world.current_book().is_some();
-                    let advancements_open = simulation.world.advancements_screen_is_open();
-                    let stats_open = simulation.world.stats_screen_is_open();
-                    let debug_options_open = simulation.input.debug_options_screen_is_open();
-                    let pause_open = simulation.input.debug_pause_screen_is_open();
-                    let command_entry_open = simulation.input.command_entry_is_active();
-                    if dialog_open {
-                        simulation.input.update_screen_modifier_keys(event.physical_key, event.state);
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
-                            &mut simulation.net_counters,
-                            &mut simulation.world,
-                            &simulation.net_commands,
-                            Some(&mut debug_clipboard),
-                            event.physical_key,
-                            event.state,
-                            simulation.input.shift_down(),
-                            simulation.input.control_down(),
-                            window.inner_size(),
-                            &renderer,
-                        );
-                        drain_dialog_open_url_requests(&mut simulation.world);
-                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, true);
-                        }
-                        return;
-                    }
-                    let ordinary_pause_escape = matches!(event.state, ElementState::Pressed)
-                        && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
-                        && !simulation.input.command_entry_is_active()
-                        && !sign_editor_open
-                        && !book_open
-                        && !advancements_open
-                        && !stats_open
-                        && !debug_options_open
-                        && !pause_open
-                        && !world_wants_cursor(&simulation.world);
-                    if ordinary_pause_escape {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        release_active_input(
-                            &mut simulation.input,
-                            &mut simulation.world,
-                            &mut simulation.net_counters,
-                            &simulation.net_commands,
-                        );
-                    }
-                    if sign_editor_open
-                        || book_open
-                        || advancements_open
-                        || stats_open
-                        || debug_options_open
-                        || pause_open
-                        || command_entry_open
-                    {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                    }
-                    if stats_open && matches!(event.state, ElementState::Pressed) {
-                        stats_screen_narration.after_input(
-                            ScreenNarrationInput::KeyboardAction,
-                            Instant::now(),
-                        );
-                    }
-                    if !cursor_captured
-                        && !container_open
-                        && !sign_editor_open
-                        && !book_open
-                        && !advancements_open
-                        && !stats_open
-                        && !debug_options_open
-                        && !pause_open
-                        && !command_entry_open
-                        && !ordinary_pause_escape
-                    {
-                        return;
-                    }
-                    handle_key_input_with_item_runtime(
-                        &mut simulation.input,
-                        &mut simulation.net_counters,
-                        &mut simulation.world,
-                        &simulation.net_commands,
-                        item_runtime.as_ref(),
-                        event.physical_key,
-                        event.state,
-                        window.inner_size(),
-                    );
-                    if command_entry_open
-                        && !simulation.input.command_entry_is_active()
-                        && !runtime_wants_cursor(&simulation.input, &simulation.world)
-                    {
-                        set_cursor_capture(&window, &mut cursor_captured, true);
-                    }
-                }
-                WindowEvent::Ime(Ime::Preedit(text, cursor_range)) => {
-                    if code_of_conduct_overlay.is_visible(&simulation.world) {
-                        simulation.input.clear_dialog_ime_preedit();
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if simulation.world.dialog_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        simulation.input.handle_dialog_ime_preedit(
-                            &text,
-                            cursor_range,
-                            simulation.world.dialog_screen_revision(),
-                        );
-                    } else {
-                        simulation.input.clear_dialog_ime_preedit();
-                    }
-                }
-                WindowEvent::Ime(Ime::Commit(text)) => {
-                    simulation.input.clear_dialog_ime_preedit();
-                    if code_of_conduct_overlay.is_visible(&simulation.world) {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    let sign_editor_open = simulation.input.sign_editor_is_active_or_pending(&simulation.world);
-                    let container_open = simulation.world.open_container_id().is_some();
-                    let book_open = simulation.world.current_book().is_some();
-                    let advancements_open = simulation.world.advancements_screen_is_open();
-                    let stats_open = simulation.world.stats_screen_is_open();
-                    let command_entry_open = simulation.input.command_entry_is_active();
-                    if simulation.input.debug_options_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        simulation.input.handle_debug_options_screen_text_input(&text);
-                        return;
-                    }
-                    if simulation.world.dialog_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_dialog_text_input_with_measurer(&mut simulation.world, &text, &renderer);
-                        return;
-                    }
-                    if book_open || advancements_open || stats_open {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if sign_editor_open || container_open || command_entry_open {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                    }
-                    if !cursor_captured
-                        && !sign_editor_open
-                        && !container_open
-                        && !command_entry_open
-                    {
-                        return;
-                    }
-                    handle_text_input_with_item_runtime(
-                        &mut simulation.input,
-                        &mut simulation.net_counters,
-                        &mut simulation.world,
-                        &simulation.net_commands,
-                        item_runtime.as_ref(),
-                        &text,
-                    );
-                }
-                WindowEvent::Ime(Ime::Disabled) => simulation.input.clear_dialog_ime_preedit(),
-                WindowEvent::Ime(Ime::Enabled) => {}
-                WindowEvent::MouseInput { state, button, .. } => {
-                    if code_of_conduct_overlay.is_visible(&simulation.world) {
-                        if code_of_conduct_overlay.handle_mouse_input(
-                            &simulation.world,
-                            &control_requests,
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                        ) {
-                            code_of_conduct_overlay.update_renderer(
-                                &mut renderer,
-                                &simulation.world,
-                                code_of_conduct_acceptance.current_world_acceptance_matches(&simulation.world),
-                            );
-                        }
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if simulation.input.debug_game_mode_switcher_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if simulation.input.debug_options_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        simulation.input.handle_debug_options_screen_mouse_input_with_text_measurer(
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                            simulation.world.local_player_has_reduced_debug_info(),
-                            &renderer,
-                        );
-                        return;
-                    }
-                    if simulation.input.debug_pause_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        simulation.input.handle_debug_pause_screen_mouse_input(
-                            &mut simulation.net_counters,
-                            &mut simulation.world,
-                            &simulation.net_commands,
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                        );
-                        drain_pause_screen_link_requests(&mut simulation.input);
-                        if simulation.input.pause_screen_disconnect_requested() {
-                            request_net_disconnect(&simulation.net_commands, &mut net_disconnect_requested);
-                        }
-                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, true);
-                        }
-                        return;
-                    }
-                    if simulation.world.stats_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        stats_screen_narration
-                            .after_input(ScreenNarrationInput::MouseAction, Instant::now());
-                        simulation.input.handle_stats_screen_mouse_input(
-                            &mut simulation.net_counters,
-                            &mut simulation.world,
-                            &simulation.net_commands,
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                        );
-                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, true);
-                        }
-                        return;
-                    }
-                    if simulation.world.dialog_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        let double_click = simulation.input.dialog_mouse_click_is_double(
-                            button,
-                            state,
-                            simulation.world.dialog_screen_revision(),
-                        );
-                        handle_dialog_mouse_input_with_modifiers_and_measurer(
-                            &mut simulation.net_counters,
-                            &mut simulation.world,
-                            &simulation.net_commands,
-                            Some(&mut debug_clipboard),
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                            simulation.input.shift_down(),
-                            double_click,
-                            &renderer,
-                        );
-                        drain_dialog_open_url_requests(&mut simulation.world);
-                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, true);
-                        }
-                        return;
-                    }
-                    if simulation.input.command_entry_is_active() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        simulation.input.handle_command_suggestion_mouse_input(
-                            &simulation.world,
-                            button,
-                            state,
-                            cursor_position,
-                        );
-                        return;
-                    }
-                    if simulation.input.sign_editor_is_active_or_pending(&simulation.world) {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if simulation.world.current_book().is_some() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_book_screen_mouse_input(
-                            &mut simulation.world,
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                        );
-                        return;
-                    }
-                    if simulation.world.advancements_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_advancements_screen_mouse_input(
-                            &mut simulation.input,
-                            &mut simulation.net_counters,
-                            &mut simulation.world,
-                            &simulation.net_commands,
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                        );
-                        return;
-                    }
-                    if simulation.world.open_container_id().is_some() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_inventory_mouse_input_with_item_runtime(
-                            &mut simulation.input,
-                            &mut simulation.world,
-                            &mut simulation.net_counters,
-                            &simulation.net_commands,
-                            item_runtime.as_ref(),
-                            button,
-                            state,
-                            cursor_position,
-                            window.inner_size(),
-                        );
-                        return;
-                    }
-                    if matches!(state, ElementState::Pressed) && !cursor_captured {
-                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
-                            set_cursor_capture(&window, &mut cursor_captured, false);
-                            return;
-                        }
-                        set_cursor_capture(&window, &mut cursor_captured, true);
-                        return;
-                    }
-                    if !cursor_captured {
-                        return;
-                    }
-                    handle_mouse_input_at_partial_tick(
-                        &mut simulation.input,
-                        &mut simulation.world,
-                        &mut simulation.net_counters,
-                        &simulation.net_commands,
-                        button,
-                        state,
-                        simulation.client_animation_ticks.entity_partial_tick(),
-                    );
-                }
-                WindowEvent::MouseWheel { delta, .. } => {
-                    if code_of_conduct_overlay.is_visible(&simulation.world) {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if simulation.input.debug_options_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        simulation.input.handle_debug_options_screen_mouse_wheel(delta, window.inner_size());
-                        return;
-                    }
-                    if simulation.world.dialog_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_dialog_mouse_wheel(
-                            &mut simulation.world,
-                            delta,
-                            cursor_position,
-                            window.inner_size(),
-                        );
-                        return;
-                    }
-                    if simulation.input.command_entry_is_active() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        simulation.input.handle_command_suggestion_mouse_wheel(delta);
-                        return;
-                    }
-                    if simulation.input.sign_editor_is_active_or_pending(&simulation.world) {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if simulation.world.stats_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        stats_screen_narration
-                            .after_input(ScreenNarrationInput::MouseAction, Instant::now());
-                        simulation.input.handle_stats_screen_mouse_wheel(&simulation.world, delta);
-                        return;
-                    }
-                    if simulation.world.current_book().is_some() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if simulation.world.advancements_screen_is_open() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_advancements_screen_mouse_wheel(&mut simulation.input, &simulation.world, delta);
-                        return;
-                    }
-                    if simulation.world.open_container_id().is_some() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_inventory_mouse_wheel(
-                            &mut simulation.input,
-                            &mut simulation.world,
-                            &mut simulation.net_counters,
-                            &simulation.net_commands,
-                            delta,
-                            cursor_position,
-                            window.inner_size(),
-                        );
-                        return;
-                    }
-                    if runtime_wants_cursor(&simulation.input, &simulation.world) {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        return;
-                    }
-                    if !cursor_captured {
-                        return;
-                    }
-                    handle_mouse_wheel(
-                        &mut simulation.input,
-                        &mut simulation.world,
-                        &mut simulation.net_counters,
-                        &simulation.net_commands,
-                        delta,
-                    );
-                }
+                event
+                    if enqueue_simulation_window_event(
+                        &event,
+                        &simulation_mailbox,
+                        &mut debug_clipboard,
+                    ) => {}
                 WindowEvent::RedrawRequested => {
                     let profiler_frame_started_at = Instant::now();
-                    if code_of_conduct_overlay.is_visible(&simulation.world)
-                        || runtime_wants_cursor(&simulation.input, &simulation.world)
-                    {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        release_active_input(
-                            &mut simulation.input,
-                            &mut simulation.world,
-                            &mut simulation.net_counters,
-                            &simulation.net_commands,
-                        );
-                    } else if simulation.input.command_entry_is_active() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                    }
                     if let Some(items) = item_runtime.as_ref() {
                         items.drain_profile_resolution_results();
                         drain_dynamic_player_skin_downloads(items, &mut renderer);
                     }
                     let profiler_update_started_at = Instant::now();
-                    let code_of_conduct_overlay_visible =
-                        code_of_conduct_overlay.is_visible(&simulation.world);
                     let simulation_step = simulation.step(SimulationStepContext {
                         audio_enabled: audio_runtime.is_some(),
                         audio_status: &audio_status,
-                        surface_size: window.inner_size(),
                         terrain_textures: &mut terrain_textures,
                         item_runtime: item_runtime.as_ref(),
-                        control_requests: &control_requests,
                         code_of_conduct: Some(&mut code_of_conduct_acceptance),
-                        code_of_conduct_overlay_visible,
                         render_distance_chunks: args.render_distance_chunks,
                         hide_lightning_flash: args.hide_lightning_flash,
                     });
-                    let (simulation_frame, resource_reload) =
-                        match simulation_step.consume_render_effects(
+                    let render_effect_result = {
+                        let mut render_effect_sink = NativeRenderEffectSink {
+                            renderer: &mut renderer,
+                            window: &window,
+                            cursor_captured: &mut cursor_captured,
+                            mailbox: &simulation_mailbox,
+                            clipboard: &mut debug_clipboard,
+                            terrain_upload: &mut terrain_upload,
+                            debug_profiler: &mut debug_profiler,
+                            stats_screen_narration: &mut stats_screen_narration,
+                            control_screenshots: &mut pending_control_screenshots,
+                            exit_requested: &mut platform_exit_requested,
+                        };
+                        simulation_step.consume_render_effects(
                             &mut render_effect_consumer,
                             audio_runtime
                                 .as_mut()
                                 .map(|runtime| runtime as &mut dyn AudioEventSink),
-                            &mut renderer,
-                        ) {
-                            Ok(result) => result,
-                            Err(error) => {
-                                tracing::error!(%error, "fatal simulation render-effect sequence gap");
-                                target.exit();
-                                return;
-                            }
-                        };
+                            &mut render_effect_sink,
+                        )
+                    };
+                    let (simulation_frame, resource_reload) = match render_effect_result {
+                        Ok(result) => result,
+                        Err(error) => {
+                            tracing::error!(%error, "fatal simulation render-effect sequence gap");
+                            target.exit();
+                            return;
+                        }
+                    };
+                    if platform_exit_requested {
+                        target.exit();
+                        return;
+                    }
                     if !simulation.update_renderer(
                         simulation_frame,
                         SimulationRenderContext {
@@ -1297,17 +722,21 @@ fn main() -> Result<()> {
                             client_particle_status,
                             &player_skin_cache_dir,
                         );
-                        simulation.acknowledge_resource_reload(ack);
+                        simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
+                            renderer.hud_text_measurements(),
+                        ));
+                        simulation_mailbox.enqueue(SimulationCommand::ResourceReloadAck(ack));
                     }
                     stats_screen_narration.tick(
-                        simulation.world
+                        simulation
+                            .world
                             .stats_screen_is_open()
                             .then(|| simulation.client_animation_ticks.stats_screen_narration())
                             .flatten(),
                         Instant::now(),
-                        narrator_runtime.as_mut().map(|narrator| {
-                            narrator as &mut dyn narrator_runtime::SystemNarrator
-                        }),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                     );
                     let dialog_preedit = simulation.input.dialog_ime_preedit_hud_state();
                     if let Some((position, size)) = dialog_ime_cursor_area(
@@ -1319,28 +748,11 @@ fn main() -> Result<()> {
                         window.set_ime_cursor_area(position, size);
                     }
                     let profiler_update_duration = profiler_update_started_at.elapsed();
-                    simulation.input.consume_debug_recreate_server_query_response(
-                        &mut simulation.world,
-                        &mut debug_clipboard,
-                    );
-                    code_of_conduct_overlay.update_renderer(
+                    simulation.update_code_of_conduct_overlay_renderer(
                         &mut renderer,
-                        &simulation.world,
-                        code_of_conduct_acceptance.current_world_acceptance_matches(&simulation.world),
+                        code_of_conduct_acceptance
+                            .current_world_acceptance_matches(&simulation.world),
                     );
-                    if code_of_conduct_overlay.is_visible(&simulation.world)
-                        || runtime_wants_cursor(&simulation.input, &simulation.world)
-                    {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                        release_active_input(
-                            &mut simulation.input,
-                            &mut simulation.world,
-                            &mut simulation.net_counters,
-                            &simulation.net_commands,
-                        );
-                    } else if simulation.input.command_entry_is_active() {
-                        set_cursor_capture(&window, &mut cursor_captured, false);
-                    }
 
                     let terrain_ready_for_screenshot =
                         !screenshot_after_terrain || terrain_upload.has_uploaded_chunks();
@@ -1348,7 +760,7 @@ fn main() -> Result<()> {
                         .as_deref()
                         .filter(|_| terrain_ready_for_screenshot);
                     let control_screenshot_path = if cli_screenshot_path.is_none() {
-                        take_control_screenshot(&control_requests)
+                        pending_control_screenshots.pop_front()
                     } else {
                         None
                     };
@@ -1427,17 +839,9 @@ fn main() -> Result<()> {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
             } => {
-                if code_of_conduct_overlay.is_visible(&simulation.world)
-                    || runtime_wants_cursor(&simulation.input, &simulation.world)
-                    || simulation.input.command_entry_is_active()
-                {
-                    set_cursor_capture(&window, &mut cursor_captured, false);
-                    return;
+                if cursor_captured {
+                    simulation_mailbox.enqueue(SimulationCommand::MouseMotion { delta });
                 }
-                if !cursor_captured {
-                    return;
-                }
-                handle_mouse_motion(&mut simulation.input, delta);
             }
             Event::UserEvent(()) => {
                 if !snapshot_is_running(&snapshot) {
@@ -1455,46 +859,52 @@ fn main() -> Result<()> {
                     target.exit();
                     return;
                 }
-                if code_of_conduct_overlay.is_visible(&simulation.world)
-                    || runtime_wants_cursor(&simulation.input, &simulation.world)
-                {
-                    set_cursor_capture(&window, &mut cursor_captured, false);
-                    release_active_input(&mut simulation.input, &mut simulation.world, &mut simulation.net_counters, &simulation.net_commands);
-                } else if simulation.input.command_entry_is_active() {
-                    set_cursor_capture(&window, &mut cursor_captured, false);
-                }
                 if let Some(items) = item_runtime.as_ref() {
                     items.drain_profile_resolution_results();
                     drain_dynamic_player_skin_downloads(items, &mut renderer);
                 }
-                let code_of_conduct_overlay_visible = code_of_conduct_overlay.is_visible(&simulation.world);
                 let simulation_step = simulation.step(SimulationStepContext {
                     audio_enabled: audio_runtime.is_some(),
                     audio_status: &audio_status,
-                    surface_size: window.inner_size(),
                     terrain_textures: &mut terrain_textures,
                     item_runtime: item_runtime.as_ref(),
-                    control_requests: &control_requests,
                     code_of_conduct: Some(&mut code_of_conduct_acceptance),
-                    code_of_conduct_overlay_visible,
                     render_distance_chunks: args.render_distance_chunks,
                     hide_lightning_flash: args.hide_lightning_flash,
                 });
-                let (simulation_frame, resource_reload) =
-                    match simulation_step.consume_render_effects(
+                let render_effect_result = {
+                    let mut render_effect_sink = NativeRenderEffectSink {
+                        renderer: &mut renderer,
+                        window: &window,
+                        cursor_captured: &mut cursor_captured,
+                        mailbox: &simulation_mailbox,
+                        clipboard: &mut debug_clipboard,
+                        terrain_upload: &mut terrain_upload,
+                        debug_profiler: &mut debug_profiler,
+                        stats_screen_narration: &mut stats_screen_narration,
+                        control_screenshots: &mut pending_control_screenshots,
+                        exit_requested: &mut platform_exit_requested,
+                    };
+                    simulation_step.consume_render_effects(
                         &mut render_effect_consumer,
                         audio_runtime
                             .as_mut()
                             .map(|runtime| runtime as &mut dyn AudioEventSink),
-                        &mut renderer,
-                    ) {
-                        Ok(result) => result,
-                        Err(error) => {
-                            tracing::error!(%error, "fatal simulation render-effect sequence gap");
-                            target.exit();
-                            return;
-                        }
-                    };
+                        &mut render_effect_sink,
+                    )
+                };
+                let (simulation_frame, resource_reload) = match render_effect_result {
+                    Ok(result) => result,
+                    Err(error) => {
+                        tracing::error!(%error, "fatal simulation render-effect sequence gap");
+                        target.exit();
+                        return;
+                    }
+                };
+                if platform_exit_requested {
+                    target.exit();
+                    return;
+                }
                 if !simulation.update_renderer(
                     simulation_frame,
                     SimulationRenderContext {
@@ -1540,10 +950,14 @@ fn main() -> Result<()> {
                         client_particle_status,
                         &player_skin_cache_dir,
                     );
-                    simulation.acknowledge_resource_reload(ack);
+                    simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
+                        renderer.hud_text_measurements(),
+                    ));
+                    simulation_mailbox.enqueue(SimulationCommand::ResourceReloadAck(ack));
                 }
                 stats_screen_narration.tick(
-                    simulation.world
+                    simulation
+                        .world
                         .stats_screen_is_open()
                         .then(|| simulation.client_animation_ticks.stats_screen_narration())
                         .flatten(),
@@ -1552,23 +966,10 @@ fn main() -> Result<()> {
                         .as_mut()
                         .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                 );
-                simulation.input.consume_debug_recreate_server_query_response(
-                    &mut simulation.world,
-                    &mut debug_clipboard,
-                );
-                code_of_conduct_overlay.update_renderer(
+                simulation.update_code_of_conduct_overlay_renderer(
                     &mut renderer,
-                    &simulation.world,
                     code_of_conduct_acceptance.current_world_acceptance_matches(&simulation.world),
                 );
-                if code_of_conduct_overlay.is_visible(&simulation.world)
-                    || runtime_wants_cursor(&simulation.input, &simulation.world)
-                {
-                    set_cursor_capture(&window, &mut cursor_captured, false);
-                    release_active_input(&mut simulation.input, &mut simulation.world, &mut simulation.net_counters, &simulation.net_commands);
-                } else if simulation.input.command_entry_is_active() {
-                    set_cursor_capture(&window, &mut cursor_captured, false);
-                }
                 if frame_interval.is_none() || Instant::now() >= next_redraw_at {
                     window.request_redraw();
                 }
@@ -1617,6 +1018,45 @@ fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
     }
 }
 
+fn enqueue_simulation_window_event(
+    event: &WindowEvent,
+    mailbox: &SimulationMailbox,
+    clipboard: &mut NativeDebugClipboard,
+) -> bool {
+    let command = match event {
+        WindowEvent::CloseRequested => SimulationCommand::Shutdown,
+        WindowEvent::CursorMoved { position, .. } => SimulationCommand::CursorMoved {
+            position: *position,
+        },
+        WindowEvent::Focused(focused) => SimulationCommand::FocusChanged(*focused),
+        WindowEvent::KeyboardInput { event, .. } => {
+            let clipboard_text = (matches!(event.state, ElementState::Pressed)
+                && matches!(event.physical_key, PhysicalKey::Code(KeyCode::KeyV)))
+            .then(|| clipboard.get_debug_clipboard_text())
+            .flatten();
+            SimulationCommand::Key {
+                physical_key: event.physical_key,
+                state: event.state,
+                clipboard_text,
+            }
+        }
+        WindowEvent::Ime(Ime::Preedit(text, cursor_range)) => SimulationCommand::ImePreedit {
+            text: text.clone(),
+            cursor_range: *cursor_range,
+        },
+        WindowEvent::Ime(Ime::Commit(text)) => SimulationCommand::ImeCommit(text.clone()),
+        WindowEvent::Ime(Ime::Disabled) => SimulationCommand::ImeDisabled,
+        WindowEvent::MouseInput { state, button, .. } => SimulationCommand::MouseButton {
+            button: *button,
+            state: *state,
+        },
+        WindowEvent::MouseWheel { delta, .. } => SimulationCommand::MouseWheel { delta: *delta },
+        _ => return false,
+    };
+    mailbox.enqueue(command);
+    true
+}
+
 fn world_wants_cursor(world: &WorldStore) -> bool {
     world.open_container_id().is_some()
         || world.dialog_screen_is_open()
@@ -1631,33 +1071,6 @@ pub(crate) fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore)
         || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
         || input.debug_game_mode_switcher_is_open()
-}
-
-fn drain_pause_screen_link_requests(input: &mut ClientInputState) {
-    for request in input.take_pause_screen_link_requests() {
-        match request {
-            PauseScreenLinkRequest::SendFeedback { url } => {
-                tracing::info!(
-                    url,
-                    "pause screen send-feedback link requested; native confirm-link screen is not implemented"
-                );
-            }
-            PauseScreenLinkRequest::ReportBugs { url } => {
-                tracing::info!(
-                    url,
-                    "pause screen report-bugs link requested; native confirm-link screen is not implemented"
-                );
-            }
-        }
-    }
-}
-
-fn drain_dialog_open_url_requests(world: &mut WorldStore) {
-    for url in world.take_dialog_open_url_requests() {
-        if let Err(err) = platform::open_uri(&url) {
-            tracing::warn!(?err, %url, "failed to open dialog URI");
-        }
-    }
 }
 
 fn drain_dynamic_player_skin_downloads(
