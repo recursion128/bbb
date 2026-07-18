@@ -185,11 +185,14 @@ def _packet_descriptors(ledger: dict[str, Any]) -> dict[str, tuple[str, int]]:
 
 _STATE_RE = re.compile(r"\bstate=(Login|Configuration|Play)\b")
 _PACKET_RE = re.compile(r"\bpacket_id=(0x[0-9a-fA-F]+|[0-9]+)\b")
+# tracing-subscriber interleaves SGR color sequences with the key=value pairs
+# when the client writes ANSI-styled logs, so parsing strips them first.
+_ANSI_SGR_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def _logged_packets(client_log: str) -> list[tuple[str, int]]:
     packets: list[tuple[str, int]] = []
-    for line in client_log.splitlines():
+    for line in _ANSI_SGR_RE.sub("", client_log).splitlines():
         if "clientbound packet" not in line:
             continue
         state = _STATE_RE.search(line)

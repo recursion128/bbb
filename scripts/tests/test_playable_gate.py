@@ -97,6 +97,38 @@ class PlayableGateTimelineTests(unittest.TestCase):
             [entry["phase"] for entry in timeline], playable_gate.EXPECTED_PHASES
         )
 
+    def test_packet_trace_strips_ansi_styling_from_key_value_pairs(self):
+        # tracing-subscriber writes `state\x1b[2m=\x1b[0mPlay`-style SGR
+        # sequences around the separators when ANSI styling is on.
+        ledger = self._packet_ledger()
+        descriptors = playable_gate._packet_descriptors(ledger)
+        constants = [
+            "CLIENTBOUND_LOGIN_COMPRESSION",
+            "CLIENTBOUND_LOGIN_FINISHED",
+            "CLIENTBOUND_SELECT_KNOWN_PACKS",
+            "CLIENTBOUND_REGISTRY_DATA",
+            "CLIENTBOUND_UPDATE_TAGS",
+            "CLIENTBOUND_FINISH_CONFIGURATION",
+            "CLIENTBOUND_LOGIN",
+            "CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT",
+        ]
+        lines = []
+        for constant in constants:
+            state, packet_id = descriptors[constant]
+            lines.append(
+                "\x1b[2m2026-07-18T12:58:00Z\x1b[0m \x1b[34mDEBUG\x1b[0m "
+                "\x1b[2mbbb_net::event_stream\x1b[0m\x1b[2m:\x1b[0m clientbound packet "
+                f"\x1b[3mstate\x1b[0m\x1b[2m=\x1b[0m{state.title()} "
+                f"\x1b[3mpacket_id\x1b[0m\x1b[2m=\x1b[0m{packet_id} "
+                "\x1b[3mlen\x1b[0m\x1b[2m=\x1b[0m1"
+            )
+
+        timeline = playable_gate.timeline_from_client_log("\n".join(lines), ledger, True)
+
+        self.assertEqual(
+            [entry["phase"] for entry in timeline], playable_gate.EXPECTED_PHASES
+        )
+
     def test_packet_trace_rejects_finish_before_registry_tags(self):
         ledger = self._packet_ledger()
         descriptors = playable_gate._packet_descriptors(ledger)
