@@ -9,6 +9,7 @@ mod dimension_types;
 mod element_value;
 mod enchantments;
 mod environment_attributes;
+mod game_tests;
 mod instrument_values;
 mod instruments;
 mod jukebox_songs;
@@ -63,6 +64,12 @@ pub use enchantments::{
 pub use environment_attributes::ClientEnvironmentAttributes;
 pub(crate) use environment_attributes::{
     decode_client_environment_attributes, EnvironmentAttributeProjectionError,
+};
+pub use game_tests::{
+    GameTestInstanceDefinition, GameTestInstanceKind, GameTestRegistryProjectionError,
+    TestEnvironmentDefinition, TestEnvironmentHolder, TestEnvironmentKind, TestGameRuleValue,
+    TestRegistryReference, TestRotation, TestWeather, TEST_ENVIRONMENT_REGISTRY,
+    TEST_INSTANCE_REGISTRY,
 };
 pub use instrument_values::{
     InstrumentPresentation, InstrumentProjectionError, InstrumentSoundEvent, INSTRUMENT_REGISTRY,
