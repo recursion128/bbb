@@ -1,9 +1,7 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, PlayClientbound, Transfer};
-use tokio::sync::oneshot;
 
 use crate::{
-    driver::send_chat_acknowledgement,
     event_stream::{emit, EventStreamContext},
     resource_pack::response_action_for_push_with_policy,
     types::{ConnectionState, NetEvent, ServerResourcePackPolicy},
@@ -76,21 +74,10 @@ impl EventStreamContext {
                 .await?;
             }
             PlayClientbound::StartConfiguration => {
-                let (ack_tx, ack_rx) = oneshot::channel();
-                emit(
-                    &self.events,
-                    NetEvent::StartConfiguration {
-                        pending_chat_acknowledgement: ack_tx,
-                    },
-                )
-                .await?;
-                if let Some(command) = ack_rx
-                    .await
-                    .context("chat acknowledgement flush dropped during play reconfiguration")?
-                {
-                    send_chat_acknowledgement(&mut self.conn, command).await?;
-                }
-                self.acknowledge_start_configuration().await?;
+                // The canonical world flushes its pending chat acknowledgement
+                // and answers with NetCommand::AcknowledgeConfiguration; the
+                // connection keeps reading packets until that answer arrives.
+                emit(&self.events, NetEvent::StartConfiguration).await?;
             }
             PlayClientbound::Disconnect(disconnect) => {
                 bail!("play disconnected: {}", disconnect.reason)
@@ -123,31 +110,13 @@ impl EventStreamContext {
                 .await?;
             }
             PlayClientbound::PlayerPosition(update) => {
-                let (ack_tx, ack_rx) = oneshot::channel();
-                emit(
-                    &self.events,
-                    NetEvent::PlayerPosition {
-                        update,
-                        acknowledged_state: ack_tx,
-                    },
-                )
-                .await?;
-                self.player_position_state = ack_rx
-                    .await
-                    .context("canonical player-position acknowledgement dropped")?
-                    .context("canonical player pose missing after position correction")?;
-                let (id, payload) = packets::encode_play_accept_teleportation(update.id);
-                self.conn.send_packet(id, &payload).await?;
-                let (id, payload) = packets::encode_play_move_player_pos_rot(
-                    self.player_position_state.position.x,
-                    self.player_position_state.position.y,
-                    self.player_position_state.position.z,
-                    self.player_position_state.y_rot,
-                    self.player_position_state.x_rot,
-                    false,
-                    false,
-                );
-                self.conn.send_packet(id, &payload).await?;
+                // The canonical world applies the correction and answers with
+                // NetCommand::AcceptTeleport; until then outgoing player moves
+                // are gated while the connection keeps reading packets, so a
+                // slow canonical apply cannot stall keep-alives or leak stale
+                // pre-teleport positions.
+                self.pending_teleports += 1;
+                emit(&self.events, NetEvent::PlayerPosition { update }).await?;
             }
             PlayClientbound::PlayerRotation(update) => {
                 self.player_position_state = update.apply_to_state(self.player_position_state);
@@ -182,11 +151,35 @@ impl EventStreamContext {
         Ok(transfer)
     }
 
-    async fn acknowledge_start_configuration(&mut self) -> Result<()> {
+    pub(super) async fn accept_teleport(
+        &mut self,
+        command: crate::types::AcceptTeleportCommand,
+    ) -> Result<()> {
+        let (id, payload) = packets::encode_play_accept_teleportation(command.teleport_id);
+        self.conn.send_packet(id, &payload).await?;
+        self.player_position_state = command.state;
+        let (id, payload) = packets::encode_play_move_player_pos_rot(
+            self.player_position_state.position.x,
+            self.player_position_state.position.y,
+            self.player_position_state.position.z,
+            self.player_position_state.y_rot,
+            self.player_position_state.x_rot,
+            false,
+            false,
+        );
+        self.conn.send_packet(id, &payload).await?;
+        self.pending_teleports = self.pending_teleports.saturating_sub(1);
+        Ok(())
+    }
+
+    pub(super) async fn acknowledge_start_configuration(&mut self) -> Result<()> {
         let (id, payload) = packets::encode_play_configuration_acknowledged();
         self.conn.send_packet(id, &payload).await?;
         self.state = ConnectionState::Configuration;
         self.seen_code_of_conduct = false;
+        // Reconfiguration abandons the play session's teleport handshake; a
+        // stale pending count must not gate moves in the next play state.
+        self.pending_teleports = 0;
         emit(&self.events, NetEvent::StateChanged { state: self.state }).await
     }
 }

@@ -1,6 +1,6 @@
 use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
-use bbb_net::{ConnectionState, NetCommand, NetEvent, PlayerMoveCommand};
+use bbb_net::{AcceptTeleportCommand, ConnectionState, NetCommand, NetEvent, PlayerMoveCommand};
 use bbb_pack::{JukeboxSongRegistry, JukeboxSongRegistryEntry, SoundEventRegistry};
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::packets::{
@@ -145,10 +145,8 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
         apply_control_projection_event(&event, counters);
 
         match event {
-            NetEvent::PlayerPosition {
-                update,
-                acknowledged_state,
-            } => {
+            NetEvent::PlayerPosition { update } => {
+                let teleport_id = update.id;
                 let mut effects = NativePlayEffects {
                     counters,
                     net_commands,
@@ -162,8 +160,16 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     level_event_sound_random,
                     &mut effects,
                 );
-                let state = world.local_player_pose().map(|pose| pose.position_state());
-                let _ = acknowledged_state.send(state);
+                match world.local_player_pose().map(|pose| pose.position_state()) {
+                    Some(state) => queue_connection_answer(
+                        net_commands,
+                        NetCommand::AcceptTeleport(AcceptTeleportCommand { teleport_id, state }),
+                    ),
+                    None => tracing::error!(
+                        teleport_id,
+                        "canonical player pose missing after position correction"
+                    ),
+                }
             }
             NetEvent::Play(packet) => {
                 let mut effects = NativePlayEffects {
@@ -179,11 +185,14 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 // the event stream.
                 let _ = world.apply_play_packet(packet, level_event_sound_random, &mut effects);
             }
-            NetEvent::StartConfiguration {
-                pending_chat_acknowledgement,
-            } => {
+            NetEvent::StartConfiguration => {
                 let command = world.take_pending_player_chat_acknowledgement();
-                let _ = pending_chat_acknowledgement.send(command);
+                queue_connection_answer(
+                    net_commands,
+                    NetCommand::AcknowledgeConfiguration {
+                        pending_chat_acknowledgement: command,
+                    },
+                );
                 world.clear_client_level();
             }
             NetEvent::StateChanged {
@@ -296,6 +305,20 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
         }
     }
     drained
+}
+
+/// Queues a connection answer the session cannot proceed without (teleport
+/// accept, reconfiguration acknowledgement).  A saturated command channel
+/// already means the session is unusable, but the drop must be loud because
+/// the server keeps the player frozen until the answer arrives.
+fn queue_connection_answer(net_commands: &Option<mpsc::Sender<NetCommand>>, command: NetCommand) {
+    let Some(tx) = net_commands else { return };
+    if let Err(err) = tx.try_send(command) {
+        tracing::error!(
+            ?err,
+            "dropped connection answer on saturated command channel"
+        );
+    }
 }
 
 /// Runtime sink routing for `WorldStore::apply_play_packet`.

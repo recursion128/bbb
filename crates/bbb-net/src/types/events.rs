@@ -1,11 +1,9 @@
 use bbb_pack::KnownPackDataSource;
 use bbb_protocol::packets::{
-    CustomPayload, CustomReportDetails, KnownPack, PlayClientbound, PlayerPositionState,
-    PlayerPositionUpdate, RegistryData, ResourcePackPop, ResourcePackPush,
-    ResourcePackResponseAction, ServerLinks, ShowDialog, Transfer, UpdateEnabledFeatures,
-    UpdateTags,
+    CustomPayload, CustomReportDetails, KnownPack, PlayClientbound, PlayerPositionUpdate,
+    RegistryData, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, ServerLinks,
+    ShowDialog, Transfer, UpdateEnabledFeatures, UpdateTags,
 };
-use tokio::sync::oneshot;
 
 use super::ConnectionState;
 
@@ -30,15 +28,18 @@ pub enum NetEvent {
     ServicesProfileKeys {
         public_keys: Vec<Vec<u8>>,
     },
-    StartConfiguration {
-        pending_chat_acknowledgement:
-            oneshot::Sender<Option<bbb_protocol::packets::ChatAcknowledgement>>,
-    },
-    /// A position correction that must be canonically applied before the
-    /// connection can echo the resulting player transform to the server.
+    /// The server signalled play-to-configuration re-entry; the canonical
+    /// world answers with [`crate::NetCommand::AcknowledgeConfiguration`]
+    /// carrying any pending chat acknowledgement, and the connection stays
+    /// live (reading packets) until that answer arrives.
+    StartConfiguration,
+    /// A position correction; the canonical world applies it and answers
+    /// with [`crate::NetCommand::AcceptTeleport`] carrying the post-apply
+    /// transform.  Outgoing player moves are gated until the accept is on
+    /// the wire, so a slow canonical apply can never leak stale positions
+    /// or stall packet reading.
     PlayerPosition {
         update: PlayerPositionUpdate,
-        acknowledged_state: oneshot::Sender<Option<PlayerPositionState>>,
     },
     CompressionSet {
         threshold: i32,

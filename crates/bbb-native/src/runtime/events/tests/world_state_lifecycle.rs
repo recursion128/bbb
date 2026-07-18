@@ -659,11 +659,7 @@ fn configuration_state_change_clears_client_level_state() {
 #[test]
 fn start_configuration_flushes_pending_chat_acknowledgement_before_clearing_level() {
     let (tx, mut rx) = mpsc::channel(1);
-    let (ack_tx, mut ack_rx) = tokio::sync::oneshot::channel();
-    tx.try_send(NetEvent::StartConfiguration {
-        pending_chat_acknowledgement: ack_tx,
-    })
-    .unwrap();
+    tx.try_send(NetEvent::StartConfiguration).unwrap();
 
     let mut world = WorldStore::new();
     assert_eq!(
@@ -677,16 +673,22 @@ fn start_configuration_flushes_pending_chat_acknowledgement_before_clearing_leve
     );
     world.apply_add_entity(protocol_add_entity(55));
     world.set_local_using_item(true);
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let net_commands = Some(command_tx);
     let mut counters = NetCounters::default();
 
     assert_eq!(
-        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        drain_net_events(&mut rx, &mut world, &mut counters, &net_commands),
         1
     );
 
     assert_eq!(
-        ack_rx.try_recv().unwrap(),
-        Some(bbb_protocol::packets::ChatAcknowledgement { offset: 1 })
+        command_rx.try_recv().unwrap(),
+        NetCommand::AcknowledgeConfiguration {
+            pending_chat_acknowledgement: Some(bbb_protocol::packets::ChatAcknowledgement {
+                offset: 1
+            }),
+        }
     );
     assert_eq!(world.entity_count(), 0);
     assert_eq!(

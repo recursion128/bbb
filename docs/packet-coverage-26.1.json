@@ -2529,7 +2529,7 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
+            "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMovePlayer"
           ],
           "gap": null,
@@ -2538,7 +2538,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/movement.rs#decodes_player_position_strictly_and_encodes_ack_pair",
-            "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded"
+            "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept"
           ],
           "gap": null,
           "status": "complete"
@@ -5076,7 +5076,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_player_loaded",
-            "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
+            "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_player_loaded_only_in_play",
             "crates/bbb-native/src/level_load_runtime.rs#player_loaded_waits_for_server_and_player_section_then_sends_once",
             "crates/bbb-native/src/level_load_runtime.rs#player_loaded_uses_vanilla_shortcuts_and_strict_timeout",
@@ -10482,7 +10482,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/movement.rs#player_position_update_applies_relative_state",
-            "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
+            "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept",
             "crates/bbb-net/src/probe/play.rs#probe_player_position_echoes_unchanged_mounted_pose",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#mounted_player_position_event_acknowledges_unchanged_canonical_pose",
             "crates/bbb-world/src/client/local_player.rs#local_player_position_does_not_move_mounted_player",

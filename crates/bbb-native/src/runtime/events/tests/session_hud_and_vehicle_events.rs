@@ -1119,7 +1119,6 @@ fn respawn_event_resets_local_player_runtime_state() {
 #[test]
 fn player_position_and_rotation_events_update_world_pose() {
     let (tx, mut rx) = mpsc::channel(2);
-    let (ack_tx, mut ack_rx) = tokio::sync::oneshot::channel();
     tx.try_send(NetEvent::PlayerPosition {
         update: PlayerPositionUpdate {
             id: 23,
@@ -1137,7 +1136,6 @@ fn player_position_and_rotation_events_update_world_pose() {
             x_rot: 15.0,
             relatives_mask: 0,
         },
-        acknowledged_state: ack_tx,
     })
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::PlayerRotation(
@@ -1150,11 +1148,13 @@ fn player_position_and_rotation_events_update_world_pose() {
     )))
     .unwrap();
 
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let net_commands = Some(command_tx);
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
 
     assert_eq!(
-        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        drain_net_events(&mut rx, &mut world, &mut counters, &net_commands),
         2
     );
 
@@ -1179,15 +1179,16 @@ fn player_position_and_rotation_events_update_world_pose() {
     assert_eq!(pose.x_rot, -5.0);
     assert_eq!(pose.last_teleport_id, 23);
     assert_eq!(
-        ack_rx.try_recv().unwrap(),
-        Some(
-            LocalPlayerPoseState {
+        command_rx.try_recv().unwrap(),
+        NetCommand::AcceptTeleport(bbb_net::AcceptTeleportCommand {
+            teleport_id: 23,
+            state: LocalPlayerPoseState {
                 y_rot: 90.0,
                 x_rot: 15.0,
                 ..pose
             }
-            .position_state()
-        )
+            .position_state(),
+        })
     );
 
     let world_counters = world.counters();
@@ -1227,7 +1228,6 @@ fn mounted_player_position_event_acknowledges_unchanged_canonical_pose() {
     world.set_local_prediction_sequence(12);
 
     let (tx, mut rx) = mpsc::channel(1);
-    let (ack_tx, mut ack_rx) = tokio::sync::oneshot::channel();
     tx.try_send(NetEvent::PlayerPosition {
         update: PlayerPositionUpdate {
             id: 24,
@@ -1241,20 +1241,24 @@ fn mounted_player_position_event_acknowledges_unchanged_canonical_pose() {
             x_rot: 45.0,
             relatives_mask: 0,
         },
-        acknowledged_state: ack_tx,
     })
     .unwrap();
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let net_commands = Some(command_tx);
     let mut counters = NetCounters::default();
 
     assert_eq!(
-        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        drain_net_events(&mut rx, &mut world, &mut counters, &net_commands),
         1
     );
 
     assert_eq!(world.local_player_pose(), Some(initial_pose));
     assert_eq!(
-        ack_rx.try_recv().unwrap(),
-        Some(initial_pose.position_state())
+        command_rx.try_recv().unwrap(),
+        NetCommand::AcceptTeleport(bbb_net::AcceptTeleportCommand {
+            teleport_id: 24,
+            state: initial_pose.position_state(),
+        })
     );
     assert_eq!(
         world

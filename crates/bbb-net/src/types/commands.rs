@@ -14,6 +14,12 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct AcceptTeleportCommand {
+    pub teleport_id: i32,
+    pub state: PlayerPositionState,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlayerMoveCommand {
     pub state: PlayerPositionState,
     pub on_ground: bool,
@@ -138,6 +144,16 @@ impl VehicleMoveCommand {
 pub enum NetCommand {
     ClientTickEnd,
     PlayerLoaded,
+    /// The canonical world applied a server position correction; the
+    /// connection answers with accept-teleportation plus a move echo of the
+    /// post-apply transform and lifts the pending-teleport move gate.
+    AcceptTeleport(AcceptTeleportCommand),
+    /// The canonical world flushed its state for play-to-configuration
+    /// re-entry; the connection sends any pending chat acknowledgement and
+    /// acknowledges the configuration switch.
+    AcknowledgeConfiguration {
+        pending_chat_acknowledgement: Option<ChatAcknowledgement>,
+    },
     MovePlayer(PlayerMoveCommand),
     MoveVehicle(VehicleMoveCommand),
     PlayerAction(PlayerAction),

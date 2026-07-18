@@ -21,7 +21,7 @@ use tokio::{sync::mpsc, time::timeout};
 use crate::{
     chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
-    driver::{read_packet_or_drive_connection, ConnectionDrive},
+    driver::{read_packet_or_drive_connection, send_chat_acknowledgement, ConnectionDrive},
     login::send_login_hello,
     play_bundle::PlayPacketBundleAssembler,
     types::{ConnectionOptions, ConnectionState, NetCommand, NetEvent},
@@ -38,6 +38,7 @@ struct EventStreamContext {
     state: ConnectionState,
     player_position_state: PlayerPositionState,
     chunk_batch_size: ChunkBatchSizeCalculator,
+    pending_teleports: u32,
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
     accepted_code_of_conduct_hash: Option<i32>,
@@ -71,6 +72,7 @@ pub async fn run_event_stream(
         state: ConnectionState::Login,
         player_position_state: PlayerPositionState::default(),
         chunk_batch_size: ChunkBatchSizeCalculator::new(),
+        pending_teleports: 0,
         server_cookies: BTreeMap::new(),
         seen_code_of_conduct: false,
         accepted_code_of_conduct_hash: options.accepted_code_of_conduct_hash,
@@ -106,10 +108,25 @@ pub async fn run_event_stream(
             stream.state,
             &mut stream.commands,
             &mut stream.player_position_state,
+            stream.pending_teleports > 0,
         )
         .await?;
-        let ConnectionDrive::Packet(packet_id, payload) = drive else {
-            return Ok(());
+        let (packet_id, payload) = match drive {
+            ConnectionDrive::Packet(packet_id, payload) => (packet_id, payload),
+            ConnectionDrive::AcceptTeleport(command) => {
+                stream.accept_teleport(command).await?;
+                continue;
+            }
+            ConnectionDrive::AcknowledgeConfiguration {
+                pending_chat_acknowledgement,
+            } => {
+                if let Some(command) = pending_chat_acknowledgement {
+                    send_chat_acknowledgement(&mut stream.conn, command).await?;
+                }
+                stream.acknowledge_start_configuration().await?;
+                continue;
+            }
+            ConnectionDrive::Disconnect => return Ok(()),
         };
         tracing::debug!(
             state = ?stream.state,
@@ -370,6 +387,7 @@ mod tests {
             state: ConnectionState::Login,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: true,
             accepted_code_of_conduct_hash: None,
@@ -526,6 +544,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -616,6 +635,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -658,6 +678,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: Some(code_of_conduct_text_hash(text)),
@@ -702,6 +723,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -751,6 +773,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -817,6 +840,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -883,6 +907,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -953,6 +978,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1000,6 +1026,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1036,6 +1063,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1079,6 +1107,7 @@ mod tests {
             state: ConnectionState::Login,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1126,6 +1155,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1174,6 +1204,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1227,6 +1258,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1342,6 +1374,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1488,6 +1521,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1816,6 +1850,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1882,6 +1917,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -1948,6 +1984,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -2158,6 +2195,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -2319,6 +2357,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -2429,6 +2468,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -2562,6 +2602,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -2740,6 +2781,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -2932,6 +2974,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -3087,6 +3130,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -3256,6 +3300,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -3466,6 +3511,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -3629,6 +3675,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -3805,6 +3852,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -4032,6 +4080,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -4075,6 +4124,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -4106,6 +4156,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -4130,7 +4181,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn play_player_position_waits_for_canonical_ack_and_defers_player_loaded() {
+    async fn play_player_position_gates_moves_until_canonical_accept() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -4141,12 +4192,13 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
             client_information: packets::ClientInformation::default(),
         };
-        let first_update = packets::PlayerPositionUpdate {
+        let update = packets::PlayerPositionUpdate {
             id: 17,
             position: packets::Vec3d {
                 x: 1.25,
@@ -4159,7 +4211,31 @@ mod tests {
             relatives_mask: 0,
         };
 
-        let first_acknowledged_state = PlayerPositionState {
+        stream
+            .handle_play_packet(PlayClientbound::PlayerPosition(update))
+            .await
+            .unwrap();
+
+        // The packet only records the pending teleport and defers to the
+        // canonical world; nothing goes on the wire yet and the connection is
+        // free to keep reading.
+        assert_eq!(stream.pending_teleports, 1);
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player position event should be emitted")
+            .unwrap();
+        match event {
+            NetEvent::PlayerPosition { update: emitted } => assert_eq!(emitted, update),
+            other => panic!("unexpected event: {other:?}"),
+        }
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "the teleport handshake must wait for the canonical accept"
+        );
+
+        let acknowledged_state = PlayerPositionState {
             position: packets::Vec3d {
                 x: 40.0,
                 y: 80.0,
@@ -4169,28 +4245,16 @@ mod tests {
             y_rot: 30.0,
             x_rot: 10.0,
         };
-        let handle = stream.handle_play_packet(PlayClientbound::PlayerPosition(first_update));
-        let respond = async {
-            let event = timeout(Duration::from_secs(1), events_rx.recv())
-                .await
-                .expect("player position event should be emitted")
-                .unwrap();
-            match event {
-                NetEvent::PlayerPosition {
-                    update,
-                    acknowledged_state,
-                } => {
-                    assert_eq!(update, first_update);
-                    acknowledged_state
-                        .send(Some(first_acknowledged_state))
-                        .unwrap();
-                }
-                other => panic!("unexpected event: {other:?}"),
-            }
-        };
-        let (result, ()) = tokio::join!(handle, respond);
-        result.unwrap();
+        stream
+            .accept_teleport(crate::types::AcceptTeleportCommand {
+                teleport_id: 17,
+                state: acknowledged_state,
+            })
+            .await
+            .unwrap();
 
+        assert_eq!(stream.pending_teleports, 0);
+        assert_eq!(stream.player_position_state, acknowledged_state);
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
             .expect("teleport ack should be sent")
@@ -4206,80 +4270,102 @@ mod tests {
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
         assert_move_player_pos_rot_payload(&payload, 40.0, 80.0, 12.0, 30.0, 10.0, 0);
-
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
                 .await
                 .is_err(),
             "player position must not bypass native level-load readiness"
         );
+    }
 
-        let second_update = packets::PlayerPositionUpdate {
-            id: 18,
-            position: packets::Vec3d {
-                x: 2.0,
-                y: 70.0,
-                z: -9.0,
+    #[tokio::test]
+    async fn pending_teleport_drops_player_moves_until_accept_drives_through() {
+        let (mut conn, mut server) = raw_connection_pair().await;
+        let (commands_tx, mut commands) = mpsc::channel(4);
+        let mut player_position_state = PlayerPositionState::default();
+        let move_command = crate::types::PlayerMoveCommand {
+            state: PlayerPositionState {
+                position: packets::Vec3d {
+                    x: 7.0,
+                    y: 64.0,
+                    z: 7.0,
+                },
+                delta_movement: packets::Vec3d::default(),
+                y_rot: 0.0,
+                x_rot: 0.0,
             },
-            delta_movement: packets::Vec3d::default(),
-            y_rot: 100.0,
-            x_rot: 5.0,
-            relatives_mask: 0,
+            on_ground: true,
+            horizontal_collision: false,
+            force_position: false,
+            force_pos_rot: true,
+            force_rotation_only: false,
         };
 
-        let second_acknowledged_state = PlayerPositionState {
-            position: packets::Vec3d {
-                x: -2.0,
-                y: 75.0,
-                z: 6.5,
+        // A stale move queued before the canonical accept is dropped while
+        // the teleport is pending.
+        commands_tx
+            .send(NetCommand::MovePlayer(move_command))
+            .await
+            .unwrap();
+        let accept = crate::types::AcceptTeleportCommand {
+            teleport_id: 21,
+            state: PlayerPositionState {
+                position: packets::Vec3d {
+                    x: -3.0,
+                    y: 70.0,
+                    z: 11.0,
+                },
+                delta_movement: packets::Vec3d::default(),
+                y_rot: 45.0,
+                x_rot: -5.0,
             },
-            delta_movement: packets::Vec3d::default(),
-            y_rot: -45.0,
-            x_rot: 20.0,
         };
-        let handle = stream.handle_play_packet(PlayClientbound::PlayerPosition(second_update));
-        let respond = async {
-            let event = timeout(Duration::from_secs(1), events_rx.recv())
-                .await
-                .expect("second player position event should be emitted")
-                .unwrap();
-            match event {
-                NetEvent::PlayerPosition {
-                    update,
-                    acknowledged_state,
-                } => {
-                    assert_eq!(update, second_update);
-                    acknowledged_state
-                        .send(Some(second_acknowledged_state))
-                        .unwrap();
-                }
-                other => panic!("unexpected event: {other:?}"),
-            }
-        };
-        let (result, ()) = tokio::join!(handle, respond);
-        result.unwrap();
-
-        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+        commands_tx
+            .send(NetCommand::AcceptTeleport(accept))
             .await
-            .expect("second teleport ack should be sent")
             .unwrap();
-        assert_eq!(packet_id, ids::play::SERVERBOUND_ACCEPT_TELEPORTATION);
-        let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_var_i32().unwrap(), 18);
-        assert!(decoder.is_empty());
 
-        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
-            .await
-            .expect("second move player pos/rot ack should be sent")
-            .unwrap();
-        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
-        assert_move_player_pos_rot_payload(&payload, -2.0, 75.0, 6.5, -45.0, 20.0, 0);
+        let drive = read_packet_or_drive_connection(
+            &mut conn,
+            ConnectionState::Play,
+            &mut commands,
+            &mut player_position_state,
+            true,
+        )
+        .await
+        .unwrap();
+        match drive {
+            ConnectionDrive::AcceptTeleport(command) => assert_eq!(command, accept),
+            other => panic!("unexpected drive: {other:?}"),
+        }
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
                 .await
                 .is_err(),
-            "subsequent player positions must not bypass native level-load readiness"
+            "gated moves must not reach the wire while a teleport is pending"
         );
+
+        // With the gate lifted the same move goes through.
+        commands_tx
+            .send(NetCommand::MovePlayer(move_command))
+            .await
+            .unwrap();
+        let drive = tokio::spawn(async move {
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Play,
+                &mut commands,
+                &mut player_position_state,
+                false,
+            )
+            .await
+        });
+        let (packet_id, _) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("ungated move should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        drive.abort();
     }
 
     #[tokio::test]
@@ -4298,6 +4384,7 @@ mod tests {
                 ..PlayerPositionState::default()
             },
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -4345,35 +4432,33 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: true,
             accepted_code_of_conduct_hash: None,
             client_information: packets::ClientInformation::default(),
         };
 
-        let stream_task = tokio::spawn(async move {
-            let mut stream = stream;
-            stream
-                .handle_play_packet(PlayClientbound::StartConfiguration)
-                .await
-                .unwrap();
-            stream
-        });
+        let mut stream = stream;
+        stream
+            .handle_play_packet(PlayClientbound::StartConfiguration)
+            .await
+            .unwrap();
 
         let event = timeout(Duration::from_secs(1), events_rx.recv())
             .await
             .expect("start-configuration event should be emitted")
             .unwrap();
-        match event {
-            NetEvent::StartConfiguration {
-                pending_chat_acknowledgement,
-            } => {
-                pending_chat_acknowledgement
-                    .send(None)
-                    .expect("start-configuration handler should wait for reply");
-            }
-            other => panic!("expected start-configuration event, got {other:?}"),
-        }
+        assert!(matches!(event, NetEvent::StartConfiguration));
+        assert_eq!(stream.state, ConnectionState::Play);
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "the configuration switch must wait for the canonical acknowledgement"
+        );
+
+        stream.acknowledge_start_configuration().await.unwrap();
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -4381,10 +4466,6 @@ mod tests {
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
         assert!(payload.is_empty());
-        let mut stream = timeout(Duration::from_secs(1), stream_task)
-            .await
-            .expect("start-configuration task should finish")
-            .unwrap();
         assert_eq!(stream.state, ConnectionState::Configuration);
         assert!(!stream.seen_code_of_conduct);
 
@@ -4427,35 +4508,32 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: true,
             accepted_code_of_conduct_hash: None,
             client_information: packets::ClientInformation::default(),
         };
 
-        let stream_task = tokio::spawn(async move {
-            let mut stream = stream;
-            stream
-                .handle_play_packet(PlayClientbound::StartConfiguration)
-                .await
-                .unwrap();
-            stream
-        });
+        let mut stream = stream;
+        stream
+            .handle_play_packet(PlayClientbound::StartConfiguration)
+            .await
+            .unwrap();
 
         let event = timeout(Duration::from_secs(1), events_rx.recv())
             .await
             .expect("start-configuration event should be emitted")
             .unwrap();
-        match event {
-            NetEvent::StartConfiguration {
-                pending_chat_acknowledgement,
-            } => {
-                pending_chat_acknowledgement
-                    .send(Some(ChatAcknowledgement { offset: 1 }))
-                    .expect("start-configuration handler should wait for reply");
-            }
-            other => panic!("expected start-configuration event, got {other:?}"),
-        }
+        assert!(matches!(event, NetEvent::StartConfiguration));
+
+        // The canonical acknowledgement drives the flush through the same
+        // path the run loop uses: chat acknowledgement first, then the
+        // configuration switch.
+        send_chat_acknowledgement(&mut stream.conn, ChatAcknowledgement { offset: 1 })
+            .await
+            .unwrap();
+        stream.acknowledge_start_configuration().await.unwrap();
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -4472,11 +4550,6 @@ mod tests {
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
         assert!(payload.is_empty());
-
-        let stream = timeout(Duration::from_secs(1), stream_task)
-            .await
-            .expect("start-configuration task should finish")
-            .unwrap();
         assert_eq!(stream.state, ConnectionState::Configuration);
 
         let event = timeout(Duration::from_secs(1), events_rx.recv())
@@ -4517,6 +4590,7 @@ mod tests {
                 ..PlayerPositionState::default()
             },
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::from([("minecraft:transfer".to_string(), vec![1, 2, 3])]),
             seen_code_of_conduct: true,
             accepted_code_of_conduct_hash: Some(123),
@@ -4610,6 +4684,7 @@ mod tests {
             state: ConnectionState::Play,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -4688,6 +4763,7 @@ mod tests {
             state: ConnectionState::Configuration,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            pending_teleports: 0,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,

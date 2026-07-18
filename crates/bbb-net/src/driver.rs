@@ -4,7 +4,7 @@ use tokio::{sync::mpsc, time::Interval};
 
 use crate::{
     connection::RawConnection,
-    types::{ConnectionState, NetCommand},
+    types::{AcceptTeleportCommand, ConnectionState, NetCommand},
 };
 
 mod commands;
@@ -57,6 +57,10 @@ pub(crate) async fn read_packet_or_send_play_tick(
 #[derive(Debug)]
 pub(crate) enum ConnectionDrive {
     Packet(i32, Vec<u8>),
+    AcceptTeleport(AcceptTeleportCommand),
+    AcknowledgeConfiguration {
+        pending_chat_acknowledgement: Option<packets::ChatAcknowledgement>,
+    },
     Disconnect,
 }
 
@@ -65,6 +69,7 @@ pub(crate) async fn read_packet_or_drive_connection(
     state: ConnectionState,
     commands: &mut mpsc::Receiver<NetCommand>,
     player_position_state: &mut PlayerPositionState,
+    teleport_pending: bool,
 ) -> Result<ConnectionDrive> {
     if !matches!(state, ConnectionState::Play) {
         return read_packet_or_disconnect_command(conn, state, commands).await;
@@ -84,8 +89,21 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::PlayerLoaded) => {
                         send_player_loaded(conn).await?;
                     }
+                    Some(NetCommand::AcceptTeleport(command)) => {
+                        return Ok(ConnectionDrive::AcceptTeleport(command));
+                    }
+                    Some(NetCommand::AcknowledgeConfiguration { pending_chat_acknowledgement }) => {
+                        return Ok(ConnectionDrive::AcknowledgeConfiguration {
+                            pending_chat_acknowledgement,
+                        });
+                    }
                     Some(NetCommand::MovePlayer(command)) => {
-                        send_player_move_command(conn, command, player_position_state).await?;
+                        // Vanilla ignores player moves while a teleport awaits
+                        // its accept; queueing them would echo stale
+                        // pre-teleport positions right after the accept.
+                        if !teleport_pending {
+                            send_player_move_command(conn, command, player_position_state).await?;
+                        }
                     }
                     Some(NetCommand::MoveVehicle(command)) => {
                         send_vehicle_move_command(conn, command).await?;
@@ -264,6 +282,8 @@ async fn read_packet_or_disconnect_command(
                 match command {
                     Some(NetCommand::ClientTickEnd) => {}
                     Some(NetCommand::PlayerLoaded) => {}
+                    Some(NetCommand::AcceptTeleport(_)) => {}
+                    Some(NetCommand::AcknowledgeConfiguration { .. }) => {}
                     Some(NetCommand::MovePlayer(_)) => {}
                     Some(NetCommand::MoveVehicle(_)) => {}
                     Some(NetCommand::PlayerAction(_)) => {}
@@ -375,6 +395,7 @@ mod tests {
                 ConnectionState::Login,
                 &mut commands,
                 &mut player_position_state,
+                false,
             ),
         )
         .await
@@ -399,6 +420,7 @@ mod tests {
                 ConnectionState::Configuration,
                 &mut commands,
                 &mut player_position_state,
+                false,
             ),
         )
         .await
@@ -424,6 +446,7 @@ mod tests {
                 ConnectionState::Configuration,
                 &mut commands,
                 &mut player_position_state,
+                false,
             ),
         )
         .await
@@ -462,6 +485,7 @@ mod tests {
                     state,
                     &mut commands,
                     &mut player_position_state,
+                    false,
                 )
                 .await
                 .unwrap()
@@ -493,6 +517,7 @@ mod tests {
                 ConnectionState::Login,
                 &mut commands,
                 &mut player_position_state,
+                false,
             )
             .await
             .unwrap(),
@@ -528,6 +553,7 @@ mod tests {
                     state,
                     &mut commands,
                     &mut player_position_state,
+                    false,
                 )
                 .await
                 .unwrap()
@@ -561,6 +587,7 @@ mod tests {
                 ConnectionState::Play,
                 &mut commands,
                 &mut player_position_state,
+                false,
             )
             .await
             .unwrap()
@@ -586,6 +613,7 @@ mod tests {
             ConnectionState::Configuration,
             &mut commands,
             &mut player_position_state,
+            false,
         )
         .await
         .unwrap();
@@ -609,6 +637,7 @@ mod tests {
                 ConnectionState::Play,
                 &mut commands,
                 &mut player_position_state,
+                false,
             )
             .await
         });
@@ -634,6 +663,7 @@ mod tests {
             ConnectionState::Configuration,
             &mut commands,
             &mut player_position_state,
+            false,
         )
         .await
         .unwrap();
@@ -1645,6 +1675,7 @@ mod tests {
                 ConnectionState::Play,
                 commands,
                 player_position_state,
+                false,
             ),
         )
         .await

@@ -2023,7 +2023,11 @@ fn queue_client_tick_end_commands(
         return;
     };
     for _ in 0..client_ticks {
-        if tx.blocking_send(NetCommand::ClientTickEnd).is_err() {
+        // The render thread must never park on the command channel: under a
+        // saturated channel the connection is already unusable, and a dropped
+        // tick-end is harmless while a blocked render thread would stop
+        // draining net events entirely.
+        if tx.try_send(NetCommand::ClientTickEnd).is_err() {
             break;
         }
     }
