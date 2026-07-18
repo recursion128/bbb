@@ -22,14 +22,81 @@ type PersistentSnbtEncoder = for<'a> fn(
 #[derive(Clone, Copy, Default)]
 pub(super) struct PersistentSnbtContext<'a> {
     pub item_runtime: Option<&'a NativeItemRuntime>,
-    pub trim_material_keys: Option<&'a [String]>,
-    pub trim_pattern_keys: Option<&'a [String]>,
-    pub painting_variant_keys: Option<&'a [String]>,
-    pub damage_type_keys: Option<&'a [String]>,
-    pub instrument_keys: Option<&'a [String]>,
-    pub banner_pattern_keys: Option<&'a [String]>,
-    pub jukebox_song_keys: Option<&'a [String]>,
-    pub synchronized_variant_keys: Option<&'a BTreeMap<&'static str, Vec<String>>>,
+    pub registry_access: Option<bbb_world::FrozenRegistryAccess<'a>>,
+}
+
+impl<'a> PersistentSnbtContext<'a> {
+    pub(super) fn registry_resource_id(
+        self,
+        registry: &str,
+        holder_id: i32,
+        fallback: impl FnOnce(i32) -> Option<String>,
+    ) -> Option<String> {
+        match self.registry_access {
+            Some(access) => match access.entry_by_holder_id(registry, holder_id) {
+                Some(entry) => Some(entry.resource_id.to_string()),
+                None if !access.has_server_contents(registry) => fallback(holder_id),
+                None => None,
+            },
+            None => fallback(holder_id),
+        }
+    }
+
+    pub(super) fn registry_holder_set_snbt(
+        self,
+        registry: &str,
+        holder_ids: &[i32],
+        tag: Option<&str>,
+        fallback: impl Fn(i32) -> Option<String>,
+    ) -> Option<String> {
+        if let Some(tag) = tag {
+            if !holder_ids.is_empty() {
+                return None;
+            }
+            let tag = match self.registry_access {
+                Some(access) => {
+                    let holder_set = access.holder_set_by_tag(registry, tag).ok()?;
+                    let bbb_world::FrozenRegistryHolderSetKind::Named { tag, .. } = holder_set.kind
+                    else {
+                        return None;
+                    };
+                    tag
+                }
+                None => tag,
+            };
+            return Some(debug_snbt_string(&format!("#{tag}")));
+        }
+
+        let resource_ids = match self.registry_access {
+            Some(access) if access.has_server_contents(registry) => access
+                .holder_set_by_holder_ids(registry, holder_ids)
+                .ok()?
+                .entries
+                .into_iter()
+                .map(|entry| entry.resource_id.to_string())
+                .collect::<Vec<_>>(),
+            None => holder_ids
+                .iter()
+                .map(|holder_id| fallback(*holder_id))
+                .collect::<Option<Vec<_>>>()?,
+            Some(_) => holder_ids
+                .iter()
+                .map(|holder_id| fallback(*holder_id))
+                .collect::<Option<Vec<_>>>()?,
+        };
+        Some(match resource_ids.as_slice() {
+            [] => "[]".to_string(),
+            [resource_id] => debug_snbt_string(resource_id),
+            resource_ids => format!(
+                "[{}]",
+                resource_ids
+                    .iter()
+                    .map(|resource_id| debug_snbt_string(resource_id))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        })
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -602,10 +669,8 @@ fn encode_damage_type(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    Some(debug_snbt_string(debug_damage_type_resource_id(
-        patch.damage_type_id?,
-        context.damage_type_keys,
-    )?))
+    let resource_id = debug_damage_type_resource_id(patch.damage_type_id?, context)?;
+    Some(debug_snbt_string(&resource_id))
 }
 
 fn encode_item_model(
@@ -627,7 +692,7 @@ fn encode_rarity(
 fn encode_enchantments(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let enchantments = match type_id {
         component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => &patch.enchantments,
@@ -642,10 +707,16 @@ fn encode_enchantments(
             let level = (1..=255)
                 .contains(&enchantment.level)
                 .then_some(enchantment.level)?;
-            let resource_id =
-                VanillaEnchantmentIdentity::for_vanilla_registry_id(enchantment.holder_id)?
-                    .resource_id();
-            Some(format!("{}: {level}", debug_snbt_string(resource_id)))
+            let resource_id = context.registry_resource_id(
+                "minecraft:enchantment",
+                enchantment.holder_id,
+                |holder_id| {
+                    VanillaEnchantmentIdentity::for_vanilla_registry_id(holder_id)
+                        .map(VanillaEnchantmentIdentity::resource_id)
+                        .map(str::to_string)
+                },
+            )?;
+            Some(format!("{}: {level}", debug_snbt_string(&resource_id)))
         })
         .collect::<Option<Vec<_>>>()?;
     Some(format!("{{{}}}", entries.join(", ")))
@@ -898,7 +969,7 @@ fn encode_damage_resistant(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_damage_resistant_component_snbt_with_keys(patch, context.damage_type_keys)
+    debug_damage_resistant_component_snbt_with_context(patch, context)
 }
 
 fn encode_tool(
@@ -1167,7 +1238,7 @@ fn encode_blocks_attacks(
         let reductions = blocks_attacks
             .damage_reductions
             .iter()
-            .map(|reduction| damage_reduction_snbt(reduction, context.damage_type_keys))
+            .map(|reduction| damage_reduction_snbt(reduction, context))
             .collect::<Option<Vec<_>>>()?
             .join(", ");
         fields.push(format!("damage_reductions: [{reductions}]"));
@@ -1194,7 +1265,7 @@ fn encode_blocks_attacks(
             debug_damage_type_holder_set_snbt(
                 &bypassed_by.registry_ids,
                 bypassed_by.tag.as_deref(),
-                context.damage_type_keys,
+                context,
             )?
         ));
     }
@@ -1215,7 +1286,7 @@ fn encode_blocks_attacks(
 
 fn damage_reduction_snbt(
     reduction: &bbb_protocol::packets::DamageReductionSummary,
-    damage_type_keys: Option<&[String]>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let angle = f32::from_bits(reduction.horizontal_blocking_angle_bits);
     if angle <= 0.0 || !angle.is_finite() {
@@ -1234,7 +1305,7 @@ fn damage_reduction_snbt(
             debug_damage_type_holder_set_snbt(
                 &damage_types.registry_ids,
                 damage_types.tag.as_deref(),
-                damage_type_keys,
+                context,
             )?
         ));
     }
@@ -1342,11 +1413,13 @@ fn encode_instrument(
         return Some(debug_nbt_summary_snbt(persistent));
     }
     let holder_id = patch.instrument_id?;
-    let resource_id = match context.instrument_keys {
-        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
-        None => VanillaInstrumentIdentity::for_vanilla_registry_id(holder_id)?.resource_id(),
-    };
-    Some(debug_snbt_string(resource_id))
+    let resource_id =
+        context.registry_resource_id("minecraft:instrument", holder_id, |holder_id| {
+            VanillaInstrumentIdentity::for_vanilla_registry_id(holder_id)
+                .map(VanillaInstrumentIdentity::resource_id)
+                .map(str::to_string)
+        })?;
+    Some(debug_snbt_string(&resource_id))
 }
 
 fn encode_provides_trim_material(
@@ -1361,11 +1434,13 @@ fn encode_provides_trim_material(
         return None;
     }
     let holder_id = patch.provides_trim_material_id?;
-    let resource_id = match context.trim_material_keys {
-        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
-        None => VanillaTrimMaterialIdentity::for_vanilla_registry_id(holder_id)?.resource_id(),
-    };
-    Some(debug_snbt_string(resource_id))
+    let resource_id =
+        context.registry_resource_id("minecraft:trim_material", holder_id, |holder_id| {
+            VanillaTrimMaterialIdentity::for_vanilla_registry_id(holder_id)
+                .map(VanillaTrimMaterialIdentity::resource_id)
+                .map(str::to_string)
+        })?;
+    Some(debug_snbt_string(&resource_id))
 }
 
 fn encode_charged_projectiles(
@@ -1510,19 +1585,23 @@ fn encode_armor_trim(
         return None;
     }
     let material_id = patch.armor_trim_material_id?;
-    let material = match context.trim_material_keys {
-        Some(keys) => keys.get(usize::try_from(material_id).ok()?)?.as_str(),
-        None => VanillaTrimMaterialIdentity::for_vanilla_registry_id(material_id)?.resource_id(),
-    };
+    let material =
+        context.registry_resource_id("minecraft:trim_material", material_id, |holder_id| {
+            VanillaTrimMaterialIdentity::for_vanilla_registry_id(holder_id)
+                .map(VanillaTrimMaterialIdentity::resource_id)
+                .map(str::to_string)
+        })?;
     let pattern_id = patch.armor_trim_pattern_id?;
-    let pattern = match context.trim_pattern_keys {
-        Some(keys) => keys.get(usize::try_from(pattern_id).ok()?)?.as_str(),
-        None => VanillaTrimPatternIdentity::for_vanilla_registry_id(pattern_id)?.resource_id(),
-    };
+    let pattern =
+        context.registry_resource_id("minecraft:trim_pattern", pattern_id, |holder_id| {
+            VanillaTrimPatternIdentity::for_vanilla_registry_id(holder_id)
+                .map(VanillaTrimPatternIdentity::resource_id)
+                .map(str::to_string)
+        })?;
     Some(format!(
         "{{material: {}, pattern: {}}}",
-        debug_snbt_string(material),
-        debug_snbt_string(pattern)
+        debug_snbt_string(&material),
+        debug_snbt_string(&pattern)
     ))
 }
 
@@ -1545,11 +1624,14 @@ fn encode_jukebox_playable(
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let holder_id = patch.jukebox_song_id?;
-    let resource_id = match context.jukebox_song_keys {
-        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
-        None => context.item_runtime?.jukebox_song_resource_id(holder_id)?,
-    };
-    Some(debug_snbt_string(resource_id))
+    let resource_id =
+        context.registry_resource_id("minecraft:jukebox_song", holder_id, |holder_id| {
+            context
+                .item_runtime?
+                .jukebox_song_resource_id(holder_id)
+                .map(str::to_string)
+        })?;
+    Some(debug_snbt_string(&resource_id))
 }
 
 fn encode_provides_banner_patterns(
@@ -1557,7 +1639,7 @@ fn encode_provides_banner_patterns(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_provides_banner_patterns_component_snbt_with_keys(patch, context.banner_pattern_keys)
+    debug_provides_banner_patterns_component_snbt_with_context(patch, context)
 }
 
 fn encode_lodestone_tracker(
@@ -1616,10 +1698,8 @@ fn encode_banner_patterns(
         .iter()
         .map(|layer| {
             let pattern = if let Some(registry_id) = layer.registry_id {
-                debug_snbt_string(debug_banner_pattern_resource_id(
-                    registry_id,
-                    context.banner_pattern_keys,
-                )?)
+                let resource_id = debug_banner_pattern_resource_id(registry_id, context)?;
+                debug_snbt_string(&resource_id)
             } else {
                 format!(
                     "{{asset_id: {}, translation_key: {}}}",
@@ -1704,13 +1784,13 @@ fn encode_named_variant(
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let holder_id = named_variant_holder_id(type_id, patch)?;
-    let resource_id = match component_id::vanilla_data_component_animal_variant_registry(type_id)
-        .and_then(|registry| context.synchronized_variant_keys?.get(registry))
-    {
-        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
-        None => vanilla_named_variant_resource_id(type_id, holder_id)?,
+    let resource_id = match component_id::vanilla_data_component_animal_variant_registry(type_id) {
+        Some(registry) => context.registry_resource_id(registry, holder_id, |holder_id| {
+            vanilla_named_variant_resource_id(type_id, holder_id).map(str::to_string)
+        })?,
+        None => vanilla_named_variant_resource_id(type_id, holder_id)?.to_string(),
     };
-    Some(debug_snbt_string(resource_id))
+    Some(debug_snbt_string(&resource_id))
 }
 
 fn named_variant_holder_id(
@@ -1832,11 +1912,11 @@ fn encode_painting_variant(
         return None;
     }
     let holder_id = patch.painting_variant_id?;
-    let resource_id = match context.painting_variant_keys {
-        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
-        None => vanilla_painting_variant_resource_id(holder_id)?,
-    };
-    Some(debug_snbt_string(resource_id))
+    let resource_id =
+        context.registry_resource_id("minecraft:painting_variant", holder_id, |holder_id| {
+            vanilla_painting_variant_resource_id(holder_id).map(str::to_string)
+        })?;
+    Some(debug_snbt_string(&resource_id))
 }
 
 fn encode_builtin_enum(
@@ -1861,6 +1941,28 @@ mod tests {
     use bbb_protocol::mob_effect_types::{
         VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_TYPES,
     };
+
+    fn world_with_registries(registries: &[(&str, &[&str])]) -> WorldStore {
+        let mut world = WorldStore::new();
+        for (registry, resource_ids) in registries {
+            world.record_registry_entries(
+                *registry,
+                0,
+                resource_ids
+                    .iter()
+                    .map(|resource_id| bbb_world::RegistryPacketEntry::stub(*resource_id))
+                    .collect(),
+            );
+        }
+        world
+    }
+
+    fn registry_context(world: &WorldStore) -> PersistentSnbtContext<'_> {
+        PersistentSnbtContext {
+            registry_access: Some(world.frozen_registry_access()),
+            ..Default::default()
+        }
+    }
 
     #[test]
     fn production_encoder_matches_do_not_use_raw_component_type_ids() {
@@ -2269,15 +2371,21 @@ mod tests {
             .as_mut()
             .unwrap()
             .registry_ids = vec![0];
-        let damage_type_keys = ["example:custom".to_string()];
+        let mut world = world_with_registries(&[("minecraft:damage_type", &["example:custom"])]);
+        world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![bbb_protocol::packets::RegistryTags {
+                registry: "minecraft:damage_type".to_string(),
+                tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                    tag: "minecraft:bypasses_shield".to_string(),
+                    entries: vec![0],
+                }],
+            }],
+        });
         assert_eq!(
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    damage_type_keys: Some(&damage_type_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             Some(
                 "{block_delay_seconds: 0.25f, disable_cooldown_scale: 1.5f, \
@@ -2340,16 +2448,13 @@ mod tests {
             Some("\"minecraft:mace_smash\"".to_string())
         );
 
-        let damage_type_keys = ["example:custom".to_string()];
+        let world = world_with_registries(&[("minecraft:damage_type", &["example:custom"])]);
         patch.damage_type_id = Some(0);
         assert_eq!(
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    damage_type_keys: Some(&damage_type_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             Some("\"example:custom\"".to_string())
         );
@@ -2360,10 +2465,7 @@ mod tests {
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    damage_type_keys: Some(&damage_type_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             Some("{types: \"example:custom\"}".to_string())
         );
@@ -2545,6 +2647,26 @@ mod tests {
             Some("{\"minecraft:sharpness\": 5}".to_string())
         );
 
+        let world = world_with_registries(&[("minecraft:enchantment", &["example:custom"])]);
+        patch.enchantments[0].holder_id = 0;
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                &patch,
+                registry_context(&world),
+            ),
+            Some("{\"example:custom\": 4}".to_string())
+        );
+        patch.enchantments[0].holder_id = 1;
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                &patch,
+                registry_context(&world),
+            ),
+            None
+        );
+
         patch.enchantments.clear();
         assert_eq!(
             encode_added_component_value_snbt(13, &patch, None),
@@ -2644,16 +2766,13 @@ mod tests {
             )
         );
 
-        let banner_pattern_keys = ["example:custom".to_string()];
+        let world = world_with_registries(&[("minecraft:banner_pattern", &["example:custom"])]);
         patch.banner_pattern_layers[0].registry_id = Some(0);
         assert_eq!(
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    banner_pattern_keys: Some(&banner_pattern_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             Some(
                 "[{pattern: \"example:custom\", color: \"red\"}, \
@@ -2668,10 +2787,7 @@ mod tests {
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    banner_pattern_keys: Some(&banner_pattern_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             None
         );
@@ -2701,10 +2817,7 @@ mod tests {
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    banner_pattern_keys: Some(&banner_pattern_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             Some("\"example:custom\"".to_string())
         );
@@ -2713,10 +2826,7 @@ mod tests {
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    banner_pattern_keys: Some(&banner_pattern_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             None
         );
@@ -2742,16 +2852,13 @@ mod tests {
             Some("\"minecraft:call_goat_horn\"".to_string())
         );
 
-        let instrument_keys = ["example:custom".to_string()];
+        let world = world_with_registries(&[("minecraft:instrument", &["example:custom"])]);
         patch.instrument_id = Some(0);
         assert_eq!(
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    instrument_keys: Some(&instrument_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             Some("\"example:custom\"".to_string())
         );
@@ -2761,10 +2868,7 @@ mod tests {
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    instrument_keys: Some(&instrument_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             None
         );
@@ -2783,10 +2887,7 @@ mod tests {
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
                 &patch,
-                PersistentSnbtContext {
-                    instrument_keys: Some(&instrument_keys),
-                    ..Default::default()
-                },
+                registry_context(&world),
             ),
             Some("\"example:persistent\"".to_string())
         );
@@ -2855,19 +2956,11 @@ mod tests {
 
     #[test]
     fn trim_encoders_use_synchronized_holder_order_when_available() {
-        let material_keys = ["example:custom_material".to_string()];
-        let pattern_keys = ["example:custom_pattern".to_string()];
-        let context = PersistentSnbtContext {
-            item_runtime: None,
-            trim_material_keys: Some(&material_keys),
-            trim_pattern_keys: Some(&pattern_keys),
-            painting_variant_keys: None,
-            damage_type_keys: None,
-            instrument_keys: None,
-            banner_pattern_keys: None,
-            jukebox_song_keys: None,
-            synchronized_variant_keys: None,
-        };
+        let world = world_with_registries(&[
+            ("minecraft:trim_material", &["example:custom_material"]),
+            ("minecraft:trim_pattern", &["example:custom_pattern"]),
+        ]);
+        let context = registry_context(&world);
         let patch = bbb_protocol::packets::DataComponentPatchSummary {
             provides_trim_material_id: Some(0),
             armor_trim_material_id: Some(0),
@@ -2971,7 +3064,7 @@ mod tests {
         );
         assert_eq!(encode_added_component_value_snbt(64, &patch, None), None);
 
-        let jukebox_song_keys = ["example:custom".to_string()];
+        let world = world_with_registries(&[("minecraft:jukebox_song", &["example:custom"])]);
         patch.jukebox_song_id = Some(0);
         assert_eq!(
             encode_added_component_value_snbt_with_context(
@@ -2979,7 +3072,7 @@ mod tests {
                 &patch,
                 PersistentSnbtContext {
                     item_runtime: Some(&item_runtime),
-                    jukebox_song_keys: Some(&jukebox_song_keys),
+                    registry_access: Some(world.frozen_registry_access()),
                     ..Default::default()
                 },
             ),
@@ -2993,7 +3086,7 @@ mod tests {
                 &patch,
                 PersistentSnbtContext {
                     item_runtime: Some(&item_runtime),
-                    jukebox_song_keys: Some(&jukebox_song_keys),
+                    registry_access: Some(world.frozen_registry_access()),
                     ..Default::default()
                 },
             ),
@@ -3035,17 +3128,10 @@ mod tests {
             Some("\"minecraft:dennis\"".to_string())
         );
 
-        let painting_keys = ["example:custom".to_string()];
+        let world = world_with_registries(&[("minecraft:painting_variant", &["example:custom"])]);
         patch.painting_variant_id = Some(0);
         assert_eq!(
-            encode_added_component_value_snbt_with_context(
-                102,
-                &patch,
-                PersistentSnbtContext {
-                    painting_variant_keys: Some(&painting_keys),
-                    ..Default::default()
-                },
-            ),
+            encode_added_component_value_snbt_with_context(102, &patch, registry_context(&world)),
             Some("\"example:custom\"".to_string())
         );
 
@@ -3185,45 +3271,27 @@ mod tests {
         patch.frog_variant_id = Some(0);
         patch.cat_variant_id = Some(0);
         patch.cat_sound_variant_id = Some(0);
-        let synchronized_variant_keys = BTreeMap::from([
-            ("minecraft:wolf_variant", vec!["example:wolf".to_string()]),
-            (
-                "minecraft:wolf_sound_variant",
-                vec!["example:wolf_sound".to_string()],
-            ),
-            ("minecraft:pig_variant", vec!["example:pig".to_string()]),
-            (
-                "minecraft:pig_sound_variant",
-                vec!["example:pig_sound".to_string()],
-            ),
-            ("minecraft:cow_variant", vec!["example:cow".to_string()]),
-            (
-                "minecraft:cow_sound_variant",
-                vec!["example:cow_sound".to_string()],
-            ),
-            (
-                "minecraft:chicken_variant",
-                vec!["example:chicken".to_string()],
-            ),
+        let world = world_with_registries(&[
+            ("minecraft:wolf_variant", &["example:wolf"]),
+            ("minecraft:wolf_sound_variant", &["example:wolf_sound"]),
+            ("minecraft:pig_variant", &["example:pig"]),
+            ("minecraft:pig_sound_variant", &["example:pig_sound"]),
+            ("minecraft:cow_variant", &["example:cow"]),
+            ("minecraft:cow_sound_variant", &["example:cow_sound"]),
+            ("minecraft:chicken_variant", &["example:chicken"]),
             (
                 "minecraft:chicken_sound_variant",
-                vec!["example:chicken_sound".to_string()],
+                &["example:chicken_sound"],
             ),
             (
                 "minecraft:zombie_nautilus_variant",
-                vec!["example:zombie_nautilus".to_string()],
+                &["example:zombie_nautilus"],
             ),
-            ("minecraft:frog_variant", vec!["example:frog".to_string()]),
-            ("minecraft:cat_variant", vec!["example:cat".to_string()]),
-            (
-                "minecraft:cat_sound_variant",
-                vec!["example:cat_sound".to_string()],
-            ),
+            ("minecraft:frog_variant", &["example:frog"]),
+            ("minecraft:cat_variant", &["example:cat"]),
+            ("minecraft:cat_sound_variant", &["example:cat_sound"]),
         ]);
-        let context = PersistentSnbtContext {
-            synchronized_variant_keys: Some(&synchronized_variant_keys),
-            ..Default::default()
-        };
+        let context = registry_context(&world);
         for (type_id, expected) in [
             (82, "\"example:wolf\""),
             (83, "\"example:wolf_sound\""),
@@ -3255,16 +3323,13 @@ mod tests {
         );
 
         let only_wolf_variant =
-            BTreeMap::from([("minecraft:wolf_variant", vec!["example:wolf".to_string()])]);
+            world_with_registries(&[("minecraft:wolf_variant", &["example:wolf"])]);
         patch.pig_variant_id = Some(2);
         assert_eq!(
             encode_added_component_value_snbt_with_context(
                 93,
                 &patch,
-                PersistentSnbtContext {
-                    synchronized_variant_keys: Some(&only_wolf_variant),
-                    ..Default::default()
-                },
+                registry_context(&only_wolf_variant),
             ),
             Some("\"minecraft:cold\"".to_string())
         );

@@ -5242,14 +5242,6 @@ fn debug_push_firework_rocket_additional_save_data(
         entity.client_animations.age_ticks.min(i32::MAX as u32)
     ));
     if debug_entity_data_item_stack_present(entity, accessors.item_data_id).is_some() {
-        let trim_material_keys = crate::item_models::world_trim_material_keys(world);
-        let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
-        let painting_variant_keys = crate::item_models::world_painting_variant_keys(world);
-        let damage_type_keys = crate::item_models::world_damage_type_keys(world);
-        let instrument_keys = crate::item_models::world_instrument_keys(world);
-        let banner_pattern_keys = crate::item_models::world_banner_pattern_keys(world);
-        let jukebox_song_keys = crate::item_models::world_jukebox_song_keys(world);
-        let synchronized_variant_keys = crate::item_models::world_synchronized_variant_keys(world);
         fields.push(format!(
             "FireworksItem: {}",
             debug_firework_rocket_item_stack(
@@ -5257,14 +5249,7 @@ fn debug_push_firework_rocket_additional_save_data(
                 accessors,
                 PersistentSnbtContext {
                     item_runtime,
-                    trim_material_keys: trim_material_keys.as_deref(),
-                    trim_pattern_keys: trim_pattern_keys.as_deref(),
-                    painting_variant_keys: painting_variant_keys.as_deref(),
-                    damage_type_keys: damage_type_keys.as_deref(),
-                    instrument_keys: instrument_keys.as_deref(),
-                    banner_pattern_keys: banner_pattern_keys.as_deref(),
-                    jukebox_song_keys: jukebox_song_keys.as_deref(),
-                    synchronized_variant_keys: Some(&synchronized_variant_keys),
+                    registry_access: Some(world.frozen_registry_access()),
                 },
             )
         ));
@@ -6057,41 +6042,20 @@ fn debug_repairable_component_snbt(
 
 fn debug_damage_type_resource_id(
     holder_id: i32,
-    damage_type_keys: Option<&[String]>,
-) -> Option<&str> {
-    match damage_type_keys {
-        Some(keys) => keys
-            .get(usize::try_from(holder_id).ok()?)
-            .map(String::as_str),
-        None => bbb_protocol::damage_types::vanilla_damage_type_resource_id(holder_id),
-    }
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    context.registry_resource_id("minecraft:damage_type", holder_id, |holder_id| {
+        bbb_protocol::damage_types::vanilla_damage_type_resource_id(holder_id).map(str::to_string)
+    })
 }
 
 fn debug_damage_type_holder_set_snbt(
     registry_ids: &[i32],
     tag: Option<&str>,
-    damage_type_keys: Option<&[String]>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    if let Some(tag) = tag {
-        return registry_ids
-            .is_empty()
-            .then(|| debug_snbt_string(&format!("#{tag}")));
-    }
-    let resource_ids = registry_ids
-        .iter()
-        .map(|id| debug_damage_type_resource_id(*id, damage_type_keys))
-        .collect::<Option<Vec<_>>>()?;
-    Some(match resource_ids.as_slice() {
-        [] => "[]".to_string(),
-        [resource_id] => debug_snbt_string(resource_id),
-        resource_ids => format!(
-            "[{}]",
-            resource_ids
-                .iter()
-                .map(|resource_id| debug_snbt_string(resource_id))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+    context.registry_holder_set_snbt("minecraft:damage_type", registry_ids, tag, |holder_id| {
+        bbb_protocol::damage_types::vanilla_damage_type_resource_id(holder_id).map(str::to_string)
     })
 }
 
@@ -6099,17 +6063,17 @@ fn debug_damage_type_holder_set_snbt(
 fn debug_damage_resistant_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
 ) -> Option<String> {
-    debug_damage_resistant_component_snbt_with_keys(patch, None)
+    debug_damage_resistant_component_snbt_with_context(patch, PersistentSnbtContext::default())
 }
 
-fn debug_damage_resistant_component_snbt_with_keys(
+fn debug_damage_resistant_component_snbt_with_context(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    damage_type_keys: Option<&[String]>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let types = debug_damage_type_holder_set_snbt(
         &patch.damage_resistant_type_registry_ids,
         patch.damage_resistant_type_tag.as_deref(),
-        damage_type_keys,
+        context,
     )?;
     Some(format!("{{types: {types}}}"))
 }
@@ -6118,58 +6082,43 @@ fn debug_damage_resistant_component_snbt_with_keys(
 fn debug_provides_banner_patterns_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
 ) -> Option<String> {
-    debug_provides_banner_patterns_component_snbt_with_keys(patch, None)
+    debug_provides_banner_patterns_component_snbt_with_context(
+        patch,
+        PersistentSnbtContext::default(),
+    )
 }
 
-fn debug_provides_banner_patterns_component_snbt_with_keys(
+fn debug_provides_banner_patterns_component_snbt_with_context(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    banner_pattern_keys: Option<&[String]>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_banner_pattern_holder_set_snbt(
         &patch.provides_banner_pattern_registry_ids,
         patch.provides_banner_pattern_tag.as_deref(),
-        banner_pattern_keys,
+        context,
     )
 }
 
 fn debug_banner_pattern_resource_id(
     holder_id: i32,
-    banner_pattern_keys: Option<&[String]>,
-) -> Option<&str> {
-    match banner_pattern_keys {
-        Some(keys) => keys
-            .get(usize::try_from(holder_id).ok()?)
-            .map(String::as_str),
-        None => BannerPatternKind::for_vanilla_registry_id(holder_id)
-            .map(BannerPatternKind::resource_id),
-    }
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    context.registry_resource_id("minecraft:banner_pattern", holder_id, |holder_id| {
+        BannerPatternKind::for_vanilla_registry_id(holder_id)
+            .map(BannerPatternKind::resource_id)
+            .map(str::to_string)
+    })
 }
 
 fn debug_banner_pattern_holder_set_snbt(
     registry_ids: &[i32],
     tag: Option<&str>,
-    banner_pattern_keys: Option<&[String]>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    if let Some(tag) = tag {
-        return registry_ids
-            .is_empty()
-            .then(|| debug_snbt_string(&format!("#{tag}")));
-    }
-    let resource_ids = registry_ids
-        .iter()
-        .map(|id| debug_banner_pattern_resource_id(*id, banner_pattern_keys))
-        .collect::<Option<Vec<_>>>()?;
-    Some(match resource_ids.as_slice() {
-        [] => "[]".to_string(),
-        [resource_id] => debug_snbt_string(resource_id),
-        resource_ids => format!(
-            "[{}]",
-            resource_ids
-                .iter()
-                .map(|resource_id| debug_snbt_string(resource_id))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+    context.registry_holder_set_snbt("minecraft:banner_pattern", registry_ids, tag, |holder_id| {
+        BannerPatternKind::for_vanilla_registry_id(holder_id)
+            .map(BannerPatternKind::resource_id)
+            .map(str::to_string)
     })
 }
 
@@ -6644,28 +6593,13 @@ fn debug_push_item_frame_additional_save_data(
             Some((stack, resource_id))
         })
     {
-        let trim_material_keys = crate::item_models::world_trim_material_keys(world);
-        let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
-        let painting_variant_keys = crate::item_models::world_painting_variant_keys(world);
-        let damage_type_keys = crate::item_models::world_damage_type_keys(world);
-        let instrument_keys = crate::item_models::world_instrument_keys(world);
-        let banner_pattern_keys = crate::item_models::world_banner_pattern_keys(world);
-        let jukebox_song_keys = crate::item_models::world_jukebox_song_keys(world);
-        let synchronized_variant_keys = crate::item_models::world_synchronized_variant_keys(world);
         if let Some(item) = debug_item_stack_snbt_with_context(
             resource_id,
             stack.count,
             Some(stack),
             PersistentSnbtContext {
                 item_runtime,
-                trim_material_keys: trim_material_keys.as_deref(),
-                trim_pattern_keys: trim_pattern_keys.as_deref(),
-                painting_variant_keys: painting_variant_keys.as_deref(),
-                damage_type_keys: damage_type_keys.as_deref(),
-                instrument_keys: instrument_keys.as_deref(),
-                banner_pattern_keys: banner_pattern_keys.as_deref(),
-                jukebox_song_keys: jukebox_song_keys.as_deref(),
-                synchronized_variant_keys: Some(&synchronized_variant_keys),
+                registry_access: Some(world.frozen_registry_access()),
             },
         ) {
             fields.push(format!("Item: {item}"));

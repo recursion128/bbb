@@ -418,6 +418,10 @@ impl<'a> FrozenRegistryAccess<'a> {
         self.registries.revision
     }
 
+    pub fn has_server_contents(self, registry: &str) -> bool {
+        self.registries.contents.contains_key(registry)
+    }
+
     pub fn entry_by_holder_id(
         self,
         registry: &str,

@@ -14,7 +14,6 @@ use std::{
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::data_component_types::{
-    vanilla_data_component_animal_variant_registries,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
 };
@@ -85,35 +84,6 @@ pub(crate) fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>
 
 pub(crate) fn world_trim_pattern_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:trim_pattern")
-}
-
-pub(crate) fn world_painting_variant_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world_registry_keys(world, "minecraft:painting_variant")
-}
-
-pub(crate) fn world_damage_type_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world_registry_keys(world, "minecraft:damage_type")
-}
-
-pub(crate) fn world_instrument_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world_registry_keys(world, "minecraft:instrument")
-}
-
-pub(crate) fn world_banner_pattern_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world_registry_keys(world, "minecraft:banner_pattern")
-}
-
-pub(crate) fn world_jukebox_song_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world_registry_keys(world, "minecraft:jukebox_song")
-}
-
-pub(crate) fn world_synchronized_variant_keys(
-    world: &WorldStore,
-) -> BTreeMap<&'static str, Vec<String>> {
-    vanilla_data_component_animal_variant_registries()
-        .map(|(_, registry)| registry)
-        .filter_map(|registry| world_registry_keys(world, registry).map(|keys| (registry, keys)))
-        .collect()
 }
 
 pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {

@@ -11835,6 +11835,11 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         0,
         vec![RegistryPacketEntry::stub("example:custom_song")],
     );
+    world.record_registry_entries(
+        "minecraft:enchantment",
+        0,
+        vec![RegistryPacketEntry::stub("example:custom_enchantment")],
+    );
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 63,
@@ -11872,9 +11877,10 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                     item_id: Some(0),
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added: 6,
+                        added: 7,
                         added_type_ids: vec![
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
@@ -11882,6 +11888,10 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
                         ],
                         damage_type_id: Some(0),
+                        enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                            holder_id: 0,
+                            level: 3,
+                        }],
                         instrument_id: Some(0),
                         provides_banner_pattern_registry_ids: vec![0],
                         banner_pattern_layers: vec![bbb_protocol::packets::BannerPatternLayerSummary {
@@ -11954,6 +11964,7 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         snbt.contains(
             "block_pos: [I; 0, 1, 2], Item: {id: \"minecraft:diamond\", components: \
          {\"minecraft:damage_type\": \"example:custom\", \
+         \"minecraft:enchantments\": {\"example:custom_enchantment\": 3}, \
          \"minecraft:instrument\": \"example:custom_horn\", \
          \"minecraft:provides_banner_patterns\": \"example:custom_pattern\", \
          \"minecraft:banner_patterns\": [{pattern: \"example:custom_pattern\", color: \"red\"}], \

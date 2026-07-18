@@ -762,6 +762,8 @@ fn frozen_registry_access_resolves_reference_and_holder_set_forms() {
     });
 
     let access = store.frozen_registry_access();
+    assert!(access.has_server_contents("minecraft:test"));
+    assert!(!access.has_server_contents("minecraft:damage_type"));
     assert_eq!(
         access
             .require_entry_by_holder_id("minecraft:test", 0)
