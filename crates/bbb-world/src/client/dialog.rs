@@ -1,10 +1,12 @@
 use bbb_protocol::{
-    decode_nbt_summary, styled_component_runs_from_nbt_value, styled_runs_summary_text,
-    visit_component_payloads, ComponentPayload, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    styled_component_runs_from_nbt_value, styled_runs_summary_text, visit_component_payloads,
+    ComponentPayload, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess, RegistrySet};
+use crate::{
+    registries::normalize_codec_identifier, FrozenRegistryAccess, FrozenRegistryEntry, RegistrySet,
+};
 
 mod action;
 mod body;
@@ -480,21 +482,9 @@ fn decode_referenced_dialog_entry(
     registry_access: FrozenRegistryAccess<'_>,
     depth: usize,
 ) -> Result<DialogListEntryState, String> {
-    let raw_data = match entry.payload {
-        crate::RegistryEntryPayload::Server {
-            raw_data: Some(raw_data),
-            ..
-        } => raw_data,
-        _ => {
-            return Err(format!(
-                "dialog registry entry {} has no synchronized payload",
-                entry.resource_id
-            ))
-        }
-    };
-    let dialog = decode_dialog_registry_payload(entry.resource_id, raw_data)?;
+    let dialog = decode_dialog_registry_entry(entry)?;
     let common = decode_common_dialog_data(
-        compound_entries(&dialog, "dialog root")?,
+        compound_entries(dialog, "dialog root")?,
         DialogDecodeContext::with_registry_access(Some(registry_access), depth + 1),
     )?;
     Ok(DialogListEntryState {
@@ -506,18 +496,26 @@ fn decode_referenced_dialog_entry(
     })
 }
 
-fn decode_dialog_registry_payload(
-    resource_id: &str,
-    raw_data: &[u8],
-) -> Result<NbtSummaryValue, String> {
-    match decode_nbt_summary(raw_data) {
-        Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => Ok(dialog),
-        Ok(Some(_)) => Err(format!(
-            "dialog registry entry {resource_id} root is not a compound tag"
-        )),
-        Ok(None) => Err(format!("dialog registry entry {resource_id} is an end tag")),
-        Err(error) => Err(format!(
-            "invalid dialog registry entry {resource_id}: {error}"
+pub(super) fn decode_dialog_registry_entry<'a>(
+    entry: FrozenRegistryEntry<'a>,
+) -> Result<&'a NbtSummaryValue, String> {
+    if let Some(error) = entry.element_data_error {
+        return Err(format!(
+            "invalid dialog registry entry {}: {error}",
+            entry.resource_id
+        ));
+    }
+    let Some(data) = entry.element_data else {
+        return Err(format!(
+            "dialog registry entry {} has no synchronized payload",
+            entry.resource_id
+        ));
+    };
+    match &data.value {
+        dialog @ NbtSummaryValue::Compound(_) => Ok(dialog),
+        _ => Err(format!(
+            "dialog registry entry {} root is not a compound tag",
+            entry.resource_id
         )),
     }
 }
@@ -1238,9 +1236,9 @@ mod tests {
             DIALOG_REGISTRY,
             0,
             vec![
-                RegistryPacketEntry::with_raw_data(
+                RegistryPacketEntry::with_known_pack_data_for_test(
                     "example:first",
-                    notice_dialog_nbt("First", None),
+                    br#"{"type":"minecraft:notice","title":"First"}"#.to_vec(),
                 ),
                 RegistryPacketEntry::with_raw_data(
                     "example:second",

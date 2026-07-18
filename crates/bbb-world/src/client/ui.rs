@@ -1,6 +1,5 @@
 use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
-    decode_nbt_summary,
     packets::{
         DialogHolder, InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
         MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
@@ -14,8 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     client::dialog::{
-        decode_component_click_dialog, CommonDialogDataState, DialogBodyState, DialogDataState,
-        DialogInputControlState, DialogState,
+        decode_component_click_dialog, decode_dialog_registry_entry, CommonDialogDataState,
+        DialogBodyState, DialogDataState, DialogInputControlState, DialogState,
     },
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
     protocol_block_pos, BlockPos, WorldStore,
@@ -1464,40 +1463,22 @@ impl WorldStore {
     }
 
     fn dialog_state_from_reference(&self, registry_id: i32) -> DialogState {
-        let Some(entry) = self.registry_entry_by_holder_id(DIALOG_REGISTRY, registry_id) else {
+        let Some(entry) = self
+            .frozen_registry_access()
+            .entry_by_holder_id(DIALOG_REGISTRY, registry_id)
+        else {
             return DialogState::unresolved_reference(
                 registry_id,
                 None,
                 format!("missing {DIALOG_REGISTRY} holder {registry_id}"),
             );
         };
-        let resource_id = entry.id.clone();
-        let Some(raw_data) = entry.raw_data() else {
-            return DialogState::unresolved_reference(
-                registry_id,
-                Some(resource_id.clone()),
-                format!("dialog registry entry {resource_id} has no synchronized payload"),
-            );
-        };
-        match decode_nbt_summary(raw_data) {
-            Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => {
-                DialogState::reference(registry_id, resource_id, dialog, &self.registries)
+        let resource_id = entry.resource_id.to_string();
+        match decode_dialog_registry_entry(entry) {
+            Ok(dialog) => {
+                DialogState::reference(registry_id, resource_id, dialog.clone(), &self.registries)
             }
-            Ok(Some(_)) => DialogState::unresolved_reference(
-                registry_id,
-                Some(resource_id.clone()),
-                format!("dialog registry entry {resource_id} root is not a compound tag"),
-            ),
-            Ok(None) => DialogState::unresolved_reference(
-                registry_id,
-                Some(resource_id.clone()),
-                format!("dialog registry entry {resource_id} is an end tag"),
-            ),
-            Err(error) => DialogState::unresolved_reference(
-                registry_id,
-                Some(resource_id.clone()),
-                format!("invalid dialog registry entry {resource_id}: {error}"),
-            ),
+            Err(error) => DialogState::unresolved_reference(registry_id, Some(resource_id), error),
         }
     }
 }

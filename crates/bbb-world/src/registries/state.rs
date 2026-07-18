@@ -25,6 +25,8 @@ use serde::{Deserialize, Serialize};
 use crate::chunks::{decode_nbt_payload_summary, NbtPayloadSummary};
 
 use super::biomes::decode_biome_client_projection;
+#[cfg(test)]
+use super::element_value::decode_known_pack_element;
 use super::element_value::decode_network_element;
 use super::{
     BiomeClientProjection, BiomeProjectionError, BlockStateRegistry, RegistryElementData,
@@ -156,6 +158,7 @@ pub struct FrozenRegistryEntry<'a> {
     pub source: RegistryEntrySource,
     pub payload: RegistryEntryPayload<'a>,
     pub element_data: Option<&'a RegistryElementData>,
+    pub element_data_error: Option<&'a RegistryElementDecodeError>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -459,6 +462,7 @@ impl<'a> FrozenRegistryAccess<'a> {
                     known_pack_data: entry.known_pack_data(),
                 },
                 element_data: entry.element_data(),
+                element_data_error: entry.element_data_error.as_ref(),
             });
         }
         let resource_id = self
@@ -470,6 +474,7 @@ impl<'a> FrozenRegistryAccess<'a> {
             source: RegistryEntrySource::VanillaFallback,
             payload: RegistryEntryPayload::VanillaFallback,
             element_data: None,
+            element_data_error: None,
         })
     }
 
@@ -634,6 +639,27 @@ impl RegistryPacketEntry {
             known_pack_data: None,
             element_data: None,
             element_data_error: None,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_known_pack_data_for_test(
+        id: impl Into<String>,
+        known_pack_data: Vec<u8>,
+    ) -> Self {
+        let (element_data, element_data_error) = match decode_known_pack_element(&known_pack_data) {
+            Ok(data) => (Some(Arc::new(data)), None),
+            Err(error) => (None, Some(error)),
+        };
+        Self {
+            id: id.into(),
+            has_data: false,
+            raw_data_len: 0,
+            nbt: None,
+            raw_data: None,
+            known_pack_data: Some(Arc::from(known_pack_data)),
+            element_data,
+            element_data_error,
         }
     }
 

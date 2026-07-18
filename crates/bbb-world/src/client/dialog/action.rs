@@ -7,8 +7,8 @@ use crate::RegistrySet;
 use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess};
 
 use super::{
-    compound_entries, find_entry, optional_i32, required_entry, required_string, DialogState,
-    DIALOG_REGISTRY,
+    compound_entries, decode_dialog_registry_entry, find_entry, optional_i32, required_entry,
+    required_string, DialogState, DIALOG_REGISTRY,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,19 +85,7 @@ pub(super) fn decode_action_dialog_holder(
             let entry = registry_access
                 .require_entry_by_resource_id(DIALOG_REGISTRY, &resource_id)
                 .map_err(|error| error.to_string())?;
-            let raw_data = match entry.payload {
-                crate::RegistryEntryPayload::Server {
-                    raw_data: Some(raw_data),
-                    ..
-                } => raw_data,
-                _ => {
-                    return Err(format!(
-                        "dialog registry entry {} has no synchronized payload",
-                        entry.resource_id
-                    ))
-                }
-            };
-            let dialog = super::decode_dialog_registry_payload(entry.resource_id, raw_data)?;
+            let dialog = decode_dialog_registry_entry(entry)?.clone();
             checked_action_dialog_state(DialogState::resolved_at_depth(
                 "reference",
                 Some(entry.holder_id),
@@ -459,9 +447,9 @@ mod tests {
         store.record_registry_entries(
             super::super::DIALOG_REGISTRY,
             0,
-            vec![RegistryPacketEntry::with_raw_data(
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
                 "example:next",
-                notice_nbt("Referenced"),
+                br#"{"type":"minecraft:notice","title":"Referenced"}"#.to_vec(),
             )],
         );
         let referenced = decode_dialog_action(
@@ -524,24 +512,5 @@ mod tests {
 
     fn string_entry(name: &str, value: &str) -> NbtSummaryEntry {
         value_entry(name, NbtSummaryValue::String(value.to_string()))
-    }
-
-    fn notice_nbt(title: &str) -> Vec<u8> {
-        let mut out = vec![10];
-        write_nbt_named_string(&mut out, "type", "minecraft:notice");
-        write_nbt_named_string(&mut out, "title", title);
-        out.push(0);
-        out
-    }
-
-    fn write_nbt_named_string(out: &mut Vec<u8>, name: &str, value: &str) {
-        out.push(8);
-        write_nbt_string(out, name);
-        write_nbt_string(out, value);
-    }
-
-    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
-        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
-        out.extend_from_slice(value.as_bytes());
     }
 }
