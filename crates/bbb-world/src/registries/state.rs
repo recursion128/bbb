@@ -31,6 +31,8 @@ use super::{BiomeClientProjection, BiomeProjectionError, BlockStateRegistry};
 pub struct RegistrySet {
     pub registries: Vec<RegistryPacket>,
     #[serde(default)]
+    pub revision: RegistryAccessRevision,
+    #[serde(default)]
     pub contents: BTreeMap<String, RegistryContentState>,
     #[serde(default)]
     pub tags: BTreeMap<String, RegistryTagState>,
@@ -115,6 +117,41 @@ pub enum RegistryEntrySource {
     VanillaFallback,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegistryAccessRevision {
+    pub session: u64,
+    pub contents: u64,
+    pub tags: u64,
+}
+
+/// Read-only access to the atomically committed registry state.
+///
+/// Pending configuration packets live outside this view. Holding the borrow
+/// therefore pins one committed revision in the same way vanilla hands a
+/// frozen `RegistryAccess` to its play packet codecs and consumers.
+#[derive(Debug, Clone, Copy)]
+pub struct FrozenRegistryAccess<'a> {
+    registries: &'a RegistrySet,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FrozenRegistryEntry<'a> {
+    pub holder_id: i32,
+    pub resource_id: &'a str,
+    pub source: RegistryEntrySource,
+    pub payload: RegistryEntryPayload<'a>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegistryEntryPayload<'a> {
+    Server {
+        has_data: bool,
+        raw_data: Option<&'a [u8]>,
+        nbt: Option<&'a NbtPayloadSummary>,
+    },
+    VanillaFallback,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResolvedRegistryEntry<'a> {
     pub holder_id: i32,
@@ -126,6 +163,7 @@ impl RegistrySet {
     pub fn vanilla_26_1() -> Self {
         Self {
             registries: Vec::new(),
+            revision: RegistryAccessRevision::default(),
             contents: BTreeMap::new(),
             tags: BTreeMap::new(),
             unresolved_tag_holders: BTreeMap::new(),
@@ -136,6 +174,10 @@ impl RegistrySet {
 
     pub fn block_state(&self, id: i32) -> Option<&super::BlockStateInfo> {
         self.block_states.by_id(id)
+    }
+
+    pub fn frozen_access(&self) -> FrozenRegistryAccess<'_> {
+        FrozenRegistryAccess { registries: self }
     }
 
     pub fn block_name_by_registry_id(&self, id: i32) -> Option<&str> {
@@ -337,6 +379,60 @@ impl RegistrySet {
             "minecraft:custom_stat" => Some(vanilla_custom_stat_by_resource_id(resource_id)?.id),
             _ => None,
         }
+    }
+}
+
+impl<'a> FrozenRegistryAccess<'a> {
+    pub fn revision(self) -> RegistryAccessRevision {
+        self.registries.revision
+    }
+
+    pub fn entry_by_holder_id(
+        self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<FrozenRegistryEntry<'a>> {
+        if let Some(contents) = self.registries.contents.get(registry) {
+            let entry = contents.entry_by_holder_id(holder_id)?;
+            return Some(FrozenRegistryEntry {
+                holder_id,
+                resource_id: entry.id.as_str(),
+                source: RegistryEntrySource::Server,
+                payload: RegistryEntryPayload::Server {
+                    has_data: entry.has_data,
+                    raw_data: entry.raw_data(),
+                    nbt: entry.nbt.as_ref(),
+                },
+            });
+        }
+        let resource_id = self
+            .registries
+            .vanilla_fallback_resource_id(registry, holder_id)?;
+        Some(FrozenRegistryEntry {
+            holder_id,
+            resource_id,
+            source: RegistryEntrySource::VanillaFallback,
+            payload: RegistryEntryPayload::VanillaFallback,
+        })
+    }
+
+    pub fn entry_by_resource_id(
+        self,
+        registry: &str,
+        resource_id: &str,
+    ) -> Option<FrozenRegistryEntry<'a>> {
+        let holder_id = self
+            .registries
+            .holder_id_by_resource_id(registry, resource_id)?;
+        self.entry_by_holder_id(registry, holder_id)
+    }
+
+    pub fn holder_ids_for_tag(self, registry: &str, tag: &str) -> Option<&'a [i32]> {
+        self.registries.holder_ids_for_tag(registry, tag)
+    }
+
+    pub fn unresolved_holder_ids_for_tag(self, registry: &str, tag: &str) -> Option<&'a [i32]> {
+        self.registries.unresolved_holder_ids_for_tag(registry, tag)
     }
 }
 

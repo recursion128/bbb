@@ -7,7 +7,7 @@ use std::{
     path::Path,
 };
 
-use crate::{FurnaceFuelRule, RegistryEntrySource};
+use crate::{FurnaceFuelRule, RegistryEntryPayload, RegistryEntrySource};
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
 #[test]
@@ -592,6 +592,84 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
     assert!(store
         .resolved_registry_entry_by_resource_id("minecraft:item", "minecraft:snowball")
         .is_none());
+}
+
+#[test]
+fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
+    let mut store = WorldStore::new();
+    assert_eq!(store.registry_access_revision(), Default::default());
+
+    store.begin_registry_configuration();
+    store.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![
+            RegistryPacketEntry::with_raw_data("example:typed", vec![0]),
+            RegistryPacketEntry::stub("example:known_pack_stub"),
+        ],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:damage_type".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:test".to_string(),
+                entries: vec![1, 4, 0],
+            }],
+        }],
+    });
+    assert_eq!(store.registry_access_revision(), Default::default());
+
+    store.finish_registry_configuration().unwrap();
+
+    let access = store.frozen_registry_access();
+    assert_eq!(access.revision().session, 0);
+    assert_eq!(access.revision().contents, 1);
+    assert_eq!(access.revision().tags, 1);
+    let typed = access
+        .entry_by_resource_id("minecraft:damage_type", "example:typed")
+        .unwrap();
+    assert_eq!(typed.holder_id, 0);
+    assert_eq!(typed.source, RegistryEntrySource::Server);
+    assert_eq!(
+        typed.payload,
+        RegistryEntryPayload::Server {
+            has_data: true,
+            raw_data: Some([0].as_slice()),
+            nbt: None,
+        }
+    );
+    assert_eq!(
+        access
+            .entry_by_holder_id("minecraft:damage_type", 1)
+            .unwrap()
+            .payload,
+        RegistryEntryPayload::Server {
+            has_data: false,
+            raw_data: None,
+            nbt: None,
+        }
+    );
+    assert_eq!(
+        access.holder_ids_for_tag("minecraft:damage_type", "example:test"),
+        Some([1, 0].as_slice())
+    );
+    assert_eq!(
+        access.unresolved_holder_ids_for_tag("minecraft:damage_type", "example:test"),
+        Some([4].as_slice())
+    );
+
+    store.reset_registry_session();
+    assert_eq!(store.registry_access_revision().session, 1);
+    assert_eq!(store.registry_access_revision().contents, 0);
+    assert_eq!(store.registry_access_revision().tags, 0);
+    assert_eq!(
+        store
+            .frozen_registry_access()
+            .entry_by_resource_id("minecraft:item", "minecraft:snowball")
+            .unwrap()
+            .payload,
+        RegistryEntryPayload::VanillaFallback
+    );
 }
 
 #[test]

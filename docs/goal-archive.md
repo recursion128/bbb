@@ -19129,3 +19129,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   null override, zero-length Display handlers, and the old/new minecart feature split. Direct local
   player and first-passenger root-boat updates retain local authority and only rebase the position
   codec.
+
+# 2026-07-18: Freeze session registry access foundation
+
+- Distinguished new-login registry reset from play reconfiguration using vanilla
+  `ClientHandshakePacketListenerImpl` versus `ClientPacketListener.handleConfigurationStart`
+  cookie construction, preventing transfer sessions from inheriting the previous server's holder
+  order while preserving the current frozen access during same-session reconfiguration.
+- Made configuration commits reject duplicate registry keys atomically like
+  `MappedRegistry.register`, and materialized network tags only after all contents arrive. Unknown
+  holder ids follow `TagNetworkSerialization.NetworkPayload.resolve` by staying out of the checked
+  tag view while remaining available as diagnostics.
+- Added a borrow-pinned `FrozenRegistryAccess` surface that exposes session/content/tag revisions,
+  server raw/NBT payloads, known-pack stubs, vanilla-fallback source identity, and resolved versus
+  unresolved tag holders without exposing pending configuration state.

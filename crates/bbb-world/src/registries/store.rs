@@ -28,7 +28,9 @@ impl WorldStore {
     /// two entry paths distinct so a transfer cannot inherit the previous
     /// server's holder order when the next server sends no registry contents.
     pub fn reset_registry_session(&mut self) {
+        let next_session = self.registries.revision.session.saturating_add(1);
         self.registries = super::RegistrySet::vanilla_26_1();
+        self.registries.revision.session = next_session;
         self.counters.last_registry_data_registry = None;
         self.counters.last_registry_data_entry_count = 0;
         self.counters.last_update_tags_registry_count = 0;
@@ -52,7 +54,9 @@ impl WorldStore {
             return Err(err);
         }
         materialize_pending_registry_tags(&self.registries, &mut pending);
-        if !pending.registries.is_empty() {
+        let contents_changed = !pending.registries.is_empty();
+        let tags_changed = contents_changed || !pending.tags.is_empty();
+        if contents_changed {
             for registry in pending.contents.keys() {
                 self.registries.tags.remove(registry);
                 self.registries.unresolved_tag_holders.remove(registry);
@@ -67,6 +71,12 @@ impl WorldStore {
         self.registries
             .unresolved_tag_holders
             .append(&mut pending.unresolved_tag_holders);
+        if contents_changed {
+            self.registries.revision.contents = self.registries.revision.contents.saturating_add(1);
+        }
+        if tags_changed {
+            self.registries.revision.tags = self.registries.revision.tags.saturating_add(1);
+        }
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
         self.items.refresh_furnace_fuel_item_ids(&self.registries);
@@ -135,6 +145,8 @@ impl WorldStore {
                     .entry(packet.name.clone())
                     .or_insert_with(|| RegistryContentState::new(packet.name.clone()))
                     .append_packet(&packet.entries);
+                self.registries.revision.contents =
+                    self.registries.revision.contents.saturating_add(1);
             }
             self.registries.registries.push(packet);
             self.sync_registry_counters();
@@ -143,6 +155,14 @@ impl WorldStore {
 
     pub fn registries(&self) -> &super::RegistrySet {
         &self.registries
+    }
+
+    pub fn frozen_registry_access(&self) -> super::FrozenRegistryAccess<'_> {
+        self.registries.frozen_access()
+    }
+
+    pub fn registry_access_revision(&self) -> super::RegistryAccessRevision {
+        self.registries.revision
     }
 
     pub fn registry_content(&self, registry: &str) -> Option<&RegistryContentState> {
@@ -178,8 +198,13 @@ impl WorldStore {
         registry: &str,
         holder_id: i32,
     ) -> Option<ResolvedRegistryEntry<'_>> {
-        self.registries
-            .resolved_entry_by_holder_id(registry, holder_id)
+        self.frozen_registry_access()
+            .entry_by_holder_id(registry, holder_id)
+            .map(|entry| ResolvedRegistryEntry {
+                holder_id: entry.holder_id,
+                resource_id: entry.resource_id,
+                source: entry.source,
+            })
     }
 
     pub fn registry_resource_ids_in_holder_order<'a>(
@@ -203,8 +228,13 @@ impl WorldStore {
         registry: &str,
         resource_id: &str,
     ) -> Option<ResolvedRegistryEntry<'_>> {
-        self.registries
-            .resolved_entry_by_resource_id(registry, resource_id)
+        self.frozen_registry_access()
+            .entry_by_resource_id(registry, resource_id)
+            .map(|entry| ResolvedRegistryEntry {
+                holder_id: entry.holder_id,
+                resource_id: entry.resource_id,
+                source: entry.source,
+            })
     }
 
     pub fn registry_holder_ids_for_tag(&self, registry: &str, tag: &str) -> Option<&[i32]> {
@@ -326,6 +356,7 @@ impl WorldStore {
             .map(|tag| tag.entries.len())
             .sum();
 
+        let has_registry_updates = !update.registries.is_empty();
         for registry in update.registries {
             let tags = registry
                 .tags
@@ -352,6 +383,9 @@ impl WorldStore {
         }
 
         if self.registries.pending.is_none() {
+            if has_registry_updates {
+                self.registries.revision.tags = self.registries.revision.tags.saturating_add(1);
+            }
             self.sync_registry_tag_counters();
             self.items.refresh_furnace_fuel_item_ids(&self.registries);
         }

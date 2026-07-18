@@ -77,16 +77,15 @@ Owner: `bbb-protocol`
   resource-id catalog now owns the serverbound tick-time subscription ID, but it
   does not implement the per-subscription value codecs. Bounded raw payload
   diagnostics are not typed subscription support.
-- Build the received configuration registry entries and tags into a frozen,
-  typed `RegistryAccess` on top of the checked holder-identity lookup: decode
-  each synchronized registry with its element codec, merge known-pack stubs,
+- Extend the frozen session `RegistryAccess` from checked holder identity, raw
+  payloads, and resolved tags into the complete typed runtime: decode each
+  synchronized registry with its element codec, merge known-pack stubs,
   replace resource-id-only entity-variant and derived audio projections with
-  typed element codecs, materialize the checked tag-resolution view in the
-  frozen lookup, extend the source-aware built-in fallback beyond the current
-  item/block/entity-type catalogs where a consumer requires it, apply pending
-  static tags and data-component initializers, and freeze typed lookup state.
-  Raw NBT summaries, narrow typed projections, individual checked tag queries,
-  and derived audio/variant registries are not that runtime. Complete the
+  typed element codecs, extend the source-aware built-in fallback beyond the
+  current item/block/entity-type catalogs where a consumer requires it, and
+  apply pending static tags plus data-component initializers before exposing
+  each typed revision. Raw NBT summaries, individual typed projections, and
+  derived audio/variant registries are not that complete runtime. Complete the
   non-death consumers of synchronized animal sound-variant payloads.
   Dimension-type direct visual environment
   attributes now drive custom fog/sky/water-fog colors and distances plus lightmap tint/factor
