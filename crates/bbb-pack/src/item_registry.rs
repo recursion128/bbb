@@ -36,6 +36,22 @@ pub enum ItemMountBodyArmorKind {
     Nautilus,
 }
 
+/// One vanilla `DataComponentInitializers` rule whose value depends on the
+/// frozen registry/tag generation rather than only on `Items.java` literals.
+///
+/// The item catalog owns these source rules. `bbb-world` resolves them against
+/// its candidate `FrozenRegistryAccess`; this type deliberately contains no
+/// holder ids or world-owned state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "component", rename_all = "snake_case")]
+pub enum RegistryDependentItemComponentInitializer {
+    DamageResistant { tag: String },
+    JukeboxPlayable { song: String },
+    BlocksAttacks,
+    ProvidesBannerPatterns { tag: String },
+    Instrument { instrument: String },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemMiningRule {
     pub block_names: Vec<String>,
@@ -61,6 +77,9 @@ pub struct ItemRegistryCatalog {
     default_item_name_translation_keys: BTreeMap<String, String>,
     #[serde(default)]
     default_component_type_ids: BTreeMap<String, BTreeSet<i32>>,
+    #[serde(default)]
+    registry_dependent_component_initializers:
+        BTreeMap<String, Vec<RegistryDependentItemComponentInitializer>>,
     #[serde(default)]
     block_items: BTreeSet<String>,
     #[serde(default)]
@@ -301,6 +320,7 @@ impl ItemRegistryCatalog {
         let mut max_stack_size = BTreeMap::new();
         let mut default_item_name_translation_keys = BTreeMap::new();
         let mut default_component_type_ids = BTreeMap::new();
+        let mut registry_dependent_component_initializers = BTreeMap::new();
         let mut block_items = BTreeSet::new();
         let mut block_item_resource_ids = BTreeMap::new();
         let mut primary_block_resource_ids = BTreeMap::new();
@@ -357,6 +377,9 @@ impl ItemRegistryCatalog {
                 default_item_name_for_declaration(kind, expression).with_context(source_context)?;
             let default_components = default_component_type_ids_for_declaration(expression)
                 .with_context(source_context)?;
+            let registry_component_initializers =
+                registry_dependent_component_initializers_for_declaration(expression, &ids)
+                    .with_context(source_context)?;
             let stack_size =
                 max_stack_size_for_declaration(expression).with_context(source_context)?;
             let equipment_slot =
@@ -414,6 +437,10 @@ impl ItemRegistryCatalog {
                     default_item_name.translation_key(resource_id),
                 );
                 default_component_type_ids.insert(resource_id.clone(), default_components.clone());
+                if !registry_component_initializers.is_empty() {
+                    registry_dependent_component_initializers
+                        .insert(resource_id.clone(), registry_component_initializers.clone());
+                }
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
                 }
@@ -553,6 +580,7 @@ impl ItemRegistryCatalog {
             max_stack_size,
             default_item_name_translation_keys,
             default_component_type_ids,
+            registry_dependent_component_initializers,
             block_items,
             block_item_resource_ids,
             primary_block_resource_ids,
@@ -643,6 +671,22 @@ impl ItemRegistryCatalog {
     pub fn default_component_type_ids(&self, resource_id: &str) -> Option<&BTreeSet<i32>> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_component_type_ids.get(&resource_id)
+    }
+
+    /// Fixed item protocol ids paired with the source initializer rules that
+    /// must be rebuilt against each committed dynamic-registry revision.
+    pub fn registry_dependent_component_initializers_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>> {
+        self.registry_dependent_component_initializers
+            .iter()
+            .filter_map(|(resource_id, initializers)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, initializers.clone()))
+            })
+            .collect()
     }
 
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
@@ -1022,6 +1066,94 @@ fn default_component_type_ids_for_declaration(
     }
 
     Ok(type_ids)
+}
+
+fn registry_dependent_component_initializers_for_declaration(
+    expression: &GeneratedJavaExpression,
+    resource_ids: &[String],
+) -> Result<Vec<RegistryDependentItemComponentInitializer>> {
+    let mut initializers = Vec::new();
+    if expression.call("fireResistant").is_some() {
+        initializers.push(RegistryDependentItemComponentInitializer::DamageResistant {
+            tag: "minecraft:is_fire".to_string(),
+        });
+    }
+    if let Some(call) = expression.call("jukeboxPlayable") {
+        call.arguments
+            .first()
+            .and_then(|argument| argument.field_constant("JukeboxSongs"))
+            .ok_or_else(|| anyhow::anyhow!("jukeboxPlayable requires a JukeboxSongs key"))?;
+        let [item_id] = resource_ids else {
+            return Err(anyhow::anyhow!(
+                "jukeboxPlayable declaration must register exactly one item"
+            ));
+        };
+        let song = item_id
+            .strip_prefix("minecraft:music_disc_")
+            .ok_or_else(|| anyhow::anyhow!("jukeboxPlayable item has unexpected id {item_id}"))?;
+        initializers.push(RegistryDependentItemComponentInitializer::JukeboxPlayable {
+            song: format!("minecraft:{song}"),
+        });
+    }
+
+    for call in expression
+        .calls()
+        .filter(|call| call.name.as_deref() == Some("delayedComponent"))
+    {
+        let Some(component) = call
+            .arguments
+            .first()
+            .and_then(|argument| argument.field_constant("DataComponents"))
+        else {
+            continue;
+        };
+        let initializer = match component {
+            "DAMAGE_RESISTANT" => RegistryDependentItemComponentInitializer::DamageResistant {
+                tag: required_tag_resource_id(call, "DamageTypeTags")?,
+            },
+            "BLOCKS_ATTACKS" => RegistryDependentItemComponentInitializer::BlocksAttacks,
+            "PROVIDES_BANNER_PATTERNS" => {
+                let constant = required_field_constant(call, "BannerPatternTags")?;
+                let suffix = constant
+                    .strip_prefix("PATTERN_ITEM_")
+                    .ok_or_else(|| anyhow::anyhow!("unknown banner-pattern item tag {constant}"))?
+                    .to_ascii_lowercase();
+                RegistryDependentItemComponentInitializer::ProvidesBannerPatterns {
+                    tag: format!("minecraft:pattern_item/{suffix}"),
+                }
+            }
+            "INSTRUMENT" => RegistryDependentItemComponentInitializer::Instrument {
+                instrument: required_registry_key_resource_id(call, "Instruments")?,
+            },
+            _ => continue,
+        };
+        initializers.push(initializer);
+    }
+    Ok(initializers)
+}
+
+fn required_tag_resource_id(expression: &GeneratedJavaExpression, owner: &str) -> Result<String> {
+    Ok(format!(
+        "minecraft:{}",
+        required_field_constant(expression, owner)?.to_ascii_lowercase()
+    ))
+}
+
+fn required_registry_key_resource_id(
+    expression: &GeneratedJavaExpression,
+    owner: &str,
+) -> Result<String> {
+    required_tag_resource_id(expression, owner)
+}
+
+fn required_field_constant<'a>(
+    expression: &'a GeneratedJavaExpression,
+    owner: &str,
+) -> Result<&'a str> {
+    expression
+        .field_accesses()
+        .find_map(|field| field.field_constant(owner))
+        .ok_or_else(|| anyhow::anyhow!("missing {owner} field reference"))
 }
 
 fn applies_tool_material_defaults(expression: &GeneratedJavaExpression) -> bool {
@@ -2070,6 +2202,46 @@ mod tests {
                 item.resource_id
             );
         }
+    }
+
+    #[test]
+    fn extracts_all_registry_dependent_vanilla_item_initializers() {
+        let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
+        let initializers = catalog.registry_dependent_component_initializers_by_protocol_id();
+        assert_eq!(initializers.len(), 50);
+        assert_eq!(initializers.values().map(Vec::len).sum::<usize>(), 50);
+
+        let item = |resource_id| catalog.protocol_id(resource_id).unwrap();
+        assert_eq!(
+            initializers[&item("minecraft:nether_star")],
+            vec![RegistryDependentItemComponentInitializer::DamageResistant {
+                tag: "minecraft:is_explosion".to_string(),
+            }]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:music_disc_13")],
+            vec![RegistryDependentItemComponentInitializer::JukeboxPlayable {
+                song: "minecraft:13".to_string(),
+            }]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:shield")],
+            vec![RegistryDependentItemComponentInitializer::BlocksAttacks]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:field_masoned_banner_pattern")],
+            vec![
+                RegistryDependentItemComponentInitializer::ProvidesBannerPatterns {
+                    tag: "minecraft:pattern_item/field_masoned".to_string(),
+                }
+            ]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:goat_horn")],
+            vec![RegistryDependentItemComponentInitializer::Instrument {
+                instrument: "minecraft:ponder_goat_horn".to_string(),
+            }]
+        );
     }
 
     #[test]

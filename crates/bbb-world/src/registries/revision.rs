@@ -7,6 +7,7 @@ use bbb_protocol::registry_data_types::{
 use super::dimension_types::{decode_dimension_type_client_projection, DIMENSION_TYPE_REGISTRY};
 use super::element_value::decode_known_pack_element;
 use super::game_tests::{decode_test_environment, TEST_ENVIRONMENT_REGISTRY};
+use super::item_component_initializers::build_registry_dependent_item_defaults;
 use super::sound_variants::{
     decode_sound_variant_definition, validate_sound_variant_references, CAT_SOUND_VARIANT_REGISTRY,
     CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY,
@@ -28,6 +29,7 @@ use super::{RegistryContentState, RegistryPacketEntry, RegistrySet, RegistryTagS
 /// projection can leak out of a failed configuration batch.
 pub(super) struct RegistryRevisionCandidate {
     registries: RegistrySet,
+    item_defaults: BTreeMap<i32, bbb_protocol::packets::DataComponentPatchSummary>,
 }
 
 pub(super) struct RegistryCandidateError {
@@ -42,6 +44,10 @@ impl RegistryRevisionCandidate {
         known_pack_source: Option<&bbb_pack::KnownPackDataSource>,
         known_pack_source_error: Option<&str>,
         selected_any_known_pack: bool,
+        item_component_initializer_rules: &BTreeMap<
+            i32,
+            Vec<bbb_pack::RegistryDependentItemComponentInitializer>,
+        >,
     ) -> Result<Self, RegistryCandidateError> {
         let replaces_synchronized_contents = !pending.registries.is_empty();
         if replaces_synchronized_contents {
@@ -87,11 +93,28 @@ impl RegistryRevisionCandidate {
             })?;
         }
 
-        Ok(Self { registries })
+        let item_defaults = build_registry_dependent_item_defaults(
+            item_component_initializer_rules,
+            registries.frozen_access(),
+        )
+        .map_err(|error| RegistryCandidateError {
+            stage: "registry_configuration_item_components",
+            error,
+        })?;
+
+        Ok(Self {
+            registries,
+            item_defaults,
+        })
     }
 
-    pub(super) fn into_registry_set(self) -> RegistrySet {
-        self.registries
+    pub(super) fn into_parts(
+        self,
+    ) -> (
+        RegistrySet,
+        BTreeMap<i32, bbb_protocol::packets::DataComponentPatchSummary>,
+    ) {
+        (self.registries, self.item_defaults)
     }
 }
 

@@ -96,7 +96,7 @@ pub(crate) fn first_person_item_models(
             InteractionHand::OffHand => off_stack,
         };
         if !stack.is_some_and(|stack| {
-            first_person_stack_supported_use_animation(stack, item_runtime).is_some()
+            first_person_stack_supported_use_animation(world, stack, item_runtime).is_some()
         }) {
             return models;
         }
@@ -213,7 +213,7 @@ pub(crate) fn first_person_item_models(
             first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
         let using_this_hand = using_hand == Some(hand);
         if let Some(use_animation) = using_this_hand
-            .then(|| first_person_stack_supported_use_animation(stack, item_runtime))
+            .then(|| first_person_stack_supported_use_animation(world, stack, item_runtime))
             .flatten()
         {
             match use_animation {
@@ -565,6 +565,7 @@ fn supported_first_person_item_stack(
 }
 
 pub(super) fn first_person_stack_block_use_kind(
+    world: &WorldStore,
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> Option<FirstPersonBlockUseKind> {
@@ -581,6 +582,11 @@ pub(super) fn first_person_stack_block_use_kind(
     {
         return None;
     }
+    if !world
+        .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
+    {
+        return None;
+    }
     let is_shield = item_runtime
         .item_resource_id(item_id)
         .is_some_and(|resource_id| {
@@ -592,11 +598,11 @@ pub(super) fn first_person_stack_block_use_kind(
     if is_shield {
         return Some(FirstPersonBlockUseKind::Shield);
     }
-    first_person_stack_has_added_component(stack, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
-        .then_some(FirstPersonBlockUseKind::NonShieldBlock)
+    Some(FirstPersonBlockUseKind::NonShieldBlock)
 }
 
 pub(super) fn first_person_stack_supported_use_animation(
+    world: &WorldStore,
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> Option<FirstPersonUseAnimation> {
@@ -683,7 +689,8 @@ pub(super) fn first_person_stack_supported_use_animation(
             use_duration_ticks: VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS,
         });
     }
-    first_person_stack_block_use_kind(stack, item_runtime).map(FirstPersonUseAnimation::Block)
+    first_person_stack_block_use_kind(world, stack, item_runtime)
+        .map(FirstPersonUseAnimation::Block)
 }
 
 fn first_person_stack_resource_id<'a>(

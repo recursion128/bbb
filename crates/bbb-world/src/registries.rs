@@ -12,6 +12,7 @@ mod environment_attributes;
 mod game_tests;
 mod instrument_values;
 mod instruments;
+mod item_component_initializers;
 mod jukebox_songs;
 mod painting_variants;
 mod revision;

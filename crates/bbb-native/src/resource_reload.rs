@@ -9,7 +9,7 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
-    FurnaceFuelSourceRule, PackRoots,
+    FurnaceFuelSourceRule, PackRoots, RegistryDependentItemComponentInitializer,
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
@@ -319,6 +319,8 @@ fn upload_item_atlases(
 }
 
 pub(crate) struct ItemRuntimeWorldDefaults {
+    registry_dependent_component_initializers:
+        BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
     max_stack_sizes: BTreeMap<i32, i32>,
     max_damage: BTreeMap<i32, i32>,
     crafting_remainders: BTreeMap<i32, i32>,
@@ -380,6 +382,8 @@ impl ItemRuntimeWorldDefaults {
             }
         };
         Self {
+            registry_dependent_component_initializers: items
+                .registry_dependent_component_initializers_by_protocol_id(),
             max_stack_sizes: items.item_max_stack_sizes_by_protocol_id(),
             max_damage: items.item_max_damage_by_protocol_id(),
             crafting_remainders: items.item_crafting_remainders_by_protocol_id(),
@@ -414,6 +418,15 @@ impl ItemRuntimeWorldDefaults {
     }
 
     pub(crate) fn apply(self, world: &mut WorldStore) {
+        world.set_registry_dependent_item_component_initializers(
+            self.registry_dependent_component_initializers,
+        );
+        if let Err(error) = world.rebuild_registry_dependent_item_defaults() {
+            tracing::debug!(
+                ?error,
+                "registry-dependent item defaults await a complete registry/tag revision"
+            );
+        }
         world.set_default_item_max_stack_sizes(self.max_stack_sizes);
         world.set_default_item_max_damage(self.max_damage);
         world.set_default_item_crafting_remainders(self.crafting_remainders);

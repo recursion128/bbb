@@ -46,6 +46,7 @@ fn fixture_value(item_ids: &[&str]) -> serde_json::Value {
         "max_stack_size",
         "default_item_name_translation_keys",
         "default_component_type_ids",
+        "registry_dependent_component_initializers",
         "default_equipment_slots",
         "humanoid_armor_assets",
         "equippable_assets",
@@ -75,6 +76,10 @@ fn fixture_value(item_ids: &[&str]) -> serde_json::Value {
                     resource_id.to_string(),
                     vanilla[field]["minecraft:stick"].clone(),
                 );
+            } else if field == "registry_dependent_component_initializers" {
+                if let Some(value) = vanilla[field].get(resource_id) {
+                    values.insert(resource_id.to_string(), value.clone());
+                }
             } else if field == "default_kinetic_weapons" {
                 if let Some(value) = vanilla[field].get(resource_id) {
                     values.insert(resource_id.to_string(), value.clone());
@@ -101,6 +106,7 @@ fn copy_profile(catalog: &mut serde_json::Value, target_item_id: &str, vanilla_i
         "max_damage",
         "max_stack_size",
         "default_component_type_ids",
+        "registry_dependent_component_initializers",
         "default_equipment_slots",
         "humanoid_armor_assets",
         "equippable_assets",

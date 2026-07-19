@@ -247,12 +247,11 @@ pub(super) fn entity_hand_swing_is_none(
 /// Whether the item in the given hand has the `BLOCK` use-animation (vanilla `ItemStack.getUseAnimation() ==
 /// ItemUseAnimation.BLOCK`, returned by `Item.getUseAnimation` for a non-consumable item carrying
 /// `DataComponents.BLOCKS_ATTACKS`). While the entity raises it, `HumanoidModel.poseRightArm`/`poseLeftArm`
-/// `poseBlockingArm` tucks that arm's blocking item forward. The vanilla shield is detected by resolved item
-/// id because its component is a prototype default; datapack/patch-granted `blocks_attacks` is detected from
-/// `added_type_ids` and does not need the item registry.
+/// `poseBlockingArm` tucks that arm's blocking item forward. Prototype defaults
+/// and explicit stack patches are resolved through the same world generation.
 pub(super) fn entity_hand_blocks_attacks(
     world: &WorldStore,
-    item_runtime: Option<&NativeItemRuntime>,
+    _item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
@@ -268,26 +267,7 @@ pub(super) fn entity_hand_blocks_attacks(
     ) {
         return false;
     }
-    if component_patch_has_added_component(
-        &stack.component_patch,
-        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-    ) {
-        return true;
-    }
-    if stack
-        .component_patch
-        .removed_type_ids
-        .contains(&VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
-    {
-        return false;
-    }
-    entity_hand_is_vanilla_item_type(
-        world,
-        item_runtime,
-        entity_id,
-        off_hand,
-        item_types::VANILLA_ITEM_SHIELD_ID,
-    )
+    world.item_stack_has_effective_component(&stack, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
 }
 
 /// Whether the item in the given hand is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)` for the

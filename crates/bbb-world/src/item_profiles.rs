@@ -8,9 +8,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
+use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::item_types::{
     VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
 };
+use bbb_protocol::packets::DataComponentPatchSummary;
 
 use crate::{
     ItemAttackRange, ItemEquipmentSlot, ItemUseEffects, MountArmorSlotKind,
@@ -19,6 +21,15 @@ use crate::{
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ItemProfiles {
+    /// Fixed `Items.java` initializer rules. Their holder/tag values are
+    /// resolved only by the registry candidate owner below.
+    #[serde(default)]
+    pub(crate) registry_dependent_component_initializer_rules:
+        BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
+    /// Component values resolved from the same frozen registry revision that
+    /// is currently committed in `WorldStore`.
+    #[serde(default)]
+    pub(crate) registry_dependent_item_defaults: BTreeMap<i32, DataComponentPatchSummary>,
     #[serde(default)]
     pub(crate) default_item_max_stack_sizes: BTreeMap<i32, i32>,
     #[serde(default)]
@@ -100,6 +111,77 @@ pub(crate) fn clamp_vanilla_item_max_stack_size(size: i32) -> i32 {
 }
 
 impl ItemProfiles {
+    pub(crate) fn set_registry_dependent_component_initializer_rules(
+        &mut self,
+        rules: BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
+    ) {
+        self.registry_dependent_component_initializer_rules = rules
+            .into_iter()
+            .filter(|(item_id, rules)| *item_id >= 0 && !rules.is_empty())
+            .collect();
+        self.registry_dependent_item_defaults.clear();
+    }
+
+    pub(crate) fn commit_registry_dependent_item_defaults(
+        &mut self,
+        defaults: BTreeMap<i32, DataComponentPatchSummary>,
+    ) {
+        self.registry_dependent_item_defaults = defaults;
+    }
+
+    pub(crate) fn clear_registry_dependent_item_defaults(&mut self) {
+        self.registry_dependent_item_defaults.clear();
+    }
+
+    pub(crate) fn effective_component_patch(
+        &self,
+        item_id: i32,
+        patch: &DataComponentPatchSummary,
+    ) -> Option<DataComponentPatchSummary> {
+        let defaults = self.registry_dependent_item_defaults.get(&item_id)?;
+        let mut effective = patch.clone();
+        let mut changed = false;
+        for component_id in &defaults.added_type_ids {
+            if patch.removed_type_ids.contains(component_id)
+                || patch.added_type_ids.contains(component_id)
+            {
+                continue;
+            }
+            effective.added_type_ids.push(*component_id);
+            match *component_id {
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => {
+                    effective.damage_resistant_type_registry_ids =
+                        defaults.damage_resistant_type_registry_ids.clone();
+                    effective.damage_resistant_type_tag =
+                        defaults.damage_resistant_type_tag.clone();
+                }
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
+                    effective.blocks_attacks = defaults.blocks_attacks.clone();
+                }
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
+                    effective.instrument_id = defaults.instrument_id;
+                }
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
+                    effective.jukebox_song_id = defaults.jukebox_song_id;
+                }
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
+                    effective.provides_banner_pattern_registry_ids =
+                        defaults.provides_banner_pattern_registry_ids.clone();
+                    effective.provides_banner_pattern_tag =
+                        defaults.provides_banner_pattern_tag.clone();
+                }
+                _ => continue,
+            }
+            changed = true;
+        }
+        if changed {
+            effective.added = effective.added_type_ids.len();
+            Some(effective)
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn set_default_item_max_stack_sizes(&mut self, max_stack_sizes: BTreeMap<i32, i32>) {
         self.default_item_max_stack_sizes = max_stack_sizes
             .into_iter()

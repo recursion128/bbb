@@ -10431,6 +10431,8 @@ fn hud_item_tooltip_lines(
     advanced: bool,
     creative: bool,
 ) -> Option<Vec<HudInventoryTooltipLine>> {
+    let effective_item = world.effective_item_stack(item);
+    let item = effective_item.as_ref();
     let map_data = item
         .component_patch
         .map_id

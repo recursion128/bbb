@@ -14,6 +14,7 @@ use crate::{
     RegistryEntryPayload, RegistryEntrySource,
 };
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
+use bbb_pack::RegistryDependentItemComponentInitializer;
 
 fn record_minimal_non_empty_synchronized_registries(
     store: &mut WorldStore,
@@ -1751,6 +1752,65 @@ fn registered_typed_codec_failure_rejects_candidate_atomically() {
             .as_ref()
             .map(|error| error.source.as_str()),
         Some("registry_configuration_typed_values")
+    );
+}
+
+#[test]
+fn component_initializer_failure_keeps_registry_revision_and_item_defaults_atomic() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:old")],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:damage_type".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:is_fire".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+    store.set_registry_dependent_item_component_initializers(BTreeMap::from([(
+        7,
+        vec![RegistryDependentItemComponentInitializer::DamageResistant {
+            tag: "minecraft:is_fire".to_string(),
+        }],
+    )]));
+    store.rebuild_registry_dependent_item_defaults().unwrap();
+    let active_revision = store.registry_access_revision();
+    let stack = bbb_protocol::packets::ItemStackSummary {
+        item_id: Some(7),
+        count: 1,
+        component_patch: Default::default(),
+    };
+    assert_eq!(
+        store
+            .effective_item_stack(&stack)
+            .component_patch
+            .damage_resistant_type_registry_ids,
+        vec![0]
+    );
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:item");
+    assert_eq!(error.validator, "DataComponentInitializers.apply");
+    assert_eq!(
+        store.registry_access_revision(),
+        active_revision,
+        "failed initializer must not publish the candidate holder order"
+    );
+    assert_eq!(
+        store
+            .effective_item_stack(&stack)
+            .component_patch
+            .damage_resistant_type_registry_ids,
+        vec![0],
+        "failed initializer must retain the previous prototype component generation"
     );
 }
 

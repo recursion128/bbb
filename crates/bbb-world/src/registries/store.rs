@@ -38,6 +38,7 @@ impl WorldStore {
         self.counters.last_update_tags_total_value_count = 0;
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
+        self.items.clear_registry_dependent_item_defaults();
         self.items.refresh_furnace_fuel_item_ids(&self.registries);
     }
 
@@ -56,12 +57,16 @@ impl WorldStore {
             self.selected_known_pack_data.as_ref(),
             self.known_pack_data_error.as_deref(),
             !self.features.known_packs.selected.is_empty(),
+            &self.items.registry_dependent_component_initializer_rules,
         )
         .map_err(|failure| {
             self.record_apply_error(failure.stage, &failure.error);
             failure.error
         })?;
-        self.registries = candidate.into_registry_set();
+        let (registries, item_defaults) = candidate.into_parts();
+        self.registries = registries;
+        self.items
+            .commit_registry_dependent_item_defaults(item_defaults);
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
         self.items.refresh_furnace_fuel_item_ids(&self.registries);

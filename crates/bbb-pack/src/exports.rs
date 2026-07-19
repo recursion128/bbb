@@ -30,6 +30,7 @@ pub use crate::item_registry::{
     ItemAttackRange, ItemConsumable, ItemDefaultAttributeModifier, ItemEquipmentSlot,
     ItemKineticWeaponDefaults, ItemMiningProfile, ItemMiningRule, ItemMountBodyArmorKind,
     ItemRegistryCatalog, ItemUseAnimation, ItemUseEffects,
+    RegistryDependentItemComponentInitializer,
 };
 pub use crate::jukebox_song_registry::{JukeboxSongRegistry, JukeboxSongRegistryEntry};
 pub use crate::known_packs::{KnownPackDataSource, KnownPacksManager};

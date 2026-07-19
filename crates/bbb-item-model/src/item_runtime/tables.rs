@@ -220,6 +220,15 @@ pub(super) fn world_item_mining_rule(rule: &PackItemMiningRule) -> WorldItemMini
 }
 
 impl NativeItemRuntime {
+    pub fn registry_dependent_component_initializers_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, Vec<bbb_pack::RegistryDependentItemComponentInitializer>> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::registry_dependent_component_initializers_by_protocol_id)
+            .unwrap_or_default()
+    }
+
     pub fn map_background_textures(&self) -> &[FirstPersonMapBackgroundTexture] {
         &self.map_background_textures
     }

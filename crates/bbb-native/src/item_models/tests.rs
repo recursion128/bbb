@@ -9,7 +9,8 @@ use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
     DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent,
     EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, RegistryData, RegistryDataEntry,
-    SetEntityData, SetEquipment, SetPlayerInventory, SwingAnimationSummary, Vec3d,
+    RegistryTags, SetEntityData, SetEquipment, SetPlayerInventory, SwingAnimationSummary,
+    TagNetworkPayload, UpdateTags, Vec3d,
 };
 use bbb_renderer::{
     EntityDefaultPlayerSkin, EntityPlayerSkin, ParticleItemOptionState, PlayerModelPartVisibility,
@@ -1795,7 +1796,7 @@ fn first_person_item_models_apply_block_use_pose_for_shield_and_blocks_attacks()
         eye_height: CameraPose::STANDING_EYE_HEIGHT,
     });
 
-    let mut shield_world = WorldStore::new();
+    let mut shield_world = world_with_item_runtime_defaults(&item_runtime);
     shield_world.apply_set_player_inventory(SetPlayerInventory {
         slot: 0,
         item: shield,
@@ -1856,7 +1857,7 @@ fn first_person_item_models_apply_block_use_pose_for_shield_and_blocks_attacks()
     );
 
     assert_eq!(
-        first_person_stack_block_use_kind(&consumable_guard, &item_runtime),
+        first_person_stack_block_use_kind(&WorldStore::new(), &consumable_guard, &item_runtime),
         None,
         "CONSUMABLE wins over BLOCKS_ATTACKS in Item.getUseAnimation"
     );
@@ -2024,13 +2025,14 @@ fn first_person_item_models_apply_custom_consumable_non_eat_use_animations() {
         1.6,
     );
     assert_eq!(
-        first_person_stack_supported_use_animation(&snack_bow, &item_runtime),
+        first_person_stack_supported_use_animation(&WorldStore::new(), &snack_bow, &item_runtime),
         Some(FirstPersonUseAnimation::Bow {
             use_duration_ticks: 32.0,
         })
     );
     assert_eq!(
         first_person_stack_supported_use_animation(
+            &WorldStore::new(),
             &first_person_test_consumable_stack(
                 &item_runtime,
                 "minecraft:snack",
@@ -2045,6 +2047,7 @@ fn first_person_item_models_apply_custom_consumable_non_eat_use_animations() {
     );
     assert_eq!(
         first_person_stack_supported_use_animation(
+            &WorldStore::new(),
             &first_person_test_consumable_stack(
                 &item_runtime,
                 "minecraft:snack",
@@ -2059,6 +2062,7 @@ fn first_person_item_models_apply_custom_consumable_non_eat_use_animations() {
     );
     assert_eq!(
         first_person_stack_supported_use_animation(
+            &WorldStore::new(),
             &first_person_test_consumable_stack(
                 &item_runtime,
                 "minecraft:snack",
@@ -2077,6 +2081,7 @@ fn first_person_item_models_apply_custom_consumable_non_eat_use_animations() {
     ] {
         assert_eq!(
             first_person_stack_supported_use_animation(
+                &WorldStore::new(),
                 &first_person_test_consumable_stack(
                     &item_runtime,
                     "minecraft:snack",
@@ -2091,6 +2096,7 @@ fn first_person_item_models_apply_custom_consumable_non_eat_use_animations() {
     }
     assert_eq!(
         first_person_stack_supported_use_animation(
+            &WorldStore::new(),
             &first_person_test_consumable_stack(
                 &item_runtime,
                 "minecraft:snack",
@@ -2236,7 +2242,11 @@ fn first_person_item_models_apply_brush_use_pose() {
         animation: ItemUseAnimationSummary::Eat,
     });
     assert_eq!(
-        first_person_stack_supported_use_animation(&edible_brush, &item_runtime),
+        first_person_stack_supported_use_animation(
+            &WorldStore::new(),
+            &edible_brush,
+            &item_runtime
+        ),
         Some(FirstPersonUseAnimation::Brush {
             use_duration_ticks: VANILLA_BRUSH_USE_DURATION_TICKS,
         }),
@@ -2304,7 +2314,11 @@ fn first_person_item_models_apply_bundle_use_swing() {
         animation: ItemUseAnimationSummary::Eat,
     });
     assert_eq!(
-        first_person_stack_supported_use_animation(&edible_bundle, &item_runtime),
+        first_person_stack_supported_use_animation(
+            &WorldStore::new(),
+            &edible_bundle,
+            &item_runtime
+        ),
         Some(FirstPersonUseAnimation::Bundle),
         "BundleItem.getUseAnimation overrides stack CONSUMABLE data"
     );
@@ -2367,7 +2381,11 @@ fn first_person_item_models_apply_trident_use_pose() {
         animation: ItemUseAnimationSummary::Eat,
     });
     assert_eq!(
-        first_person_stack_supported_use_animation(&edible_trident, &item_runtime),
+        first_person_stack_supported_use_animation(
+            &WorldStore::new(),
+            &edible_trident,
+            &item_runtime
+        ),
         Some(FirstPersonUseAnimation::Trident {
             use_duration_ticks: VANILLA_TRIDENT_USE_DURATION_TICKS,
         }),
@@ -2440,7 +2458,7 @@ fn first_person_item_models_apply_bow_use_pose_and_hand_selection() {
         animation: ItemUseAnimationSummary::Eat,
     });
     assert_eq!(
-        first_person_stack_supported_use_animation(&edible_bow, &item_runtime),
+        first_person_stack_supported_use_animation(&WorldStore::new(), &edible_bow, &item_runtime),
         Some(FirstPersonUseAnimation::Bow {
             use_duration_ticks: VANILLA_BOW_USE_DURATION_TICKS,
         }),
@@ -2572,7 +2590,11 @@ fn first_person_item_models_apply_crossbow_use_and_charged_pose() {
         animation: ItemUseAnimationSummary::Eat,
     });
     assert_eq!(
-        first_person_stack_supported_use_animation(&edible_crossbow, &item_runtime),
+        first_person_stack_supported_use_animation(
+            &WorldStore::new(),
+            &edible_crossbow,
+            &item_runtime
+        ),
         Some(FirstPersonUseAnimation::Crossbow {
             use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
             charge_duration_ticks: VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
@@ -2673,7 +2695,11 @@ fn first_person_stack_supported_use_animation_resolves_spear_kinetic_weapon() {
         component_patch: DataComponentPatchSummary::default(),
     };
     assert_eq!(
-        first_person_stack_supported_use_animation(&wooden_spear, &item_runtime),
+        first_person_stack_supported_use_animation(
+            &WorldStore::new(),
+            &wooden_spear,
+            &item_runtime
+        ),
         Some(FirstPersonUseAnimation::Spear {
             kinetic_weapon,
             use_duration_ticks: VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS,
@@ -2686,7 +2712,11 @@ fn first_person_stack_supported_use_animation_resolves_spear_kinetic_weapon() {
         .removed_type_ids
         .push(VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID);
     assert_eq!(
-        first_person_stack_supported_use_animation(&removed_kinetic, &item_runtime),
+        first_person_stack_supported_use_animation(
+            &WorldStore::new(),
+            &removed_kinetic,
+            &item_runtime
+        ),
         None,
         "removing the prototype KINETIC_WEAPON component disables vanilla SPEAR use"
     );
@@ -2698,7 +2728,7 @@ fn first_person_stack_supported_use_animation_resolves_spear_kinetic_weapon() {
         1.6,
     );
     assert_eq!(
-        first_person_stack_supported_use_animation(&snack_spear, &item_runtime),
+        first_person_stack_supported_use_animation(&WorldStore::new(), &snack_spear, &item_runtime),
         None,
         "generic SPEAR consumables need readable kinetic weapon data"
     );
@@ -2710,7 +2740,11 @@ fn first_person_stack_supported_use_animation_resolves_spear_kinetic_weapon() {
         1.6,
     );
     assert_eq!(
-        first_person_stack_supported_use_animation(&wooden_spear_consumable, &item_runtime),
+        first_person_stack_supported_use_animation(
+            &WorldStore::new(),
+            &wooden_spear_consumable,
+            &item_runtime
+        ),
         Some(FirstPersonUseAnimation::Spear {
             kinetic_weapon,
             use_duration_ticks: 32.0,
@@ -4403,6 +4437,21 @@ fn write_flat_item_runtime_fixture(root: &Path, item_ids: &[&str]) {
             &[(64 + index * 40) as u8, 80, 120, 255],
         );
     }
+}
+
+fn world_with_item_runtime_defaults(item_runtime: &NativeItemRuntime) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:damage_type".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:bypasses_shield".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+    crate::resource_reload::apply_item_runtime_world_defaults(item_runtime, &mut world);
+    world
 }
 
 fn write_default_consumable_item_runtime_fixture(root: &Path, item_id: &str) {
