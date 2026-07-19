@@ -91,6 +91,9 @@ fi
 if [ -z "$live_reason" ] && ! command -v timeout >/dev/null 2>&1; then
   live_reason="timeout is unavailable for the delegated status probe"
 fi
+if [ -z "$live_reason" ] && ! command -v mkfifo >/dev/null 2>&1; then
+  live_reason="mkfifo is unavailable for the persistent server command channel"
+fi
 
 client_bin=${BBB_PLAYABLE_CLIENT_BIN:-}
 if [ -z "$client_bin" ]; then
@@ -150,6 +153,10 @@ client_log="$artifact_dir/client.log"
 status_json="$artifact_dir/status.json"
 status_raw_json="$artifact_dir/status-raw.json"
 evidence_json="$artifact_dir/evidence.json"
+server_command="$artifact_dir/server-command.fifo"
+server_pack_dir="$artifact_dir/server-pack-http"
+server_pack_zip="$server_pack_dir/lifecycle-pack.zip"
+server_pack_cache="$artifact_dir/server-pack-cache"
 mkdir -p "$server_dir" "$world_dir"
 
 server_port=${BBB_PLAYABLE_PORT:-}
@@ -160,6 +167,21 @@ control_port=${BBB_PLAYABLE_CONTROL_PORT:-}
 if [ -z "$control_port" ]; then
   control_port=$(run_python reserve-port)
 fi
+server_pack_port=$(run_python reserve-port)
+while [ "$server_pack_port" = "$server_port" ] || [ "$server_pack_port" = "$control_port" ]; do
+  server_pack_port=$(run_python reserve-port)
+done
+server_pack_id=5d77e69d-1c8f-4fd8-9884-4ce89238f170
+server_pack_url="http://127.0.0.1:$server_pack_port/lifecycle-pack.zip"
+profile_id=$(run_python write-operator \
+  --output "$server_dir/ops.json" \
+  --username bbb-playablegate)
+server_pack_sha1=$(run_python write-server-pack --output "$server_pack_zip")
+mkfifo "$server_command"
+# Keep one read/write descriptor alive for the whole server lifetime. Opening a
+# FIFO only on the server's read side would block startup before the collector
+# has a chance to write the reconfiguration command.
+exec 3<>"$server_command"
 if [ "$server_port" = "$control_port" ]; then
   echo "playable gate: server and control ports must differ" >&2
   exit 2
@@ -187,14 +209,19 @@ printf '%s\n' \
   'simulation-distance=2' \
   'max-players=1' \
   'motd=bbb playable gate 26.1' \
+  "resource-pack=$server_pack_url" \
+  "resource-pack-id=$server_pack_id" \
+  "resource-pack-sha1=$server_pack_sha1" \
+  'require-resource-pack=false' \
   >"$server_dir/server.properties"
 printf 'eula=true\n' >"$server_dir/eula.txt"
 
 server_pid=
 client_pid=
+server_pack_http_pid=
 cleanup() {
   trap - 0 HUP INT TERM
-  for pid in "$client_pid" "$server_pid"; do
+  for pid in "$client_pid" "$server_pid" "$server_pack_http_pid"; do
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
       kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
     fi
@@ -202,7 +229,7 @@ cleanup() {
   remaining=5
   while [ "$remaining" -gt 0 ]; do
     any_running=false
-    for pid in "$client_pid" "$server_pid"; do
+    for pid in "$client_pid" "$server_pid" "$server_pack_http_pid"; do
       if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
         any_running=true
       fi
@@ -213,7 +240,7 @@ cleanup() {
     sleep 1
     remaining=$((remaining - 1))
   done
-  for pid in "$client_pid" "$server_pid"; do
+  for pid in "$client_pid" "$server_pid" "$server_pack_http_pid"; do
     if [ -n "$pid" ]; then
       if kill -0 "$pid" 2>/dev/null; then
         kill -KILL -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
@@ -230,11 +257,20 @@ trap cleanup 0
 trap on_signal HUP INT TERM
 
 echo "playable gate: artifacts: $artifact_dir"
+echo "playable gate: serving lifecycle resource pack on 127.0.0.1:$server_pack_port"
+setsid "$python_runner" python -m http.server "$server_pack_port" \
+  --bind 127.0.0.1 \
+  --directory "$server_pack_dir" \
+  >"$artifact_dir/server-pack-http.log" 2>&1 &
+server_pack_http_pid=$!
 echo "playable gate: starting vanilla 26.1 offline server on 127.0.0.1:$server_port"
 (
   cd "$server_dir"
-  exec setsid "$java_bin" -Xms512M -Xmx1G -jar "$server_jar" nogui
-) </dev/null >"$server_log" 2>&1 &
+  exec setsid "$java_bin" \
+    -DMC_DEBUG_ENABLED \
+    -DMC_DEBUG_DEV_COMMANDS \
+    -Xms512M -Xmx1G -jar "$server_jar" nogui
+) <"$server_command" >"$server_log" 2>&1 &
 server_pid=$!
 
 # DedicatedServer.java logs this stable marker after initialization completes:
@@ -281,6 +317,8 @@ RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
     --username bbb-playablegate \
     --connect-server \
     --control "127.0.0.1:$control_port" \
+    --server-resource-pack-policy accept \
+    --server-resource-pack-cache-dir "$server_pack_cache" \
     --client-vsync false \
     --client-framerate-limit 30 \
     </dev/null >"$client_log" 2>&1 &
@@ -294,7 +332,10 @@ if ! run_python collect-live \
   --packet-ledger "$repo_root/docs/packet-coverage-26.1.json" \
   --protocol-source "$repo_root/crates/bbb-protocol/src/lib.rs" \
   --output "$evidence_json" \
-  --timeout "$timeout_seconds"
+  --timeout "$timeout_seconds" \
+  --server-command "$server_command" \
+  --profile-id "$profile_id" \
+  --server-pack-id "$server_pack_id"
 then
   echo "playable gate evidence: packet/session timeline: $client_log" >&2
   echo "playable gate evidence: world snapshot: $evidence_json" >&2

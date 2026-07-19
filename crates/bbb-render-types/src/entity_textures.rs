@@ -250,5 +250,8 @@ const DEFAULT_PLAYER_SKINS: [EntityDefaultPlayerSkin; 18] = [
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EntityModelTextureRef {
     pub path: &'static str,
+    /// Logical model UV extent from the baked LayerDefinition. Pack images
+    /// may use any positive physical resolution and are stretched across
+    /// this extent just as Vanilla's NativeImageBackedTexture is.
     pub size: [u32; 2],
 }

@@ -1,7 +1,9 @@
 import copy
 import importlib.util
 import json
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -160,6 +162,87 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
 
+class PlayableGateLifecycleTests(unittest.TestCase):
+    def setUp(self):
+        fixture_path = (
+            REPO_ROOT
+            / "scripts"
+            / "fixtures"
+            / "playable-gate"
+            / "session-26.1.json"
+        )
+        self.fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.protocol_version = playable_gate._parse_protocol_version(
+            REPO_ROOT / "crates" / "bbb-protocol" / "src" / "lib.rs"
+        )
+
+    def test_missing_lifecycle_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["lifecycle"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "lifecycle"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_incomplete_lifecycle_stage_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["stage"] = "resource_pack"
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "did not complete"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_stale_dimension_chunk_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["dimension_round_trip"][
+            "overworld_chunk_absent_in_nether"
+        ] = False
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "Overworld chunks leaked"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_incomplete_pack_reload_barrier_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["resource_pack"]["reload_barriers_delta"] = 1
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "both reload barriers"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_reconfiguration_registry_drift_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["reconfiguration"]["registry_revision_after"][
+            "session"
+        ] += 1
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "registry revision"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_offline_profile_and_pack_fixtures_are_java_and_26_1_compatible(self):
+        self.assertEqual(
+            str(playable_gate.offline_player_uuid("bbb-playablegate")),
+            "448cb17e-7f23-3e9d-951a-fc0baf2c1619",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            operator = root / "ops.json"
+            profile_id = playable_gate.write_operator_file(
+                operator, "bbb-playablegate"
+            )
+            entries = json.loads(operator.read_text(encoding="utf-8"))
+            self.assertEqual(entries[0]["uuid"], str(profile_id))
+            self.assertEqual(entries[0]["level"], 4)
+
+            archive = root / "pack.zip"
+            digest = playable_gate.write_server_pack(archive)
+            self.assertEqual(
+                digest,
+                playable_gate.hashlib.sha1(archive.read_bytes()).hexdigest(),
+            )
+            with zipfile.ZipFile(archive) as pack:
+                metadata = json.loads(pack.read("pack.mcmeta"))
+                self.assertEqual(metadata["pack"]["min_format"], [84, 0])
+                self.assertEqual(metadata["pack"]["max_format"], [84, 0])
+                self.assertIn("assets/bbb_gate/lang/en_us.json", pack.namelist())
+
+
 class PlayableGateTimelineTests(unittest.TestCase):
     def _packet_ledger(self):
         return json.loads(
@@ -300,6 +383,20 @@ class PlayableGateScriptContractTests(unittest.TestCase):
             'echo "playable gate: live vanilla 26.1 session passed"', source
         )
 
+    def test_live_server_enables_official_lifecycle_commands_and_pack_acceptance(self):
+        source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("-DMC_DEBUG_ENABLED", source)
+        self.assertIn("-DMC_DEBUG_DEV_COMMANDS", source)
+        self.assertIn("--server-resource-pack-policy accept", source)
+        self.assertIn("write-operator", source)
+        self.assertIn('"resource-pack=$server_pack_url"', source)
+        self.assertIn('"resource-pack-id=$server_pack_id"', source)
+        self.assertIn('"resource-pack-sha1=$server_pack_sha1"', source)
+        self.assertIn("write-server-pack", source)
+
     def test_headless_control_focus_precedes_synthetic_input(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         movement = source[
@@ -324,7 +421,7 @@ class PlayableGateScriptContractTests(unittest.TestCase):
             interaction.index('"input.focus"'), interaction.index("_press_mouse(")
         )
 
-    def test_centering_tap_waits_for_render_consumption_and_spans_multiple_frames(self):
+    def test_block_centering_uses_server_authority_only_for_test_setup(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         centering = source[
             source.index("def _center_on_block(") : source.index(
@@ -332,11 +429,12 @@ class PlayableGateScriptContractTests(unittest.TestCase):
             )
         ]
 
-        self.assertLess(
-            centering.index("_await_input_pipeline(address, deadline)"),
-            centering.index('_press_key(address, "forward", True)'),
+        self.assertIn(
+            "execute as bbb-playablegate at @s align xz run tp @s ~0.5 ~ ~0.5",
+            centering,
         )
-        self.assertIn("max(0.15, distance / 1.3 * 0.7)", centering)
+        self.assertNotIn("_press_key", centering)
+        self.assertIn("server-authoritative block-column centering", centering)
 
 
 if __name__ == "__main__":

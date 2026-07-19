@@ -99,7 +99,8 @@ fn read_nbt_payload(
             }
             let mut items = Vec::with_capacity(len);
             for _ in 0..len {
-                items.push(read_nbt_payload(decoder, element_type, depth + 1)?);
+                let value = read_nbt_payload(decoder, element_type, depth + 1)?;
+                items.push(unwrap_list_element(value));
             }
             Ok(NbtSummaryValue::List(items))
         }
@@ -252,21 +253,11 @@ fn encode_nbt_payload(
         NbtSummaryValue::String(value) => encode_modified_utf8(encoder, value),
         NbtSummaryValue::List(values) => {
             let nested_depth = enter_nbt_container(depth, max_depth)?;
-            let element_type = values.first().map_or(0, nbt_tag_id);
-            if let Some((index, value)) = values
-                .iter()
-                .enumerate()
-                .find(|(_, value)| nbt_tag_id(value) != element_type)
-            {
-                return Err(ProtocolError::InvalidData(format!(
-                    "network nbt list element {index} has tag id {}, expected {element_type}",
-                    nbt_tag_id(value)
-                )));
-            }
+            let element_type = list_wire_element_type(values);
             encoder.write_u8(element_type)?;
             encode_nbt_collection_len(encoder, values.len())?;
             for value in values {
-                encode_nbt_payload(encoder, value, nested_depth, max_depth)?;
+                encode_nbt_list_element(encoder, value, element_type, nested_depth, max_depth)?;
             }
             Ok(())
         }
@@ -308,6 +299,55 @@ fn insert_compound_entry(entries: &mut Vec<NbtSummaryEntry>, name: String, value
     } else {
         entries.push(NbtSummaryEntry { name, value });
     }
+}
+
+fn unwrap_list_element(value: NbtSummaryValue) -> NbtSummaryValue {
+    let NbtSummaryValue::Compound(mut entries) = value else {
+        return value;
+    };
+    if entries.len() == 1 && entries[0].name.is_empty() {
+        entries.pop().expect("one list wrapper entry").value
+    } else {
+        NbtSummaryValue::Compound(entries)
+    }
+}
+
+fn list_wire_element_type(values: &[NbtSummaryValue]) -> u8 {
+    let Some(first) = values.first() else {
+        return 0;
+    };
+    let first_type = nbt_tag_id(first);
+    if values.iter().all(|value| nbt_tag_id(value) == first_type) {
+        first_type
+    } else {
+        10
+    }
+}
+
+fn encode_nbt_list_element(
+    encoder: &mut BoundedNbtEncoder,
+    value: &NbtSummaryValue,
+    element_type: u8,
+    depth: usize,
+    max_depth: usize,
+) -> Result<()> {
+    if element_type != 10 || is_unwrapped_list_compound(value) {
+        return encode_nbt_payload(encoder, value, depth, max_depth);
+    }
+
+    let wrapper_depth = enter_nbt_container(depth, max_depth)?;
+    encoder.write_u8(nbt_tag_id(value))?;
+    encode_modified_utf8(encoder, "")?;
+    encode_nbt_payload(encoder, value, wrapper_depth, max_depth)?;
+    encoder.write_u8(0)
+}
+
+fn is_unwrapped_list_compound(value: &NbtSummaryValue) -> bool {
+    matches!(
+        value,
+        NbtSummaryValue::Compound(entries)
+            if !(entries.len() == 1 && entries[0].name.is_empty())
+    )
 }
 
 fn last_wins_compound_entries(entries: &[NbtSummaryEntry]) -> Vec<&NbtSummaryEntry> {
@@ -456,6 +496,40 @@ mod tests {
             Err(ProtocolError::PacketTooLarge(actual, max))
                 if actual == MAX_NBT_ARRAY_ITEMS + 1 && max == MAX_NBT_ARRAY_ITEMS
         ));
+    }
+
+    #[test]
+    fn heterogeneous_network_lists_use_vanilla_compound_wrappers() {
+        // Vanilla 26.1 ListTag writes a heterogeneous list as compounds. A
+        // non-compound element is wrapped under the empty-string marker and
+        // ListTag.load removes that marker again.
+        let value = NbtSummaryValue::List(vec![
+            NbtSummaryValue::String("a".to_string()),
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("b".to_string()),
+            }]),
+        ]);
+        let encoded = encode_nbt_summary_bounded(Some(&value), 1024, MAX_NBT_DEPTH).unwrap();
+        assert_eq!(
+            encoded,
+            vec![
+                9, 10, 0, 0, 0, 2, // list<compound>, two elements
+                8, 0, 0, 0, 1, b'a', 0, // {"": "a"}
+                8, 0, 4, b't', b'e', b'x', b't', 0, 1, b'b', 0,
+            ]
+        );
+        assert_eq!(decode_nbt_summary(&encoded).unwrap(), Some(value));
+    }
+
+    #[test]
+    fn compound_list_element_equal_to_wrapper_marker_is_double_wrapped() {
+        let value = NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: String::new(),
+            value: NbtSummaryValue::String("literal compound".to_string()),
+        }])]);
+        let encoded = encode_nbt_summary_bounded(Some(&value), 1024, MAX_NBT_DEPTH).unwrap();
+        assert_eq!(decode_nbt_summary(&encoded).unwrap(), Some(value));
     }
 
     #[test]

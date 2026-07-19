@@ -20,6 +20,58 @@
     },
     "use_item_on_commands_delta": 1
   },
+  "lifecycle": {
+    "stage": "complete",
+    "death_respawn": {
+      "dead_health": 0.0,
+      "dimension_after": "minecraft:overworld",
+      "dimension_before": "minecraft:overworld",
+      "health_after": 20.0,
+      "kill_commands_delta": 1,
+      "perform_respawn_commands_delta": 1,
+      "respawns_delta": 1
+    },
+    "dimension_round_trip": {
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:overworld"
+      ],
+      "nether_chunk_absent_after_return": true,
+      "overworld_chunk_absent_in_nether": true,
+      "respawns_delta": 2
+    },
+    "reconfiguration": {
+      "chunk_cleared": true,
+      "fresh_chunk": true,
+      "level_cleared": true,
+      "play_logins_delta": 1,
+      "registry_revision_after": {
+        "contents": 1,
+        "session": 1,
+        "tags": 1
+      },
+      "registry_revision_before": {
+        "contents": 1,
+        "session": 1,
+        "tags": 1
+      },
+      "states": [
+        "Play",
+        "Configuration",
+        "Play"
+      ]
+    },
+    "resource_pack": {
+      "active_phase": "active",
+      "pack_id": "5d77e69d-1c8f-4fd8-9884-4ce89238f170",
+      "pop_packets_delta": 1,
+      "push_packets_delta": 1,
+      "reload_barriers_delta": 2,
+      "response_packets_delta": 3,
+      "tracked_after_pop": 0
+    }
+  },
   "mode": "fixture",
   "movement": {
     "duration_seconds": 0.6,
@@ -38,7 +90,7 @@
       "z": -1.5
     }
   },
-  "schema": 1,
+  "schema": 2,
   "source": {
     "authority": [
       "crates/bbb-net/src/status.rs#status_ping",

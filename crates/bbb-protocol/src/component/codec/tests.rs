@@ -1,4 +1,5 @@
 use super::*;
+use crate::nbt_summary::{decode_nbt_summary, encode_nbt_summary_bounded};
 
 #[test]
 fn accepts_component_root_alternatives_and_simple_contents() {
@@ -30,6 +31,52 @@ fn accepts_component_root_alternatives_and_simple_contents() {
     ] {
         validate_component_nbt(&value, "component").unwrap();
     }
+}
+
+#[test]
+fn accepts_vanilla_advancement_tooltip_with_heterogeneous_extra_list() {
+    // Advancement.decorateName appends a literal newline and a translated
+    // description to the hover tooltip. Vanilla 26.1 ListTag represents that
+    // mixed StringTag/CompoundTag list with its empty-name compound wrapper.
+    let announcement = compound([
+        ("translate", string("chat.type.advancement.task")),
+        (
+            "with",
+            list([
+                compound([("text", string("bbb-playablegate"))]),
+                compound([
+                    ("translate", string("advancements.nether.root.title")),
+                    ("color", string("dark_purple")),
+                    (
+                        "hover_event",
+                        compound([
+                            ("action", string("show_text")),
+                            (
+                                "value",
+                                compound([
+                                    ("translate", string("advancements.nether.root.title")),
+                                    (
+                                        "extra",
+                                        list([
+                                            string("\n"),
+                                            compound([(
+                                                "translate",
+                                                string("advancements.nether.root.description"),
+                                            )]),
+                                        ]),
+                                    ),
+                                ]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ]),
+        ),
+    ]);
+    let wire = encode_nbt_summary_bounded(Some(&announcement), 8 * 1024, 64).unwrap();
+    let decoded = decode_nbt_summary(&wire).unwrap().unwrap();
+    assert_eq!(decoded, announcement);
+    validate_component_nbt(&decoded, "advancement announcement").unwrap();
 }
 
 #[test]

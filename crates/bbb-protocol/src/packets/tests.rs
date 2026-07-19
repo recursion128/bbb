@@ -2923,18 +2923,32 @@ fn rejects_invalid_oversized_and_excessively_deep_custom_click_actions() {
         .unwrap_err()
         .to_string()
         .contains("network nbt exceeded max depth"));
+}
 
-    let mixed_list = CustomClickAction {
+#[test]
+fn encodes_heterogeneous_custom_click_action_list_with_vanilla_wrappers() {
+    let action = CustomClickAction {
         id: "bbb:submit".to_string(),
         payload: Some(NbtSummaryValue::List(vec![
             NbtSummaryValue::Int(1),
             NbtSummaryValue::String("two".to_string()),
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("three".to_string()),
+            }]),
         ])),
     };
-    assert!(encode_play_custom_click_action(&mixed_list)
-        .unwrap_err()
-        .to_string()
-        .contains("network nbt list element 1"));
+    let (_, payload) = encode_play_custom_click_action(&action).unwrap();
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(32_767).unwrap(), "bbb:submit");
+    let tag_len = decoder.read_len().unwrap();
+    let mut tag_decoder = Decoder::new(decoder.read_exact(tag_len, "custom click tag").unwrap());
+    assert_eq!(
+        decode_nbt_summary_from_decoder(&mut tag_decoder).unwrap(),
+        action.payload
+    );
+    assert!(tag_decoder.is_empty());
+    assert!(decoder.is_empty());
 }
 
 #[test]

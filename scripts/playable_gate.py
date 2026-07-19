@@ -9,12 +9,15 @@ assertions.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
 import socket
 import sys
 import time
+import uuid
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +62,57 @@ class GateFailure(RuntimeError):
     """An actionable playable-gate assertion failure."""
 
 
+def offline_player_uuid(username: str) -> uuid.UUID:
+    """Match Java UUID.nameUUIDFromBytes("OfflinePlayer:" + username)."""
+
+    digest = bytearray(
+        hashlib.md5(f"OfflinePlayer:{username}".encode("utf-8")).digest()
+    )
+    digest[6] = (digest[6] & 0x0F) | 0x30
+    digest[8] = (digest[8] & 0x3F) | 0x80
+    return uuid.UUID(bytes=bytes(digest))
+
+
+def write_operator_file(path: Path, username: str) -> uuid.UUID:
+    profile_id = offline_player_uuid(username)
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "uuid": str(profile_id),
+                    "name": username,
+                    "level": 4,
+                    "bypassesPlayerLimit": False,
+                }
+            ],
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return profile_id
+
+
+def write_server_pack(path: Path) -> str:
+    """Write the minimal valid 26.1 resource pack used by the live gate."""
+
+    metadata = {
+        "pack": {
+            "description": "bbb playable lifecycle gate",
+            "min_format": [84, 0],
+            "max_format": [84, 0],
+        }
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("pack.mcmeta", json.dumps(metadata, sort_keys=True))
+        archive.writestr(
+            "assets/bbb_gate/lang/en_us.json",
+            json.dumps({"bbb_gate.lifecycle": "active"}, sort_keys=True),
+        )
+    return hashlib.sha1(path.read_bytes()).hexdigest()
+
+
 def _load_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as source:
         value = json.load(source)
@@ -81,6 +135,9 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
+
+    if evidence.get("schema") != 2:
+        raise GateFailure(f"playable evidence schema must be 2, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -166,6 +223,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
 
     _validate_movement(evidence.get("movement"))
     _validate_block_interaction(evidence.get("block_interaction"))
+    _validate_lifecycle(evidence.get("lifecycle"))
 
 
 BLOCK_INTERACTION_COMMAND_DELTAS = (
@@ -175,6 +233,99 @@ BLOCK_INTERACTION_COMMAND_DELTAS = (
     "use_item_on_commands_delta",
     "block_updates_applied_delta",
 )
+
+
+def _validate_lifecycle(lifecycle: Any) -> None:
+    lifecycle = _object(lifecycle, "lifecycle")
+    if lifecycle.get("stage") != "complete":
+        raise GateFailure(
+            f"lifecycle did not complete; last stage was {lifecycle.get('stage')!r}"
+        )
+
+    death = _object(lifecycle.get("death_respawn"), "lifecycle.death_respawn")
+    if float(death.get("dead_health", 1.0)) > 0.0:
+        raise GateFailure("lifecycle death did not reach canonical zero health")
+    if float(death.get("health_after", 0.0)) <= 0.0:
+        raise GateFailure("lifecycle respawn did not restore positive health")
+    for key in (
+        "kill_commands_delta",
+        "respawns_delta",
+        "perform_respawn_commands_delta",
+    ):
+        _positive_int(death.get(key), f"lifecycle.death_respawn.{key}")
+    if death.get("dimension_before") != "minecraft:overworld" or death.get(
+        "dimension_after"
+    ) != "minecraft:overworld":
+        raise GateFailure("same-dimension death respawn left the Overworld")
+
+    dimensions = _object(
+        lifecycle.get("dimension_round_trip"), "lifecycle.dimension_round_trip"
+    )
+    expected_dimensions = [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:overworld",
+    ]
+    if dimensions.get("dimensions") != expected_dimensions:
+        raise GateFailure(
+            "lifecycle dimension round trip mismatch: "
+            f"expected {expected_dimensions!r}, got {dimensions.get('dimensions')!r}"
+        )
+    if int(dimensions.get("respawns_delta", 0)) < 2:
+        raise GateFailure("dimension round trip did not observe both Respawn packets")
+    if dimensions.get("overworld_chunk_absent_in_nether") is not True:
+        raise GateFailure("Overworld chunks leaked into the Nether level owner")
+    if dimensions.get("nether_chunk_absent_after_return") is not True:
+        raise GateFailure("Nether chunks leaked into the replacement Overworld level owner")
+
+    resource_pack = _object(
+        lifecycle.get("resource_pack"), "lifecycle.resource_pack"
+    )
+    try:
+        uuid.UUID(str(resource_pack.get("pack_id")))
+    except (ValueError, TypeError, AttributeError) as error:
+        raise GateFailure("lifecycle.resource_pack.pack_id must be a UUID") from error
+    if resource_pack.get("active_phase") != "active":
+        raise GateFailure("server resource pack never crossed the active reload barrier")
+    for key in (
+        "push_packets_delta",
+        "response_packets_delta",
+        "pop_packets_delta",
+    ):
+        _positive_int(resource_pack.get(key), f"lifecycle.resource_pack.{key}")
+    if int(resource_pack.get("reload_barriers_delta", 0)) < 2:
+        raise GateFailure("resource-pack push/pop did not complete both reload barriers")
+    if resource_pack.get("tracked_after_pop") != 0:
+        raise GateFailure("popped server resource pack remained in canonical state")
+
+    reconfiguration = _object(
+        lifecycle.get("reconfiguration"), "lifecycle.reconfiguration"
+    )
+    if reconfiguration.get("states") != ["Play", "Configuration", "Play"]:
+        raise GateFailure("configuration re-entry did not complete Play -> Configuration -> Play")
+    if reconfiguration.get("level_cleared") is not True or reconfiguration.get(
+        "chunk_cleared"
+    ) is not True:
+        raise GateFailure("configuration re-entry retained the old level or chunks")
+    _positive_int(
+        reconfiguration.get("play_logins_delta"),
+        "lifecycle.reconfiguration.play_logins_delta",
+    )
+    if reconfiguration.get("fresh_chunk") is not True:
+        raise GateFailure("configuration return did not decode a fresh Play chunk")
+    before = _object(
+        reconfiguration.get("registry_revision_before"),
+        "lifecycle.reconfiguration.registry_revision_before",
+    )
+    after = _object(
+        reconfiguration.get("registry_revision_after"),
+        "lifecycle.reconfiguration.registry_revision_after",
+    )
+    if before != after:
+        raise GateFailure(
+            "same-server reconfiguration changed the carried registry revision: "
+            f"before={before!r}, after={after!r}"
+        )
 
 
 def _validate_block_interaction(block_interaction: Any) -> None:
@@ -440,12 +591,17 @@ def _control_request(address: tuple[str, int], method: str, params: Any = None) 
 
 
 def _capture_control_snapshot(address: tuple[str, int]) -> dict[str, Any]:
+    app = _control_request(address, "app.status")
     net = _control_request(address, "net.counters")
+    audio = _control_request(address, "audio.counters")
+    renderer = _control_request(address, "renderer.counters")
     world = _control_request(address, "world.counters")
     level_state = _control_request(address, "world.level_state")
     chunk_view = _control_request(address, "world.chunk_view")
     local_player = _control_request(address, "world.client_local_player")
     diagnostics = _control_request(address, "world.apply_diagnostics")
+    presentation = _control_request(address, "world.server_presentation")
+    registries = _control_request(address, "world.registries")
     first_chunk_pos = chunk_view.get("first_chunk") if isinstance(chunk_view, dict) else None
     first_chunk = None
     if isinstance(first_chunk_pos, dict):
@@ -455,13 +611,20 @@ def _capture_control_snapshot(address: tuple[str, int]) -> dict[str, Any]:
             {"x": first_chunk_pos.get("x"), "z": first_chunk_pos.get("z")},
         )
     return {
+        "app": app,
         "net": net,
+        "audio": audio,
+        "renderer": renderer,
         "world": world,
         "level_state": level_state,
         "chunk_view": chunk_view,
         "first_chunk": first_chunk,
         "local_player": local_player,
         "apply_diagnostics": diagnostics,
+        "server_presentation": presentation,
+        "registry_revision": registries.get("revision")
+        if isinstance(registries, dict)
+        else None,
     }
 
 
@@ -617,67 +780,37 @@ def _look_to_pitch(address: tuple[str, int], target_pitch: float, deadline: floa
     raise GateFailure(f"look steering did not reach pitch {target_pitch}")
 
 
-def _look_to_yaw(address: tuple[str, int], target_yaw: float, deadline: float) -> None:
-    """Closed-loop yaw steering with wraparound, mirroring _look_to_pitch."""
+def _center_on_block(
+    address: tuple[str, int], server_command: Path, deadline: float
+) -> dict[str, Any]:
+    """Use a server-authoritative setup teleport to the current block center.
 
-    while time.monotonic() < deadline:
-        yaw = float(_local_player_pose(address).get("y_rot", 0.0))
-        error = ((target_yaw - yaw + 180.0) % 360.0) - 180.0
-        # A 5-degree walking heading error drifts the step by well under a
-        # tenth of a block; a tighter tolerance only burns the deadline.
-        if abs(error) < 5.0:
-            return
-        _control_request(
-            address,
-            "input.look_delta",
-            {"dx": max(-600.0, min(600.0, error / 0.12 * 0.7)), "dy": 0.0},
-        )
-        time.sleep(0.1)
-    raise GateFailure(f"look steering did not reach yaw {target_yaw}")
-
-
-def _center_on_block(address: tuple[str, int], deadline: float) -> dict[str, Any]:
-    """Sneak-walk the player toward the center of its block column so the
-    straight-down crosshair ray cannot cross into a neighboring column and
-    the vacated cell is the one the player falls into.  Sneaking keeps the
-    steps short and its edge clamp keeps the player on the support."""
+    The gate has already proven real synthetic movement before this helper.
+    Centering is only test preparation for a straight-down pick/destroy/place
+    sequence, so using Vanilla's ``execute align`` avoids making that setup
+    depend on renderer frame timing while preserving every interaction input.
+    """
 
     pose = _await_settled_player(address, deadline)
-    _press_key(address, "sneak", True)
-    try:
-        for _ in range(24):
-            if time.monotonic() >= deadline:
-                break
-            position = _object(pose.get("position"), "local_player.pose.position")
-            center_x = math.floor(float(position["x"])) + 0.5
-            center_z = math.floor(float(position["z"])) + 0.5
-            offset_x = center_x - float(position["x"])
-            offset_z = center_z - float(position["z"])
-            distance = (offset_x**2 + offset_z**2) ** 0.5
-            # The player bounding box is 0.6 wide: anything looser than 0.2
-            # leaves the box straddling a seam, supported by the neighboring
-            # column, and the player never falls into the vacated cell.
-            if abs(offset_x) <= 0.15 and abs(offset_z) <= 0.15:
-                return pose
-            # Vanilla forward is (-sin(yaw), cos(yaw)) in the XZ plane.
-            target_yaw = math.degrees(math.atan2(-offset_x, offset_z))
-            _look_to_yaw(address, target_yaw, deadline)
-            # Prove the render loop consumed the preceding input before
-            # enqueueing a tap.  Otherwise a slow 30 FPS frame can absorb the
-            # press and release together without ever observing the key down.
-            _await_input_pipeline(address, deadline)
-            # Sneaking moves at ~1.3 m/s: the 150 ms floor spans several
-            # 30 FPS frames while remaining short enough to avoid crossing a
-            # full block column.
-            _press_key(address, "forward", True)
-            time.sleep(min(0.4, max(0.15, distance / 1.3 * 0.7)))
-            _press_key(address, "forward", False)
-            # Let the post-release slide decay before re-reading the pose.
-            time.sleep(0.3)
-            pose = _local_player_pose(address)
-    finally:
-        _press_key(address, "sneak", False)
-    raise GateFailure("player never centered on its block column")
+    position = _object(pose.get("position"), "local_player.pose.position")
+    center_x = math.floor(float(position["x"])) + 0.5
+    center_z = math.floor(float(position["z"])) + 0.5
+    _server_console_command(
+        server_command,
+        "execute as bbb-playablegate at @s align xz run tp @s ~0.5 ~ ~0.5",
+    )
+
+    def read_centered_pose() -> dict[str, Any]:
+        return _local_player_pose(address)
+
+    return _await_value(
+        deadline,
+        "server-authoritative block-column centering",
+        read_centered_pose,
+        lambda value: value.get("on_ground") is True
+        and abs(_pose_xz(value)[0] - center_x) <= 0.02
+        and abs(_pose_xz(value)[1] - center_z) <= 0.02,
+    )
 
 
 def _occupied_player_slots(address: tuple[str, int]) -> int:
@@ -736,7 +869,7 @@ def _await_control_stability(address: tuple[str, int], deadline: float) -> None:
 
 
 def drive_block_interaction(
-    address: tuple[str, int], timeout_seconds: float
+    address: tuple[str, int], server_command: Path, timeout_seconds: float
 ) -> dict[str, Any]:
     """Destroy the block under the player and jump-place it back, entirely
     through the synthetic mouse path: middle-click pick (server fills the
@@ -756,7 +889,7 @@ def drive_block_interaction(
     target = None
     initial = None
     for _ in range(4):
-        pose = _center_on_block(address, deadline)
+        pose = _center_on_block(address, server_command, deadline)
         position = _object(pose.get("position"), "local_player.pose.position")
         column_x = math.floor(float(position["x"]))
         column_z = math.floor(float(position["z"]))
@@ -943,6 +1076,343 @@ def drive_block_interaction(
     }
 
 
+def _await_value(
+    deadline: float,
+    description: str,
+    read: Any,
+    accept: Any,
+) -> Any:
+    last_value: Any = None
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            last_value = read()
+            if accept(last_value):
+                return last_value
+        except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
+            last_error = error
+        time.sleep(0.1)
+    detail = f"; last error: {last_error}" if last_error is not None else ""
+    raise GateFailure(
+        f"timed out waiting for {description}; last value: {last_value!r}{detail}"
+    )
+
+
+def _send_chat_command(
+    address: tuple[str, int], command: str, deadline: float
+) -> int:
+    before = _net_counter(address, "chat_command_commands_queued")
+    _control_request(address, "net.send_chat_command", {"command": command})
+    after = _await_value(
+        deadline,
+        f"chat command queue acknowledgement for {command!r}",
+        lambda: _net_counter(address, "chat_command_commands_queued"),
+        lambda value: value > before,
+    )
+    return int(after) - before
+
+
+def _server_console_command(path: Path, command: str) -> None:
+    with path.open("w", encoding="utf-8") as sink:
+        sink.write(command + "\n")
+        sink.flush()
+
+
+def _dimension_name(address: tuple[str, int]) -> str | None:
+    level_state = _control_request(address, "world.level_state")
+    level = level_state.get("level") if isinstance(level_state, dict) else None
+    return level.get("dimension") if isinstance(level, dict) else None
+
+
+def _local_health(address: tuple[str, int]) -> float | None:
+    local = _control_request(address, "world.client_local_player")
+    health = local.get("health") if isinstance(local, dict) else None
+    value = health.get("health") if isinstance(health, dict) else None
+    return float(value) if isinstance(value, (int, float)) else None
+
+
+def _registry_revision(address: tuple[str, int]) -> dict[str, int] | None:
+    registries = _control_request(address, "world.registries")
+    revision = registries.get("revision") if isinstance(registries, dict) else None
+    if not isinstance(revision, dict):
+        return None
+    return {
+        "session": int(revision.get("session", 0)),
+        "contents": int(revision.get("contents", 0)),
+        "tags": int(revision.get("tags", 0)),
+    }
+
+
+def _first_chunk_position(address: tuple[str, int]) -> dict[str, int] | None:
+    view = _control_request(address, "world.chunk_view")
+    position = view.get("first_chunk") if isinstance(view, dict) else None
+    if not isinstance(position, dict):
+        return None
+    return {"x": int(position["x"]), "z": int(position["z"])}
+
+
+def _probe_chunk_at(
+    address: tuple[str, int], position: dict[str, int] | None
+) -> dict[str, Any] | None:
+    if position is None:
+        return None
+    probe = _control_request(
+        address, "world.probe_chunk", {"x": position["x"], "z": position["z"]}
+    )
+    return probe if isinstance(probe, dict) else None
+
+
+def _await_play_dimension(
+    address: tuple[str, int],
+    dimension: str,
+    minimum_respawns: int,
+    deadline: float,
+) -> dict[str, Any]:
+    def read() -> dict[str, Any]:
+        return {
+            "net": _control_request(address, "net.counters"),
+            "world": _control_request(address, "world.counters"),
+            "dimension": _dimension_name(address),
+            "local": _control_request(address, "world.client_local_player"),
+            "first_chunk": _first_chunk_position(address),
+        }
+
+    return _await_value(
+        deadline,
+        f"stable Play state in {dimension}",
+        read,
+        lambda value: value["net"].get("connected") is True
+        and value["net"].get("state") == "Play"
+        and value["world"].get("respawns_received", 0) >= minimum_respawns
+        and value["dimension"] == dimension
+        and isinstance(value["local"].get("pose"), dict)
+        and value["first_chunk"] is not None,
+    )
+
+
+def _resource_pack_state(
+    address: tuple[str, int], pack_id: str
+) -> dict[str, Any] | None:
+    presentation = _control_request(address, "world.server_presentation")
+    packs = presentation.get("resource_packs") if isinstance(presentation, dict) else None
+    pack = packs.get(pack_id) if isinstance(packs, dict) else None
+    return pack if isinstance(pack, dict) else None
+
+
+def _log_occurrences(path: Path, phrase: str) -> int:
+    if not path.exists():
+        return 0
+    return path.read_text(encoding="utf-8", errors="replace").count(phrase)
+
+
+def drive_session_lifecycle(
+    address: tuple[str, int],
+    server_command: Path,
+    profile_id: str,
+    server_pack_id: str,
+    client_log: Path,
+    timeout_seconds: float,
+    progress: dict[str, Any],
+) -> dict[str, Any]:
+    """Drive real Vanilla lifecycle boundaries through control and server commands."""
+
+    deadline = time.monotonic() + timeout_seconds
+    progress.clear()
+    progress["stage"] = "initial"
+    initial = _capture_control_snapshot(address)
+    initial_world = _object(initial["world"], "lifecycle.initial.world")
+    initial_dimension = _dimension_name(address)
+    initial_chunk = _first_chunk_position(address)
+    if initial_dimension != "minecraft:overworld" or initial_chunk is None:
+        raise GateFailure("lifecycle must start in a decoded Overworld level")
+
+    progress["stage"] = "death_respawn"
+    command_delta = _send_chat_command(address, "kill @s", deadline)
+    dead_health = _await_value(
+        deadline,
+        "server-authoritative local-player death",
+        lambda: _local_health(address),
+        lambda value: value is not None and value <= 0.0,
+    )
+    respawns_before = int(initial_world.get("respawns_received", 0))
+    perform_before = _net_counter(address, "perform_respawn_commands_queued")
+    _control_request(address, "net.perform_respawn")
+    respawned = _await_play_dimension(
+        address, "minecraft:overworld", respawns_before + 1, deadline
+    )
+    respawn_health = _await_value(
+        deadline,
+        "positive health after respawn",
+        lambda: _local_health(address),
+        lambda value: value is not None and value > 0.0,
+    )
+    perform_after = _net_counter(address, "perform_respawn_commands_queued")
+    progress["death_respawn"] = {
+        "kill_commands_delta": command_delta,
+        "dead_health": dead_health,
+        "respawns_delta": int(respawned["world"].get("respawns_received", 0))
+        - respawns_before,
+        "perform_respawn_commands_delta": perform_after - perform_before,
+        "health_after": respawn_health,
+        "dimension_before": initial_dimension,
+        "dimension_after": respawned["dimension"],
+    }
+
+    progress["stage"] = "dimension_round_trip"
+    first_respawns = int(respawned["world"].get("respawns_received", 0))
+    _send_chat_command(
+        address,
+        "execute in minecraft:the_nether run tp @s 1600 80 1600",
+        deadline,
+    )
+    nether = _await_play_dimension(
+        address, "minecraft:the_nether", first_respawns + 1, deadline
+    )
+    overworld_chunk_absent = _probe_chunk_at(address, initial_chunk) is None
+    nether_chunk = nether["first_chunk"]
+
+    _send_chat_command(
+        address,
+        "execute in minecraft:overworld run tp @s -1600 80 -1600",
+        deadline,
+    )
+    returned = _await_play_dimension(
+        address,
+        "minecraft:overworld",
+        int(nether["world"].get("respawns_received", 0)) + 1,
+        deadline,
+    )
+    nether_chunk_absent = _probe_chunk_at(address, nether_chunk) is None
+    progress["dimension_round_trip"] = {
+        "dimensions": [initial_dimension, nether["dimension"], returned["dimension"]],
+        "respawns_delta": int(returned["world"].get("respawns_received", 0))
+        - int(respawned["world"].get("respawns_received", 0)),
+        "overworld_chunk_absent_in_nether": overworld_chunk_absent,
+        "nether_chunk_absent_after_return": nether_chunk_absent,
+        "nether_first_chunk": nether_chunk,
+        "return_first_chunk": returned["first_chunk"],
+    }
+
+    # The production dedicated-server configuration task pushes the pack
+    # during the initial Configuration state. Vanilla 26.1's debug
+    # `serverpack push` command passes null instead of Optional.empty() for
+    # the prompt and disconnects the client in the packet encoder, so it is
+    # not a valid source of a push fixture. Keep the accepted pack alive
+    # across death and both dimension replacements, then pop it in Play.
+    progress["stage"] = "resource_pack"
+    active_pack = _await_value(
+        deadline,
+        "server resource pack active reload barrier",
+        lambda: _resource_pack_state(address, server_pack_id),
+        lambda value: isinstance(value, dict)
+        and isinstance(value.get("runtime"), dict)
+        and value["runtime"].get("phase") == "active",
+    )
+    reloads_with_active_pack = _await_value(
+        deadline,
+        "resource-pack apply log acknowledgement",
+        lambda: _log_occurrences(client_log, "applied server resource pack reload"),
+        lambda value: value >= 1,
+    )
+    world_with_active_pack = _object(
+        _control_request(address, "world.counters"), "world.counters"
+    )
+    _send_chat_command(address, f"serverpack pop {server_pack_id}", deadline)
+    _await_value(
+        deadline,
+        "server resource pack pop",
+        lambda: _resource_pack_state(address, server_pack_id),
+        lambda value: value is None,
+    )
+    reloads_after = _await_value(
+        deadline,
+        "resource-pack unload reload barrier",
+        lambda: _log_occurrences(client_log, "applied server resource pack reload"),
+        lambda value: value > reloads_with_active_pack,
+    )
+    world_after_pack = _object(
+        _control_request(address, "world.counters"), "world.counters"
+    )
+    progress["resource_pack"] = {
+        "pack_id": server_pack_id,
+        "active_phase": active_pack["runtime"]["phase"],
+        # The isolated process starts these counters at zero, so the totals
+        # are also connection-session deltas.
+        "push_packets_delta": int(
+            world_after_pack.get("resource_pack_push_packets", 0)
+        ),
+        "response_packets_delta": int(
+            world_after_pack.get("resource_pack_response_packets", 0)
+        ),
+        "pop_packets_delta": int(world_after_pack.get("resource_pack_pop_packets", 0))
+        - int(world_with_active_pack.get("resource_pack_pop_packets", 0)),
+        "tracked_after_pop": int(world_after_pack.get("resource_packs_tracked", 0)),
+        "reload_barriers_delta": int(reloads_after),
+    }
+
+    progress["stage"] = "reconfiguration"
+    revision_before = _registry_revision(address)
+    play_logins_before = int(world_after_pack.get("play_logins_received", 0))
+    _send_chat_command(address, "debugconfig config @s", deadline)
+
+    def read_configuration() -> dict[str, Any]:
+        return {
+            "net": _control_request(address, "net.counters"),
+            "level": _control_request(address, "world.level_state"),
+            "chunk": _first_chunk_position(address),
+        }
+
+    configuration = _await_value(
+        deadline,
+        "Play-to-Configuration transition and level clear",
+        read_configuration,
+        lambda value: value["net"].get("state") == "Configuration"
+        and value["level"].get("level") is None
+        and value["chunk"] is None,
+    )
+    _server_console_command(server_command, f"debugconfig unconfig {profile_id}")
+
+    def read_reconfigured() -> dict[str, Any]:
+        return {
+            "net": _control_request(address, "net.counters"),
+            "world": _control_request(address, "world.counters"),
+            "dimension": _dimension_name(address),
+            "chunk": _first_chunk_position(address),
+            "local": _control_request(address, "world.client_local_player"),
+        }
+
+    reconfigured = _await_value(
+        deadline,
+        "configuration return to a fresh Play level",
+        read_reconfigured,
+        lambda value: value["net"].get("connected") is True
+        and value["net"].get("state") == "Play"
+        and value["world"].get("play_logins_received", 0) > play_logins_before
+        and value["dimension"] == "minecraft:overworld"
+        and value["chunk"] is not None
+        and isinstance(value["local"].get("pose"), dict),
+    )
+    revision_after = _registry_revision(address)
+    final_snapshot = _capture_control_snapshot(address)
+    progress["reconfiguration"] = {
+        "states": [
+            "Play",
+            configuration["net"].get("state"),
+            reconfigured["net"].get("state"),
+        ],
+        "level_cleared": configuration["level"].get("level") is None,
+        "chunk_cleared": configuration["chunk"] is None,
+        "play_logins_delta": int(reconfigured["world"].get("play_logins_received", 0))
+        - play_logins_before,
+        "registry_revision_before": revision_before,
+        "registry_revision_after": revision_after,
+        "fresh_chunk": reconfigured["chunk"] is not None,
+    }
+    progress["stage"] = "complete"
+    progress["final_snapshot"] = final_snapshot
+    return progress
+
+
 def collect_live(args: argparse.Namespace) -> None:
     host, raw_port = args.control.rsplit(":", 1)
     address = (host, int(raw_port))
@@ -979,7 +1449,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 1,
+            "schema": 2,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -987,6 +1457,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "world_snapshot": last_snapshot,
             "movement": None,
             "block_interaction": None,
+            "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
                 "timeline": str(args.client_log),
@@ -999,15 +1470,26 @@ def collect_live(args: argparse.Namespace) -> None:
 
     movement: dict[str, Any] | None = None
     block_interaction: dict[str, Any] | None = None
+    lifecycle: dict[str, Any] | None = None
     try:
         _await_control_stability(address, deadline)
         movement = drive_basic_movement(
             address, min(30.0, float(args.timeout))
         )
         block_interaction = drive_block_interaction(
-            address, min(90.0, float(args.timeout))
+            address, args.server_command, min(90.0, float(args.timeout))
         )
-        last_snapshot = _capture_control_snapshot(address)
+        lifecycle = {}
+        lifecycle = drive_session_lifecycle(
+            address,
+            args.server_command,
+            args.profile_id,
+            args.server_pack_id,
+            args.client_log,
+            min(120.0, float(args.timeout)),
+            lifecycle,
+        )
+        last_snapshot = lifecycle.pop("final_snapshot")
     except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
         failure = (
             str(error)
@@ -1015,7 +1497,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 1,
+            "schema": 2,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -1023,6 +1505,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "world_snapshot": last_snapshot,
             "movement": movement,
             "block_interaction": block_interaction,
+            "lifecycle": lifecycle,
             "failure": failure,
             "artifacts": {
                 "timeline": str(args.client_log),
@@ -1038,7 +1521,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 1,
+            "schema": 2,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -1046,6 +1529,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "world_snapshot": last_snapshot,
             "movement": movement,
             "block_interaction": block_interaction,
+            "lifecycle": lifecycle,
             "failure": str(error),
             "artifacts": {
                 "timeline": str(args.client_log),
@@ -1056,7 +1540,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 1,
+        "schema": 2,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -1064,6 +1548,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "world_snapshot": last_snapshot,
         "movement": movement,
         "block_interaction": block_interaction,
+        "lifecycle": lifecycle,
         "artifacts": {
             "timeline": str(args.client_log),
             "world_snapshot": str(args.output),
@@ -1122,6 +1607,20 @@ def _build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--protocol-source", type=Path, required=True)
     collect.add_argument("--output", type=Path, required=True)
     collect.add_argument("--timeout", type=float, required=True)
+    collect.add_argument("--server-command", type=Path, required=True)
+    collect.add_argument("--profile-id", required=True)
+    collect.add_argument("--server-pack-id", required=True)
+
+    operator = subparsers.add_parser(
+        "write-operator", help="write the deterministic offline operator profile"
+    )
+    operator.add_argument("--output", type=Path, required=True)
+    operator.add_argument("--username", required=True)
+
+    pack = subparsers.add_parser(
+        "write-server-pack", help="write the minimal valid 26.1 live resource pack"
+    )
+    pack.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -1150,6 +1649,10 @@ def main(argv: list[str] | None = None) -> int:
             args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
         elif args.command == "collect-live":
             collect_live(args)
+        elif args.command == "write-operator":
+            print(write_operator_file(args.output, args.username))
+        elif args.command == "write-server-pack":
+            print(write_server_pack(args.output))
         else:  # pragma: no cover - argparse owns this invariant.
             raise AssertionError(args.command)
     except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:

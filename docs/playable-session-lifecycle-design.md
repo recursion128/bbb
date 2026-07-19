@@ -77,8 +77,12 @@ The contract was checked against local sources under
   dimension changes, rebuilds the local player according to the keep-data bits,
   closes the active container, clears the death screen, and stops music only
   for a dimension change.
-- `DebugConfigCommand` calls `ServerGamePacketListenerImpl.switchToConfig`, and
-  `ServerPackCommand` emits the real resource-pack push/pop packets.
+- `DebugConfigCommand` calls `ServerGamePacketListenerImpl.switchToConfig`.
+  `ServerResourcePackConfigurationTask` emits the production resource-pack
+  push from dedicated-server properties and wraps its nullable prompt with
+  `Optional.ofNullable`. The 26.1 debug `ServerPackCommand.pushPack` instead
+  passes null to an `Optional` codec and disconnects in the official packet
+  encoder, so the gate uses the production push and only the debug pop path.
 - `Commands` registers those two commands when
   `SharedConstants.DEBUG_DEV_COMMANDS` is true. `SharedConstants.debugFlag`
   derives it from the official JVM properties `MC_DEBUG_ENABLED` and
@@ -170,14 +174,39 @@ The fixed environment is:
 All commits are normal, reviewable commits. No amend, rebase, history rewrite,
 or unrelated feature work is allowed.
 
+### Phase 2 compatibility findings
+
+The first full live runs exposed two production-format assumptions that fixture
+tests could not exercise:
+
+- Vanilla 26.1 `ListTag` encodes heterogeneous elements as compound tags and
+  wraps non-compound values under an empty-name marker. The shared protocol NBT
+  summary codec now mirrors `ListTag.wrapIfNeeded`/`addAndUnwrap`, including the
+  double wrapper needed to preserve a literal one-entry empty-name compound.
+  Data-component decoding uses that single codec rather than a divergent copy.
+- A model layer's declared texture width and height are logical UV extents, not
+  validation constraints on a resource-pack PNG. For example, the ghast layer
+  is 64x32 while the Vanilla 26.1 image is 128x64. Entity assets now retain the
+  physical pack resolution separately, and the static GPU atlas packs full
+  images into device-height-bounded columns without resampling. Geometry keeps
+  using the logical extent, preserving Vanilla normalized UV behavior.
+
+The control-driven movement assertion remains entirely synthetic. A
+server-authoritative `execute align xz` teleport is used only to prepare the
+player for the subsequent synthetic pick/destroy/place sequence; this removes
+renderer-frame timing from centering without weakening any movement or block
+interaction assertion.
+
 ## Failure localization and safe stops
 
-The lifecycle evidence records a monotonic stage name and snapshots around each
-boundary. Server command rejection, missing packet transition, canonical apply
-failure, runtime reload failure, transfer connection failure, control timeout,
-client exit, and cleanup leak are distinct failures. ANSI is stripped from
-`client.log` before searching; server-authoritative disagreement is checked
-against the gzip NBT player data under each artifact server world.
+The lifecycle evidence records a monotonic current stage plus the observations
+from every completed boundary. The top-level `world_snapshot` intentionally
+remains the opening stable-period sample on a failure; it must not be read as
+failure-time state. Server command rejection, missing packet transition,
+canonical apply failure, runtime reload failure, transfer connection failure,
+control timeout, client exit, and cleanup leak are distinct failures. ANSI is
+stripped from `client.log` before searching; server-authoritative disagreement
+is checked against the gzip NBT player data under each artifact server world.
 
 A phase may stop only at its clean committed checkpoint after reporting an
 external environment blocker, or when an official command/packet cannot produce

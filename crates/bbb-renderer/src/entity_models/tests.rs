@@ -1,4 +1,5 @@
 use super::*;
+use crate::entity_models::gpu::build_entity_model_texture_atlas_with_height_limit;
 
 mod allay;
 mod armadillo;
@@ -101,6 +102,62 @@ mod wither;
 mod wither_skull;
 mod wolf;
 mod zombie;
+
+#[test]
+fn model_texture_atlas_separates_pack_resolution_from_logical_uv_extent() {
+    // GhastModel.createBodyLayer declares a logical 64x32 UV extent while
+    // Vanilla 26.1 ships 128x64 ghast PNGs. The full physical image occupies
+    // the atlas rect without changing the model-facing logical coordinates.
+    let texture = EntityModelTextureRef {
+        path: "textures/entity/ghast/ghast.png",
+        size: [64, 32],
+    };
+    let image =
+        EntityModelTextureImage::with_physical_size(texture, [128, 64], vec![0x7f; 128 * 64 * 4]);
+
+    let (atlas, rgba) = build_entity_model_texture_atlas(&[image]).unwrap();
+
+    assert_eq!([atlas.width, atlas.height], [128, 64]);
+    assert_eq!(atlas.entries[0].texture, texture);
+    assert_eq!(atlas.entries[0].uv.min, [0.0, 0.0]);
+    assert_eq!(atlas.entries[0].uv.max, [1.0, 1.0]);
+    assert_eq!(rgba.len(), 128 * 64 * 4);
+}
+
+#[test]
+fn model_texture_atlas_wraps_physical_images_at_the_device_height_limit() {
+    let images = [
+        ("textures/entity/test/first.png", 0x11),
+        ("textures/entity/test/second.png", 0x22),
+        ("textures/entity/test/third.png", 0x33),
+    ]
+    .map(|(path, fill)| {
+        EntityModelTextureImage::with_physical_size(
+            EntityModelTextureRef { path, size: [4, 2] },
+            [4, 2],
+            vec![fill; 4 * 2 * 4],
+        )
+    });
+
+    let (atlas, rgba) = build_entity_model_texture_atlas_with_height_limit(&images, 5).unwrap();
+
+    assert_eq!([atlas.width, atlas.height], [8, 4]);
+    assert_eq!(atlas.entries[0].uv.min, [0.0, 0.0]);
+    assert_eq!(atlas.entries[0].uv.max, [0.5, 0.5]);
+    assert_eq!(atlas.entries[1].uv.min, [0.0, 0.5]);
+    assert_eq!(atlas.entries[1].uv.max, [0.5, 1.0]);
+    assert_eq!(atlas.entries[2].uv.min, [0.5, 0.0]);
+    assert_eq!(atlas.entries[2].uv.max, [1.0, 0.5]);
+    assert_eq!(model_atlas_pixel(&rgba, atlas.width, 0, 0), [0x11; 4]);
+    assert_eq!(model_atlas_pixel(&rgba, atlas.width, 0, 2), [0x22; 4]);
+    assert_eq!(model_atlas_pixel(&rgba, atlas.width, 4, 0), [0x33; 4]);
+    assert_eq!(model_atlas_pixel(&rgba, atlas.width, 4, 2), [0; 4]);
+}
+
+fn model_atlas_pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+    let offset = usize::try_from((y * width + x) * 4).unwrap();
+    rgba[offset..offset + 4].try_into().unwrap()
+}
 
 #[test]
 fn textured_layer_render_type_names_match_vanilla_render_types() {

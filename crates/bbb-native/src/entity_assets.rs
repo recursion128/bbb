@@ -58,17 +58,14 @@ fn load_entity_model_texture_image(
         .get_resource(&location)
         .with_context(|| format!("missing entity texture minecraft:{}", texture.path))?;
     let image = SpriteImage::from_png_file(entity_texture_id(texture.path), resource.path)?;
-    if [image.width, image.height] != texture.size {
-        bail!(
-            "entity texture {} has {}x{}, expected {}x{}",
-            texture.path,
-            image.width,
-            image.height,
-            texture.size[0],
-            texture.size[1]
-        );
+    if image.width == 0 || image.height == 0 {
+        bail!("entity texture {} has zero-sized dimensions", texture.path);
     }
-    Ok(EntityModelTextureImage::new(texture, image.rgba))
+    Ok(EntityModelTextureImage::with_physical_size(
+        texture,
+        [image.width, image.height],
+        image.rgba,
+    ))
 }
 
 fn entity_texture_id(path: &str) -> String {
@@ -104,7 +101,7 @@ mod tests {
             assert_eq!(&image.texture, texture);
             assert_eq!(
                 image.rgba.len(),
-                usize::try_from(image.texture.size[0] * image.texture.size[1] * 4).unwrap()
+                usize::try_from(image.size[0] * image.size[1] * 4).unwrap()
             );
         }
 
@@ -112,8 +109,8 @@ mod tests {
     }
 
     #[test]
-    fn rejects_entity_texture_with_wrong_dimensions() {
-        let temp = unique_temp_dir("bbb-entity-textures-bad");
+    fn loads_pack_defined_entity_texture_resolution() {
+        let temp = unique_temp_dir("bbb-entity-textures-resolution");
         let sources = temp.join("sources").join("26.1");
         for texture in entity_model_texture_refs() {
             let texture_path = sources.join("assets").join("minecraft").join(texture.path);
@@ -133,9 +130,15 @@ mod tests {
             resource_pack_dirs: Vec::new(),
         };
 
-        let err = load_entity_model_texture_images(&roots).unwrap_err();
+        let images = load_entity_model_texture_images(&roots).unwrap();
 
-        assert!(err.to_string().contains("expected 64x32"));
+        let sheep = images
+            .iter()
+            .find(|image| image.texture.path == "textures/entity/sheep/sheep.png")
+            .unwrap();
+        assert_eq!(sheep.texture.size, [64, 32]);
+        assert_eq!(sheep.size, [32, 32]);
+        assert_eq!(sheep.rgba.len(), 32 * 32 * 4);
         std::fs::remove_dir_all(temp).unwrap();
     }
 

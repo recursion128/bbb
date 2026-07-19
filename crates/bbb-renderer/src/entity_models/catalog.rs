@@ -1771,12 +1771,31 @@ pub struct EntityModelBounds {
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityModelTextureImage {
     pub texture: EntityModelTextureRef,
+    /// Physical pack-image resolution; distinct from the model's logical UV
+    /// extent in `texture.size`.
+    pub size: [u32; 2],
     pub rgba: Vec<u8>,
 }
 
 impl EntityModelTextureImage {
     pub fn new(texture: EntityModelTextureRef, rgba: Vec<u8>) -> Self {
-        Self { texture, rgba }
+        Self {
+            size: texture.size,
+            texture,
+            rgba,
+        }
+    }
+
+    pub fn with_physical_size(
+        texture: EntityModelTextureRef,
+        size: [u32; 2],
+        rgba: Vec<u8>,
+    ) -> Self {
+        Self {
+            texture,
+            size,
+            rgba,
+        }
     }
 }
 
