@@ -324,6 +324,20 @@ class PlayableGateScriptContractTests(unittest.TestCase):
             interaction.index('"input.focus"'), interaction.index("_press_mouse(")
         )
 
+    def test_centering_tap_waits_for_render_consumption_and_spans_multiple_frames(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        centering = source[
+            source.index("def _center_on_block(") : source.index(
+                "def _occupied_player_slots(", source.index("def _center_on_block(")
+            )
+        ]
+
+        self.assertLess(
+            centering.index("_await_input_pipeline(address, deadline)"),
+            centering.index('_press_key(address, "forward", True)'),
+        )
+        self.assertIn("max(0.15, distance / 1.3 * 0.7)", centering)
+
 
 if __name__ == "__main__":
     unittest.main()

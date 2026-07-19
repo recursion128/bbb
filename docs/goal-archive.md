@@ -19666,6 +19666,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   JSON bool，对 network NBT 接受 Codec.BOOL 的 0/1 数值表示，并保留默认值。失败证据
   保留在 `/tmp/bbb-playable-gate.e1bZ0j`；修复后同 server probe 已到达 Play、解码首个
   chunk 且 `world_apply_errors=0`，完整 live 交互仍由最终 committed-HEAD gate 给出。
+- [x] 显式 live 成功后的附加 auto/live run 在 block-interaction 居中阶段复现了 30 FPS
+  frame 合并较短 key press/release 的门禁抖动；失败 artifact 为
+  `/tmp/bbb-playable-gate.OsAJhU`，server gzip NBT 的 `Pos=[4.4902,70.0000,8.7117]` 与
+  client 一致，排除断连、旧 binary 和新旧 generation 混读。居中 tap 现在先用
+  look acknowledgement 证明 render 已消费输入管线，再保证至少 150 ms key-down；source
+  contract 固定该顺序与 30 FPS 最小跨帧时间。
 
 ## 2026-07-19：vanilla remote debug subscription 全路径
 

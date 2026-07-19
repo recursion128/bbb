@@ -662,10 +662,15 @@ def _center_on_block(address: tuple[str, int], deadline: float) -> dict[str, Any
             # Vanilla forward is (-sin(yaw), cos(yaw)) in the XZ plane.
             target_yaw = math.degrees(math.atan2(-offset_x, offset_z))
             _look_to_yaw(address, target_yaw, deadline)
-            # Sneaking moves at ~1.3 m/s: short taps close in without
-            # overshooting a full block.
+            # Prove the render loop consumed the preceding input before
+            # enqueueing a tap.  Otherwise a slow 30 FPS frame can absorb the
+            # press and release together without ever observing the key down.
+            _await_input_pipeline(address, deadline)
+            # Sneaking moves at ~1.3 m/s: the 150 ms floor spans several
+            # 30 FPS frames while remaining short enough to avoid crossing a
+            # full block column.
             _press_key(address, "forward", True)
-            time.sleep(min(0.4, max(0.05, distance / 1.3 * 0.7)))
+            time.sleep(min(0.4, max(0.15, distance / 1.3 * 0.7)))
             _press_key(address, "forward", False)
             # Let the post-release slide decay before re-reading the pose.
             time.sleep(0.3)
