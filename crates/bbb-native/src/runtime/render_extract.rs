@@ -223,7 +223,7 @@ pub(crate) fn clear_color_for_world_with_environment_colors_and_water_vision(
     let weather = world.weather();
     let can_have_weather = world
         .level_info()
-        .is_some_and(WorldLevelInfo::can_have_weather);
+        .is_none_or(WorldLevelInfo::can_have_weather);
     let rain = if can_have_weather {
         weather.rain_level.clamp(0.0, 1.0) as f64
     } else {
@@ -319,7 +319,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     let weather = world.weather();
     let can_have_weather = world
         .level_info()
-        .is_some_and(WorldLevelInfo::can_have_weather);
+        .is_none_or(WorldLevelInfo::can_have_weather);
     let rain = if can_have_weather {
         weather.rain_level.clamp(0.0, 1.0) as f64
     } else {
@@ -442,7 +442,7 @@ pub(crate) fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironmen
         let weather = world.weather();
         let can_have_weather = world
             .level_info()
-            .is_some_and(WorldLevelInfo::can_have_weather);
+            .is_none_or(WorldLevelInfo::can_have_weather);
         let rain = can_have_weather
             .then_some(weather.rain_level as f64)
             .unwrap_or(0.0);
