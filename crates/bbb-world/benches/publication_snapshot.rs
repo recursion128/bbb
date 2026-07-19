@@ -26,8 +26,9 @@ use bbb_protocol::{
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
 };
 use bbb_world::{
-    ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
-    PaletteKind, PalettedContainerData, WorldStore,
+    vanilla_entity_metadata_accessor_for_entity_type, ChunkColumn, ChunkPos, ChunkSection,
+    ChunkState, HeightmapData, LightData, PaletteDomain, PaletteKind, PalettedContainerData,
+    WorldStore,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
@@ -259,6 +260,59 @@ fn bench_entity_tick_only(c: &mut Criterion) {
     let mut heterogeneous = build_heterogeneous_entity_world(ENTITY_COUNT);
     group.bench_function("heterogeneous/2000", |b| {
         b.iter(|| heterogeneous.advance_entity_client_animations(black_box(1)));
+    });
+    group.finish();
+}
+
+fn bench_entity_tick_schema_lookups(c: &mut Criterion) {
+    const CLIENT_TICK_ACCESSOR_NAMES: [&str; 17] = [
+        "DATA_BABY_ID",
+        "DATA_ID_FLAGS",
+        "DASH",
+        "COPPER_GOLEM_STATE",
+        "IS_CHARGING_CROSSBOW",
+        "DATA_IS_CHARGING_CROSSBOW",
+        "DATA_LIVING_ENTITY_FLAGS",
+        "DATA_DANCING",
+        "DATA_PLAYING_DEAD",
+        "IS_TEARING_DOWN",
+        "DATA_ANGER_LEVEL",
+        "DATA_INTERESTED_ID",
+        "IS_LYING",
+        "RELAX_STATE_ONE",
+        "DATA_ID_PADDLE_LEFT",
+        "DATA_ID_BUBBLE_TIME",
+        "DATA_ID_FIREWORKS_ITEM",
+    ];
+
+    let mut group = c.benchmark_group("entity_tick/schema_accessor_lookup");
+    let zombie_types = vec![VANILLA_ENTITY_TYPE_ZOMBIE_ID; ENTITY_COUNT];
+    group.bench_function("17_accessors_2000_zombies", |b| {
+        b.iter(|| {
+            for entity_type_id in &zombie_types {
+                for java_name in CLIENT_TICK_ACCESSOR_NAMES {
+                    black_box(vanilla_entity_metadata_accessor_for_entity_type(
+                        black_box(*entity_type_id),
+                        black_box(java_name),
+                    ));
+                }
+            }
+        });
+    });
+    let heterogeneous_types = (0..ENTITY_COUNT)
+        .map(|index| VANILLA_ENTITY_TYPES[index % VANILLA_ENTITY_TYPES.len()].id)
+        .collect::<Vec<_>>();
+    group.bench_function("17_accessors_2000_heterogeneous", |b| {
+        b.iter(|| {
+            for entity_type_id in &heterogeneous_types {
+                for java_name in CLIENT_TICK_ACCESSOR_NAMES {
+                    black_box(vanilla_entity_metadata_accessor_for_entity_type(
+                        black_box(*entity_type_id),
+                        black_box(java_name),
+                    ));
+                }
+            }
+        });
     });
     group.finish();
 }
@@ -534,6 +588,7 @@ criterion_group! {
     targets =
         bench_unchanged_publication,
         bench_entity_tick_only,
+        bench_entity_tick_schema_lookups,
         bench_entity_tick_and_publication,
         bench_entity_retained_snapshot,
         bench_entity_sparse_mutation,

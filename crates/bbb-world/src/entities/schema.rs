@@ -5,6 +5,8 @@
 //! compatibility queries, and virtual-default resolution used by world/native
 //! consumers. Ordinary builds never read the external vanilla source tree.
 
+use std::sync::OnceLock;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaEntityMetadataFamily {
     Entity,
@@ -752,22 +754,66 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type(
     entity_type_id: i32,
     java_name: &str,
 ) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
-    let mut java_class = VANILLA_ENTITY_TYPE_METADATA_26_1
+    vanilla_entity_metadata_accessor_index()
+        .get(usize::try_from(entity_type_id).ok()?)?
         .iter()
-        .find(|entry| entry.entity_type_id == entity_type_id)?
-        .schema_class?;
-    loop {
-        if let Some(accessor) = VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+        .copied()
+        .find(|entry| entry.java_name == java_name)
+}
+
+fn vanilla_entity_type_metadata_entry(
+    entity_type_id: i32,
+) -> Option<&'static VanillaEntityTypeMetadataCatalogEntry> {
+    let entry = VANILLA_ENTITY_TYPE_METADATA_26_1.get(usize::try_from(entity_type_id).ok()?)?;
+    (entry.entity_type_id == entity_type_id).then_some(entry)
+}
+
+fn vanilla_entity_metadata_class(
+    java_class: &str,
+) -> Option<&'static VanillaEntityMetadataClassCatalogEntry> {
+    VANILLA_ENTITY_METADATA_CLASSES_26_1
+        .binary_search_by(|entry| entry.java_class.cmp(java_class))
+        .ok()
+        .map(|index| &VANILLA_ENTITY_METADATA_CLASSES_26_1[index])
+}
+
+fn vanilla_entity_metadata_accessors_on_class(
+    java_class: &str,
+) -> &'static [VanillaEntityMetadataAccessorCatalogEntry] {
+    let first =
+        VANILLA_ENTITY_METADATA_ACCESSORS_26_1.partition_point(|entry| entry.owner < java_class);
+    let count = VANILLA_ENTITY_METADATA_ACCESSORS_26_1[first..]
+        .partition_point(|entry| entry.owner == java_class);
+    &VANILLA_ENTITY_METADATA_ACCESSORS_26_1[first..first + count]
+}
+
+fn vanilla_entity_metadata_accessor_index(
+) -> &'static [Box<[&'static VanillaEntityMetadataAccessorCatalogEntry]>] {
+    static INDEX: OnceLock<Vec<Box<[&'static VanillaEntityMetadataAccessorCatalogEntry]>>> =
+        OnceLock::new();
+    INDEX.get_or_init(|| {
+        VANILLA_ENTITY_TYPE_METADATA_26_1
             .iter()
-            .find(|entry| entry.owner == java_class && entry.java_name == java_name)
-        {
-            return Some(accessor);
-        }
-        java_class = VANILLA_ENTITY_METADATA_CLASSES_26_1
-            .iter()
-            .find(|entry| entry.java_class == java_class)?
-            .superclass?;
-    }
+            .map(|entity_type| {
+                let mut resolved = Vec::new();
+                let mut java_class = entity_type.schema_class;
+                while let Some(class_name) = java_class {
+                    for accessor in vanilla_entity_metadata_accessors_on_class(class_name) {
+                        if resolved.iter().all(
+                            |resolved: &&VanillaEntityMetadataAccessorCatalogEntry| {
+                                resolved.java_name != accessor.java_name
+                            },
+                        ) {
+                            resolved.push(accessor);
+                        }
+                    }
+                    java_class = vanilla_entity_metadata_class(class_name)
+                        .and_then(|class| class.superclass);
+                }
+                resolved.into_boxed_slice()
+            })
+            .collect()
+    })
 }
 
 /// Resolves the generated Player absorption accessor and its typed default.
@@ -3954,24 +4000,19 @@ pub fn vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
     entity_type_id: i32,
     serializer_name: &str,
 ) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
-    let mut java_class = VANILLA_ENTITY_TYPE_METADATA_26_1
-        .iter()
-        .find(|entry| entry.entity_type_id == entity_type_id)?
-        .schema_class?;
+    let mut java_class = vanilla_entity_type_metadata_entry(entity_type_id)?.schema_class?;
     let mut resolved = None;
     loop {
-        for accessor in VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+        for accessor in vanilla_entity_metadata_accessors_on_class(java_class)
             .iter()
-            .filter(|entry| entry.owner == java_class && entry.serializer_name == serializer_name)
+            .filter(|entry| entry.serializer_name == serializer_name)
         {
             if resolved.replace(accessor).is_some() {
                 return None;
             }
         }
-        let Some(superclass) = VANILLA_ENTITY_METADATA_CLASSES_26_1
-            .iter()
-            .find(|entry| entry.java_class == java_class)
-            .and_then(|entry| entry.superclass)
+        let Some(superclass) =
+            vanilla_entity_metadata_class(java_class).and_then(|entry| entry.superclass)
         else {
             return resolved;
         };
@@ -4172,10 +4213,7 @@ fn vanilla_class_is_or_implements(java_class: &str, target: &str, depth: usize) 
     if depth >= VANILLA_ENTITY_METADATA_CLASSES_26_1.len() {
         return false;
     }
-    let Some(class) = VANILLA_ENTITY_METADATA_CLASSES_26_1
-        .iter()
-        .find(|entry| entry.java_class == java_class)
-    else {
+    let Some(class) = vanilla_entity_metadata_class(java_class) else {
         return false;
     };
     class
@@ -4501,6 +4539,58 @@ mod tests {
                 Some(entry.serializer_id)
             );
         }
+    }
+
+    #[test]
+    fn generated_catalog_order_supports_narrow_runtime_lookup() {
+        assert!(VANILLA_ENTITY_TYPE_METADATA_26_1
+            .iter()
+            .enumerate()
+            .all(|(index, entry)| entry.entity_type_id == index as i32));
+        assert!(VANILLA_ENTITY_METADATA_CLASSES_26_1
+            .windows(2)
+            .all(|entries| entries[0].java_class < entries[1].java_class));
+        assert!(VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+            .windows(2)
+            .all(|entries| entries[0].owner <= entries[1].owner));
+    }
+
+    #[test]
+    fn derived_accessor_index_matches_generated_inheritance_walk() {
+        fn direct_lookup(
+            entity_type_id: i32,
+            java_name: &str,
+        ) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
+            let mut java_class = vanilla_entity_type_metadata_entry(entity_type_id)?.schema_class?;
+            loop {
+                if let Some(accessor) = vanilla_entity_metadata_accessors_on_class(java_class)
+                    .iter()
+                    .find(|entry| entry.java_name == java_name)
+                {
+                    return Some(accessor);
+                }
+                java_class = vanilla_entity_metadata_class(java_class)?.superclass?;
+            }
+        }
+
+        for entity_type in VANILLA_ENTITY_TYPE_METADATA_26_1 {
+            for java_name in VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+                .iter()
+                .map(|entry| entry.java_name)
+                .chain(["__missing_generated_accessor__"])
+            {
+                let direct = direct_lookup(entity_type.entity_type_id, java_name)
+                    .map(|entry| (entry.owner, entry.java_name, entry.data_id));
+                let indexed = vanilla_entity_metadata_accessor_for_entity_type(
+                    entity_type.entity_type_id,
+                    java_name,
+                )
+                .map(|entry| (entry.owner, entry.java_name, entry.data_id));
+                assert_eq!(indexed, direct, "{} {java_name}", entity_type.resource_id);
+            }
+        }
+        assert!(vanilla_entity_metadata_accessor_for_entity_type(-1, "DATA_POSE").is_none());
+        assert!(vanilla_entity_metadata_accessor_for_entity_type(i32::MAX, "DATA_POSE").is_none());
     }
 
     #[test]

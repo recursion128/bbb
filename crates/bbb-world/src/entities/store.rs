@@ -23,6 +23,7 @@ use uuid::Uuid;
 
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+    VANILLA_ENTITY_TYPE_WITHER_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
@@ -2914,16 +2915,50 @@ impl EntityStore {
     }
 
     fn wither_head_targets_by_id(&self) -> HashMap<i32, [WitherHeadTargetRotations; 2]> {
-        let mut eye_positions = HashMap::new();
         let mut withers = Vec::new();
         let mut query = self.ecs.query::<(
             &EntityIdentity,
             &EntityTransform,
             &EntityMetadata,
             &EntityAttributes,
-            &EntityClientAnimations,
         )>();
-        for (_, (identity, transform, metadata, attributes, client_animations)) in query.iter() {
+        for (_, (identity, transform, metadata, attributes)) in query.iter() {
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_WITHER_ID {
+                continue;
+            }
+
+            withers.push((
+                identity.id,
+                transform.position,
+                transform.y_rot,
+                vanilla_render_scale(identity.entity_type_id, &attributes.attributes),
+                wither_side_head_target_ids(identity.entity_type_id, &metadata.data_values),
+            ));
+        }
+        drop(query);
+
+        let mut eye_positions = HashMap::new();
+        for target_id in withers
+            .iter()
+            .flat_map(|(_, _, _, _, target_ids)| target_ids)
+            .copied()
+            .filter(|target_id| *target_id > 0)
+        {
+            if eye_positions.contains_key(&target_id) {
+                continue;
+            }
+            let Some(entity) = self.by_protocol_id.get(&target_id).copied() else {
+                continue;
+            };
+            let (Ok(identity), Ok(transform), Ok(metadata), Ok(attributes), Ok(client_animations)) = (
+                self.ecs.get::<&EntityIdentity>(entity),
+                self.ecs.get::<&EntityTransform>(entity),
+                self.ecs.get::<&EntityMetadata>(entity),
+                self.ecs.get::<&EntityAttributes>(entity),
+                self.ecs.get::<&EntityClientAnimations>(entity),
+            ) else {
+                continue;
+            };
             if let Some(eye_height) = vanilla_eye_height_for_entity_data(
                 identity.entity_type_id,
                 identity.data,
@@ -2932,21 +2967,7 @@ impl EntityStore {
                 Some(client_animations.animations),
                 metadata.painting_variant_projection.as_ref(),
             ) {
-                eye_positions.insert(identity.id, (transform.position, eye_height));
-            }
-
-            if vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
-                identity.entity_type_id,
-            )
-            .is_some()
-            {
-                withers.push((
-                    identity.id,
-                    transform.position,
-                    transform.y_rot,
-                    vanilla_render_scale(identity.entity_type_id, &attributes.attributes),
-                    wither_side_head_target_ids(identity.entity_type_id, &metadata.data_values),
-                ));
+                eye_positions.insert(target_id, (transform.position, eye_height));
             }
         }
 

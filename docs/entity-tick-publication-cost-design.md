@@ -185,6 +185,83 @@ profiling was attempted, but this machine sets `perf_event_paranoid=4`; the
 phase therefore uses the reproducible microbench partitions and source-owned
 query boundaries rather than privileged samples.
 
+### Frozen Phase 2 Tick Contract
+
+Source-level partitioning identifies one dominant, unrelated projection before
+the mutable animation query: `wither_head_targets_by_id` currently resolves the
+eye height of every entity into a temporary map on every client tick, even when
+the world contains no Wither. Eye-height resolution enters the renderer and
+dimension schema path, while the 2,000-entity renderer-model projection alone
+measures 59.602 ms. This is separate from hecs query/borrow, protocol-id lookup,
+the animation helper, and effect-vector costs measured above.
+
+Phase 2 therefore freezes this first implementation boundary:
+
+- generated `VANILLA_ENTITY_TYPE_WITHER_ID` membership selects only Withers;
+- the first narrow query gathers their transform, scale, and generated metadata
+  target ids without projecting any unrelated entity;
+- only distinct positive side-head target ids use the existing protocol-id to
+  hecs handle index, and only those targets borrow the components required to
+  derive eye height;
+- no-Wither worlds allocate neither the old eye-position map nor target
+  projections, while Wither fallback rotations and target order remain exact;
+- the generated firework metadata accessor remains the trail membership owner;
+  its catalog guard explicitly rejects a direct type-constant shortcut; and
+- interpolation, head lerp, broad animation mutation, client effect append,
+  minecart lerp, and publication retain their existing relative order.
+
+The same baseline scenarios are rerun immediately after this change. Any
+additional schema lookup index, family query, or tick-state cache is permitted
+only when that rerun shows a residual material owner; such data must be derived
+from the generated catalog and may not become a parallel membership/schema
+table. Entity publication storage remains unchanged in phase 2 so its measured
+cost cannot be hidden by the tick optimization.
+
+The first rerun reduced the 2,000-zombie tick from 85.410 ms to 67.298 ms, but
+a new direct partition measured 17 representative generated accessor lookups
+for 2,000 entities at 46.802 ms for zombies and 44.523 ms for a heterogeneous
+mix. The generic resolver linearly scans the 157-entry type catalog, the full
+accessor catalog, and the class catalog for every family helper. This freezes a
+second evidence-backed change: directly index the generated contiguous
+entity-type catalog, binary-search the generated class ordering, and narrow an
+accessor search to its generated owner range. Tests guard the generated
+continuity and ordering that these lookups require. No cached membership,
+parallel schema, or per-entity copy is introduced.
+
+That ordering-only change reduced the 17-accessor partition to 22.082 ms but
+left it at about 61% of the resulting 36.293 ms zombie tick. The final lookup
+step may therefore build one process-static, reference-only derived index on
+first use. Each entity-type slot contains only references to the nearest
+generated accessor entries in its inheritance chain; it duplicates no data id,
+default, serializer, schema field, or authored membership. Exhaustive tests
+compare the indexed result against a direct generated-chain walk for every
+entity type and accessor name. The one-time allocation and first-use latency
+remain visible as a startup/peak-memory tradeoff, not a per-generation owner.
+
+### Phase 2 Tick Result
+
+The same Criterion configuration and machine produced these phase-2 estimates.
+Publication storage remains the phase-1 implementation in this comparison.
+
+| Scenario | Before | Phase 2 | Improvement |
+| --- | ---: | ---: | ---: |
+| 2,000 zombies tick-only | 85.410 ms | 8.237 ms | 10.37x |
+| 2,000 zombies tick + publication | 88.226 ms | 9.308 ms | 9.48x |
+| 2,000 heterogeneous tick-only | 78.730 ms | 9.064 ms | 8.69x |
+| 2,000 heterogeneous tick + publication | 80.204 ms | 10.234 ms | 7.84x |
+| 1,000 vehicles + 1,000 passengers tick + publication | 81.759 ms | 9.158 ms | 8.93x |
+| 2,000 firework ticks + trail-effect drain | 75.608 ms | 8.944 ms | 8.45x |
+| 17 accessor lookups x 2,000 zombies | 46.802 ms | 0.217 ms | 215.7x |
+
+The empty path remains about 28 ns, while the entity count series remains
+linear (407 us/2.034 ms/8.237 ms for 100/500/2,000 zombies). The retained and
+mutation publication cases are unchanged by construction, so the improvement
+is not deferred into a later mutation. The derived index holds one boxed slice
+per generated entity type and only pointer-sized references; a conservative
+upper bound is 157 x 227 references (about 279 KiB on a 64-bit target) plus 157
+box descriptors, while actual inheritance contains far fewer entries. It is
+process-static and does not multiply with worlds or retained generations.
+
 ## Serial Phases And Checkpoints
 
 1. **Reproducible baseline and attribution surface.** Extend the existing
