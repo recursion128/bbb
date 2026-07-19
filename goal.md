@@ -449,7 +449,9 @@ unsupported 值安全保留或省略且可诊断；连接切换不泄漏旧 regi
 连接级断裂。标准 workspace checkpoint gate 保持快速；新增 `playable-gate` 作为 P1 milestone、
 session/registry 大改和队列关闭时的权威慢门禁，CI/本地缺 Java server 时必须运行等价
 recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实现与证据归档见
-`docs/goal-archive.md`；当前命令入口为 `scripts/playable-gate.sh`。
+`docs/goal-archive.md`；当前命令入口为 `scripts/playable-gate.sh`。生命周期高风险
+工程切片的冻结合同、Vanilla 依据、串行阶段与门禁见
+`docs/playable-session-lifecycle-design.md`。
 
 剩余阶段：
 
