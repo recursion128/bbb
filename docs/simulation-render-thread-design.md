@@ -230,6 +230,17 @@ retains candidate, survivor, relationship-index, full-source, and final-instance
 capacity across frames; the renderer returns the previous instance allocation
 when applying a changed frame.
 
+Stable item and map assets do not belong to the publication. Native extraction
+reads the loaded generation and emits exact small model/map requests plus
+ordered instances; the render thread alone owns the derived model-space CPU
+assets, persistent GPU vertex/index buffers, fixed-page map textures and
+resource-generation atlases. Resource and atlas generations are part of exact
+owner equality before any large geometry is built. Partial tick, camera, pose,
+light, overlay, foil/glint time and GUI target remain frame-local instance data.
+Consequently an input-only publication can reuse the exact world `Arc`, an
+unchanged render can reuse exact GPU owners, and neither optimization can mutate
+an old publication or form a second canonical item/map store.
+
 The first implementation publishes after any drained packet/input batch that
 changes observable state and after every due tick batch. It may coalesce
 multiple changes handled in one `step`, but must not wait for a rendered frame.

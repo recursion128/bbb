@@ -82,6 +82,13 @@ The frozen storage contract is:
 6. Serde must preserve the existing `WorldStore` JSON field names and nesting;
    structural owners are an in-memory detail only.
 
+Map color pixels later adopt the same rule at their canonical semantic owner:
+the byte payload is an Arc-COW allocation with a monotonic content revision and
+an exact last patch. A retained publication shares unchanged pixels, and the
+first later patch copies only that map payload. Renderer fixed-page texture
+residency is a derived consumer of this revision; it is never stored back into
+the publication and does not alter the serialized map byte-array shape.
+
 The live world holds the current owners while every retained generation holds
 the owners it observed. A first mutation while an older generation is retained
 can temporarily hold both old and new payloads for the changed column or

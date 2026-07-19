@@ -312,6 +312,27 @@ reused; the renderer swaps its previous instance allocation back to this owner.
 The latest/peak phase durations, row counts, and capacity-growth count are
 published in the next immutable generation's renderer telemetry.
 
+Item and map rendering use a second discardable render-owned residency boundary,
+not another gameplay owner. `bbb-item-model` resolves an exact model identity
+and dynamic properties without naming GPU resources; native extraction supplies
+visibility, ordered targets and narrow transform/tint/light/overlay/foil
+instances. `bbb-renderer` keys immutable model-space CPU geometry and persistent
+vertex/index owners by the exact resource generation, atlas generation, model
+identity, material/geometry class and static phase. Entity and level ids never
+identify a mesh. Dynamic pose, camera, partial tick and glint time update only a
+grow-only instance stream. Special sheeted-decal foil derives UVs in the shader
+from retained model-space coordinates and instance scale.
+
+Canonical map colors remain publication-shared world data with a content
+revision and exact patch. The renderer owns bounded fixed-page GPU texture
+residency per map lineage and resource-owned background, decoration and font
+atlases. An unchanged revision uploads no pixels; a consecutive patch writes
+only its rectangle; level reset, unload or resource reload invalidates the
+matching derived owner. Map surface, decoration and text geometry use static
+quads plus narrow instances. Item/map residency telemetry follows the non-
+waking backend-counter path into the next immutable publication, so observation
+does not create a render-to-simulation feedback loop.
+
 Terrain extraction keeps immutable CPU snapshots and meshes in the render
 owner, never in simulation or control. Meshes are split by section and layer;
 the GPU owner key is client-level generation plus chunk/section/layer, and a

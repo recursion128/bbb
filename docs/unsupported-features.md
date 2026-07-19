@@ -41,8 +41,14 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 - Reuse the remaining heap-heavy non-entity `RendererFrame` extraction owners
-  and revision-cache stable HUD/item/block-entity/debug projections without
-  caching partial-tick or animation-dependent state.
+  and revision-cache stable HUD/block-entity/debug projections, and replace the
+  exact scissored GUI triangle-clipping fallback for floating/stats items,
+  without caching partial-tick or animation-dependent state.
+- Measure and reduce the remaining dynamic item-model property-selection,
+  per-frame instance upload, draw/pipeline state churn, and driver-deferred
+  resident-release tails. Any change must preserve exact phase/translucent
+  order and the explicit bounded-owner fallback rather than dropping visible
+  instances.
 - Narrow Guardian/EndCrystal/Shulker/display specialized culling to their exact
   vanilla beam/interpolation/metadata boxes, and add section-granular compiled
   visibility; follow `LevelRenderer.extractVisibleEntities` and the registered

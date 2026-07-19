@@ -469,9 +469,10 @@ payload either.  Dropped items, pickup-particle clusters, ominous spawners,
 third-person held/equipped items, first-person hand items, item-frame borders
 and contents, and entity block attachments now submit resident instances.
 Their ordinary production path no longer appends world-space phase meshes.
-Special clock/compass foil remains the explicit legacy fallback until its
-sheeted-decal resident shader is completed in phase 5; no ordinary item uses
-that fallback.
+At the phase-3 checkpoint, special clock/compass foil remained the explicit
+legacy fallback. Phase 5 removed that fallback by retaining model-space decal
+coordinates and applying the pose-dependent sheeted-decal scale in the glint
+instance/shader path.
 
 The resident pipelines consume persistent model-space vertex/index buffers and
 one grow-only instance buffer.  Equal consecutive owner/target/phase records
@@ -541,13 +542,73 @@ bytes without replacing the unrelated owner or the full atlas.
 | unchanged, 1 / 8 / 32 maps | 0.826 / 7.824 / 33.698 us | 2.441 / 19.747 / 109.46 ns | about 338x / 396x / 308x |
 | one patch, 1 / 8 / 32 maps | 0.825 / 7.584 / 32.192 us | 18.336 / 53.637 / 229.13 ns | about 45x / 141x / 141x |
 
-This boundary is not yet the complete map rendering result: base,
-background, and decoration quads still merge world-space geometry and create
-transient vertex/index buffers during render. Phase 5 converts those surfaces
-to static quads plus narrow instances and supplies an explicit paged/fallback
-path if one frame exceeds the 4,096-owner single-atlas hardware budget. The
-single-page table is bounded at 256 MiB logical pixels; driver-deferred texture
-release during atlas growth is not included in that logical peak.
+Phase 5 completes the item/map boundary. Map base, background, decoration and
+label glyph surfaces use one persistent static quad and narrow surface/glyph
+instances. Map pixels use fixed 8x8-slot pages rather than a growing texture:
+adding a page uploads only the new map owner and never copies an earlier page.
+The persistent table is bounded at 4,096 map owners (64 pages, 256 MiB logical
+pixels). If one current frame itself exceeds that bound, explicit current-frame
+overflow pages preserve every visible map and increment the fallback counter;
+they are not silently omitted or mistaken for persistent residency. Driver-
+deferred texture release and current-frame overflow pages remain outside the
+logical resident-byte peak.
+
+The same phase migrates special foil and GUI 3D block items. Resident vertices
+retain the exact sheeted-decal coordinate, while glint time, pose and decal
+scale remain instance/uniform values; clock/compass animation therefore never
+rebuilds static geometry. Ordinary hotbar, inventory and debug GUI block items
+submit the same exact model identity and narrow pose/tint target into the
+resident item pipelines. The target preserves `Gui`, `GuiBeforeBlur` and
+`GuiAfterBlur` ordering. Only GUI items whose floating/stats scissor rectangle
+requires CPU triangle clipping retain a measured legacy fallback; it is
+explicitly counted and does not route ordinary items through transient buffers.
+Map text similarly reuses the resource-owned font atlas and static quad rather
+than constructing a world-space glyph mesh.
+
+The phase-5 same-host Criterion run uses the same configuration and isolates
+the last CPU geometry owners. It excludes queue submission time and is paired
+with offscreen output and byte-accounting tests.
+
+| Final migrated workload | Legacy world-space | Resident instance | Speedup |
+| --- | ---: | ---: | ---: |
+| map surface, 1 instance | 30.296 ns | 7.141 ns | 4.24x |
+| map surface, 8 instances | 113.16 ns | 13.323 ns | 8.49x |
+| map surface, 32 instances | 545.86 ns | 46.091 ns | 11.84x |
+| GUI block item, 1 instance | 1.198 us | 0.107 us | 11.20x |
+| GUI block item, 9 instances | 4.618 us | 0.490 us | 9.41x |
+| GUI block item, 46 instances | 23.476 us | 2.062 us | 11.39x |
+| GUI block item, 100 instances | 51.117 us | 4.476 us | 11.42x |
+
+Production hard assertions cover the cost that the isolated timings omit. An
+unchanged second item frame uploads zero vertex/index bytes; transform,
+partial-tick, camera, light and foil-only changes upload only instances. Two
+initial map owners upload 131,072 pixel bytes, their unchanged frame uploads
+zero, and a one-pixel patch uploads four bytes without replacing the unrelated
+owner. Ordinary item/map mutations keep both full-residency-replacement
+counters at zero. Reload advances the exact resource/atlas generation, level
+reset invalidates map owners, entity-id reuse cannot retain an instance, and
+the old publication remains immutable.
+
+Runtime observations cross the existing non-waking backend telemetry path and
+are published with the next immutable generation: exact item hit/miss/build/
+stale counts; recent/peak lookup, extraction and GPU-apply time; created/reused/
+replaced owners; vertex/index/instance/map bytes; transient buffers and full
+replacement counts; current/peak logical resident bytes; map created/updated/
+reused/stale/fallback counts; map surface/instance bytes; and extraction scratch
+capacity growth. The exact-world-`Arc` projection cache may reject upper-layer
+work, but disabling it still leaves this residency boundary and all zero-static-
+upload assertions intact.
+
+Remaining measured boundaries are the explicit scissored GUI clipping fallback,
+dynamic/special model selection and property evaluation before an identity is
+known, per-frame instance uploads, draw/pipeline state churn, and driver-owned
+deferred-release memory. Item model residency and persistent map pixels each
+allow 256 MiB logical ownership, while a frame that pins more owners than the
+bound can temporarily retain explicit fallback/overflow storage. These are not
+hidden inside the reported logical peak. A strict equal-load official Java
+26.1 CPU/GPU capture was not produced by this microbenchmark slice and remains
+subject to the comparison protocol below; no isolated section number is used
+to claim overall client superiority.
 
 Every phase is a normal reviewable commit with affected-crate focused tests,
 `cargo fmt --all --check`, `git diff --check`, documentation lint when needed,

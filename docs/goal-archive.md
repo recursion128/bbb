@@ -19745,3 +19745,34 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   record 继续共享。未来若优化 revision store，必须同时降低 publication 与 retained-generation
   首次 mutation 总成本，禁止 whole-map COW 伪优化。equal-load official Java capture 仍因缺少
   asset/account/camera replay/common CPU+GPU capture 前置而保留在 performance ledger。
+
+## 2026-07-19：item/map model-space GPU residency 与 instance-only extraction
+
+- [x] `786006784` 冻结 legacy Criterion 与高风险 owner 合同；`061bc6652` 建立 exact
+  resource/atlas/model/material key、immutable model-space CPU asset、renderer-owned persistent
+  vertex/index owner 和 grow-only instance stream。hash 与大 geometry 比较均不参与语义命中，
+  current-frame pin、4,096 owner/256 MiB logical bound、reload generation 与显式 fallback 有测试固定。
+- [x] `e3e5a4c26` 将 dropped、pickup particle、ominous spawner、held/equipped、first-person、
+  item-frame 和 entity block attachment 迁入 residency。普通生产路径不再逐帧 world-space bake、
+  phase merge 或创建临时 vertex/index buffer；test-only legacy projection 继续逐字段证明最终
+  transform/tint/light/overlay/foil/phase/order 等价。
+- [x] `5030b333f` 让 canonical map pixels 使用 Arc-COW allocation generation、content revision
+  与 exact patch；renderer 持久拥有每 map lineage 的 texture slot。初始两个 map 上传 131,072 bytes，
+  unchanged 上传 0，单 pixel patch 只上传 4 bytes，且不替换无关 owner。
+- [x] `6772532b5` 以固定 8x8-slot page 完成 map base/background/decoration/text static-quad +
+  narrow instances，page growth 不重传旧页；4,096 owner 后使用显式 current-frame overflow page，
+  不少画内容。special foil 的 sheeted-decal UV/scale 移入 resident shader/instance；普通 hotbar、
+  inventory 和 debug GUI 3D block items 保留 Gui/BeforeBlur/AfterBlur 顺序并进入同一 residency。
+  仅 floating/stats scissor 的 CPU triangle clipping 保留测量过的显式 fallback。
+- [x] 同机 isolated after：500 unchanged item 259.14→18.046 us（14.36x），2,000 fully visible
+  1.827 ms→73.732 us（24.78x）；map surface 1/8/32 instance 提升 4.24x/8.49x/11.84x；GUI block
+  1/9/46/100 instance 提升 11.20x/9.41x/11.39x/11.42x。unchanged/partial-tick/camera-only 的
+  static vertex/index upload 为 0，普通 item/map mutation full replacement 为 0；recent/peak time、
+  hit/miss/stale、owner、upload、resident/peak、fallback 与 scratch-growth counters 随下一 immutable
+  generation 发布。
+- [x] `bbb-item-model` 只拥有 model selection/dynamic property，native 只拥有 visibility/pose/order，
+  renderer 独占 discardable CPU/GPU residency；render/control 仍配对同一 world Arc/generation，旧
+  publication、effect gate、blocked-render 与 shutdown/join 不变。exact world-Arc projection cache 仅是
+  上层 optional fast path，不是收益依据。剩余边界为 scissored GUI fallback、dynamic/special property
+  evaluation、instance upload/draw-state tail、driver deferred release，以及严格 equal-load official Java
+  26.1 CPU/GPU capture；本轮 isolated microbench 不冒充整客户端胜出结论。
