@@ -400,6 +400,13 @@ impl WorldStore {
         self.client_debug_game.values_by_subscription.clear();
     }
 
+    /// Drops the connection-owned remote subscriber without resetting packet
+    /// counters or the independent debug overlay diagnostics.
+    pub fn clear_debug_subscriber(&mut self) {
+        self.clear_requested_debug_subscriptions();
+        self.clear_debug_subscriber_values();
+    }
+
     pub(crate) fn drop_debug_chunk(&mut self, pos: ChunkPos) {
         for values in self.client_debug_game.values_by_subscription.values_mut() {
             values.chunk_values.remove(&pos);

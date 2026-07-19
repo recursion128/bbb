@@ -13,7 +13,6 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
     data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-    debug_subscription_types::VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID,
     heightmap_types::{
         vanilla_heightmap_type, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
         VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID, VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID,
@@ -86,8 +85,9 @@ use crate::{
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     crosshair::{
         crosshair_target_from_camera_at_partial_tick, debug_looking_at_block_hit_from_camera,
-        debug_looking_at_fluid_hit_from_camera, entity_target_outline_from_camera_at_partial_tick,
-        selection_outline_from_camera, CrosshairTarget,
+        debug_looking_at_fluid_hit_from_camera, debug_targeted_entity_from_camera_at_partial_tick,
+        entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera,
+        CrosshairTarget,
     },
     debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
@@ -164,6 +164,7 @@ use crate::{
         RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE, RECIPE_BOOK_OVERLAY_BUTTON_SIZE,
         RECIPE_BOOK_OVERLAY_ITEM_SCALE,
     },
+    remote_debug::remote_debug_gizmos,
     resource_pack_runtime::ServerResourcePackRuntime,
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
@@ -895,7 +896,6 @@ impl HudDebugNetworkSampler {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct HudDebugTpsSampler {
     samples: Vec<HudDebugTpsSample>,
-    tick_time_subscribed: bool,
 }
 
 const DEBUG_COLLISION_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
@@ -999,38 +999,51 @@ impl HudDebugTpsSampler {
         );
     }
 
-    fn sync_subscription(
+    fn sync_subscriptions_and_tick(
         &mut self,
         input: &ClientInputState,
+        world: &mut WorldStore,
         net_counters: &NetCounters,
         net_commands: &Option<mpsc::Sender<NetCommand>>,
     ) {
         if !net_counters.connected {
             self.reset();
+            world.clear_debug_subscriber();
             return;
         }
         if net_counters.state.as_deref() != Some("Play") {
-            self.tick_time_subscribed = false;
             return;
         }
 
-        let desired = input.debug_fps_charts_visible();
-        if desired == self.tick_time_subscribed {
+        let desired = input
+            .remote_debug_renderers()
+            .subscription_ids(input.debug_fps_charts_visible());
+        if world
+            .requested_debug_subscriptions()
+            .iter()
+            .copied()
+            .eq(desired.iter().copied())
+        {
+            // `ClientDebugSubscriber.tick` changes the request set before
+            // purging against the current pre-increment level game time.
+            let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
+            world.tick_debug_subscriber(game_time);
             return;
         }
         if let Some(tx) = net_commands {
             if tx
                 .try_send(NetCommand::DebugSubscriptionRequest {
-                    subscription_ids: desired
-                        .then_some(VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID)
-                        .into_iter()
-                        .collect(),
+                    subscription_ids: desired.clone(),
                 })
                 .is_ok()
             {
-                self.tick_time_subscribed = desired;
+                world
+                    .set_requested_debug_subscriptions(&desired)
+                    .expect("startup-derived debug subscriptions must use generated ids");
             }
         }
+        let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
+        world.tick_debug_subscriber(game_time);
     }
 
     fn chart(&self, world: &WorldStore) -> Option<HudDebugTpsChart> {
@@ -1047,7 +1060,6 @@ impl HudDebugTpsSampler {
 
     fn reset(&mut self) {
         self.samples.clear();
-        self.tick_time_subscribed = false;
     }
 }
 
@@ -2195,7 +2207,7 @@ pub(crate) fn advance_simulation(
         now,
         wall_clock_millis_i64(),
     );
-    hud_debug_tps_sampler.sync_subscription(input, net_counters, net_commands);
+    hud_debug_tps_sampler.sync_subscriptions_and_tick(input, world, net_counters, net_commands);
     let entity_tick_started_at = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     if advanced_ticks > 0 {
@@ -2382,6 +2394,7 @@ pub(crate) fn update_renderer_from_publication(
         debug_collision_cache,
         debug_supporting_block_cache,
         debug_sky_light_section_cache,
+        remote_debug_selection_cache,
         render_distance_chunks,
         client_framerate_limit,
         client_vsync,
@@ -2902,24 +2915,50 @@ pub(crate) fn update_renderer_from_publication(
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
     let entity_target_outline =
         entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
+    let remote_debug_selection = input.remote_debug_renderers();
+    let selected_remote_debug_entity =
+        remote_debug_selection_cache.selected_for_generation(world.client_level_generation());
+    let targeted_remote_debug_entity = (remote_debug_selection
+        .contains(crate::remote_debug::RemoteDebugRenderer::Brain)
+        && !world.local_player_is_spectator())
+    .then(|| {
+        debug_targeted_entity_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick)
+            .and_then(|id| world.probe_entity_transform(id))
+            .map(|entity| entity.uuid)
+    })
+    .flatten();
+    let remote_debug_gizmos = remote_debug_gizmos(
+        world,
+        remote_debug_selection,
+        camera_pose,
+        selected_remote_debug_entity,
+    );
+    remote_debug_selection_cache.finish_frame(
+        remote_debug_selection,
+        world.local_player_is_spectator(),
+        targeted_remote_debug_entity,
+    );
     // Vanilla `DebugRenderer.refreshRendererList` registers WaterDebugRenderer
     // before HeightMapRenderer, so their shared debugFilledBox submissions keep
     // that renderer order when both custom entries are enabled.
     let debug_water_samples = debug_water_samples(input, world);
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
+    debug_filled_boxes.extend(remote_debug_gizmos.filled_boxes);
     let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);
     let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
     debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));
     debug_text_billboards.extend(debug_selection_text_billboards(
         entity_scene_outline.as_ref(),
     ));
+    debug_text_billboards.extend(remote_debug_gizmos.text_billboards);
     let mut debug_lines = debug_collision_cache.lines(input, world, now);
     debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));
     let (debug_sky_light_section_rects, debug_sky_light_section_lines) =
         debug_sky_light_section_cache.gizmos(input, world, now);
     debug_filled_rects.extend(debug_sky_light_section_rects);
     debug_lines.extend(debug_sky_light_section_lines);
+    debug_lines.extend(remote_debug_gizmos.lines);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);

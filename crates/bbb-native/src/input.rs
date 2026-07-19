@@ -624,6 +624,7 @@ pub(crate) struct ClientInputState {
     debug_show_local_server_entity_hit_boxes: bool,
     debug_hotkeys_enabled: bool,
     debug_feature_count_enabled: bool,
+    remote_debug_renderers: crate::remote_debug::RemoteDebugRendererSelection,
     debug_fog_enabled: bool,
     debug_smart_cull_enabled: bool,
     debug_wireframe_enabled: bool,
@@ -1661,6 +1662,19 @@ impl ClientInputState {
 
     pub(crate) fn set_debug_feature_count_enabled(&mut self, enabled: bool) {
         self.debug_feature_count_enabled = enabled;
+    }
+
+    pub(crate) fn set_remote_debug_renderers(
+        &mut self,
+        renderers: crate::remote_debug::RemoteDebugRendererSelection,
+    ) {
+        self.remote_debug_renderers = renderers;
+    }
+
+    pub(crate) fn remote_debug_renderers(
+        &self,
+    ) -> crate::remote_debug::RemoteDebugRendererSelection {
+        self.remote_debug_renderers
     }
 
     pub(crate) fn debug_fog_enabled(&self) -> bool {

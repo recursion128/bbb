@@ -27,7 +27,8 @@ use winit::{
 
 use crate::{
     code_of_conduct::CodeOfConductAcceptance, debug_entries::DebugScreenProfile,
-    narrator_runtime::NarratorStatus, simulation::commands::SimulationMailbox,
+    narrator_runtime::NarratorStatus, remote_debug::RemoteDebugRenderer,
+    simulation::commands::SimulationMailbox,
 };
 
 pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
@@ -165,6 +166,13 @@ pub(crate) struct Args {
     pub(crate) debug_hotkeys: bool,
     #[arg(long = "debug-feature-count")]
     pub(crate) debug_feature_count: bool,
+    #[arg(
+        long = "remote-debug-renderer",
+        value_enum,
+        value_name = "RENDERER",
+        action = ArgAction::Append
+    )]
+    pub(crate) remote_debug_renderers: Vec<RemoteDebugRenderer>,
 }
 
 #[derive(Clone)]
@@ -987,6 +995,28 @@ mod tests {
             .unwrap();
         assert!(args.debug_hotkeys);
         assert!(args.debug_feature_count);
+    }
+
+    #[test]
+    fn args_accept_repeatable_remote_debug_renderer_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(default_args.remote_debug_renderers.is_empty());
+
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--remote-debug-renderer",
+            "bees",
+            "--remote-debug-renderer",
+            "game-event-listeners",
+        ])
+        .unwrap();
+        assert_eq!(
+            args.remote_debug_renderers,
+            vec![
+                RemoteDebugRenderer::Bees,
+                RemoteDebugRenderer::GameEventListeners,
+            ]
+        );
     }
 
     #[test]

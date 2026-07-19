@@ -26,6 +26,7 @@ use crate::{
     input::ClientInputState,
     level_load_runtime::LevelLoadRuntime,
     particle_runtime::NativeParticleRuntime,
+    remote_debug::RemoteDebugSelectionCache,
     resource_pack_runtime::ServerResourcePackRuntime,
     runtime::{
         advance_simulation, audio_registry_snapshot_from_world,
@@ -90,6 +91,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) debug_collision_cache: &'a mut DebugCollisionCache,
     pub(crate) debug_supporting_block_cache: &'a mut DebugSupportingBlockCache,
     pub(crate) debug_sky_light_section_cache: &'a mut DebugSkyLightSectionCache,
+    pub(crate) remote_debug_selection_cache: &'a mut RemoteDebugSelectionCache,
     pub(crate) render_distance_chunks: u32,
     pub(crate) client_framerate_limit: u32,
     pub(crate) client_vsync: bool,

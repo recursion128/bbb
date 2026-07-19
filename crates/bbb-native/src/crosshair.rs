@@ -153,6 +153,30 @@ pub(crate) fn crosshair_target_from_camera_at_partial_tick(
     )
 }
 
+/// Vanilla `DebugRenderer.getTargetedEntity(cameraEntity, 8)` probe used by
+/// the brain debug renderer. Unlike the gameplay crosshair target, this ray is
+/// not shortened by a nearer block or the normal interaction reach.
+pub(crate) fn debug_targeted_entity_from_camera_at_partial_tick(
+    world: &WorldStore,
+    pose: Option<CameraPose>,
+    entity_partial_tick: f32,
+) -> Option<i32> {
+    let local_player_id = world.local_player_id();
+    let camera_entity_id = world.local_player().camera.entity_id;
+    let mut excluded_entity_id = |entity_id| {
+        local_player_id.is_some_and(|id| id == entity_id)
+            || camera_entity_id.is_some_and(|id| id == entity_id)
+    };
+    crosshair_entity_hit_from_ray(
+        world,
+        crosshair_ray_from_camera_pose(pose?),
+        8.0,
+        entity_partial_tick,
+        &mut excluded_entity_id,
+    )
+    .map(|hit| hit.hit.entity_id)
+}
+
 #[cfg(test)]
 pub(crate) fn crosshair_target_from_world(
     world: &WorldStore,
@@ -1467,6 +1491,26 @@ mod tests {
         assert_eq!(
             crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0))),
             None
+        );
+    }
+
+    #[test]
+    fn debug_targeted_entity_uses_vanilla_eight_block_probe() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 7.0],
+        ));
+        let camera = Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0));
+
+        assert_eq!(
+            crosshair_target_from_camera_at_partial_tick(&world, camera, 1.0),
+            None
+        );
+        assert_eq!(
+            debug_targeted_entity_from_camera_at_partial_tick(&world, camera, 1.0),
+            Some(12)
         );
     }
 

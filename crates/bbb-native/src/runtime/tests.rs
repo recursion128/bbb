@@ -2555,6 +2555,7 @@ fn hud_debug_network_sampler_logs_bandwidth_and_debug_ping_ticks() {
 
 #[test]
 fn hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription() {
+    let mut world = WorldStore::new();
     let mut input = ClientInputState::new(true);
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
@@ -2577,14 +2578,22 @@ fn hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription() {
     let net_commands = Some(tx);
     let mut sampler = HudDebugTpsSampler::default();
 
-    sampler.sync_subscription(&input, &net_counters, &net_commands);
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::DebugSubscriptionRequest {
             subscription_ids: vec![0]
         }
     );
-    sampler.sync_subscription(&input, &net_counters, &net_commands);
+    assert_eq!(
+        world
+            .requested_debug_subscriptions()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>(),
+        vec![0]
+    );
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
     assert!(rx.try_recv().is_err());
 
     sampler.record_net_event(&NetEvent::Play(
@@ -2609,13 +2618,156 @@ fn hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription() {
         None,
         None
     ));
-    sampler.sync_subscription(&input, &net_counters, &net_commands);
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::DebugSubscriptionRequest {
             subscription_ids: Vec::new()
         }
     );
+    assert!(world.requested_debug_subscriptions().is_empty());
+}
+
+#[test]
+fn remote_debug_renderer_requests_share_one_world_owned_subscription_set() {
+    let mut world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    input.set_remote_debug_renderers(
+        [
+            crate::remote_debug::RemoteDebugRenderer::Bees,
+            crate::remote_debug::RemoteDebugRenderer::GameEventListeners,
+        ]
+        .into_iter()
+        .collect(),
+    );
+    let mut net_counters = NetCounters {
+        connected: true,
+        state: Some("Play".to_string()),
+        ..NetCounters::default()
+    };
+    let (tx, mut rx) = mpsc::channel(4);
+    let net_commands = Some(tx);
+    let mut sampler = HudDebugTpsSampler::default();
+
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
+    let expected = vec![1, 4, 7, 13, 15];
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::DebugSubscriptionRequest {
+            subscription_ids: expected.clone(),
+        }
+    );
+    assert_eq!(
+        world
+            .requested_debug_subscriptions()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>(),
+        expected
+    );
+
+    net_counters.connected = false;
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
+    assert!(world.requested_debug_subscriptions().is_empty());
+    assert!(world.client_debug_game().values_by_subscription.is_empty());
+}
+
+#[test]
+fn remote_debug_subscription_retries_after_backpressure_and_listener_clear() {
+    let mut world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    input.set_remote_debug_renderers(
+        [crate::remote_debug::RemoteDebugRenderer::Bees]
+            .into_iter()
+            .collect(),
+    );
+    let net_counters = NetCounters {
+        connected: true,
+        state: Some("Play".to_string()),
+        ..NetCounters::default()
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetCommand::DebugSubscriptionRequest {
+        subscription_ids: Vec::new(),
+    })
+    .unwrap();
+    let net_commands = Some(tx);
+    let mut sampler = HudDebugTpsSampler::default();
+
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
+    assert!(world.requested_debug_subscriptions().is_empty());
+    assert!(matches!(
+        rx.try_recv().unwrap(),
+        NetCommand::DebugSubscriptionRequest { subscription_ids } if subscription_ids.is_empty()
+    ));
+
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
+    let expected = vec![1, 4, 7];
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::DebugSubscriptionRequest {
+            subscription_ids: expected.clone(),
+        }
+    );
+    assert_eq!(
+        world
+            .requested_debug_subscriptions()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>(),
+        expected
+    );
+
+    world.clear_debug_subscriber();
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::DebugSubscriptionRequest {
+            subscription_ids: vec![1, 4, 7],
+        }
+    );
+}
+
+#[test]
+fn remote_debug_subscription_purges_at_current_pre_increment_game_time() {
+    let mut world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    input.set_remote_debug_renderers(
+        [crate::remote_debug::RemoteDebugRenderer::NeighborUpdates]
+            .into_iter()
+            .collect(),
+    );
+    let net_counters = NetCounters {
+        connected: true,
+        state: Some("Play".to_string()),
+        ..NetCounters::default()
+    };
+    let (tx, mut rx) = mpsc::channel(2);
+    let net_commands = Some(tx);
+    let mut sampler = HudDebugTpsSampler::default();
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
+    let _ = rx.try_recv().unwrap();
+    world.apply_debug_event(bbb_protocol::packets::DebugEvent {
+        event: bbb_protocol::packets::DebugSubscriptionEvent {
+            subscription_id: 14,
+            value: bbb_protocol::packets::DebugSubscriptionValue::NeighborUpdate(
+                ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            ),
+        },
+    });
+    assert_eq!(world.debug_subscription_values(14).unwrap().events.len(), 1);
+
+    world.apply_world_time(PlayTime {
+        game_time: 200,
+        clock_updates: Vec::new(),
+    });
+    sampler.sync_subscriptions_and_tick(&input, &mut world, &net_counters, &net_commands);
+    assert!(world
+        .debug_subscription_values(14)
+        .unwrap()
+        .events
+        .is_empty());
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

@@ -43,6 +43,7 @@ mod narrator_runtime;
 mod particle_runtime;
 mod platform;
 mod recipe_book_ui;
+mod remote_debug;
 mod resource_pack_runtime;
 mod resource_reload;
 mod runtime;
@@ -71,6 +72,7 @@ use narrator_runtime::{
     NarratorStatus, NativeNarratorRuntime, ScreenNarrationInput, ScreenNarrationRuntime,
 };
 use particle_runtime::NativeParticleResources;
+use remote_debug::{RemoteDebugRendererSelection, RemoteDebugSelectionCache};
 use resource_pack_runtime::{default_server_resource_pack_cache_dir, ServerResourcePackRuntime};
 use resource_reload::{
     apply_item_runtime_world_defaults, apply_server_resource_pack_reload_effect,
@@ -507,6 +509,12 @@ fn main() -> Result<()> {
     );
     input.set_debug_hotkeys_enabled(args.debug_hotkeys);
     input.set_debug_feature_count_enabled(args.debug_feature_count);
+    input.set_remote_debug_renderers(
+        args.remote_debug_renderers
+            .iter()
+            .copied()
+            .collect::<RemoteDebugRendererSelection>(),
+    );
     let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);
 
@@ -561,6 +569,7 @@ fn main() -> Result<()> {
     let mut debug_collision_cache = DebugCollisionCache::default();
     let mut debug_supporting_block_cache = DebugSupportingBlockCache::default();
     let mut debug_sky_light_section_cache = DebugSkyLightSectionCache::default();
+    let mut remote_debug_selection_cache = RemoteDebugSelectionCache::default();
     let mut debug_profiler = DebugProfiler::default();
     let lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
         args.client_gamma,
@@ -786,6 +795,7 @@ fn main() -> Result<()> {
                             debug_collision_cache: &mut debug_collision_cache,
                             debug_supporting_block_cache: &mut debug_supporting_block_cache,
                             debug_sky_light_section_cache: &mut debug_sky_light_section_cache,
+                            remote_debug_selection_cache: &mut remote_debug_selection_cache,
                             render_distance_chunks: args.render_distance_chunks,
                             client_framerate_limit: args.client_framerate_limit,
                             client_vsync: args.client_vsync,
