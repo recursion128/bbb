@@ -194,6 +194,9 @@ Residual costs and memory behavior are explicit:
 - `EntityStore` publication remains O(entity count), about 0.90 ms for the
   2,000-entity fixture. An outer entity COW was deliberately rejected because
   entity ticks mutate broadly and would move this copy to the next tick.
+  The measured follow-up that optimizes tick plus entity publication end to end
+  is specified in
+  [`entity-tick-publication-cost-design.md`](entity-tick-publication-cost-design.md).
 - The first registry mutation after a retained snapshot clones the complete
   `RegistrySet`; reload is rare, but its transient old-plus-new peak remains.
   Independent item-profile tables disconnect only when their setter changes

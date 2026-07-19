@@ -1309,6 +1309,10 @@ back into a todo. Do not delete these.
 
 ### Entity coverage matrix client tick and movement
 
+- Reduce the measured entity-heavy client-tick plus immutable-publication cost
+  without changing the generated family membership, vanilla tick/effect order,
+  single mutable simulation owner, or paired render/control generation. Keep
+  sparse mutation end-to-end cheap rather than deferring a whole ECS copy.
 - Audit every fixed entity family for the subclass ticks, locally controlled
   movement, remote interpolation, projectile motion/trails, and client-only
   timers that the multiplayer client actually advances. Keep AI, pathfinding,
