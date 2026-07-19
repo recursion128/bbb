@@ -302,27 +302,29 @@ Terrain CPU meshes are now partitioned into independently resident section and
 render-layer values while retaining the same chunk-neighborhood lookup for
 occlusion, lighting, fluid overlays, and biome-derived material input. The
 render owner keys residency by client-level generation, chunk, section, and
-layer. A monotonic native resident revision changes on every rebuilt chunk,
+layer. A monotonic native resident revision changes on every rebuilt section,
 including resource reload, while a level-generation transition clears the old
 CPU cache without reusing its GPU identity.
 
-`bbb-renderer` retains the exact vertex/index buffers of every unchanged chunk.
-One changed chunk removes and recreates only its non-empty section/layer owners;
-load/unload is a desired-owner set difference. The legacy full replacement API
-remains for explicit callers and increments a dedicated counter, but the native
-terrain path no longer calls it. Camera-dependent translucent sorting retains
-vertices and writes only each changed section's index buffer. Renderer telemetry
-now distinguishes changed chunks, uploaded/removed section-layer owners,
+`bbb-renderer` retains the exact vertex/index buffers of every unchanged
+section, including siblings of a rebuilt section in the same chunk. One dirty
+section removes and recreates only its non-empty layer owners; load/unload is a
+desired-owner set difference. The legacy full replacement API remains for
+explicit callers and increments a dedicated counter, but the native terrain
+path no longer calls it. Camera-dependent translucent sorting retains vertices
+and writes only each changed section's index buffer. Renderer telemetry now
+distinguishes changed sections, uploaded/removed section-layer owners,
 vertex/index bytes, translucent resort owners/index bytes, explicit full
 replacements, and current/logical-peak resident bytes.
 
-The offscreen GPU regression uses two resident chunks. An unchanged sync reports
-zero changed/uploaded/removed owners and zero upload bytes; changing one chunk
-reports exactly one changed chunk and one uploaded/removed non-empty owner while
-the second stays resident; unloading then removes only the named owner. Reusing
-the same numeric revision in a new level generation still replaces the owner.
-The section partition test proves that summed vertices, indices, faces, and
-source-section count match the former column mesh.
+The offscreen GPU regressions cover both separate chunks and two sections in one
+chunk. An unchanged sync reports zero changed/uploaded/removed owners and zero
+upload bytes; changing one section reports exactly one changed and one
+uploaded/removed non-empty owner while its sibling stays resident. Unloading
+then removes only absent owners. Reusing the same numeric revision in a new
+level generation still replaces the owner. The section partition test proves
+that summed vertices, indices, faces, and source-section count match the former
+column mesh.
 
 Same-host Criterion after section partitioning:
 
@@ -340,6 +342,8 @@ threshold: the exact logical upload bytes and owner counts are asserted instead,
 and the final live capture owns end-to-end GPU timing. Wgpu may defer destruction
 of a replaced buffer, so `terrain_peak_resident_bytes` is a logical resident
 peak rather than a claim about short-lived driver allocation peaks.
+The later section-dirty result below supersedes this historical whole-chunk
+invalidation measurement without changing the section/layer GPU ownership.
 
 ## Phase 5 Boundary Result
 
@@ -349,9 +353,9 @@ one representative changed chunk costs about 1.85 ms, which is 27% of a
 work. The native render owner now converts canonical world data into immutable
 `Arc<TerrainChunkSnapshot>` values and lazily starts one named
 `bbb-terrain-mesh` thread. A job contains only the level/mesh/content key,
-target and neighbor snapshot Arcs, an immutable atlas Arc, camera position, and
-priority. It contains no `WorldStore`, renderer, wgpu object, or mutable
-canonical owner.
+exact dirty section id/revision rows, target and neighbor snapshot Arcs, an
+immutable atlas Arc, camera position, and priority. It contains no `WorldStore`,
+renderer, wgpu object, or mutable canonical owner.
 
 The priority queue holds at most four jobs, first prefers chunks with an active
 canonical local block prediction, then the nearest selected chunk (the
@@ -361,27 +365,26 @@ queued entry. The result channel holds at most five meshes—the queue plus the
 single in-flight job—so a blocked render thread cannot create unbounded mesh
 memory. Every accepted result must still match client-level generation,
 resource/mesh generation, chunk mesh revision, desired selection, and retained
-snapshot owner. Reload/reset cancels queued values, and in-flight stale values
+snapshot owner. Accepted partial results replace only their named cached
+section layers. Reload/reset cancels queued values, and in-flight stale values
 are counted and discarded. GPU creation/upload remains render-thread-only.
 
-Renderer telemetry now publishes cumulative queued/completed/stale/queue-full
-jobs, current/peak queue depth, and recent/peak worker build nanoseconds with
-the next immutable generation. The worker propagates a panic on the next render
-interaction, stops through its condition variable, and is always joined by the
-terrain upload owner's drop path. Focused tests cover bounded priority and
-same-owner replacement, immutable source ownership, build/result delivery,
-join, stale-result rejection, reset identity, and counter projection. The
-historical 1/8/32 Criterion remains the amount of CPU mesh work rather than a
-claim that work disappeared; final live frame/tail capture owns the end-to-end
-benefit. Snapshot extraction and section-dirty granularity remain render-thread
-costs recorded as follow-up boundaries.
+Renderer telemetry publishes cumulative queued/completed/stale jobs and
+sections, queue-full, current/peak queue depth, recent/peak build nanoseconds,
+and recent/peak build section count with the next immutable generation. The
+worker propagates a panic on the next render interaction, stops through its
+condition variable, and is always joined by the terrain upload owner's drop
+path. Focused tests cover bounded priority and same-owner replacement,
+immutable source ownership, partial build/result merge, join, stale-result
+rejection, reset identity, and counter projection.
 
 ## Phase 6 Delivery Boundary
 
-Repository-native implementation milestones end at the phase-5 gated tip; the
-remaining performance-parity items stay in `docs/unsupported-features.md`
-rather than being marked complete without the strict capture above. Delivery
-still runs the real bbb/vanilla-server session: the live gate now emits separate
+Repository-native implementation milestones include phase 5 and the completed
+section-dirty follow-up below. Remaining performance-parity items stay in
+`docs/unsupported-features.md` rather than being marked complete without the
+strict capture above. Delivery still runs the real bbb/vanilla-server session:
+the live gate emits separate
 `live smoke passed` and `live vanilla 26.1 session passed` markers only after
 the shared evidence assertions. Script contract tests also keep
 `input.focus {"focused": true}` before the first synthetic look/key/mouse
@@ -395,24 +398,25 @@ afterwards as the project-policy smoke, but its fixture fallback is never live
 evidence. The artifact directory and exact exit status belong in the delivery
 report instead of this stable design record.
 
-## Section-Dirty Terrain Follow-Up Contract
+## Section-Dirty Terrain Engineering Result
 
-The next high-risk performance engineering slice refines the remaining terrain
-CPU dirty owner from a whole chunk to a render section. Its semantic goal is
-that one block or standalone-light change rebuilds and replaces only the
-Vanilla-invalidated section owners while unchanged CPU meshes and exact GPU
-buffers survive. Chunk load/unload, biome replacement, level reset, and
-resource reload remain intentionally conservative full-height boundaries.
+This high-risk engineering slice refined the terrain CPU dirty owner from a
+whole chunk to a render section. One block or standalone-light change now
+rebuilds and replaces only the Vanilla-invalidated section owners while
+unchanged CPU meshes and exact GPU buffers survive. Chunk load/unload, biome
+replacement, level reset, and resource reload remain intentionally
+conservative full-height boundaries.
 
-Completion requires a typed world-owned section revision surface, partial
-immutable worker jobs and results, native merging that retains unchanged
-section meshes, renderer revisions at section rather than chunk granularity,
-logical queued/built/stale section observations, and same-host before/after
-Criterion data. Interior block, vertical section boundary, horizontal chunk
-edge/corner, standalone light, full chunk/biome load, unload, reload, 1/8/32
-dirty bursts, retained immutable jobs, and stale results all receive benchmark
-or semantic coverage. Snapshot materialization remains measured separately so
-the mesh win cannot hide a cost moved back to render extraction.
+The completed boundary includes a typed world-owned section revision surface,
+partial immutable worker jobs and results, native merging that retains
+unchanged section meshes, renderer revisions at section rather than chunk
+granularity, logical queued/built/stale section observations, and same-host
+before/after Criterion data. Interior block, vertical section boundary,
+horizontal chunk edge/corner, standalone light, full chunk/biome load, unload,
+reload, 1/8/32 dirty bursts, retained immutable jobs, and stale results all
+receive benchmark or semantic coverage. Snapshot materialization remains
+measured separately so the mesh win cannot hide a cost moved back to render
+extraction.
 
 This follow-up does not change protocol handling, canonical block/light/biome
 values, visible geometry, view distance, the single simulation owner, worker
@@ -496,6 +500,54 @@ The unchanged value is intentionally only the retained-result reference and
 not an end-to-end frame claim. Snapshot materialization remains 138.40 us for
 one representative chunk, so after data reports it separately from partial
 mesh work rather than folding it into an apparent section-mesh speedup.
+
+Stages landed as `db6229ac2` (contract/baseline), `67ed517bc` (world section
+revisions), and `cce7b4338` (partial worker/cache/GPU residency). The identical
+AMD Ryzen 9 7945HX Criterion matrix after `cce7b4338` reports:
+
+| Dirty workload | Section-dirty after | Before / after |
+| --- | ---: | ---: |
+| unchanged retained mesh | 0.558 ns logical reference | 1.33x |
+| one interior block | 1.641 ms | 4.91x |
+| vertical section boundary | 3.278 ms | 2.45x |
+| horizontal chunk edge | 3.208 ms | 5.02x |
+| horizontal chunk corner | 7.866 ms | 4.29x |
+| one standalone light section | 55.605 ms | 1.40x |
+| full chunk or biome load, 3x3 neighbors | 76.259 ms | 1.02x |
+| chunk unload, eight neighbors | 67.453 ms | 1.01x |
+| 8 interior-block burst | 12.868 ms | 5.31x |
+| 32 interior-block burst | 61.264 ms | 4.65x |
+| resource reload, 32 resident chunks | 254.87 ms | 0.99x |
+
+The resource-reload value is the isolated rerun after the first all-cases pass
+ended thermally at 284.05 ms; 254.87 ms is within 0.5% of its 253.53 ms
+full-height baseline. Full chunk/biome and unload deliberately remain
+full-height and are effectively unchanged. One-chunk snapshot materialization
+is 138.72 us after versus 138.40 us before. The 8/32 snapshot cases measured
+9.261/40.972 ms, about 2% above that earlier run; this code path did not change
+and remains a separate extraction hotspot rather than hidden mesh work.
+
+World publication exposes the cost of the new retained revision owners:
+unchanged 625-column publication moved from 10.650 to 13.565 us, and single
+block mutation plus publication from 20.530 to 24.063 us. This is an explicit
+3.5 us absolute publication cost, not work deferred to the next mutation. A
+representative sum of the separately measured single-block publication,
+one-chunk snapshot materialization, and interior mesh phases falls from about
+8.214 to 1.803 ms, or 4.56x. It is an owner-phase sum, not a claimed integrated
+frame timer. A future revision-store layout must beat both publication and
+mutation totals; wrapping the whole map in COW would merely move a 625-entry
+copy to the first retained-generation mutation and is rejected.
+
+Old publications retain only the prior small changed revision records while
+chunk palette/light and unchanged records stay shared. The CPU cache retains
+one full immutable cell snapshot and merged section meshes per selected chunk;
+the bounded worker can additionally retain one in-flight plus four queued
+snapshot/atlas jobs and five completed partial results. Local updates reduce
+result mesh payload, but driver-deferred release of replaced GPU buffers remains
+outside the logical resident-byte peak. Equal-load official Java frame capture
+is still blocked by the already recorded missing official asset/account/camera
+replay and common CPU/GPU capture setup, so these repo-native before/after
+numbers are not presented as an official-client win.
 
 ## Serial Phases, Validation, And Gates
 

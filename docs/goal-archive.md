@@ -19722,3 +19722,26 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 剩余 playable breadth 继续由 `docs/unsupported-features.md` 跟踪：entity/hotbar/container/
   inventory/chat server-result、代表性 audio/particle presentation 和 deterministic screenshot；
   lifecycle closure 不再作为这些可见覆盖项的替代证明。
+
+## 2026-07-19：terrain CPU section-dirty owner 与精确 GPU residency
+
+- [x] `db6229ac2` 固定 whole-chunk Criterion 基线和高风险工程合同；`67ed517bc` 增加
+  publication-shared 的每 chunk 小型 full-baseline + section override revision owner。block 的
+  `x/y/z ± 1`、standalone light 的 3x3x3 section，以及 chunk/biome/load/unload 的全高 3x3
+  invalidation 均由本地 Vanilla 26.1 源码和 retained-generation 测试固定。
+- [x] `cce7b4338` 让 bounded worker 只构建 exact dirty section rows，render-owned cache 将
+  partial result 合入原有 layer Vec；renderer 按 level/chunk/section revision 替换 owner。同一
+  chunk 的 unchanged sibling 保留 exact GPU buffer，普通 block mutation 的 full replacement
+  count 为 0，stale/reset/reload 仍由 aggregate revision 和 generation gate 拒绝。
+- [x] immutable generation telemetry 增加 queued/completed/stale section 累计数，以及
+  recent/peak build section count；worker 仍只持有 immutable snapshot/atlas Arc，不读取
+  `WorldStore`、renderer 或 wgpu owner，并保留 4 queued + 1 in-flight + 5 result bound。
+- [x] 同机 dense 64-height after：interior block 8.055→1.641 ms（4.91x），vertical boundary
+  8.023→3.278 ms（2.45x），8/32 interior burst 68.314→12.868 ms（5.31x）和
+  285.07→61.264 ms（4.65x）；full-height load/unload/reload 基本持平。单 chunk snapshot
+  138.40→138.72 us；625-column unchanged publication 10.650→13.565 us、single block +
+  publication 20.530→24.063 us 的小型 revision-owner 开销被单独披露，没有伪装成 mesh 收益。
+- [x] 旧 publication 只额外保留 changed small revision record；chunk palette/light 和 unchanged
+  record 继续共享。未来若优化 revision store，必须同时降低 publication 与 retained-generation
+  首次 mutation 总成本，禁止 whole-map COW 伪优化。equal-load official Java capture 仍因缺少
+  asset/account/camera replay/common CPU+GPU capture 前置而保留在 performance ledger。

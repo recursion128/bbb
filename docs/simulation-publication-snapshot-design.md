@@ -221,6 +221,15 @@ Residual costs and memory behavior are explicit:
   `RegistrySet`; reload is rare, but its transient old-plus-new peak remains.
   Independent item-profile tables disconnect only when their setter changes
   that table.
+- Section-dirty terrain rendering adds one non-serialized
+  `PublicationShared<TerrainChunkRenderRevisions>` value per touched chunk.
+  The outer ordered map still clones its keys and Arc handles at a world
+  publication, while a block/light mutation disconnects only affected small
+  revision records. On the same 625-column fixture this moves unchanged
+  publication from 10.650 to 13.565 us and single-block mutation plus
+  publication from 20.530 to 24.063 us. Whole-map COW is deliberately rejected:
+  it would move an O(chunk count) copy to the first mutation while an old
+  generation is retained.
 - A retained reader keeps the old payload for each changed column/table until
   it releases that generation. Consecutive changed generations can therefore
   retain several versions of those owners, while unchanged owners remain one

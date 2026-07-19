@@ -50,11 +50,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 - Complete equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low,
   and chunk-update comparison captures; report any losing scene by measured
   owner instead of reducing visible work.
-- Refine terrain CPU dirty ownership below a chunk: GPU residency is already
-  section/layer-granular and retains unchanged chunks, but one block currently
-  rebuilds all sections of its invalidated chunk (and boundary-neighbor chunks
-  when their mesh revision changes). Add section dirty revisions only with a
-  complete block/light/load/reload invalidation audit and measured payoff.
 
 ## Protocol coverage for remaining required 26.1 packet families
 
@@ -903,11 +898,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   ping sprites. The current overlay covers Tab visibility, vanilla ordering,
   80-entry/20-row columns, plain header/footer wrapping and ping thresholds.
 - `chunk_section_paths`, `chunk_section_octree`, and
-  `chunk_section_visibility` are `deferred` until the renderer retains
-  per-section residency plus a repo-native `SectionOcclusionGraph`/octree and
-  compiled-section face-visibility matrix. The current incremental cache owns
-  one full-height mesh per chunk; restart by refining that cache to per-section
-  residency able to expose vanilla node step/source directions, octree node
+  `chunk_section_visibility` are `deferred`: stable per-section CPU/GPU
+  residency now exists, but a repo-native `SectionOcclusionGraph`/octree and
+  compiled-section face-visibility matrix do not. Restart by wiring the stable
+  resident section owners into vanilla node step/source directions, octree node
   bounds/depth/frustum state, and `facesCanSeeEachother` without reconstructing
   them heuristically.
 - `visualize_chunks_on_server` is `not-needed`: vanilla 26.1
@@ -1286,22 +1280,23 @@ back into a todo. Do not delete these.
   option; add the same resource-remesh boundary without reintroducing block-name render-layer
   guesses. The exact 11-block leaves membership is generated and shared already.
 - **Light-update queue and section-neighbor rebuild parity.** Packet decode and
-  canonical mask/empty-mask merging are covered, but bbb applies updates during
-  net-event drain and uses a coarse terrain-upload counter. Vanilla queues them
-  through `ClientLevel.queueLightUpdate`, consumes a bounded amount per frame,
-  and calls `setSectionDirtyWithNeighbors` for changed standalone light sections.
+  canonical mask/empty-mask merging and exact 3x3x3 section invalidation are
+  covered, but bbb still applies updates during net-event drain. Vanilla queues
+  them through `ClientLevel.queueLightUpdate` and consumes a bounded amount per
+  frame; retain the completed section revision/worker counters when that queue
+  boundary lands.
 - **ForgetLevelChunk queued-light runtime cache cleanup.** When the queued-light
   owner lands, remove its values for every unloaded chunk section. Canonical
   chunk/light data, typed debug-subscription chunk/block values, and last-chunk
   GPU terrain are already removed; add the reverse test for the future queued
   light owner so stale light presentation cannot survive the packet.
 - Complete the remaining synchronized biome positional visual fields beyond
-  current fog/sky/water-fog colors and water-fog end distance; then match
-  vanilla's 3x3 neighboring-section rerender/tint invalidation. All current
-  fields use the shared `EnvironmentAttributeMap` modifier codec. Direct custom
-  climate and color effects project through the active holder order; malformed
-  synchronized data is omitted instead of falling back to a same-name pack
-  default.
+  current fog/sky/water-fog colors and water-fog end distance. Biome replacement
+  already invalidates the complete level-height 3x3 chunk neighborhood. All
+  current fields use the shared `EnvironmentAttributeMap` modifier codec.
+  Direct custom climate and color effects project through the active holder
+  order; malformed synchronized data is omitted instead of falling back to a
+  same-name pack default.
 - **Block-entity `breakProgress` crumbling** and per-block-entity distance/frustum
   culling. A cross-cutting boundary shared by every block-entity renderer slice:
   block entities currently submit like entities, unculled.

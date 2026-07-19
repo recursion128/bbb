@@ -1,14 +1,15 @@
-//! Headless CPU baselines for terrain snapshot materialization and changed-owner meshing.
+//! Headless CPU baselines for terrain snapshot materialization and dirty-owner meshing.
 //!
 //! GPU buffer creation is intentionally not benchmarked here: it requires a
 //! concrete adapter/device and belongs to the fixed playable performance
-//! fixture. These cases isolate the immutable CPU input and 1/8/32 changed
-//! chunk mesh work that may later move to a bounded worker.
+//! fixture. These cases isolate immutable CPU input, historical 1/8/32 full
+//! chunk work, and production-equivalent section-dirty workloads.
 
 use std::time::Duration;
 
 use bbb_renderer::terrain::{
-    build_terrain_chunk_section_mesh_layers_with_atlas_and_camera, TerrainCell,
+    build_terrain_chunk_section_mesh_layers_with_atlas_and_camera,
+    build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera, TerrainCell,
     TerrainChunkSnapshot, TerrainMaterialClass, TerrainTextureAtlas, TerrainTransparency,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -19,53 +20,70 @@ const SNAPSHOT_HEIGHT: usize = 64;
 #[derive(Clone, Copy)]
 struct DirtyWorkload {
     name: &'static str,
-    whole_chunks: usize,
+    chunks: usize,
+    section_ys: &'static [i32],
 }
+
+const INTERIOR_SECTION: &[i32] = &[0];
+const VERTICAL_BOUNDARY_SECTIONS: &[i32] = &[-1, 0];
+const LIGHT_NEIGHBOR_SECTIONS: &[i32] = &[-1, 0, 1];
+const FULL_HEIGHT_SECTIONS: &[i32] = &[-1, 0, 1, 2];
 
 const DIRTY_WORKLOADS: [DirtyWorkload; 11] = [
     DirtyWorkload {
         name: "unchanged",
-        whole_chunks: 0,
+        chunks: 0,
+        section_ys: &[],
     },
     DirtyWorkload {
         name: "interior_block",
-        whole_chunks: 1,
+        chunks: 1,
+        section_ys: INTERIOR_SECTION,
     },
     DirtyWorkload {
         name: "vertical_section_boundary",
-        whole_chunks: 1,
+        chunks: 1,
+        section_ys: VERTICAL_BOUNDARY_SECTIONS,
     },
     DirtyWorkload {
         name: "horizontal_chunk_edge",
-        whole_chunks: 2,
+        chunks: 2,
+        section_ys: INTERIOR_SECTION,
     },
     DirtyWorkload {
         name: "horizontal_chunk_corner",
-        whole_chunks: 4,
+        chunks: 4,
+        section_ys: INTERIOR_SECTION,
     },
     DirtyWorkload {
         name: "standalone_light_section",
-        whole_chunks: 9,
+        chunks: 9,
+        section_ys: LIGHT_NEIGHBOR_SECTIONS,
     },
     DirtyWorkload {
         name: "full_chunk_or_biome_load",
-        whole_chunks: 9,
+        chunks: 9,
+        section_ys: FULL_HEIGHT_SECTIONS,
     },
     DirtyWorkload {
         name: "chunk_unload_neighbors",
-        whole_chunks: 8,
+        chunks: 8,
+        section_ys: FULL_HEIGHT_SECTIONS,
     },
     DirtyWorkload {
         name: "interior_block_burst_8",
-        whole_chunks: 8,
+        chunks: 8,
+        section_ys: INTERIOR_SECTION,
     },
     DirtyWorkload {
         name: "interior_block_burst_32",
-        whole_chunks: 32,
+        chunks: 32,
+        section_ys: INTERIOR_SECTION,
     },
     DirtyWorkload {
         name: "resource_reload_32",
-        whole_chunks: 32,
+        chunks: 32,
+        section_ys: FULL_HEIGHT_SECTIONS,
     },
 ];
 
@@ -174,10 +192,9 @@ fn bench_changed_owner_mesh_build(c: &mut Criterion) {
     group.finish();
 }
 
-/// Before section-dirty ownership, every workload below rebuilds every
-/// section of each invalidated chunk. Stage 3 keeps the benchmark ids and
-/// switches only the production-equivalent work selection to dirty sections,
-/// making Criterion's same-host before/after comparison reproducible.
+/// The ids match the whole-chunk baseline, while each case now performs the
+/// exact section set selected by world invalidation. Full-height load, unload,
+/// biome, and resource-reload cases deliberately retain whole-height work.
 fn bench_dirty_mesh_workloads(c: &mut Criterion) {
     let atlas = TerrainTextureAtlas::unit();
     let snapshots = (0..*CHANGED_OWNER_COUNTS.last().unwrap())
@@ -193,17 +210,18 @@ fn bench_dirty_mesh_workloads(c: &mut Criterion) {
     for workload in DIRTY_WORKLOADS {
         group.bench_function(workload.name, |b| {
             b.iter(|| {
-                if workload.whole_chunks == 0 {
+                if workload.chunks == 0 {
                     return black_box(retained.source_sections);
                 }
-                let layers = snapshots[..workload.whole_chunks]
+                let layers = snapshots[..workload.chunks]
                     .iter()
                     .map(|snapshot| {
-                        build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+                        build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera(
                             snapshot,
                             std::iter::empty::<&TerrainChunkSnapshot>(),
                             &atlas,
                             black_box([8.0, 72.0, 8.0]),
+                            workload.section_ys,
                         )
                     })
                     .collect::<Vec<_>>();

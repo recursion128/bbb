@@ -299,15 +299,16 @@ each survivor. Relationship rules reuse the same candidate id index rather than
 performing a full-table lookup per survivor.
 Terrain servicing keeps its CPU snapshot/mesh cache on the render thread and
 synchronizes stable level/chunk/section/layer GPU owners. A changed chunk
-replaces only that chunk's section-layer buffers; unchanged chunks retain exact
-wgpu handles, unload removes only absent owners, and camera transparency resort
-writes indices only. Neither the simulation owner nor the mesh worker may
-read or mutate renderer/wgpu state. The measured mesh residual enables one
-named worker with a four-job local-prediction/nearest-first queue and
-five-result bound. It
-receives only immutable snapshot/atlas Arcs; render validates level/resource/
-mesh revision before adopting a result, discards stale work, performs the GPU
-upload itself, and joins the worker on owner drop.
+rebuilds only the exact Vanilla-invalidated section rows and replaces only
+those section-layer buffers; unchanged sibling sections retain exact wgpu
+handles. Unload removes only absent owners, and camera transparency resort
+writes indices only. Neither the simulation owner nor the mesh worker may read
+or mutate renderer/wgpu state. The measured mesh residual enables one named
+worker with a four-job local-prediction/nearest-first queue and five-result
+bound. It receives only immutable snapshot/atlas Arcs and dirty section
+id/revision rows; render validates level/resource/aggregate mesh revision before
+merging a result, discards stale work, performs the GPU upload itself, and joins
+the worker on owner drop.
 Simulation output wakes use a pending flag. Multiple queued outputs share one
 event-loop wake until the consumer drains and race-safely clears the flag;
 shutdown and panic exit retain their unconditional terminal wake.

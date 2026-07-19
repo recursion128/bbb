@@ -315,20 +315,25 @@ published in the next immutable generation's renderer telemetry.
 Terrain extraction keeps immutable CPU snapshots and meshes in the render
 owner, never in simulation or control. Meshes are split by section and layer;
 the GPU owner key is client-level generation plus chunk/section/layer, and a
-render-local monotonic revision replaces only rebuilt chunk owners. Unchanged
-chunks retain their exact wgpu buffers. Chunk disappearance removes only its
-owners, resource reload advances resident revisions, and translucent camera
-resort writes index buffers without retransmitting vertices. Logical upload and
-resident counters cross through the non-waking backend telemetry path and are
-published with the next immutable generation.
+render-local monotonic revision replaces only rebuilt section owners. The
+canonical world publishes a small COW revision record per chunk: a full-height
+baseline plus exact section overrides. Block and standalone-light mutations
+copy only affected revision records; chunk palette/light payloads and unchanged
+sibling sections stay shared. Chunk disappearance removes only its owners,
+resource reload advances every resident section revision, and translucent
+camera resort writes index buffers without retransmitting vertices. Logical
+section job/upload/resident counters cross through the non-waking backend
+telemetry path and are published with the next immutable generation.
 
 One lazy bounded terrain worker may consume only render-materialized immutable
-snapshot/atlas Arcs. Its four-entry local-prediction/nearest-first queue and
-five-entry result channel are derived caches, not another world owner. Level/resource/chunk
-revisions gate every result before the render owner adopts it; queued reset work
-is cancelled and in-flight stale work is discarded. Wgpu resources and GPU
-upload never leave the render thread. The worker is named, panic-propagating,
-stopped, and joined with `TerrainUploadState` lifecycle.
+snapshot/atlas Arcs plus the exact dirty section id/revision rows. Its four-entry
+local-prediction/nearest-first queue and five-entry result channel are derived
+caches, not another world owner. Level/resource/chunk aggregate revisions gate
+every result before the render owner merges those sections into its cached
+layers; queued reset work is cancelled and in-flight stale work is discarded.
+Wgpu resources and GPU upload never leave the render thread. The worker is
+named, panic-propagating, stopped, and joined with `TerrainUploadState`
+lifecycle.
 
 Remote debug subscriptions follow the same boundary. The simulation thread is
 the only request-set/tick/expiry owner; typed block, chunk, UUID, and event maps
