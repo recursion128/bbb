@@ -24,7 +24,7 @@ pub(crate) fn known_packs_manager(label: &str) -> bbb_pack::KnownPacksManager {
     for registry in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
         let (_, registry_path) = registry.resource_id.split_once(':').unwrap();
         let contents =
-            minimal_sound_variant_json(registry.resource_id).unwrap_or_else(|| "{}".to_string());
+            minimal_registry_json(registry.resource_id).unwrap_or_else(|| "{}".to_string());
         write_file(
             &root
                 .join("data/minecraft")
@@ -45,7 +45,32 @@ pub(crate) fn known_packs_manager(label: &str) -> bbb_pack::KnownPacksManager {
     manager
 }
 
-fn minimal_sound_variant_json(registry: &str) -> Option<String> {
+fn minimal_registry_json(registry: &str) -> Option<String> {
+    match registry {
+        "minecraft:damage_type" => {
+            return Some(r#"{"message_id":"base","scaling":"never","exhaustion":0.0}"#.to_string());
+        }
+        "minecraft:chicken_variant"
+        | "minecraft:cow_variant"
+        | "minecraft:pig_variant"
+        | "minecraft:cat_variant" => {
+            return Some(
+                r#"{"asset_id":"example:adult","baby_asset_id":"example:baby"}"#.to_string(),
+            );
+        }
+        "minecraft:frog_variant" | "minecraft:zombie_nautilus_variant" => {
+            return Some(r#"{"asset_id":"example:variant"}"#.to_string());
+        }
+        "minecraft:wolf_variant" => {
+            return Some(
+                r#"{"assets":{"wild":"example:wild","tame":"example:tame","angry":"example:angry"},"baby_assets":{"wild":"example:baby_wild","tame":"example:baby_tame","angry":"example:baby_angry"}}"#.to_string(),
+            );
+        }
+        "minecraft:painting_variant" => {
+            return Some(r#"{"width":1,"height":1,"asset_id":"example:painting"}"#.to_string());
+        }
+        _ => {}
+    }
     let fields = match registry {
         "minecraft:cat_sound_variant" => [
             "ambient_sound",
