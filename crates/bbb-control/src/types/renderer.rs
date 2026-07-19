@@ -43,6 +43,24 @@ pub struct RendererCounters {
     pub visible_sections: usize,
     pub upload_bytes: u64,
     pub resident_bytes: u64,
+    #[serde(default)]
+    pub terrain_changed_owners: usize,
+    #[serde(default)]
+    pub terrain_uploaded_owners: usize,
+    #[serde(default)]
+    pub terrain_removed_owners: usize,
+    #[serde(default)]
+    pub terrain_vertex_upload_bytes: u64,
+    #[serde(default)]
+    pub terrain_index_upload_bytes: u64,
+    #[serde(default)]
+    pub terrain_translucent_resort_owners: usize,
+    #[serde(default)]
+    pub terrain_translucent_resort_index_bytes: u64,
+    #[serde(default)]
+    pub terrain_full_replacements: u64,
+    #[serde(default)]
+    pub terrain_peak_resident_bytes: u64,
     pub atlas_pages: usize,
     pub atlas_reallocations: u64,
     pub atlas_width: u32,

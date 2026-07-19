@@ -283,6 +283,51 @@ box; it may over-project but cannot hide visible content. Section-granular
 compiled visibility and the remaining non-entity `RendererFrame` vector owners
 remain measured phase-4/final tails rather than being claimed complete here.
 
+## Phase 4 Boundary Result
+
+Terrain CPU meshes are now partitioned into independently resident section and
+render-layer values while retaining the same chunk-neighborhood lookup for
+occlusion, lighting, fluid overlays, and biome-derived material input. The
+render owner keys residency by client-level generation, chunk, section, and
+layer. A monotonic native resident revision changes on every rebuilt chunk,
+including resource reload, while a level-generation transition clears the old
+CPU cache without reusing its GPU identity.
+
+`bbb-renderer` retains the exact vertex/index buffers of every unchanged chunk.
+One changed chunk removes and recreates only its non-empty section/layer owners;
+load/unload is a desired-owner set difference. The legacy full replacement API
+remains for explicit callers and increments a dedicated counter, but the native
+terrain path no longer calls it. Camera-dependent translucent sorting retains
+vertices and writes only each changed section's index buffer. Renderer telemetry
+now distinguishes changed chunks, uploaded/removed section-layer owners,
+vertex/index bytes, translucent resort owners/index bytes, explicit full
+replacements, and current/logical-peak resident bytes.
+
+The offscreen GPU regression uses two resident chunks. An unchanged sync reports
+zero changed/uploaded/removed owners and zero upload bytes; changing one chunk
+reports exactly one changed chunk and one uploaded/removed non-empty owner while
+the second stays resident; unloading then removes only the named owner. Reusing
+the same numeric revision in a new level generation still replaces the owner.
+The section partition test proves that summed vertices, indices, faces, and
+source-section count match the former column mesh.
+
+Same-host Criterion after section partitioning:
+
+| Terrain CPU scenario | Before column mesh | Section mesh | Change |
+| --- | ---: | ---: | ---: |
+| 1 changed chunk | 1.855 ms | 1.850 ms | no material change |
+| 8 changed chunks | 18.376 ms | 18.479 ms | no material change |
+| 32 changed chunks | 77.536 ms | 70.985 ms | 1.09x faster in this run |
+| translucent build input, 1 chunk | 1.849 ms | 1.909 ms | 3.1% slower |
+
+The last row rebuilds the whole CPU mesh to preserve the historical Criterion
+comparison; production camera movement does not take that path and uses the new
+index-only resident resort. GPU buffer creation has no unstable wall-clock CI
+threshold: the exact logical upload bytes and owner counts are asserted instead,
+and the final live capture owns end-to-end GPU timing. Wgpu may defer destruction
+of a replaced buffer, so `terrain_peak_resident_bytes` is a logical resident
+peak rather than a claim about short-lived driver allocation peaks.
+
 ## Serial Phases, Validation, And Gates
 
 1. **Baseline, contract, observation surface.** Add the headless Criterion

@@ -19608,6 +19608,24 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   exact rare specialized culling、section-level compiled visibility、非 entity frame Vec 与增量 terrain
   residency 继续留在同一工程 slice 的后续 phase。
 
+## 2026-07-19：simulation/render 性能 phase 4 增量 terrain residency
+
+- [x] terrain CPU mesh 按 section/layer 分片，继续使用完整 chunk neighborhood 做边界遮挡、
+  光照和流体查询；GPU owner 以 client-level generation + chunk + section + layer 稳定寻址，
+  render-local resident revision 在 chunk rebuild/resource reload 时单调推进。
+- [x] native terrain path 改为 desired-owner/revision 同步：unchanged chunk 保留 exact wgpu
+  vertex/index buffer，单 chunk 变化只替换该 chunk 的非空 section-layer owners，load/unload
+  只增删差集；普通 mutation 的 full replacement count 为 0。translucent camera resort 仅写
+  已有 index buffer，不重传 vertex。
+- [x] 同 generation backend telemetry 新增 changed/uploaded/removed owners、vertex/index bytes、
+  translucent resort index bytes、explicit full replacement 与 current/logical-peak resident bytes；
+  offscreen GPU 测试覆盖 unchanged、单 owner mutation、unload 和 level generation id reuse。
+- [x] section 化后的同机 1/8/32 changed-chunk mesh 为 1.850/18.479/70.985 ms（相对
+  1.855/18.376/77.536 ms 无单 owner 回退，32-owner 本轮 1.09x）；历史 translucent full-build
+  input 为 1.909 ms（+3.1%），但生产 camera movement 已走 index-only resident resort。
+  更细的 section CPU dirty revision、driver deferred-release 峰值与 background meshing 保留为
+  后续可测边界。
+
 ## 2026-07-19：vanilla remote debug subscription 全路径
 
 - [x] 从本地 vanilla `DebugSubscriptions` 机械固定 16 项 built-in catalog；block/chunk/entity/

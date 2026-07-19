@@ -4,10 +4,11 @@ use std::{
 };
 
 use bbb_renderer::terrain::{
-    build_terrain_chunk_mesh_layers_with_atlas_and_camera, TerrainCardinalLighting, TerrainCell,
-    TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass,
-    TerrainMeshLayers, TerrainSkipRendering, TerrainTint,
+    build_terrain_chunk_section_mesh_layers_with_atlas_and_camera, TerrainCardinalLighting,
+    TerrainCell, TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind, TerrainLight,
+    TerrainMaterialClass, TerrainSectionMeshLayers, TerrainSkipRendering, TerrainTint,
 };
+use bbb_renderer::TerrainChunkMeshOwner;
 use bbb_world::{
     block_name_is_half_transparent, block_name_is_leaves, ChunkPos, WorldCardinalLighting,
     WorldStore,
@@ -38,7 +39,8 @@ struct CachedTerrainSnapshot {
 #[derive(Debug)]
 struct CachedTerrainMesh {
     revision: u64,
-    layers: TerrainMeshLayers,
+    resident_revision: u64,
+    layers: TerrainSectionMeshLayers,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,10 +52,12 @@ enum TerrainCacheWork {
 
 #[derive(Debug, Default)]
 pub(crate) struct TerrainUploadState {
+    observed_level_generation: u64,
     observed_world_revision: u64,
     selected_chunks: Vec<ChunkPos>,
     snapshots: HashMap<ChunkPos, CachedTerrainSnapshot>,
     meshes: HashMap<ChunkPos, CachedTerrainMesh>,
+    next_resident_revision: u64,
     reload_all_chunks_requested: bool,
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
@@ -189,9 +193,12 @@ pub(crate) fn maybe_upload_decoded_terrain(
     upload: &mut TerrainUploadState,
     textures: &TerrainTextureState,
 ) {
+    let level_changed =
+        synchronize_terrain_level_generation(upload, world.client_level_generation());
     if world.chunk_count() == 0 {
-        if synchronize_empty_terrain_upload(upload, world.terrain_revision()) {
-            renderer.upload_terrain_mesh_layers(TerrainMeshLayers::default());
+        let terrain_cleared = synchronize_empty_terrain_upload(upload, world.terrain_revision());
+        if level_changed || terrain_cleared {
+            upload_cached_terrain(renderer, upload);
         }
         return;
     }
@@ -207,7 +214,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
         .filter(|pos| loaded.contains(pos))
         .collect();
 
-    let mut renderer_dirty = false;
+    let mut renderer_dirty = level_changed;
     if upload.reload_all_chunks_requested {
         renderer_dirty = !upload.meshes.is_empty();
         upload.snapshots.clear();
@@ -238,6 +245,23 @@ pub(crate) fn maybe_upload_decoded_terrain(
         upload_cached_terrain(renderer, upload);
     }
     upload.observed_world_revision = world.terrain_revision();
+}
+
+fn synchronize_terrain_level_generation(
+    upload: &mut TerrainUploadState,
+    level_generation: u64,
+) -> bool {
+    if upload.observed_level_generation == level_generation {
+        return false;
+    }
+    let clear_renderer = !upload.meshes.is_empty();
+    upload.observed_level_generation = level_generation;
+    upload.selected_chunks.clear();
+    upload.snapshots.clear();
+    upload.meshes.clear();
+    upload.reload_all_chunks_requested = false;
+    upload.compiled_and_visible_chunks.clear();
+    clear_renderer
 }
 
 fn synchronize_empty_terrain_upload(upload: &mut TerrainUploadState, world_revision: u64) -> bool {
@@ -336,7 +360,7 @@ fn rebuild_terrain_chunk_mesh(
                     .get(&neighbor)
                     .and_then(|cached| cached.snapshot.as_ref())
             });
-            build_terrain_chunk_mesh_layers_with_atlas_and_camera(
+            build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
                 target,
                 neighborhood,
                 &textures.atlas,
@@ -344,9 +368,15 @@ fn rebuild_terrain_chunk_mesh(
             )
         })
         .unwrap_or_default();
-    upload
-        .meshes
-        .insert(pos, CachedTerrainMesh { revision, layers });
+    upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
+    upload.meshes.insert(
+        pos,
+        CachedTerrainMesh {
+            revision,
+            resident_revision: upload.next_resident_revision,
+            layers,
+        },
+    );
 }
 
 fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut TerrainUploadState) {
@@ -359,19 +389,25 @@ fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut Ter
     let cached: Vec<_> = upload
         .selected_chunks
         .iter()
-        .filter_map(|pos| upload.meshes.get(pos))
+        .filter_map(|pos| upload.meshes.get(pos).map(|cached| (*pos, cached)))
         .collect();
     let source_sections = cached
         .iter()
-        .map(|cached| cached.layers.source_sections)
+        .map(|(_, cached)| cached.layers.source_sections)
         .sum();
-    renderer.upload_terrain_mesh_layer_refs(
+    renderer.synchronize_terrain_section_mesh_layer_refs(
         source_sections,
-        cached.iter().flat_map(|cached| cached.layers.opaque.iter()),
-        cached.iter().flat_map(|cached| cached.layers.cutout.iter()),
-        cached
-            .iter()
-            .flat_map(|cached| cached.layers.translucent.iter()),
+        cached.iter().map(|(pos, cached)| {
+            (
+                TerrainChunkMeshOwner {
+                    level_generation: upload.observed_level_generation,
+                    chunk_x: pos.x,
+                    chunk_z: pos.z,
+                },
+                cached.resident_revision,
+                &cached.layers,
+            )
+        }),
     );
     upload.compiled_and_visible_chunks = compiled_and_visible_chunks;
 }
@@ -712,7 +748,8 @@ mod tests {
                 pos,
                 CachedTerrainMesh {
                     revision: 3,
-                    layers: TerrainMeshLayers::default(),
+                    resident_revision: 1,
+                    layers: TerrainSectionMeshLayers::default(),
                 },
             )]),
             reload_all_chunks_requested: true,
@@ -727,6 +764,35 @@ mod tests {
         assert!(!upload.reload_all_chunks_requested);
 
         assert!(!synchronize_empty_terrain_upload(&mut upload, 9));
+    }
+
+    #[test]
+    fn level_generation_change_drops_old_residency_without_reusing_revision_ids() {
+        let pos = ChunkPos { x: 2, z: -3 };
+        let mut upload = TerrainUploadState {
+            observed_level_generation: 4,
+            selected_chunks: vec![pos],
+            meshes: HashMap::from([(
+                pos,
+                CachedTerrainMesh {
+                    revision: 3,
+                    resident_revision: 8,
+                    layers: TerrainSectionMeshLayers::default(),
+                },
+            )]),
+            next_resident_revision: 8,
+            compiled_and_visible_chunks: HashSet::from([(pos.x, pos.z)]),
+            ..Default::default()
+        };
+
+        assert!(!synchronize_terrain_level_generation(&mut upload, 4));
+        assert!(synchronize_terrain_level_generation(&mut upload, 5));
+        assert!(upload.selected_chunks.is_empty());
+        assert!(upload.snapshots.is_empty());
+        assert!(upload.meshes.is_empty());
+        assert!(upload.compiled_and_visible_chunks.is_empty());
+        assert_eq!(upload.next_resident_revision, 8);
+        assert!(!synchronize_terrain_level_generation(&mut upload, 5));
     }
 
     #[test]
@@ -775,7 +841,8 @@ mod tests {
             center,
             CachedTerrainMesh {
                 revision: world.terrain_chunk_mesh_revision(center),
-                layers: TerrainMeshLayers::default(),
+                resident_revision: 1,
+                layers: TerrainSectionMeshLayers::default(),
             },
         );
         assert_eq!(
@@ -786,7 +853,8 @@ mod tests {
             east,
             CachedTerrainMesh {
                 revision: world.terrain_chunk_mesh_revision(east),
-                layers: TerrainMeshLayers::default(),
+                resident_revision: 2,
+                layers: TerrainSectionMeshLayers::default(),
             },
         );
         assert_eq!(

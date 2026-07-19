@@ -8,8 +8,8 @@
 use std::time::Duration;
 
 use bbb_renderer::terrain::{
-    build_terrain_chunk_mesh_layers_with_atlas_and_camera, TerrainCell, TerrainChunkSnapshot,
-    TerrainMaterialClass, TerrainTextureAtlas, TerrainTransparency,
+    build_terrain_chunk_section_mesh_layers_with_atlas_and_camera, TerrainCell,
+    TerrainChunkSnapshot, TerrainMaterialClass, TerrainTextureAtlas, TerrainTransparency,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
@@ -88,7 +88,7 @@ fn bench_changed_owner_mesh_build(c: &mut Criterion) {
                 let layers = snapshots[..count]
                     .iter()
                     .map(|snapshot| {
-                        build_terrain_chunk_mesh_layers_with_atlas_and_camera(
+                        build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
                             snapshot,
                             std::iter::empty::<&TerrainChunkSnapshot>(),
                             &atlas,
@@ -110,12 +110,14 @@ fn bench_translucent_camera_resort_input(c: &mut Criterion) {
     c.bench_function("terrain_cpu/translucent_camera_resort_input/1_owner", |b| {
         b.iter(|| {
             camera_x = if camera_x == 0.0 { 32.0 } else { 0.0 };
-            black_box(build_terrain_chunk_mesh_layers_with_atlas_and_camera(
-                &snapshot,
-                std::iter::empty::<&TerrainChunkSnapshot>(),
-                &atlas,
-                black_box([camera_x, 72.0, 8.0]),
-            ))
+            black_box(
+                build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+                    &snapshot,
+                    std::iter::empty::<&TerrainChunkSnapshot>(),
+                    &atlas,
+                    black_box([camera_x, 72.0, 8.0]),
+                ),
+            )
         });
     });
 }

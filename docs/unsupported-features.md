@@ -40,9 +40,6 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
-- Replace terrain GPU residency per stable chunk/section/layer owner, including
-  changed-owner vertex/index byte counters and index-only translucent resort;
-  ordinary block/chunk mutation must not clear or upload unchanged owners.
 - Reuse the remaining heap-heavy non-entity `RendererFrame` extraction owners
   and revision-cache stable HUD/item/block-entity/debug projections without
   caching partial-tick or animation-dependent state.
@@ -53,6 +50,11 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 - Add bounded immutable background terrain meshing only if end-to-end captures
   show a material frame/tail win, then complete equal-load official Java 26.1
   CPU p50/p95/p99, GPU-frame, 1%-low, and chunk-update comparison captures.
+- Refine terrain CPU dirty ownership below a chunk: GPU residency is already
+  section/layer-granular and retains unchanged chunks, but one block currently
+  rebuilds all sections of its invalidated chunk (and boundary-neighbor chunks
+  when their mesh revision changes). Add section dirty revisions only with a
+  complete block/light/load/reload invalidation audit and measured payoff.
 
 ## Protocol coverage for remaining required 26.1 packet families
 

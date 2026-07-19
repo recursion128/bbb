@@ -297,6 +297,12 @@ renderer exceptions), compiled terrain, camera/local-player, sleeping,
 spectator, and indirect-passenger rules before exactly one full projection of
 each survivor. Relationship rules reuse the same candidate id index rather than
 performing a full-table lookup per survivor.
+Terrain servicing keeps its CPU snapshot/mesh cache on the render thread and
+synchronizes stable level/chunk/section/layer GPU owners. A changed chunk
+replaces only that chunk's section-layer buffers; unchanged chunks retain exact
+wgpu handles, unload removes only absent owners, and camera transparency resort
+writes indices only. Neither the simulation owner nor a future mesh worker may
+read or mutate renderer/wgpu state.
 Simulation output wakes use a pending flag. Multiple queued outputs share one
 event-loop wake until the consumer drains and race-safely clears the flag;
 shutdown and panic exit retain their unconditional terminal wake.

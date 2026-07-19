@@ -557,6 +557,20 @@ pub struct TerrainMeshLayers {
     pub source_sections: usize,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct TerrainSectionMesh {
+    pub section_y: i32,
+    pub mesh: TerrainMesh,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct TerrainSectionMeshLayers {
+    pub opaque: Vec<TerrainSectionMesh>,
+    pub cutout: Vec<TerrainSectionMesh>,
+    pub translucent: Vec<TerrainSectionMesh>,
+    pub source_sections: usize,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct TerrainUvRect {
     pub min: [f32; 2],
@@ -759,5 +773,107 @@ pub fn build_terrain_chunk_mesh_layers_with_atlas_and_camera<'a>(
         cutout: vec![cutout],
         translucent: vec![translucent],
         source_sections: target.height.div_ceil(16),
+    }
+}
+
+/// Builds one independently resident mesh per chunk section and render layer.
+/// Neighbor lookup remains chunk-wide, so faces at section and chunk boundaries
+/// retain the same occlusion and lighting inputs as the legacy column mesh.
+pub fn build_terrain_chunk_section_mesh_layers_with_atlas_and_camera<'a>(
+    target: &'a TerrainChunkSnapshot,
+    neighborhood: impl IntoIterator<Item = &'a TerrainChunkSnapshot>,
+    atlas: &TerrainTextureAtlas,
+    camera_position: [f32; 3],
+) -> TerrainSectionMeshLayers {
+    let lookup = mesh::TerrainChunkLookup::with_target(target, neighborhood);
+    let opaque = mesh::build_chunk_section_meshes_with_lookup(
+        target,
+        &lookup,
+        atlas,
+        mesh::TerrainMeshMode::OpaqueOnly,
+    );
+    let cutout = mesh::build_chunk_section_meshes_with_lookup(
+        target,
+        &lookup,
+        atlas,
+        mesh::TerrainMeshMode::CutoutOnly,
+    );
+    let mut translucent = mesh::build_chunk_section_meshes_with_lookup(
+        target,
+        &lookup,
+        atlas,
+        mesh::TerrainMeshMode::TranslucentOnly,
+    );
+    for section in &mut translucent {
+        mesh::sort_translucent_quads_by_distance(&mut section.mesh, camera_position);
+    }
+
+    TerrainSectionMeshLayers {
+        opaque,
+        cutout,
+        translucent,
+        source_sections: target.height.div_ceil(16),
+    }
+}
+
+#[cfg(test)]
+mod section_mesh_tests {
+    use super::*;
+
+    #[test]
+    fn section_partition_preserves_column_mesh_geometry_and_section_identity() {
+        let mut cells = vec![TerrainCell::EMPTY; 16 * 32 * 16];
+        for y in [0, 16] {
+            let index = mesh::cell_index(1, y, 1, 32);
+            cells[index] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+        }
+        let snapshot = TerrainChunkSnapshot::new(3, -2, 0, 32, cells);
+        let atlas = TerrainTextureAtlas::unit();
+        let column = build_terrain_chunk_mesh_layers_with_atlas_and_camera(
+            &snapshot,
+            std::iter::empty(),
+            &atlas,
+            [0.0, 0.0, 0.0],
+        );
+        let sections = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+            &snapshot,
+            std::iter::empty(),
+            &atlas,
+            [0.0, 0.0, 0.0],
+        );
+
+        assert_eq!(
+            sections
+                .opaque
+                .iter()
+                .map(|section| section.section_y)
+                .collect::<Vec<_>>(),
+            vec![0, 1]
+        );
+        assert_eq!(
+            sections
+                .opaque
+                .iter()
+                .map(|section| section.mesh.vertices.len())
+                .sum::<usize>(),
+            column.opaque[0].vertices.len()
+        );
+        assert_eq!(
+            sections
+                .opaque
+                .iter()
+                .map(|section| section.mesh.indices.len())
+                .sum::<usize>(),
+            column.opaque[0].indices.len()
+        );
+        assert_eq!(
+            sections
+                .opaque
+                .iter()
+                .map(|section| section.mesh.opaque_faces)
+                .sum::<usize>(),
+            column.opaque[0].opaque_faces
+        );
+        assert_eq!(sections.source_sections, column.source_sections);
     }
 }

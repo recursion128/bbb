@@ -16,7 +16,7 @@ use self::{
 };
 use super::{
     TerrainCell, TerrainChunkSnapshot, TerrainFace, TerrainFluid, TerrainMaterialClass,
-    TerrainMesh, TerrainRenderShape, TerrainSkipRendering, TerrainTextureAtlas,
+    TerrainMesh, TerrainRenderShape, TerrainSectionMesh, TerrainSkipRendering, TerrainTextureAtlas,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -57,12 +57,48 @@ pub(super) fn build_chunk_mesh_with_lookup(
     atlas: &TerrainTextureAtlas,
     mode: TerrainMeshMode,
 ) -> TerrainMesh {
+    let mut mesh =
+        build_chunk_mesh_range_with_lookup(snapshot, lookup, atlas, mode, 0, snapshot.height);
+    mesh.source_sections = snapshot.height.div_ceil(16);
+    mesh
+}
+
+pub(super) fn build_chunk_section_meshes_with_lookup(
+    snapshot: &TerrainChunkSnapshot,
+    lookup: &TerrainChunkLookup<'_>,
+    atlas: &TerrainTextureAtlas,
+    mode: TerrainMeshMode,
+) -> Vec<TerrainSectionMesh> {
+    (0..snapshot.height)
+        .step_by(16)
+        .map(|start_y| TerrainSectionMesh {
+            section_y: (snapshot.min_y + start_y as i32).div_euclid(16),
+            mesh: build_chunk_mesh_range_with_lookup(
+                snapshot,
+                lookup,
+                atlas,
+                mode,
+                start_y,
+                (start_y + 16).min(snapshot.height),
+            ),
+        })
+        .collect()
+}
+
+fn build_chunk_mesh_range_with_lookup(
+    snapshot: &TerrainChunkSnapshot,
+    lookup: &TerrainChunkLookup<'_>,
+    atlas: &TerrainTextureAtlas,
+    mode: TerrainMeshMode,
+    start_y: usize,
+    end_y: usize,
+) -> TerrainMesh {
     let mut mesh = TerrainMesh {
-        source_sections: snapshot.height.div_ceil(16),
+        source_sections: usize::from(start_y < end_y),
         ..TerrainMesh::default()
     };
     let cardinal = snapshot.cardinal_lighting;
-    for y in 0..snapshot.height as i32 {
+    for y in start_y as i32..end_y as i32 {
         for z in 0..16 {
             for x in 0..16 {
                 let cell = snapshot

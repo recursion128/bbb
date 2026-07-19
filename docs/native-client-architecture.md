@@ -301,6 +301,16 @@ reused; the renderer swaps its previous instance allocation back to this owner.
 The latest/peak phase durations, row counts, and capacity-growth count are
 published in the next immutable generation's renderer telemetry.
 
+Terrain extraction keeps immutable CPU snapshots and meshes in the render
+owner, never in simulation or control. Meshes are split by section and layer;
+the GPU owner key is client-level generation plus chunk/section/layer, and a
+render-local monotonic revision replaces only rebuilt chunk owners. Unchanged
+chunks retain their exact wgpu buffers. Chunk disappearance removes only its
+owners, resource reload advances resident revisions, and translucent camera
+resort writes index buffers without retransmitting vertices. Logical upload and
+resident counters cross through the non-waking backend telemetry path and are
+published with the next immutable generation.
+
 Remote debug subscriptions follow the same boundary. The simulation thread is
 the only request-set/tick/expiry owner; typed block, chunk, UUID, and event maps
 live in `WorldStore` and are cleared by their connection/level/chunk/entity
