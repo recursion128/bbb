@@ -3879,23 +3879,25 @@
       "coverage": {
         "ack_response": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/debug_game.rs#decode_debug_sample",
-            "crates/bbb-world/src/client/debug_game.rs#apply_debug_sample",
+            "crates/bbb-protocol/src/packets/debug_game.rs#decode_debug_subscription_update",
+            "crates/bbb-world/src/client/debug_game.rs#apply_debug_subscription_update",
+            "crates/bbb-native/src/remote_debug.rs#remote_debug_gizmos",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleDebugSubscriptionRequest",
             "vanilla:net/minecraft/server/level/ServerPlayer.java#requestDebugSubscriptions"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-native/src/runtime.rs#HudDebugTpsSampler",
+            "crates/bbb-native/src/remote_debug.rs#subscription_ids",
+            "crates/bbb-native/src/runtime.rs#sync_subscriptions_and_tick",
             "crates/bbb-net/src/types/commands.rs#DebugSubscriptionRequest",
             "crates/bbb-net/src/driver/commands.rs#send_debug_subscription_request",
             "vanilla:net/minecraft/client/multiplayer/ClientDebugSubscriber.java#requestedSubscriptions"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -3909,19 +3911,22 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-native/src/runtime.rs#sync_subscription",
-            "crates/bbb-native/src/runtime.rs#tick_time_subscribed",
+            "crates/bbb-native/src/runtime.rs#sync_subscriptions_and_tick",
+            "crates/bbb-world/src/client/debug_game.rs#clear_debug_subscriber",
+            "crates/bbb-world/src/client/debug_game.rs#set_requested_debug_subscriptions",
+            "crates/bbb-native/src/runtime/tests.rs#remote_debug_subscription_retries_after_backpressure_and_listener_clear",
             "vanilla:net/minecraft/client/multiplayer/ClientDebugSubscriber.java#onSubscriptionsChanged",
             "vanilla:net/minecraft/client/multiplayer/ClientDebugSubscriber.java#dropLevel"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_play_debug_subscription_request_as_validated_deterministic_set",
             "crates/bbb-net/src/driver/commands/tests.rs#send_debug_subscription_request_encodes_complete_deterministic_set",
-            "crates/bbb-native/src/runtime/tests.rs#hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription"
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription",
+            "crates/bbb-native/src/runtime/tests.rs#remote_debug_renderer_requests_share_one_world_owned_subscription_set"
           ],
           "gap": null,
           "status": "complete"
@@ -7969,11 +7974,12 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#last_debug_block_value",
+            "crates/bbb-native/src/remote_debug.rs#remote_debug_gizmos",
+            "crates/bbb-native/src/remote_debug.rs#every_remote_renderer_projects_from_one_canonical_world_generation",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugBlockValue"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -8029,11 +8035,12 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#last_debug_chunk_value",
+            "crates/bbb-native/src/remote_debug.rs#remote_debug_gizmos",
+            "crates/bbb-native/src/remote_debug.rs#every_remote_renderer_projects_from_one_canonical_world_generation",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugChunkValue"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -8085,11 +8092,12 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#last_debug_entity_value",
+            "crates/bbb-native/src/remote_debug.rs#remote_debug_gizmos",
+            "crates/bbb-native/src/remote_debug.rs#every_remote_renderer_projects_from_one_canonical_world_generation",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugEntityValue"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -8142,11 +8150,13 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#last_debug_event",
+            "crates/bbb-native/src/remote_debug.rs#remote_debug_gizmos",
+            "crates/bbb-native/src/remote_debug.rs#every_remote_renderer_projects_from_one_canonical_world_generation",
+            "crates/bbb-native/src/runtime/tests.rs#remote_debug_subscription_purges_at_current_pre_increment_game_time",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugEvent"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -10802,12 +10812,14 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/entities.rs#remove_entities_by_ids",
+            "crates/bbb-world/src/client/debug_game.rs#drop_debug_entity_uuid",
+            "crates/bbb-world/src/client/debug_game.rs#temporary_values_expire_and_chunk_entity_drop_hooks_remove_owned_keys",
             "crates/bbb-world/src/entities/movement.rs#apply_teleport_entity_with_recovery",
             "crates/bbb-native/src/runtime/events/dispatcher.rs#removed_player_vehicle_teleport",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRemoveEntities"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [

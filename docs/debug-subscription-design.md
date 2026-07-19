@@ -112,6 +112,36 @@ Authoritative files are under
 `~/Work/mc-code/sources/26.1/net/minecraft/{util/debug,client/multiplayer,client/renderer/debug}`
 plus `world/level/pathfinder` and `world/level/redstone/Orientation.java`.
 
+## Delivered Ownership And Presentation
+
+The delivered simulation owner derives one sorted request set from the
+repeatable startup `--remote-debug-renderer` selection and the live FPS-chart
+toggle. It sends only changes, updates the canonical requested set only after
+the bounded network queue accepts the command, retries after backpressure or a
+fresh-listener clear, and purges temporary values at the current pre-increment
+game time. Disconnect clears request/value ownership without erasing packet
+counters or independent debug-overlay diagnostics.
+
+Render extraction consumes the startup selection and typed maps from the same
+immutable publication as the rest of the frame. Empty selection returns before
+entity picking or transform projection. Block/chunk-only groups also skip the
+entity table; entity-backed groups build one transform/UUID/id index and share
+it across all selected consumers. Bee flower, hive-member, blacklist, and ghost
+hive data are pre-aggregated once rather than rescanning all bees per hive.
+Brain selection uses vanilla's render-then-update ordering, remembered target,
+eight-block entity ray, spectator gate, and client-level reset. UUID labels use
+the exact Java UUID hash and legacy LCG name tables.
+
+All thirteen remote renderer groups lower into the existing immutable filled-
+box, line, and always-on-top text-billboard channels. This preserves canonical
+value, distance, expiry, selection, and renderer-group ordering without a
+render-owned subscriber copy. The generic line channel represents vanilla
+arrows as line segments (without `ArrowGizmo` heads), and Breeze attack-target
+lines currently sample the published entity transform rather than a separate
+render-owned interpolated transform cache. Exact arrow-head geometry or that
+sub-frame visual refinement belongs to the generic debug-gizmo renderer, not a
+reopened protocol or canonical-state path.
+
 ## Serial Phases And Validation
 
 1. **Typed protocol and request set.** Replace raw debug value payloads with the

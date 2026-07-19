@@ -62,16 +62,6 @@ Owner: `bbb-protocol`
 - Preserve or explicitly reject lone-surrogate `\u`/`\U`/`\N{name}`
   SNBT escapes instead of passing them through the current UTF-8-backed canonical
   string state; follow `TagParser` and the Java UTF-16 string model.
-- Retain typed block/chunk/entity/event debug subscription values with vanilla
-  game-time expiry/removal semantics, ignore entity updates whose target is absent,
-  and feed the matching debug renderers. The fixed built-in 16-entry vanilla
-  registration-order/resource-id catalog now dispatches every per-subscription
-  value codec and validates the complete deterministic serverbound request set;
-  generated built-in holder catalogs resolve POI and game-event ids to resource
-  identity before publication. The canonical subscriber now owns requested-set
-  gating, typed position/UUID/event maps, expiry, and chunk/entity/level drops.
-  Startup development-flag request ownership and the matching renderer
-  consumers remain open.
 - Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
   beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
@@ -643,9 +633,6 @@ Movement:
 - Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
   interpolation, indirect-passenger reposition/old-pose reset, and locally-
   authoritative vehicle echo.
-- Implement `ClientDebugSubscriber`'s subscription value maps and remove an
-  entity UUID from every active entity-value map on RemoveEntities. The current
-  single last-debug-value diagnostic is not an equivalent substitute.
 - Speak the first-local-mount SetPassengers
   `mount.onboard` message as vanilla system narration. Removed-vehicle recovery
   reset, the pre-packet indirect-passenger once guard, boat body/head yaw
@@ -1260,11 +1247,11 @@ back into a todo. Do not delete these.
   net-event drain and uses a coarse terrain-upload counter. Vanilla queues them
   through `ClientLevel.queueLightUpdate`, consumes a bounded amount per frame,
   and calls `setSectionDirtyWithNeighbors` for changed standalone light sections.
-- **ForgetLevelChunk runtime cache cleanup.** When the queued-light and typed
-  debug-subscription owners land, remove their values for every unloaded chunk
-  section. Canonical chunk/light data and last-chunk GPU terrain are already
-  removed; add reverse tests with those future owners so stale light/debug
-  presentation cannot survive the packet.
+- **ForgetLevelChunk queued-light runtime cache cleanup.** When the queued-light
+  owner lands, remove its values for every unloaded chunk section. Canonical
+  chunk/light data, typed debug-subscription chunk/block values, and last-chunk
+  GPU terrain are already removed; add the reverse test for the future queued
+  light owner so stale light presentation cannot survive the packet.
 - Decode synchronized biome environment-attribute modifier compounds and the
   remaining positional visual fields beyond current fog/sky/water-fog colors
   and water-fog end distance; then match vanilla's 3x3 neighboring-section

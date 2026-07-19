@@ -284,6 +284,15 @@ nanoseconds and logical scanned, mutated, and rebuilt entity counts travel in
 the same generation's `NetCounters`; observation neither blocks the simulation
 nor introduces a separate reader publication.
 
+Remote debug subscriptions follow the same boundary. The simulation thread is
+the only request-set/tick/expiry owner; typed block, chunk, UUID, and event maps
+live in `WorldStore` and are cleared by their connection/level/chunk/entity
+lifecycle hooks. Renderer and control see those maps through the same world
+`Arc`. The render owner retains only vanilla's last-looked-at brain UUID, keyed
+by client-level generation, and lowers selected values into backend-ready debug
+primitives. It never retains subscription maps or reads the live simulation
+world.
+
 ### `bbb-item-model`
 
 Owns value-aware item-model resolution.

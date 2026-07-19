@@ -211,6 +211,14 @@ The first implementation publishes after any drained packet/input batch that
 changes observable state and after every due tick batch. It may coalesce
 multiple changes handled in one `step`, but must not wait for a rendered frame.
 
+The remote debug subscriber is simulation-owned publication state. Startup
+renderer flags and the FPS-chart toggle derive one deterministic set; accepted
+network request changes update that canonical set before expiry is purged at
+the current client game time. The immutable input selection and typed world
+maps therefore generation-pair with render extraction. A failed bounded-channel
+send leaves the old set intact for retry, disconnect clears the listener owner,
+and no control-specific debug copy exists.
+
 ### Effects
 
 `RenderEffectBatch` is an ordered, sequence-numbered value batch produced while

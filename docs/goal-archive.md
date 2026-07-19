@@ -19587,3 +19587,25 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   继续共享同一 world `Arc`/generation，effect sequence、blocked-render、shutdown/join、panic propagation
   和单一 simulation owner 守卫不变。剩余约 0.94 ms O(n) hecs shell rebuild 与 retained-generation
   shell/payload 版本峰值明确保留为后续测量边界。
+
+## 2026-07-19：vanilla remote debug subscription 全路径
+
+- [x] 从本地 vanilla `DebugSubscriptions` 机械固定 16 项 built-in catalog；block/chunk/entity/
+  event packet 按 subscription codec 解码完整 typed value，POI 与 game-event holder 在同代
+  RegistryAccess 中解析。serverbound request 编码完整排序去重 set，不保留 raw payload 或第二套
+  subscription schema。
+- [x] `WorldStore` 成为唯一 `ClientDebugSubscriber` analogue：requested-set gating、block/chunk/
+  UUID/event maps、game-time expiry、chunk/entity/level/disconnect drop 与旧 publication generation
+  隔离均有 focused 回归；render/control 继续共享同一 world `Arc` 与 generation。
+- [x] repeatable startup renderer flag 与 FPS chart 组成一个 request set；simulation 在 bounded
+  channel 接受后才提交 canonical set，backpressure/fresh-listener 会重试，request change 先于
+  current pre-increment game-time purge。默认空选择和纯 block/chunk renderer 不扫描 entity table。
+- [x] path、neighbor、redstone、structure、village、brain/POI、bee/hive/goal、raid、game-event/
+  listener、breeze 与 entity-block-intersection 全部投影到既有 immutable debug primitives。
+  Brain 保留上一帧 8-block target 并按 level generation 清空，UUID label 匹配 Java hash/legacy-LCG
+  名称，bee hive/flower/blacklist/ghost 只做一次预聚合。
+- [x] packet coverage 的四个 clientbound value/event rows 与 serverbound request row关闭为 complete；
+  阶段提交 `1dd55bb8f`、`1c4ab9f69`、`b3ae82206` 分别定位 protocol、canonical lifecycle 与
+  simulation/render 边界。generic line channel 暂以线段表示 vanilla arrow head，Breeze target
+  使用 published transform；这两个纯 gizmo 几何/partial-frame refinement 不重开 subscriber
+  canonical ownership。

@@ -845,7 +845,7 @@ mod tests {
     }
 
     #[test]
-    fn play_remove_entities_keeps_debug_subscriber_drop_open() {
+    fn play_remove_entities_closes_debug_subscriber_drop() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -854,14 +854,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_REMOVE_ENTITIES"
             })
             .expect("remove entities coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -2433,7 +2429,7 @@ mod tests {
     }
 
     #[test]
-    fn play_debug_subscription_packets_close_typed_decode_before_canonical_lifecycle() {
+    fn play_debug_subscription_packets_close_typed_decode_and_runtime_lifecycle() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "CLIENTBOUND_DEBUG_BLOCK_VALUE",
@@ -2449,26 +2445,13 @@ mod tests {
         assert_eq!(entries.len(), packets.len());
 
         for entry in entries {
-            let partial: BTreeSet<_> = entry
-                .coverage
-                .iter()
-                .filter_map(|(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-                })
-                .collect();
-            assert_eq!(
-                partial,
-                BTreeSet::from(["runtime_side_effect"]),
+            assert!(
+                entry
+                    .coverage
+                    .values()
+                    .all(|cell| cell.status == PacketCoverageStatus::Complete),
                 "{}",
-                entry.constant_name
-            );
-            assert_eq!(
-                entry.coverage["canonical_apply"].status,
-                PacketCoverageStatus::Complete
-            );
-            assert_eq!(
-                entry.coverage["decode"].status,
-                PacketCoverageStatus::Complete
+                entry.constant_name,
             );
         }
     }
@@ -3562,7 +3545,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_debug_subscription_closes_set_encoder_before_lifecycle() {
+    fn play_serverbound_debug_subscription_closes_complete_client_lifecycle() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3573,21 +3556,10 @@ mod tests {
             })
             .expect("play serverbound debug subscription coverage row");
 
-        assert_eq!(
-            entry.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        assert_eq!(
-            entry.coverage["tests"].status,
-            PacketCoverageStatus::Complete
-        );
-        for dimension in ["ack_response", "command_surface", "state_guard"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
