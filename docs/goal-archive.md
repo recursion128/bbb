@@ -19541,3 +19541,24 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   pending state 只能由 revision/store owner 读取，并禁止 native/item-model 缓存 registry packet 或
   holder state；custom reorder、known-pack/network、typed failure rollback 与 component rollback 均有
   focused 回归。
+
+## 2026-07-19：simulation publication 结构共享与运行时观测
+
+- [x] 新增 repo-native Criterion 基线，覆盖 empty、81/289/625 个代表性 column、2,000 entity、
+  session-static registry/item profile、单 block mutation、entity tick，以及 render owner 保留旧
+  generation 时的下一次 publication；同机 before/after 与 fixture 结构记录在
+  `docs/simulation-publication-snapshot-design.md`，不把 wall-clock 阈值写入 CI。
+- [x] `WorldStore` 以 column 为粒度共享完整 `ChunkColumn` payload，以 session/reload 为粒度共享
+  `RegistrySet`，并逐个共享 heap-backed item-profile table；统一 `DerefMut -> Arc::make_mut`
+  mutation boundary 保证旧 generation 隔离，EntityStore 仍在 publication 显式重建，避免 whole-ECS
+  COW 把成本推迟到下一次 entity tick。
+- [x] 625-column unchanged publication 从 21.530 ms 降至 10.650 us，旧 snapshot 保留时的单 block
+  mutation + publication 从 23.142 ms 降至 20.530 us，下一 unchanged generation 从 23.148 ms
+  降至 11.288 us；entity-only 与 entity-tick 路径保持原 cost owner，作为后续可测热点。
+- [x] `SimulationPublisher` 仅经 `WorldStore::publication_snapshot` 构造 generation；render/control
+  继续共享同一 world `Arc` 和 generation，effect-before-publication gate、blocked-render isolation、
+  shutdown/join 与单一 simulation owner 守卫保持不变。`net.counters` 同 generation 报告最近和
+  process-peak publication build nanoseconds。
+- [x] block/light/chunk load-unload、entity transform/metadata、registry/reload、inventory/UI 的 A/B
+  generation 隔离回归，serde shape、source guard、focused tests、三个阶段 full gate 与最终 fixture
+  playable smoke 均通过；live playable 因环境无 Java executable 未运行并保留为外部门禁条件。
