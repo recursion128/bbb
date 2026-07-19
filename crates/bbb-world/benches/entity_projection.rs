@@ -17,42 +17,39 @@
 
 use std::time::Duration;
 
-use bbb_protocol::packets::{
-    AddEntity, DataComponentPatchSummary, EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary,
-    MinecartStep, MoveMinecartAlongTrack, SetEquipment, Vec3d,
+use bbb_protocol::{
+    entity_types::{
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    },
+    packets::{
+        AddEntity, DataComponentPatchSummary, EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary,
+        MinecartStep, MoveMinecartAlongTrack, SetEquipment, Vec3d,
+    },
 };
 use bbb_world::WorldStore;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 const ENTITY_COUNTS: [usize; 3] = [100, 500, 2000];
-
-// Vanilla 26.1 entity type ids (see `crates/bbb-world/src/entities.rs`).
-const TYPE_ZOMBIE: i32 = 150;
-const TYPE_COW: i32 = 30;
-const TYPE_PIG: i32 = 100;
-const TYPE_SHEEP: i32 = 111;
-const TYPE_SKELETON: i32 = 115;
-const TYPE_CREEPER: i32 = 32;
-const TYPE_MINECART: i32 = 85;
-const TYPE_CHEST_MINECART: i32 = 25;
-const TYPE_HORSE: i32 = 66;
-const TYPE_LLAMA: i32 = 78;
+const VISIBLE_PERCENTAGES: [usize; 4] = [0, 10, 50, 100];
 
 /// Deterministic type mix: mostly common mobs, with a steady minority of
 /// minecarts (lerp branch) and horses/llamas (equipment branch) so the projection
 /// exercises those paths.
 fn entity_type_for_index(i: usize) -> i32 {
     match i % 12 {
-        0 | 4 => TYPE_ZOMBIE,
-        1 | 5 => TYPE_COW,
-        2 => TYPE_PIG,
-        6 => TYPE_SHEEP,
-        3 => TYPE_SKELETON,
-        7 => TYPE_CREEPER,
-        8 => TYPE_MINECART,
-        9 => TYPE_CHEST_MINECART,
-        10 => TYPE_HORSE,
-        _ => TYPE_LLAMA,
+        0 | 4 => VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        1 | 5 => VANILLA_ENTITY_TYPE_COW_ID,
+        2 => VANILLA_ENTITY_TYPE_PIG_ID,
+        6 => VANILLA_ENTITY_TYPE_SHEEP_ID,
+        3 => VANILLA_ENTITY_TYPE_SKELETON_ID,
+        7 => VANILLA_ENTITY_TYPE_CREEPER_ID,
+        8 => VANILLA_ENTITY_TYPE_MINECART_ID,
+        9 => VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+        10 => VANILLA_ENTITY_TYPE_HORSE_ID,
+        _ => VANILLA_ENTITY_TYPE_LLAMA_ID,
     }
 }
 
@@ -104,7 +101,7 @@ fn build_store(count: usize) -> WorldStore {
         });
 
         match entity_type_id {
-            TYPE_MINECART | TYPE_CHEST_MINECART => {
+            VANILLA_ENTITY_TYPE_MINECART_ID | VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => {
                 let step = MinecartStep {
                     position,
                     movement: Vec3d {
@@ -121,7 +118,7 @@ fn build_store(count: usize) -> WorldStore {
                     lerp_steps: vec![step, step],
                 });
             }
-            TYPE_HORSE | TYPE_LLAMA => {
+            VANILLA_ENTITY_TYPE_HORSE_ID | VANILLA_ENTITY_TYPE_LLAMA_ID => {
                 store.apply_set_equipment(SetEquipment {
                     entity_id: id,
                     slots: vec![EquipmentSlotUpdate {
@@ -162,6 +159,36 @@ fn bench_pick_targets(c: &mut Criterion) {
     group.finish();
 }
 
+/// Records the current render-order cost: all entities first pay the complete
+/// model-source projection and only then are non-survivors discarded. The
+/// survivor predicate is deliberately trivial so the 0/10/50/100% series
+/// attributes the invariant cost to projection order rather than a particular
+/// future frustum implementation.
+fn bench_current_projection_before_visibility(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_render/current_full_projection_then_visibility");
+    group.warm_up_time(Duration::from_millis(500));
+    group.measurement_time(Duration::from_secs(2));
+    for &count in &ENTITY_COUNTS {
+        let store = build_store(count);
+        for &visible_percentage in &VISIBLE_PERCENTAGES {
+            let survivor_count = count * visible_percentage / 100;
+            group.bench_with_input(
+                BenchmarkId::new(format!("visible_{visible_percentage}_percent"), count),
+                &(count, survivor_count),
+                |b, &(_, survivor_count)| {
+                    b.iter(|| {
+                        let mut sources =
+                            store.entity_model_sources_at_partial_tick(black_box(0.5));
+                        sources.retain(|source| source.entity_id <= survivor_count as i32);
+                        black_box(sources)
+                    });
+                },
+            );
+        }
+    }
+    group.finish();
+}
+
 fn bench_advance_client_tick(c: &mut Criterion) {
     let mut group = c.benchmark_group("advance_entity_client_animations");
     group.warm_up_time(Duration::from_millis(500));
@@ -179,6 +206,7 @@ criterion_group!(
     benches,
     bench_model_sources,
     bench_pick_targets,
+    bench_current_projection_before_visibility,
     bench_advance_client_tick
 );
 criterion_main!(benches);

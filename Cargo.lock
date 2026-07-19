@@ -423,6 +423,7 @@ dependencies = [
  "bbb-protocol",
  "bbb-render-types",
  "bytemuck",
+ "criterion",
  "glam 0.29.3",
  "image",
  "pollster",

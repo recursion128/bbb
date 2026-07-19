@@ -1,0 +1,250 @@
+# Simulation / Publication / Render Performance
+
+This document is the pre-start contract and measurement record for the
+high-risk engineering slice that removes render-driven simulation work,
+projects only visible entities, reuses render extraction state, and makes
+terrain GPU residency incremental. It refines the ownership contracts in
+[`simulation-render-thread-design.md`](simulation-render-thread-design.md),
+[`simulation-publication-snapshot-design.md`](simulation-publication-snapshot-design.md),
+and [`entity-tick-publication-cost-design.md`](entity-tick-publication-cost-design.md).
+
+## Semantic Goal And Completion
+
+The named simulation thread remains the only mutable `WorldStore` and input
+owner. Render and control continue to consume one immutable publication
+generation and the same exact world `Arc`. At equal machine, GPU, resolution,
+view distance, entity distance, graphics, particles, resource packs, camera
+path, and actually visible content, stable bbb CPU frame p50 and p95 should beat
+the official vanilla Java 26.1 client without degrading p99, client-tick
+deadlines, network response, or visible output.
+
+Completion requires all of the following:
+
+- render FPS no longer drives simulation steps, effect batches, publications,
+  outputs, or winit wakes;
+- a true no-op scheduler wake advances no generation or effect sequence and
+  builds no world/entity snapshot;
+- input/diagnostic-only generations reuse the previous exact world `Arc`;
+- entity extraction performs one narrow candidate query and vanilla-equivalent
+  visibility filtering before one batch full projection of survivors;
+- render-owned extraction storage clears and reuses capacity, and publication
+  carries a narrow render input instead of cloning complete input/frame heaps;
+- a changed terrain owner replaces only its own GPU vertex/index residency;
+  ordinary block/chunk changes never clear or re-upload unchanged owners;
+- background meshing is added only if the headless and live measurements show a
+  material CPU-frame or tail-latency win; any worker receives immutable values,
+  has a bounded prioritized queue, and discards stale revisions; and
+- same-machine before/after and strict official comparison data are recorded.
+
+## Non-Goals And Hard Invariants
+
+This slice changes no protocol, client tick cadence, input semantics,
+interpolation, render result, effect order, server-authority boundary, view
+distance, entity distance, particle count, graphics quality, or diagnostic
+content. It introduces no shared mutable world, second canonical entity/world,
+control copy, skipped necessary publication, mixed generation, global
+allocator, `unsafe`, configuration UI, Rayon, or unmeasured concurrent ECS
+owner. The existing 49-chunk renderer selection is not accepted as an advantage
+over an official client rendering more terrain.
+
+The effect-before-publication gate, connection FIFO, blocked-render isolation,
+single simulation owner source guards, shutdown/join, panic propagation, and
+online/probe/fixture deterministic side-effect path remain mandatory.
+
+## Owners And Frozen Integration Contract
+
+- `bbb-native::simulation` owns scheduler wake classification, latest-value
+  render telemetry, effect/publication sequencing, no-op suppression, world-Arc
+  reuse, and generation-matched observations.
+- `bbb-world` owns canonical revisions and narrow entity candidate/full survivor
+  projection. New membership facts derive from the generated type/schema
+  catalogs; no parallel type table or metadata schema is permitted.
+- `bbb-native` render extraction owns persistent scratch/caches, culling order,
+  frame phase measurements, and terrain CPU cache/job scheduling. A cache key
+  includes every level/content/resource revision needed to reject stale data.
+- `bbb-renderer` owns GPU terrain handles and replaces/removes one stable
+  chunk/section/layer owner at a time. Wgpu resources never cross to simulation
+  or a mesh worker.
+- `bbb-control` exposes only the same generation's low-cost logical/time
+  observations. It receives neither a world nor entity copy.
+
+`TerrainReadiness` is an edge-triggered level-generation value. Backend
+counters are latest-value telemetry: render writes replace the pending value
+without waking simulation, and the next real network/input/tick step absorbs
+it. A final value remains available until observed. Winit output wake uses one
+pending flag so multiple queued outputs need at most one outstanding wake; the
+consumer clears it only after draining and closes the producer race by
+rechecking the queue.
+
+A world snapshot is rebuilt only when canonical world state changed since the
+last publication. A publication needed for input, counters, clocks, or
+diagnostics can reuse the previous world `Arc`; render and control publish that
+same Arc/generation pair. A no-op produces neither publication nor output. A
+non-empty effect batch is visible before the first publication carrying its
+sequence; an empty collector consumes no sequence.
+
+Entity extraction first emits a narrow value containing interpolated transform,
+bounds, identity, section position, and only flags needed for the vanilla
+visibility decision. It then applies renderer distance/frustum, compiled and
+visible section, camera/local-player, indirect-passenger, spectator/sleeping/
+detached-camera, and large/custom bounds rules in vanilla order. Survivors are
+full-projected once in batch; relationship consumers reuse the candidate index
+instead of scanning all targets per survivor.
+
+Terrain residency keys one GPU owner by level generation, chunk/section,
+render layer, mesh revision, and resource/texture revision. Replacement uploads
+only changed vertex/index bytes; disappearance removes only that owner.
+Translucent resort uploads a new index buffer without retransmitting unchanged
+vertices whenever its mesh revision is unchanged.
+
+## Vanilla 26.1 Evidence
+
+Local vanilla sources define the behavior rather than implementation memory:
+
+- `LevelRenderer.extractVisibleEntities` calls dispatcher distance/frustum
+  culling (or the indirect-passenger exception), checks compiled/visible
+  section, applies camera/detached/sleeping and LocalPlayer rules, and only then
+  calls `extractEntity` to build `EntityRenderState`.
+- `LevelRenderState.reset` and `GuiRenderState.reset` clear persistent lists and
+  sets for reuse each frame instead of replacing the state owners.
+- `Minecraft.runTick` processes packets/tasks and fixed client ticks before
+  `renderFrame`; render cadence is not a source of extra logical ticks.
+- `SectionRenderDispatcher.RenderSection` owns dirty/player-changed state and a
+  stable compiled section mesh. Rebuild uploads allocations for the changed
+  section; transparency resort supplies only a new index buffer.
+- `ClientPacketListener` still serializes all canonical level/entity mutation
+  through the packet processor, matching bbb's one simulation owner.
+
+## Before Attribution
+
+Baseline HEAD is `a9ba20a7a` on an AMD Ryzen 9 7945HX (16 cores/32 threads),
+Linux 6.8.0-124-generic, `rustc 1.96.0-nightly
+(bcf3d36c9 2026-03-19)`. Criterion uses the checked-in configuration; values
+are records, never CI wall-clock thresholds.
+
+Commands:
+
+```text
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo bench -p bbb-world --bench entity_projection -- --noplot
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo bench -p bbb-world --bench publication_snapshot -- --noplot
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo bench -p bbb-renderer --bench terrain_residency -- --noplot
+```
+
+Existing before measurements:
+
+| Owner / scenario | Before estimate |
+| --- | ---: |
+| full entity model-source projection, 100 | 272.10 us |
+| full entity model-source projection, 500 | 1.430 ms |
+| full entity model-source projection, 2,000 | 5.798 ms |
+| entity pick-target projection, 2,000 | 1.219 ms |
+| narrow transform projection, 2,000 heterogeneous | 82.917 us |
+| current full projection then 0% visible, 2,000 | 5.743 ms |
+| current full projection then 10% visible, 2,000 | 5.729 ms |
+| current full projection then 50% visible, 2,000 | 5.715 ms |
+| current full projection then 100% visible, 2,000 | 5.783 ms |
+| unchanged entity publication, 2,000 | 0.903 ms |
+| entity tick + publication, 2,000 heterogeneous | 10.179 ms |
+| unchanged 625-column publication | 10.544 us |
+| single block mutation + 625-column publication | 20.579 us |
+| terrain CPU snapshot materialization, 1 / 8 / 32 owners | 0.143 / 9.190 / 40.759 ms |
+| terrain CPU mesh build, 1 / 8 / 32 changed owners | 1.855 / 18.376 / 77.536 ms |
+| translucent camera-dependent mesh input, 1 owner | 1.849 ms |
+
+Source and deterministic test attribution is unambiguous before optimization:
+
+- every render frame enqueues `TerrainReadiness` and `BackendCounters`; below
+  the mailbox threshold neither latest-value command coalesces, so render
+  cadence wakes simulation;
+- every simulation scheduler pass allocates an effect sequence, seals an empty
+  batch, rebuilds the publication, sends output, and wakes winit;
+- the entity model path full-projects every entity before native removes the
+  local/camera entity, so its cost is almost invariant at 0%, 10%, 50%, or 100%
+  survivors;
+- `RendererFrame` materializes many owned vectors, clones complete
+  `ClientInputState`, and clones heap-backed `SimulationFrameState` fields;
+- one changed CPU terrain mesh calls the renderer's full residency replacement,
+  clearing all three layer vectors and recreating every resident GPU buffer.
+
+The new measurement targets record the current 0/10/50/100% projection order,
+terrain CPU snapshot materialization, 1/8/32 changed-owner mesh builds, and a
+camera-dependent translucent mesh input. GPU upload and full-frame numbers are
+not claimed from this headless target.
+
+## Runtime Observation Contract
+
+Low-overhead counters published with one immutable generation will report:
+
+- productive/no-op steps, publications, world snapshot rebuild/reuse, effect
+  batches and empty suppression, render wakes sent/coalesced, output backlog;
+- entity candidates/survivors/full projections plus recent/peak cull,
+  projection, model-build, and major extraction-phase durations;
+- terrain jobs queued/completed/stale, changed/uploaded owners, vertex/index
+  bytes, full replacement count, resident logical bytes, and recent/peak work;
+  and
+- render scratch capacity growth/reallocation counts for the major reusable
+  vectors. No high-frequency log or allocator hook is introduced.
+
+## Official Comparison Protocol
+
+Both clients use the same machine/GPU, resolution, view and simulation
+distance, entity distance, graphics mode, particles, mip level, clouds,
+resource packs, vsync/FPS cap, offline server fixture/world seed, entity and
+particle spawn script, and replayed camera path. The record includes actual
+visible chunks/sections/entities so bbb's current resident cap cannot reduce
+the workload silently.
+
+Each client warms up before at least three fixed-duration captures. Report CPU
+frame p50/p95/p99, GPU frame, 1% low, chunk-update spike, tick deadline misses,
+network response latency, and changed/uploaded terrain owners/bytes. Record
+Java executable/version and launch arguments, bbb commit/arguments, GPU driver,
+profiler/capture tool, fixture revision, and raw output path. Compare only
+end-to-end frame/tail metrics collected by equivalent external instrumentation;
+do not compare internal section timers from different profilers as if they were
+the same quantity.
+
+This host currently has no Java executable configured for
+`scripts/playable-gate.sh`; official live values remain an explicit phase-6
+external measurement, not fabricated phase-1 data.
+
+## Serial Phases, Validation, And Gates
+
+1. **Baseline, contract, observation surface.** Add the headless Criterion
+   partitions above and freeze this document. Focused validation: both world
+   benches, renderer bench, benchmark `--no-run`, relevant crate tests, format,
+   diff, docs lint, and full gate. This gated tip is the first safe stop.
+2. **Wake/no-op/publication reuse.** Implement edge readiness, non-waking latest
+   telemetry, pending winit wake, empty-effect suppression, no-op output
+   suppression, and exact world-Arc reuse. Focused simulation publication,
+   scheduler, ordering, blocked-render, shutdown, and control pairing tests;
+   rerun boundary measurements and full gate.
+3. **Visibility-first entity extraction and persistent scratch.** Add narrow
+   candidates, exact culling exceptions, survivor batch projection, narrow
+   render input, persistent extraction storage/caches, and phase observations.
+   Focused world/native/renderer semantic equivalence and benchmark tests, then
+   full gate.
+4. **Incremental terrain residency.** Add stable owner handles/revisions,
+   changed-owner upload/removal, index-only translucent resort, counters, and
+   reset/reload tests. Rerun 1/8/32 and live GPU captures, then full gate.
+5. **Measured background meshing, if justified.** Only a material residual mesh
+   cost enables an immutable, bounded, revision-checked worker. Otherwise record
+   the no-go decision and make no concurrency change. Any worker milestone gets
+   its own focused lifecycle/stale-result tests and full gate.
+6. **Official comparison and closeout.** Record before/after/official runs,
+   update architecture/ledger/archive with remaining CPU/GPU/memory risks, and
+   run final full gate plus `scripts/playable-gate.sh auto` at delivered HEAD.
+
+No milestone contains more than four normal commits before a full gate. Every
+phase commit is buildable and receives affected focused tests, fmt, diff check,
+docs lint when applicable, and complete diff review.
+
+## Failure Localization And Safe Stops
+
+Phase 1 changes measurement only; phase 2 owns cross-thread scheduling and
+publication; phase 3 owns entity/render extraction; phase 4 owns GPU terrain;
+phase 5, if enabled, owns asynchronous lifecycle. Failures therefore localize
+to one boundary. Fixes are normal forward commits; history is never rewritten.
+Once a runtime owner migration starts, a safe stop exists only at its successful
+full-gated milestone—dual selectable paths, mixed generations, or partially
+incremental terrain residency are not deliverable states. Missing Java/GPU
+fixture can block only the final live comparison, not the repo-native phases.

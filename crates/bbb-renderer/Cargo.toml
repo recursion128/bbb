@@ -21,4 +21,9 @@ winit = { workspace = true }
 
 [dev-dependencies]
 bbb-protocol = { path = "../bbb-protocol" }
+criterion = { workspace = true }
 pollster = "0.3"
+
+[[bench]]
+name = "terrain_residency"
+harness = false
