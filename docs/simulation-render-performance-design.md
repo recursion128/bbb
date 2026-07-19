@@ -395,6 +395,108 @@ afterwards as the project-policy smoke, but its fixture fallback is never live
 evidence. The artifact directory and exact exit status belong in the delivery
 report instead of this stable design record.
 
+## Section-Dirty Terrain Follow-Up Contract
+
+The next high-risk performance engineering slice refines the remaining terrain
+CPU dirty owner from a whole chunk to a render section. Its semantic goal is
+that one block or standalone-light change rebuilds and replaces only the
+Vanilla-invalidated section owners while unchanged CPU meshes and exact GPU
+buffers survive. Chunk load/unload, biome replacement, level reset, and
+resource reload remain intentionally conservative full-height boundaries.
+
+Completion requires a typed world-owned section revision surface, partial
+immutable worker jobs and results, native merging that retains unchanged
+section meshes, renderer revisions at section rather than chunk granularity,
+logical queued/built/stale section observations, and same-host before/after
+Criterion data. Interior block, vertical section boundary, horizontal chunk
+edge/corner, standalone light, full chunk/biome load, unload, reload, 1/8/32
+dirty bursts, retained immutable jobs, and stale results all receive benchmark
+or semantic coverage. Snapshot materialization remains measured separately so
+the mesh win cannot hide a cost moved back to render extraction.
+
+This follow-up does not change protocol handling, canonical block/light/biome
+values, visible geometry, view distance, the single simulation owner, worker
+count or queue bound, GPU-thread ownership, publication generations, or
+resource-reload semantics. It adds no second mutable terrain world, `unsafe`,
+global allocator, Rayon, or official-comparison claim. Full-height invalidation
+is retained wherever a narrower dependency cannot be proved from Vanilla.
+
+The frozen ownership contract is:
+
+- `bbb-world` owns one small revision record per chunk, with a full-section
+  baseline plus section revisions. Publication clones retain the record owner;
+  a mutation copies only the affected small record, never chunk palette/light
+  payloads or a dense world-wide section map. The existing aggregate chunk
+  revision remains a derived scheduler/stale guard.
+- `bbb-native` owns the cached full immutable cell snapshot and the merge of a
+  partial worker result into cached section layers. A job contains exact dirty
+  section ids/revisions plus immutable target/neighborhood/atlas Arcs. Results
+  are accepted only while level, resource/mesh, aggregate world revision,
+  selection, and snapshot owner inputs still match.
+- `bbb-renderer` owns a revision per chunk/section resident owner. A changed
+  section removes/recreates only its three possible layer owners; an empty
+  replacement removes that section without touching siblings. Wgpu values
+  remain render-thread-only.
+
+Vanilla 26.1 fixes the invalidation rules. `LevelRenderer.setBlockDirty`
+converts the block's `x/y/z ± 1` cube to section coordinates, so only a block
+on a section boundary reaches a neighbor section. Standalone light packet
+sections call `ClientLevel.setSectionDirtyWithNeighbors`, a 3x3x3 section
+range. `handleLevelChunkWithLight`/`enableChunkLight` and biome replacement
+dirty the complete level-height 3x3 chunk range. `RenderSection` owns one
+stable dirty/compiled section and a rebuild replaces that section's buffers;
+translucency resort remains index-only.
+
+Serial stages and safe stops are:
+
+1. Add this contract and the repo-native whole-chunk before workload matrix;
+   run renderer benchmark compilation/execution, focused renderer tests, fmt,
+   diff/docs checks, commit, and full gate. This is measurement-only and is the
+   first safe stop.
+2. Add the world section/context revision owner and exhaustive block/light/
+   load/unload/biome/reset tests while preserving the aggregate API for the
+   still-whole-chunk consumer. Run focused world tests, commit, and full gate.
+3. Add the partial section builder, worker payload/result, native cache merge,
+   exact renderer section revision, counters, retained-job/stale/reset tests,
+   and source guards. Run focused renderer/native/control tests and benchmark,
+   commit, and full gate. There is no safe stop inside this owner migration.
+4. Rerun the identical matrix, record before/after and remaining snapshot/
+   peak-memory risks, update architecture/ledger/archive, commit, and run the
+   final full gate. Build `bbb-native` from that committed HEAD in
+   `/tmp/bbb-target-main`, verify the binary timestamp, then run explicit
+   Weston-backed `playable-gate.sh live` followed by policy `auto`.
+
+Each failure therefore localizes to measurement, world invalidation, or the
+worker/renderer owner handoff. Fixes are normal forward commits. The legacy
+aggregate consumer makes stage 2 independently buildable; stage 3 is delivered
+only after its full gate. A failed live run records its artifact directory,
+classifies environment/binary/client/control/timeout/gameplay causes, rebuilds
+the current HEAD, and reruns the complete live gate.
+
+The stage-1 before run uses HEAD `8dcb6de05` plus only this measurement harness
+on the same AMD Ryzen 9 7945HX host and the Criterion configuration above. Its
+64-block-high fixture has four populated sections; the current implementation
+still rebuilds every section of every invalidated chunk:
+
+| Dirty workload | Whole-chunk before |
+| --- | ---: |
+| unchanged retained mesh | 0.739 ns logical reference |
+| one interior block | 8.055 ms |
+| vertical section boundary | 8.023 ms |
+| horizontal chunk edge | 16.118 ms |
+| horizontal chunk corner | 33.771 ms |
+| one standalone light section | 77.978 ms |
+| full chunk or biome load, 3x3 neighbors | 77.892 ms |
+| chunk unload, eight neighbors | 68.397 ms |
+| 8 interior-block burst | 68.314 ms |
+| 32 interior-block burst | 285.07 ms |
+| resource reload, 32 resident chunks | 253.53 ms |
+
+The unchanged value is intentionally only the retained-result reference and
+not an end-to-end frame claim. Snapshot materialization remains 138.40 us for
+one representative chunk, so after data reports it separately from partial
+mesh work rather than folding it into an apparent section-mesh speedup.
+
 ## Serial Phases, Validation, And Gates
 
 1. **Baseline, contract, observation surface.** Add the headless Criterion

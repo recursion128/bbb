@@ -16,6 +16,59 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 const CHANGED_OWNER_COUNTS: [usize; 3] = [1, 8, 32];
 const SNAPSHOT_HEIGHT: usize = 64;
 
+#[derive(Clone, Copy)]
+struct DirtyWorkload {
+    name: &'static str,
+    whole_chunks: usize,
+}
+
+const DIRTY_WORKLOADS: [DirtyWorkload; 11] = [
+    DirtyWorkload {
+        name: "unchanged",
+        whole_chunks: 0,
+    },
+    DirtyWorkload {
+        name: "interior_block",
+        whole_chunks: 1,
+    },
+    DirtyWorkload {
+        name: "vertical_section_boundary",
+        whole_chunks: 1,
+    },
+    DirtyWorkload {
+        name: "horizontal_chunk_edge",
+        whole_chunks: 2,
+    },
+    DirtyWorkload {
+        name: "horizontal_chunk_corner",
+        whole_chunks: 4,
+    },
+    DirtyWorkload {
+        name: "standalone_light_section",
+        whole_chunks: 9,
+    },
+    DirtyWorkload {
+        name: "full_chunk_or_biome_load",
+        whole_chunks: 9,
+    },
+    DirtyWorkload {
+        name: "chunk_unload_neighbors",
+        whole_chunks: 8,
+    },
+    DirtyWorkload {
+        name: "interior_block_burst_8",
+        whole_chunks: 8,
+    },
+    DirtyWorkload {
+        name: "interior_block_burst_32",
+        whole_chunks: 32,
+    },
+    DirtyWorkload {
+        name: "resource_reload_32",
+        whole_chunks: 32,
+    },
+];
+
 fn representative_cells() -> Vec<TerrainCell> {
     let mut cells = vec![TerrainCell::EMPTY; 16 * SNAPSHOT_HEIGHT * 16];
     for y in 0..16 {
@@ -42,6 +95,24 @@ fn representative_snapshot(index: usize) -> TerrainChunkSnapshot {
         SNAPSHOT_HEIGHT,
         representative_cells(),
     )
+}
+
+fn dense_section_snapshot(index: usize) -> TerrainChunkSnapshot {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * SNAPSHOT_HEIGHT * 16];
+    for y in 0..SNAPSHOT_HEIGHT {
+        for z in 0..16 {
+            for x in 0..16 {
+                let cell_index = (y * 16 + z) * 16 + x;
+                cells[cell_index] = match (x + y + z) % 19 {
+                    0 => TerrainCell::with_texture(2, TerrainMaterialClass::Translucent, 0)
+                        .with_face_transparency([TerrainTransparency::TRANSLUCENT; 6]),
+                    1 | 2 => TerrainCell::with_texture(3, TerrainMaterialClass::Cutout, 0),
+                    _ => TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0),
+                };
+            }
+        }
+    }
+    TerrainChunkSnapshot::new(index as i32, 0, -16, SNAPSHOT_HEIGHT, cells)
 }
 
 fn benchmark_configuration() -> Criterion {
@@ -103,6 +174,46 @@ fn bench_changed_owner_mesh_build(c: &mut Criterion) {
     group.finish();
 }
 
+/// Before section-dirty ownership, every workload below rebuilds every
+/// section of each invalidated chunk. Stage 3 keeps the benchmark ids and
+/// switches only the production-equivalent work selection to dirty sections,
+/// making Criterion's same-host before/after comparison reproducible.
+fn bench_dirty_mesh_workloads(c: &mut Criterion) {
+    let atlas = TerrainTextureAtlas::unit();
+    let snapshots = (0..*CHANGED_OWNER_COUNTS.last().unwrap())
+        .map(dense_section_snapshot)
+        .collect::<Vec<_>>();
+    let retained = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+        &snapshots[0],
+        std::iter::empty::<&TerrainChunkSnapshot>(),
+        &atlas,
+        [8.0, 72.0, 8.0],
+    );
+    let mut group = c.benchmark_group("terrain_cpu/dirty_mesh_workload");
+    for workload in DIRTY_WORKLOADS {
+        group.bench_function(workload.name, |b| {
+            b.iter(|| {
+                if workload.whole_chunks == 0 {
+                    return black_box(retained.source_sections);
+                }
+                let layers = snapshots[..workload.whole_chunks]
+                    .iter()
+                    .map(|snapshot| {
+                        build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+                            snapshot,
+                            std::iter::empty::<&TerrainChunkSnapshot>(),
+                            &atlas,
+                            black_box([8.0, 72.0, 8.0]),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                black_box(layers.len())
+            });
+        });
+    }
+    group.finish();
+}
+
 fn bench_translucent_camera_resort_input(c: &mut Criterion) {
     let atlas = TerrainTextureAtlas::unit();
     let snapshot = representative_snapshot(0);
@@ -128,6 +239,7 @@ criterion_group! {
     targets =
         bench_snapshot_materialization,
         bench_changed_owner_mesh_build,
+        bench_dirty_mesh_workloads,
         bench_translucent_camera_resort_input
 }
 criterion_main!(benches);
