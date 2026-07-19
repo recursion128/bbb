@@ -104,6 +104,7 @@ impl WorldStore {
 mod tests {
     use bbb_protocol::{
         entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        entity_types::VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
         packets::{
             AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, EntityDataValue,
             EntityDataValueKind, EntityMove, ItemStackSummary, LightUpdate, LightUpdateData,
@@ -166,7 +167,7 @@ mod tests {
         world.apply_add_entity(AddEntity {
             id,
             uuid: uuid::Uuid::from_u128(id as u128 + 1),
-            entity_type_id: 150,
+            entity_type_id: VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
             position: Vec3d {
                 x: 1.0,
                 y: 64.0,
