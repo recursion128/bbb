@@ -91,6 +91,15 @@ The contract was checked against local sources under
 - `TransferCommand` is a normal dedicated-server command and emits
   `ClientboundTransferPacket`. The second connection must use the Transfer
   handshake intent rather than a fresh externally launched client.
+- `DedicatedServerProperties` names the target opt-in `accepts-transfers` and
+  defaults it to false. `ServerHandshakePacketListenerImpl` rejects a Transfer
+  intent unless that exact target property is enabled.
+- `PlayerList.placeNewPlayer` calls `sendServerStatus` only when
+  `CommonListenerCookie.transferred()` is false. A transferred login therefore
+  carries the first server's server-list presentation rather than receiving a
+  target MOTD/icon packet; target identity must be proven from the Transfer
+  host/port and the second official server's login log, not from a fabricated
+  `ServerData` expectation.
 - `ClientPacketListener`, `ClientLevel`, `LocalPlayer`,
   `ServerConfigurationPacketListenerImpl`, and `PlayerList.reloadResources`
   define the state retained or replaced at each boundary. A normal `/reload`
@@ -143,7 +152,11 @@ The fixed environment is:
 - Transfer targets a second concurrently running official server. It must occur
   in the same `bbb-native` process. Registry `revision.session` must increase,
   the second server must produce a new login/configuration/Play closure, and
-  level-bound first-session state must not survive.
+  level-bound first-session state must not survive. The target sets the official
+  `accepts-transfers=true` property. Evidence retains the canonical transfer
+  host/port, target-server join log, fresh chunk, cleared death location and
+  resource-pack set, and Vanilla's deliberately carried server-list
+  presentation.
 - Cumulative counters may increase but may not regress. Assertions use deltas
   plus current canonical state; they do not assume every counter resets.
 - On any failure, the harness writes the most recent stage snapshot, lifecycle

@@ -2,6 +2,7 @@
   "artifacts": {
     "server_log": "scripts/fixtures/playable-gate/recorded-server.log",
     "timeline": "scripts/fixtures/playable-gate/session-26.1.json",
+    "transfer_server_log": "scripts/fixtures/playable-gate/recorded-transfer-server.log",
     "world_snapshot": "scripts/fixtures/playable-gate/session-26.1.json"
   },
   "block_interaction": {
@@ -70,6 +71,47 @@
       "reload_barriers_delta": 2,
       "response_packets_delta": 3,
       "tracked_after_pop": 0
+    },
+    "transfer": {
+      "dimension_after": "minecraft:overworld",
+      "first_server_motd": "bbb playable gate 26.1",
+      "first_session_chunk": {
+        "x": -100,
+        "z": -100
+      },
+      "first_session_chunk_absent": true,
+      "last_transfer": {
+        "host": "127.0.0.1",
+        "port": 25566
+      },
+      "old_last_death_location_absent": true,
+      "play_logins_delta": 1,
+      "registry_revision_after": {
+        "contents": 1,
+        "session": 2,
+        "tags": 1
+      },
+      "registry_revision_before": {
+        "contents": 1,
+        "session": 1,
+        "tags": 1
+      },
+      "resource_packs_empty": true,
+      "resource_packs_tracked": 0,
+      "same_process_control": true,
+      "server_data_carried": true,
+      "server_motd_after": "bbb playable gate 26.1",
+      "second_server_joined": true,
+      "state_after": "Play",
+      "target": {
+        "host": "127.0.0.1",
+        "port": 25566
+      },
+      "transfer_chunk": {
+        "x": 0,
+        "z": 0
+      },
+      "transfer_packets_delta": 1
     }
   },
   "mode": "fixture",

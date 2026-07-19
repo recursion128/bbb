@@ -215,6 +215,34 @@ class PlayableGateLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(playable_gate.GateFailure, "registry revision"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_transfer_registry_session_must_advance(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["transfer"]["registry_revision_after"]["session"] = 1
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "registry session"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_transfer_rejects_first_server_chunk_leak(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["transfer"]["first_session_chunk_absent"] = False
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "chunks leaked"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_transfer_requires_second_official_server_login(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["transfer"]["second_server_joined"] = False
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "second official server"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_transfer_preserves_vanilla_server_data_carry(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["transfer"]["server_data_carried"] = False
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "server-data carry"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
     def test_offline_profile_and_pack_fixtures_are_java_and_26_1_compatible(self):
         self.assertEqual(
             str(playable_gate.offline_player_uuid("bbb-playablegate")),
@@ -335,6 +363,34 @@ class PlayableGateTimelineTests(unittest.TestCase):
         with self.assertRaisesRegex(playable_gate.GateFailure, "packet phase order"):
             playable_gate.timeline_from_client_log("\n".join(lines), ledger, True)
 
+    def test_packet_trace_scopes_registry_tail_to_first_configuration(self):
+        ledger = self._packet_ledger()
+        descriptors = playable_gate._packet_descriptors(ledger)
+        session_constants = [
+            "CLIENTBOUND_LOGIN_COMPRESSION",
+            "CLIENTBOUND_LOGIN_FINISHED",
+            "CLIENTBOUND_SELECT_KNOWN_PACKS",
+            "CLIENTBOUND_REGISTRY_DATA",
+            "CLIENTBOUND_UPDATE_TAGS",
+            "CLIENTBOUND_FINISH_CONFIGURATION",
+            "CLIENTBOUND_LOGIN",
+            "CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT",
+        ]
+        lines = []
+        for session in ("first", "transfer"):
+            for constant in session_constants:
+                state, packet_id = descriptors[constant]
+                lines.append(
+                    f"{session} clientbound packet "
+                    f"state={state.title()} packet_id={packet_id} len=1"
+                )
+
+        timeline = playable_gate.timeline_from_client_log("\n".join(lines), ledger, True)
+
+        self.assertEqual(
+            [entry["phase"] for entry in timeline], playable_gate.EXPECTED_PHASES
+        )
+
 
 class PlayableGateStatusTests(unittest.TestCase):
     def test_delegated_status_capture_checks_protocol(self):
@@ -396,6 +452,10 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         self.assertIn('"resource-pack-id=$server_pack_id"', source)
         self.assertIn('"resource-pack-sha1=$server_pack_sha1"', source)
         self.assertIn("write-server-pack", source)
+        self.assertIn("accepts-transfers=true", source)
+        self.assertIn("--transfer-server-port", source)
+        self.assertIn("--transfer-server-log", source)
+        self.assertIn("bbb playable transfer target 26.1", source)
 
     def test_headless_control_focus_precedes_synthetic_input(self):
         source = MODULE_PATH.read_text(encoding="utf-8")

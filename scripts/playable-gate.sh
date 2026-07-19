@@ -22,6 +22,7 @@ Live environment:
   BBB_PLAYABLE_JAVA             Java executable, defaults to java from PATH
   BBB_PLAYABLE_CLIENT_BIN       bbb-native executable; known external targets are probed
   BBB_PLAYABLE_PORT             Dedicated server port; default is an available loopback port
+  BBB_PLAYABLE_TRANSFER_PORT    Transfer-target server port; default is an available loopback port
   BBB_PLAYABLE_CONTROL_PORT     bbb-control port; default is an available loopback port
   BBB_PLAYABLE_ARTIFACT_DIR     Evidence directory; default is a fresh /tmp directory
   BBB_PLAYABLE_TIMEOUT_SECONDS  Client/canonical-state timeout; default 120
@@ -149,6 +150,9 @@ fi
 server_dir="$artifact_dir/server"
 world_dir="$server_dir/world"
 server_log="$artifact_dir/server.log"
+transfer_server_dir="$artifact_dir/transfer-server"
+transfer_world_dir="$transfer_server_dir/world"
+transfer_server_log="$artifact_dir/transfer-server.log"
 client_log="$artifact_dir/client.log"
 status_json="$artifact_dir/status.json"
 status_raw_json="$artifact_dir/status-raw.json"
@@ -157,7 +161,7 @@ server_command="$artifact_dir/server-command.fifo"
 server_pack_dir="$artifact_dir/server-pack-http"
 server_pack_zip="$server_pack_dir/lifecycle-pack.zip"
 server_pack_cache="$artifact_dir/server-pack-cache"
-mkdir -p "$server_dir" "$world_dir"
+mkdir -p "$server_dir" "$world_dir" "$transfer_server_dir" "$transfer_world_dir"
 
 server_port=${BBB_PLAYABLE_PORT:-}
 if [ -z "$server_port" ]; then
@@ -167,8 +171,20 @@ control_port=${BBB_PLAYABLE_CONTROL_PORT:-}
 if [ -z "$control_port" ]; then
   control_port=$(run_python reserve-port)
 fi
+transfer_server_port=${BBB_PLAYABLE_TRANSFER_PORT:-}
+if [ -z "$transfer_server_port" ]; then
+  transfer_server_port=$(run_python reserve-port)
+  while [ "$transfer_server_port" = "$server_port" ] ||
+    [ "$transfer_server_port" = "$control_port" ]
+  do
+    transfer_server_port=$(run_python reserve-port)
+  done
+fi
 server_pack_port=$(run_python reserve-port)
-while [ "$server_pack_port" = "$server_port" ] || [ "$server_pack_port" = "$control_port" ]; do
+while [ "$server_pack_port" = "$server_port" ] ||
+  [ "$server_pack_port" = "$control_port" ] ||
+  [ "$server_pack_port" = "$transfer_server_port" ]
+do
   server_pack_port=$(run_python reserve-port)
 done
 server_pack_id=5d77e69d-1c8f-4fd8-9884-4ce89238f170
@@ -182,16 +198,21 @@ mkfifo "$server_command"
 # FIFO only on the server's read side would block startup before the collector
 # has a chance to write the reconfiguration command.
 exec 3<>"$server_command"
-if [ "$server_port" = "$control_port" ]; then
-  echo "playable gate: server and control ports must differ" >&2
+if [ "$server_port" = "$control_port" ] ||
+  [ "$server_port" = "$transfer_server_port" ] ||
+  [ "$control_port" = "$transfer_server_port" ]
+then
+  echo "playable gate: server, transfer-server, and control ports must differ" >&2
   exit 2
 fi
-case "$server_port:$control_port" in
-  *[!0-9:]*|:*|*:|0:*|*:0)
-    echo "playable gate: ports must be positive integers" >&2
-    exit 2
-    ;;
-esac
+for playable_port in "$server_port" "$transfer_server_port" "$control_port"; do
+  case "$playable_port" in
+    ''|*[!0-9]*|0)
+      echo "playable gate: ports must be positive integers" >&2
+      exit 2
+      ;;
+  esac
+done
 
 # DedicatedServerProperties.java owns these property names.  The seed and
 # small view/simulation distances keep the temporary world deterministic and
@@ -216,12 +237,34 @@ printf '%s\n' \
   >"$server_dir/server.properties"
 printf 'eula=true\n' >"$server_dir/eula.txt"
 
+# The target is a separate official DedicatedServer. Its distinct seed, fresh
+# world, and separate join log let the collector prove that the same
+# native/control process completed Transfer-intent Login -> Configuration ->
+# Play without retaining the first server's level, chunks, or pack session.
+printf '%s\n' \
+  'online-mode=false' \
+  'server-ip=127.0.0.1' \
+  "server-port=$transfer_server_port" \
+  'level-name=world' \
+  'level-seed=bbb-playable-transfer-26.1' \
+  'gamemode=creative' \
+  'difficulty=peaceful' \
+  'spawn-protection=0' \
+  'view-distance=2' \
+  'simulation-distance=2' \
+  'max-players=1' \
+  'motd=bbb playable transfer target 26.1' \
+  'accepts-transfers=true' \
+  >"$transfer_server_dir/server.properties"
+printf 'eula=true\n' >"$transfer_server_dir/eula.txt"
+
 server_pid=
+transfer_server_pid=
 client_pid=
 server_pack_http_pid=
 cleanup() {
   trap - 0 HUP INT TERM
-  for pid in "$client_pid" "$server_pid" "$server_pack_http_pid"; do
+  for pid in "$client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
       kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
     fi
@@ -229,7 +272,7 @@ cleanup() {
   remaining=5
   while [ "$remaining" -gt 0 ]; do
     any_running=false
-    for pid in "$client_pid" "$server_pid" "$server_pack_http_pid"; do
+    for pid in "$client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
       if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
         any_running=true
       fi
@@ -240,7 +283,7 @@ cleanup() {
     sleep 1
     remaining=$((remaining - 1))
   done
-  for pid in "$client_pid" "$server_pid" "$server_pack_http_pid"; do
+  for pid in "$client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
     if [ -n "$pid" ]; then
       if kill -0 "$pid" 2>/dev/null; then
         kill -KILL -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
@@ -272,23 +315,36 @@ echo "playable gate: starting vanilla 26.1 offline server on 127.0.0.1:$server_p
     -Xms512M -Xmx1G -jar "$server_jar" nogui
 ) <"$server_command" >"$server_log" 2>&1 &
 server_pid=$!
+echo "playable gate: starting vanilla 26.1 transfer target on 127.0.0.1:$transfer_server_port"
+(
+  cd "$transfer_server_dir"
+  exec setsid "$java_bin" -Xms512M -Xmx1G -jar "$server_jar" nogui
+) </dev/null >"$transfer_server_log" 2>&1 &
+transfer_server_pid=$!
 
 # DedicatedServer.java logs this stable marker after initialization completes:
 #   Done ({})! For help, type "help"
-ready_deadline=$(( $(date +%s) + ready_timeout_seconds ))
-while ! grep -F 'Done (' "$server_log" >/dev/null 2>&1; do
-  if ! kill -0 "$server_pid" 2>/dev/null; then
-    echo "playable gate failed: vanilla server exited before its ready marker" >&2
-    echo "playable gate evidence: server log: $server_log" >&2
-    exit 1
-  fi
-  if [ "$(date +%s)" -ge "$ready_deadline" ]; then
-    echo "playable gate failed: timed out waiting for vanilla server ready marker" >&2
-    echo "playable gate evidence: server log: $server_log" >&2
-    exit 1
-  fi
-  sleep 1
-done
+wait_server_ready() {
+  ready_log=$1
+  ready_pid=$2
+  ready_label=$3
+  ready_deadline=$(( $(date +%s) + ready_timeout_seconds ))
+  while ! grep -F 'Done (' "$ready_log" >/dev/null 2>&1; do
+    if ! kill -0 "$ready_pid" 2>/dev/null; then
+      echo "playable gate failed: $ready_label exited before its ready marker" >&2
+      echo "playable gate evidence: $ready_label log: $ready_log" >&2
+      exit 1
+    fi
+    if [ "$(date +%s)" -ge "$ready_deadline" ]; then
+      echo "playable gate failed: timed out waiting for $ready_label ready marker" >&2
+      echo "playable gate evidence: $ready_label log: $ready_log" >&2
+      exit 1
+    fi
+    sleep 1
+  done
+}
+wait_server_ready "$server_log" "$server_pid" "vanilla server"
+wait_server_ready "$transfer_server_log" "$transfer_server_pid" "vanilla transfer server"
 
 if ! timeout "$timeout_seconds" \
   "$client_bin" --status-server "127.0.0.1:$server_port" \
@@ -297,6 +353,7 @@ then
   echo "playable gate failed: bbb-native delegated status probe failed" >&2
   echo "playable gate evidence: packet/session timeline: $client_log" >&2
   echo "playable gate evidence: server log: $server_log" >&2
+  echo "playable gate evidence: transfer server log: $transfer_server_log" >&2
   exit 1
 fi
 if ! run_python normalize-status \
@@ -307,6 +364,7 @@ then
   echo "playable gate evidence: delegated status JSON: $status_raw_json" >&2
   echo "playable gate evidence: packet/session timeline: $client_log" >&2
   echo "playable gate evidence: server log: $server_log" >&2
+  echo "playable gate evidence: transfer server log: $transfer_server_log" >&2
   exit 1
 fi
 
@@ -329,6 +387,8 @@ if ! run_python collect-live \
   --status "$status_json" \
   --client-log "$client_log" \
   --server-log "$server_log" \
+  --transfer-server-log "$transfer_server_log" \
+  --transfer-server-port "$transfer_server_port" \
   --packet-ledger "$repo_root/docs/packet-coverage-26.1.json" \
   --protocol-source "$repo_root/crates/bbb-protocol/src/lib.rs" \
   --output "$evidence_json" \
@@ -340,6 +400,7 @@ then
   echo "playable gate evidence: packet/session timeline: $client_log" >&2
   echo "playable gate evidence: world snapshot: $evidence_json" >&2
   echo "playable gate evidence: server log: $server_log" >&2
+  echo "playable gate evidence: transfer server log: $transfer_server_log" >&2
   exit 1
 fi
 
@@ -351,3 +412,4 @@ echo "playable gate: live vanilla 26.1 session passed"
 echo "playable gate evidence: packet/session timeline: $client_log"
 echo "playable gate evidence: world snapshot: $evidence_json"
 echo "playable gate evidence: server log: $server_log"
+echo "playable gate evidence: transfer server log: $transfer_server_log"

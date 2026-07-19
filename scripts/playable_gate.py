@@ -327,6 +327,53 @@ def _validate_lifecycle(lifecycle: Any) -> None:
             f"before={before!r}, after={after!r}"
         )
 
+    transfer = _object(lifecycle.get("transfer"), "lifecycle.transfer")
+    target = _object(transfer.get("target"), "lifecycle.transfer.target")
+    if target.get("host") != "127.0.0.1":
+        raise GateFailure("lifecycle transfer target was not the loopback fixture")
+    _positive_int(target.get("port"), "lifecycle.transfer.target.port")
+    for key in ("transfer_packets_delta", "play_logins_delta"):
+        _positive_int(transfer.get(key), f"lifecycle.transfer.{key}")
+    transfer_before = _object(
+        transfer.get("registry_revision_before"),
+        "lifecycle.transfer.registry_revision_before",
+    )
+    transfer_after = _object(
+        transfer.get("registry_revision_after"),
+        "lifecycle.transfer.registry_revision_after",
+    )
+    if int(transfer_after.get("session", 0)) <= int(
+        transfer_before.get("session", 0)
+    ):
+        raise GateFailure("Transfer Login did not advance the registry session revision")
+    if transfer.get("state_after") != "Play" or transfer.get(
+        "dimension_after"
+    ) != "minecraft:overworld":
+        raise GateFailure("transfer target did not reach a stable Overworld Play state")
+    if transfer.get("first_session_chunk_absent") is not True:
+        raise GateFailure("first-server chunks leaked into the transfer target level")
+    if transfer.get("resource_packs_empty") is not True or int(
+        transfer.get("resource_packs_tracked", -1)
+    ) != 0:
+        raise GateFailure("first-server resource packs leaked across Transfer")
+    if transfer.get("old_last_death_location_absent") is not True:
+        raise GateFailure("first-server level data leaked across Transfer")
+    if transfer.get("server_data_carried") is not True:
+        raise GateFailure("Vanilla Transfer server-data carry semantics regressed")
+    if transfer.get("server_motd_after") != transfer.get("first_server_motd"):
+        raise GateFailure("server presentation changed despite a transferred login")
+    if transfer.get("second_server_joined") is not True:
+        raise GateFailure("second official server did not record the transferred login")
+    if transfer.get("same_process_control") is not True:
+        raise GateFailure("control/native process identity changed across Transfer")
+    last_transfer = _object(
+        transfer.get("last_transfer"), "lifecycle.transfer.last_transfer"
+    )
+    if last_transfer.get("host") != target.get("host") or int(
+        last_transfer.get("port", 0)
+    ) != int(target.get("port", -1)):
+        raise GateFailure("canonical transfer target does not match the server command")
+
 
 def _validate_block_interaction(block_interaction: Any) -> None:
     """The destroy/place smoke must observe server results, not queued
@@ -482,14 +529,32 @@ def timeline_from_client_log(
     if not login_packet_indexes:
         raise GateFailure("client trace contains no login packet")
 
+    finish_configuration_index = first_index(
+        PHASE_PACKET_CONSTANTS["finish_configuration"]
+    )
     registry_indexes = [
         index
         for index, packet in enumerate(packets)
         if packet == descriptors["CLIENTBOUND_REGISTRY_DATA"]
+        and index < finish_configuration_index
     ]
     if not registry_indexes:
-        raise GateFailure("client trace contains no configuration registry data")
-    update_tags_index = first_index("CLIENTBOUND_UPDATE_TAGS")
+        raise GateFailure(
+            "client packet phase order mismatch: no registry data before the first "
+            "FinishConfiguration"
+        )
+    update_tags_indexes = [
+        index
+        for index, packet in enumerate(packets)
+        if packet == descriptors["CLIENTBOUND_UPDATE_TAGS"]
+        and index < finish_configuration_index
+    ]
+    if not update_tags_indexes:
+        raise GateFailure(
+            "client packet phase order mismatch: no tags before the first "
+            "FinishConfiguration"
+        )
+    update_tags_index = update_tags_indexes[0]
 
     phase_packet_indexes = {
         # bbb sends the login handshake/hello before the first clientbound login
@@ -500,9 +565,7 @@ def timeline_from_client_log(
         "compression": first_index(PHASE_PACKET_CONSTANTS["compression"]),
         "known_packs": first_index(PHASE_PACKET_CONSTANTS["known_packs"]),
         "configuration_registry_tags": max(max(registry_indexes), update_tags_index),
-        "finish_configuration": first_index(
-            PHASE_PACKET_CONSTANTS["finish_configuration"]
-        ),
+        "finish_configuration": finish_configuration_index,
         "play_login": first_index(PHASE_PACKET_CONSTANTS["play_login"]),
         "initial_chunk_local_player_spawn": first_index(
             PHASE_PACKET_CONSTANTS["initial_chunk_local_player_spawn"]
@@ -1211,6 +1274,8 @@ def drive_session_lifecycle(
     profile_id: str,
     server_pack_id: str,
     client_log: Path,
+    transfer_server_log: Path,
+    transfer_server_port: int,
     timeout_seconds: float,
     progress: dict[str, Any],
 ) -> dict[str, Any]:
@@ -1393,7 +1458,6 @@ def drive_session_lifecycle(
         and isinstance(value["local"].get("pose"), dict),
     )
     revision_after = _registry_revision(address)
-    final_snapshot = _capture_control_snapshot(address)
     progress["reconfiguration"] = {
         "states": [
             "Play",
@@ -1408,6 +1472,159 @@ def drive_session_lifecycle(
         "registry_revision_after": revision_after,
         "fresh_chunk": reconfigured["chunk"] is not None,
     }
+
+    progress["stage"] = "transfer"
+    transfer_world_before = _object(
+        _control_request(address, "world.counters"), "world.counters"
+    )
+    transfer_presentation_before = _object(
+        _control_request(address, "world.server_presentation"),
+        "world.server_presentation",
+    )
+    transfer_revision_before = _registry_revision(address)
+    first_session_chunk = reconfigured["chunk"]
+    app_status_before = _object(
+        _control_request(address, "app.status"), "app.status"
+    )
+    app_identity_before = _object(
+        app_status_before.get("app"), "app.status.app"
+    )
+    transfer_packets_before = int(
+        transfer_world_before.get("transfer_packets", 0)
+    )
+    transfer_play_logins_before = int(
+        transfer_world_before.get("play_logins_received", 0)
+    )
+    _send_chat_command(
+        address,
+        f"transfer 127.0.0.1 {transfer_server_port} @s",
+        deadline,
+    )
+
+    def read_transferred() -> dict[str, Any]:
+        level_state = _control_request(address, "world.level_state")
+        level = level_state.get("level") if isinstance(level_state, dict) else None
+        net = _object(_control_request(address, "net.counters"), "net.counters")
+        world = _object(
+            _control_request(address, "world.counters"), "world.counters"
+        )
+        local = _control_request(address, "world.client_local_player")
+        return {
+            "net": {
+                "connected": net.get("connected"),
+                "state": net.get("state"),
+            },
+            "world": {
+                "transfer_packets": world.get("transfer_packets", 0),
+                "play_logins_received": world.get("play_logins_received", 0),
+                "resource_packs_tracked": world.get("resource_packs_tracked", 0),
+            },
+            "dimension": level.get("dimension")
+            if isinstance(level, dict)
+            else None,
+            "chunk": _first_chunk_position(address),
+            "local_pose_ready": isinstance(local, dict)
+            and isinstance(local.get("pose"), dict),
+            "registry_revision": _registry_revision(address),
+        }
+
+    def transfer_complete(value: dict[str, Any]) -> bool:
+        revision = value["registry_revision"]
+        return (
+            value["net"].get("connected") is True
+            and value["net"].get("state") == "Play"
+            and value["world"].get("transfer_packets", 0)
+            > transfer_packets_before
+            and value["world"].get("play_logins_received", 0)
+            > transfer_play_logins_before
+            and isinstance(revision, dict)
+            and int(revision.get("session", 0))
+            > int((transfer_revision_before or {}).get("session", 0))
+            and value["dimension"] == "minecraft:overworld"
+            and value["chunk"] is not None
+            and value["local_pose_ready"] is True
+        )
+
+    transferred = _await_value(
+        deadline,
+        "Transfer reconnect to the second official server",
+        read_transferred,
+        transfer_complete,
+    )
+    transfer_revision_after = transferred["registry_revision"]
+    transfer_presentation = _object(
+        _control_request(address, "world.server_presentation"),
+        "world.server_presentation",
+    )
+    transfer_server_data = _object(
+        transfer_presentation.get("server_data"),
+        "world.server_presentation.server_data",
+    )
+    transfer_resource_packs = transfer_presentation.get("resource_packs")
+    transfer_level_state = _object(
+        _control_request(address, "world.level_state"), "world.level_state"
+    )
+    transfer_level = _object(
+        transfer_level_state.get("level"), "world.level_state.level"
+    )
+    app_status_after = _object(
+        _control_request(address, "app.status"), "app.status"
+    )
+    app_identity_after = _object(app_status_after.get("app"), "app.status.app")
+    last_transfer = transfer_presentation.get("last_transfer")
+    first_server_data = _object(
+        transfer_presentation_before.get("server_data"),
+        "world.server_presentation.server_data",
+    )
+    first_session_chunk_absent = (
+        _probe_chunk_at(address, first_session_chunk) is None
+    )
+    second_server_joins = _await_value(
+        deadline,
+        "second official server player join log",
+        lambda: _log_occurrences(
+            transfer_server_log, "bbb-playablegate joined the game"
+        ),
+        lambda value: value >= 1,
+    )
+    progress["transfer"] = {
+        "target": {"host": "127.0.0.1", "port": transfer_server_port},
+        "transfer_packets_delta": int(
+            transferred["world"].get("transfer_packets", 0)
+        )
+        - transfer_packets_before,
+        "play_logins_delta": int(
+            transferred["world"].get("play_logins_received", 0)
+        )
+        - transfer_play_logins_before,
+        "registry_revision_before": transfer_revision_before,
+        "registry_revision_after": transfer_revision_after,
+        "state_after": transferred["net"].get("state"),
+        "dimension_after": transferred["dimension"],
+        "first_session_chunk": first_session_chunk,
+        "transfer_chunk": transferred["chunk"],
+        "first_session_chunk_absent": first_session_chunk_absent,
+        "resource_packs_empty": transfer_resource_packs == {},
+        "resource_packs_tracked": int(
+            transferred["world"].get("resource_packs_tracked", 0)
+        ),
+        "old_last_death_location_absent": transfer_level.get(
+            "last_death_location"
+        )
+        is None,
+        # PlayerList.placeNewPlayer deliberately skips ServerData when
+        # CommonListenerCookie.transferred() is true, so Vanilla carries the
+        # first server-list presentation while all level/session owners reset.
+        "first_server_motd": first_server_data.get("motd"),
+        "server_motd_after": transfer_server_data.get("motd"),
+        "server_data_carried": transfer_server_data.get("motd")
+        == first_server_data.get("motd"),
+        "second_server_joined": second_server_joins >= 1,
+        "same_process_control": app_identity_after == app_identity_before
+        and app_identity_after.get("running") is True,
+        "last_transfer": last_transfer,
+    }
+    final_snapshot = _capture_control_snapshot(address)
     progress["stage"] = "complete"
     progress["final_snapshot"] = final_snapshot
     return progress
@@ -1463,6 +1680,7 @@ def collect_live(args: argparse.Namespace) -> None:
                 "timeline": str(args.client_log),
                 "world_snapshot": str(args.output),
                 "server_log": str(args.server_log),
+                "transfer_server_log": str(args.transfer_server_log),
             },
         }
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
@@ -1486,7 +1704,9 @@ def collect_live(args: argparse.Namespace) -> None:
             args.profile_id,
             args.server_pack_id,
             args.client_log,
-            min(120.0, float(args.timeout)),
+            args.transfer_server_log,
+            args.transfer_server_port,
+            min(180.0, float(args.timeout)),
             lifecycle,
         )
         last_snapshot = lifecycle.pop("final_snapshot")
@@ -1511,6 +1731,7 @@ def collect_live(args: argparse.Namespace) -> None:
                 "timeline": str(args.client_log),
                 "world_snapshot": str(args.output),
                 "server_log": str(args.server_log),
+                "transfer_server_log": str(args.transfer_server_log),
             },
         }
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
@@ -1535,6 +1756,7 @@ def collect_live(args: argparse.Namespace) -> None:
                 "timeline": str(args.client_log),
                 "world_snapshot": str(args.output),
                 "server_log": str(args.server_log),
+                "transfer_server_log": str(args.transfer_server_log),
             },
         }
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
@@ -1553,6 +1775,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "timeline": str(args.client_log),
             "world_snapshot": str(args.output),
             "server_log": str(args.server_log),
+            "transfer_server_log": str(args.transfer_server_log),
         },
     }
     args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
@@ -1571,7 +1794,12 @@ def _print_artifact_paths(evidence: dict[str, Any]) -> None:
     artifacts = evidence.get("artifacts")
     if not isinstance(artifacts, dict):
         return
-    for label in ("timeline", "world_snapshot", "server_log"):
+    for label in (
+        "timeline",
+        "world_snapshot",
+        "server_log",
+        "transfer_server_log",
+    ):
         path = artifacts.get(label)
         if path:
             print(
@@ -1603,6 +1831,8 @@ def _build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--status", type=Path, required=True)
     collect.add_argument("--client-log", type=Path, required=True)
     collect.add_argument("--server-log", type=Path, required=True)
+    collect.add_argument("--transfer-server-log", type=Path, required=True)
+    collect.add_argument("--transfer-server-port", type=int, required=True)
     collect.add_argument("--packet-ledger", type=Path, required=True)
     collect.add_argument("--protocol-source", type=Path, required=True)
     collect.add_argument("--output", type=Path, required=True)
