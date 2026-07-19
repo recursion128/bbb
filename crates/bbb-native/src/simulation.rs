@@ -86,6 +86,8 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) terrain_textures: &'a mut TerrainTextureState,
     pub(crate) entity_variant_textures: &'a mut NativeEntityVariantTextureRuntime,
     pub(crate) entity_render_extraction: &'a mut crate::entity_scene::EntityRenderExtractionScratch,
+    pub(crate) non_entity_render_extraction:
+        &'a mut crate::runtime::NonEntityRenderExtractionScratch,
     pub(crate) item_runtime: Option<&'a NativeItemRuntime>,
     pub(crate) hud_render_runtime: &'a mut HudRenderRuntime,
     pub(crate) hud_debug_fps_sampler: &'a mut HudDebugFpsSampler,

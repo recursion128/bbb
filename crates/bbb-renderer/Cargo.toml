@@ -27,3 +27,7 @@ pollster = "0.3"
 [[bench]]
 name = "terrain_residency"
 harness = false
+
+[[bench]]
+name = "frame_extraction_storage"
+harness = false

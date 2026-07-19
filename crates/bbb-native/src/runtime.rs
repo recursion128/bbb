@@ -2390,6 +2390,7 @@ pub(crate) fn update_renderer_from_publication(
         terrain_textures,
         entity_variant_textures,
         entity_render_extraction,
+        non_entity_render_extraction,
         item_runtime,
         hud_render_runtime,
         hud_debug_fps_sampler,
@@ -2466,6 +2467,7 @@ pub(crate) fn update_renderer_from_publication(
     emit_particle_sound_events(&mut audio_events, particle_sound_events);
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
+    let hud_started_at = Instant::now();
     let local_player = world.local_player();
     // Vanilla `Gui.extractPlayerHealth` / `extractHearts` inputs (Gui.java:743-873):
     // the synced health pairs with the MAX_HEALTH attribute, absorption, the
@@ -2647,6 +2649,8 @@ pub(crate) fn update_renderer_from_publication(
     // `Screen.extractBlurredBackground`; container/book/advancement screens remain
     // vanilla in-game UI and must not create a blur stratum.
     let hud_screen_blur = hud_screen_blur_for_world(world, hud_inventory_screen.is_some());
+    let hud_duration = hud_started_at.elapsed();
+    let item_pre_started_at = Instant::now();
     // Vanilla extracts item/entity render state after `Minecraft.tick` has advanced keybinds,
     // `gameRenderer.tick`, and `level.tickEntities`; these projections read the post-tick snapshot.
     // Dropped block-items render as 3D block-item models (replacing their billboard); the animation
@@ -2738,6 +2742,7 @@ pub(crate) fn update_renderer_from_publication(
         item_runtime,
         &dropped_item_models.handled_entity_ids,
     );
+    let item_pre_duration = item_pre_started_at.elapsed();
     // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
     // the two atlas draws).
     let mut entity_instances =
@@ -2755,8 +2760,11 @@ pub(crate) fn update_renderer_from_publication(
             },
             entity_render_extraction,
         );
+    let item_mid_started_at = Instant::now();
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
+    let item_mid_duration = item_mid_started_at.elapsed();
+    let block_entity_started_at = Instant::now();
     // Chest block-entity models join the same single entity-model submission
     // stream after held-item baking (they have no hands to bake).
     entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
@@ -2820,6 +2828,8 @@ pub(crate) fn update_renderer_from_publication(
         world,
         entity_partial_tick,
     ));
+    let block_entity_duration = block_entity_started_at.elapsed();
+    let item_tail_started_at = Instant::now();
     let first_person_item_models = first_person_item_models(
         world,
         item_runtime,
@@ -2901,6 +2911,8 @@ pub(crate) fn update_renderer_from_publication(
     let item_frame_map_decoration_textures = item_frame_models.map_decoration_textures;
     let item_frame_map_decoration_surfaces = item_frame_models.map_decoration_surfaces;
     let item_frame_map_text_surfaces = item_frame_models.map_text_surfaces;
+    let item_duration = item_pre_duration + item_mid_duration + item_tail_started_at.elapsed();
+    let world_debug_started_at = Instant::now();
     // Vanilla `LevelRenderer.renderLevel` samples `level.getGameTime()`, camera position, and the
     // frame partial tick for the cloud pass after the client tick has advanced the level clock.
     let cloud_frame = cloud_frame_for_world(world, camera_pose, entity_partial_tick);
@@ -2974,10 +2986,12 @@ pub(crate) fn update_renderer_from_publication(
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
+    let world_debug_duration = world_debug_started_at.elapsed();
     // Vanilla `ParticleEngine.extract` calls `SingleQuadParticle.getLightCoords(partialTicks)`
     // during level render extraction; sample world light for the current particle positions before
     // the renderer later collects particle vertices.
     renderer.refresh_particle_lights(|position| particle_light_for_world(world, position));
+    let apply_started_at = Instant::now();
     apply_renderer_frame(
         renderer,
         RendererFrame {
@@ -3085,6 +3099,13 @@ pub(crate) fn update_renderer_from_publication(
             block_destroy_overlays,
         },
         entity_render_extraction,
+    );
+    non_entity_render_extraction.record_frame(
+        hud_duration,
+        item_duration,
+        block_entity_duration,
+        world_debug_duration,
+        apply_started_at.elapsed(),
     );
     let pump_scene_extracted_at = Instant::now();
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
@@ -14226,6 +14247,20 @@ pub(crate) fn control_renderer_counters(
         entity_model_build_nanos: 0,
         entity_model_build_peak_nanos: 0,
         entity_extraction_capacity_growths: 0,
+        non_entity_hud_nanos: 0,
+        non_entity_hud_peak_nanos: 0,
+        non_entity_item_nanos: 0,
+        non_entity_item_peak_nanos: 0,
+        non_entity_block_entity_nanos: 0,
+        non_entity_block_entity_peak_nanos: 0,
+        non_entity_world_debug_nanos: 0,
+        non_entity_world_debug_peak_nanos: 0,
+        non_entity_apply_nanos: 0,
+        non_entity_apply_peak_nanos: 0,
+        non_entity_extraction_capacity_growths: 0,
+        non_entity_cache_hits: 0,
+        non_entity_cache_misses: 0,
+        non_entity_rebuilt_owners: 0,
     }
 }
 

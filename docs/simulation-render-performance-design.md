@@ -185,6 +185,97 @@ Low-overhead counters published with one immutable generation will report:
 - render scratch capacity growth/reallocation counts for the major reusable
   vectors. No high-frequency log or allocator hook is introduced.
 
+## Non-entity render extraction milestone contract (2026-07-19)
+
+This high-risk engineering milestone closes the remaining heap-heavy
+non-entity `RendererFrame` path before selecting another visible feature. Its
+semantic goal is to reduce steady and tail CPU time across native extraction,
+renderer apply, and GPU residency while preserving the exact published world,
+frame ordering, and visible submissions. Completion requires all of the
+following:
+
+- the HUD/item/map/block-entity/debug extraction phases have repo-native
+  before/after measurements and low-overhead recent/peak observations;
+- reusable frame owners report logical capacity growth without an allocator
+  hook, and steady frames retain their established capacity;
+- stable item/map/HUD projections use exact semantic keys or exact output
+  equality before reuse; a revision may reject a cache entry quickly but a
+  hash alone never establishes a hit;
+- unchanged item/map render owners do not repeat CPU geometry merge, transient
+  atlas construction, or GPU vertex/index upload, while changed owners replace
+  only their own residency; and
+- level reset, resource reload, registry revision, entity-id reuse, inventory
+  mutation, and debug-mode changes cannot select stale render data. Dynamic
+  partial-tick, camera, wall-clock, animation, hover/fade, and particle-derived
+  values remain frame-local.
+
+The milestone does not change protocol, tick cadence, simulation/publication
+ownership, visibility, draw ordering, item transforms, GUI behavior, resource
+semantics, or the official-comparison workload. It does not add a canonical
+world, renderer-to-simulation mutable sharing, an allocator hook, `unsafe`,
+parallel extraction, or a configuration UI. Reusing an outer `Vec` without
+removing its downstream merge/upload cost is not sufficient.
+
+Ownership stays explicit across `bbb-world` (immutable canonical generation
+and registry revisions), `bbb-native` (render-thread extraction scratch, cache
+keys, phase observation, and one `RendererFrame` commit), `bbb-renderer`
+(derived CPU/GPU owner residency and exact-output replacement), and
+`bbb-control` (serde-defaulted immutable diagnostic projection). Vanilla 26.1
+evidence is `GameRenderer.extract`/`extractGui`,
+`LevelRenderer.extractLevel`, `LevelRenderState.reset`, and
+`GuiRenderState.reset`: the official client retains render-state containers,
+clears their lists before extraction, and keeps extraction before submission.
+Native therefore may retain capacity and unchanged derived GPU owners, but it
+must clear logical contents and preserve the same extraction/submission order.
+
+The serial phases and failure-localization boundaries are:
+
+1. add the repo-native baseline and phase/capacity/residency observations;
+   focused renderer/native/control tests plus a milestone full gate establish
+   the unoptimized checkpoint;
+2. retain native frame storage and remove redundant registry/string and
+   aggregation owners; focused extraction equality, invalidation, and retained
+   capacity tests localize native ownership failures;
+3. retain exact unchanged renderer item/map CPU/GPU owners and replace only
+   changed owners; offscreen renderer tests localize upload, atlas, and draw
+   regressions;
+4. cover reset/reload/level/entity/inventory/debug invalidation, rerun the
+   identical benchmark matrix, update the ledger/archive, and run the final
+   full gate;
+5. build `bbb-native` from the delivered HEAD, verify its timestamp, then run
+   the explicit live Vanilla 26.1 playable gate and the policy-required auto
+   gate.
+
+The phase-1 same-host Criterion baseline uses
+`frame_extraction_storage` (20 samples, 500 ms warm-up, two-second
+measurement). It isolates the repeated owned materialization before any wgpu
+work; runtime phase counters and offscreen tests cover the downstream boundary.
+
+| Fresh extraction owner workload | Baseline mean |
+| --- | ---: |
+| 19 item-model buckets, empty | 0.748 us |
+| 19 item-model buckets, one representative cube each | 1.299 us |
+| 19 item-model buckets, eight representative cubes each | 8.380 us |
+| 19 item-model buckets, 32 representative cubes each | 31.949 us |
+| four registry-key families, 32 keys each | 1.472 us |
+| four registry-key families, 256 keys each | 20.293 us |
+| four registry-key families, 1,024 keys each | 67.277 us |
+
+These figures do not claim the full projection cost: item-model baking owns
+the inner mesh allocations, and the pre-milestone renderer additionally merges
+each layer and creates transient GPU buffers during `render`. The after matrix
+must therefore include both retained owner/cache-hit measurements and runtime
+apply/residency counters; an outer-vector-only speedup cannot close the
+milestone.
+
+Every phase is a normal reviewable commit with affected-crate focused tests,
+`cargo fmt --all --check`, `git diff --check`, documentation lint when needed,
+and full-diff review. The safe stop after any phase is its clean, full-gated
+commit. A cache uncertainty fails open to a rebuild; a renderer replacement
+failure keeps the previous accepted owner and surfaces an error rather than
+publishing mixed state. If a milestone full gate fails, work stops at that
+phase boundary and the failure is fixed forward in a normal commit.
+
 ## Official Comparison Protocol
 
 Both clients use the same machine/GPU, resolution, view and simulation

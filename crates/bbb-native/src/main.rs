@@ -559,6 +559,7 @@ fn main() -> Result<()> {
     }
     let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
     let mut entity_render_extraction = EntityRenderExtractionScratch::default();
+    let mut non_entity_render_extraction = runtime::NonEntityRenderExtractionScratch::default();
     let mut screenshot = args.screenshot;
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
@@ -792,6 +793,7 @@ fn main() -> Result<()> {
                             terrain_textures: &mut terrain_textures,
                             entity_variant_textures: &mut entity_variant_textures,
                             entity_render_extraction: &mut entity_render_extraction,
+                            non_entity_render_extraction: &mut non_entity_render_extraction,
                             item_runtime: item_runtime.as_ref(),
                             hud_render_runtime: &mut hud_render_runtime,
                             hud_debug_fps_sampler: &mut hud_debug_fps_sampler,
@@ -891,6 +893,30 @@ fn main() -> Result<()> {
                         entity_observation.model_build_peak_nanos;
                     renderer_counters.entity_extraction_capacity_growths =
                         entity_observation.capacity_growths;
+                    let non_entity_observation = non_entity_render_extraction.observation();
+                    renderer_counters.non_entity_hud_nanos = non_entity_observation.hud_nanos;
+                    renderer_counters.non_entity_hud_peak_nanos =
+                        non_entity_observation.hud_peak_nanos;
+                    renderer_counters.non_entity_item_nanos = non_entity_observation.item_nanos;
+                    renderer_counters.non_entity_item_peak_nanos =
+                        non_entity_observation.item_peak_nanos;
+                    renderer_counters.non_entity_block_entity_nanos =
+                        non_entity_observation.block_entity_nanos;
+                    renderer_counters.non_entity_block_entity_peak_nanos =
+                        non_entity_observation.block_entity_peak_nanos;
+                    renderer_counters.non_entity_world_debug_nanos =
+                        non_entity_observation.world_debug_nanos;
+                    renderer_counters.non_entity_world_debug_peak_nanos =
+                        non_entity_observation.world_debug_peak_nanos;
+                    renderer_counters.non_entity_apply_nanos = non_entity_observation.apply_nanos;
+                    renderer_counters.non_entity_apply_peak_nanos =
+                        non_entity_observation.apply_peak_nanos;
+                    renderer_counters.non_entity_extraction_capacity_growths =
+                        non_entity_observation.capacity_growths;
+                    renderer_counters.non_entity_cache_hits = non_entity_observation.cache_hits;
+                    renderer_counters.non_entity_cache_misses = non_entity_observation.cache_misses;
+                    renderer_counters.non_entity_rebuilt_owners =
+                        non_entity_observation.rebuilt_owners;
                     simulation_mailbox.update_backend_telemetry(
                         renderer_counters,
                         audio_counters,

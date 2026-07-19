@@ -1082,6 +1082,75 @@ pub(crate) struct RendererFrame {
     pub(crate) block_destroy_overlays: Vec<BlockDestroyOverlay>,
 }
 
+/// Render-thread-only observations for heap-backed non-entity extraction.
+///
+/// These values are copied into the next immutable backend-telemetry
+/// generation. The scratch itself never crosses the render/simulation
+/// boundary and therefore needs neither locking nor atomics.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct NonEntityRenderExtractionObservation {
+    pub(crate) hud_nanos: u64,
+    pub(crate) hud_peak_nanos: u64,
+    pub(crate) item_nanos: u64,
+    pub(crate) item_peak_nanos: u64,
+    pub(crate) block_entity_nanos: u64,
+    pub(crate) block_entity_peak_nanos: u64,
+    pub(crate) world_debug_nanos: u64,
+    pub(crate) world_debug_peak_nanos: u64,
+    pub(crate) apply_nanos: u64,
+    pub(crate) apply_peak_nanos: u64,
+    pub(crate) capacity_growths: u64,
+    pub(crate) cache_hits: u64,
+    pub(crate) cache_misses: u64,
+    pub(crate) rebuilt_owners: u64,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct NonEntityRenderExtractionScratch {
+    observation: NonEntityRenderExtractionObservation,
+}
+
+impl NonEntityRenderExtractionScratch {
+    pub(crate) fn observation(&self) -> NonEntityRenderExtractionObservation {
+        self.observation
+    }
+
+    pub(crate) fn record_frame(
+        &mut self,
+        hud: Duration,
+        item: Duration,
+        block_entity: Duration,
+        world_debug: Duration,
+        apply: Duration,
+    ) {
+        let hud_nanos = duration_nanos(hud);
+        let item_nanos = duration_nanos(item);
+        let block_entity_nanos = duration_nanos(block_entity);
+        let world_debug_nanos = duration_nanos(world_debug);
+        let apply_nanos = duration_nanos(apply);
+        self.observation.hud_nanos = hud_nanos;
+        self.observation.hud_peak_nanos = self.observation.hud_peak_nanos.max(hud_nanos);
+        self.observation.item_nanos = item_nanos;
+        self.observation.item_peak_nanos = self.observation.item_peak_nanos.max(item_nanos);
+        self.observation.block_entity_nanos = block_entity_nanos;
+        self.observation.block_entity_peak_nanos = self
+            .observation
+            .block_entity_peak_nanos
+            .max(block_entity_nanos);
+        self.observation.world_debug_nanos = world_debug_nanos;
+        self.observation.world_debug_peak_nanos = self
+            .observation
+            .world_debug_peak_nanos
+            .max(world_debug_nanos);
+        self.observation.apply_nanos = apply_nanos;
+        self.observation.apply_peak_nanos = self.observation.apply_peak_nanos.max(apply_nanos);
+    }
+}
+
+fn duration_nanos(duration: Duration) -> u64 {
+    duration.as_nanos().min(u128::from(u64::MAX)) as u64
+}
+
 /// Commits one extracted frame to the renderer in a single call.
 pub(crate) fn apply_renderer_frame(
     renderer: &mut Renderer,

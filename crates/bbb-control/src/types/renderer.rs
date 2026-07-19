@@ -161,4 +161,32 @@ pub struct RendererCounters {
     pub entity_model_build_peak_nanos: u64,
     #[serde(default)]
     pub entity_extraction_capacity_growths: u64,
+    #[serde(default)]
+    pub non_entity_hud_nanos: u64,
+    #[serde(default)]
+    pub non_entity_hud_peak_nanos: u64,
+    #[serde(default)]
+    pub non_entity_item_nanos: u64,
+    #[serde(default)]
+    pub non_entity_item_peak_nanos: u64,
+    #[serde(default)]
+    pub non_entity_block_entity_nanos: u64,
+    #[serde(default)]
+    pub non_entity_block_entity_peak_nanos: u64,
+    #[serde(default)]
+    pub non_entity_world_debug_nanos: u64,
+    #[serde(default)]
+    pub non_entity_world_debug_peak_nanos: u64,
+    #[serde(default)]
+    pub non_entity_apply_nanos: u64,
+    #[serde(default)]
+    pub non_entity_apply_peak_nanos: u64,
+    #[serde(default)]
+    pub non_entity_extraction_capacity_growths: u64,
+    #[serde(default)]
+    pub non_entity_cache_hits: u64,
+    #[serde(default)]
+    pub non_entity_cache_misses: u64,
+    #[serde(default)]
+    pub non_entity_rebuilt_owners: u64,
 }

@@ -44,6 +44,7 @@ use bbb_protocol::recipe_wire_types::{
     VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
     VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
 };
+
 use bbb_protocol::stat_types::{
     VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID,
     VANILLA_STAT_TYPE_ENTITY_KILLED_BY_ID, VANILLA_STAT_TYPE_ENTITY_KILLED_ID,
@@ -73,6 +74,37 @@ const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 const OAK_SIGN_ROTATION_0_BLOCK_STATE_ID: i32 = 5336;
 const BAMBOO_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID: i32 = 6612;
 const TEST_LIGHT_ARRAY_BYTES: usize = 2048;
+
+#[test]
+fn non_entity_render_observation_keeps_recent_and_peak_phase_costs() {
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+    scratch.record_frame(
+        Duration::from_nanos(5),
+        Duration::from_nanos(7),
+        Duration::from_nanos(11),
+        Duration::from_nanos(13),
+        Duration::from_nanos(17),
+    );
+    scratch.record_frame(
+        Duration::from_nanos(3),
+        Duration::from_nanos(19),
+        Duration::from_nanos(2),
+        Duration::from_nanos(23),
+        Duration::from_nanos(1),
+    );
+
+    let observation = scratch.observation();
+    assert_eq!(observation.hud_nanos, 3);
+    assert_eq!(observation.hud_peak_nanos, 5);
+    assert_eq!(observation.item_nanos, 19);
+    assert_eq!(observation.item_peak_nanos, 19);
+    assert_eq!(observation.block_entity_nanos, 2);
+    assert_eq!(observation.block_entity_peak_nanos, 11);
+    assert_eq!(observation.world_debug_nanos, 23);
+    assert_eq!(observation.world_debug_peak_nanos, 23);
+    assert_eq!(observation.apply_nanos, 1);
+    assert_eq!(observation.apply_peak_nanos, 17);
+}
 
 /// A hover-name tooltip line: rarity colour run, italic when custom-named
 /// (vanilla `ItemStack.getStyledHoverName`).
