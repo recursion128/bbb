@@ -76,9 +76,9 @@ Owner: `bbb-protocol`
   data-component initializers, then expose the revision atomically. Individual
   typed projections remain inputs to that lifecycle rather than a substitute for
   it. Finish the non-death consumers of synchronized animal sound-variant
-  payloads; the remaining dimension environment-attribute modifier/value types;
-  syncable visual, audio, and gameplay timeline tracks; and strict built-in
-  game-rule key/value dispatch inside test-environment definitions. Extend
+  payloads, strict built-in game-rule key/value dispatch inside test-environment
+  definitions, and the remaining `DimensionType.NETWORK_CODEC` scalar/monster
+  fields beyond the frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
   never by applying a bootstrap ordinal to authoritative synchronized contents.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
@@ -816,9 +816,17 @@ Attachment and spawner presentation:
 
 Environment:
 
-- Complete custom-dimension `EnvironmentAttributes` beyond the current direct
-  fog/lightmap visual projection: modifier compounds, remaining visual/audio/
-  gameplay attributes, and timeline/default-clock layers are still open.
+- Build the remaining `EnvironmentAttributeSystem` consumers over the frozen
+  dimension/timeline projection: positional ambient-particle ticks, background
+  music selection and volume, biome ambient loop/mood/additions, firefly-bush
+  sounds, sky-light-level darkening, and creaking activation. Apply biome and
+  weather layers at their vanilla positional/dimension boundaries rather than
+  treating the dimension sample as the final value for those consumers.
+- Preserve complete `ParticleOptions` payloads when a custom dimension selects
+  a complex default dripstone particle. The current level-event bridge carries
+  the synchronized particle type but does not project block/item/color/vibration
+  option state into the provider; item options also still need exact nested
+  `DataComponentPatch.CODEC` value validation.
 - Implement the creeper/spider/invert spectator post chains, the independent
   F4 `effectActive` toggle, and the perspective-change clear lifecycle. The
   renderer-owned current id currently drives only the debug entry mirror.

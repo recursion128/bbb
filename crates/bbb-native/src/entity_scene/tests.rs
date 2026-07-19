@@ -1787,6 +1787,21 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
     for id in [87, 88, 89, 90, 91] {
         assert_eq!(body_rot(&nether, id), 0.0);
     }
+
+    let mut custom = WorldStore::new();
+    custom.record_registry_entries(
+        bbb_world::DIMENSION_TYPE_REGISTRY,
+        0,
+        vec![bbb_world::RegistryPacketEntry::with_raw_data(
+            "example:custom",
+            piglins_zombify_dimension_nbt(false),
+        )],
+    );
+    custom.apply_login(&protocol_play_login(10));
+    add_piglin_family(&mut custom);
+    for id in [87, 88, 89, 90, 91] {
+        assert_eq!(body_rot(&custom, id), 0.0);
+    }
 }
 
 #[test]
@@ -12732,6 +12747,22 @@ fn protocol_play_login(player_id: i32) -> PlayLogin {
         },
         enforces_secure_chat: false,
     }
+}
+
+fn piglins_zombify_dimension_nbt(value: bool) -> Vec<u8> {
+    let mut out = vec![10, 10];
+    write_test_nbt_string(&mut out, "attributes");
+    out.push(1);
+    write_test_nbt_string(&mut out, "minecraft:gameplay/piglins_zombify");
+    out.push(i8::from(value) as u8);
+    out.push(0);
+    out.push(0);
+    out
+}
+
+fn write_test_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
 }
 
 fn assert_selection_box_close(actual: [f32; 3], expected: [f32; 3]) {

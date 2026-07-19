@@ -12532,11 +12532,24 @@ fn hud_item_icon_for_stack(
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_entity_type = Some("minecraft:player");
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
+    let environment_attributes = world.sampled_client_environment_attributes().ok();
+    let has_authoritative_dimension_type = world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_some();
     let time_context = world
         .world_time()
         .map(|time| bbb_item_model::ItemModelTimeContext {
             game_time: time.game_time,
             day_time: time.day_time,
+            sun_angle_degrees: environment_attributes
+                .as_ref()
+                .and_then(|attributes| attributes.sun_angle_degrees)
+                .or_else(|| has_authoritative_dimension_type.then_some(0.0)),
+            moon_phase_index: environment_attributes
+                .as_ref()
+                .and_then(|attributes| attributes.moon_phase)
+                .map(client_moon_phase_index)
+                .or_else(|| has_authoritative_dimension_type.then_some(0)),
         });
     let compass_spawn = world.local_player().default_spawn.as_ref().map(|spawn| {
         bbb_item_model::ItemModelCompassTarget {
@@ -13352,6 +13365,19 @@ fn overworld_moon_phase(day_time: i64) -> SkyMoonPhase {
         .rem_euclid(VANILLA_LIGHTMAP_DAY_PERIOD_TICKS * SkyMoonPhase::ALL.len() as i64)
         / VANILLA_LIGHTMAP_DAY_PERIOD_TICKS;
     SkyMoonPhase::from_vanilla_index(phase as usize)
+}
+
+fn client_moon_phase_index(phase: bbb_world::ClientMoonPhase) -> u8 {
+    match phase {
+        bbb_world::ClientMoonPhase::FullMoon => 0,
+        bbb_world::ClientMoonPhase::WaningGibbous => 1,
+        bbb_world::ClientMoonPhase::ThirdQuarter => 2,
+        bbb_world::ClientMoonPhase::WaningCrescent => 3,
+        bbb_world::ClientMoonPhase::NewMoon => 4,
+        bbb_world::ClientMoonPhase::WaxingCrescent => 5,
+        bbb_world::ClientMoonPhase::FirstQuarter => 6,
+        bbb_world::ClientMoonPhase::WaxingGibbous => 7,
+    }
 }
 
 fn apply_weather_star_brightness_layers(

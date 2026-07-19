@@ -105,20 +105,23 @@ pub(crate) fn lightmap_environment_attributes_for_world(world: &WorldStore) -> L
         return LightmapEnvironment::default();
     };
 
-    let mut environment = dimension_lightmap_environment(level, level.environment_attributes());
+    let sampled_attributes = world
+        .sampled_client_environment_attributes()
+        .unwrap_or_else(|_| level.environment_attributes());
+    let mut environment = dimension_lightmap_environment(level, sampled_attributes);
     let is_overworld =
         vanilla_lightmap_dimension_kind(level) == VanillaLightmapDimensionKind::Overworld;
-    if is_overworld {
+    let uses_builtin_dimension_fallback = world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_none();
+    if is_overworld && uses_builtin_dimension_fallback {
         let day_time = world
             .world_time()
             .map(|time| time.day_time)
             .unwrap_or(VANILLA_LIGHTMAP_DEFAULT_DAY_TIME);
         apply_overworld_timeline_lightmap_environment(&mut environment, day_time);
     }
-    if let Ok(Some(sky_light_factor)) = world.sampled_timeline_sky_light_factor() {
-        environment.sky_factor = sky_light_factor;
-    }
-    if is_overworld {
+    if level.can_have_weather() {
         apply_weather_lightmap_environment(&mut environment, world.weather());
     }
     environment
@@ -218,8 +221,19 @@ pub(crate) fn clear_color_for_world_with_environment_colors_and_water_vision(
 ) -> ClearColor {
     let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
     let weather = world.weather();
-    let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
-    let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
+    let can_have_weather = world
+        .level_info()
+        .is_some_and(WorldLevelInfo::can_have_weather);
+    let rain = if can_have_weather {
+        weather.rain_level.clamp(0.0, 1.0) as f64
+    } else {
+        0.0
+    };
+    let thunder = if can_have_weather {
+        weather.thunder_level.clamp(0.0, 1.0) as f64
+    } else {
+        0.0
+    };
     let dimension_kind = world
         .level_info()
         .map(vanilla_lightmap_dimension_kind)
@@ -291,18 +305,59 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
 
     let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
+    let uses_builtin_dimension_fallback = world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_none();
+    let attributes = world
+        .sampled_client_environment_attributes()
+        .unwrap_or_else(|_| {
+            world
+                .level_info()
+                .map(WorldLevelInfo::environment_attributes)
+                .unwrap_or_default()
+        });
     let weather = world.weather();
-    let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
-    let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
+    let can_have_weather = world
+        .level_info()
+        .is_some_and(WorldLevelInfo::can_have_weather);
+    let rain = if can_have_weather {
+        weather.rain_level.clamp(0.0, 1.0) as f64
+    } else {
+        0.0
+    };
+    let thunder = if can_have_weather {
+        weather.thunder_level.clamp(0.0, 1.0) as f64
+    } else {
+        0.0
+    };
     let sunrise_sunset_color = apply_weather_sunrise_sunset_color_layers(
-        sample_periodic_argb_keyframes(
-            day_time,
-            &VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES,
-            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
-        ),
+        attributes
+            .sunrise_sunset_color
+            .map(rgba_u8_to_argb)
+            .unwrap_or_else(|| {
+                if uses_builtin_dimension_fallback {
+                    sample_periodic_argb_keyframes(
+                        day_time,
+                        &VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES,
+                        VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+                    )
+                } else {
+                    0
+                }
+            }),
         rain,
         thunder,
     );
+    let moon_phase = attributes
+        .moon_phase
+        .map(client_moon_phase)
+        .unwrap_or_else(|| {
+            if uses_builtin_dimension_fallback {
+                overworld_moon_phase(day_time)
+            } else {
+                SkyMoonPhase::FullMoon
+            }
+        });
 
     SkyEnvironment::from_rgb(rgb24(sky_disc_color_for_world_with_environment_colors(
         world,
@@ -312,23 +367,50 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     )))
     .with_sunrise_sunset(
         rgba32(sunrise_sunset_color),
-        overworld_sun_angle(day_time).to_radians(),
+        attributes
+            .sun_angle_degrees
+            .unwrap_or_else(|| {
+                uses_builtin_dimension_fallback
+                    .then(|| overworld_sun_angle(day_time))
+                    .unwrap_or(0.0)
+            })
+            .to_radians(),
     )
     .with_celestial_state(
-        overworld_moon_angle(day_time).to_radians(),
-        1.0 - weather.rain_level.clamp(0.0, 1.0),
-        overworld_moon_phase(day_time),
+        attributes
+            .moon_angle_degrees
+            .unwrap_or_else(|| {
+                uses_builtin_dimension_fallback
+                    .then(|| overworld_moon_angle(day_time))
+                    .unwrap_or(0.0)
+            })
+            .to_radians(),
+        1.0 - rain as f32,
+        moon_phase,
     )
     .with_star_state(
-        overworld_star_angle(day_time).to_radians(),
+        attributes
+            .star_angle_degrees
+            .unwrap_or_else(|| {
+                uses_builtin_dimension_fallback
+                    .then(|| overworld_star_angle(day_time))
+                    .unwrap_or(0.0)
+            })
+            .to_radians(),
         apply_weather_star_brightness_layers(
-            sample_periodic_float_keyframes(
-                day_time,
-                &VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES,
-                VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
-            ),
-            weather.rain_level.clamp(0.0, 1.0),
-            weather.thunder_level.clamp(0.0, 1.0),
+            attributes.star_brightness.unwrap_or_else(|| {
+                if uses_builtin_dimension_fallback {
+                    sample_periodic_float_keyframes(
+                        day_time,
+                        &VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES,
+                        VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+                    )
+                } else {
+                    0.0
+                }
+            }),
+            rain as f32,
+            thunder as f32,
         ),
     )
 }
@@ -338,27 +420,77 @@ pub(crate) fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironmen
         .level_info()
         .map(vanilla_lightmap_dimension_kind)
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
-    if dimension_kind == VanillaLightmapDimensionKind::Overworld {
+    let attributes = world
+        .sampled_client_environment_attributes()
+        .unwrap_or_else(|_| {
+            world
+                .level_info()
+                .map(WorldLevelInfo::environment_attributes)
+                .unwrap_or_default()
+        });
+    let uses_builtin_dimension_fallback = world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_none();
+    if attributes.cloud_color.is_some()
+        || uses_builtin_dimension_fallback
+            && dimension_kind == VanillaLightmapDimensionKind::Overworld
+    {
         let day_time = world
             .world_time()
             .map(|time| time.day_time)
             .unwrap_or(VANILLA_LIGHTMAP_DEFAULT_DAY_TIME);
         let weather = world.weather();
+        let can_have_weather = world
+            .level_info()
+            .is_some_and(WorldLevelInfo::can_have_weather);
+        let rain = can_have_weather
+            .then_some(weather.rain_level as f64)
+            .unwrap_or(0.0);
+        let thunder = can_have_weather
+            .then_some(weather.thunder_level as f64)
+            .unwrap_or(0.0);
         let cloud_color = apply_weather_cloud_color_layers(
-            argb_multiply(
-                rgba01_to_argb(VANILLA_DEFAULT_CLOUD_COLOR),
-                sample_periodic_argb_keyframes(
-                    day_time,
-                    &VANILLA_OVERWORLD_CLOUD_COLOR_MULTIPLIER_KEYFRAMES,
-                    VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
-                ),
-            ),
-            weather.rain_level as f64,
-            weather.thunder_level as f64,
+            attributes
+                .cloud_color
+                .map(rgba_u8_to_argb)
+                .unwrap_or_else(|| {
+                    argb_multiply(
+                        rgba01_to_argb(VANILLA_DEFAULT_CLOUD_COLOR),
+                        sample_periodic_argb_keyframes(
+                            day_time,
+                            &VANILLA_OVERWORLD_CLOUD_COLOR_MULTIPLIER_KEYFRAMES,
+                            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+                        ),
+                    )
+                }),
+            rain,
+            thunder,
         );
-        CloudEnvironment::with_color_and_height(rgba32(cloud_color), VANILLA_DEFAULT_CLOUD_HEIGHT)
+        CloudEnvironment::with_color_and_height(
+            rgba32(cloud_color),
+            attributes
+                .cloud_height
+                .unwrap_or(VANILLA_DEFAULT_CLOUD_HEIGHT),
+        )
     } else {
         CloudEnvironment::disabled()
+    }
+}
+
+fn rgba_u8_to_argb([red, green, blue, alpha]: [u8; 4]) -> i32 {
+    i32::from_be_bytes([alpha, red, green, blue])
+}
+
+fn client_moon_phase(phase: bbb_world::ClientMoonPhase) -> SkyMoonPhase {
+    match phase {
+        bbb_world::ClientMoonPhase::FullMoon => SkyMoonPhase::FullMoon,
+        bbb_world::ClientMoonPhase::WaningGibbous => SkyMoonPhase::WaningGibbous,
+        bbb_world::ClientMoonPhase::ThirdQuarter => SkyMoonPhase::ThirdQuarter,
+        bbb_world::ClientMoonPhase::WaningCrescent => SkyMoonPhase::WaningCrescent,
+        bbb_world::ClientMoonPhase::NewMoon => SkyMoonPhase::NewMoon,
+        bbb_world::ClientMoonPhase::WaxingCrescent => SkyMoonPhase::WaxingCrescent,
+        bbb_world::ClientMoonPhase::FirstQuarter => SkyMoonPhase::FirstQuarter,
+        bbb_world::ClientMoonPhase::WaxingGibbous => SkyMoonPhase::WaxingGibbous,
     }
 }
 

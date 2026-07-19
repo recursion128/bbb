@@ -404,6 +404,10 @@ impl ItemModelKeybindContext {
 pub struct ItemModelTimeContext {
     pub game_time: i64,
     pub day_time: i64,
+    /// Frozen environment-attribute projection. `None` is the explicit
+    /// built-in/offline fallback used by context-free callers.
+    pub sun_angle_degrees: Option<f32>,
+    pub moon_phase_index: Option<u8>,
 }
 
 /// Owner and level values exposed to vanilla compass item-model numeric

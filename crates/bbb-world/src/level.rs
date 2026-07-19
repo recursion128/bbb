@@ -21,10 +21,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    registries::{
-        dimension_type_client_projection_from_registry, ClientEnvironmentAttributes,
-        DIMENSION_TYPE_REGISTRY,
-    },
+    registries::{ClientEnvironmentAttributes, DIMENSION_TYPE_REGISTRY},
     BlockPos, WorldStore,
 };
 
@@ -131,7 +128,7 @@ impl WorldLevelInfo {
     }
 
     pub fn environment_attributes(&self) -> ClientEnvironmentAttributes {
-        self.environment_attributes
+        self.environment_attributes.clone()
     }
 
     pub fn timeline_resource_ids(&self) -> &[String] {
@@ -622,10 +619,9 @@ impl WorldStore {
         let profile = dimension_profile(spawn_info.dimension_type_id, &spawn_info.dimension);
         let dimension_type_entry =
             self.registry_entry_by_holder_id(DIMENSION_TYPE_REGISTRY, spawn_info.dimension_type_id);
-        let dimension_type = dimension_type_client_projection_from_registry(
-            dimension_type_entry,
-            self.frozen_registry_access(),
-        );
+        let dimension_type = self
+            .registries
+            .dimension_type_client_projection(spawn_info.dimension_type_id);
         let dimension_type_entry_name = dimension_type_entry.map(|entry| entry.id.clone());
         let dimension_type_name = dimension_type_entry_name
             .clone()
@@ -675,7 +671,7 @@ impl WorldStore {
             });
         let environment_attributes = dimension_type
             .as_ref()
-            .map(|projection| projection.environment_attributes)
+            .map(|projection| projection.environment_attributes.clone())
             .unwrap_or_default();
         if let Some(err) = dimension_type
             .as_ref()
@@ -2526,7 +2522,7 @@ mod tests {
     }
 
     #[test]
-    fn dimension_type_registry_projects_direct_environment_attributes_and_diagnoses_modifiers() {
+    fn dimension_type_registry_projects_environment_attributes_and_diagnoses_invalid_modifiers() {
         let mut custom = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom,
@@ -2563,7 +2559,7 @@ mod tests {
                 .map(|error| (error.source.as_str(), error.message.as_str())),
             Some((
                 "dimension_type_environment_attributes",
-                "minecraft:visual/fog_color: attribute modifiers are not yet supported",
+                "minecraft:visual/fog_color: unknown attribute modifier",
             ))
         );
     }

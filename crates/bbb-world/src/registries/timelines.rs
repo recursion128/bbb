@@ -1,8 +1,17 @@
+use std::collections::BTreeSet;
+
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
 use crate::{ClientEnvironmentAttributes, RegistryElementSource, RegistryEntrySource, WorldStore};
 
-use super::normalize_codec_identifier;
+use super::{
+    environment_attributes::{
+        apply_timeline_argument, decode_timeline_argument, interpolate_timeline_argument,
+        is_syncable_environment_attribute, sanitize_environment_attributes,
+        validate_timeline_argument_references, EnvironmentModifier, EnvironmentTrackArgument,
+    },
+    normalize_codec_identifier,
+};
 
 pub const WORLD_CLOCK_REGISTRY: &str = "minecraft:world_clock";
 pub const TIMELINE_REGISTRY: &str = "minecraft:timeline";
@@ -14,7 +23,7 @@ pub struct WorldClockDefinition {
     pub element_source: Option<RegistryElementSource>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TimelineDefinition {
     pub resource_id: String,
     pub element_source: RegistryElementSource,
@@ -31,7 +40,7 @@ pub struct TimelineClockReference {
     pub source: RegistryEntrySource,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TimelineTrackDefinition {
     pub attribute: String,
     pub modifier: TimelineModifier,
@@ -57,10 +66,11 @@ pub enum TimelineModifier {
     Xnor,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TimelineKeyframe {
     pub ticks: i32,
     pub value: NbtSummaryValue,
+    pub(super) argument: EnvironmentTrackArgument,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,6 +121,9 @@ impl WorldStore {
         else {
             return Ok(None);
         };
+        if let Some(definition) = self.registries.typed.world_clocks.get(entry.resource_id) {
+            return Ok(Some(definition.clone()));
+        }
         if entry.source == RegistryEntrySource::VanillaFallback {
             return Ok(Some(WorldClockDefinition {
                 resource_id: entry.resource_id.to_string(),
@@ -137,6 +150,9 @@ impl WorldStore {
         let Some(entry) = registry_access.entry_by_holder_id(TIMELINE_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(definition) = self.registries.typed.timelines.get(entry.resource_id) {
+            return Ok(Some(definition.clone()));
+        }
         let Some(data) = entry.element_data else {
             return Ok(None);
         };
@@ -150,13 +166,19 @@ impl WorldStore {
         let Some(level) = self.level_info() else {
             return Ok(ClientEnvironmentAttributes::default());
         };
-        let mut attributes = level.environment_attributes();
+        let dimension = self
+            .registries
+            .dimension_type_client_projection(level.dimension_type_id);
+        let mut attributes = dimension
+            .as_ref()
+            .map(|projection| projection.environment_attributes.clone())
+            .unwrap_or_else(|| level.environment_attributes());
         for (timeline, total_ticks) in self.resolved_dimension_timelines()? {
             for track in &timeline.tracks {
-                apply_float_environment_track(&mut attributes, &timeline, track, total_ticks)?;
+                apply_environment_track(&mut attributes, &timeline, track, total_ticks)?;
             }
         }
-        sanitize_float_environment_attributes(&mut attributes);
+        sanitize_environment_attributes(&mut attributes);
         Ok(attributes)
     }
 
@@ -166,9 +188,13 @@ impl WorldStore {
         let Some(level) = self.level_info() else {
             return Ok(None);
         };
-        let mut value = level
-            .environment_attributes()
-            .sky_light_factor
+        let dimension = self
+            .registries
+            .dimension_type_client_projection(level.dimension_type_id);
+        let mut value = dimension
+            .as_ref()
+            .and_then(|projection| projection.environment_attributes.sky_light_factor)
+            .or_else(|| level.environment_attributes().sky_light_factor)
             .unwrap_or(1.0);
         let mut applied = false;
         for (timeline, total_ticks) in self.resolved_dimension_timelines()? {
@@ -176,8 +202,19 @@ impl WorldStore {
                 if track.attribute != "minecraft:visual/sky_light_factor" {
                     continue;
                 }
-                let argument = sample_float_track(&timeline, track, total_ticks)?;
-                value = apply_float_modifier(&timeline, track, value, argument)?;
+                let argument = sample_track_argument(&timeline, track, total_ticks)?;
+                let mut sampled = ClientEnvironmentAttributes {
+                    sky_light_factor: Some(value),
+                    ..ClientEnvironmentAttributes::default()
+                };
+                apply_timeline_argument(
+                    &mut sampled,
+                    &track.attribute,
+                    track.modifier.environment_modifier(),
+                    argument,
+                )
+                .map_err(|error| track_error(&timeline, track, "modifier", error.to_string()))?;
+                value = sampled.sky_light_factor.unwrap_or(value);
                 applied = true;
             }
         }
@@ -190,8 +227,14 @@ impl WorldStore {
         let Some(level) = self.level_info() else {
             return Ok(Vec::new());
         };
-        level
-            .timeline_resource_ids()
+        let dimension = self
+            .registries
+            .dimension_type_client_projection(level.dimension_type_id);
+        let timeline_resource_ids = dimension
+            .as_ref()
+            .map(|projection| projection.timeline_resource_ids.as_slice())
+            .unwrap_or_else(|| level.timeline_resource_ids());
+        timeline_resource_ids
             .iter()
             .map(|timeline_resource_id| {
                 let holder_id = self
@@ -242,56 +285,34 @@ pub(super) fn validate_world_clock_value(
     }
 }
 
-fn apply_float_environment_track(
+fn apply_environment_track(
     attributes: &mut ClientEnvironmentAttributes,
     timeline: &TimelineDefinition,
     track: &TimelineTrackDefinition,
     total_ticks: i64,
 ) -> Result<(), TimelineProjectionError> {
-    let (slot, default_value) = match track.attribute.as_str() {
-        "minecraft:visual/fog_start_distance" => (&mut attributes.fog_start_distance, 0.0),
-        "minecraft:visual/fog_end_distance" => (&mut attributes.fog_end_distance, 1024.0),
-        "minecraft:visual/sky_fog_end_distance" => (&mut attributes.sky_fog_end_distance, 512.0),
-        "minecraft:visual/cloud_fog_end_distance" => {
-            (&mut attributes.cloud_fog_end_distance, 2048.0)
-        }
-        "minecraft:visual/water_fog_start_distance" => {
-            (&mut attributes.water_fog_start_distance, -8.0)
-        }
-        "minecraft:visual/water_fog_end_distance" => (&mut attributes.water_fog_end_distance, 96.0),
-        "minecraft:visual/sky_light_factor" => (&mut attributes.sky_light_factor, 1.0),
-        _ => return Ok(()),
-    };
-    let argument = sample_float_track(timeline, track, total_ticks)?;
-    let base = slot.unwrap_or(default_value);
-    *slot = Some(apply_float_modifier(timeline, track, base, argument)?);
-    Ok(())
+    let argument = sample_track_argument(timeline, track, total_ticks)?;
+    apply_timeline_argument(
+        attributes,
+        &track.attribute,
+        track.modifier.environment_modifier(),
+        argument,
+    )
+    .map_err(|error| track_error(timeline, track, "modifier", error.to_string()))
 }
 
-fn sample_float_track(
+fn sample_track_argument(
     timeline: &TimelineDefinition,
     track: &TimelineTrackDefinition,
     total_ticks: i64,
-) -> Result<f32, TimelineProjectionError> {
+) -> Result<EnvironmentTrackArgument, TimelineProjectionError> {
     let values = track
         .keyframes
         .iter()
-        .enumerate()
-        .map(|(index, keyframe)| {
-            numeric_f32(&keyframe.value)
-                .filter(|value| value.is_finite())
-                .ok_or_else(|| {
-                    track_error(
-                        timeline,
-                        track,
-                        format!("keyframes[{index}].value"),
-                        "float track expects a finite number",
-                    )
-                })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+        .map(|keyframe| keyframe.argument.clone())
+        .collect::<Vec<_>>();
     if values.len() == 1 {
-        return Ok(values[0]);
+        return Ok(values[0].clone());
     }
     let sample_ticks = timeline
         .period_ticks
@@ -328,8 +349,8 @@ fn sample_float_track(
                 i64::from(first.ticks) + period,
             )
         }
-    } else if sample_ticks <= i64::from(first.ticks) {
-        return Ok(values[0]);
+    } else if sample_ticks < i64::from(first.ticks) {
+        return Ok(values[0].clone());
     } else if let Some(index) = track
         .keyframes
         .windows(2)
@@ -342,17 +363,22 @@ fn sample_float_track(
             i64::from(track.keyframes[index + 1].ticks),
         )
     } else {
-        return Ok(values[last_index]);
+        return Ok(values[last_index].clone());
     };
     if sample_ticks <= from_ticks {
-        return Ok(values[from_index]);
+        return Ok(values[from_index].clone());
     }
     if sample_ticks >= to_ticks {
-        return Ok(values[to_index]);
+        return Ok(values[to_index].clone());
     }
     let alpha = (sample_ticks - from_ticks) as f32 / (to_ticks - from_ticks) as f32;
     let alpha = apply_easing(timeline, track, alpha)?;
-    Ok(values[from_index] + alpha * (values[to_index] - values[from_index]))
+    Ok(interpolate_timeline_argument(
+        &track.attribute,
+        &values[from_index],
+        &values[to_index],
+        alpha,
+    ))
 }
 
 fn apply_easing(
@@ -364,12 +390,14 @@ fn apply_easing(
         TimelineEasing::Simple(name) => match name.as_str() {
             "constant" => Ok(0.0),
             "linear" => Ok(alpha),
-            _ => Err(track_error(
-                timeline,
-                track,
-                "ease",
-                format!("unsupported easing {name}"),
-            )),
+            name => simple_easing(name, alpha).ok_or_else(|| {
+                track_error(
+                    timeline,
+                    track,
+                    "ease",
+                    format!("unsupported easing {name}"),
+                )
+            }),
         },
         TimelineEasing::CubicBezier {
             x1_bits,
@@ -383,6 +411,161 @@ fn apply_easing(
             f32::from_bits(*x2_bits),
             f32::from_bits(*y2_bits),
         )),
+    }
+}
+
+fn simple_easing(name: &str, x: f32) -> Option<f32> {
+    Some(match name {
+        "in_back" => x * x * (2.70158 * x - 1.70158),
+        "in_bounce" => 1.0 - out_bounce(1.0 - x),
+        "in_circ" => -(1.0 - x * x).sqrt() + 1.0,
+        "in_cubic" => x * x * x,
+        "in_elastic" => in_elastic(x),
+        "in_expo" => {
+            if x == 0.0 {
+                0.0
+            } else {
+                2.0_f32.powf(10.0 * x - 10.0)
+            }
+        }
+        "in_quad" => x * x,
+        "in_quart" => x * x * x * x,
+        "in_quint" => x * x * x * x * x,
+        "in_sine" => 1.0 - (x * std::f32::consts::FRAC_PI_2).cos(),
+        "in_out_back" => in_out_back(x),
+        "in_out_bounce" => {
+            if x < 0.5 {
+                (1.0 - out_bounce(1.0 - 2.0 * x)) / 2.0
+            } else {
+                (1.0 + out_bounce(2.0 * x - 1.0)) / 2.0
+            }
+        }
+        "in_out_circ" => {
+            if x < 0.5 {
+                (1.0 - (1.0 - (2.0 * x).powi(2)).sqrt()) / 2.0
+            } else {
+                ((1.0 - (-2.0 * x + 2.0).powi(2)).sqrt() + 1.0) / 2.0
+            }
+        }
+        "in_out_cubic" => {
+            if x < 0.5 {
+                4.0 * x * x * x
+            } else {
+                1.0 - (-2.0 * x + 2.0).powi(3) / 2.0
+            }
+        }
+        "in_out_elastic" => in_out_elastic(x),
+        "in_out_expo" => {
+            if x < 0.5 {
+                if x == 0.0 {
+                    0.0
+                } else {
+                    2.0_f32.powf(20.0 * x - 10.0) / 2.0
+                }
+            } else if x == 1.0 {
+                1.0
+            } else {
+                (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
+            }
+        }
+        "in_out_quad" => {
+            if x < 0.5 {
+                2.0 * x * x
+            } else {
+                1.0 - (-2.0 * x + 2.0).powi(2) / 2.0
+            }
+        }
+        "in_out_quart" => {
+            if x < 0.5 {
+                8.0 * x.powi(4)
+            } else {
+                1.0 - (-2.0 * x + 2.0).powi(4) / 2.0
+            }
+        }
+        "in_out_quint" => {
+            if x < 0.5 {
+                16.0 * x.powi(5)
+            } else {
+                1.0 - (-2.0 * x + 2.0).powi(5) / 2.0
+            }
+        }
+        "in_out_sine" => -((std::f32::consts::PI * x).cos() - 1.0) / 2.0,
+        "out_back" => 1.0 + 2.70158 * (x - 1.0).powi(3) + 1.70158 * (x - 1.0).powi(2),
+        "out_bounce" => out_bounce(x),
+        "out_circ" => (1.0 - (x - 1.0).powi(2)).sqrt(),
+        "out_cubic" => 1.0 - (1.0 - x).powi(3),
+        "out_elastic" => out_elastic(x),
+        "out_expo" => {
+            if x == 1.0 {
+                1.0
+            } else {
+                1.0 - 2.0_f32.powf(-10.0 * x)
+            }
+        }
+        "out_quad" => 1.0 - (1.0 - x).powi(2),
+        "out_quart" => 1.0 - (1.0 - x).powi(4),
+        "out_quint" => 1.0 - (1.0 - x).powi(5),
+        "out_sine" => (x * std::f32::consts::FRAC_PI_2).sin(),
+        _ => return None,
+    })
+}
+
+fn out_bounce(x: f32) -> f32 {
+    if x < 0.363_636_37 {
+        7.5625 * x * x
+    } else if x < 0.727_272_75 {
+        7.5625 * (x - 0.545_454_56).powi(2) + 0.75
+    } else if x < 0.909_090_94 {
+        7.5625 * (x - 0.818_181_8).powi(2) + 0.9375
+    } else {
+        7.5625 * (x - 0.954_545_44).powi(2) + 0.984_375
+    }
+}
+
+fn in_elastic(x: f32) -> f32 {
+    if x == 0.0 {
+        return 0.0;
+    }
+    if x == 1.0 {
+        return 1.0;
+    }
+    let c4 = std::f32::consts::TAU / 3.0;
+    -2.0_f32.powf(10.0 * x - 10.0) * ((x * 10.0 - 10.75) * c4).sin()
+}
+
+fn out_elastic(x: f32) -> f32 {
+    if x == 0.0 {
+        return 0.0;
+    }
+    if x == 1.0 {
+        return 1.0;
+    }
+    let c4 = std::f32::consts::TAU / 3.0;
+    2.0_f32.powf(-10.0 * x) * ((x * 10.0 - 0.75) * c4).sin() + 1.0
+}
+
+fn in_out_elastic(x: f32) -> f32 {
+    if x == 0.0 {
+        return 0.0;
+    }
+    if x == 1.0 {
+        return 1.0;
+    }
+    let c5 = std::f32::consts::PI * 4.0 / 9.0;
+    let sin = ((20.0 * x - 11.125) * c5).sin();
+    if x < 0.5 {
+        -(2.0_f32.powf(20.0 * x - 10.0) * sin) / 2.0
+    } else {
+        2.0_f32.powf(-20.0 * x + 10.0) * sin / 2.0 + 1.0
+    }
+}
+
+fn in_out_back(x: f32) -> f32 {
+    if x < 0.5 {
+        4.0 * x * x * (7.189_819 * x - 2.594_909_4) / 2.0
+    } else {
+        let delta = 2.0 * x - 2.0;
+        (delta * delta * (3.594_909_4 * delta + 2.594_909_4) + 2.0) / 2.0
     }
 }
 
@@ -416,44 +599,6 @@ fn cubic_gradient(curve: [f32; 3], value: f32) -> f32 {
     (3.0 * curve[0] * value + 2.0 * curve[1]) * value + curve[2]
 }
 
-fn apply_float_modifier(
-    timeline: &TimelineDefinition,
-    track: &TimelineTrackDefinition,
-    base: f32,
-    argument: f32,
-) -> Result<f32, TimelineProjectionError> {
-    Ok(match track.modifier {
-        TimelineModifier::Override => argument,
-        TimelineModifier::Add => base + argument,
-        TimelineModifier::Subtract => base - argument,
-        TimelineModifier::Multiply => base * argument,
-        TimelineModifier::Minimum => base.min(argument),
-        TimelineModifier::Maximum => base.max(argument),
-        _ => {
-            return Err(track_error(
-                timeline,
-                track,
-                "modifier",
-                "modifier does not accept scalar float keyframes",
-            ))
-        }
-    })
-}
-
-fn sanitize_float_environment_attributes(attributes: &mut ClientEnvironmentAttributes) {
-    attributes.fog_end_distance = attributes.fog_end_distance.map(|value| value.max(0.0));
-    attributes.sky_fog_end_distance = attributes.sky_fog_end_distance.map(|value| value.max(0.0));
-    attributes.cloud_fog_end_distance = attributes
-        .cloud_fog_end_distance
-        .map(|value| value.max(0.0));
-    attributes.water_fog_end_distance = attributes
-        .water_fog_end_distance
-        .map(|value| value.max(0.0));
-    attributes.sky_light_factor = attributes
-        .sky_light_factor
-        .map(|value| value.clamp(0.0, 1.0));
-}
-
 fn track_error(
     timeline: &TimelineDefinition,
     track: &TimelineTrackDefinition,
@@ -467,7 +612,7 @@ fn track_error(
     )
 }
 
-fn decode_timeline_definition(
+pub(super) fn decode_timeline_definition(
     resource_id: &str,
     element_source: RegistryElementSource,
     value: &NbtSummaryValue,
@@ -484,6 +629,19 @@ fn decode_timeline_definition(
         .map_err(|resolution| error(resource_id, "clock", resolution.to_string()))?;
     let period_ticks = optional_positive_int(resource_id, fields, "period_ticks")?;
     let tracks = decode_tracks(resource_id, fields, period_ticks)?;
+    for track in &tracks {
+        for (index, keyframe) in track.keyframes.iter().enumerate() {
+            validate_timeline_argument_references(&keyframe.argument, registry_access).map_err(
+                |reference_error| {
+                    error(
+                        resource_id,
+                        format!("tracks.{}.keyframes[{index}].value", track.attribute),
+                        reference_error,
+                    )
+                },
+            )?;
+        }
+    }
     let time_markers = decode_time_markers(resource_id, fields, period_ticks)?;
     Ok(TimelineDefinition {
         resource_id: resource_id.to_string(),
@@ -510,10 +668,22 @@ fn decode_tracks(
     let NbtSummaryValue::Compound(tracks) = value else {
         return Err(error(resource_id, "tracks", "expected compound map"));
     };
-    tracks
-        .iter()
-        .map(|track| decode_track(resource_id, track, period_ticks))
-        .collect()
+    let mut decoded = Vec::with_capacity(tracks.len());
+    let mut seen = BTreeSet::new();
+    for track in tracks {
+        let track = decode_track(resource_id, track, period_ticks)?;
+        if !seen.insert(track.attribute.clone()) {
+            return Err(error(
+                resource_id,
+                format!("tracks.{}", track.attribute),
+                "duplicate environment attribute track",
+            ));
+        }
+        if is_syncable_environment_attribute(&track.attribute) {
+            decoded.push(track);
+        }
+    }
+    Ok(decoded)
 }
 
 fn decode_track(
@@ -564,8 +734,12 @@ fn decode_track(
         ));
     }
     let mut keyframes = Vec::with_capacity(values.len());
-    let mut previous_tick = None;
-    let mut same_tick_count = 0usize;
+    let mut ordered_previous_tick = None;
+    let mut repeated_previous_tick = values.last().and_then(|value| match value {
+        NbtSummaryValue::Compound(fields) => field(fields, "ticks").and_then(numeric_i32),
+        _ => None,
+    });
+    let mut repeat_count = 0usize;
     for (index, value) in values.iter().enumerate() {
         let keyframe_path = format!("{path}.keyframes[{index}]");
         let NbtSummaryValue::Compound(fields) = value else {
@@ -581,17 +755,17 @@ fn decode_track(
                 ));
             }
         }
-        match previous_tick {
-            Some(previous) if ticks < previous => {
-                return Err(error(
-                    resource_id,
-                    format!("{keyframe_path}.ticks"),
-                    "keyframes must be ordered by ticks",
-                ))
-            }
+        if ordered_previous_tick.is_some_and(|previous| ticks < previous) {
+            return Err(error(
+                resource_id,
+                format!("{keyframe_path}.ticks"),
+                "keyframes must be ordered by ticks",
+            ));
+        }
+        match repeated_previous_tick {
             Some(previous) if ticks == previous => {
-                same_tick_count += 1;
-                if same_tick_count > 2 {
+                repeat_count += 1;
+                if repeat_count > 2 {
                     return Err(error(
                         resource_id,
                         format!("{keyframe_path}.ticks"),
@@ -599,9 +773,10 @@ fn decode_track(
                     ));
                 }
             }
-            _ => same_tick_count = 1,
+            _ => repeat_count = 0,
         }
-        previous_tick = Some(ticks);
+        ordered_previous_tick = Some(ticks);
+        repeated_previous_tick = Some(ticks);
         let keyframe_value = field(fields, "value").ok_or_else(|| {
             error(
                 resource_id,
@@ -609,14 +784,33 @@ fn decode_track(
                 "missing required field",
             )
         })?;
+        let argument =
+            decode_timeline_argument(&attribute, modifier.environment_modifier(), keyframe_value)
+                .map_err(|projection_error| {
+                error(
+                    resource_id,
+                    format!("{keyframe_path}.value"),
+                    projection_error.to_string(),
+                )
+            })?;
         keyframes.push(TimelineKeyframe {
             ticks,
             value: keyframe_value.clone(),
+            argument,
         });
     }
     let easing = match field(fields, "ease") {
         None => TimelineEasing::Simple("linear".to_string()),
-        Some(NbtSummaryValue::String(value)) => TimelineEasing::Simple(value.clone()),
+        Some(NbtSummaryValue::String(value)) if is_simple_easing(value) => {
+            TimelineEasing::Simple(value.clone())
+        }
+        Some(NbtSummaryValue::String(_)) => {
+            return Err(error(
+                resource_id,
+                format!("{path}.ease"),
+                "unknown easing name",
+            ))
+        }
         Some(NbtSummaryValue::Compound(easing)) => decode_cubic_bezier(resource_id, easing, &path)?,
         Some(_) => {
             return Err(error(
@@ -649,16 +843,9 @@ fn decode_cubic_bezier(
     let mut controls = [0.0_f32; 4];
     for (index, value) in values.iter().enumerate() {
         controls[index] = numeric_f32(value)
-            .filter(|value| value.is_finite())
-            .ok_or_else(|| {
-                error(
-                    resource_id,
-                    format!("{path}[{index}]"),
-                    "expected finite float",
-                )
-            })?;
+            .ok_or_else(|| error(resource_id, format!("{path}[{index}]"), "expected float"))?;
     }
-    if !(0.0..=1.0).contains(&controls[0]) || !(0.0..=1.0).contains(&controls[2]) {
+    if controls[0] < 0.0 || controls[0] > 1.0 || controls[2] < 0.0 || controls[2] > 1.0 {
         return Err(error(
             resource_id,
             path,
@@ -684,53 +871,60 @@ fn decode_time_markers(
     let NbtSummaryValue::Compound(markers) = value else {
         return Err(error(resource_id, "time_markers", "expected compound map"));
     };
-    markers
-        .iter()
-        .map(|marker| {
-            let marker_resource_id = normalize_codec_identifier(&marker.name).ok_or_else(|| {
-                error(
-                    resource_id,
-                    format!("time_markers.{}", marker.name),
-                    "invalid time marker identifier",
-                )
-            })?;
-            let path = format!("time_markers.{marker_resource_id}");
-            let (ticks, show_in_commands) = match &marker.value {
-                value if numeric_i32(value).is_some() => {
-                    let ticks = numeric_i32(value).expect("guarded numeric value");
-                    if ticks < 0 {
-                        return Err(error(resource_id, &path, "ticks must be non-negative"));
-                    }
-                    (ticks, false)
+    let mut decoded = Vec::with_capacity(markers.len());
+    let mut seen = BTreeSet::new();
+    for marker in markers {
+        let marker_resource_id = normalize_codec_identifier(&marker.name).ok_or_else(|| {
+            error(
+                resource_id,
+                format!("time_markers.{}", marker.name),
+                "invalid time marker identifier",
+            )
+        })?;
+        if !seen.insert(marker_resource_id.clone()) {
+            return Err(error(
+                resource_id,
+                format!("time_markers.{marker_resource_id}"),
+                "duplicate time marker",
+            ));
+        }
+        let path = format!("time_markers.{marker_resource_id}");
+        let (ticks, show_in_commands) = match &marker.value {
+            value if numeric_i32(value).is_some() => {
+                let ticks = numeric_i32(value).expect("guarded numeric value");
+                if ticks < 0 {
+                    return Err(error(resource_id, &path, "ticks must be non-negative"));
                 }
-                NbtSummaryValue::Compound(fields) => (
-                    required_non_negative_int(resource_id, fields, "ticks", &path)?,
-                    optional_bool(resource_id, fields, "show_in_commands", &path)?.unwrap_or(false),
-                ),
-                _ => {
-                    return Err(error(
-                        resource_id,
-                        path,
-                        "expected non-negative ticks or marker compound",
-                    ))
-                }
-            };
-            if let Some(period_ticks) = period_ticks {
-                if ticks >= period_ticks {
-                    return Err(error(
-                        resource_id,
-                        path,
-                        format!("ticks must be in range [0; {period_ticks})"),
-                    ));
-                }
+                (ticks, false)
             }
-            Ok(TimelineTimeMarker {
-                resource_id: marker_resource_id,
-                ticks,
-                show_in_commands,
-            })
-        })
-        .collect()
+            NbtSummaryValue::Compound(fields) => (
+                required_non_negative_int(resource_id, fields, "ticks", &path)?,
+                optional_bool(resource_id, fields, "show_in_commands", &path)?.unwrap_or(false),
+            ),
+            _ => {
+                return Err(error(
+                    resource_id,
+                    path,
+                    "expected non-negative ticks or marker compound",
+                ))
+            }
+        };
+        if let Some(period_ticks) = period_ticks {
+            if ticks >= period_ticks {
+                return Err(error(
+                    resource_id,
+                    path,
+                    format!("ticks must be in range [0; {period_ticks})"),
+                ));
+            }
+        }
+        decoded.push(TimelineTimeMarker {
+            resource_id: marker_resource_id,
+            ticks,
+            show_in_commands,
+        });
+    }
+    Ok(decoded)
 }
 
 impl TimelineModifier {
@@ -753,6 +947,63 @@ impl TimelineModifier {
             _ => return None,
         })
     }
+
+    fn environment_modifier(self) -> EnvironmentModifier {
+        match self {
+            Self::Override => EnvironmentModifier::Override,
+            Self::AlphaBlend => EnvironmentModifier::AlphaBlend,
+            Self::Add => EnvironmentModifier::Add,
+            Self::Subtract => EnvironmentModifier::Subtract,
+            Self::Multiply => EnvironmentModifier::Multiply,
+            Self::BlendToGray => EnvironmentModifier::BlendToGray,
+            Self::Minimum => EnvironmentModifier::Minimum,
+            Self::Maximum => EnvironmentModifier::Maximum,
+            Self::And => EnvironmentModifier::And,
+            Self::Nand => EnvironmentModifier::Nand,
+            Self::Or => EnvironmentModifier::Or,
+            Self::Nor => EnvironmentModifier::Nor,
+            Self::Xor => EnvironmentModifier::Xor,
+            Self::Xnor => EnvironmentModifier::Xnor,
+        }
+    }
+}
+
+fn is_simple_easing(value: &str) -> bool {
+    matches!(
+        value,
+        "constant"
+            | "linear"
+            | "in_back"
+            | "in_bounce"
+            | "in_circ"
+            | "in_cubic"
+            | "in_elastic"
+            | "in_expo"
+            | "in_quad"
+            | "in_quart"
+            | "in_quint"
+            | "in_sine"
+            | "in_out_back"
+            | "in_out_bounce"
+            | "in_out_circ"
+            | "in_out_cubic"
+            | "in_out_elastic"
+            | "in_out_expo"
+            | "in_out_quad"
+            | "in_out_quart"
+            | "in_out_quint"
+            | "in_out_sine"
+            | "out_back"
+            | "out_bounce"
+            | "out_circ"
+            | "out_cubic"
+            | "out_elastic"
+            | "out_expo"
+            | "out_quad"
+            | "out_quart"
+            | "out_quint"
+            | "out_sine"
+    )
 }
 
 fn optional_positive_int(
@@ -1047,6 +1298,53 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_tick_validation_matches_vanilla_counter_order() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            WORLD_CLOCK_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:clock",
+                b"{}".to_vec(),
+            )],
+        );
+        store.record_registry_entries(
+            TIMELINE_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:ordinary_run",
+                    br#"{
+                        "clock":"example:clock",
+                        "tracks":{"minecraft:visual/cloud_height":{"keyframes":[
+                            {"ticks":0,"value":1.0},
+                            {"ticks":0,"value":2.0},
+                            {"ticks":0,"value":3.0},
+                            {"ticks":1,"value":4.0}
+                        ]}}
+                    }"#
+                    .to_vec(),
+                ),
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:all_same",
+                    br#"{
+                        "clock":"example:clock",
+                        "tracks":{"minecraft:visual/cloud_height":{"keyframes":[
+                            {"ticks":0,"value":1.0},
+                            {"ticks":0,"value":2.0},
+                            {"ticks":0,"value":3.0}
+                        ]}}
+                    }"#
+                    .to_vec(),
+                ),
+            ],
+        );
+
+        assert!(store.synchronized_timeline_definition(0).is_ok());
+        assert!(store.synchronized_timeline_definition(1).is_err());
+    }
+
+    #[test]
     fn samples_float_tracks_by_clock_period_and_dimension_layer_order() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
@@ -1116,6 +1414,96 @@ mod tests {
         ];
         let reordered = store.sampled_client_environment_attributes().unwrap();
         assert_eq!(reordered.sky_light_factor, Some(0.5));
+    }
+
+    #[test]
+    fn validates_then_filters_non_syncable_tracks() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            WORLD_CLOCK_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:clock",
+                b"{}".to_vec(),
+            )],
+        );
+        store.record_registry_entries(
+            TIMELINE_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:valid",
+                    br#"{
+                        "clock":"example:clock",
+                        "tracks":{
+                            "minecraft:gameplay/villager_activity":{
+                                "keyframes":[{"ticks":0,"value":"idle"}]
+                            },
+                            "minecraft:visual/sky_light_factor":{
+                                "keyframes":[{"ticks":0,"value":0.5}]
+                            }
+                        }
+                    }"#
+                    .to_vec(),
+                ),
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:invalid",
+                    br#"{
+                        "clock":"example:clock",
+                        "tracks":{
+                            "minecraft:gameplay/villager_activity":{
+                                "keyframes":[{"ticks":0,"value":"example:unknown"}]
+                            }
+                        }
+                    }"#
+                    .to_vec(),
+                ),
+            ],
+        );
+
+        let valid = store.synchronized_timeline_definition(0).unwrap().unwrap();
+        assert_eq!(valid.tracks.len(), 1);
+        assert_eq!(
+            valid.tracks[0].attribute,
+            "minecraft:visual/sky_light_factor"
+        );
+        assert!(store.synchronized_timeline_definition(1).is_err());
+    }
+
+    #[test]
+    fn sanitizes_only_after_all_timeline_layers() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            WORLD_CLOCK_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:clock",
+                b"{}".to_vec(),
+            )],
+        );
+        store.record_registry_entries(
+            TIMELINE_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:subtract",
+                br#"{
+                    "clock":"example:clock",
+                    "tracks":{
+                        "minecraft:visual/sky_light_factor":{
+                            "modifier":"subtract",
+                            "keyframes":[{"ticks":0,"value":1.0}]
+                        }
+                    }
+                }"#
+                .to_vec(),
+            )],
+        );
+        let mut level = test_level_info(vec!["example:subtract".to_string()]);
+        level.environment_attributes.sky_light_factor = Some(2.0);
+        store.level = Some(level);
+
+        let sampled = store.sampled_client_environment_attributes().unwrap();
+        assert_eq!(sampled.sky_light_factor, Some(1.0));
     }
 
     fn network_timeline_nbt(clock: &str) -> Vec<u8> {

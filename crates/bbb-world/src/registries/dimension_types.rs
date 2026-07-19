@@ -5,8 +5,9 @@ use crate::{
 };
 
 use super::{
-    decode_client_environment_attributes, normalize_codec_identifier, ClientEnvironmentAttributes,
-    EnvironmentAttributeProjectionError, TIMELINE_REGISTRY,
+    decode_client_environment_attributes,
+    environment_attributes::validate_client_environment_references, normalize_codec_identifier,
+    ClientEnvironmentAttributes, EnvironmentAttributeProjectionError, TIMELINE_REGISTRY,
 };
 
 pub const DIMENSION_TYPE_REGISTRY: &str = "minecraft:dimension_type";
@@ -31,6 +32,37 @@ pub(crate) fn dimension_type_client_projection_from_registry(
     registry_access: FrozenRegistryAccess<'_>,
 ) -> Option<DimensionTypeClientProjection> {
     dimension_type_client_projection(&entry?.element_data()?.value, registry_access)
+}
+
+pub(super) fn decode_dimension_type_client_projection(
+    resource_id: &str,
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<DimensionTypeClientProjection, String> {
+    let NbtSummaryValue::Compound(fields) = value else {
+        return Err(format!("{resource_id} <root>: expected compound"));
+    };
+    let mut projection = dimension_type_client_projection(value, registry_access)
+        .ok_or_else(|| format!("{resource_id} <root>: invalid dimension type shape"))?;
+    if let Some(error) = projection.environment_error.take() {
+        return Err(format!("{resource_id} attributes.{error}"));
+    }
+    if let Some(error) = projection.timeline_error.take() {
+        return Err(format!("{resource_id} timelines: {error}"));
+    }
+    if field(fields, "attributes")
+        .is_some_and(|value| !matches!(value, NbtSummaryValue::Compound(_)))
+    {
+        return Err(format!("{resource_id} attributes: expected compound"));
+    }
+    validate_client_environment_references(&projection.environment_attributes, registry_access)
+        .map_err(|error| format!("{resource_id} attributes: {error}"))?;
+    if let Some(clock) = &projection.default_clock_resource_id {
+        registry_access
+            .require_entry_by_resource_id(super::WORLD_CLOCK_REGISTRY, clock)
+            .map_err(|error| format!("{resource_id} default_clock: {error}"))?;
+    }
+    Ok(projection)
 }
 
 fn dimension_type_client_projection(

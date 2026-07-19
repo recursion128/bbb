@@ -1677,6 +1677,314 @@ fn registered_typed_codec_failure_rejects_candidate_atomically() {
 }
 
 #[test]
+fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:world_clock",
+        0,
+        vec![
+            RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:unused_clock",
+                b"{}".to_vec(),
+            ),
+            RegistryPacketEntry::with_known_pack_data_for_test("example:clock", b"{}".to_vec()),
+        ],
+    );
+    store.record_registry_entries(
+        "minecraft:sound_event",
+        0,
+        vec![
+            RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:unused_sound",
+                br#"{"sound_id":"example:unused"}"#.to_vec(),
+            ),
+            RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:music",
+                br#"{"sound_id":"example:music"}"#.to_vec(),
+            ),
+        ],
+    );
+    store.record_registry_entries(
+        "minecraft:timeline",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:environment",
+            br##"{
+                "clock":"example:clock",
+                "period_ticks":20,
+                "tracks":{
+                    "minecraft:visual/cloud_height":{
+                        "modifier":"add",
+                        "keyframes":[{"ticks":0,"value":7.5}]
+                    },
+                    "minecraft:gameplay/fast_lava":{
+                        "modifier":"or",
+                        "keyframes":[{"ticks":0,"value":true}]
+                    }
+                }
+            }"##
+            .to_vec(),
+        )],
+    );
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:dimension",
+            br##"{
+                "attributes":{
+                    "minecraft:visual/cloud_height":{
+                        "modifier":"multiply",
+                        "argument":0.5
+                    },
+                    "minecraft:gameplay/piglins_zombify":false,
+                    "minecraft:audio/background_music":{
+                        "default":{
+                            "sound":"example:music",
+                            "min_delay":10,
+                            "max_delay":20
+                        },
+                        "underwater":{
+                            "sound":{
+                                "sound_id":"example:direct_music",
+                                "range":12.0
+                            },
+                            "min_delay":30,
+                            "max_delay":40,
+                            "replace_current_music":true
+                        }
+                    }
+                },
+                "timelines":"example:environment",
+                "default_clock":"example:clock"
+            }"##
+            .to_vec(),
+        )],
+    );
+
+    store.finish_registry_configuration().unwrap();
+
+    assert_eq!(
+        store
+            .synchronized_world_clock_definition(1)
+            .unwrap()
+            .unwrap()
+            .resource_id,
+        "example:clock"
+    );
+    let timeline = store.synchronized_timeline_definition(0).unwrap().unwrap();
+    assert_eq!(timeline.clock.holder_id, 1);
+    assert_eq!(timeline.tracks.len(), 2);
+    let dimension = store
+        .registries()
+        .dimension_type_client_projection(0)
+        .unwrap();
+    assert_eq!(dimension.timeline_resource_ids, ["example:environment"]);
+    assert_eq!(dimension.environment_attributes.cloud_height, Some(96.165));
+    assert_eq!(
+        dimension.environment_attributes.piglins_zombify,
+        Some(false)
+    );
+    let background = dimension
+        .environment_attributes
+        .background_music
+        .as_ref()
+        .unwrap();
+    assert_eq!(
+        background.default.as_ref().map(|music| &music.sound),
+        Some(&crate::ClientSoundEventHolder::Reference {
+            resource_id: "example:music".to_string(),
+        })
+    );
+    assert_eq!(
+        background.underwater.as_ref().map(|music| &music.sound),
+        Some(&crate::ClientSoundEventHolder::Direct {
+            sound_id: "example:direct_music".to_string(),
+            range_bits: Some(12.0_f32.to_bits()),
+        })
+    );
+
+    store.level = Some(crate::WorldLevelInfo {
+        dimension: "example:dimension".to_string(),
+        dimension_type_id: 0,
+        dimension_type_name: Some("example:dimension".to_string()),
+        biome_zoom_seed: 0,
+        default_clock_resource_id: Some("example:clock".to_string()),
+        timeline_resource_ids: dimension.timeline_resource_ids,
+        has_sky_light: true,
+        has_ceiling: false,
+        cardinal_lighting: crate::WorldCardinalLighting::Default,
+        skybox: crate::WorldSkybox::Overworld,
+        ambient_light: 0.0,
+        environment_attributes: dimension.environment_attributes,
+        last_death_location: None,
+        sea_level: 63,
+        is_debug: false,
+        is_flat: false,
+    });
+    store.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 7,
+        clock_updates: vec![bbb_protocol::packets::ClockUpdate {
+            clock_id: 1,
+            total_ticks: 7,
+            partial_tick: 0.0,
+            rate: 1.0,
+        }],
+    });
+    let sampled = store.sampled_client_environment_attributes().unwrap();
+    assert_eq!(sampled.cloud_height, Some(103.665));
+    assert_eq!(sampled.fast_lava, Some(true));
+    assert_eq!(sampled.piglins_zombify, Some(false));
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:world_clock",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:replacement_clock",
+            b"{}".to_vec(),
+        )],
+    );
+    store.record_registry_entries("minecraft:timeline", 0, Vec::new());
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:replacement_dimension",
+            br#"{
+                "attributes":{
+                    "minecraft:visual/cloud_height":40.0,
+                    "minecraft:gameplay/fast_lava":false
+                }
+            }"#
+            .to_vec(),
+        )],
+    );
+    store.finish_registry_configuration().unwrap();
+
+    let refreshed = store.sampled_client_environment_attributes().unwrap();
+    assert_eq!(refreshed.cloud_height, Some(40.0));
+    assert_eq!(refreshed.fast_lava, Some(false));
+}
+
+#[test]
+fn malformed_timeline_candidate_keeps_previous_typed_generation() {
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:world_clock",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:clock",
+            b"{}".to_vec(),
+        )],
+    );
+    store.record_registry_entries(
+        "minecraft:timeline",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:valid",
+            br#"{"clock":"example:clock"}"#.to_vec(),
+        )],
+    );
+    store.finish_registry_configuration().unwrap();
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:world_clock",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:clock",
+            b"{}".to_vec(),
+        )],
+    );
+    store.record_registry_entries(
+        "minecraft:timeline",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid",
+            br#"{
+                "clock":"example:clock",
+                "tracks":{
+                    "minecraft:gameplay/fast_lava":{
+                        "modifier":"multiply",
+                        "keyframes":[{"ticks":0,"value":1.0}]
+                    }
+                }
+            }"#
+            .to_vec(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:timeline");
+    assert_eq!(error.validator, "Timeline.NETWORK_CODEC");
+    assert!(error.message.contains("modifier is not allowed"));
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store
+            .synchronized_timeline_definition(0)
+            .unwrap()
+            .unwrap()
+            .resource_id,
+        "example:valid"
+    );
+}
+
+#[test]
+fn unknown_environment_sound_reference_rejects_candidate_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_dimension")],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_dimension",
+            br#"{
+                "attributes":{
+                    "minecraft:audio/background_music":{
+                        "default":{
+                            "sound":"example:missing_sound",
+                            "min_delay":10,
+                            "max_delay":20
+                        }
+                    }
+                }
+            }"#
+            .to_vec(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:dimension_type");
+    assert_eq!(error.validator, "DimensionType.CLIENT_PROJECTION");
+    assert!(error
+        .message
+        .contains("missing minecraft:sound_event resource example:missing_sound"));
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:dimension_type", 0),
+        Some("example:old_dimension")
+    );
+}
+
+#[test]
 fn selected_known_pack_missing_stub_data_rejects_configuration_atomically() {
     let manager = test_known_packs_manager("missing");
     let core = core_known_pack();

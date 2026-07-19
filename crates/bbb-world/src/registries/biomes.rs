@@ -74,9 +74,12 @@ fn decode_biome_client_projection_value(
         Some(_) => return Err(error("effects.grass_color_modifier", "unknown enum value")),
     };
     let attributes = optional_compound(fields, "attributes")?
-        .map(decode_client_environment_attributes)
-        .transpose()
-        .map_err(|err| error(format!("attributes.{}", err.field), err.reason))?
+        .map(|entries| {
+            reject_unowned_biome_attribute_modifiers(entries)?;
+            decode_client_environment_attributes(entries)
+                .map_err(|err| error(format!("attributes.{}", err.field), err.reason))
+        })
+        .transpose()?
         .unwrap_or_default();
 
     Ok(BiomeClientProjection {
@@ -94,6 +97,23 @@ fn decode_biome_client_projection_value(
         water_fog_color: attributes.water_fog_color,
         water_fog_end_distance: attributes.water_fog_end_distance,
     })
+}
+
+fn reject_unowned_biome_attribute_modifiers(
+    entries: &[NbtSummaryEntry],
+) -> Result<(), BiomeProjectionError> {
+    for entry in entries {
+        if matches!(
+            &entry.value,
+            NbtSummaryValue::Compound(fields) if field_value(fields, "modifier").is_some()
+        ) {
+            return Err(error(
+                format!("attributes.{}", entry.name),
+                "attribute modifiers are not yet supported",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn required_bool(entries: &[NbtSummaryEntry], field: &str) -> Result<bool, BiomeProjectionError> {

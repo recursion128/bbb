@@ -37,6 +37,9 @@
 ^crates/bbb-world/src/registries/sound_variants[.]rs$	unsupported sound-variant registry
 # Timeline codecs reject unknown easing names with a bounded field diagnostic.
 ^crates/bbb-world/src/registries/timelines[.]rs$	unsupported easing
+# The synchronized environment codec rejects any future syncable attribute until
+# its value type and modifier semantics have an owned typed projection.
+^crates/bbb-world/src/registries/environment_attributes[.]rs$	unsupported syncable attribute
 
 # goal.md explicitly classifies tests as non-P0 evidence/fixtures.
 ^crates/.*/tests[.]rs$	residual|fallback|unsupported
@@ -64,6 +67,10 @@
 ^crates/bbb-native/src/particle_runtime(/.*)?[.]rs$	fallback
 ^crates/bbb-native/src/(runtime|input|item_frames|banner_scene|debug_entries|main)[.]rs$	fallback
 ^crates/bbb-native/src/input/.*[.]rs$	fallback
+# Environment extraction uses this flag only to preserve checked-in vanilla
+# defaults when no synchronized dimension registry exists; remote registries use
+# their typed revision and never enter the built-in fallback branch.
+^crates/bbb-native/src/runtime/render_extract[.]rs$	uses_builtin_dimension_fallback
 # Simulation input uses the existing bounded fixed-width text fallback only
 # before the immutable renderer glyph projection has loaded; it is layout
 # compatibility, not a renderer submission or canonical gameplay fallback.

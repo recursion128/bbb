@@ -5329,6 +5329,44 @@ fn sky_environment_projects_vanilla_moon_phase_cycle() {
 }
 
 #[test]
+fn sky_and_cloud_environment_use_dynamic_dimension_attributes() {
+    let world = world_with_dynamic_sky_environment();
+
+    let sky = sky_environment_for_world_at_camera(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        false,
+    );
+    assert_close4(
+        sky.sunrise_sunset_color,
+        [
+            0x10 as f32 / 255.0,
+            0x20 as f32 / 255.0,
+            0x30 as f32 / 255.0,
+            0x40 as f32 / 255.0,
+        ],
+    );
+    assert!((sky.sun_angle_radians - 30.0_f32.to_radians()).abs() < 1e-6);
+    assert!((sky.moon_angle_radians - 60.0_f32.to_radians()).abs() < 1e-6);
+    assert!((sky.star_angle_radians - 90.0_f32.to_radians()).abs() < 1e-6);
+    assert_eq!(sky.moon_phase, SkyMoonPhase::NewMoon);
+    assert_eq!(sky.star_brightness, 0.75);
+
+    let clouds = cloud_environment_for_world(&world);
+    assert_close4(
+        clouds.color,
+        [
+            0x50 as f32 / 255.0,
+            0x60 as f32 / 255.0,
+            0x70 as f32 / 255.0,
+            0x80 as f32 / 255.0,
+        ],
+    );
+    assert_eq!(clouds.height, 144.5);
+}
+
+#[test]
 fn sky_environment_projects_vanilla_star_brightness_with_weather_layers() {
     let day_time = 13_228;
     let mut clear = world_with_dimension(0, "minecraft:overworld");
@@ -6532,6 +6570,43 @@ fn world_with_custom_dimension_environment() -> WorldStore {
     world
 }
 
+fn world_with_dynamic_sky_environment() -> WorldStore {
+    let mut world = WorldStore::with_dimension(WorldDimension::default());
+    world.record_registry_entries(
+        bbb_world::DIMENSION_TYPE_REGISTRY,
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:custom_sky",
+            dynamic_sky_dimension_environment_nbt(),
+        )],
+    );
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 12345,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    });
+    world
+}
+
 fn world_with_custom_dimension_timeline() -> WorldStore {
     let mut world = WorldStore::with_dimension(WorldDimension::default());
     world.record_registry_entries(
@@ -6616,6 +6691,34 @@ fn custom_dimension_environment_nbt() -> Vec<u8> {
         ("minecraft:visual/water_fog_start_distance", -4.0),
         ("minecraft:visual/water_fog_end_distance", 48.0),
         ("minecraft:visual/sky_light_factor", 0.25),
+    ] {
+        out.push(5);
+        test_nbt_utf(&mut out, name);
+        out.extend_from_slice(&value.to_bits().to_be_bytes());
+    }
+    out.push(0);
+    out.push(0);
+    out
+}
+
+fn dynamic_sky_dimension_environment_nbt() -> Vec<u8> {
+    let mut out = vec![10, 10];
+    test_nbt_utf(&mut out, "attributes");
+    for (name, value) in [
+        ("minecraft:visual/sunrise_sunset_color", "#40102030"),
+        ("minecraft:visual/cloud_color", "#80506070"),
+        ("minecraft:visual/moon_phase", "new_moon"),
+    ] {
+        out.push(8);
+        test_nbt_utf(&mut out, name);
+        test_nbt_utf(&mut out, value);
+    }
+    for (name, value) in [
+        ("minecraft:visual/cloud_height", 144.5_f32),
+        ("minecraft:visual/sun_angle", 30.0),
+        ("minecraft:visual/moon_angle", 60.0),
+        ("minecraft:visual/star_angle", 90.0),
+        ("minecraft:visual/star_brightness", 0.75),
     ] {
         out.push(5);
         test_nbt_utf(&mut out, name);
@@ -10051,6 +10154,8 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
                 Some(bbb_item_model::ItemModelTimeContext {
                     game_time: day_time,
                     day_time,
+                    sun_angle_degrees: None,
+                    moon_phase_index: None,
                 }),
                 None,
             )

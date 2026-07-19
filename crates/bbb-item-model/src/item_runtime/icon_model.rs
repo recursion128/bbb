@@ -364,16 +364,16 @@ impl TimeSource {
         let Some(time) = ctx.time_context else {
             return 0.0;
         };
-        let target = match self {
+        let random_target = match self {
             Self::Random => state_id
                 .and_then(|state| {
                     ctx.time_random
                         .map(|random| random(ctx.stateful_model_id, state))
                 })
                 .unwrap_or(0.0),
-            Self::Daytime => overworld_sun_angle(time.day_time) / 360.0,
-            Self::MoonPhase => moon_phase_index(time.day_time) as f32 / 8.0,
+            _ => 0.0,
         };
+        let target = self.target(time, random_target);
         if let (true, Some(state)) = (wobble, state_id) {
             ctx.time_wobbler
                 .map(|wobbler| wobbler(ctx.stateful_model_id, state, self, time.game_time, target))
@@ -381,6 +381,51 @@ impl TimeSource {
         } else {
             target
         }
+    }
+
+    fn target(self, time: ItemModelTimeContext, random_target: f32) -> f32 {
+        match self {
+            Self::Random => random_target,
+            Self::Daytime => {
+                time.sun_angle_degrees
+                    .unwrap_or_else(|| overworld_sun_angle(time.day_time))
+                    / 360.0
+            }
+            Self::MoonPhase => {
+                time.moon_phase_index
+                    .map(f32::from)
+                    .unwrap_or_else(|| moon_phase_index(time.day_time) as f32)
+                    / 8.0
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod time_source_tests {
+    use super::*;
+
+    #[test]
+    fn environment_angles_and_moon_phase_override_overworld_time_fallbacks() {
+        let time = ItemModelTimeContext {
+            game_time: 5,
+            day_time: 0,
+            sun_angle_degrees: Some(90.0),
+            moon_phase_index: Some(6),
+        };
+        assert_eq!(TimeSource::Daytime.target(time, 0.0), 0.25);
+        assert_eq!(TimeSource::MoonPhase.target(time, 0.0), 0.75);
+
+        let fallback = ItemModelTimeContext {
+            sun_angle_degrees: None,
+            moon_phase_index: None,
+            ..time
+        };
+        assert_eq!(
+            TimeSource::Daytime.target(fallback, 0.0),
+            overworld_sun_angle(0) / 360.0
+        );
+        assert_eq!(TimeSource::MoonPhase.target(fallback, 0.0), 0.0);
     }
 }
 

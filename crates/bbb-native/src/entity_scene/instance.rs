@@ -995,11 +995,20 @@ pub(super) fn entity_shaking(
     piglins_zombify && !entity_data_bool(data_values, data_id, default)
 }
 
-/// Vanilla `EnvironmentAttributes.PIGLINS_ZOMBIFY` defaults to `true`; the built-in Nether
-/// dimension type explicitly sets it to `false`. bbb currently projects built-in dimension
-/// profiles by id/name/type-name, so custom dimension attribute maps stay a later resource-registry
-/// parity item.
 pub(super) fn world_piglins_zombify(world: &WorldStore) -> bool {
+    if let Some(value) = world
+        .sampled_client_environment_attributes()
+        .ok()
+        .and_then(|attributes| attributes.piglins_zombify)
+    {
+        return value;
+    }
+    if world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_some()
+    {
+        return true;
+    }
     let Some(level) = world.level_info() else {
         return true;
     };

@@ -4,10 +4,15 @@ use bbb_protocol::registry_data_types::{
     synchronized_registry_data_type, VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES,
 };
 
+use super::dimension_types::{decode_dimension_type_client_projection, DIMENSION_TYPE_REGISTRY};
 use super::element_value::decode_known_pack_element;
 use super::state::PendingRegistryCollection;
+use super::state::RegistryTypedValues;
 use super::store::RegistryValidationError;
-use super::timelines::{validate_world_clock_value, WORLD_CLOCK_REGISTRY};
+use super::timelines::{
+    decode_timeline_definition, validate_world_clock_value, TimelineDefinition,
+    WorldClockDefinition, TIMELINE_REGISTRY, WORLD_CLOCK_REGISTRY,
+};
 use super::{RegistryContentState, RegistryPacketEntry, RegistrySet, RegistryTagState};
 
 /// One completely prepared replacement for the frozen session registry view.
@@ -59,10 +64,10 @@ impl RegistryRevisionCandidate {
         })?;
         materialize_pending_registry_tags(active, &mut pending);
 
-        let registries =
+        let mut registries =
             prepare_candidate_registry_set(active, pending, replaces_synchronized_contents);
         if replaces_synchronized_contents {
-            validate_registered_typed_projections(&registries).map_err(|error| {
+            build_registered_typed_projections(&mut registries).map_err(|error| {
                 RegistryCandidateError {
                     stage: "registry_configuration_typed_values",
                     error,
@@ -99,6 +104,7 @@ fn prepare_candidate_registry_set(
         }
         registries.registries = pending.registries;
         registries.contents = pending.contents;
+        registries.typed = RegistryTypedValues::default();
         registries.revision.contents = registries.revision.contents.saturating_add(1);
     }
     for registry in pending.tags.keys() {
@@ -117,23 +123,127 @@ fn prepare_candidate_registry_set(
 /// Dispatches the typed codecs that already participate in the atomic
 /// candidate. Later family phases extend this match rather than adding lazy
 /// validation at consumer call sites.
-fn validate_registered_typed_projections(
-    candidate: &RegistrySet,
+fn build_registered_typed_projections(
+    candidate: &mut RegistrySet,
 ) -> Result<(), RegistryValidationError> {
-    let Some(contents) = candidate.contents.get(WORLD_CLOCK_REGISTRY) else {
-        return Ok(());
-    };
-    for entry in &contents.entries {
-        let Some(data) = entry.element_data() else {
-            continue;
-        };
-        validate_world_clock_value(&entry.id, &data.value).map_err(|error| {
-            RegistryValidationError {
-                registry: WORLD_CLOCK_REGISTRY.to_string(),
-                validator: "WorldClock.DIRECT_CODEC".to_string(),
+    let world_clocks = candidate
+        .contents
+        .get(WORLD_CLOCK_REGISTRY)
+        .into_iter()
+        .flat_map(|contents| &contents.entries)
+        .map(|entry| {
+            let data = required_typed_element_data(
+                entry,
+                WORLD_CLOCK_REGISTRY,
+                "WorldClock.DIRECT_CODEC",
+            )?;
+            validate_world_clock_value(&entry.id, &data.value).map_err(|error| {
+                RegistryValidationError {
+                    registry: WORLD_CLOCK_REGISTRY.to_string(),
+                    validator: "WorldClock.DIRECT_CODEC".to_string(),
+                    message: error.to_string(),
+                }
+            })?;
+            Ok((
+                entry.id.clone(),
+                WorldClockDefinition {
+                    resource_id: entry.id.clone(),
+                    source: super::RegistryEntrySource::Server,
+                    element_source: Some(data.source),
+                },
+            ))
+        })
+        .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
+    candidate.typed.world_clocks = world_clocks;
+
+    let timelines = candidate
+        .contents
+        .get(TIMELINE_REGISTRY)
+        .into_iter()
+        .flat_map(|contents| &contents.entries)
+        .map(|entry| {
+            let data =
+                required_typed_element_data(entry, TIMELINE_REGISTRY, "Timeline.NETWORK_CODEC")?;
+            decode_timeline_definition(
+                &entry.id,
+                data.source,
+                &data.value,
+                candidate.frozen_access(),
+            )
+            .map(|definition| (entry.id.clone(), definition))
+            .map_err(|error| RegistryValidationError {
+                registry: TIMELINE_REGISTRY.to_string(),
+                validator: "Timeline.NETWORK_CODEC".to_string(),
                 message: error.to_string(),
+            })
+        })
+        .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
+    validate_timeline_time_markers(&timelines)?;
+    candidate.typed.timelines = timelines;
+
+    let dimension_types = candidate
+        .contents
+        .get(DIMENSION_TYPE_REGISTRY)
+        .into_iter()
+        .flat_map(|contents| &contents.entries)
+        .map(|entry| {
+            let data = required_typed_element_data(
+                entry,
+                DIMENSION_TYPE_REGISTRY,
+                "DimensionType.CLIENT_PROJECTION",
+            )?;
+            decode_dimension_type_client_projection(
+                &entry.id,
+                &data.value,
+                candidate.frozen_access(),
+            )
+            .map(|projection| (entry.id.clone(), projection))
+            .map_err(|message| RegistryValidationError {
+                registry: DIMENSION_TYPE_REGISTRY.to_string(),
+                validator: "DimensionType.CLIENT_PROJECTION".to_string(),
+                message,
+            })
+        })
+        .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
+    candidate.typed.dimension_types = dimension_types;
+    Ok(())
+}
+
+fn required_typed_element_data<'a>(
+    entry: &'a RegistryPacketEntry,
+    registry: &str,
+    validator: &str,
+) -> Result<&'a super::RegistryElementData, RegistryValidationError> {
+    entry.element_data().ok_or_else(|| RegistryValidationError {
+        registry: registry.to_string(),
+        validator: validator.to_string(),
+        message: format!(
+            "{} has neither network element data nor selected known-pack data",
+            entry.id
+        ),
+    })
+}
+
+fn validate_timeline_time_markers(
+    timelines: &BTreeMap<String, TimelineDefinition>,
+) -> Result<(), RegistryValidationError> {
+    let mut markers_by_clock = BTreeMap::<(&str, &str), &str>::new();
+    for timeline in timelines.values() {
+        for marker in &timeline.time_markers {
+            if let Some(previous) = markers_by_clock.insert(
+                (&timeline.clock.resource_id, &marker.resource_id),
+                &timeline.resource_id,
+            ) {
+                return Err(RegistryValidationError {
+                    registry: TIMELINE_REGISTRY.to_string(),
+                    validator: "Timeline.validateRegistry".to_string(),
+                    message: format!(
+                        "time marker {} is defined by both {previous} and {} for clock {}",
+                        marker.resource_id, timeline.resource_id, timeline.clock.resource_id
+                    ),
+                });
             }
-        })?;
+        }
     }
     Ok(())
 }

@@ -19491,3 +19491,20 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   发布，非 compound 值在配置切换前回滚。完整 `bbb-world` 1727、`bbb-net` 249、`bbb-native`
   2144 项回归及三 crate non-test check 通过；后续 phase 只沿同一 dispatcher 注册 timeline、
   environment、sound/game-test 与其余既有消费族，不增加第二 commit path。
+
+## 2026-07-18：动态 RegistryAccess typed revision phase 2 environment attributes and timelines
+
+- [x] 对照本地 vanilla 26.1 `EnvironmentAttributes`、`AttributeTypes`、各 modifier library、
+  `EnvironmentAttributeMap.NETWORK_CODEC`、`Timeline.NETWORK_CODEC`、`KeyframeTrackSampler` 与
+  `EasingType`，candidate 现在一次性物化全部同步 visual/audio/gameplay 属性、允许的 direct/
+  modifier argument、完整 easing/period/keyframe/time-marker 结构和 session holder 引用；非同步
+  属性/track 先按 direct codec 校验再过滤，任一 malformed value/reference/跨 timeline marker 冲突
+  都在唯一发布点前回滚。
+- [x] typed revision 保留 clock/timeline/dimension 同代 holder identity，并按 dimension 声明顺序、
+  每条 timeline 自己的 clock total ticks 与原版 keyframe wrapping/easing 分层采样；属性 range 只在
+  dimension→timeline 全部层完成后清洗。同一 Play session registry replacement 会从新 revision
+  重新取得 dimension/timeline 投影，不复用旧 `WorldLevelInfo` 缓存。
+- [x] 现有 fog/lightmap、sky/celestial/cloud、item-model daytime/moon-phase、fast-lava movement、
+  water-evaporation/default-dripstone 类型与 piglin-zombification 消费者改为读取冻结采样；无权威
+  registry 的 fixture/offline 路径继续使用既有 builtin fallback。完整维度标量 codec、biome/weather
+  positional 层、环境音/粒子运行系统和复杂 dripstone particle option provider 仍由缺口账本跟踪。

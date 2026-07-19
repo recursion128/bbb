@@ -55,16 +55,19 @@ pub use damage_types::{
     DamageTypeDeathMessageType, DamageTypeEffects, DamageTypePresentation,
     DamageTypeProjectionError, DamageTypeScaling, DAMAGE_TYPE_REGISTRY,
 };
-pub(crate) use dimension_types::dimension_type_client_projection_from_registry;
 pub use dimension_types::DIMENSION_TYPE_REGISTRY;
 pub use element_value::{RegistryElementData, RegistryElementDecodeError, RegistryElementSource};
 pub use enchantments::{
     EnchantmentAttributeModifier, EnchantmentTooltipDefinition, VanillaEnchantmentIdentity,
     VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
-pub use environment_attributes::ClientEnvironmentAttributes;
 pub(crate) use environment_attributes::{
     decode_client_environment_attributes, EnvironmentAttributeProjectionError,
+};
+pub use environment_attributes::{
+    ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle, ClientAmbientSounds,
+    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase, ClientMusic,
+    ClientParticleOptions, ClientSoundEventHolder,
 };
 pub use game_tests::{
     GameTestInstanceDefinition, GameTestInstanceKind, GameTestRegistryProjectionError,

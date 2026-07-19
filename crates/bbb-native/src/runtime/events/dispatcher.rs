@@ -1569,6 +1569,31 @@ fn block_pos_above(pos: bbb_world::BlockPos) -> Option<bbb_world::BlockPos> {
 }
 
 fn default_dripstone_drip_particle(world: &WorldStore) -> LevelEventDripstoneDripParticle {
+    if let Some(particle) = world
+        .sampled_client_environment_attributes()
+        .ok()
+        .and_then(|attributes| attributes.default_dripstone_particle)
+    {
+        if particle.resource_id == "minecraft:dripping_dripstone_lava" {
+            return LevelEventDripstoneDripParticle::Lava;
+        }
+        if particle.resource_id == "minecraft:dripping_dripstone_water" {
+            return LevelEventDripstoneDripParticle::Water;
+        }
+        if let Some(particle_type_id) =
+            bbb_protocol::particle_types::vanilla_particle_type_id_for_resource_id(
+                &particle.resource_id,
+            )
+        {
+            return LevelEventDripstoneDripParticle::Other(particle_type_id);
+        }
+    }
+    if world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_some()
+    {
+        return LevelEventDripstoneDripParticle::Water;
+    }
     if level_water_evaporates(world) {
         LevelEventDripstoneDripParticle::Lava
     } else {
@@ -1577,6 +1602,19 @@ fn default_dripstone_drip_particle(world: &WorldStore) -> LevelEventDripstoneDri
 }
 
 fn level_water_evaporates(world: &WorldStore) -> bool {
+    if let Some(value) = world
+        .sampled_client_environment_attributes()
+        .ok()
+        .and_then(|attributes| attributes.water_evaporates)
+    {
+        return value;
+    }
+    if world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_some()
+    {
+        return false;
+    }
     world.level_info().is_some_and(|level| {
         level.dimension_type_id == 1
             || level.dimension == "minecraft:the_nether"

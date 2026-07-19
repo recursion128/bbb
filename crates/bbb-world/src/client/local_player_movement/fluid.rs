@@ -318,10 +318,23 @@ fn bubble_column_has_open_above(world: &WorldStore, pos: BlockPos) -> bool {
 }
 
 fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {
-    if world.level_info().is_some_and(|level| {
-        level.dimension == "minecraft:the_nether"
-            || level.dimension_type_name.as_deref() == Some("minecraft:the_nether")
-    }) {
+    let fast_lava = world
+        .sampled_client_environment_attributes()
+        .ok()
+        .and_then(|attributes| attributes.fast_lava)
+        .unwrap_or_else(|| {
+            if world
+                .registry_content(crate::DIMENSION_TYPE_REGISTRY)
+                .is_some()
+            {
+                return false;
+            }
+            world.level_info().is_some_and(|level| {
+                level.dimension == "minecraft:the_nether"
+                    || level.dimension_type_name.as_deref() == Some("minecraft:the_nether")
+            })
+        });
+    if fast_lava {
         LOCAL_INPUT_FAST_LAVA_CURRENT_PUSH_PER_TICK
     } else {
         LOCAL_INPUT_LAVA_CURRENT_PUSH_PER_TICK

@@ -10,5 +10,9 @@ pub use crate::level::{
     WorldGameplayState, WorldLevelInfo, WorldLevelLoadPhase, WorldLevelLoadState, WorldSkybox,
     WorldTickingState, WorldTimeState, WorldWeatherState,
 };
-pub use crate::registries::ClientEnvironmentAttributes;
+pub use crate::registries::{
+    ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle, ClientAmbientSounds,
+    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase, ClientMusic,
+    ClientParticleOptions, ClientSoundEventHolder,
+};
 pub use crate::store::WorldStore;

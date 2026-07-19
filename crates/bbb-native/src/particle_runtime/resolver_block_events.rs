@@ -254,6 +254,7 @@ impl ParticleCommandResolver {
             Some(LevelEventDripstoneDripParticle::Water) => {
                 VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_WATER_ID
             }
+            Some(LevelEventDripstoneDripParticle::Other(particle_type_id)) => particle_type_id,
             None => return ParticleSpawnBatch::default(),
         };
         self.simple_particle_batch(

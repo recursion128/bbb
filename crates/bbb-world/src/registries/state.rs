@@ -25,9 +25,13 @@ use serde::{Deserialize, Serialize};
 use crate::chunks::{decode_nbt_payload_summary, NbtPayloadSummary};
 
 use super::biomes::decode_biome_client_projection;
+use super::dimension_types::{
+    dimension_type_client_projection_from_registry, DimensionTypeClientProjection,
+};
 #[cfg(test)]
 use super::element_value::decode_known_pack_element;
 use super::element_value::decode_network_element;
+use super::timelines::{TimelineDefinition, WorldClockDefinition};
 use super::{
     BiomeClientProjection, BiomeProjectionError, BlockStateRegistry, RegistryElementData,
     RegistryElementDecodeError,
@@ -50,8 +54,19 @@ pub struct RegistrySet {
     pub unresolved_tag_holders: BTreeMap<String, BTreeMap<String, Vec<i32>>>,
     #[serde(skip)]
     pub block_states: BlockStateRegistry,
+    /// Typed values prepared against the same holder/tag generation as
+    /// `contents`. This is replaced only by `RegistryRevisionCandidate`.
+    #[serde(skip)]
+    pub(super) typed: RegistryTypedValues,
     #[serde(skip)]
     pub(super) pending: Option<PendingRegistryCollection>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(super) struct RegistryTypedValues {
+    pub dimension_types: BTreeMap<String, DimensionTypeClientProjection>,
+    pub timelines: BTreeMap<String, TimelineDefinition>,
+    pub world_clocks: BTreeMap<String, WorldClockDefinition>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -219,6 +234,7 @@ impl RegistrySet {
             tags: BTreeMap::new(),
             unresolved_tag_holders: BTreeMap::new(),
             block_states: BlockStateRegistry::vanilla_26_1(),
+            typed: RegistryTypedValues::default(),
             pending: None,
         }
     }
@@ -274,6 +290,22 @@ impl RegistrySet {
             return Ok(None);
         };
         decode_biome_client_projection(entry)
+    }
+
+    pub(crate) fn dimension_type_client_projection(
+        &self,
+        holder_id: i32,
+    ) -> Option<DimensionTypeClientProjection> {
+        let entry = self.entry_by_holder_id(super::DIMENSION_TYPE_REGISTRY, holder_id)?;
+        self.typed
+            .dimension_types
+            .get(&entry.id)
+            .cloned()
+            .or_else(|| {
+                // Direct insertion is retained for focused fixtures. Real
+                // configuration revisions always take the predecoded branch.
+                dimension_type_client_projection_from_registry(Some(entry), self.frozen_access())
+            })
     }
 
     pub fn resolved_entry_by_holder_id(

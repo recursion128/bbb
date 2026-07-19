@@ -198,6 +198,7 @@ pub(crate) struct TrackingEmitterParticleState {
 pub(crate) enum LevelEventDripstoneDripParticle {
     Water,
     Lava,
+    Other(i32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

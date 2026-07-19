@@ -1050,6 +1050,52 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
             .dripstone_drip_particle,
         Some(LevelEventDripstoneDripParticle::Lava)
     );
+
+    let mut custom = WorldStore::new();
+    custom.record_registry_entries(
+        bbb_world::DIMENSION_TYPE_REGISTRY,
+        0,
+        vec![bbb_world::RegistryPacketEntry::with_raw_data(
+            "example:custom",
+            default_dripstone_particle_dimension_nbt("minecraft:heart"),
+        )],
+    );
+    let mut custom_login = protocol_play_login(1);
+    custom_login.levels = vec!["minecraft:the_nether".to_string()];
+    custom_login.common_spawn_info.dimension_type_id = 0;
+    custom_login.common_spawn_info.dimension = "minecraft:the_nether".to_string();
+    custom.apply_login(&custom_login);
+    custom
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut custom, block_pos(16, -64, -32), tip_id);
+    set_test_block(&mut custom, block_pos(16, -63, -32), stone_id);
+    assert_eq!(
+        level_event_particle_context(&custom, &level_event_at(1504, 16, -64, -32))
+            .dripstone_drip_particle,
+        Some(LevelEventDripstoneDripParticle::Other(
+            bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID
+        ))
+    );
+}
+
+fn default_dripstone_particle_dimension_nbt(resource_id: &str) -> Vec<u8> {
+    let mut out = vec![10, 10];
+    write_test_nbt_string(&mut out, "attributes");
+    out.push(10);
+    write_test_nbt_string(&mut out, "minecraft:visual/default_dripstone_particle");
+    out.push(8);
+    write_test_nbt_string(&mut out, "type");
+    write_test_nbt_string(&mut out, resource_id);
+    out.push(0);
+    out.push(0);
+    out.push(0);
+    out
+}
+
+fn write_test_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
 }
 
 #[test]

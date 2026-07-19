@@ -3325,6 +3325,40 @@ fn local_player_in_nether_lava_current_uses_fast_lava_push() {
     assert_f64_near(pose.position.z, 0.507, 0.000001);
     assert_f64_near(pose.delta_movement.z, 0.0035, 0.000001);
     assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
+
+    world.record_registry_entries(
+        crate::DIMENSION_TYPE_REGISTRY,
+        0,
+        vec![crate::RegistryPacketEntry::stub("minecraft:the_nether")],
+    );
+    world
+        .level
+        .as_mut()
+        .unwrap()
+        .environment_attributes
+        .fast_lava = Some(false);
+    assert_eq!(
+        world
+            .sampled_client_environment_attributes()
+            .unwrap()
+            .fast_lava,
+        Some(false)
+    );
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.1, 0.5),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+    assert_f64_near(pose.position.z, 0.5045, 0.000001);
 }
 
 #[test]
