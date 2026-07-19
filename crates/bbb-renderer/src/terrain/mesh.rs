@@ -63,16 +63,23 @@ pub(super) fn build_chunk_mesh_with_lookup(
     mesh
 }
 
-pub(super) fn build_chunk_section_meshes_with_lookup(
+pub(super) fn build_chunk_section_subset_meshes_with_lookup(
     snapshot: &TerrainChunkSnapshot,
     lookup: &TerrainChunkLookup<'_>,
     atlas: &TerrainTextureAtlas,
     mode: TerrainMeshMode,
+    section_ys: &[i32],
 ) -> Vec<TerrainSectionMesh> {
-    (0..snapshot.height)
-        .step_by(16)
-        .map(|start_y| TerrainSectionMesh {
-            section_y: (snapshot.min_y + start_y as i32).div_euclid(16),
+    section_ys
+        .iter()
+        .copied()
+        .filter_map(|section_y| {
+            let section_min_y = section_y.checked_mul(16)?;
+            let start_y = usize::try_from(section_min_y.checked_sub(snapshot.min_y)?).ok()?;
+            (start_y < snapshot.height).then_some((section_y, start_y))
+        })
+        .map(|(section_y, start_y)| TerrainSectionMesh {
+            section_y,
             mesh: build_chunk_mesh_range_with_lookup(
                 snapshot,
                 lookup,

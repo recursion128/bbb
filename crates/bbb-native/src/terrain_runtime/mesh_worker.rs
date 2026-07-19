@@ -8,7 +8,7 @@ use std::{
 };
 
 use bbb_renderer::terrain::{
-    build_terrain_chunk_section_mesh_layers_with_atlas_and_camera, TerrainChunkSnapshot,
+    build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera, TerrainChunkSnapshot,
     TerrainSectionMeshLayers, TerrainTextureAtlas,
 };
 use bbb_world::ChunkPos;
@@ -22,6 +22,7 @@ pub(super) struct TerrainMeshJobKey {
     pub(super) mesh_generation: u64,
     pub(super) pos: ChunkPos,
     pub(super) mesh_revision: u64,
+    pub(super) section_count: usize,
 }
 
 #[derive(Debug)]
@@ -32,6 +33,7 @@ pub(super) struct TerrainMeshJob {
     pub(super) neighborhood: Vec<Arc<TerrainChunkSnapshot>>,
     pub(super) atlas: Arc<TerrainTextureAtlas>,
     pub(super) camera_position: [f32; 3],
+    pub(super) sections: Vec<(i32, u64)>,
 }
 
 #[derive(Debug)]
@@ -39,6 +41,7 @@ pub(super) struct TerrainMeshResult {
     pub(super) key: TerrainMeshJobKey,
     pub(super) camera_position: [f32; 3],
     pub(super) build_nanos: u64,
+    pub(super) sections: Vec<(i32, u64)>,
     pub(super) layers: TerrainSectionMeshLayers,
 }
 
@@ -248,16 +251,23 @@ fn run_worker(shared: Arc<TerrainMeshWorkerShared>, result_tx: SyncSender<Terrai
                 .expect("a signaled terrain mesh queue has work")
         };
         let started = Instant::now();
-        let layers = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+        let section_ys = job
+            .sections
+            .iter()
+            .map(|&(section_y, _)| section_y)
+            .collect::<Vec<_>>();
+        let layers = build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera(
             &job.target,
             job.neighborhood.iter().map(Arc::as_ref),
             &job.atlas,
             job.camera_position,
+            &section_ys,
         );
         let result = TerrainMeshResult {
             key: job.key,
             camera_position: job.camera_position,
             build_nanos: started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64,
+            sections: job.sections,
             layers,
         };
         match result_tx.try_send(result) {
@@ -282,6 +292,7 @@ mod tests {
                 mesh_generation: 2,
                 pos,
                 mesh_revision: revision,
+                section_count: 1,
             },
             priority: (1, priority, pos.x, pos.z),
             target: Arc::new(TerrainChunkSnapshot::new(
@@ -294,6 +305,7 @@ mod tests {
             neighborhood: Vec::new(),
             atlas: Arc::new(TerrainTextureAtlas::unit()),
             camera_position: [0.0, 0.0, 0.0],
+            sections: vec![(0, revision)],
         }
     }
 
@@ -323,6 +335,7 @@ mod tests {
                     mesh_generation: 2,
                     pos: far,
                     mesh_revision: 1,
+                    section_count: 1,
                 })
             }
         );
@@ -337,6 +350,7 @@ mod tests {
                     mesh_generation: 2,
                     pos: owner,
                     mesh_revision: 1,
+                    section_count: 1,
                 })
             }
         );
@@ -379,6 +393,7 @@ mod tests {
             thread::yield_now();
         };
         assert_eq!(result.key, key);
+        assert_eq!(result.sections, [(0, 7)]);
         assert_eq!(result.layers.source_sections, 1);
     }
 

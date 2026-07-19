@@ -343,7 +343,7 @@ pub struct Renderer {
     pub(super) terrain_opaque: Vec<ResidentTerrainMesh>,
     pub(super) terrain_cutout: Vec<ResidentTerrainMesh>,
     pub(super) terrain_translucent: Vec<ResidentTerrainMesh>,
-    terrain_chunk_revisions: BTreeMap<TerrainChunkMeshOwner, u64>,
+    terrain_section_revisions: BTreeMap<TerrainResidentMeshOwner, u64>,
     // Cross-section back-to-front draw order (far→near) of indices into
     // `terrain_translucent`. Vanilla draws the TRANSLUCENT layer reversed so
     // sections render far→near (ChunkSectionsToRender.java:55-56, MC 26.1); we
@@ -748,24 +748,24 @@ pub(super) struct ResidentTerrainMesh {
     translucent_sort: Option<TerrainTranslucentSortState>,
 }
 
-fn retain_resident_terrain_chunks(
+fn retain_resident_terrain_sections(
     meshes: &mut Vec<ResidentTerrainMesh>,
-    desired_chunks: &BTreeSet<TerrainChunkMeshOwner>,
+    desired_sections: &BTreeSet<TerrainResidentMeshOwner>,
 ) -> usize {
     let before = meshes.len();
     meshes.retain(|mesh| {
         mesh.owner
-            .is_some_and(|owner| desired_chunks.contains(&owner.chunk))
+            .is_some_and(|owner| desired_sections.contains(&owner))
     });
     before - meshes.len()
 }
 
-fn remove_resident_terrain_chunk(
+fn remove_resident_terrain_section(
     meshes: &mut Vec<ResidentTerrainMesh>,
-    chunk: TerrainChunkMeshOwner,
+    section: TerrainResidentMeshOwner,
 ) -> usize {
     let before = meshes.len();
-    meshes.retain(|mesh| mesh.owner.is_none_or(|owner| owner.chunk != chunk));
+    meshes.retain(|mesh| mesh.owner != Some(section));
     before - meshes.len()
 }
 
@@ -1544,7 +1544,7 @@ impl Renderer {
             terrain_opaque: Vec::new(),
             terrain_cutout: Vec::new(),
             terrain_translucent: Vec::new(),
-            terrain_chunk_revisions: BTreeMap::new(),
+            terrain_section_revisions: BTreeMap::new(),
             terrain_translucent_order: Vec::new(),
             terrain_source_sections: 0,
             terrain_bounds: None,
@@ -1989,11 +1989,16 @@ impl Renderer {
         self.counters.terrain_mesh_jobs_queued = counters.queued_jobs;
         self.counters.terrain_mesh_jobs_completed = counters.completed_jobs;
         self.counters.terrain_mesh_jobs_stale = counters.stale_jobs;
+        self.counters.terrain_mesh_sections_queued = counters.queued_sections;
+        self.counters.terrain_mesh_sections_completed = counters.completed_sections;
+        self.counters.terrain_mesh_sections_stale = counters.stale_sections;
         self.counters.terrain_mesh_queue_full = counters.queue_full;
         self.counters.terrain_mesh_queue_depth = counters.queue_depth;
         self.counters.terrain_mesh_peak_queue_depth = counters.peak_queue_depth;
         self.counters.terrain_mesh_recent_build_nanos = counters.recent_build_nanos;
         self.counters.terrain_mesh_peak_build_nanos = counters.peak_build_nanos;
+        self.counters.terrain_mesh_recent_build_sections = counters.recent_build_sections;
+        self.counters.terrain_mesh_peak_build_sections = counters.peak_build_sections;
     }
 
     pub fn set_current_post_effect_id(&mut self, id: Option<String>) {
@@ -2212,7 +2217,7 @@ impl Renderer {
         self.counters.terrain_index_upload_bytes = 0;
         self.counters.terrain_full_replacements =
             self.counters.terrain_full_replacements.saturating_add(1);
-        self.terrain_chunk_revisions.clear();
+        self.terrain_section_revisions.clear();
         self.terrain_opaque.clear();
         self.terrain_cutout.clear();
         self.terrain_translucent.clear();
@@ -2245,23 +2250,33 @@ impl Renderer {
         self.refresh_terrain_counters();
     }
 
-    /// Synchronizes renderer-owned section/layer GPU residency by stable chunk
-    /// owner and revision. Unchanged chunks retain their exact wgpu buffers;
-    /// changed chunks replace only their own non-empty section/layer buffers.
+    /// Synchronizes renderer-owned section/layer GPU residency by stable
+    /// chunk/section owner and revision. Unchanged sections retain their exact
+    /// wgpu buffers even when a sibling section in the chunk changes.
     pub fn synchronize_terrain_section_mesh_layer_refs<'a>(
         &mut self,
         source_sections: usize,
         chunks: impl IntoIterator<
             Item = (
                 TerrainChunkMeshOwner,
-                u64,
+                &'a [(i32, u64)],
                 &'a terrain::TerrainSectionMeshLayers,
                 [f32; 3],
             ),
         >,
     ) {
         let chunks: Vec<_> = chunks.into_iter().collect();
-        let desired_chunks: BTreeSet<_> = chunks.iter().map(|(owner, _, _, _)| *owner).collect();
+        let desired_sections: BTreeSet<_> = chunks
+            .iter()
+            .flat_map(|(chunk, revisions, _, _)| {
+                revisions
+                    .iter()
+                    .map(|&(section_y, _)| TerrainResidentMeshOwner {
+                        chunk: *chunk,
+                        section_y,
+                    })
+            })
+            .collect();
 
         self.terrain_source_sections = source_sections;
         self.counters.queued_sections = source_sections;
@@ -2273,70 +2288,73 @@ impl Renderer {
         self.counters.terrain_vertex_upload_bytes = 0;
         self.counters.terrain_index_upload_bytes = 0;
 
-        self.terrain_chunk_revisions
-            .retain(|owner, _| desired_chunks.contains(owner));
+        self.terrain_section_revisions
+            .retain(|owner, _| desired_sections.contains(owner));
         self.counters.terrain_removed_owners +=
-            retain_resident_terrain_chunks(&mut self.terrain_opaque, &desired_chunks);
+            retain_resident_terrain_sections(&mut self.terrain_opaque, &desired_sections);
         self.counters.terrain_removed_owners +=
-            retain_resident_terrain_chunks(&mut self.terrain_cutout, &desired_chunks);
+            retain_resident_terrain_sections(&mut self.terrain_cutout, &desired_sections);
         self.counters.terrain_removed_owners +=
-            retain_resident_terrain_chunks(&mut self.terrain_translucent, &desired_chunks);
+            retain_resident_terrain_sections(&mut self.terrain_translucent, &desired_sections);
 
-        for (chunk, revision, layers, mesh_camera_position) in chunks {
-            if self.terrain_chunk_revisions.get(&chunk) == Some(&revision) {
-                continue;
-            }
-            self.counters.terrain_changed_owners += 1;
-            self.counters.terrain_removed_owners +=
-                remove_resident_terrain_chunk(&mut self.terrain_opaque, chunk);
-            self.counters.terrain_removed_owners +=
-                remove_resident_terrain_chunk(&mut self.terrain_cutout, chunk);
-            self.counters.terrain_removed_owners +=
-                remove_resident_terrain_chunk(&mut self.terrain_translucent, chunk);
+        for (chunk, revisions, layers, mesh_camera_position) in chunks {
+            for &(section_y, revision) in revisions {
+                let owner = TerrainResidentMeshOwner { chunk, section_y };
+                if self.terrain_section_revisions.get(&owner) == Some(&revision) {
+                    continue;
+                }
+                self.counters.terrain_changed_owners += 1;
+                self.counters.terrain_removed_owners +=
+                    remove_resident_terrain_section(&mut self.terrain_opaque, owner);
+                self.counters.terrain_removed_owners +=
+                    remove_resident_terrain_section(&mut self.terrain_cutout, owner);
+                self.counters.terrain_removed_owners +=
+                    remove_resident_terrain_section(&mut self.terrain_translucent, owner);
 
-            for section in &layers.opaque {
-                let owner = TerrainResidentMeshOwner {
-                    chunk,
-                    section_y: section.section_y,
-                };
-                if let Some(resident) = self.create_resident_terrain_mesh(
-                    &section.mesh,
-                    Some(owner),
-                    Some(mesh_camera_position),
-                ) {
-                    self.terrain_opaque.push(resident);
-                    self.counters.terrain_uploaded_owners += 1;
+                if let Some(section) = layers
+                    .opaque
+                    .iter()
+                    .find(|section| section.section_y == section_y)
+                {
+                    if let Some(resident) = self.create_resident_terrain_mesh(
+                        &section.mesh,
+                        Some(owner),
+                        Some(mesh_camera_position),
+                    ) {
+                        self.terrain_opaque.push(resident);
+                        self.counters.terrain_uploaded_owners += 1;
+                    }
                 }
-            }
-            for section in &layers.cutout {
-                let owner = TerrainResidentMeshOwner {
-                    chunk,
-                    section_y: section.section_y,
-                };
-                if let Some(resident) = self.create_resident_terrain_mesh(
-                    &section.mesh,
-                    Some(owner),
-                    Some(mesh_camera_position),
-                ) {
-                    self.terrain_cutout.push(resident);
-                    self.counters.terrain_uploaded_owners += 1;
+                if let Some(section) = layers
+                    .cutout
+                    .iter()
+                    .find(|section| section.section_y == section_y)
+                {
+                    if let Some(resident) = self.create_resident_terrain_mesh(
+                        &section.mesh,
+                        Some(owner),
+                        Some(mesh_camera_position),
+                    ) {
+                        self.terrain_cutout.push(resident);
+                        self.counters.terrain_uploaded_owners += 1;
+                    }
                 }
-            }
-            for section in &layers.translucent {
-                let owner = TerrainResidentMeshOwner {
-                    chunk,
-                    section_y: section.section_y,
-                };
-                if let Some(resident) = self.create_resident_terrain_mesh(
-                    &section.mesh,
-                    Some(owner),
-                    Some(mesh_camera_position),
-                ) {
-                    self.terrain_translucent.push(resident);
-                    self.counters.terrain_uploaded_owners += 1;
+                if let Some(section) = layers
+                    .translucent
+                    .iter()
+                    .find(|section| section.section_y == section_y)
+                {
+                    if let Some(resident) = self.create_resident_terrain_mesh(
+                        &section.mesh,
+                        Some(owner),
+                        Some(mesh_camera_position),
+                    ) {
+                        self.terrain_translucent.push(resident);
+                        self.counters.terrain_uploaded_owners += 1;
+                    }
                 }
+                self.terrain_section_revisions.insert(owner, revision);
             }
-            self.terrain_chunk_revisions.insert(chunk, revision);
         }
 
         self.resort_translucent_terrain_for_camera();
@@ -2988,7 +3006,7 @@ mod tests {
     }
 
     #[test]
-    fn incremental_terrain_residency_replaces_only_changed_chunk_owners() {
+    fn incremental_terrain_residency_replaces_only_changed_section_owners() {
         let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
             return;
         };
@@ -3023,7 +3041,10 @@ mod tests {
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
             2,
-            [(west, 1, &layers, [0.0; 3]), (east, 1, &layers, [0.0; 3])],
+            [
+                (west, &[(4, 1)][..], &layers, [0.0; 3]),
+                (east, &[(4, 1)][..], &layers, [0.0; 3]),
+            ],
         );
         let one_owner_bytes = renderer.counters().upload_bytes / 2;
         assert_eq!(renderer.counters().terrain_changed_owners, 2);
@@ -3033,7 +3054,10 @@ mod tests {
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
             2,
-            [(west, 1, &layers, [0.0; 3]), (east, 1, &layers, [0.0; 3])],
+            [
+                (west, &[(4, 1)][..], &layers, [0.0; 3]),
+                (east, &[(4, 1)][..], &layers, [0.0; 3]),
+            ],
         );
         assert_eq!(renderer.counters().terrain_changed_owners, 0);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 0);
@@ -3043,7 +3067,10 @@ mod tests {
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
             2,
-            [(west, 2, &layers, [0.0; 3]), (east, 1, &layers, [0.0; 3])],
+            [
+                (west, &[(4, 2)][..], &layers, [0.0; 3]),
+                (east, &[(4, 1)][..], &layers, [0.0; 3]),
+            ],
         );
         assert_eq!(renderer.counters().terrain_changed_owners, 1);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 1);
@@ -3052,7 +3079,10 @@ mod tests {
         assert_eq!(renderer.counters().terrain_full_replacements, 0);
         assert_eq!(renderer.terrain_opaque.len(), 2);
 
-        renderer.synchronize_terrain_section_mesh_layer_refs(1, [(east, 1, &layers, [0.0; 3])]);
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            1,
+            [(east, &[(4, 1)][..], &layers, [0.0; 3])],
+        );
         assert_eq!(renderer.counters().terrain_changed_owners, 0);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 0);
         assert_eq!(renderer.counters().terrain_removed_owners, 1);
@@ -3071,12 +3101,67 @@ mod tests {
         };
         renderer.synchronize_terrain_section_mesh_layer_refs(
             1,
-            [(next_level_east, 1, &layers, [0.0; 3])],
+            [(next_level_east, &[(4, 1)][..], &layers, [0.0; 3])],
         );
         assert_eq!(renderer.counters().terrain_changed_owners, 1);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 1);
         assert_eq!(renderer.counters().terrain_removed_owners, 1);
         assert_eq!(renderer.counters().terrain_full_replacements, 0);
+    }
+
+    #[test]
+    fn incremental_terrain_residency_preserves_unchanged_sibling_section_buffers() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let layers = TerrainSectionMeshLayers {
+            opaque: [4, 5]
+                .into_iter()
+                .map(|section_y| TerrainSectionMesh {
+                    section_y,
+                    mesh: TerrainMesh {
+                        vertices: vec![
+                            terrain_vertex([0.0, section_y as f32 * 16.0, 0.0]),
+                            terrain_vertex([1.0, section_y as f32 * 16.0, 0.0]),
+                            terrain_vertex([0.0, section_y as f32 * 16.0 + 1.0, 0.0]),
+                        ],
+                        indices: vec![0, 1, 2],
+                        source_sections: 1,
+                        opaque_faces: 1,
+                        ..TerrainMesh::default()
+                    },
+                })
+                .collect(),
+            source_sections: 2,
+            ..TerrainSectionMeshLayers::default()
+        };
+        let chunk = TerrainChunkMeshOwner {
+            level_generation: 7,
+            chunk_x: 0,
+            chunk_z: 0,
+        };
+
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            2,
+            [(chunk, &[(4, 1), (5, 1)][..], &layers, [0.0; 3])],
+        );
+        let one_section_bytes = renderer.counters().upload_bytes / 2;
+        assert_eq!(renderer.terrain_opaque.len(), 2);
+
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            2,
+            [(chunk, &[(4, 2), (5, 1)][..], &layers, [0.0; 3])],
+        );
+        assert_eq!(renderer.counters().terrain_changed_owners, 1);
+        assert_eq!(renderer.counters().terrain_uploaded_owners, 1);
+        assert_eq!(renderer.counters().terrain_removed_owners, 1);
+        assert_eq!(renderer.counters().upload_bytes, one_section_bytes);
+        assert_eq!(renderer.counters().terrain_full_replacements, 0);
+        assert_eq!(renderer.terrain_opaque.len(), 2);
+        assert!(renderer
+            .terrain_opaque
+            .iter()
+            .any(|resident| resident.owner.is_some_and(|owner| owner.section_y == 5)));
     }
 
     #[test]
@@ -3115,7 +3200,7 @@ mod tests {
         };
         renderer.synchronize_terrain_section_mesh_layer_refs(
             1,
-            [(owner, 1, &layers, [0.5, 0.5, -4.0])],
+            [(owner, &[(0, 1)][..], &layers, [0.5, 0.5, -4.0])],
         );
         let vertex_upload_bytes = renderer.counters().terrain_vertex_upload_bytes;
 

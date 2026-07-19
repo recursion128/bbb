@@ -36,15 +36,15 @@ const TERRAIN_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
 
 #[derive(Debug)]
 struct CachedTerrainSnapshot {
-    content_revision: u64,
-    mesh_revision: u64,
+    snapshot_revision: u64,
     snapshot: Option<Arc<TerrainChunkSnapshot>>,
 }
 
 #[derive(Debug)]
 struct CachedTerrainMesh {
     revision: u64,
-    resident_revision: u64,
+    section_mesh_revisions: Vec<(i32, u64)>,
+    resident_revisions: Vec<(i32, u64)>,
     camera_position: [f32; 3],
     layers: TerrainSectionMeshLayers,
 }
@@ -321,11 +321,12 @@ fn next_terrain_cache_work(
             .collect();
         neighborhood.sort_by_key(|pos| (chunk_distance_key(*pos, target), pos.x, pos.z));
         for pos in neighborhood {
-            let content_revision = world.terrain_chunk_content_revision(pos);
-            if !upload.snapshots.get(&pos).is_some_and(|cached| {
-                cached.content_revision == content_revision
-                    && (pos != target || cached.mesh_revision == mesh_revision)
-            }) {
+            let snapshot_revision = world.terrain_chunk_snapshot_revision(pos);
+            if !upload
+                .snapshots
+                .get(&pos)
+                .is_some_and(|cached| cached.snapshot_revision == snapshot_revision)
+            {
                 return TerrainCacheWork::RefreshSnapshot(pos);
             }
         }
@@ -344,8 +345,7 @@ fn refresh_terrain_snapshot(
     textures: &TerrainTextureState,
     pos: ChunkPos,
 ) {
-    let content_revision = world.terrain_chunk_content_revision(pos);
-    let mesh_revision = world.terrain_chunk_mesh_revision(pos);
+    let snapshot_revision = world.terrain_chunk_snapshot_revision(pos);
     let snapshot = world.extract_terrain_chunk(pos).map(|snapshot| {
         let biome_sampler = world.chunk_biome_sampler(pos);
         Arc::new(convert_terrain_snapshot(
@@ -358,11 +358,39 @@ fn refresh_terrain_snapshot(
     upload.snapshots.insert(
         pos,
         CachedTerrainSnapshot {
-            content_revision,
-            mesh_revision,
+            snapshot_revision,
             snapshot,
         },
     );
+}
+
+fn terrain_section_mesh_revisions(world: &WorldStore, pos: ChunkPos) -> Vec<(i32, u64)> {
+    world
+        .terrain_chunk_section_mesh_revisions(pos)
+        .map(|section| (section.section_y, section.revision))
+        .collect()
+}
+
+fn dirty_terrain_sections(
+    world: &WorldStore,
+    upload: &TerrainUploadState,
+    pos: ChunkPos,
+) -> Vec<(i32, u64)> {
+    let current = terrain_section_mesh_revisions(world, pos);
+    let cached = upload.meshes.get(&pos);
+    current
+        .into_iter()
+        .filter(|&(section_y, revision)| {
+            !cached.is_some_and(|cached| {
+                cached
+                    .section_mesh_revisions
+                    .iter()
+                    .any(|&(cached_y, cached_revision)| {
+                        cached_y == section_y && cached_revision == revision
+                    })
+            })
+        })
+        .collect()
 }
 
 fn terrain_mesh_job_key(
@@ -370,11 +398,13 @@ fn terrain_mesh_job_key(
     upload: &TerrainUploadState,
     pos: ChunkPos,
 ) -> TerrainMeshJobKey {
+    let section_count = dirty_terrain_sections(world, upload, pos).len();
     TerrainMeshJobKey {
         level_generation: world.client_level_generation(),
         mesh_generation: upload.mesh_generation,
         pos,
         mesh_revision: world.terrain_chunk_mesh_revision(pos),
+        section_count,
     }
 }
 
@@ -385,6 +415,8 @@ fn queue_terrain_chunk_mesh(
     pos: ChunkPos,
 ) -> bool {
     let key = terrain_mesh_job_key(world, upload, pos);
+    let sections = dirty_terrain_sections(world, upload, pos);
+    debug_assert_eq!(key.section_count, sections.len());
     let target = upload
         .snapshots
         .get(&pos)
@@ -392,13 +424,22 @@ fn queue_terrain_chunk_mesh(
         .cloned();
     let Some(target) = target else {
         upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
+        let resident_revision = upload.next_resident_revision;
+        let section_mesh_revisions = terrain_section_mesh_revisions(world, pos);
         upload.meshes.insert(
             pos,
             CachedTerrainMesh {
                 revision: key.mesh_revision,
-                resident_revision: upload.next_resident_revision,
+                resident_revisions: section_mesh_revisions
+                    .iter()
+                    .map(|&(section_y, _)| (section_y, resident_revision))
+                    .collect(),
+                section_mesh_revisions,
                 camera_position: terrain_camera_position(world),
-                layers: TerrainSectionMeshLayers::default(),
+                layers: TerrainSectionMeshLayers {
+                    source_sections: key.section_count,
+                    ..TerrainSectionMeshLayers::default()
+                },
             },
         );
         return true;
@@ -433,6 +474,7 @@ fn queue_terrain_chunk_mesh(
         neighborhood,
         atlas,
         camera_position: terrain_camera_position(world),
+        sections,
     };
     let worker = upload
         .mesh_worker
@@ -445,10 +487,18 @@ fn queue_terrain_chunk_mesh(
                 }
                 upload.mesh_worker_counters.stale_jobs =
                     upload.mesh_worker_counters.stale_jobs.saturating_add(1);
+                upload.mesh_worker_counters.stale_sections = upload
+                    .mesh_worker_counters
+                    .stale_sections
+                    .saturating_add(evicted.section_count as u64);
             }
             upload.pending_mesh_jobs.insert(pos, key);
             upload.mesh_worker_counters.queued_jobs =
                 upload.mesh_worker_counters.queued_jobs.saturating_add(1);
+            upload.mesh_worker_counters.queued_sections = upload
+                .mesh_worker_counters
+                .queued_sections
+                .saturating_add(key.section_count as u64);
         }
         TerrainMeshSubmit::AlreadyQueued => {
             upload.pending_mesh_jobs.insert(pos, key);
@@ -485,11 +535,20 @@ fn accept_terrain_mesh_result(
 ) -> bool {
     upload.mesh_worker_counters.completed_jobs =
         upload.mesh_worker_counters.completed_jobs.saturating_add(1);
+    upload.mesh_worker_counters.completed_sections = upload
+        .mesh_worker_counters
+        .completed_sections
+        .saturating_add(result.sections.len() as u64);
     upload.mesh_worker_counters.recent_build_nanos = result.build_nanos;
     upload.mesh_worker_counters.peak_build_nanos = upload
         .mesh_worker_counters
         .peak_build_nanos
         .max(result.build_nanos);
+    upload.mesh_worker_counters.recent_build_sections = result.sections.len();
+    upload.mesh_worker_counters.peak_build_sections = upload
+        .mesh_worker_counters
+        .peak_build_sections
+        .max(result.sections.len());
     if upload.pending_mesh_jobs.get(&result.key.pos) == Some(&result.key) {
         upload.pending_mesh_jobs.remove(&result.key.pos);
     }
@@ -500,19 +559,84 @@ fn accept_terrain_mesh_result(
     if !valid {
         upload.mesh_worker_counters.stale_jobs =
             upload.mesh_worker_counters.stale_jobs.saturating_add(1);
+        upload.mesh_worker_counters.stale_sections = upload
+            .mesh_worker_counters
+            .stale_sections
+            .saturating_add(result.sections.len() as u64);
         return false;
     }
     upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
-    upload.meshes.insert(
-        result.key.pos,
-        CachedTerrainMesh {
-            revision: result.key.mesh_revision,
-            resident_revision: upload.next_resident_revision,
+    let resident_revision = upload.next_resident_revision;
+    let current_sections = terrain_section_mesh_revisions(world, result.key.pos);
+    let dirty_section_ys = result
+        .sections
+        .iter()
+        .map(|&(section_y, _)| section_y)
+        .collect::<HashSet<_>>();
+    let cached = upload
+        .meshes
+        .entry(result.key.pos)
+        .or_insert_with(|| CachedTerrainMesh {
+            revision: 0,
+            section_mesh_revisions: Vec::new(),
+            resident_revisions: Vec::new(),
             camera_position: result.camera_position,
-            layers: result.layers,
-        },
-    );
+            layers: TerrainSectionMeshLayers::default(),
+        });
+    merge_terrain_section_layers(&mut cached.layers, result.layers, &dirty_section_ys);
+    cached.layers.source_sections = current_sections.len();
+    cached.revision = result.key.mesh_revision;
+    cached.section_mesh_revisions = current_sections;
+    cached.resident_revisions.retain(|(section_y, _)| {
+        cached
+            .section_mesh_revisions
+            .iter()
+            .any(|(current_y, _)| current_y == section_y)
+    });
+    for &(section_y, _) in &cached.section_mesh_revisions {
+        if let Some((_, revision)) = cached
+            .resident_revisions
+            .iter_mut()
+            .find(|(resident_y, _)| *resident_y == section_y)
+        {
+            if dirty_section_ys.contains(&section_y) {
+                *revision = resident_revision;
+            }
+        } else {
+            cached
+                .resident_revisions
+                .push((section_y, resident_revision));
+        }
+    }
+    cached
+        .resident_revisions
+        .sort_unstable_by_key(|(section_y, _)| *section_y);
+    cached.camera_position = result.camera_position;
     true
+}
+
+fn merge_terrain_section_layers(
+    cached: &mut TerrainSectionMeshLayers,
+    replacement: TerrainSectionMeshLayers,
+    dirty_section_ys: &HashSet<i32>,
+) {
+    fn merge_layer(
+        cached: &mut Vec<bbb_renderer::terrain::TerrainSectionMesh>,
+        replacement: Vec<bbb_renderer::terrain::TerrainSectionMesh>,
+        dirty_section_ys: &HashSet<i32>,
+    ) {
+        cached.retain(|section| !dirty_section_ys.contains(&section.section_y));
+        cached.extend(replacement);
+        cached.sort_unstable_by_key(|section| section.section_y);
+    }
+
+    merge_layer(&mut cached.opaque, replacement.opaque, dirty_section_ys);
+    merge_layer(&mut cached.cutout, replacement.cutout, dirty_section_ys);
+    merge_layer(
+        &mut cached.translucent,
+        replacement.translucent,
+        dirty_section_ys,
+    );
 }
 
 fn cancel_queued_terrain_mesh_jobs(upload: &mut TerrainUploadState) {
@@ -527,6 +651,10 @@ fn cancel_queued_terrain_mesh_jobs(upload: &mut TerrainUploadState) {
         }
         upload.mesh_worker_counters.stale_jobs =
             upload.mesh_worker_counters.stale_jobs.saturating_add(1);
+        upload.mesh_worker_counters.stale_sections = upload
+            .mesh_worker_counters
+            .stale_sections
+            .saturating_add(key.section_count as u64);
     }
     update_mesh_worker_queue_depth(upload);
 }
@@ -574,7 +702,7 @@ fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut Ter
                     chunk_x: pos.x,
                     chunk_z: pos.z,
                 },
-                cached.resident_revision,
+                cached.resident_revisions.as_slice(),
                 &cached.layers,
                 cached.camera_position,
             )
@@ -783,6 +911,7 @@ fn block_uses_fluid_water_overlay(block_name: Option<&str>) -> bool {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{SetChunkCacheCenter, Vec3d};
+    use bbb_renderer::terrain::{TerrainMesh, TerrainSectionMesh};
     use bbb_world::{ChunkColumn, ChunkState, LightData, LocalPlayerPoseState, WorldDimension};
 
     #[test]
@@ -919,7 +1048,8 @@ mod tests {
                 pos,
                 CachedTerrainMesh {
                     revision: 3,
-                    resident_revision: 1,
+                    section_mesh_revisions: Vec::new(),
+                    resident_revisions: Vec::new(),
                     camera_position: [0.0; 3],
                     layers: TerrainSectionMeshLayers::default(),
                 },
@@ -948,7 +1078,8 @@ mod tests {
                 pos,
                 CachedTerrainMesh {
                     revision: 3,
-                    resident_revision: 8,
+                    section_mesh_revisions: Vec::new(),
+                    resident_revisions: Vec::new(),
                     camera_position: [0.0; 3],
                     layers: TerrainSectionMeshLayers::default(),
                 },
@@ -969,6 +1100,111 @@ mod tests {
     }
 
     #[test]
+    fn partial_worker_result_preserves_unchanged_section_mesh_and_residency() {
+        let pos = ChunkPos { x: 0, z: 0 };
+        let mut world = WorldStore::new();
+        world.insert_decoded_chunk(test_chunk(pos));
+        let current_sections = terrain_section_mesh_revisions(&world, pos);
+        assert!(current_sections.len() >= 2);
+        let dirty_y = current_sections[0].0;
+        let stable_y = current_sections[1].0;
+        let mut cached_sections = current_sections.clone();
+        cached_sections[0].1 = cached_sections[0].1.saturating_add(1);
+        let cached_layers = TerrainSectionMeshLayers {
+            opaque: vec![
+                TerrainSectionMesh {
+                    section_y: dirty_y,
+                    mesh: TerrainMesh {
+                        source_sections: 11,
+                        ..TerrainMesh::default()
+                    },
+                },
+                TerrainSectionMesh {
+                    section_y: stable_y,
+                    mesh: TerrainMesh {
+                        source_sections: 22,
+                        ..TerrainMesh::default()
+                    },
+                },
+            ],
+            source_sections: current_sections.len(),
+            ..TerrainSectionMeshLayers::default()
+        };
+        let mut upload = TerrainUploadState {
+            observed_level_generation: world.client_level_generation(),
+            mesh_generation: 3,
+            selected_chunks: vec![pos],
+            snapshots: HashMap::from([(pos, cached_snapshot(&world, pos))]),
+            meshes: HashMap::from([(
+                pos,
+                CachedTerrainMesh {
+                    revision: world.terrain_chunk_mesh_revision(pos).saturating_sub(1),
+                    section_mesh_revisions: cached_sections,
+                    resident_revisions: current_sections
+                        .iter()
+                        .map(|&(section_y, _)| (section_y, 10))
+                        .collect(),
+                    camera_position: [0.0; 3],
+                    layers: cached_layers,
+                },
+            )]),
+            next_resident_revision: 10,
+            ..Default::default()
+        };
+        let key = terrain_mesh_job_key(&world, &upload, pos);
+        assert_eq!(key.section_count, 1);
+        upload.pending_mesh_jobs.insert(pos, key);
+
+        assert!(accept_terrain_mesh_result(
+            &world,
+            &mut upload,
+            TerrainMeshResult {
+                key,
+                camera_position: [4.0, 5.0, 6.0],
+                build_nanos: 23,
+                sections: vec![(dirty_y, current_sections[0].1)],
+                layers: TerrainSectionMeshLayers {
+                    opaque: vec![TerrainSectionMesh {
+                        section_y: dirty_y,
+                        mesh: TerrainMesh {
+                            source_sections: 33,
+                            ..TerrainMesh::default()
+                        },
+                    }],
+                    source_sections: 1,
+                    ..TerrainSectionMeshLayers::default()
+                },
+            },
+        ));
+
+        let cached = upload.meshes.get(&pos).expect("partial result installed");
+        assert_eq!(cached.section_mesh_revisions, current_sections);
+        assert_eq!(cached.layers.source_sections, current_sections.len());
+        assert_eq!(cached.layers.opaque.len(), 2);
+        assert_eq!(cached.layers.opaque[0].section_y, dirty_y);
+        assert_eq!(cached.layers.opaque[0].mesh.source_sections, 33);
+        assert_eq!(cached.layers.opaque[1].section_y, stable_y);
+        assert_eq!(cached.layers.opaque[1].mesh.source_sections, 22);
+        assert_eq!(
+            cached
+                .resident_revisions
+                .iter()
+                .find(|(section_y, _)| *section_y == dirty_y),
+            Some(&(dirty_y, 11))
+        );
+        assert_eq!(
+            cached
+                .resident_revisions
+                .iter()
+                .find(|(section_y, _)| *section_y == stable_y),
+            Some(&(stable_y, 10))
+        );
+        assert_eq!(upload.mesh_worker_counters.completed_sections, 1);
+        assert_eq!(upload.mesh_worker_counters.recent_build_sections, 1);
+        assert_eq!(upload.mesh_worker_counters.peak_build_sections, 1);
+    }
+
+    #[test]
     fn stale_worker_result_cannot_replace_current_chunk_revision() {
         let pos = ChunkPos { x: 0, z: 0 };
         let mut world = WorldStore::new();
@@ -977,17 +1213,11 @@ mod tests {
             observed_level_generation: world.client_level_generation(),
             mesh_generation: 3,
             selected_chunks: vec![pos],
-            snapshots: HashMap::from([(
-                pos,
-                CachedTerrainSnapshot {
-                    content_revision: world.terrain_chunk_content_revision(pos),
-                    mesh_revision: world.terrain_chunk_mesh_revision(pos),
-                    snapshot: None,
-                },
-            )]),
+            snapshots: HashMap::from([(pos, cached_snapshot(&world, pos))]),
             ..Default::default()
         };
         let current = terrain_mesh_job_key(&world, &upload, pos);
+        let current_sections = dirty_terrain_sections(&world, &upload, pos);
         let stale = TerrainMeshJobKey {
             mesh_generation: current.mesh_generation - 1,
             ..current
@@ -1001,6 +1231,7 @@ mod tests {
                 key: stale,
                 camera_position: [1.0, 2.0, 3.0],
                 build_nanos: 17,
+                sections: current_sections.clone(),
                 layers: TerrainSectionMeshLayers::default(),
             },
         ));
@@ -1016,6 +1247,7 @@ mod tests {
                 key: current,
                 camera_position: [4.0, 5.0, 6.0],
                 build_nanos: 23,
+                sections: current_sections,
                 layers: TerrainSectionMeshLayers::default(),
             },
         ));
@@ -1046,52 +1278,24 @@ mod tests {
             next_terrain_cache_work(&world, &upload, &loaded),
             TerrainCacheWork::RefreshSnapshot(center)
         );
-        upload.snapshots.insert(
-            center,
-            CachedTerrainSnapshot {
-                content_revision: world.terrain_chunk_content_revision(center),
-                mesh_revision: world.terrain_chunk_mesh_revision(center),
-                snapshot: None,
-            },
-        );
+        upload
+            .snapshots
+            .insert(center, cached_snapshot(&world, center));
         assert_eq!(
             next_terrain_cache_work(&world, &upload, &loaded),
             TerrainCacheWork::RefreshSnapshot(east)
         );
-        upload.snapshots.insert(
-            east,
-            CachedTerrainSnapshot {
-                content_revision: world.terrain_chunk_content_revision(east),
-                mesh_revision: world.terrain_chunk_mesh_revision(east),
-                snapshot: None,
-            },
-        );
+        upload.snapshots.insert(east, cached_snapshot(&world, east));
         assert_eq!(
             next_terrain_cache_work(&world, &upload, &loaded),
             TerrainCacheWork::QueueMesh(center)
         );
-        upload.meshes.insert(
-            center,
-            CachedTerrainMesh {
-                revision: world.terrain_chunk_mesh_revision(center),
-                resident_revision: 1,
-                camera_position: [0.0; 3],
-                layers: TerrainSectionMeshLayers::default(),
-            },
-        );
+        upload.meshes.insert(center, cached_mesh(&world, center, 1));
         assert_eq!(
             next_terrain_cache_work(&world, &upload, &loaded),
             TerrainCacheWork::QueueMesh(east)
         );
-        upload.meshes.insert(
-            east,
-            CachedTerrainMesh {
-                revision: world.terrain_chunk_mesh_revision(east),
-                resident_revision: 2,
-                camera_position: [0.0; 3],
-                layers: TerrainSectionMeshLayers::default(),
-            },
-        );
+        upload.meshes.insert(east, cached_mesh(&world, east, 2));
         assert_eq!(
             next_terrain_cache_work(&world, &upload, &loaded),
             TerrainCacheWork::Idle
@@ -1165,6 +1369,27 @@ mod tests {
             sections: Vec::new(),
             block_entities: Vec::new(),
             light: LightData::default(),
+        }
+    }
+
+    fn cached_snapshot(world: &WorldStore, pos: ChunkPos) -> CachedTerrainSnapshot {
+        CachedTerrainSnapshot {
+            snapshot_revision: world.terrain_chunk_snapshot_revision(pos),
+            snapshot: None,
+        }
+    }
+
+    fn cached_mesh(world: &WorldStore, pos: ChunkPos, resident_revision: u64) -> CachedTerrainMesh {
+        let section_mesh_revisions = terrain_section_mesh_revisions(world, pos);
+        CachedTerrainMesh {
+            revision: world.terrain_chunk_mesh_revision(pos),
+            resident_revisions: section_mesh_revisions
+                .iter()
+                .map(|&(section_y, _)| (section_y, resident_revision))
+                .collect(),
+            section_mesh_revisions,
+            camera_position: [0.0; 3],
+            layers: TerrainSectionMeshLayers::default(),
         }
     }
 }

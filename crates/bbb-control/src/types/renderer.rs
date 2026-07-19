@@ -68,6 +68,12 @@ pub struct RendererCounters {
     #[serde(default)]
     pub terrain_mesh_jobs_stale: u64,
     #[serde(default)]
+    pub terrain_mesh_sections_queued: u64,
+    #[serde(default)]
+    pub terrain_mesh_sections_completed: u64,
+    #[serde(default)]
+    pub terrain_mesh_sections_stale: u64,
+    #[serde(default)]
     pub terrain_mesh_queue_full: u64,
     #[serde(default)]
     pub terrain_mesh_queue_depth: usize,
@@ -77,6 +83,10 @@ pub struct RendererCounters {
     pub terrain_mesh_recent_build_nanos: u64,
     #[serde(default)]
     pub terrain_mesh_peak_build_nanos: u64,
+    #[serde(default)]
+    pub terrain_mesh_recent_build_sections: usize,
+    #[serde(default)]
+    pub terrain_mesh_peak_build_sections: usize,
     pub atlas_pages: usize,
     pub atlas_reallocations: u64,
     pub atlas_width: u32,

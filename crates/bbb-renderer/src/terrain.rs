@@ -785,34 +785,60 @@ pub fn build_terrain_chunk_section_mesh_layers_with_atlas_and_camera<'a>(
     atlas: &TerrainTextureAtlas,
     camera_position: [f32; 3],
 ) -> TerrainSectionMeshLayers {
+    let section_ys = (0..target.height)
+        .step_by(16)
+        .map(|start_y| (target.min_y + start_y as i32).div_euclid(16))
+        .collect::<Vec<_>>();
+    build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera(
+        target,
+        neighborhood,
+        atlas,
+        camera_position,
+        &section_ys,
+    )
+}
+
+/// Builds only the named sections of one chunk while retaining the exact same
+/// cross-chunk lookup as a full chunk build. Invalid/out-of-height section ids
+/// are ignored; callers normally pass the typed world revision rows.
+pub fn build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera<'a>(
+    target: &'a TerrainChunkSnapshot,
+    neighborhood: impl IntoIterator<Item = &'a TerrainChunkSnapshot>,
+    atlas: &TerrainTextureAtlas,
+    camera_position: [f32; 3],
+    section_ys: &[i32],
+) -> TerrainSectionMeshLayers {
     let lookup = mesh::TerrainChunkLookup::with_target(target, neighborhood);
-    let opaque = mesh::build_chunk_section_meshes_with_lookup(
+    let opaque = mesh::build_chunk_section_subset_meshes_with_lookup(
         target,
         &lookup,
         atlas,
         mesh::TerrainMeshMode::OpaqueOnly,
+        section_ys,
     );
-    let cutout = mesh::build_chunk_section_meshes_with_lookup(
+    let cutout = mesh::build_chunk_section_subset_meshes_with_lookup(
         target,
         &lookup,
         atlas,
         mesh::TerrainMeshMode::CutoutOnly,
+        section_ys,
     );
-    let mut translucent = mesh::build_chunk_section_meshes_with_lookup(
+    let mut translucent = mesh::build_chunk_section_subset_meshes_with_lookup(
         target,
         &lookup,
         atlas,
         mesh::TerrainMeshMode::TranslucentOnly,
+        section_ys,
     );
     for section in &mut translucent {
         mesh::sort_translucent_quads_by_distance(&mut section.mesh, camera_position);
     }
 
     TerrainSectionMeshLayers {
+        source_sections: opaque.len(),
         opaque,
         cutout,
         translucent,
-        source_sections: target.height.div_ceil(16),
     }
 }
 
@@ -875,5 +901,43 @@ mod section_mesh_tests {
             column.opaque[0].opaque_faces
         );
         assert_eq!(sections.source_sections, column.source_sections);
+    }
+
+    #[test]
+    fn section_subset_matches_the_same_full_build_sections() {
+        let mut cells = vec![TerrainCell::EMPTY; 16 * 48 * 16];
+        for y in [1, 17, 33] {
+            let index = mesh::cell_index(1, y, 1, 48);
+            cells[index] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+        }
+        let snapshot = TerrainChunkSnapshot::new(3, -2, 0, 48, cells);
+        let atlas = TerrainTextureAtlas::unit();
+        let full = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+            &snapshot,
+            std::iter::empty(),
+            &atlas,
+            [0.0, 0.0, 0.0],
+        );
+        let subset = build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera(
+            &snapshot,
+            std::iter::empty(),
+            &atlas,
+            [0.0, 0.0, 0.0],
+            &[0, 2],
+        );
+
+        assert_eq!(subset.source_sections, 2);
+        assert_eq!(
+            subset.opaque,
+            vec![full.opaque[0].clone(), full.opaque[2].clone()]
+        );
+        assert_eq!(
+            subset.cutout,
+            vec![full.cutout[0].clone(), full.cutout[2].clone()]
+        );
+        assert_eq!(
+            subset.translucent,
+            vec![full.translucent[0].clone(), full.translucent[2].clone()]
+        );
     }
 }
