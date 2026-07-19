@@ -1,4 +1,7 @@
-use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
+use bbb_protocol::{
+    game_rules::{vanilla_game_rule, GameRuleValueKind},
+    NbtSummaryEntry, NbtSummaryValue,
+};
 
 use crate::{
     FrozenRegistryAccess, FrozenRegistryEntry, RegistryElementSource, RegistryEntryPayload,
@@ -29,7 +32,13 @@ pub enum TestEnvironmentHolder {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TestGameRuleValue {
     pub resource_id: String,
-    pub value: NbtSummaryValue,
+    pub value: TestGameRuleTypedValue,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TestGameRuleTypedValue {
+    Boolean(bool),
+    Integer(i32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +137,14 @@ impl WorldStore {
         let Some(entry) = access.entry_by_holder_id(TEST_ENVIRONMENT_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(definition) = self
+            .registries
+            .typed
+            .test_environments
+            .get(entry.resource_id)
+        {
+            return Ok(Some(definition.clone()));
+        }
         let Some(data) = entry.element_data else {
             if entry_requires_typed_payload(entry) {
                 return Err(error(
@@ -142,6 +159,7 @@ impl WorldStore {
             entry.resource_id,
             data.source,
             &data.value,
+            data.known_pack_json.as_ref(),
             access,
             0,
             "<root>",
@@ -167,7 +185,14 @@ impl WorldStore {
             }
             return Ok(None);
         };
-        decode_test_instance(entry.resource_id, data.source, &data.value, access).map(Some)
+        decode_test_instance(
+            entry.resource_id,
+            data.source,
+            &data.value,
+            data.known_pack_json.as_ref(),
+            access,
+        )
+        .map(Some)
     }
 }
 
@@ -183,10 +208,11 @@ fn entry_requires_typed_payload(entry: FrozenRegistryEntry<'_>) -> bool {
         )
 }
 
-fn decode_test_environment(
+pub(super) fn decode_test_environment(
     resource_id: &str,
     element_source: RegistryElementSource,
     value: &NbtSummaryValue,
+    known_pack_json: Option<&serde_json::Value>,
     access: FrozenRegistryAccess<'_>,
     depth: usize,
     path: &str,
@@ -210,9 +236,14 @@ fn decode_test_environment(
                 &definitions_path,
             )?;
             let mut definitions = Vec::with_capacity(values.len());
+            let json_definitions = known_pack_json
+                .and_then(serde_json::Value::as_object)
+                .and_then(|fields| fields.get("definitions"))
+                .and_then(serde_json::Value::as_array);
             for (index, definition) in values.iter().enumerate() {
                 definitions.push(decode_environment_holder(
                     definition,
+                    json_definitions.and_then(|definitions| definitions.get(index)),
                     resource_id,
                     element_source,
                     access,
@@ -230,6 +261,10 @@ fn decode_test_environment(
                 &rules_path,
             )?;
             let mut rules = Vec::with_capacity(rule_fields.len());
+            let json_rules = known_pack_json
+                .and_then(serde_json::Value::as_object)
+                .and_then(|fields| fields.get("rules"))
+                .and_then(serde_json::Value::as_object);
             for rule in rule_fields {
                 let rule_id = normalize_codec_identifier(&rule.name).ok_or_else(|| {
                     error(
@@ -238,23 +273,17 @@ fn decode_test_environment(
                         "invalid game-rule identifier",
                     )
                 })?;
-                if !matches!(
-                    rule.value,
-                    NbtSummaryValue::Byte(_)
-                        | NbtSummaryValue::Short(_)
-                        | NbtSummaryValue::Int(_)
-                        | NbtSummaryValue::Long(_)
-                        | NbtSummaryValue::String(_)
-                ) {
-                    return Err(error(
-                        resource_id,
-                        format!("{rules_path}.{rule_id}"),
-                        "game-rule value is not a scalar",
-                    ));
-                }
+                let value_path = format!("{rules_path}.{rule_id}");
+                let value = decode_game_rule_value(
+                    resource_id,
+                    &rule_id,
+                    &rule.value,
+                    json_rules.and_then(|rules| rules.get(&rule.name)),
+                    &value_path,
+                )?;
                 rules.push(TestGameRuleValue {
                     resource_id: rule_id,
-                    value: rule.value.clone(),
+                    value,
                 });
             }
             TestEnvironmentKind::GameRules { rules }
@@ -332,8 +361,67 @@ fn decode_test_environment(
     })
 }
 
+fn decode_game_rule_value(
+    owner_resource_id: &str,
+    rule_id: &str,
+    value: &NbtSummaryValue,
+    known_pack_json: Option<&serde_json::Value>,
+    path: &str,
+) -> Result<TestGameRuleTypedValue, GameTestRegistryProjectionError> {
+    let rule = vanilla_game_rule(rule_id).ok_or_else(|| {
+        error(
+            owner_resource_id,
+            path,
+            format!("unknown built-in game rule {rule_id}"),
+        )
+    })?;
+    match rule.value_kind {
+        GameRuleValueKind::Boolean => match (value, known_pack_json) {
+            (_, Some(serde_json::Value::Bool(value))) => {
+                Ok(TestGameRuleTypedValue::Boolean(*value))
+            }
+            (_, Some(_)) => Err(error(owner_resource_id, path, "expected boolean value")),
+            (NbtSummaryValue::Long(0), None) => Ok(TestGameRuleTypedValue::Boolean(false)),
+            (NbtSummaryValue::Long(1), None) => Ok(TestGameRuleTypedValue::Boolean(true)),
+            _ => Err(error(owner_resource_id, path, "expected boolean value")),
+        },
+        GameRuleValueKind::Integer { min, max } => {
+            if known_pack_json.is_some_and(|value| !value.is_i64() && !value.is_u64()) {
+                return Err(error(
+                    owner_resource_id,
+                    path,
+                    format!("expected integer in range {min}..={max}"),
+                ));
+            }
+            let NbtSummaryValue::Long(value) = value else {
+                return Err(error(
+                    owner_resource_id,
+                    path,
+                    format!("expected integer in range {min}..={max}"),
+                ));
+            };
+            let value = i32::try_from(*value).map_err(|_| {
+                error(
+                    owner_resource_id,
+                    path,
+                    format!("expected integer in range {min}..={max}"),
+                )
+            })?;
+            if !(min..=max).contains(&value) {
+                return Err(error(
+                    owner_resource_id,
+                    path,
+                    format!("expected integer in range {min}..={max}"),
+                ));
+            }
+            Ok(TestGameRuleTypedValue::Integer(value))
+        }
+    }
+}
+
 fn decode_environment_holder(
     value: &NbtSummaryValue,
+    known_pack_json: Option<&serde_json::Value>,
     resource_id: &str,
     element_source: RegistryElementSource,
     access: FrozenRegistryAccess<'_>,
@@ -349,7 +437,15 @@ fn decode_environment_holder(
             path,
         )?)),
         NbtSummaryValue::Compound(_) => Ok(TestEnvironmentHolder::Direct(Box::new(
-            decode_test_environment(resource_id, element_source, value, access, depth, path)?,
+            decode_test_environment(
+                resource_id,
+                element_source,
+                value,
+                known_pack_json,
+                access,
+                depth,
+                path,
+            )?,
         ))),
         _ => Err(error(
             resource_id,
@@ -363,6 +459,7 @@ fn decode_test_instance(
     resource_id: &str,
     element_source: RegistryElementSource,
     value: &NbtSummaryValue,
+    known_pack_json: Option<&serde_json::Value>,
     access: FrozenRegistryAccess<'_>,
 ) -> Result<GameTestInstanceDefinition, GameTestRegistryProjectionError> {
     let path = "<root>";
@@ -388,6 +485,9 @@ fn decode_test_instance(
     let environment_path = child(path, "environment");
     let environment = decode_environment_holder(
         required_field(fields, resource_id, &environment_path)?,
+        known_pack_json
+            .and_then(serde_json::Value::as_object)
+            .and_then(|fields| fields.get("environment")),
         resource_id,
         element_source,
         access,
@@ -880,7 +980,9 @@ mod tests {
             TestEnvironmentKind::GameRules { rules }
                 if rules.len() == 2
                     && rules[0].resource_id == "minecraft:keep_inventory"
+                    && rules[0].value == TestGameRuleTypedValue::Boolean(true)
                     && rules[1].resource_id == "minecraft:random_tick_speed"
+                    && rules[1].value == TestGameRuleTypedValue::Integer(7)
         ));
         let clock_time = store
             .synchronized_test_environment_definition(1)
@@ -936,6 +1038,107 @@ mod tests {
         assert_eq!(instance.padding, 0);
     }
 
+    #[test]
+    fn network_nbt_game_rules_accept_codec_bool_and_integer_shapes() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            TEST_ENVIRONMENT_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "example:network_rules",
+                game_rules_environment_nbt(true, 7),
+            )],
+        );
+
+        let definition = store
+            .synchronized_test_environment_definition(0)
+            .unwrap()
+            .unwrap();
+        assert!(matches!(
+            definition.kind,
+            TestEnvironmentKind::GameRules { rules }
+                if rules.iter().map(|rule| rule.value).collect::<Vec<_>>()
+                    == vec![
+                        TestGameRuleTypedValue::Boolean(true),
+                        TestGameRuleTypedValue::Integer(7),
+                    ]
+        ));
+    }
+
+    #[test]
+    fn game_rule_codec_dispatch_rejects_unknown_wrong_type_and_out_of_range_values() {
+        let cases = [
+            (
+                br#"{"minecraft:custom_rule":true}"#.as_slice(),
+                "unknown built-in game rule minecraft:custom_rule",
+            ),
+            (
+                br#"{"minecraft:keep_inventory":2}"#.as_slice(),
+                "expected boolean value",
+            ),
+            (
+                br#"{"minecraft:random_tick_speed":true}"#.as_slice(),
+                "expected integer in range 0..=2147483647",
+            ),
+            (
+                br#"{"minecraft:max_snow_accumulation_height":9}"#.as_slice(),
+                "expected integer in range 0..=8",
+            ),
+        ];
+
+        for (rules, expected) in cases {
+            let mut payload = br#"{"type":"minecraft:game_rules","rules":"#.to_vec();
+            payload.extend_from_slice(rules);
+            payload.push(b'}');
+            let mut store = WorldStore::new();
+            store.record_registry_entries(
+                TEST_ENVIRONMENT_REGISTRY,
+                0,
+                vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:invalid_rules",
+                    payload,
+                )],
+            );
+
+            let error = store
+                .synchronized_test_environment_definition(0)
+                .unwrap_err();
+            assert!(error.reason.contains(expected), "{error}");
+        }
+
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            TEST_ENVIRONMENT_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:bounded_rules",
+                br#"{
+                    "type":"minecraft:game_rules",
+                    "rules":{
+                        "minecraft:fire_spread_radius_around_player":-1,
+                        "minecraft:max_minecart_speed":1000,
+                        "minecraft:max_snow_accumulation_height":8
+                    }
+                }"#
+                .to_vec(),
+            )],
+        );
+        let definition = store
+            .synchronized_test_environment_definition(0)
+            .unwrap()
+            .unwrap();
+        assert!(matches!(
+            definition.kind,
+            TestEnvironmentKind::GameRules { rules }
+                if rules.iter().map(|rule| rule.value).collect::<Vec<_>>()
+                    == vec![
+                        TestGameRuleTypedValue::Integer(-1),
+                        TestGameRuleTypedValue::Integer(1000),
+                        TestGameRuleTypedValue::Integer(8),
+                    ]
+        ));
+    }
+
     fn weather_environment_nbt(weather: &str) -> Vec<u8> {
         let mut out = vec![10, 8];
         write_nbt_string(&mut out, "type");
@@ -943,6 +1146,23 @@ mod tests {
         out.push(8);
         write_nbt_string(&mut out, "weather");
         write_nbt_string(&mut out, weather);
+        out.push(0);
+        out
+    }
+
+    fn game_rules_environment_nbt(keep_inventory: bool, random_tick_speed: i32) -> Vec<u8> {
+        let mut out = vec![10, 8];
+        write_nbt_string(&mut out, "type");
+        write_nbt_string(&mut out, "minecraft:game_rules");
+        out.push(10);
+        write_nbt_string(&mut out, "rules");
+        out.push(1);
+        write_nbt_string(&mut out, "minecraft:keep_inventory");
+        out.push(u8::from(keep_inventory));
+        out.push(3);
+        write_nbt_string(&mut out, "minecraft:random_tick_speed");
+        out.extend_from_slice(&random_tick_speed.to_be_bytes());
+        out.push(0);
         out.push(0);
         out
     }

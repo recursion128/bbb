@@ -149,6 +149,8 @@ not publish.
 
 ### Phase 3: sound variants and test environments
 
+Status: complete.
+
 Decode complete animal sound sets and route every client-consumed non-death
 sound through the frozen variant projection. Replace permissive test-environment
 game-rule pairs with generated built-in key/type dispatch and exact value
@@ -160,6 +162,28 @@ affected `bbb-native` audio/debug/runtime tests, with non-test checks.
 
 Safe stop: death sounds and already strict test-environment fields remain
 unchanged; new consumers activate only for a fully validated typed entry.
+
+Implementation evidence:
+
+- the candidate dispatcher now decodes every field of cat, chicken, cow, pig,
+  and wolf `DIRECT_CODEC` sound sets, validates every named `SoundEvent.CODEC`
+  reference against the candidate/static sound-event layer, and stores the
+  resulting adult/baby values in the same typed revision as dimensions,
+  timelines, and clocks;
+- the generated vanilla fallback catalog owns both adult/baby hurt and death
+  events. `DamageEvent` consumes the frozen hurt projection for all five
+  families, including cow/wolf volume, wolf-body-armor override, and the
+  `bypasses_wolf_armor` damage-type tag; existing event-3 death behavior uses
+  the same typed value without a second holder-order cache;
+- a generated 59-entry `GameRules.java` catalog owns built-in keys, boolean
+  codecs, and exact integer ranges. Test-environment game-rule maps reject
+  unknown keys, JSON boolean/integer type mismatches, and out-of-range values;
+  retained read-only known-pack JSON type evidence prevents JSON `true` from
+  being confused with numeric `1` after the common NBT numeric projection;
+- malformed sound references or game rules fail
+  `registry_configuration_typed_values` before publication, with focused
+  rollback proofs that retain the prior holder order, revision, and typed
+  environment.
 
 ### Phase 4: component initializers and closeout
 

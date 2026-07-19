@@ -75,10 +75,8 @@ Owner: `bbb-protocol`
   known-pack JSON, apply declared validators plus pending static tags and
   data-component initializers, then expose the revision atomically. Individual
   typed projections remain inputs to that lifecycle rather than a substitute for
-  it. Finish the non-death consumers of synchronized animal sound-variant
-  payloads, strict built-in game-rule key/value dispatch inside test-environment
-  definitions, and the remaining `DimensionType.NETWORK_CODEC` scalar/monster
-  fields beyond the frozen client projection. Extend
+  it. Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
+  beyond the frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
   never by applying a bootstrap ordinal to authoritative synchronized contents.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
@@ -1023,11 +1021,17 @@ resolver by adding a value provider. No new selection machinery is required.
 Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 - Validate remaining synthesized/game-event sound mappings against vanilla.
-- Living-entity event 3 consumes the generated built-in cat/chicken/cow/pig/wolf
-  sound-variant adult/baby death sounds, including cow/wolf volume 0.4. Synchronized
-  registries use their actual holder order and typed named/direct death holder,
-  including direct fixed range; known-pack stubs use the generated built-in payload
-  by resource identity, while malformed data fails closed.
+- Living-entity DamageEvent and event 3 consume the generated built-in
+  cat/chicken/cow/pig/wolf sound-variant adult/baby hurt and death sounds,
+  including cow/wolf volume 0.4, wolf armor damage, and bypass tags.
+  Synchronized registries use their actual holder order and complete typed
+  named/direct sound sets, including selected-known-pack data and direct fixed
+  range; only genuinely data-less built-in stubs use generated payloads by
+  resource identity, while malformed data fails the registry candidate or
+  closes direct-fixture playback.
+- Add the client-owned animal ambient/step/eat and cat/wolf state-trigger loops
+  before consuming the remaining already-decoded sound-set fields; do not
+  synthesize those events from registry presence alone.
 - Clientbound SoundEntity holder/category/entity/volume/pitch/seed handling,
   missing or silent entity gates, fixed range, entity following, and removal stop
   are covered.

@@ -19508,3 +19508,22 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   water-evaporation/default-dripstone 类型与 piglin-zombification 消费者改为读取冻结采样；无权威
   registry 的 fixture/offline 路径继续使用既有 builtin fallback。完整维度标量 codec、biome/weather
   positional 层、环境音/粒子运行系统和复杂 dripstone particle option provider 仍由缺口账本跟踪。
+
+## 2026-07-19：动态 RegistryAccess typed revision phase 3 sound variants and test environments
+
+- [x] 对照本地 vanilla 26.1 五个 animal sound variant `DIRECT_CODEC`、`SoundEvent.CODEC`、
+  `LivingEntity.handleDamageEvent`、各实体 `getHurtSound` 与 Wolf armor 分支，candidate 一次性
+  解码并保存 cat 9、chicken/cow 4、pig 5、wolf 7 个完整 adult/baby sound-set 字段；所有 named
+  sound holder 在发布前对同代 candidate/static `sound_event` 层校验，direct holder 保留 range。
+- [x] 生成 fallback catalog 从仅 death 扩展为 adult/baby hurt + death；DamageEvent 对
+  cat/chicken/cow/pig/wolf 使用 frozen session holder 顺序，保留 cow/wolf 0.4 音量，并按 BODY
+  wolf armor 与 `minecraft:bypasses_wolf_armor` tag 选择固定 armor-damage sound。event 3 death
+  复用同一 typed projection，旧死亡行为与 malformed fail-closed 边界不变。
+- [x] 从 `GameRules.java` 生成完整 59 项 key/boolean/int-range catalog；
+  `TestEnvironmentDefinition` 的 dispatched map 现在拒绝 unknown key、JSON bool/int 类型混用及
+  越界整数。known-pack 元素保留只读 JSON 类型证据，避免公共 source-neutral NBT 数值归一把
+  `true` 与 `1` 混为一类；network NBT 继续接受 Codec.BOOL 的 byte 数值表示。
+- [x] sound/test-environment 两族在 `RegistryRevisionCandidate` 唯一发布点预物化；未知 sound
+  reference、非法 gamerule 均在 `registry_configuration_typed_values` 阶段原子回滚，旧 revision、
+  holder order 与 typed environment 保持不变。world play/native audio、generator/extractor、
+  custom order、known-pack/network、完整字段与 rollback 均有专项回归。

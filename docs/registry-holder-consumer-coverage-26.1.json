@@ -1038,7 +1038,7 @@
       "call_site": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java:17:105:ByteBufCodecs.holderRegistry",
       "column": 105,
       "consumer": "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five codec shapes project their required SoundEvent holders, and adult/baby death sounds reach positioned audio with custom order, direct range, stub, and malformed-payload coverage.",
+      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five complete codec shapes project their required SoundEvent holders, and adult/baby hurt and death sounds reach positioned audio with custom order, direct range, stub, armor/bypass, and malformed-payload coverage.",
       "evidence": [
         "vanilla:net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenSoundVariant>> STREAM_CODEC",
         "vanilla:net/minecraft/world/entity/animal/cow/CowSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CowSoundVariant>> STREAM_CODEC",
@@ -1052,7 +1052,7 @@
         "crates/bbb-world/src/registries/sound_variants.rs#fn decodes_all_synchronized_sound_variant_shapes_and_holder_forms",
         "crates/bbb-world/src/registries/sound_variants.rs#fn world_queries_use_server_holder_order_for_every_sound_variant_shape",
         "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds",
+        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds",
         "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload"
       ],
       "factory": "ByteBufCodecs.holderRegistry",
@@ -1137,7 +1137,7 @@
       "call_site": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
       "column": 101,
       "consumer": "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five codec shapes project their required SoundEvent holders, and adult/baby death sounds reach positioned audio with custom order, direct range, stub, and malformed-payload coverage.",
+      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five complete codec shapes project their required SoundEvent holders, and adult/baby hurt and death sounds reach positioned audio with custom order, direct range, stub, armor/bypass, and malformed-payload coverage.",
       "evidence": [
         "vanilla:net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenSoundVariant>> STREAM_CODEC",
         "vanilla:net/minecraft/world/entity/animal/cow/CowSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CowSoundVariant>> STREAM_CODEC",
@@ -1151,7 +1151,7 @@
         "crates/bbb-world/src/registries/sound_variants.rs#fn decodes_all_synchronized_sound_variant_shapes_and_holder_forms",
         "crates/bbb-world/src/registries/sound_variants.rs#fn world_queries_use_server_holder_order_for_every_sound_variant_shape",
         "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds",
+        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds",
         "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload"
       ],
       "factory": "ByteBufCodecs.holderRegistry",
@@ -1236,7 +1236,7 @@
       "call_site": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
       "column": 101,
       "consumer": "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five codec shapes project their required SoundEvent holders, and adult/baby death sounds reach positioned audio with custom order, direct range, stub, and malformed-payload coverage.",
+      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five complete codec shapes project their required SoundEvent holders, and adult/baby hurt and death sounds reach positioned audio with custom order, direct range, stub, armor/bypass, and malformed-payload coverage.",
       "evidence": [
         "vanilla:net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenSoundVariant>> STREAM_CODEC",
         "vanilla:net/minecraft/world/entity/animal/cow/CowSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CowSoundVariant>> STREAM_CODEC",
@@ -1250,7 +1250,7 @@
         "crates/bbb-world/src/registries/sound_variants.rs#fn decodes_all_synchronized_sound_variant_shapes_and_holder_forms",
         "crates/bbb-world/src/registries/sound_variants.rs#fn world_queries_use_server_holder_order_for_every_sound_variant_shape",
         "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds",
+        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds",
         "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload"
       ],
       "factory": "ByteBufCodecs.holderRegistry",
@@ -1425,7 +1425,7 @@
       "call_site": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
       "column": 101,
       "consumer": "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five codec shapes project their required SoundEvent holders, and adult/baby death sounds reach positioned audio with custom order, direct range, stub, and malformed-payload coverage.",
+      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five complete codec shapes project their required SoundEvent holders, and adult/baby hurt and death sounds reach positioned audio with custom order, direct range, stub, armor/bypass, and malformed-payload coverage.",
       "evidence": [
         "vanilla:net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenSoundVariant>> STREAM_CODEC",
         "vanilla:net/minecraft/world/entity/animal/cow/CowSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CowSoundVariant>> STREAM_CODEC",
@@ -1439,7 +1439,7 @@
         "crates/bbb-world/src/registries/sound_variants.rs#fn decodes_all_synchronized_sound_variant_shapes_and_holder_forms",
         "crates/bbb-world/src/registries/sound_variants.rs#fn world_queries_use_server_holder_order_for_every_sound_variant_shape",
         "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds",
+        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds",
         "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload"
       ],
       "factory": "ByteBufCodecs.holderRegistry",
@@ -1524,7 +1524,7 @@
       "call_site": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java:17:102:ByteBufCodecs.holderRegistry",
       "column": 102,
       "consumer": "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five codec shapes project their required SoundEvent holders, and adult/baby death sounds reach positioned audio with custom order, direct range, stub, and malformed-payload coverage.",
+      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five complete codec shapes project their required SoundEvent holders, and adult/baby hurt and death sounds reach positioned audio with custom order, direct range, stub, armor/bypass, and malformed-payload coverage.",
       "evidence": [
         "vanilla:net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenSoundVariant>> STREAM_CODEC",
         "vanilla:net/minecraft/world/entity/animal/cow/CowSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CowSoundVariant>> STREAM_CODEC",
@@ -1538,7 +1538,7 @@
         "crates/bbb-world/src/registries/sound_variants.rs#fn decodes_all_synchronized_sound_variant_shapes_and_holder_forms",
         "crates/bbb-world/src/registries/sound_variants.rs#fn world_queries_use_server_holder_order_for_every_sound_variant_shape",
         "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
-        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds",
+        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds",
         "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload"
       ],
       "factory": "ByteBufCodecs.holderRegistry",

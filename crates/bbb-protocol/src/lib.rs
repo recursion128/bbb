@@ -39,6 +39,7 @@ pub mod equipment_slots;
 pub mod filter_mask_types;
 pub mod frame;
 pub mod game_event_types;
+pub mod game_rules;
 pub mod game_types;
 pub mod heightmap_types;
 pub mod ids;

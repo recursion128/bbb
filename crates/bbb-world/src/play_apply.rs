@@ -286,13 +286,14 @@ impl WorldStore {
             PlayClientbound::DamageEvent(update) => {
                 let entity_id = update.entity_id;
                 if self.apply_damage_event(update) {
-                    let damage_effects = self
-                        .entity_last_damage(entity_id)
-                        .and_then(|damage| damage.source_effects);
-                    if let Some(state) = damage_effects.and_then(|damage_effects| {
-                        self.player_damage_hurt_sound_for_entity(entity_id, damage_effects, || {
-                            random.next_float()
-                        })
+                    let damage = self.entity_last_damage(entity_id);
+                    if let Some(state) = damage.and_then(|damage| {
+                        self.living_damage_hurt_sound_for_entity(
+                            entity_id,
+                            damage.source_type_id,
+                            damage.source_effects?,
+                            || random.next_float(),
+                        )
                     }) {
                         effects.positioned_sound(&state);
                     }
@@ -2338,6 +2339,59 @@ mod tests {
         }
         assert_eq!(effects.positioned_sounds.len(), 2);
         assert_eq!(store.last_sound(), effects.positioned_sounds.last());
+    }
+
+    #[test]
+    fn damage_event_forwards_animal_sound_variant_hurt_sound() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DAMAGE_TYPE_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "example:damage",
+                damage_type_nbt("custom.damage", "hurt"),
+            )],
+        );
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let position = Vec3d {
+            x: 3.0,
+            y: 72.0,
+            z: -5.0,
+        };
+        store.apply_play_packet(
+            PlayClientbound::AddEntity(add_entity(72, VANILLA_ENTITY_TYPE_COW_ID, position)),
+            &mut random,
+            &mut effects,
+        );
+
+        let expected_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::DamageEvent(DamageEvent {
+                    entity_id: 72,
+                    source_type_id: 0,
+                    source_cause_id: -1,
+                    source_direct_id: -1,
+                    source_position: None,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+
+        let sound = effects.positioned_sounds.last().unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.cow.hurt")
+        );
+        assert_eq!(sound.source, "neutral");
+        assert_eq!(sound.position, position);
+        assert_eq!(sound.volume, 0.4);
+        assert_eq!(sound.pitch, expected_pitch);
+        assert_eq!(sound.seed, 0);
     }
 
     #[test]

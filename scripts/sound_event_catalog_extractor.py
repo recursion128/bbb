@@ -26,11 +26,13 @@ class SoundSetEntry:
 
 
 @dataclass(frozen=True)
-class SoundVariantDeathSoundEntry:
+class SoundVariantSoundEntry:
     constant_name: str
     resource_id: str
-    adult_sound_event_id: str
-    baby_sound_event_id: str
+    adult_hurt_sound_event_id: str
+    baby_hurt_sound_event_id: str
+    adult_death_sound_event_id: str
+    baby_death_sound_event_id: str
 
 
 SPECIAL_VARIANT_FIELDS = {
@@ -47,6 +49,14 @@ BABY_DEATH_SOUND_FIELDS = {
     "cow": None,
     "pig": "PIG_DEATH_BABY",
     "wolf": "WOLF_DEATH_BABY",
+}
+
+BABY_HURT_SOUND_FIELDS = {
+    "cat": "CAT_HURT_BABY",
+    "chicken": "CHICKEN_HURT_BABY",
+    "cow": None,
+    "pig": "PIG_HURT_BABY",
+    "wolf": "WOLF_HURT_BABY",
 }
 
 
@@ -307,11 +317,11 @@ def sound_event_resource_ids(
     return ids
 
 
-def animal_sound_variant_death_sound_entries(
+def animal_sound_variant_sound_entries(
     source: JavaSource,
     variant_sources: dict[str, JavaSource],
     expected_direct_count: int = 1808,
-) -> dict[str, list[SoundVariantDeathSoundEntry]]:
+) -> dict[str, list[SoundVariantSoundEntry]]:
     direct_events = {
         entry.constant_name: entry.resource_id
         for entry in direct_sound_event_entries(source, expected_direct_count)
@@ -329,22 +339,39 @@ def animal_sound_variant_death_sound_entries(
                 f"missing {family} SoundSet source"
             )
         suffixes = _variant_helper_suffixes(source, helper_name)
-        if "death" not in suffixes:
+        if not {"hurt", "death"}.issubset(suffixes):
             raise SoundEventCatalogExtractionError(
-                f"{source.relative_path}: {helper_name} no longer registers death sounds"
+                f"{source.relative_path}: {helper_name} no longer registers hurt/death sounds"
             )
-        baby_field = BABY_DEATH_SOUND_FIELDS[family]
-        baby_sound = direct_events.get(baby_field) if baby_field is not None else None
-        if baby_field is not None and baby_sound is None:
+        baby_hurt_field = BABY_HURT_SOUND_FIELDS[family]
+        baby_hurt_sound = (
+            direct_events.get(baby_hurt_field)
+            if baby_hurt_field is not None
+            else None
+        )
+        if baby_hurt_field is not None and baby_hurt_sound is None:
             raise SoundEventCatalogExtractionError(
-                f"{source.relative_path}: missing direct baby death sound {baby_field}"
+                f"{source.relative_path}: missing direct baby hurt sound {baby_hurt_field}"
+            )
+        baby_death_field = BABY_DEATH_SOUND_FIELDS[family]
+        baby_death_sound = (
+            direct_events.get(baby_death_field)
+            if baby_death_field is not None
+            else None
+        )
+        if baby_death_field is not None and baby_death_sound is None:
+            raise SoundEventCatalogExtractionError(
+                f"{source.relative_path}: missing direct baby death sound {baby_death_field}"
             )
         catalogs[family] = [
-            SoundVariantDeathSoundEntry(
+            SoundVariantSoundEntry(
                 entry.constant_name,
                 entry.resource_id,
+                f"minecraft:entity.{entry.sound_event_identifier}.hurt",
+                baby_hurt_sound
+                or f"minecraft:entity.{entry.sound_event_identifier}.hurt",
                 f"minecraft:entity.{entry.sound_event_identifier}.death",
-                baby_sound
+                baby_death_sound
                 or f"minecraft:entity.{entry.sound_event_identifier}.death",
             )
             for entry in sound_set_entries(variant_source)

@@ -6,6 +6,12 @@ use bbb_protocol::registry_data_types::{
 
 use super::dimension_types::{decode_dimension_type_client_projection, DIMENSION_TYPE_REGISTRY};
 use super::element_value::decode_known_pack_element;
+use super::game_tests::{decode_test_environment, TEST_ENVIRONMENT_REGISTRY};
+use super::sound_variants::{
+    decode_sound_variant_definition, validate_sound_variant_references, CAT_SOUND_VARIANT_REGISTRY,
+    CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY,
+    WOLF_SOUND_VARIANT_REGISTRY,
+};
 use super::state::PendingRegistryCollection;
 use super::state::RegistryTypedValues;
 use super::store::RegistryValidationError;
@@ -206,6 +212,72 @@ fn build_registered_typed_projections(
         })
         .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
     candidate.typed.dimension_types = dimension_types;
+
+    for (registry, codec) in [
+        (CAT_SOUND_VARIANT_REGISTRY, "CatSoundVariant.DIRECT_CODEC"),
+        (
+            CHICKEN_SOUND_VARIANT_REGISTRY,
+            "ChickenSoundVariant.DIRECT_CODEC",
+        ),
+        (COW_SOUND_VARIANT_REGISTRY, "CowSoundVariant.DIRECT_CODEC"),
+        (PIG_SOUND_VARIANT_REGISTRY, "PigSoundVariant.DIRECT_CODEC"),
+        (WOLF_SOUND_VARIANT_REGISTRY, "WolfSoundVariant.DIRECT_CODEC"),
+    ] {
+        let variants = candidate
+            .contents
+            .get(registry)
+            .into_iter()
+            .flat_map(|contents| &contents.entries)
+            .map(|entry| {
+                let data = required_typed_element_data(entry, registry, codec)?;
+                let variant = decode_sound_variant_definition(registry, data.source, &data.value)
+                    .map_err(|error| RegistryValidationError {
+                    registry: registry.to_string(),
+                    validator: codec.to_string(),
+                    message: format!("{} {}: {}", entry.id, error.field, error.reason),
+                })?;
+                validate_sound_variant_references(&variant, candidate.frozen_access()).map_err(
+                    |message| RegistryValidationError {
+                        registry: registry.to_string(),
+                        validator: codec.to_string(),
+                        message: format!("{} {message}", entry.id),
+                    },
+                )?;
+                Ok((entry.id.clone(), variant))
+            })
+            .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
+        candidate
+            .typed
+            .sound_variants
+            .insert(registry.to_string(), variants);
+    }
+
+    let test_environments = candidate
+        .contents
+        .get(TEST_ENVIRONMENT_REGISTRY)
+        .into_iter()
+        .flat_map(|contents| &contents.entries)
+        .map(|entry| {
+            let codec = "TestEnvironmentDefinition.DIRECT_CODEC";
+            let data = required_typed_element_data(entry, TEST_ENVIRONMENT_REGISTRY, codec)?;
+            decode_test_environment(
+                &entry.id,
+                data.source,
+                &data.value,
+                data.known_pack_json.as_ref(),
+                candidate.frozen_access(),
+                0,
+                "<root>",
+            )
+            .map(|definition| (entry.id.clone(), definition))
+            .map_err(|error| RegistryValidationError {
+                registry: TEST_ENVIRONMENT_REGISTRY.to_string(),
+                validator: codec.to_string(),
+                message: error.to_string(),
+            })
+        })
+        .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
+    candidate.typed.test_environments = test_environments;
     Ok(())
 }
 

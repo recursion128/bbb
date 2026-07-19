@@ -192,6 +192,15 @@ class WorldClockEntry:
 
 
 @dataclass(frozen=True)
+class GameRuleEntry:
+    constant_name: str
+    resource_id: str
+    value_kind: str
+    min_value: int | None
+    max_value: int | None
+
+
+@dataclass(frozen=True)
 class StatTypeEntry:
     constant_name: str
     type_id: int
@@ -1303,6 +1312,62 @@ def world_clock_entries(
         )
     _validate(entries, "world clock", "clock_id")
     _validate(entries, "world clock", "resource_id")
+    return entries
+
+
+def game_rule_entries(
+    source: JavaSource, expected_count: int = 59
+) -> list[GameRuleEntry]:
+    entries = []
+    for field in _fields(source, "GameRule<"):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or JavaExpression("", field.span, field.node)
+            _fail(source, expression, f"{field.name} lacks a game-rule register call")
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if name is None or arguments is None:
+            _fail(source, initializer, f"{field.name} has an incomplete register call")
+        method = source.text(name)
+        call_arguments = tuple(
+            source.expression(node) for node in arguments.named_children
+        )
+        value_type = field.type_spelling.replace(" ", "")
+        if method == "registerBoolean":
+            if value_type != "GameRule<Boolean>" or len(call_arguments) != 3:
+                _fail(source, initializer, f"{field.name} boolean registration changed")
+            value_kind = "boolean"
+            min_value = None
+            max_value = None
+        elif method == "registerInteger":
+            if value_type != "GameRule<Integer>" or len(call_arguments) not in {4, 5, 6}:
+                _fail(source, initializer, f"{field.name} integer registration changed")
+            value_kind = "integer"
+            min_value = _signed_integer(source, call_arguments[3])
+            max_value = (
+                _signed_integer(source, call_arguments[4])
+                if len(call_arguments) >= 5
+                else 2_147_483_647
+            )
+            if min_value > max_value:
+                _fail(source, initializer, f"{field.name} has an inverted integer range")
+        else:
+            _fail(source, initializer, f"{field.name} uses unsupported {method}")
+        entries.append(
+            GameRuleEntry(
+                field.name,
+                "minecraft:" + _string(source, call_arguments[0]),
+                value_kind,
+                min_value,
+                max_value,
+            )
+        )
+
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} game rules, extracted {len(entries)}"
+        )
+    _validate(entries, "game rule", "resource_id")
     return entries
 
 

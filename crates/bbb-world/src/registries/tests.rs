@@ -25,6 +25,20 @@ fn record_minimal_non_empty_synchronized_registries(
         {
             continue;
         }
+        if let Some(data) = minimal_sound_variant_nbt(data_type.resource_id) {
+            store.record_registry_entries(
+                data_type.resource_id,
+                0,
+                vec![RegistryPacketEntry::with_raw_data(
+                    format!(
+                        "example:minimal_{}",
+                        data_type.constant_name.to_ascii_lowercase()
+                    ),
+                    data,
+                )],
+            );
+            continue;
+        }
         store.record_registry_entries(
             data_type.resource_id,
             0,
@@ -37,6 +51,70 @@ fn record_minimal_non_empty_synchronized_registries(
             )],
         );
     }
+}
+
+fn minimal_sound_variant_nbt(registry: &str) -> Option<Vec<u8>> {
+    let fields = match registry {
+        "minecraft:cat_sound_variant" => [
+            "ambient_sound",
+            "stray_ambient_sound",
+            "hiss_sound",
+            "hurt_sound",
+            "death_sound",
+            "eat_sound",
+            "beg_for_food_sound",
+            "purr_sound",
+            "purreow_sound",
+        ]
+        .as_slice(),
+        "minecraft:chicken_sound_variant" | "minecraft:cow_sound_variant" => {
+            ["ambient_sound", "hurt_sound", "death_sound", "step_sound"].as_slice()
+        }
+        "minecraft:pig_sound_variant" => [
+            "ambient_sound",
+            "hurt_sound",
+            "death_sound",
+            "step_sound",
+            "eat_sound",
+        ]
+        .as_slice(),
+        "minecraft:wolf_sound_variant" => [
+            "ambient_sound",
+            "death_sound",
+            "growl_sound",
+            "hurt_sound",
+            "pant_sound",
+            "whine_sound",
+            "step_sound",
+        ]
+        .as_slice(),
+        _ => return None,
+    };
+    let write_sound_set = |out: &mut Vec<u8>| {
+        for field in fields {
+            out.push(10);
+            write_nbt_string(out, field);
+            out.push(8);
+            write_nbt_string(out, "sound_id");
+            write_nbt_string(out, "minecraft:entity.cat.ambient");
+            out.push(0);
+        }
+    };
+    let mut data = vec![10];
+    if registry == "minecraft:cow_sound_variant" {
+        write_sound_set(&mut data);
+    } else {
+        data.push(10);
+        write_nbt_string(&mut data, "adult_sounds");
+        write_sound_set(&mut data);
+        data.push(0);
+        data.push(10);
+        write_nbt_string(&mut data, "baby_sounds");
+        write_sound_set(&mut data);
+        data.push(0);
+    }
+    data.push(0);
+    Some(data)
 }
 
 #[test]
@@ -1673,6 +1751,166 @@ fn registered_typed_codec_failure_rejects_candidate_atomically() {
             .as_ref()
             .map(|error| error.source.as_str()),
         Some("registry_configuration_typed_values")
+    );
+}
+
+#[test]
+fn configuration_candidate_stores_sound_variant_and_test_environment_typed_values() {
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(
+        &mut store,
+        Some("minecraft:cow_sound_variant"),
+    );
+    store.record_registry_entries(
+        "minecraft:cow_sound_variant",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:custom_cow",
+            br#"{
+                "ambient_sound":"minecraft:entity.cow.ambient",
+                "hurt_sound":{"sound_id":"example:cow_hurt","range":18.0},
+                "death_sound":{"sound_id":"example:cow_death"},
+                "step_sound":"minecraft:entity.cow.step"
+            }"#
+            .to_vec(),
+        )],
+    );
+    store.record_registry_entries(
+        "minecraft:test_environment",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:rules",
+            br#"{
+                "type":"minecraft:game_rules",
+                "rules":{
+                    "minecraft:keep_inventory":true,
+                    "minecraft:max_snow_accumulation_height":8
+                }
+            }"#
+            .to_vec(),
+        )],
+    );
+
+    store.finish_registry_configuration().unwrap();
+
+    assert_eq!(
+        store
+            .synchronized_sound_variant_hurt_sound("minecraft:cow_sound_variant", 0, true)
+            .unwrap(),
+        Some(crate::registries::RegistrySoundEvent::Direct {
+            location: "example:cow_hurt".to_string(),
+            fixed_range: Some(18.0),
+        })
+    );
+    let environment = store
+        .synchronized_test_environment_definition(0)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        environment.element_source,
+        RegistryElementSource::KnownPackJson
+    );
+    assert!(matches!(
+        environment.kind,
+        crate::TestEnvironmentKind::GameRules { rules }
+            if rules.len() == 2
+                && rules[0].value == crate::TestGameRuleTypedValue::Boolean(true)
+                && rules[1].value == crate::TestGameRuleTypedValue::Integer(8)
+    ));
+}
+
+#[test]
+fn invalid_game_rule_candidate_keeps_previous_typed_generation() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test_environment",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:old_weather",
+            br#"{"type":"minecraft:weather","weather":"clear"}"#.to_vec(),
+        )],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:test_environment",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_rules",
+            br#"{
+                "type":"minecraft:game_rules",
+                "rules":{"minecraft:max_snow_accumulation_height":9}
+            }"#
+            .to_vec(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:test_environment");
+    assert_eq!(error.validator, "TestEnvironmentDefinition.DIRECT_CODEC");
+    assert!(error.message.contains("expected integer in range 0..=8"));
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test_environment", 0),
+        Some("example:old_weather")
+    );
+    assert!(matches!(
+        store
+            .synchronized_test_environment_definition(0)
+            .unwrap()
+            .unwrap()
+            .kind,
+        crate::TestEnvironmentKind::Weather {
+            weather: crate::TestWeather::Clear
+        }
+    ));
+}
+
+#[test]
+fn unknown_sound_variant_reference_rejects_candidate_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:cow_sound_variant",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_cow")],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(
+        &mut store,
+        Some("minecraft:cow_sound_variant"),
+    );
+    store.record_registry_entries(
+        "minecraft:cow_sound_variant",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_cow",
+            br#"{
+                "ambient_sound":"example:missing_sound",
+                "hurt_sound":"minecraft:entity.cow.hurt",
+                "death_sound":"minecraft:entity.cow.death",
+                "step_sound":"minecraft:entity.cow.step"
+            }"#
+            .to_vec(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:cow_sound_variant");
+    assert_eq!(error.validator, "CowSoundVariant.DIRECT_CODEC");
+    assert!(error
+        .message
+        .contains("missing minecraft:sound_event resource example:missing_sound"));
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:cow_sound_variant", 0),
+        Some("example:old_cow")
     );
 }
 

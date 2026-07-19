@@ -71,8 +71,8 @@ pub use environment_attributes::{
 };
 pub use game_tests::{
     GameTestInstanceDefinition, GameTestInstanceKind, GameTestRegistryProjectionError,
-    TestEnvironmentDefinition, TestEnvironmentHolder, TestEnvironmentKind, TestGameRuleValue,
-    TestRegistryReference, TestRotation, TestWeather, TEST_ENVIRONMENT_REGISTRY,
+    TestEnvironmentDefinition, TestEnvironmentHolder, TestEnvironmentKind, TestGameRuleTypedValue,
+    TestGameRuleValue, TestRegistryReference, TestRotation, TestWeather, TEST_ENVIRONMENT_REGISTRY,
     TEST_INSTANCE_REGISTRY,
 };
 pub use instrument_values::{
@@ -87,8 +87,9 @@ pub use painting_variants::{
     PaintingVariantProjectionError, PAINTING_VARIANT_REGISTRY,
 };
 pub(crate) use sound_variants::{
-    RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY, CHICKEN_SOUND_VARIANT_REGISTRY,
-    COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
+    RegistrySoundEvent, RegistrySoundKind, CAT_SOUND_VARIANT_REGISTRY,
+    CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY,
+    WOLF_SOUND_VARIANT_REGISTRY,
 };
 pub use state::{
     FrozenRegistryAccess, FrozenRegistryEntry, FrozenRegistryHolderSet,

@@ -31,6 +31,8 @@ use super::dimension_types::{
 #[cfg(test)]
 use super::element_value::decode_known_pack_element;
 use super::element_value::decode_network_element;
+use super::game_tests::TestEnvironmentDefinition;
+use super::sound_variants::RegistrySoundVariant;
 use super::timelines::{TimelineDefinition, WorldClockDefinition};
 use super::{
     BiomeClientProjection, BiomeProjectionError, BlockStateRegistry, RegistryElementData,
@@ -65,6 +67,8 @@ pub struct RegistrySet {
 #[derive(Debug, Clone, Default)]
 pub(super) struct RegistryTypedValues {
     pub dimension_types: BTreeMap<String, DimensionTypeClientProjection>,
+    pub sound_variants: BTreeMap<String, BTreeMap<String, RegistrySoundVariant>>,
+    pub test_environments: BTreeMap<String, TestEnvironmentDefinition>,
     pub timelines: BTreeMap<String, TimelineDefinition>,
     pub world_clocks: BTreeMap<String, WorldClockDefinition>,
 }

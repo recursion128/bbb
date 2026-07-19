@@ -23491,7 +23491,7 @@ mod generated_catalog_guards {
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(world_audio_baby_helper.contains("assert!(!default"));
         let world_audio_builtin_fixture = world_audio_fixture
-            .split("fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds")
+            .split("fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds")
             .nth(1)
             .and_then(|source| source.split("fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload").next())
             .expect("world audio built-in baby fixture source");

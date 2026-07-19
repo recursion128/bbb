@@ -9,12 +9,12 @@ use bbb_protocol::{
         VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID,
         VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
     },
-    item_types::vanilla_item_default_break_sound_resource_id,
+    item_types::{vanilla_item_default_break_sound_resource_id, VANILLA_ITEM_WOLF_ARMOR_ID},
     packets::{
-        EntityDataRegistryHolder, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
-        SoundEntityEvent as ProtocolSoundEntityEvent, SoundEvent as ProtocolSoundEvent,
-        SoundEventHolder as ProtocolSoundEventHolder, SoundEventSummary, SoundSource,
-        StopSound as ProtocolStopSound, Vec3d as ProtocolVec3d,
+        EntityDataRegistryHolder, EquipmentSlot, GameEvent as ProtocolGameEvent,
+        LevelEvent as ProtocolLevelEvent, SoundEntityEvent as ProtocolSoundEntityEvent,
+        SoundEvent as ProtocolSoundEvent, SoundEventHolder as ProtocolSoundEventHolder,
+        SoundEventSummary, SoundSource, StopSound as ProtocolStopSound, Vec3d as ProtocolVec3d,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -27,9 +27,9 @@ use crate::entities::{
     PigSoundVariantIdentity, VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
 };
 use crate::registries::{
-    DamageTypeEffects, RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY,
-    CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY,
-    WOLF_SOUND_VARIANT_REGISTRY,
+    DamageTypeEffects, RegistrySoundEvent, RegistrySoundKind, CAT_SOUND_VARIANT_REGISTRY,
+    CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, DAMAGE_TYPE_REGISTRY,
+    PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
 };
 use crate::{block_name_is_air, WorldStore};
 
@@ -69,6 +69,7 @@ const PLAYER_HURT_ON_FIRE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_on_f
 const PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT: &str =
     "minecraft:entity.player.hurt_sweet_berry_bush";
 const PLAYER_HURT_FREEZE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_freeze";
+const WOLF_ARMOR_DAMAGE_SOUND_EVENT: &str = "minecraft:entity.wolf_armor.damage";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
@@ -592,34 +593,154 @@ impl WorldStore {
         Some(self.record_positioned_sound(sound))
     }
 
-    pub fn player_damage_hurt_sound_for_entity(
+    pub fn living_damage_hurt_sound_for_entity(
         &mut self,
         entity_id: i32,
+        source_type_id: i32,
         effects: DamageTypeEffects,
         mut next_float: impl FnMut() -> f32,
     ) -> Option<SoundEventState> {
         let transform = self.entities.transform_state(entity_id)?;
-        if transform.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
-            || self.entities.is_silent(entity_id)?
-        {
+        if self.entities.is_silent(entity_id)? {
             return None;
         }
-        let sound = match effects {
-            DamageTypeEffects::Hurt | DamageTypeEffects::Thorns => PLAYER_HURT_SOUND_EVENT,
-            DamageTypeEffects::Drowning => PLAYER_HURT_DROWN_SOUND_EVENT,
-            DamageTypeEffects::Burning => PLAYER_HURT_ON_FIRE_SOUND_EVENT,
-            DamageTypeEffects::Poking => PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT,
-            DamageTypeEffects::Freezing => PLAYER_HURT_FREEZE_SOUND_EVENT,
+        let (sound, volume) = match transform.entity_type_id {
+            VANILLA_ENTITY_TYPE_PLAYER_ID => {
+                let sound = match effects {
+                    DamageTypeEffects::Hurt | DamageTypeEffects::Thorns => PLAYER_HURT_SOUND_EVENT,
+                    DamageTypeEffects::Drowning => PLAYER_HURT_DROWN_SOUND_EVENT,
+                    DamageTypeEffects::Burning => PLAYER_HURT_ON_FIRE_SOUND_EVENT,
+                    DamageTypeEffects::Poking => PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT,
+                    DamageTypeEffects::Freezing => PLAYER_HURT_FREEZE_SOUND_EVENT,
+                };
+                (direct_sound_holder(sound), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_CAT_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
+                let sound = self.sound_variant_sound(
+                    entity_id,
+                    CAT_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::CatSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    CatSoundVariantIdentity::for_vanilla_registry_id,
+                    CatSoundVariantIdentity::for_resource_id,
+                    CatSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )?;
+                (sound, 1.0)
+            }
+            VANILLA_ENTITY_TYPE_CHICKEN_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
+                let sound = self.sound_variant_sound(
+                    entity_id,
+                    CHICKEN_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::ChickenSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    ChickenSoundVariantIdentity::for_vanilla_registry_id,
+                    ChickenSoundVariantIdentity::for_resource_id,
+                    ChickenSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )?;
+                (sound, 1.0)
+            }
+            VANILLA_ENTITY_TYPE_COW_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
+                let sound = self.sound_variant_sound(
+                    entity_id,
+                    COW_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::CowSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    CowSoundVariantIdentity::for_vanilla_registry_id,
+                    CowSoundVariantIdentity::for_resource_id,
+                    CowSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )?;
+                (sound, 0.4)
+            }
+            VANILLA_ENTITY_TYPE_PIG_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
+                let sound = self.sound_variant_sound(
+                    entity_id,
+                    PIG_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::PigSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    PigSoundVariantIdentity::for_vanilla_registry_id,
+                    PigSoundVariantIdentity::for_resource_id,
+                    PigSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )?;
+                (sound, 1.0)
+            }
+            VANILLA_ENTITY_TYPE_WOLF_ID => {
+                if self
+                    .equipment_item(entity_id, EquipmentSlot::Body)
+                    .and_then(|item| item.item_id)
+                    == Some(VANILLA_ITEM_WOLF_ARMOR_ID)
+                    && !self.registries().holder_is_in_tag(
+                        DAMAGE_TYPE_REGISTRY,
+                        "minecraft:bypasses_wolf_armor",
+                        source_type_id,
+                    )
+                {
+                    (direct_sound_holder(WOLF_ARMOR_DAMAGE_SOUND_EVENT), 0.4)
+                } else {
+                    let baby = self.entities.is_baby(entity_id)?;
+                    let accessors =
+                        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+                            transform.entity_type_id,
+                        )?;
+                    let sound = self.sound_variant_sound(
+                        entity_id,
+                        WOLF_SOUND_VARIANT_REGISTRY,
+                        accessors.sound_variant_data_id,
+                        EntityDataRegistryHolder::WolfSoundVariant,
+                        accessors.sound_variant_default_resource_id,
+                        WolfSoundVariantIdentity::for_vanilla_registry_id,
+                        WolfSoundVariantIdentity::for_resource_id,
+                        WolfSoundVariantIdentity::builtin_hurt_sound_event,
+                        baby,
+                        RegistrySoundKind::Hurt,
+                    )?;
+                    (sound, 0.4)
+                }
+            }
+            _ => return None,
         };
         let state = SoundEventState {
-            sound: direct_sound_holder(sound),
-            source: SoundSource::Players.as_str().to_string(),
+            sound,
+            source: vanilla_entity_sound_source(transform.entity_type_id)
+                .as_str()
+                .to_string(),
             position: ProtocolVec3d {
                 x: transform.position.x,
                 y: transform.position.y,
                 z: transform.position.z,
             },
-            volume: 1.0,
+            volume,
             pitch: (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * 0.2 + 1.0,
             seed: 0,
             distance_delay: false,
@@ -795,7 +916,7 @@ impl WorldStore {
                     vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
                         transform.entity_type_id,
                     )?;
-                let sound = self.sound_variant_death_sound(
+                let sound = self.sound_variant_sound(
                     entity_id,
                     CAT_SOUND_VARIANT_REGISTRY,
                     accessors.sound_variant_data_id,
@@ -805,6 +926,7 @@ impl WorldStore {
                     CatSoundVariantIdentity::for_resource_id,
                     CatSoundVariantIdentity::builtin_death_sound_event,
                     baby,
+                    RegistrySoundKind::Death,
                 )?;
                 (sound, 1.0)
             }
@@ -814,7 +936,7 @@ impl WorldStore {
                     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
                         transform.entity_type_id,
                     )?;
-                let sound = self.sound_variant_death_sound(
+                let sound = self.sound_variant_sound(
                     entity_id,
                     CHICKEN_SOUND_VARIANT_REGISTRY,
                     accessors.sound_variant_data_id,
@@ -824,6 +946,7 @@ impl WorldStore {
                     ChickenSoundVariantIdentity::for_resource_id,
                     ChickenSoundVariantIdentity::builtin_death_sound_event,
                     baby,
+                    RegistrySoundKind::Death,
                 )?;
                 (sound, 1.0)
             }
@@ -833,7 +956,7 @@ impl WorldStore {
                     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
                         transform.entity_type_id,
                     )?;
-                let sound = self.sound_variant_death_sound(
+                let sound = self.sound_variant_sound(
                     entity_id,
                     COW_SOUND_VARIANT_REGISTRY,
                     accessors.sound_variant_data_id,
@@ -843,6 +966,7 @@ impl WorldStore {
                     CowSoundVariantIdentity::for_resource_id,
                     CowSoundVariantIdentity::builtin_death_sound_event,
                     baby,
+                    RegistrySoundKind::Death,
                 )?;
                 (sound, 0.4)
             }
@@ -852,7 +976,7 @@ impl WorldStore {
                     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
                         transform.entity_type_id,
                     )?;
-                let sound = self.sound_variant_death_sound(
+                let sound = self.sound_variant_sound(
                     entity_id,
                     PIG_SOUND_VARIANT_REGISTRY,
                     accessors.sound_variant_data_id,
@@ -862,6 +986,7 @@ impl WorldStore {
                     PigSoundVariantIdentity::for_resource_id,
                     PigSoundVariantIdentity::builtin_death_sound_event,
                     baby,
+                    RegistrySoundKind::Death,
                 )?;
                 (sound, 1.0)
             }
@@ -871,7 +996,7 @@ impl WorldStore {
                     vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
                         transform.entity_type_id,
                     )?;
-                let sound = self.sound_variant_death_sound(
+                let sound = self.sound_variant_sound(
                     entity_id,
                     WOLF_SOUND_VARIANT_REGISTRY,
                     accessors.sound_variant_data_id,
@@ -881,6 +1006,7 @@ impl WorldStore {
                     WolfSoundVariantIdentity::for_resource_id,
                     WolfSoundVariantIdentity::builtin_death_sound_event,
                     baby,
+                    RegistrySoundKind::Death,
                 )?;
                 (sound, 0.4)
             }
@@ -907,7 +1033,7 @@ impl WorldStore {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn sound_variant_death_sound<T: Copy>(
+    fn sound_variant_sound<T: Copy>(
         &self,
         entity_id: i32,
         registry: &str,
@@ -916,8 +1042,9 @@ impl WorldStore {
         default_resource_id: &str,
         for_vanilla_registry_id: fn(i32) -> Option<T>,
         for_resource_id: fn(&str) -> Option<T>,
-        builtin_death_sound_event: fn(T, bool) -> &'static str,
+        builtin_sound_event: fn(T, bool) -> &'static str,
         baby: bool,
+        kind: RegistrySoundKind,
     ) -> Option<SoundHolderState> {
         let metadata_registry_id = self
             .entities
@@ -927,25 +1054,30 @@ impl WorldStore {
                 self.registry_holder_id_by_resource_id(registry, default_resource_id)
             })?;
             let entry = self.registry_entry_by_holder_id(registry, holder_id)?;
-            if entry.has_data {
-                let sound = self
-                    .synchronized_sound_variant_death_sound(registry, holder_id, baby)
-                    .ok()??;
+            let sound = match kind {
+                RegistrySoundKind::Hurt => {
+                    self.synchronized_sound_variant_hurt_sound(registry, holder_id, baby)
+                }
+                RegistrySoundKind::Death => {
+                    self.synchronized_sound_variant_death_sound(registry, holder_id, baby)
+                }
+            }
+            .ok()?;
+            if let Some(sound) = sound {
                 return Some(registry_sound_holder(sound));
             }
+            if entry.has_data || entry.known_pack_data().is_some() {
+                return None;
+            }
             let identity = for_resource_id(&entry.id)?;
-            return Some(direct_sound_holder(builtin_death_sound_event(
-                identity, baby,
-            )));
+            return Some(direct_sound_holder(builtin_sound_event(identity, baby)));
         }
 
         let identity = match metadata_registry_id {
             Some(registry_id) => for_vanilla_registry_id(registry_id),
             None => for_resource_id(default_resource_id),
         }?;
-        Some(direct_sound_holder(builtin_death_sound_event(
-            identity, baby,
-        )))
+        Some(direct_sound_holder(builtin_sound_event(identity, baby)))
     }
 
     pub fn take_item_entity_pickup_sound_with_random(
@@ -1908,8 +2040,9 @@ mod tests {
         VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, EntityDataValue, EntityDataValueKind, LevelEvent,
-        SetEntityData, SoundSource, StopSound,
+        AddEntity, BlockPos as ProtocolBlockPos, EntityDataValue, EntityDataValueKind,
+        EquipmentSlotUpdate, ItemStackSummary, LevelEvent, RegistryTags, SetEntityData,
+        SetEquipment, SoundSource, StopSound, TagNetworkPayload, UpdateTags,
     };
     use std::collections::BTreeMap;
     use uuid::Uuid;
@@ -2004,13 +2137,61 @@ mod tests {
         ];
         for (effects, expected_sound) in cases {
             let sound = store
-                .player_damage_hurt_sound_for_entity(90, effects, || 0.5)
+                .living_damage_hurt_sound_for_entity(90, 0, effects, || 0.5)
                 .unwrap();
             assert_eq!(sound.sound.location.as_deref(), Some(expected_sound));
             assert_eq!(sound.source, "player");
             assert_eq!(sound.volume, 1.0);
             assert_eq!(sound.pitch, 1.0);
         }
+    }
+
+    #[test]
+    fn wolf_body_armor_overrides_variant_hurt_unless_damage_bypasses_it() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_of_type(91, VANILLA_ENTITY_TYPE_WOLF_ID));
+        assert!(store.apply_set_equipment(SetEquipment {
+            entity_id: 91,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: ItemStackSummary {
+                    item_id: Some(VANILLA_ITEM_WOLF_ARMOR_ID),
+                    count: 1,
+                    component_patch: Default::default(),
+                },
+            }],
+        }));
+        store.record_registry_entries(
+            DAMAGE_TYPE_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::stub("minecraft:generic")],
+        );
+
+        let armored = store
+            .living_damage_hurt_sound_for_entity(91, 0, DamageTypeEffects::Hurt, || 0.5)
+            .unwrap();
+        assert_eq!(
+            armored.sound.location.as_deref(),
+            Some("minecraft:entity.wolf_armor.damage")
+        );
+        assert_eq!(armored.volume, 0.4);
+
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: DAMAGE_TYPE_REGISTRY.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:bypasses_wolf_armor".to_string(),
+                    entries: vec![0],
+                }],
+            }],
+        });
+        let bypassed = store
+            .living_damage_hurt_sound_for_entity(91, 0, DamageTypeEffects::Hurt, || 0.5)
+            .unwrap();
+        assert_eq!(
+            bypassed.sound.location.as_deref(),
+            Some("minecraft:entity.wolf.hurt")
+        );
     }
 
     #[test]
@@ -2164,7 +2345,7 @@ mod tests {
     }
 
     #[test]
-    fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds() {
+    fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds() {
         let mut store = WorldStore::new();
         let mut entity_ids = 1_000..;
         macro_rules! assert_family {
@@ -2186,6 +2367,22 @@ mod tests {
                             values.push(baby_entity_data($entity_type_id));
                         }
                         assert!(store.apply_set_entity_data(SetEntityData { id, values }));
+
+                        let mut hurt_samples = [0.75, 0.25].into_iter();
+                        let hurt = store
+                            .living_damage_hurt_sound_for_entity(
+                                id,
+                                0,
+                                DamageTypeEffects::Hurt,
+                                || hurt_samples.next().unwrap(),
+                            )
+                            .unwrap();
+                        assert_eq!(
+                            hurt.sound.location.as_deref(),
+                            Some(identity.builtin_hurt_sound_event(baby))
+                        );
+                        assert_close(hurt.volume, $volume);
+                        assert_close(hurt.pitch, 1.1);
 
                         let mut samples = [0.75, 0.25].into_iter();
                         let sound = store
@@ -2251,9 +2448,9 @@ mod tests {
             CAT_SOUND_VARIANT_REGISTRY,
             0,
             vec![
-                crate::RegistryPacketEntry::with_raw_data(
+                crate::RegistryPacketEntry::with_known_pack_data_for_test(
                     "example:custom",
-                    cat_sound_variant_nbt(),
+                    cat_sound_variant_json(),
                 ),
                 crate::RegistryPacketEntry::stub("minecraft:classic"),
             ],
@@ -2265,6 +2462,18 @@ mod tests {
                 values.push(baby_entity_data(VANILLA_ENTITY_TYPE_CAT_ID));
             }
             assert!(store.apply_set_entity_data(SetEntityData { id, values }));
+            let hurt = store
+                .living_damage_hurt_sound_for_entity(id, 0, DamageTypeEffects::Hurt, || 0.5)
+                .unwrap();
+            assert_eq!(
+                hurt.sound.location.as_deref(),
+                Some(if baby {
+                    "example:entity.cat.baby_hurt"
+                } else {
+                    "example:entity.cat.adult_hurt"
+                })
+            );
+            assert_eq!(hurt.sound.fixed_range, baby.then_some(12.0));
             let sound = store.living_death_sound_for_entity(id, || 0.5).unwrap();
             assert_eq!(
                 sound.sound.location.as_deref(),
@@ -3096,64 +3305,38 @@ mod tests {
         }
     }
 
-    fn cat_sound_variant_nbt() -> Vec<u8> {
-        let fields = [
-            "ambient_sound",
-            "stray_ambient_sound",
-            "hiss_sound",
-            "hurt_sound",
-            "death_sound",
-            "eat_sound",
-            "beg_for_food_sound",
-            "purr_sound",
-            "purreow_sound",
-        ];
-        let mut out = vec![10];
-        begin_test_nbt_compound(&mut out, "adult_sounds");
-        for field in fields {
-            write_test_nbt_string(
-                &mut out,
-                field,
-                if field == "death_sound" {
-                    "example:entity.cat.adult_death"
-                } else {
-                    "minecraft:entity.cat.ambient"
+    fn cat_sound_variant_json() -> Vec<u8> {
+        br#"{
+            "adult_sounds": {
+                "ambient_sound": "minecraft:entity.cat.ambient",
+                "stray_ambient_sound": "minecraft:entity.cat.ambient",
+                "hiss_sound": "minecraft:entity.cat.ambient",
+                "hurt_sound": "example:entity.cat.adult_hurt",
+                "death_sound": "example:entity.cat.adult_death",
+                "eat_sound": "minecraft:entity.cat.ambient",
+                "beg_for_food_sound": "minecraft:entity.cat.ambient",
+                "purr_sound": "minecraft:entity.cat.ambient",
+                "purreow_sound": "minecraft:entity.cat.ambient"
+            },
+            "baby_sounds": {
+                "ambient_sound": "minecraft:entity.baby_cat.ambient",
+                "stray_ambient_sound": "minecraft:entity.baby_cat.ambient",
+                "hiss_sound": "minecraft:entity.baby_cat.ambient",
+                "hurt_sound": {
+                    "sound_id": "example:entity.cat.baby_hurt",
+                    "range": 12.0
                 },
-            );
-        }
-        out.push(0);
-        begin_test_nbt_compound(&mut out, "baby_sounds");
-        for field in fields {
-            if field == "death_sound" {
-                begin_test_nbt_compound(&mut out, field);
-                write_test_nbt_string(&mut out, "sound_id", "example:entity.cat.baby_death");
-                out.push(5);
-                write_test_nbt_utf(&mut out, "range");
-                out.extend_from_slice(&24.0_f32.to_be_bytes());
-                out.push(0);
-            } else {
-                write_test_nbt_string(&mut out, field, "minecraft:entity.baby_cat.ambient");
+                "death_sound": {
+                    "sound_id": "example:entity.cat.baby_death",
+                    "range": 24.0
+                },
+                "eat_sound": "minecraft:entity.baby_cat.ambient",
+                "beg_for_food_sound": "minecraft:entity.baby_cat.ambient",
+                "purr_sound": "minecraft:entity.baby_cat.ambient",
+                "purreow_sound": "minecraft:entity.baby_cat.ambient"
             }
-        }
-        out.push(0);
-        out.push(0);
-        out
-    }
-
-    fn begin_test_nbt_compound(out: &mut Vec<u8>, name: &str) {
-        out.push(10);
-        write_test_nbt_utf(out, name);
-    }
-
-    fn write_test_nbt_string(out: &mut Vec<u8>, name: &str, value: &str) {
-        out.push(8);
-        write_test_nbt_utf(out, name);
-        write_test_nbt_utf(out, value);
-    }
-
-    fn write_test_nbt_utf(out: &mut Vec<u8>, value: &str) {
-        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
-        out.extend_from_slice(value.as_bytes());
+        }"#
+        .to_vec()
     }
 
     fn assert_close(actual: f32, expected: f32) {

@@ -200,6 +200,8 @@ mod dialog_screen;
 mod render_extract;
 pub(crate) use render_extract::*;
 mod events;
+#[cfg(test)]
+pub(crate) use events::minimal_non_empty_synchronized_registry_data;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 pub(crate) use dialog_screen::{

@@ -95,6 +95,50 @@ fn damage_type_holder_drives_runtime_player_hurt_audio() {
 }
 
 #[test]
+fn damage_event_drives_runtime_animal_variant_hurt_audio() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(167, VANILLA_ENTITY_TYPE_COW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::DamageEvent(
+        bbb_protocol::packets::DamageEvent {
+            entity_id: 167,
+            source_type_id: 0,
+            source_cause_id: -1,
+            source_direct_id: -1,
+            source_position: None,
+        },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        bbb_world::DAMAGE_TYPE_REGISTRY,
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:generic")],
+    );
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.category, AudioCategory::Neutral);
+            assert_eq!(command.packet_volume, 0.4);
+            assert_eq!(command.seed, 0);
+            assert_eq!(command.sound.event_id, "minecraft:entity.cow.hurt");
+            assert_eq!(command.sound.sound_name, "minecraft:mob/cow/hurt1");
+        }
+        other => panic!("expected positioned sound command, got {other:?}"),
+    }
+}
+
+#[test]
 fn client_audio_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {

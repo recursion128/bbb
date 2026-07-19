@@ -14,6 +14,7 @@ pub enum RegistryElementSource {
 pub struct RegistryElementData {
     pub source: RegistryElementSource,
     pub value: NbtSummaryValue,
+    pub(crate) known_pack_json: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -48,6 +49,7 @@ pub(super) fn decode_network_element(
     Ok(RegistryElementData {
         source: RegistryElementSource::NetworkNbt,
         value,
+        known_pack_json: None,
     })
 }
 
@@ -60,16 +62,17 @@ pub(super) fn decode_known_pack_element(
             maximum: MAX_REGISTRY_ELEMENT_JSON_BYTES,
         });
     }
-    let value: serde_json::Value = serde_json::from_slice(json)
+    let json_value: serde_json::Value = serde_json::from_slice(json)
         .map_err(|error| RegistryElementDecodeError::Json(error.to_string()))?;
-    if value.is_null() {
+    if json_value.is_null() {
         return Err(RegistryElementDecodeError::NullRoot);
     }
-    let mut value = json_to_element_value(value, 0)?;
+    let mut value = json_to_element_value(json_value.clone(), 0)?;
     canonicalize_element_value(&mut value);
     Ok(RegistryElementData {
         source: RegistryElementSource::KnownPackJson,
         value,
+        known_pack_json: Some(json_value),
     })
 }
 

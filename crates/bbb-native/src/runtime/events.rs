@@ -21,3 +21,5 @@ pub(super) use dispatcher::{drain_net_events, drain_net_events_with_audio};
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+pub(crate) use tests::minimal_non_empty_synchronized_registry_data;

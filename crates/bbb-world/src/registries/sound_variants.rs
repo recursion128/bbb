@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
+
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
-use crate::WorldStore;
+use crate::{FrozenRegistryAccess, RegistryElementSource, WorldStore};
 
 use super::normalize_codec_identifier;
 
@@ -52,6 +54,38 @@ pub(crate) enum RegistrySoundEvent {
     },
 }
 
+/// Complete NETWORK_CODEC projection shared by the five synchronized animal
+/// sound-variant registries. Family-specific fields remain `None`.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct RegistrySoundSet {
+    ambient_sound: RegistrySoundEvent,
+    stray_ambient_sound: Option<RegistrySoundEvent>,
+    hiss_sound: Option<RegistrySoundEvent>,
+    hurt_sound: RegistrySoundEvent,
+    death_sound: RegistrySoundEvent,
+    step_sound: Option<RegistrySoundEvent>,
+    eat_sound: Option<RegistrySoundEvent>,
+    beg_for_food_sound: Option<RegistrySoundEvent>,
+    purr_sound: Option<RegistrySoundEvent>,
+    purreow_sound: Option<RegistrySoundEvent>,
+    growl_sound: Option<RegistrySoundEvent>,
+    pant_sound: Option<RegistrySoundEvent>,
+    whine_sound: Option<RegistrySoundEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct RegistrySoundVariant {
+    pub element_source: RegistryElementSource,
+    adult_sounds: RegistrySoundSet,
+    baby_sounds: Option<RegistrySoundSet>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RegistrySoundKind {
+    Hurt,
+    Death,
+}
+
 /// Identifies the exact NETWORK_CODEC field that could not be projected.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SoundVariantProjectionError {
@@ -68,62 +102,189 @@ impl WorldStore {
         holder_id: i32,
         baby: bool,
     ) -> Result<Option<RegistrySoundEvent>, SoundVariantProjectionError> {
+        self.synchronized_sound_variant_sound(registry, holder_id, baby, RegistrySoundKind::Death)
+    }
+
+    pub(crate) fn synchronized_sound_variant_hurt_sound(
+        &self,
+        registry: &str,
+        holder_id: i32,
+        baby: bool,
+    ) -> Result<Option<RegistrySoundEvent>, SoundVariantProjectionError> {
+        self.synchronized_sound_variant_sound(registry, holder_id, baby, RegistrySoundKind::Hurt)
+    }
+
+    fn synchronized_sound_variant_sound(
+        &self,
+        registry: &str,
+        holder_id: i32,
+        baby: bool,
+        kind: RegistrySoundKind,
+    ) -> Result<Option<RegistrySoundEvent>, SoundVariantProjectionError> {
         let Some(entry) = self.registry_entry_by_holder_id(registry, holder_id) else {
             return Ok(None);
         };
+        if let Some(variant) = self
+            .registries
+            .typed
+            .sound_variants
+            .get(registry)
+            .and_then(|entries| entries.get(&entry.id))
+        {
+            return Ok(Some(variant.sound(baby, kind).clone()));
+        }
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_sound_variant_death_sound(registry, &data.value, baby).map(Some)
+        decode_sound_variant_definition(registry, data.source, &data.value)
+            .map(|variant| Some(variant.sound(baby, kind).clone()))
     }
 }
 
+impl RegistrySoundVariant {
+    fn sound(&self, baby: bool, kind: RegistrySoundKind) -> &RegistrySoundEvent {
+        let sounds = if baby {
+            self.baby_sounds.as_ref().unwrap_or(&self.adult_sounds)
+        } else {
+            &self.adult_sounds
+        };
+        match kind {
+            RegistrySoundKind::Hurt => &sounds.hurt_sound,
+            RegistrySoundKind::Death => &sounds.death_sound,
+        }
+    }
+}
+
+#[cfg(test)]
 fn decode_sound_variant_death_sound(
     registry: &str,
     value: &NbtSummaryValue,
     baby: bool,
 ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
+    decode_sound_variant_definition(registry, RegistryElementSource::NetworkNbt, value)
+        .map(|variant| variant.sound(baby, RegistrySoundKind::Death).clone())
+}
+
+pub(super) fn decode_sound_variant_definition(
+    registry: &str,
+    element_source: RegistryElementSource,
+    value: &NbtSummaryValue,
+) -> Result<RegistrySoundVariant, SoundVariantProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {
         return Err(error("<root>", "expected compound"));
     };
-    match registry {
-        COW_SOUND_VARIANT_REGISTRY => decode_sound_set(fields, COW_SOUND_FIELDS, ""),
-        CAT_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, CAT_SOUND_FIELDS, baby),
-        CHICKEN_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, CHICKEN_SOUND_FIELDS, baby),
-        PIG_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, PIG_SOUND_FIELDS, baby),
-        WOLF_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, WOLF_SOUND_FIELDS, baby),
-        _ => Err(error("<registry>", "unsupported sound-variant registry")),
-    }
+    let (adult_sounds, baby_sounds) = match registry {
+        COW_SOUND_VARIANT_REGISTRY => (decode_sound_set(fields, COW_SOUND_FIELDS, "")?, None),
+        CAT_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, CAT_SOUND_FIELDS)?,
+        CHICKEN_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, CHICKEN_SOUND_FIELDS)?,
+        PIG_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, PIG_SOUND_FIELDS)?,
+        WOLF_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, WOLF_SOUND_FIELDS)?,
+        _ => return Err(error("<registry>", "unsupported sound-variant registry")),
+    };
+    Ok(RegistrySoundVariant {
+        element_source,
+        adult_sounds,
+        baby_sounds,
+    })
 }
 
 fn decode_age_sound_sets(
     fields: &[NbtSummaryEntry],
     required_sound_fields: &[&str],
-    baby: bool,
-) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
+) -> Result<(RegistrySoundSet, Option<RegistrySoundSet>), SoundVariantProjectionError> {
     let adult = required_compound(fields, "adult_sounds", "adult_sounds")?;
     let baby_fields = required_compound(fields, "baby_sounds", "baby_sounds")?;
-    let adult_death = decode_sound_set(adult, required_sound_fields, "adult_sounds")?;
-    let baby_death = decode_sound_set(baby_fields, required_sound_fields, "baby_sounds")?;
-    Ok(if baby { baby_death } else { adult_death })
+    Ok((
+        decode_sound_set(adult, required_sound_fields, "adult_sounds")?,
+        Some(decode_sound_set(
+            baby_fields,
+            required_sound_fields,
+            "baby_sounds",
+        )?),
+    ))
 }
 
 fn decode_sound_set(
     fields: &[NbtSummaryEntry],
     required_sound_fields: &[&str],
     prefix: &str,
-) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
-    let mut death_sound = None;
+) -> Result<RegistrySoundSet, SoundVariantProjectionError> {
+    let mut decoded = BTreeMap::new();
     for field in required_sound_fields {
         let path = field_path(prefix, field);
         let value = field_value(fields, field)
             .ok_or_else(|| error(path.clone(), "missing required field"))?;
-        let sound = decode_sound_event_holder(value, &path)?;
-        if *field == "death_sound" {
-            death_sound = Some(sound);
+        decoded.insert(*field, decode_sound_event_holder(value, &path)?);
+    }
+    Ok(RegistrySoundSet {
+        ambient_sound: take_sound(&mut decoded, "ambient_sound"),
+        stray_ambient_sound: decoded.remove("stray_ambient_sound"),
+        hiss_sound: decoded.remove("hiss_sound"),
+        hurt_sound: take_sound(&mut decoded, "hurt_sound"),
+        death_sound: take_sound(&mut decoded, "death_sound"),
+        step_sound: decoded.remove("step_sound"),
+        eat_sound: decoded.remove("eat_sound"),
+        beg_for_food_sound: decoded.remove("beg_for_food_sound"),
+        purr_sound: decoded.remove("purr_sound"),
+        purreow_sound: decoded.remove("purreow_sound"),
+        growl_sound: decoded.remove("growl_sound"),
+        pant_sound: decoded.remove("pant_sound"),
+        whine_sound: decoded.remove("whine_sound"),
+    })
+}
+
+fn take_sound(decoded: &mut BTreeMap<&str, RegistrySoundEvent>, field: &str) -> RegistrySoundEvent {
+    decoded
+        .remove(field)
+        .expect("base SoundSet field is included in every family codec")
+}
+
+pub(super) fn validate_sound_variant_references(
+    variant: &RegistrySoundVariant,
+    access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    validate_sound_set_references(&variant.adult_sounds, "adult_sounds", access)?;
+    if let Some(baby_sounds) = &variant.baby_sounds {
+        validate_sound_set_references(baby_sounds, "baby_sounds", access)?;
+    }
+    Ok(())
+}
+
+fn validate_sound_set_references(
+    sounds: &RegistrySoundSet,
+    prefix: &str,
+    access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    for (field, sound) in sounds.fields() {
+        if let RegistrySoundEvent::Named { resource_id } = sound {
+            access
+                .require_entry_by_resource_id("minecraft:sound_event", resource_id)
+                .map_err(|error| format!("{}: {error}", field_path(prefix, field)))?;
         }
     }
-    death_sound.ok_or_else(|| error(field_path(prefix, "death_sound"), "missing required field"))
+    Ok(())
+}
+
+impl RegistrySoundSet {
+    fn fields(&self) -> impl Iterator<Item = (&'static str, &RegistrySoundEvent)> {
+        [
+            ("ambient_sound", Some(&self.ambient_sound)),
+            ("stray_ambient_sound", self.stray_ambient_sound.as_ref()),
+            ("hiss_sound", self.hiss_sound.as_ref()),
+            ("hurt_sound", Some(&self.hurt_sound)),
+            ("death_sound", Some(&self.death_sound)),
+            ("step_sound", self.step_sound.as_ref()),
+            ("eat_sound", self.eat_sound.as_ref()),
+            ("beg_for_food_sound", self.beg_for_food_sound.as_ref()),
+            ("purr_sound", self.purr_sound.as_ref()),
+            ("purreow_sound", self.purreow_sound.as_ref()),
+            ("growl_sound", self.growl_sound.as_ref()),
+            ("pant_sound", self.pant_sound.as_ref()),
+            ("whine_sound", self.whine_sound.as_ref()),
+        ]
+        .into_iter()
+        .filter_map(|(field, sound)| sound.map(|sound| (field, sound)))
+    }
 }
 
 fn decode_sound_event_holder(
@@ -222,6 +383,24 @@ mod tests {
 
         for (registry, fields, age_sets) in cases {
             let raw_data = sound_variant_nbt(fields, age_sets);
+            let data = super::super::element_value::decode_network_element(&raw_data).unwrap();
+            let variant =
+                decode_sound_variant_definition(registry, data.source, &data.value).unwrap();
+            assert_eq!(variant.element_source, RegistryElementSource::NetworkNbt);
+            assert_eq!(variant.adult_sounds.fields().count(), fields.len());
+            assert_eq!(
+                variant
+                    .baby_sounds
+                    .as_ref()
+                    .map(|sounds| sounds.fields().count()),
+                age_sets.then_some(fields.len())
+            );
+            assert_eq!(
+                variant.sound(false, RegistrySoundKind::Hurt),
+                &RegistrySoundEvent::Named {
+                    resource_id: "minecraft:entity.example.other".to_string(),
+                }
+            );
             assert_eq!(
                 decode_sound_variant_death_sound_nbt(registry, &raw_data, false).unwrap(),
                 RegistrySoundEvent::Named {
@@ -263,6 +442,19 @@ mod tests {
             RegistrySoundEvent::Direct {
                 location: "example:death".to_string(),
                 fixed_range: Some(24.0),
+            }
+        );
+        let variant =
+            decode_sound_variant_definition(COW_SOUND_VARIANT_REGISTRY, data.source, &data.value)
+                .unwrap();
+        assert_eq!(
+            variant.adult_sounds.fields().count(),
+            COW_SOUND_FIELDS.len()
+        );
+        assert_eq!(
+            variant.sound(false, RegistrySoundKind::Hurt),
+            &RegistrySoundEvent::Named {
+                resource_id: "example:hurt".to_string(),
             }
         );
     }
@@ -349,6 +541,15 @@ mod tests {
                     .synchronized_sound_variant_death_sound(registry, 0, true)
                     .unwrap(),
                 Some(expected),
+                "{registry}"
+            );
+            assert_eq!(
+                store
+                    .synchronized_sound_variant_hurt_sound(registry, 0, true)
+                    .unwrap(),
+                Some(RegistrySoundEvent::Named {
+                    resource_id: "minecraft:entity.example.other".to_string(),
+                }),
                 "{registry}"
             );
             assert_eq!(

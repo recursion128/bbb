@@ -33,6 +33,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     player_inventory_equipment_slot_indices,
     game_type_entries,
     game_type_not_set_id,
+    game_rule_entries,
     filter_mask_type_entries,
     heightmap_debug_color_entries,
     heightmap_type_entries,
@@ -62,6 +63,58 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class GameplayIdCatalogExtractorTests(unittest.TestCase):
+    def test_game_rules_extract_builtin_value_codecs_and_integer_ranges(self) -> None:
+        source = parse_source(
+            "fixture/GameRules.java",
+            b"""package fixture;
+class GameRules {
+  public static final GameRule<Boolean> KEEP_INVENTORY = registerBoolean(
+      "keep_inventory", GameRuleCategory.PLAYER, false);
+  public static final GameRule<Integer> RANDOM_TICK_SPEED = registerInteger(
+      "random_tick_speed", GameRuleCategory.UPDATES, 3, 0);
+  public static final GameRule<Integer> MAX_SNOW = registerInteger(
+      "max_snow", GameRuleCategory.UPDATES, 1, 0, 8);
+  public static final GameRule<Integer> FEATURE_SPEED = registerInteger(
+      "feature_speed", GameRuleCategory.MISC, 8, 1, 1000, FeatureFlagSet.of(FeatureFlags.TEST));
+}
+""",
+        )
+
+        self.assertEqual(
+            [
+                (
+                    entry.constant_name,
+                    entry.resource_id,
+                    entry.value_kind,
+                    entry.min_value,
+                    entry.max_value,
+                )
+                for entry in game_rule_entries(source, 4)
+            ],
+            [
+                ("KEEP_INVENTORY", "minecraft:keep_inventory", "boolean", None, None),
+                ("RANDOM_TICK_SPEED", "minecraft:random_tick_speed", "integer", 0, 2_147_483_647),
+                ("MAX_SNOW", "minecraft:max_snow", "integer", 0, 8),
+                ("FEATURE_SPEED", "minecraft:feature_speed", "integer", 1, 1000),
+            ],
+        )
+
+    def test_game_rules_reject_unknown_registration_shape_with_span(self) -> None:
+        source = parse_source(
+            "fixture/BadGameRules.java",
+            b"""package fixture;
+class GameRules {
+  public static final GameRule<Boolean> BAD = registerCustom("bad", true);
+}
+""",
+        )
+
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError,
+            r"fixture/BadGameRules\.java:3:\d+: BAD uses unsupported registerCustom",
+        ):
+            game_rule_entries(source, 1)
+
     def test_map_colors_extract_ids_rgb_and_brightness_from_cst(self) -> None:
         source = parse_source(
             "fixture/MapColor.java",
