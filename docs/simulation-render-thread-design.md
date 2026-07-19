@@ -55,9 +55,11 @@ Final completion requires all of the following:
 - This slice does not add a separate audio thread, a job system, rollback,
   extrapolation, or new frame interpolation beyond the existing partial-tick
   behavior.
-- The first complete implementation may publish an `Arc<WorldStore>` clone at
-  tick/publication cadence. Replacing it with narrower structural snapshots is
-  later performance work and may not change ownership or create dual paths.
+- The first complete implementation published an `Arc<WorldStore>` clone at
+  tick/publication cadence. The follow-up ownership and measurement contract
+  for replacing its deep payload copies is
+  [`simulation-publication-snapshot-design.md`](simulation-publication-snapshot-design.md);
+  it does not change the single-owner or one-publication boundary.
 - Resource-pack behavior, particle visuals, HUD fidelity, and terrain content
   are not expanded while their execution boundary is moved.
 

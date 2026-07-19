@@ -183,4 +183,15 @@ impl WorldStore {
             ..Self::default()
         }
     }
+
+    /// Builds the immutable world value carried by one simulation publication.
+    ///
+    /// Keeping this boundary in the world owner makes publication cost directly
+    /// benchmarkable without constructing the native runtime. The initial
+    /// implementation deliberately preserves the existing deep-clone behavior;
+    /// the publication snapshot benchmark records that baseline before storage
+    /// owners gain narrower structural sharing.
+    pub fn publication_snapshot(&self) -> Self {
+        self.clone()
+    }
 }
