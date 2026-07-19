@@ -171,6 +171,7 @@ mod tests {
         let icon = ItemAtlasIcon {
             layers: vec![
                 ItemAtlasIconLayer {
+                    texture_index: 0,
                     uv: ItemAtlasUvRect {
                         min: [0.25, 0.125],
                         max: [0.5, 0.375],
@@ -179,6 +180,7 @@ mod tests {
                     translucent: false,
                 },
                 ItemAtlasIconLayer {
+                    texture_index: 1,
                     uv: ItemAtlasUvRect {
                         min: [0.5, 0.5],
                         max: [0.75, 0.75],
@@ -248,6 +250,7 @@ mod tests {
         };
         let icon = ItemAtlasIcon {
             layers: vec![ItemAtlasIconLayer {
+                texture_index: 0,
                 uv: ItemAtlasUvRect {
                     min: [0.0, 0.0],
                     max: [0.25, 0.25],
@@ -294,6 +297,7 @@ mod tests {
         };
         let icon = ItemAtlasIcon {
             layers: vec![ItemAtlasIconLayer {
+                texture_index: 0,
                 uv: ItemAtlasUvRect {
                     min: [0.25, 0.0],
                     max: [0.5, 0.25],

@@ -294,7 +294,7 @@ pub(crate) fn create_item_entity_atlas_gpu(
 
 impl Renderer {
     pub fn upload_item_entity_atlas(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
-        self.item_entity_atlas = Some(create_item_entity_atlas_gpu(
+        let atlas = create_item_entity_atlas_gpu(
             &self.device,
             &self.queue,
             &self.terrain_bind_group_layout,
@@ -302,7 +302,9 @@ impl Renderer {
             width,
             height,
             rgba,
-        )?);
+        )?;
+        self.item_entity_atlas = Some(atlas);
+        self.invalidate_item_model_atlas(crate::item_models::ItemModelAtlasKind::Items);
         Ok(())
     }
 

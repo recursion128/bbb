@@ -127,10 +127,12 @@ pub use crate::item_models::{
     ItemFrameMapDecorationTextureRef, ItemFrameMapDecorationType, ItemFrameMapRenderType,
     ItemFrameMapSubmission, ItemFrameMapSurface, ItemFrameMapTextSubmission,
     ItemFrameMapTextSurface, ItemFrameMapTextTextureRef, ItemFrameMapTexture,
-    ItemFrameMapTextureRef, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    SignTextSubmission, SignTextSurface, HANGING_SIGN_MAX_TEXT_LINE_WIDTH,
-    HANGING_SIGN_TEXT_LINE_HEIGHT, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
-    SIGN_MAX_TEXT_LINE_WIDTH, SIGN_TEXT_LINE_HEIGHT,
+    ItemFrameMapTextureRef, ItemModelAssetIdentity, ItemModelAssetKey, ItemModelAtlasGeneration,
+    ItemModelAtlasKind, ItemModelDrawPhase, ItemModelFoil, ItemModelGeometryClass,
+    ItemModelInstanceRecord, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
+    ItemModelResidencyOutcome, ItemModelResourceGeneration, SignTextSubmission, SignTextSurface,
+    HANGING_SIGN_MAX_TEXT_LINE_WIDTH, HANGING_SIGN_TEXT_LINE_HEIGHT, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    ITEM_MODEL_NO_OVERLAY, SIGN_MAX_TEXT_LINE_WIDTH, SIGN_TEXT_LINE_HEIGHT,
 };
 pub use crate::particles::{
     ItemPickupParticleRenderState, ParticleBlockFluidSurfaceQuery, ParticleBlockFluidSurfaceSample,

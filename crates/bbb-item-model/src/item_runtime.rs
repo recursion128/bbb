@@ -2,6 +2,7 @@ use std::{
     cell::{Cell, RefCell},
     collections::{BTreeMap, BTreeSet, HashMap},
     path::PathBuf,
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -431,6 +432,9 @@ pub struct ItemModelCompassTarget<'a> {
 /// One layer of a generated (flat) item ready for 3D extrusion: the sprite's alpha silhouette, its
 /// atlas UV rect (item atlas), and the resolved layer tint.
 pub struct GeneratedItemLayer {
+    /// Exact sprite resource identity. Atlas generation plus this id decides
+    /// static extrusion residency before the alpha-mask payload is consulted.
+    pub asset_id: Arc<str>,
     pub mask: SpriteAlphaMask,
     pub rect: ItemSpriteRect,
     pub tint: [f32; 4],
@@ -439,6 +443,7 @@ pub struct GeneratedItemLayer {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemAtlasIconLayer {
+    pub texture_index: u32,
     pub uv: ItemAtlasUvRect,
     pub tint: [f32; 4],
     pub translucent: bool,

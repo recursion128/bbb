@@ -73,7 +73,7 @@ use crate::{
         FirstPersonMapBackgroundAtlasGpu, FirstPersonMapBackgroundSurface, ItemFrameMapAtlasGpu,
         ItemFrameMapDecorationAtlasGpu, ItemFrameMapDecorationSurface, ItemFrameMapSurface,
         ItemFrameMapTextFontAtlasGpu, ItemFrameMapTextSurface, ItemGlintTextureGpu, ItemModelMesh,
-        SignTextSurface,
+        ItemModelResidency, SignTextSurface,
     },
     lightmap::{
         create_lightmap_bind_group_layout, create_lightmap_gpu, create_lightmap_pipeline,
@@ -448,6 +448,7 @@ pub struct Renderer {
     pub(super) item_entity_atlas: Option<ItemEntityAtlasGpu>,
     pub(super) item_glint_texture: Option<ItemGlintTextureGpu>,
     pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
+    pub(super) item_model_residency: ItemModelResidency,
     pub(super) block_item_model_meshes: Vec<ItemModelMesh>,
     pub(super) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
     pub(super) block_item_model_translucent_meshes: Vec<ItemModelMesh>,
@@ -1635,6 +1636,7 @@ impl Renderer {
             item_entity_atlas: None,
             item_glint_texture: None,
             item_entity_billboards: Vec::new(),
+            item_model_residency: ItemModelResidency::new(),
             block_item_model_meshes: Vec::new(),
             block_item_model_z_offset_forward_meshes: Vec::new(),
             block_item_model_translucent_meshes: Vec::new(),
@@ -2398,6 +2400,7 @@ impl Renderer {
         self.counters.atlas_reallocations += 1;
         self.counters.atlas_width = width;
         self.counters.atlas_height = height;
+        self.invalidate_item_model_atlas(crate::item_models::ItemModelAtlasKind::Blocks);
         Ok(())
     }
 

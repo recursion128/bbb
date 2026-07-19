@@ -294,6 +294,16 @@ fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
     assert!(sprite_uvs
         .iter()
         .any(|sprite| sprite.id == MISSING_TEXTURE_ID && !sprite.has_translucent));
+
+    let apple_index = state.texture_index("minecraft:item/apple");
+    let first_mask = state.alpha_mask(apple_index).unwrap();
+    let second_mask = state.alpha_mask(apple_index).unwrap();
+    assert_eq!(first_mask, second_mask);
+    assert!(!first_mask.is_transparent(0, 0));
+    assert_eq!(
+        state.texture_asset_id(apple_index).as_deref(),
+        Some("minecraft:item/apple")
+    );
 }
 
 #[test]

@@ -168,6 +168,10 @@ fn apply_native_resource_reload(
             return Err(error);
         }
     };
+    // All resource uploads have succeeded. Advance the item residency epoch at
+    // the same reload barrier so old exact handles cannot alias the newly
+    // committed model/atlas resources.
+    renderer.invalidate_item_model_resources();
     prepared
         .particles
         .simulation
@@ -525,6 +529,27 @@ mod tests {
     fn resource_reload_ack_is_send() {
         fn assert_send<T: Send>() {}
         assert_send::<ResourceReloadAck>();
+    }
+
+    #[test]
+    fn item_residency_generation_advances_only_after_reload_uploads_succeed() {
+        let source = include_str!("resource_reload.rs");
+        let upload_result = source
+            .find("let upload_result =")
+            .expect("reload should stage all renderer uploads");
+        let failure_return = source
+            .find("            return Err(error);\n")
+            .expect("failed renderer uploads should recover and return");
+        let residency_barrier = source
+            .find("    renderer.invalidate_item_model_resources();\n")
+            .expect("successful reload should advance the item residency generation");
+        let simulation_commit = source
+            .find("    prepared\n        .particles\n        .simulation")
+            .expect("reload should commit the matching simulation resources");
+
+        assert!(upload_result < failure_return);
+        assert!(failure_return < residency_barrier);
+        assert!(residency_barrier < simulation_commit);
     }
     use std::path::PathBuf;
 

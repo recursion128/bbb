@@ -69,4 +69,8 @@ impl FrameDataBuffer {
     pub(crate) fn buffer(&self) -> Option<&wgpu::Buffer> {
         self.buffer.as_ref()
     }
+
+    pub(crate) fn capacity(&self) -> u64 {
+        self.capacity
+    }
 }

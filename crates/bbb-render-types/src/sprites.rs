@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 /// Per-pixel alpha coverage of one sprite frame, row-major (`width * height`), `true` where the pixel is
 /// opaque enough to contribute geometry. The native layer derives this from the sprite's atlas pixels
 /// (vanilla `SpriteContents.isTransparent`: a pixel is transparent when its alpha is below the cutoff).
@@ -5,7 +7,7 @@
 pub struct SpriteAlphaMask {
     width: u32,
     height: u32,
-    opaque: Vec<bool>,
+    opaque: Arc<Vec<bool>>,
 }
 
 impl SpriteAlphaMask {
@@ -19,7 +21,7 @@ impl SpriteAlphaMask {
         Self {
             width,
             height,
-            opaque,
+            opaque: Arc::new(opaque),
         }
     }
 
@@ -54,5 +56,19 @@ impl ItemSpriteRect {
             self.min[0] + (self.max[0] - self.min[0]) * u,
             self.min[1] + (self.max[1] - self.min[1]) * v,
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn alpha_mask_clone_shares_immutable_pixel_owner() {
+        let mask = SpriteAlphaMask::new(2, 2, vec![true, false, false, true]);
+        let cloned = mask.clone();
+
+        assert!(Arc::ptr_eq(&mask.opaque, &cloned.opaque));
+        assert_eq!(mask, cloned);
     }
 }

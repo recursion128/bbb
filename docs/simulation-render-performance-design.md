@@ -301,9 +301,10 @@ solid, z-offset-forward, translucent, glint, and glint-translucent lanes.
 ### Frozen owners and identities
 
 - `bbb-item-model` owns model selection and dynamic property evaluation.  Its
-  resolved identity is the exact small semantic selection chain plus exact tint
-  bits and foil/animated facts, matching Vanilla's
-  `TrackingItemStackRenderState`; it does not expose or own a GPU handle.
+  resolved identity is the exact small ordered model/sprite selection plus tint
+  slot topology, matching Vanilla's `TrackingItemStackRenderState`; resolved
+  tint values, foil and animation state stay in the narrow instance and it does
+  not expose or own a GPU handle.
 - `bbb-native` owns visibility and consumer-specific transforms, light,
   overlay, lane and submission order.  It emits model identities, model-space
   build input only on a cache miss, and narrow instances through the single
@@ -432,6 +433,32 @@ avoid model work.  The steady batches scale linearly with render cadence.  The
 after run must use the identical cases and pair them with exact logical
 vertex/index/instance/map upload counts, resident/peak bytes, owner hit/miss,
 draw calls and pipeline switches.
+
+Phase 2 implements this lower boundary in
+`bbb-renderer::item_models::residency`.  Its `BTreeMap` key compares resource
+generation, atlas-layout generation, atlas/material class, solid/translucent
+geometry class, exact model id, exact canonical variant and part id; no digest
+or mesh payload decides equality.  `ensure_item_model_resident` accepts a
+builder closure and never evaluates it for a hit or stale key.  The renderer
+retains immutable CPU vertex/index arrays together with persistent wgpu
+buffers, bounded at 4,096 owners and 256 MiB logical payload by default; owners
+pinned by the current frame cannot be evicted and overflow is an explicit
+counted fallback.  Frame pose, normal pose, tint, light, overlay, foil kind/
+scale, phase and submit order are packed into one grow-only instance buffer.
+
+The generated-item input now carries an immutable sprite asset id and reuses a
+sprite alpha mask built once when the item atlas is loaded.  `SpriteAlphaMask`
+clones share an immutable bit-packed `Arc<Vec<bool>>`, so model selection/
+property evaluation no longer rescans atlas pixels or allocates a silhouette
+before the residency lookup.
+Terrain- and item-atlas replacement advance only their matching atlas
+generation; a successful resource-reload barrier additionally advances the
+global item resource generation.  Tests pin builder suppression on exact hits,
+zero static upload for dynamic-only changes, submit-order retention, stale-key
+rejection, atlas-specific invalidation, bounded current-frame pinning and
+immutable alpha-mask sharing.  Consumer draw migration remains phase 3; these
+owners are not counted as a completed render-path win until the legacy phase
+mesh setters and transient buffers are removed.
 
 Every phase is a normal reviewable commit with affected-crate focused tests,
 `cargo fmt --all --check`, `git diff --check`, documentation lint when needed,

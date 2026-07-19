@@ -231,6 +231,8 @@ pub(super) struct ItemIconTextureRef {
 pub(super) struct ItemTextureState {
     pub(super) atlas: AtlasImage,
     pub(super) texture_indices: HashMap<String, u32>,
+    pub(super) texture_ids: Vec<Arc<str>>,
+    pub(super) alpha_masks: Vec<SpriteAlphaMask>,
     pub(super) fallback_index: u32,
 }
 
@@ -246,9 +248,23 @@ impl ItemTextureState {
             .get(MISSING_TEXTURE_ID)
             .copied()
             .unwrap_or(0);
+        let texture_ids = atlas
+            .layout
+            .sprites
+            .iter()
+            .map(|sprite| Arc::<str>::from(sprite.id.as_str()))
+            .collect();
+        let alpha_masks = atlas
+            .layout
+            .sprites
+            .iter()
+            .map(|sprite| sprite_alpha_mask(&atlas, sprite))
+            .collect();
         Ok(Self {
             atlas,
             texture_indices,
+            texture_ids,
+            alpha_masks,
             fallback_index,
         })
     }
@@ -298,11 +314,13 @@ impl ItemTextureState {
     }
 
     pub(super) fn texture_id(&self, texture_index: u32) -> Option<&str> {
-        self.atlas
-            .layout
-            .sprites
+        self.texture_ids
             .get(texture_index as usize)
-            .map(|sprite| sprite.id.as_str())
+            .map(AsRef::as_ref)
+    }
+
+    pub(super) fn texture_asset_id(&self, texture_index: u32) -> Option<Arc<str>> {
+        self.texture_ids.get(texture_index as usize).cloned()
     }
 
     pub(super) fn texture_uv_rect(&self, texture_index: u32) -> Option<ItemAtlasUvRect> {
@@ -310,38 +328,23 @@ impl ItemTextureState {
         Some(item_uv_rect(&self.atlas.layout, sprite))
     }
 
-    /// Builds the per-pixel alpha silhouette of the sprite a UV rect covers, for generated-item
-    /// extrusion. Inverts the half-texel inset [`item_uv_rect`] applies to recover the exact content
-    /// pixel bounds, then reads the stitched atlas alpha (vanilla `SpriteContents.isTransparent`: a pixel
-    /// is opaque iff its alpha byte is non-zero).
-    pub(super) fn alpha_mask_for_uv(&self, uv: ItemAtlasUvRect) -> Option<SpriteAlphaMask> {
-        let (atlas_width, atlas_height) = self.atlas_size();
-        let width = atlas_width as f32;
-        let height = atlas_height as f32;
-        let x0 = (uv.min[0] * width - 0.5).round() as i64;
-        let x1 = (uv.max[0] * width + 0.5).round() as i64;
-        let y0 = (uv.min[1] * height - 0.5).round() as i64;
-        let y1 = (uv.max[1] * height + 0.5).round() as i64;
-        if x0 < 0 || y0 < 0 || x1 <= x0 || y1 <= y0 {
-            return None;
-        }
-        if x1 as u32 > atlas_width || y1 as u32 > atlas_height {
-            return None;
-        }
-        let mask_width = (x1 - x0) as u32;
-        let mask_height = (y1 - y0) as u32;
-        let rgba = self.atlas_rgba();
-        let mut opaque = Vec::with_capacity((mask_width * mask_height) as usize);
-        for py in 0..mask_height {
-            for px in 0..mask_width {
-                let ax = x0 as u32 + px;
-                let ay = y0 as u32 + py;
-                let alpha_index = ((ay * atlas_width + ax) * 4 + 3) as usize;
-                opaque.push(rgba.get(alpha_index).copied().unwrap_or(0) != 0);
-            }
-        }
-        Some(SpriteAlphaMask::new(mask_width, mask_height, opaque))
+    /// Returns the immutable alpha silhouette built once with the atlas.
+    pub(super) fn alpha_mask(&self, texture_index: u32) -> Option<SpriteAlphaMask> {
+        self.alpha_masks.get(texture_index as usize).cloned()
     }
+}
+
+fn sprite_alpha_mask(atlas: &AtlasImage, sprite: &AtlasSprite) -> SpriteAlphaMask {
+    let mut opaque = Vec::with_capacity((sprite.content.width * sprite.content.height) as usize);
+    for py in 0..sprite.content.height {
+        for px in 0..sprite.content.width {
+            let ax = sprite.content.x + px;
+            let ay = sprite.content.y + py;
+            let alpha_index = ((ay * atlas.layout.width + ax) * 4 + 3) as usize;
+            opaque.push(atlas.rgba.get(alpha_index).copied().unwrap_or(0) != 0);
+        }
+    }
+    SpriteAlphaMask::new(sprite.content.width, sprite.content.height, opaque)
 }
 
 pub(super) fn item_icon_texture_layers(
@@ -1050,8 +1053,10 @@ impl NativeItemRuntime {
         icon.layers
             .into_iter()
             .filter_map(|layer| {
-                let mask = self.textures.alpha_mask_for_uv(layer.uv)?;
+                let mask = self.textures.alpha_mask(layer.texture_index)?;
+                let asset_id = self.textures.texture_asset_id(layer.texture_index)?;
                 Some(GeneratedItemLayer {
+                    asset_id,
                     mask,
                     rect: ItemSpriteRect {
                         min: layer.uv.min,
@@ -1720,6 +1725,7 @@ impl NativeItemRuntime {
                 self.textures
                     .texture_uv_rect(layer.texture_index)
                     .map(|uv| ItemAtlasIconLayer {
+                        texture_index: layer.texture_index,
                         uv,
                         tint: item_icon_tint_color(&layer.tint, component_patch),
                         translucent: layer.translucent,
