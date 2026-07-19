@@ -123,7 +123,7 @@ CARGO_TARGET_DIR=/tmp/bbb-target-main cargo bench -p bbb-world --bench publicati
 
 Machine: AMD Ryzen 9 7945HX (16 cores/32 threads), Linux 6.8.0-124-generic,
 `rustc 1.96.0-nightly (bcf3d36c9 2026-03-19)`. Baseline commit:
-`a02f847a58cb9f4f0968f23cb38c70a7a371929a`. Criterion uses ten samples, a
+`cceab362258866df1db647d36635a9ae30652ab5`. Criterion uses ten samples, a
 500 ms warm-up, and a two-second measurement window; these values are records,
 not CI assertions.
 
@@ -148,6 +148,62 @@ over 82 ms; therefore whole-`EntityStore` COW would obscure or relocate cost
 without addressing the measured dominant entity tick. Session-static tables
 are smaller but still pay on every generation despite changing only at
 configuration/reload boundaries.
+
+The same command on the same machine with the gated structural-sharing
+milestone at `a238c083440e5df3859ed5113136d684ecad088e` produced:
+
+| Scenario | Baseline | Structurally shared | Improvement |
+| --- | ---: | ---: | ---: |
+| unchanged empty world | 2.687 us | 2.522 us | 1.07x |
+| unchanged 81 representative columns | 1.602 ms | 3.559 us | 450x |
+| unchanged 289 representative columns | 9.390 ms | 6.493 us | 1,446x |
+| unchanged 625 representative columns | 21.530 ms | 10.650 us | 2,022x |
+| unchanged 2,000 entities | 0.880 ms | 0.905 ms | 0.97x |
+| unchanged 8,192 registry entries + 2,000 item profiles | 0.238 ms | 2.526 us | 94.2x |
+| one block mutation + publish, 625 columns, old snapshot held | 23.142 ms | 20.530 us | 1,127x |
+| entity client tick + publish, 2,000 entities, old snapshot held | 82.470 ms | 83.904 ms | 0.98x |
+| unchanged next generation, 625 columns, old snapshot held | 23.148 ms | 11.288 us | 2,051x |
+
+The block result includes the first write while the previous generation is
+retained, so its 1,127x reduction measures affected-column COW plus publication
+rather than hiding a deferred copy. The entity-only and entity-tick reruns vary
+by a few percent and retain their original cost owner: publication still
+rebuilds the hecs store and the measured client tick still dominates that path.
+No wall-clock value is a CI threshold.
+
+## Implemented Ownership and Observation
+
+`PublicationShared<T>` is a crate-private, serde-transparent `Arc<T>` owner.
+Its only mutable projection is `DerefMut`, which calls `Arc::make_mut`; existing
+world mutation APIs therefore cannot write into a retained generation without
+first obtaining a unique owner. `WorldStore::chunks` holds one such owner per
+column, `RegistrySet` has one session/reload-scoped owner, and every heap-backed
+item-profile table has its own owner. The item-profile granularity preserves
+the pre-existing flattened `WorldStore` serialization shape.
+
+`SimulationPublisher` is the only native caller of
+`WorldStore::publication_snapshot`. It measures construction from immediately
+before the world snapshot through allocation of the complete immutable
+`SimulationPublication`. The generation-matched `NetCounters` projection
+reports `simulation_publication_build_nanos` and the process-lifetime peak in
+`simulation_publication_build_peak_nanos`; render and control still reuse the
+same world `Arc` and generation.
+
+Residual costs and memory behavior are explicit:
+
+- `EntityStore` publication remains O(entity count), about 0.90 ms for the
+  2,000-entity fixture. An outer entity COW was deliberately rejected because
+  entity ticks mutate broadly and would move this copy to the next tick.
+- The first registry mutation after a retained snapshot clones the complete
+  `RegistrySet`; reload is rare, but its transient old-plus-new peak remains.
+  Independent item-profile tables disconnect only when their setter changes
+  that table.
+- A retained reader keeps the old payload for each changed column/table until
+  it releases that generation. Consecutive changed generations can therefore
+  retain several versions of those owners, while unchanged owners remain one
+  allocation. No allocator-wide byte counter was added because reliable byte
+  accounting would require global allocation instrumentation outside the
+  no-`unsafe`, low-overhead contract.
 
 ## Serial Phases, Validation, and Safe Stops
 

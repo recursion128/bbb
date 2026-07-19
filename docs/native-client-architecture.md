@@ -212,6 +212,11 @@ Owns external control-facing types, reports, and snapshots.
   `Arc`, runtime counters, and generation through paired `ArcSwap` handles.
   Control reads retry on a generation mismatch and never lock or own the live
   world.
+- `WorldStore::publication_snapshot` retains immutable owners for unchanged
+  chunk columns, the committed registry set, and individual item-profile
+  tables. Mutations copy only their semantic owner; the entity ECS remains an
+  explicit per-publication snapshot. This storage detail does not create a
+  second canonical world or a control-specific copy.
 - `SharedControlRequests` is a producer facade: native installs the single
   simulation mailbox sink before the control server starts, so all control
   writes share the same ordered command path as winit input. Its compatibility
@@ -268,6 +273,12 @@ joins clean shutdowns and propagates caught worker failures; `SimulationThread`
 also joins on drop. `SimulationRenderContext` carries backend/cache owners only.
 The event loop has no fallback direct pump and does not consult the control
 snapshot as a second lifecycle authority.
+
+`SimulationPublisher` builds the immutable world only through the structural
+snapshot boundary and records the complete publication construction duration.
+The latest and process-peak nanosecond values travel in the same generation's
+`NetCounters`; observation neither blocks the simulation nor introduces a
+separate reader publication.
 
 ### `bbb-item-model`
 
@@ -589,7 +600,8 @@ Rules:
   world state into a cached snapshot.
 - Native-only counters are allowed only for connection/session/runtime state
   that `bbb-world` should not own, such as connection status or command queue
-  lengths.
+  lengths. Publication build duration is also native runtime state and is
+  reported here with the immutable generation it measured.
 - When a native-only field becomes world semantic state, migrate it into
   `bbb-world` and leave `NetCounters` as derived projection.
 

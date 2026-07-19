@@ -9,6 +9,7 @@
 
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID;
 use bbb_protocol::packets::{
     AddEntity, BlockPos, BlockUpdate, RegistryData, RegistryDataEntry, Vec3d,
 };
@@ -101,7 +102,7 @@ fn build_entity_world(count: usize) -> WorldStore {
         world.apply_add_entity(AddEntity {
             id,
             uuid: uuid::Uuid::from_u128(0x1000_0000_0000_0000_0000_0000_0000_0000 + id as u128),
-            entity_type_id: 150,
+            entity_type_id: VANILLA_ENTITY_TYPE_ZOMBIE_ID,
             position: Vec3d {
                 x: (index % 64) as f64,
                 y: 64.0,

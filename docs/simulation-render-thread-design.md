@@ -55,9 +55,9 @@ Final completion requires all of the following:
 - This slice does not add a separate audio thread, a job system, rollback,
   extrapolation, or new frame interpolation beyond the existing partial-tick
   behavior.
-- The first complete implementation published an `Arc<WorldStore>` clone at
-  tick/publication cadence. The follow-up ownership and measurement contract
-  for replacing its deep payload copies is
+- Immutable world generations structurally share unchanged chunk columns and
+  session-static registry/item-profile owners. The ownership, measurement,
+  isolation, and residual-cost record is
   [`simulation-publication-snapshot-design.md`](simulation-publication-snapshot-design.md);
   it does not change the single-owner or one-publication boundary.
 - Resource-pack behavior, particle visuals, HUD fidelity, and terrain content
@@ -196,6 +196,14 @@ Publication uses `ArcSwap`; the render thread always renders one loaded
 generation. Control publishes/reuses that exact world `Arc` and generation, so
 it does not clone a different point in time. A renderer may skip generations;
 it must never combine fields loaded from different generations.
+
+World construction goes only through `WorldStore::publication_snapshot`.
+Unchanged chunk-column palette/light payloads and session-static registry/item-
+profile tables retain immutable structural owners; the first later mutation
+copies only its semantic owner. Entity ECS state remains an explicit
+publication copy so mutation plus publication cost is not deferred to the next
+entity tick. Generation-matched runtime counters expose the most recent and
+process-peak publication build duration in nanoseconds.
 
 The first implementation publishes after any drained packet/input batch that
 changes observable state and after every due tick batch. It may coalesce

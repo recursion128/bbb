@@ -93,5 +93,30 @@ pub struct NetCounters {
     #[serde(default)]
     pub paddle_boat_commands_queued: usize,
     pub move_vehicle_commands_queued: usize,
+    /// Wall-clock cost of building the most recently published immutable
+    /// simulation generation, including its world snapshot, in nanoseconds.
+    #[serde(default)]
+    pub simulation_publication_build_nanos: u64,
+    /// Largest immutable simulation publication build observed in this
+    /// process, in nanoseconds.
+    #[serde(default)]
+    pub simulation_publication_build_peak_nanos: u64,
     pub last_error: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn publication_build_observation_defaults_for_older_counter_payloads() {
+        let mut value = serde_json::to_value(NetCounters::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("simulation_publication_build_nanos");
+        object.remove("simulation_publication_build_peak_nanos");
+
+        let counters: NetCounters = serde_json::from_value(value).unwrap();
+        assert_eq!(counters.simulation_publication_build_nanos, 0);
+        assert_eq!(counters.simulation_publication_build_peak_nanos, 0);
+    }
 }

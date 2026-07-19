@@ -74,6 +74,7 @@ pub(crate) struct SimulationPublisher {
     control_snapshot: SharedSnapshot,
     control_world: SharedWorld,
     next_generation: u64,
+    publication_build_peak: Duration,
 }
 
 pub(crate) struct SimulationPublicationInput<'a> {
@@ -103,7 +104,8 @@ impl SimulationPublisher {
         control_world: SharedWorld,
     ) -> Self {
         let initial_generation = control_snapshot.load().generation;
-        let publication = build_publication(initial_generation, initial);
+        let (publication, publication_build_peak) =
+            build_publication(initial_generation, initial, Duration::ZERO);
         publish_control_views(&control_snapshot, &control_world, &publication);
         let shared = Arc::new(ArcSwap::from(publication));
         Self {
@@ -111,6 +113,7 @@ impl SimulationPublisher {
             control_snapshot,
             control_world,
             next_generation: initial_generation.saturating_add(1),
+            publication_build_peak,
         }
     }
 
@@ -124,7 +127,9 @@ impl SimulationPublisher {
     ) -> Arc<SimulationPublication> {
         let generation = self.next_generation;
         self.next_generation = self.next_generation.saturating_add(1);
-        let publication = build_publication(generation, input);
+        let (publication, publication_build_peak) =
+            build_publication(generation, input, self.publication_build_peak);
+        self.publication_build_peak = publication_build_peak;
         publish_control_views(&self.control_snapshot, &self.control_world, &publication);
         self.shared.store(Arc::clone(&publication));
         publication
@@ -134,9 +139,11 @@ impl SimulationPublisher {
 fn build_publication(
     generation: u64,
     input: SimulationPublicationInput<'_>,
-) -> Arc<SimulationPublication> {
-    let world = Arc::new(input.world.clone());
-    Arc::new(SimulationPublication {
+    previous_build_peak: Duration,
+) -> (Arc<SimulationPublication>, Duration) {
+    let build_started_at = Instant::now();
+    let world = Arc::new(input.world.publication_snapshot());
+    let mut publication = Arc::new(SimulationPublication {
         generation,
         effect_sequence: input.effect_sequence,
         client_tick_index: input.client_tick_index,
@@ -158,7 +165,19 @@ fn build_publication(
         camera_fov_ticks: input.camera_fov_ticks,
         hud_debug_network_sampler: input.hud_debug_network_sampler.clone(),
         hud_debug_tps_sampler: input.hud_debug_tps_sampler.clone(),
-    })
+    });
+    let build_duration = build_started_at.elapsed();
+    let build_peak = previous_build_peak.max(build_duration);
+    let net_counters = &mut Arc::get_mut(&mut publication)
+        .expect("new simulation publication must have one owner")
+        .net_counters;
+    net_counters.simulation_publication_build_nanos = duration_nanos(build_duration);
+    net_counters.simulation_publication_build_peak_nanos = duration_nanos(build_peak);
+    (publication, build_peak)
+}
+
+fn duration_nanos(duration: Duration) -> u64 {
+    duration.as_nanos().min(u128::from(u64::MAX)) as u64
 }
 
 fn publish_control_views(
@@ -316,7 +335,7 @@ mod tests {
             frozen: true,
         });
         frozen_input.world = &frozen_world;
-        let frozen = build_publication(2, frozen_input);
+        let (frozen, _) = build_publication(2, frozen_input, Duration::ZERO);
         assert_eq!(frozen.partial_tick_at(now), 1.0);
     }
 
@@ -384,5 +403,82 @@ mod tests {
         let control_world = control.world.load_full();
         assert_eq!(control_world.generation, published.generation);
         assert!(Arc::ptr_eq(&control_world.world, &published.world));
+    }
+
+    #[test]
+    fn publication_reports_generation_matched_build_duration_and_running_peak() {
+        let control = bbb_control::ControlState::new("test");
+        let world = WorldStore::new();
+        let client_input = ClientInputState::default();
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let net = NetCounters::default();
+        let renderer = RendererCounters::default();
+        let audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let now = Instant::now();
+        let mut publisher = SimulationPublisher::new(
+            input(
+                &world,
+                &client_input,
+                &input_runtime,
+                &net,
+                &renderer,
+                &audio,
+                &network,
+                &tps,
+                now,
+            ),
+            Arc::clone(&control.snapshot),
+            Arc::clone(&control.world),
+        );
+        let initial = publisher.shared().load_full();
+        assert_eq!(
+            initial.net_counters.simulation_publication_build_nanos,
+            initial.net_counters.simulation_publication_build_peak_nanos
+        );
+
+        let published = publisher.publish(input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &net,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            now,
+        ));
+        assert!(
+            published
+                .net_counters
+                .simulation_publication_build_peak_nanos
+                >= initial.net_counters.simulation_publication_build_peak_nanos
+        );
+        assert!(
+            published
+                .net_counters
+                .simulation_publication_build_peak_nanos
+                >= published.net_counters.simulation_publication_build_nanos
+        );
+        let control_snapshot = control.snapshot.load_full();
+        assert_eq!(control_snapshot.generation, published.generation);
+        assert_eq!(
+            control_snapshot.net.simulation_publication_build_nanos,
+            published.net_counters.simulation_publication_build_nanos
+        );
+        assert_eq!(
+            control_snapshot.net.simulation_publication_build_peak_nanos,
+            published
+                .net_counters
+                .simulation_publication_build_peak_nanos
+        );
+    }
+
+    #[test]
+    fn publisher_world_construction_uses_the_snapshot_boundary() {
+        let source = include_str!("publication.rs");
+        assert!(source.contains(concat!("input.world.", "publication_snapshot()")));
+        assert!(!source.contains(concat!("input.world.", "clone()")));
     }
 }
