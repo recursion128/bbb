@@ -5,6 +5,7 @@ use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
     debug_subscription_types::{
+        vanilla_debug_game_event_type_by_id, vanilla_debug_poi_type_by_id,
         vanilla_debug_subscription_type_by_id, VANILLA_DEBUG_SUBSCRIPTION_BEES_ID,
         VANILLA_DEBUG_SUBSCRIPTION_BEE_HIVES_ID, VANILLA_DEBUG_SUBSCRIPTION_BRAINS_ID,
         VANILLA_DEBUG_SUBSCRIPTION_BREEZES_ID,
@@ -401,7 +402,7 @@ fn decode_debug_subscription_value(
             DebugSubscriptionValue::NeighborUpdate(decode_block_pos(decoder)?)
         }
         VANILLA_DEBUG_SUBSCRIPTION_GAME_EVENTS_ID => {
-            let game_event_holder_id = decode_non_negative_registry_id(decoder, "game event")?;
+            let game_event_holder_id = decode_debug_game_event_holder_id(decoder)?;
             DebugSubscriptionValue::GameEvent(DebugGameEventInfo {
                 game_event_holder_id,
                 pos: Vec3d {
@@ -574,7 +575,7 @@ fn decode_debug_hive_info(decoder: &mut Decoder<'_>) -> Result<DebugHiveInfo> {
 fn decode_debug_poi_info(decoder: &mut Decoder<'_>) -> Result<DebugPoiInfo> {
     Ok(DebugPoiInfo {
         pos: decode_block_pos(decoder)?,
-        poi_type_holder_id: decode_non_negative_registry_id(decoder, "point of interest type")?,
+        poi_type_holder_id: decode_debug_poi_holder_id(decoder)?,
         free_ticket_count: decoder.read_var_i32()?,
     })
 }
@@ -673,6 +674,26 @@ fn decode_non_negative_registry_id(decoder: &mut Decoder<'_>, what: &str) -> Res
     if id < 0 {
         return Err(ProtocolError::InvalidData(format!(
             "negative {what} registry id {id}"
+        )));
+    }
+    Ok(id)
+}
+
+fn decode_debug_game_event_holder_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let id = decode_non_negative_registry_id(decoder, "game event")?;
+    if vanilla_debug_game_event_type_by_id(id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "unknown game event registry id {id}"
+        )));
+    }
+    Ok(id)
+}
+
+fn decode_debug_poi_holder_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let id = decode_non_negative_registry_id(decoder, "point of interest type")?;
+    if vanilla_debug_poi_type_by_id(id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "unknown point of interest type registry id {id}"
         )));
     }
     Ok(id)

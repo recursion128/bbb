@@ -67,9 +67,11 @@ Owner: `bbb-protocol`
   and feed the matching debug renderers. The fixed built-in 16-entry vanilla
   registration-order/resource-id catalog now dispatches every per-subscription
   value codec and validates the complete deterministic serverbound request set;
-  POI and game-event values still carry session registry holder ids for the
-  canonical subscriber to resolve. Canonical keyed maps, requested-set gating,
-  lifecycle drops, expiry, and renderer consumers remain open.
+  generated built-in holder catalogs resolve POI and game-event ids to resource
+  identity before publication. The canonical subscriber now owns requested-set
+  gating, typed position/UUID/event maps, expiry, and chunk/entity/level drops.
+  Startup development-flag request ownership and the matching renderer
+  consumers remain open.
 - Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
   beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,

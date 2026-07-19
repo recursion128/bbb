@@ -368,6 +368,33 @@ fn rejects_invalid_debug_subscription_dispatch_and_nested_values() {
     .to_string()
     .contains("invalid redstone orientation index"));
 
+    let mut poi = Encoder::new();
+    poi.write_i64(chunks::encode_block_pos(BlockPos { x: 0, y: 0, z: 0 }));
+    poi.write_var_i32(8);
+    poi.write_bool(true);
+    poi.write_i64(chunks::encode_block_pos(BlockPos { x: 0, y: 0, z: 0 }));
+    poi.write_var_i32(21);
+    poi.write_var_i32(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_DEBUG_BLOCK_VALUE, &poi.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("unknown point of interest type registry id 21")
+    );
+
+    let mut game_event = Encoder::new();
+    game_event.write_var_i32(15);
+    game_event.write_var_i32(60);
+    game_event.write_f64(0.0);
+    game_event.write_f64(0.0);
+    game_event.write_f64(0.0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_DEBUG_EVENT, &game_event.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("unknown game event registry id 60")
+    );
+
     let mut oversized = Encoder::new();
     oversized.write_i64(chunks::encode_block_pos(BlockPos { x: 0, y: 0, z: 0 }));
     oversized.write_var_i32(11);

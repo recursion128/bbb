@@ -23,6 +23,8 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     container_input_entries,
     consume_effect_type_entries,
     custom_chat_completions_action_entries,
+    debug_game_event_entries,
+    debug_poi_type_entries,
     debug_subscription_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
@@ -705,13 +707,19 @@ public class DebugSubscriptions<T> {
         )
         self.assertEqual(
             [
-                (entry.constant_name, entry.subscription_id, entry.resource_id)
+                (
+                    entry.constant_name,
+                    entry.subscription_id,
+                    entry.resource_id,
+                    entry.has_value_codec,
+                    entry.expire_after_ticks,
+                )
                 for entry in debug_subscription_entries(source, 3)
             ],
             [
-                ("TICK", 0, "minecraft:tick"),
-                ("VALUE", 1, "minecraft:value"),
-                ("TEMP", 2, "minecraft:temporary"),
+                ("TICK", 0, "minecraft:tick", False, 0),
+                ("VALUE", 1, "minecraft:value", True, 0),
+                ("TEMP", 2, "minecraft:temporary", True, 100),
             ],
         )
 
@@ -730,6 +738,47 @@ public class DebugSubscriptions<T> {
             "DebugSubscriptions.java:.*unsupported debug subscription registration guessSubscription",
         ):
             debug_subscription_entries(source, 1)
+
+    def test_debug_holder_catalogs_follow_registration_order(self) -> None:
+        game_events = parse_source(
+            "fixture/GameEvent.java",
+            b'''\
+package fixture;
+public record GameEvent(int radius) {
+  public static final Holder.Reference<GameEvent> STEP = register("step");
+  public static final Holder.Reference<GameEvent> SHRIEK = register("shriek", 32);
+}
+''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.holder_id, entry.resource_id)
+                for entry in debug_game_event_entries(game_events, 2)
+            ],
+            [("STEP", 0, "minecraft:step"), ("SHRIEK", 1, "minecraft:shriek")],
+        )
+
+        poi_types = parse_source(
+            "fixture/PoiTypes.java",
+            b'''\
+package fixture;
+public class PoiTypes {
+  public static final ResourceKey<PoiType> HOME = createKey("home");
+  public static final ResourceKey<PoiType> JOB = createKey("job");
+  public static PoiType bootstrap(final Registry<PoiType> registry) {
+    register(registry, JOB, states(), 1, 1);
+    return register(registry, HOME, states(), 1, 1);
+  }
+}
+''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.holder_id, entry.resource_id)
+                for entry in debug_poi_type_entries(poi_types, 2)
+            ],
+            [("JOB", 0, "minecraft:job"), ("HOME", 1, "minecraft:home")],
+        )
 
     def test_world_clocks_follow_bootstrap_registration_order(self) -> None:
         source = parse_source(

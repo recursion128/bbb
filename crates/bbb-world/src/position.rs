@@ -6,7 +6,7 @@ pub struct ChunkPos {
     pub z: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct BlockPos {
     pub x: i32,
     pub y: i32,

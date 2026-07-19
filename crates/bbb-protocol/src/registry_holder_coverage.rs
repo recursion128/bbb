@@ -225,7 +225,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Deferred)
                 .count(),
-            2
+            0
         );
         assert_eq!(
             ledger
@@ -240,7 +240,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 44);
+        assert_eq!(complete.len(), 46);
         assert_eq!(
             complete
                 .iter()
@@ -261,6 +261,7 @@ mod tests {
                 "minecraft:dialog",
                 "minecraft:enchantment",
                 "minecraft:frog_variant",
+                "minecraft:game_event",
                 "minecraft:item",
                 "minecraft:jukebox_song",
                 "minecraft:map_decoration_type",
@@ -269,6 +270,7 @@ mod tests {
                 "minecraft:pig_sound_variant",
                 "minecraft:painting_variant",
                 "minecraft:potion",
+                "minecraft:point_of_interest_type",
                 "minecraft:sound_event",
                 "minecraft:trim_material",
                 "minecraft:trim_pattern",

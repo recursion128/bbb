@@ -2724,6 +2724,10 @@ impl WorldStore {
     }
 
     fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
+        let removed_uuids = removed_ids
+            .iter()
+            .filter_map(|id| self.entities.uuid_for_protocol_id(*id))
+            .collect::<Vec<_>>();
         if let Some(removed_vehicle_id) = removed_ids
             .iter()
             .copied()
@@ -2733,6 +2737,9 @@ impl WorldStore {
             self.local_player_vehicle_id = None;
         }
         let removed = self.entities.remove_ids(removed_ids);
+        for uuid in removed_uuids {
+            self.drop_debug_entity_uuid(uuid);
+        }
         if self
             .local_player_vehicle_id
             .is_some_and(|vehicle_id| removed_ids.contains(&vehicle_id))

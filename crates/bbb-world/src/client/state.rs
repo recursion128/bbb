@@ -17,9 +17,12 @@ pub use crate::client::command_suggestions::{
     CommandSuggestionsState, CustomChatCompletionUpdateState,
 };
 pub use crate::client::debug_game::{
-    ClientDebugGameState, DebugBlockValueState, DebugChunkValueState, DebugEntityValueState,
-    DebugEventState, DebugSampleState, DebugVec3iState, GameRuleValueState, GameRuleValuesState,
-    GameTestHighlightPosState, TestInstanceBlockStatusState,
+    ClientDebugGameState, DebugBlockValueState, DebugBoundingBoxState, DebugChunkValueState,
+    DebugEntityValueState, DebugEventState, DebugGameEventInfoState, DebugHiveInfoState,
+    DebugPoiInfoState, DebugSampleState, DebugStructureInfoState, DebugStructurePieceState,
+    DebugSubscriptionValueState, DebugSubscriptionValuesState, DebugTimedValueState, DebugValueMap,
+    DebugVec3iState, GameRuleValueState, GameRuleValuesState, GameTestHighlightPosState,
+    InvalidDebugSubscriptionId, TestInstanceBlockStatusState,
 };
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
 pub use crate::client::dialog::{

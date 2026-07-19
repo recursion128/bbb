@@ -334,6 +334,7 @@ impl WorldStore {
 
     pub fn forget_chunk(&mut self, pos: ChunkPos) -> bool {
         self.counters.chunk_forgets_received += 1;
+        self.drop_debug_chunk(pos);
         let Some(index) = self.chunks.iter().position(|chunk| chunk.pos == pos) else {
             self.counters.chunk_forgets_ignored += 1;
             return false;

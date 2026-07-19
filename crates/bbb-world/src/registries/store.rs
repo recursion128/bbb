@@ -27,6 +27,8 @@ impl WorldStore {
     /// two entry paths distinct so a transfer cannot inherit the previous
     /// server's holder order when the next server sends no registry contents.
     pub fn reset_registry_session(&mut self) {
+        self.clear_requested_debug_subscriptions();
+        self.clear_debug_subscriber_values();
         let next_session = self.registries.revision.session.saturating_add(1);
         self.registries = super::RegistrySet::vanilla_26_1().into();
         self.registries.revision.session = next_session;

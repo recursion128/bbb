@@ -182,6 +182,15 @@ class DebugSubscriptionEntry:
     constant_name: str
     subscription_id: int
     resource_id: str
+    has_value_codec: bool
+    expire_after_ticks: int
+
+
+@dataclass(frozen=True)
+class DebugHolderTypeEntry:
+    constant_name: str
+    holder_id: int
+    resource_id: str
 
 
 @dataclass(frozen=True)
@@ -1240,11 +1249,31 @@ def debug_subscription_entries(
         )
         if not call_arguments:
             _fail(source, initializer, f"{field.name} register call lacks a resource id")
+        expected_arguments = {
+            "registerSimple": 1,
+            "registerWithValue": 2,
+            "registerTemporaryValue": 3,
+        }[registration_method]
+        if len(call_arguments) != expected_arguments:
+            _fail(
+                source,
+                initializer,
+                f"{field.name} {registration_method} must have {expected_arguments} arguments",
+            )
+        expire_after_ticks = (
+            _integer(source, call_arguments[2])
+            if registration_method == "registerTemporaryValue"
+            else 0
+        )
+        if expire_after_ticks < 0:
+            _fail(source, call_arguments[2], "debug subscription expiry must be non-negative")
         entries.append(
             DebugSubscriptionEntry(
                 field.name,
                 len(entries),
                 "minecraft:" + _string(source, call_arguments[0]),
+                registration_method != "registerSimple",
+                expire_after_ticks,
             )
         )
     if len(entries) != expected_count:
@@ -1253,6 +1282,89 @@ def debug_subscription_entries(
         )
     _validate(entries, "debug subscription", "subscription_id")
     _validate(entries, "debug subscription", "resource_id")
+    return entries
+
+
+def debug_game_event_entries(
+    source: JavaSource, expected_count: int = 60
+) -> list[DebugHolderTypeEntry]:
+    entries = []
+    for field in _fields(source, "Holder.Reference<GameEvent>"):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or JavaExpression("", field.span, field.node)
+            _fail(source, expression, f"{field.name} lacks a game event register call")
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if name is None or arguments is None or source.text(name) != "register":
+            _fail(source, initializer, f"{field.name} is not initialized by register")
+        call_arguments = tuple(
+            source.expression(node) for node in arguments.named_children
+        )
+        if len(call_arguments) not in {1, 2}:
+            _fail(source, initializer, f"{field.name} register must have one or two arguments")
+        entries.append(
+            DebugHolderTypeEntry(
+                field.name,
+                len(entries),
+                "minecraft:" + _string(source, call_arguments[0]),
+            )
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} debug game events, extracted {len(entries)}"
+        )
+    _validate(entries, "debug game event", "holder_id")
+    _validate(entries, "debug game event", "resource_id")
+    return entries
+
+
+def debug_poi_type_entries(
+    source: JavaSource, expected_count: int = 21
+) -> list[DebugHolderTypeEntry]:
+    keys: dict[str, str] = {}
+    for field in _fields(source, "ResourceKey<PoiType>"):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or JavaExpression("", field.span, field.node)
+            _fail(source, expression, f"{field.name} lacks a POI key call")
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if name is None or arguments is None or source.text(name) != "createKey":
+            _fail(source, initializer, f"{field.name} is not initialized by createKey")
+        call_arguments = tuple(
+            source.expression(node) for node in arguments.named_children
+        )
+        if len(call_arguments) != 1:
+            _fail(source, initializer, f"{field.name} key call must have one argument")
+        keys[field.name] = "minecraft:" + _string(source, call_arguments[0])
+
+    entries = []
+    used_keys = set()
+    for call in source.calls:
+        if call.name != "register" or call.qualifier is not None or len(call.arguments) != 5:
+            continue
+        constant_name = call.arguments[1].canonical
+        if constant_name not in keys:
+            _fail(source, call.arguments[1], f"POI register references unknown key {constant_name}")
+        if constant_name in used_keys:
+            _fail(source, call.arguments[1], f"duplicate POI register {constant_name}")
+        used_keys.add(constant_name)
+        entries.append(
+            DebugHolderTypeEntry(constant_name, len(entries), keys[constant_name])
+        )
+
+    unused_keys = sorted(set(keys) - used_keys)
+    if unused_keys:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: unregistered POI keys: {', '.join(unused_keys)}"
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} debug POI types, extracted {len(entries)}"
+        )
+    _validate(entries, "debug POI type", "holder_id")
+    _validate(entries, "debug POI type", "resource_id")
     return entries
 
 

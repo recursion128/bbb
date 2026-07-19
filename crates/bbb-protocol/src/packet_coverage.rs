@@ -2458,9 +2458,13 @@ mod tests {
                 .collect();
             assert_eq!(
                 partial,
-                BTreeSet::from(["canonical_apply", "runtime_side_effect"]),
+                BTreeSet::from(["runtime_side_effect"]),
                 "{}",
                 entry.constant_name
+            );
+            assert_eq!(
+                entry.coverage["canonical_apply"].status,
+                PacketCoverageStatus::Complete
             );
             assert_eq!(
                 entry.coverage["decode"].status,

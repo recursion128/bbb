@@ -521,6 +521,11 @@ impl WorldStore {
 
     pub fn clear_client_level(&mut self) {
         self.advance_client_level_generation();
+        // Login and configuration re-entry construct a fresh
+        // ClientDebugSubscriber. Unlike a dimension-only dropLevel, the new
+        // listener starts with an empty remote request set and resends the
+        // current renderer-derived set on its next tick.
+        self.clear_requested_debug_subscriptions();
         self.dimension = WorldDimension::default();
         self.level = None;
         self.gameplay = WorldGameplayState::default();
@@ -550,7 +555,6 @@ impl WorldStore {
         self.reset_command_suggestions_for_new_listener();
         self.reset_recipes_for_new_listener();
         self.reset_advancements_for_new_listener();
-        self.clear_debug_subscriber_values();
         self.clear_level_bound_state();
     }
 
@@ -813,6 +817,7 @@ impl WorldStore {
     }
 
     fn clear_level_bound_state(&mut self) {
+        self.clear_debug_subscriber_values();
         self.chunks.clear();
         self.clear_terrain_revisions();
         self.first_chunk = None;

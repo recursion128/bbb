@@ -123,10 +123,12 @@ mod tests {
         mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
         packets::{
             AddEntity, AttributeSnapshot, BlockPos as ProtocolBlockPos, BlockUpdate,
-            EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove, EquipmentSlot,
-            EquipmentSlotUpdate, ItemStackSummary, LightUpdate, LightUpdateData, MobEffectFlags,
-            RemoveEntities, SetEntityData, SetEntityLink, SetEquipment, SetPassengers,
-            SetPlayerInventory, UpdateAttributes, UpdateMobEffect, Vec3d,
+            DebugBlockValue, DebugEntityBlockIntersection, DebugEvent, DebugSubscriptionEvent,
+            DebugSubscriptionUpdate, DebugSubscriptionValue, EntityDataValue, EntityDataValueKind,
+            EntityEvent, EntityMove, EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary,
+            LightUpdate, LightUpdateData, MobEffectFlags, RemoveEntities, SetEntityData,
+            SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory, UpdateAttributes,
+            UpdateMobEffect, Vec3d,
         },
     };
 
@@ -523,6 +525,70 @@ mod tests {
         );
         assert_eq!(generation_a.item_max_stack_size_for_protocol_id(4), 16);
         assert_eq!(generation_b.item_max_stack_size_for_protocol_id(4), 32);
+    }
+
+    #[test]
+    fn retained_generation_isolated_from_debug_subscription_lifecycle_mutations() {
+        let mut world = WorldStore::new();
+        world.set_requested_debug_subscriptions(&[6, 14]).unwrap();
+        let first = ProtocolBlockPos { x: 1, y: 64, z: 1 };
+        let second = ProtocolBlockPos { x: 2, y: 64, z: 2 };
+        world.apply_debug_block_value(DebugBlockValue {
+            pos: first,
+            update: DebugSubscriptionUpdate {
+                subscription_id: 6,
+                value: Some(DebugSubscriptionValue::EntityBlockIntersection(
+                    DebugEntityBlockIntersection::InBlock,
+                )),
+            },
+        });
+        let generation_a = world.publication_snapshot();
+
+        world.apply_debug_block_value(DebugBlockValue {
+            pos: first,
+            update: DebugSubscriptionUpdate {
+                subscription_id: 6,
+                value: None,
+            },
+        });
+        world.apply_debug_block_value(DebugBlockValue {
+            pos: second,
+            update: DebugSubscriptionUpdate {
+                subscription_id: 6,
+                value: Some(DebugSubscriptionValue::EntityBlockIntersection(
+                    DebugEntityBlockIntersection::InAir,
+                )),
+            },
+        });
+        world.apply_debug_event(DebugEvent {
+            event: DebugSubscriptionEvent {
+                subscription_id: 14,
+                value: DebugSubscriptionValue::NeighborUpdate(second),
+            },
+        });
+        let generation_b = world.publication_snapshot();
+
+        let first = crate::BlockPos { x: 1, y: 64, z: 1 };
+        let second = crate::BlockPos { x: 2, y: 64, z: 2 };
+        let values_a = generation_a.debug_subscription_values(6).unwrap();
+        assert!(values_a.block_values.contains_key(&first));
+        assert!(!values_a.block_values.contains_key(&second));
+        assert!(generation_a
+            .debug_subscription_values(14)
+            .unwrap()
+            .events
+            .is_empty());
+        let values_b = generation_b.debug_subscription_values(6).unwrap();
+        assert!(!values_b.block_values.contains_key(&first));
+        assert!(values_b.block_values.contains_key(&second));
+        assert_eq!(
+            generation_b
+                .debug_subscription_values(14)
+                .unwrap()
+                .events
+                .len(),
+            1
+        );
     }
 
     #[test]

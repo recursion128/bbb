@@ -552,7 +552,7 @@ impl EntityStore {
             .map(|identity| identity.entity_type_id)
     }
 
-    fn uuid_for_protocol_id(&self, id: i32) -> Option<Uuid> {
+    pub(crate) fn uuid_for_protocol_id(&self, id: i32) -> Option<Uuid> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.ecs
             .get::<&EntityIdentity>(entity)

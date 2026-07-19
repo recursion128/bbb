@@ -73,6 +73,17 @@ The startup surface is one repeatable, default-empty remote-debug-renderer
 selection whose named groups map to vanilla development flags and their exact
 subscription groups. It is startup configuration, not an in-game UI.
 
+The canonical state implementation uses one generated subscription catalog as
+the id, value-codec, and expiry owner. Each requested id owns block-position,
+chunk-position, entity-UUID, and event collections; position-keyed collections
+serialize as ordered entry sequences so `WorldStore` JSON never depends on
+non-string object keys. The generated `GameEvent` field order and `PoiTypes`
+bootstrap order resolve nested holder ids to resource identities before the
+generation is published. Chunk forget and entity removal delete their keys,
+temporary values expire against client game time, listener clear drops the
+request set, and dimension-only `dropLevel` rebuilds empty maps for the retained
+set.
+
 ## Vanilla 26.1 Evidence
 
 - `DebugSubscriptions` registers the fixed built-in catalog in ids `0..=15`.

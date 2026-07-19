@@ -191,14 +191,16 @@
           "net/minecraft/util/debug/DebugPoiInfo.java"
         ]
       },
-      "status": "deferred",
-      "consumer": null,
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/client/debug_game.rs#canonical_debug_subscription_value",
       "evidence": [
         "vanilla:net/minecraft/util/debug/DebugGameEventInfo.java#ByteBufCodecs.holderRegistry(Registries.GAME_EVENT)",
         "vanilla:net/minecraft/util/debug/DebugPoiInfo.java#ByteBufCodecs.holderRegistry(Registries.POINT_OF_INTEREST_TYPE)",
-        "crates/bbb-protocol/src/packets/debug_game.rs#pub(crate) fn decode_debug_event"
+        "crates/bbb-protocol/src/debug_subscription_types.rs#vanilla_debug_game_event_type_by_id",
+        "crates/bbb-protocol/src/debug_subscription_types.rs#vanilla_debug_poi_type_by_id",
+        "crates/bbb-world/src/client/debug_game.rs#requested_subscriptions_gate_typed_maps_and_resolve_holder_identity"
       ],
-      "decision": "restart: replace bounded raw debug event payload retention with typed DEBUG_SUBSCRIPTION value codecs and canonical expiry/removal ownership"
+      "decision": "The generated built-in holder catalogs preserve GameEvent field registration order and PoiTypes bootstrap order; canonical debug values replace holder ids with resource identity before publication."
     },
     {
       "id": "network-holder-reference-helper",
