@@ -4,10 +4,31 @@ use bbb_protocol::registry_data_types::{
     synchronized_registry_data_type, VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES,
 };
 
+use super::animal_variants::{
+    decode_cat_variant_value, decode_farm_animal_variant_value, decode_frog_variant_value,
+    decode_wolf_variant_value, decode_zombie_nautilus_variant_value, CAT_VARIANT_REGISTRY,
+    CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
+    WOLF_VARIANT_REGISTRY, ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
+};
+use super::armor_trims::{
+    decode_material as decode_trim_material, decode_pattern as decode_trim_pattern,
+    TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
+};
+use super::banner_patterns::{decode_banner_pattern_value, BANNER_PATTERN_REGISTRY};
+use super::biomes::decode_biome_client_projection;
+use super::chat_types::{decode_chat_type, CHAT_TYPE_REGISTRY};
+use super::damage_types::{decode_damage_type_value, DAMAGE_TYPE_REGISTRY};
 use super::dimension_types::{decode_dimension_type_client_projection, DIMENSION_TYPE_REGISTRY};
 use super::element_value::decode_known_pack_element;
-use super::game_tests::{decode_test_environment, TEST_ENVIRONMENT_REGISTRY};
+use super::enchantments::{materialize_enchantment_definition, ENCHANTMENT_REGISTRY};
+use super::game_tests::{
+    decode_test_environment, decode_test_instance, TEST_ENVIRONMENT_REGISTRY,
+    TEST_INSTANCE_REGISTRY,
+};
+use super::instrument_values::{decode_instrument, INSTRUMENT_REGISTRY};
 use super::item_component_initializers::build_registry_dependent_item_defaults;
+use super::jukebox_songs::{decode_jukebox_song, JUKEBOX_SONG_REGISTRY};
+use super::painting_variants::{decode_painting_variant, PAINTING_VARIANT_REGISTRY};
 use super::sound_variants::{
     decode_sound_variant_definition, validate_sound_variant_references, CAT_SOUND_VARIANT_REGISTRY,
     CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY,
@@ -79,12 +100,6 @@ impl RegistryRevisionCandidate {
         let mut registries =
             prepare_candidate_registry_set(active, pending, replaces_synchronized_contents);
         if replaces_synchronized_contents {
-            build_registered_typed_projections(&mut registries).map_err(|error| {
-                RegistryCandidateError {
-                    stage: "registry_configuration_typed_values",
-                    error,
-                }
-            })?;
             validate_declared_registry_validators(&registries).map_err(|error| {
                 RegistryCandidateError {
                     stage: "registry_configuration_validation",
@@ -92,6 +107,12 @@ impl RegistryRevisionCandidate {
                 }
             })?;
         }
+        build_registered_typed_projections(&mut registries).map_err(|error| {
+            RegistryCandidateError {
+                stage: "registry_configuration_typed_values",
+                error,
+            }
+        })?;
 
         let item_defaults = build_registry_dependent_item_defaults(
             item_component_initializer_rules,
@@ -236,6 +257,144 @@ fn build_registered_typed_projections(
         .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
     candidate.typed.dimension_types = dimension_types;
 
+    candidate.typed.biomes = materialize_typed_registry(
+        candidate,
+        "minecraft:worldgen/biome",
+        "Biome.NETWORK_CODEC",
+        |entry, _, _| {
+            decode_biome_client_projection(entry)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))?
+                .ok_or_else(|| "<root>: typed payload unavailable".to_string())
+        },
+    )?;
+    candidate.typed.chat_types = materialize_typed_registry(
+        candidate,
+        CHAT_TYPE_REGISTRY,
+        "ChatType.DIRECT_CODEC",
+        |_, data, _| {
+            decode_chat_type(&data.value)
+                .ok_or_else(|| "<root>: malformed ChatType.DIRECT_CODEC value".to_string())
+        },
+    )?;
+    candidate.typed.damage_types = materialize_typed_registry(
+        candidate,
+        DAMAGE_TYPE_REGISTRY,
+        "DamageType.DIRECT_CODEC",
+        |_, data, _| decode_damage_type_value(&data.value).map_err(|error| error.to_string()),
+    )?;
+    candidate.typed.enchantments = materialize_typed_registry(
+        candidate,
+        ENCHANTMENT_REGISTRY,
+        "Enchantment.DIRECT_CODEC",
+        |_, data, _| Ok(materialize_enchantment_definition(&data.value)),
+    )?;
+    candidate.typed.instruments = materialize_typed_registry(
+        candidate,
+        INSTRUMENT_REGISTRY,
+        "Instrument.DIRECT_CODEC",
+        |_, data, _| {
+            decode_instrument(&data.value, data.source)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    candidate.typed.jukebox_songs = materialize_typed_registry(
+        candidate,
+        JUKEBOX_SONG_REGISTRY,
+        "JukeboxSong.DIRECT_CODEC",
+        |_, data, _| {
+            decode_jukebox_song(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    candidate.typed.painting_variants = materialize_typed_registry(
+        candidate,
+        PAINTING_VARIANT_REGISTRY,
+        "PaintingVariant.DIRECT_CODEC",
+        |_, data, _| decode_painting_variant(&data.value).map_err(|error| error.to_string()),
+    )?;
+    candidate.typed.trim_materials = materialize_typed_registry(
+        candidate,
+        TRIM_MATERIAL_REGISTRY,
+        "TrimMaterial.DIRECT_CODEC",
+        |_, data, _| {
+            decode_trim_material(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    candidate.typed.trim_patterns = materialize_typed_registry(
+        candidate,
+        TRIM_PATTERN_REGISTRY,
+        "TrimPattern.DIRECT_CODEC",
+        |_, data, _| {
+            decode_trim_pattern(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    candidate.typed.banner_patterns = materialize_typed_registry(
+        candidate,
+        BANNER_PATTERN_REGISTRY,
+        "BannerPattern.DIRECT_CODEC",
+        |_, data, _| {
+            decode_banner_pattern_value(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    for registry in [
+        CHICKEN_VARIANT_REGISTRY,
+        COW_VARIANT_REGISTRY,
+        PIG_VARIANT_REGISTRY,
+    ] {
+        let variants = materialize_typed_registry(
+            candidate,
+            registry,
+            "FarmAnimalVariant.NETWORK_CODEC",
+            |_, data, _| {
+                decode_farm_animal_variant_value(registry, &data.value)
+                    .map_err(|error| format!("{}: {}", error.field, error.reason))
+            },
+        )?;
+        candidate
+            .typed
+            .farm_animal_variants
+            .insert(registry.to_string(), variants);
+    }
+    candidate.typed.cat_variants = materialize_typed_registry(
+        candidate,
+        CAT_VARIANT_REGISTRY,
+        "CatVariant.NETWORK_CODEC",
+        |_, data, _| {
+            decode_cat_variant_value(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    candidate.typed.frog_variants = materialize_typed_registry(
+        candidate,
+        FROG_VARIANT_REGISTRY,
+        "FrogVariant.NETWORK_CODEC",
+        |_, data, _| {
+            decode_frog_variant_value(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    candidate.typed.wolf_variants = materialize_typed_registry(
+        candidate,
+        WOLF_VARIANT_REGISTRY,
+        "WolfVariant.NETWORK_CODEC",
+        |_, data, _| {
+            decode_wolf_variant_value(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+    candidate.typed.zombie_nautilus_variants = materialize_typed_registry(
+        candidate,
+        ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
+        "ZombieNautilusVariant.NETWORK_CODEC",
+        |_, data, _| {
+            decode_zombie_nautilus_variant_value(&data.value)
+                .map_err(|error| format!("{}: {}", error.field, error.reason))
+        },
+    )?;
+
     for (registry, codec) in [
         (CAT_SOUND_VARIANT_REGISTRY, "CatSoundVariant.DIRECT_CODEC"),
         (
@@ -301,7 +460,59 @@ fn build_registered_typed_projections(
         })
         .collect::<Result<BTreeMap<_, _>, RegistryValidationError>>()?;
     candidate.typed.test_environments = test_environments;
+    candidate.typed.test_instances = materialize_typed_registry(
+        candidate,
+        TEST_INSTANCE_REGISTRY,
+        "TestInstance.DIRECT_CODEC",
+        |entry, data, access| {
+            decode_test_instance(
+                &entry.id,
+                data.source,
+                &data.value,
+                data.known_pack_json.as_ref(),
+                access,
+            )
+            .map_err(|error| error.to_string())
+        },
+    )?;
     Ok(())
+}
+
+fn materialize_typed_registry<T>(
+    candidate: &RegistrySet,
+    registry: &str,
+    validator: &str,
+    decode: impl Fn(
+        &RegistryPacketEntry,
+        &super::RegistryElementData,
+        super::FrozenRegistryAccess<'_>,
+    ) -> Result<T, String>,
+) -> Result<BTreeMap<String, T>, RegistryValidationError> {
+    candidate
+        .contents
+        .get(registry)
+        .into_iter()
+        .flat_map(|contents| &contents.entries)
+        .filter_map(|entry| {
+            let Some(data) = entry.element_data() else {
+                return entry.has_data.then(|| {
+                    Err(RegistryValidationError {
+                        registry: registry.to_string(),
+                        validator: validator.to_string(),
+                        message: format!("{} typed payload unavailable", entry.id),
+                    })
+                });
+            };
+            decode(entry, data, candidate.frozen_access())
+                .map(|value| (entry.id.clone(), value))
+                .map_err(|message| RegistryValidationError {
+                    registry: registry.to_string(),
+                    validator: validator.to_string(),
+                    message: format!("{} {message}", entry.id),
+                })
+                .into()
+        })
+        .collect()
 }
 
 fn required_typed_element_data<'a>(
@@ -398,7 +609,7 @@ fn materialize_known_pack_entry(
     registry: &str,
     entry: &mut RegistryPacketEntry,
 ) -> Result<(), RegistryValidationError> {
-    if entry.has_data {
+    if entry.has_data || entry.known_pack_data.is_some() {
         return Ok(());
     }
     let Some(data) = source.registry_element_json_arc(registry, &entry.id) else {

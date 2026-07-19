@@ -70,6 +70,15 @@ pub(crate) fn resolve_chat_type(
                 .map_err(ChatTypeProjectionError::Registry)?;
             let (chat, narration) = match entry.source {
                 RegistryEntrySource::Server => {
+                    if let Some((chat, narration)) = access.typed_chat_type(entry.resource_id) {
+                        return Ok(ResolvedChatType {
+                            holder_id: Some(*id),
+                            resource_id: Some(entry.resource_id.to_string()),
+                            source: Some(entry.source),
+                            chat: chat.clone(),
+                            narration: narration.clone(),
+                        });
+                    }
                     let data = entry.element_data.ok_or_else(|| {
                         ChatTypeProjectionError::MissingPayload {
                             resource_id: entry.resource_id.to_string(),
@@ -124,7 +133,9 @@ fn network_parameter(parameter: i32) -> ChatTypeDecorationParameter {
     }
 }
 
-fn decode_chat_type(value: &NbtSummaryValue) -> Option<(ChatTypeDecoration, ChatTypeDecoration)> {
+pub(super) fn decode_chat_type(
+    value: &NbtSummaryValue,
+) -> Option<(ChatTypeDecoration, ChatTypeDecoration)> {
     let NbtSummaryValue::Compound(entries) = value else {
         return None;
     };

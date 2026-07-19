@@ -69,14 +69,8 @@ Owner: `bbb-protocol`
   resource-id catalog now owns the serverbound tick-time subscription ID, but it
   does not implement the per-subscription value codecs. Bounded raw payload
   diagnostics are not typed subscription support.
-- Extend the frozen session `RegistryAccess` from checked holder identity, raw
-  payloads, resolved tags, and per-family projections into one complete typed
-  revision: materialize synchronized element values from network NBT or selected
-  known-pack JSON, apply declared validators plus pending static tags and
-  data-component initializers, then expose the revision atomically. Individual
-  typed projections remain inputs to that lifecycle rather than a substitute for
-  it. Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
-  beyond the frozen client projection. Extend
+- Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
+  beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
   never by applying a bootstrap ordinal to authoritative synchronized contents.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and

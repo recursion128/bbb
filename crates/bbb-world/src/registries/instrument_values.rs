@@ -79,6 +79,9 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(INSTRUMENT_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(presentation) = self.registries.typed.instruments.get(&entry.id) {
+            return Ok(Some(presentation.clone()));
+        }
         let Some(data) = entry.element_data() else {
             if entry.has_data {
                 return Err(InstrumentProjectionError {
@@ -100,12 +103,12 @@ impl WorldStore {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DecodeFailure {
-    field: &'static str,
-    reason: &'static str,
+pub(super) struct DecodeFailure {
+    pub field: &'static str,
+    pub reason: &'static str,
 }
 
-fn decode_instrument(
+pub(super) fn decode_instrument(
     value: &NbtSummaryValue,
     element_source: RegistryElementSource,
 ) -> Result<InstrumentPresentation, DecodeFailure> {

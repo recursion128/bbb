@@ -45,6 +45,9 @@ impl WorldStore {
         holder_id: i32,
     ) -> Result<Option<BannerPatternPresentation>, BannerPatternProjectionError> {
         if let Some(entry) = self.registry_entry_by_holder_id(BANNER_PATTERN_REGISTRY, holder_id) {
+            if let Some(presentation) = self.registries.typed.banner_patterns.get(&entry.id) {
+                return Ok(Some(presentation.clone()));
+            }
             return presentation_from_registry_entry(entry);
         }
         if self.registry_content(BANNER_PATTERN_REGISTRY).is_some() {
@@ -124,12 +127,12 @@ fn presentation_from_vanilla(pattern: BannerPatternKind) -> BannerPatternPresent
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DecodeFailure {
-    field: &'static str,
-    reason: &'static str,
+pub(super) struct DecodeFailure {
+    pub field: &'static str,
+    pub reason: &'static str,
 }
 
-fn decode_banner_pattern_value(
+pub(super) fn decode_banner_pattern_value(
     value: &NbtSummaryValue,
 ) -> Result<BannerPatternPresentation, DecodeFailure> {
     let NbtSummaryValue::Compound(fields) = value else {

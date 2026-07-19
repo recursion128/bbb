@@ -31,9 +31,18 @@ use super::dimension_types::{
 #[cfg(test)]
 use super::element_value::decode_known_pack_element;
 use super::element_value::decode_network_element;
-use super::game_tests::TestEnvironmentDefinition;
+use super::enchantments::MaterializedEnchantmentDefinition;
+use super::game_tests::{GameTestInstanceDefinition, TestEnvironmentDefinition};
+use super::instrument_values::InstrumentPresentation;
+use super::jukebox_songs::JukeboxSongPresentation;
+use super::painting_variants::PaintingVariantPresentation;
 use super::sound_variants::RegistrySoundVariant;
 use super::timelines::{TimelineDefinition, WorldClockDefinition};
+use super::{
+    BannerPatternPresentation, CatVariantPresentation, ChatTypeDecoration, DamageTypePresentation,
+    FarmAnimalVariantPresentation, FrogVariantPresentation, TrimMaterialPresentation,
+    TrimPatternPresentation, WolfVariantPresentation, ZombieNautilusVariantPresentation,
+};
 use super::{
     BiomeClientProjection, BiomeProjectionError, BlockStateRegistry, RegistryElementData,
     RegistryElementDecodeError,
@@ -66,9 +75,25 @@ pub struct RegistrySet {
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct RegistryTypedValues {
+    pub biomes: BTreeMap<String, BiomeClientProjection>,
+    pub chat_types: BTreeMap<String, (ChatTypeDecoration, ChatTypeDecoration)>,
+    pub damage_types: BTreeMap<String, DamageTypePresentation>,
     pub dimension_types: BTreeMap<String, DimensionTypeClientProjection>,
+    pub enchantments: BTreeMap<String, MaterializedEnchantmentDefinition>,
+    pub instruments: BTreeMap<String, InstrumentPresentation>,
+    pub jukebox_songs: BTreeMap<String, JukeboxSongPresentation>,
+    pub painting_variants: BTreeMap<String, PaintingVariantPresentation>,
+    pub trim_materials: BTreeMap<String, TrimMaterialPresentation>,
+    pub trim_patterns: BTreeMap<String, TrimPatternPresentation>,
+    pub banner_patterns: BTreeMap<String, BannerPatternPresentation>,
+    pub farm_animal_variants: BTreeMap<String, BTreeMap<String, FarmAnimalVariantPresentation>>,
+    pub cat_variants: BTreeMap<String, CatVariantPresentation>,
+    pub frog_variants: BTreeMap<String, FrogVariantPresentation>,
+    pub wolf_variants: BTreeMap<String, WolfVariantPresentation>,
+    pub zombie_nautilus_variants: BTreeMap<String, ZombieNautilusVariantPresentation>,
     pub sound_variants: BTreeMap<String, BTreeMap<String, RegistrySoundVariant>>,
     pub test_environments: BTreeMap<String, TestEnvironmentDefinition>,
+    pub test_instances: BTreeMap<String, GameTestInstanceDefinition>,
     pub timelines: BTreeMap<String, TimelineDefinition>,
     pub world_clocks: BTreeMap<String, WorldClockDefinition>,
 }
@@ -293,6 +318,9 @@ impl RegistrySet {
         let Some(entry) = self.entry_by_holder_id("minecraft:worldgen/biome", holder_id) else {
             return Ok(None);
         };
+        if let Some(projection) = self.typed.biomes.get(&entry.id) {
+            return Ok(Some(projection.clone()));
+        }
         decode_biome_client_projection(entry)
     }
 
@@ -474,6 +502,13 @@ impl RegistrySet {
 impl<'a> FrozenRegistryAccess<'a> {
     pub fn revision(self) -> RegistryAccessRevision {
         self.registries.revision
+    }
+
+    pub(super) fn typed_chat_type(
+        self,
+        resource_id: &str,
+    ) -> Option<&'a (ChatTypeDecoration, ChatTypeDecoration)> {
+        self.registries.typed.chat_types.get(resource_id)
     }
 
     pub fn has_server_contents(self, registry: &str) -> bool {

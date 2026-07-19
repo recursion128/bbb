@@ -11,7 +11,7 @@ mod generated_26_1;
 
 pub use generated_26_1::{VanillaEnchantmentIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER};
 
-const ENCHANTMENT_REGISTRY: &str = "minecraft:enchantment";
+pub(super) const ENCHANTMENT_REGISTRY: &str = "minecraft:enchantment";
 /// A concrete attribute modifier contributed by one enchanted stack entry.
 ///
 /// Slot and attribute names retain the vanilla serialized identifiers so the
@@ -100,6 +100,23 @@ enum EnchantmentValueEffect {
     Set(LevelBasedValue),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct MaterializedEnchantmentDefinition {
+    tooltip: Option<EnchantmentTooltipDefinition>,
+    attributes: Option<EnchantmentDefinition>,
+    crossbow_charge_time: Option<EnchantmentValueEffect>,
+}
+
+pub(super) fn materialize_enchantment_definition(
+    value: &NbtSummaryValue,
+) -> MaterializedEnchantmentDefinition {
+    MaterializedEnchantmentDefinition {
+        tooltip: decode_enchantment_tooltip_definition(value),
+        attributes: decode_enchantment_definition(value),
+        crossbow_charge_time: decode_crossbow_charge_time_effect(value).flatten(),
+    }
+}
+
 impl WorldStore {
     /// Decodes synchronized enchantment tooltip definitions in network holder order.
     /// Stub and malformed elements stay as `None`; consumers may then apply a
@@ -111,11 +128,14 @@ impl WorldStore {
             self.registry_content(ENCHANTMENT_REGISTRY)?
                 .entries
                 .iter()
-                .map(|entry| {
-                    entry
-                        .element_data()
-                        .and_then(|data| decode_enchantment_tooltip_definition(&data.value))
-                })
+                .map(
+                    |entry| match self.registries.typed.enchantments.get(&entry.id) {
+                        Some(definition) => definition.tooltip.clone(),
+                        None => entry
+                            .element_data()
+                            .and_then(|data| decode_enchantment_tooltip_definition(&data.value)),
+                    },
+                )
                 .collect(),
         )
     }
@@ -135,10 +155,13 @@ impl WorldStore {
             else {
                 continue;
             };
-            let Some(definition) = entry
-                .element_data()
-                .and_then(|data| decode_enchantment_definition(&data.value))
-            else {
+            let definition = match self.registries.typed.enchantments.get(&entry.id) {
+                Some(definition) => definition.attributes.clone(),
+                None => entry
+                    .element_data()
+                    .and_then(|data| decode_enchantment_definition(&data.value)),
+            };
+            let Some(definition) = definition else {
                 continue;
             };
             for effect in definition.attribute_effects {
@@ -175,10 +198,13 @@ impl WorldStore {
             else {
                 continue;
             };
-            let effect = match entry.element_data() {
-                Some(data) => decode_crossbow_charge_time_effect(&data.value).flatten(),
-                None if !entry.has_data => vanilla_crossbow_charge_time_effect(&entry.id),
-                None => None,
+            let effect = match self.registries.typed.enchantments.get(&entry.id) {
+                Some(definition) => definition.crossbow_charge_time.clone(),
+                None => match entry.element_data() {
+                    Some(data) => decode_crossbow_charge_time_effect(&data.value).flatten(),
+                    None if !entry.has_data => vanilla_crossbow_charge_time_effect(&entry.id),
+                    None => None,
+                },
             };
             if let Some(effect) = effect {
                 duration_seconds = effect.process(enchantment.level, duration_seconds);

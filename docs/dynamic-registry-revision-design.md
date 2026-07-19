@@ -63,8 +63,8 @@ The engineering slice is complete when:
   world projections. They must not cache a holder order independently or read
   pending configuration state.
 - Ordering is fixed as: materialize network/known-pack values -> construct the
-  candidate holder context -> resolve candidate tags -> decode typed values and
-  holder/tag references -> validate registries -> build registry-dependent
+  candidate holder context -> resolve candidate tags -> run declared structural
+  validators -> decode typed values and holder/tag references -> build registry-dependent
   components -> publish contents/typed/tags/components and revision together ->
   refresh derived consumers/counters.
 - Missing server element data is legal only when the selected known-pack source
@@ -187,6 +187,8 @@ Implementation evidence:
 
 ### Phase 4: component initializers and closeout
 
+Status: complete.
+
 Rebuild the registry-dependent item defaults currently consumed by bbb
 (`damage_resistant`, `jukebox_playable`, `blocks_attacks`,
 `provides_banner_patterns`, and `instrument`) against candidate tags/holders,
@@ -204,6 +206,30 @@ Safe stop: each normal phase commit is buildable and reviewable. If a later
 consumer exposes a malformed or missing typed family, fix it forward in that
 family phase; do not publish a partially rebuilt component generation or
 rewrite earlier phase history.
+
+Implementation evidence:
+
+- `bbb-pack` extracts the 50 registry-dependent vanilla 26.1 item initializer
+  rules used by bbb. Candidate construction resolves damage-type and banner
+  tags plus jukebox-song, instrument, and sound-event holders, then atomically
+  publishes the resulting item prototype patches with the registry revision;
+- effective item stacks merge that generation with explicit patch additions
+  and removals. Tooltip, held-item pose, and first-person blocking consumers all
+  read the same effective stack instead of carrying a shield-only default;
+- biome, chat, damage, enchantment, instrument, jukebox, painting, trim,
+  banner, animal variant, test-environment, and test-instance projections now
+  materialize in `RegistryRevisionCandidate` and are stored in
+  `RegistryTypedValues`. Compatibility-only direct fixture insertion may still
+  decode on query, but configuration publication has no lazy typed decode path;
+- candidate codec and component-initializer failures retain the previous holder
+  order, typed values, revision counters, tags, and item defaults. Source guards
+  keep pending configuration state inside the revision/store owner and prevent
+  native/item-model readers from caching `RegistrySet`, `RegistryContentState`,
+  or `RegistryPacketEntry` holder state;
+- custom holder-order tests cover damage/dimension, item defaults and trim,
+  sound variants and jukebox, biomes, entity variants, enchantments, and game
+  test references. Network NBT and selected known-pack JSON feed the same typed
+  projection owners.
 
 ## Gate positions
 

@@ -28,7 +28,8 @@ generator. The authoritative pre-commit gate remains the one in `goal.md`.
 
 Per-family typed projections cover the synchronized element shapes currently
 consumed by the client, with exact holder-call coverage tracked in
-`docs/registry-holder-consumer-coverage-26.1.json`. Remaining lifecycle work is
-tracked in `docs/unsupported-features.md`: materialize one atomic typed revision,
-apply every declared validator, static tag, and data-component initializer, and
-finish the still-partial holder-call mappings.
+`docs/registry-holder-consumer-coverage-26.1.json`. The world-owned candidate
+materializes network/known-pack values, tags, declared validators, consumed
+typed projections, and registry-dependent item defaults before one atomic
+publication. `docs/unsupported-features.md` tracks the remaining concrete Codec
+fields, consumers, and still-partial holder-call mappings.

@@ -60,10 +60,13 @@ impl WorldStore {
         &self,
         holder_id: i32,
     ) -> Result<Option<DamageTypePresentation>, DamageTypeProjectionError> {
-        let Some(data) = self
-            .registry_entry_by_holder_id(DAMAGE_TYPE_REGISTRY, holder_id)
-            .and_then(|entry| entry.element_data())
-        else {
+        let Some(entry) = self.registry_entry_by_holder_id(DAMAGE_TYPE_REGISTRY, holder_id) else {
+            return Ok(None);
+        };
+        if let Some(presentation) = self.registries.typed.damage_types.get(&entry.id) {
+            return Ok(Some(presentation.clone()));
+        }
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
         decode_damage_type_value(&data.value).map(Some)
@@ -87,7 +90,7 @@ impl WorldStore {
     }
 }
 
-fn decode_damage_type_value(
+pub(super) fn decode_damage_type_value(
     value: &NbtSummaryValue,
 ) -> Result<DamageTypePresentation, DamageTypeProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {

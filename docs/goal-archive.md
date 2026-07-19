@@ -19527,3 +19527,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   reference、非法 gamerule 均在 `registry_configuration_typed_values` 阶段原子回滚，旧 revision、
   holder order 与 typed environment 保持不变。world play/native audio、generator/extractor、
   custom order、known-pack/network、完整字段与 rollback 均有专项回归。
+
+## 2026-07-19：动态 RegistryAccess typed revision phase 4 item defaults and closeout
+
+- [x] 从 checked-in `Items.java` 投影提取 bbb 当前消费的 50 条 registry-dependent item initializer
+  规则；candidate 对同代 damage/banner tag、jukebox/instrument/sound holder 解析并构建 prototype
+  component patch，与 holder、tag、typed revision 原子发布。失败配置保留旧 revision 与旧 defaults。
+- [x] effective stack 按 prototype→显式 addition/removal 合并；tooltip、手持 pose 与第一人称 block
+  pose 共用该投影，删除 shield-only blocks-attacks 默认副本，同时保留仅用于盾牌视觉 transform 的
+  item identity。
+- [x] 当前消费的 biome/chat/damage/enchantment/instrument/jukebox/painting/trim/banner/animal
+  variant/test-environment/test-instance typed family 全部在 candidate 构建时物化。结构守卫限制
+  pending state 只能由 revision/store owner 读取，并禁止 native/item-model 缓存 registry packet 或
+  holder state；custom reorder、known-pack/network、typed failure rollback 与 component rollback 均有
+  focused 回归。

@@ -80,6 +80,9 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(JUKEBOX_SONG_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(presentation) = self.registries.typed.jukebox_songs.get(&entry.id) {
+            return Ok(Some(presentation.clone()));
+        }
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
@@ -94,12 +97,14 @@ impl WorldStore {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DecodeFailure {
-    field: &'static str,
-    reason: &'static str,
+pub(super) struct DecodeFailure {
+    pub field: &'static str,
+    pub reason: &'static str,
 }
 
-fn decode_jukebox_song(value: &NbtSummaryValue) -> Result<JukeboxSongPresentation, DecodeFailure> {
+pub(super) fn decode_jukebox_song(
+    value: &NbtSummaryValue,
+) -> Result<JukeboxSongPresentation, DecodeFailure> {
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(failure("<root>", "expected compound"));
     };

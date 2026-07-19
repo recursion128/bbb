@@ -40,6 +40,20 @@ fn record_minimal_non_empty_synchronized_registries(
             );
             continue;
         }
+        if let Some(data) = minimal_client_variant_json(data_type.resource_id) {
+            store.record_registry_entries(
+                data_type.resource_id,
+                0,
+                vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                    format!(
+                        "example:minimal_{}",
+                        data_type.constant_name.to_ascii_lowercase()
+                    ),
+                    data.as_bytes().to_vec(),
+                )],
+            );
+            continue;
+        }
         store.record_registry_entries(
             data_type.resource_id,
             0,
@@ -51,6 +65,27 @@ fn record_minimal_non_empty_synchronized_registries(
                 vec![10, 0],
             )],
         );
+    }
+}
+
+fn minimal_client_variant_json(registry: &str) -> Option<&'static str> {
+    match registry {
+        "minecraft:chicken_variant"
+        | "minecraft:cow_variant"
+        | "minecraft:pig_variant"
+        | "minecraft:cat_variant" => {
+            Some(r#"{"asset_id":"example:adult","baby_asset_id":"example:baby"}"#)
+        }
+        "minecraft:frog_variant" | "minecraft:zombie_nautilus_variant" => {
+            Some(r#"{"asset_id":"example:variant"}"#)
+        }
+        "minecraft:wolf_variant" => Some(
+            r#"{"assets":{"wild":"example:wild","tame":"example:tame","angry":"example:angry"},"baby_assets":{"wild":"example:baby_wild","tame":"example:baby_tame","angry":"example:baby_angry"}}"#,
+        ),
+        "minecraft:painting_variant" => {
+            Some(r#"{"width":1,"height":1,"asset_id":"example:painting"}"#)
+        }
+        _ => None,
     }
 }
 
@@ -203,6 +238,66 @@ fn block_state_fixtures_do_not_restore_fixed_air_id_aliases() {
     assert!(
         violations.is_empty(),
         "fixed air block-state fixture aliases: {violations:?}"
+    );
+}
+
+#[test]
+fn frozen_registry_consumers_do_not_read_pending_state_or_cache_registry_packets() {
+    fn visit(directory: &Path, check: &mut impl FnMut(&Path, &str)) {
+        for entry in fs::read_dir(directory).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                if path.file_name().and_then(|name| name.to_str()) != Some("tests") {
+                    visit(&path, check);
+                }
+                continue;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("rs")
+                || path.file_name().and_then(|name| name.to_str()) == Some("tests.rs")
+            {
+                continue;
+            }
+            let source = fs::read_to_string(&path).unwrap();
+            check(
+                &path,
+                source.split("#[cfg(test)]").next().unwrap_or(&source),
+            );
+        }
+    }
+
+    let registries = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/registries");
+    let mut pending_readers = Vec::new();
+    visit(&registries, &mut |path, source| {
+        let owner = path.file_name().and_then(|name| name.to_str());
+        if !matches!(owner, Some("revision.rs" | "state.rs" | "store.rs"))
+            && source.contains(".pending")
+        {
+            pending_readers.push(path.display().to_string());
+        }
+    });
+    assert!(
+        pending_readers.is_empty(),
+        "registry consumers read uncommitted pending state: {pending_readers:?}"
+    );
+
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let mut packet_caches = Vec::new();
+    for directory in [
+        crates.join("bbb-native/src"),
+        crates.join("bbb-item-model/src"),
+    ] {
+        visit(&directory, &mut |path, source| {
+            if ["RegistrySet", "RegistryContentState", "RegistryPacketEntry"]
+                .iter()
+                .any(|token| source.contains(token))
+            {
+                packet_caches.push(path.display().to_string());
+            }
+        });
+    }
+    assert!(
+        packet_caches.is_empty(),
+        "immutable consumers cache registry packet/holder state: {packet_caches:?}"
     );
 }
 
@@ -706,7 +801,7 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
 fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
     let mut store = WorldStore::new();
     assert_eq!(store.registry_access_revision(), Default::default());
-    let typed_raw = nbt_compound_with_string("message_id", "example.typed");
+    let typed_raw = damage_type_nbt("example.typed");
 
     store.begin_registry_configuration();
     record_minimal_non_empty_synchronized_registries(&mut store, None);
@@ -1627,6 +1722,20 @@ fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
     payload
 }
 
+fn damage_type_nbt(message_id: &str) -> Vec<u8> {
+    let mut payload = vec![10, 8];
+    write_nbt_string(&mut payload, "message_id");
+    write_nbt_string(&mut payload, message_id);
+    payload.push(8);
+    write_nbt_string(&mut payload, "scaling");
+    write_nbt_string(&mut payload, "never");
+    payload.push(5);
+    write_nbt_string(&mut payload, "exhaustion");
+    payload.extend(0.0_f32.to_bits().to_be_bytes());
+    payload.push(0);
+    payload
+}
+
 fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
     let bytes = value.as_bytes();
     out.extend((bytes.len() as u16).to_be_bytes());
@@ -1661,7 +1770,7 @@ fn selected_known_pack_materializes_stub_data_before_registry_commit() {
     assert!(!entry.has_data);
     assert_eq!(
         entry.known_pack_data(),
-        Some(r#"{"registry":"minecraft:damage_type","source":"core"}"#.as_bytes())
+        Some(r#"{"message_id":"base","scaling":"never","exhaustion":0.0}"#.as_bytes())
     );
     assert_eq!(
         entry.element_data().unwrap().source,
@@ -1851,6 +1960,34 @@ fn configuration_candidate_stores_sound_variant_and_test_environment_typed_value
             .to_vec(),
         )],
     );
+    store.record_registry_entries(
+        "minecraft:test_instance",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:candidate_instance",
+            br#"{
+                "type":"minecraft:block_based",
+                "environment":"example:rules",
+                "structure":"example:structure",
+                "max_ticks":40
+            }"#
+            .to_vec(),
+        )],
+    );
+    store.record_registry_entries(
+        "minecraft:enchantment",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:candidate_enchantment",
+            br#"{
+                "description":{"text":"Candidate"},
+                "max_level":2,
+                "slots":["mainhand"],
+                "effects":{}
+            }"#
+            .to_vec(),
+        )],
+    );
 
     store.finish_registry_configuration().unwrap();
 
@@ -1878,6 +2015,33 @@ fn configuration_candidate_stores_sound_variant_and_test_environment_typed_value
                 && rules[0].value == crate::TestGameRuleTypedValue::Boolean(true)
                 && rules[1].value == crate::TestGameRuleTypedValue::Integer(8)
     ));
+    assert!(store
+        .registries
+        .typed
+        .test_instances
+        .contains_key("example:candidate_instance"));
+    assert!(store
+        .registries
+        .typed
+        .enchantments
+        .contains_key("example:candidate_enchantment"));
+    assert!(matches!(
+        store
+            .synchronized_test_instance_definition(0)
+            .unwrap()
+            .unwrap()
+            .environment,
+        crate::TestEnvironmentHolder::Named(reference)
+            if reference.resource_id == "example:rules" && reference.holder_id == 0
+    ));
+    assert_eq!(
+        store
+            .enchantment_tooltip_definitions_in_holder_order()
+            .unwrap()[0]
+            .as_ref()
+            .map(|definition| (definition.description.as_str(), definition.max_level)),
+        Some(("Candidate", 2))
+    );
 }
 
 #[test]
@@ -2026,6 +2190,15 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
             .to_vec(),
         )],
     );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:timeline".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:layers".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
     store.record_registry_entries(
         "minecraft:dimension_type",
         0,
@@ -2055,7 +2228,7 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
                         }
                     }
                 },
-                "timelines":"example:environment",
+                "timelines":"#example:layers",
                 "default_clock":"example:clock"
             }"##
             .to_vec(),
@@ -2135,6 +2308,24 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
     assert_eq!(sampled.cloud_height, Some(103.665));
     assert_eq!(sampled.fast_lava, Some(true));
     assert_eq!(sampled.piglins_zombify, Some(false));
+
+    store.begin_registry_configuration();
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:timeline".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:layers".to_string(),
+                entries: Vec::new(),
+            }],
+        }],
+    });
+    store.finish_registry_configuration().unwrap();
+    assert!(store
+        .registries()
+        .dimension_type_client_projection(0)
+        .unwrap()
+        .timeline_resource_ids
+        .is_empty());
 
     store.begin_registry_configuration();
     record_minimal_non_empty_synchronized_registries(&mut store, None);
@@ -2359,15 +2550,20 @@ fn test_known_packs_manager(label: &str) -> Arc<bbb_pack::KnownPacksManager> {
     );
     for registry in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
         let (_, registry_path) = registry.resource_id.split_once(':').unwrap();
+        let contents = if registry.resource_id == "minecraft:damage_type" {
+            r#"{"message_id":"base","scaling":"never","exhaustion":0.0}"#.to_string()
+        } else {
+            format!(
+                r#"{{"registry":"{}","source":"core"}}"#,
+                registry.resource_id
+            )
+        };
         write_test_file(
             &root
                 .join("data/minecraft")
                 .join(registry_path)
                 .join("base.json"),
-            &format!(
-                r#"{{"registry":"{}","source":"core"}}"#,
-                registry.resource_id
-            ),
+            &contents,
         );
     }
     let roots = bbb_pack::PackRoots {

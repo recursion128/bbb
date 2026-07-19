@@ -72,6 +72,9 @@ impl WorldStore {
     ) -> Result<Option<PaintingVariantPresentation>, PaintingVariantProjectionError> {
         if let Some(entry) = self.registry_entry_by_holder_id(PAINTING_VARIANT_REGISTRY, holder_id)
         {
+            if let Some(presentation) = self.registries.typed.painting_variants.get(&entry.id) {
+                return Ok(Some(presentation.clone()));
+            }
             if let Some(data) = entry.element_data() {
                 return decode_painting_variant(&data.value).map(Some);
             }
@@ -118,7 +121,7 @@ fn presentation_from_vanilla(variant: &VanillaPaintingVariant) -> PaintingVarian
     }
 }
 
-fn decode_painting_variant(
+pub(super) fn decode_painting_variant(
     value: &NbtSummaryValue,
 ) -> Result<PaintingVariantPresentation, PaintingVariantProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {

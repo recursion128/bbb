@@ -70,6 +70,11 @@ impl WorldStore {
         &self,
         holder_id: i32,
     ) -> Result<Option<TrimMaterialPresentation>, TrimRegistryProjectionError> {
+        if let Some(entry) = self.registry_entry_by_holder_id(TRIM_MATERIAL_REGISTRY, holder_id) {
+            if let Some(presentation) = self.registries.typed.trim_materials.get(&entry.id) {
+                return Ok(Some(presentation.clone()));
+            }
+        }
         synchronized_presentation(self, TRIM_MATERIAL_REGISTRY, holder_id, decode_material)
     }
 
@@ -81,6 +86,11 @@ impl WorldStore {
         &self,
         holder_id: i32,
     ) -> Result<Option<TrimPatternPresentation>, TrimRegistryProjectionError> {
+        if let Some(entry) = self.registry_entry_by_holder_id(TRIM_PATTERN_REGISTRY, holder_id) {
+            if let Some(presentation) = self.registries.typed.trim_patterns.get(&entry.id) {
+                return Ok(Some(presentation.clone()));
+            }
+        }
         synchronized_presentation(self, TRIM_PATTERN_REGISTRY, holder_id, decode_pattern)
     }
 }
@@ -375,7 +385,9 @@ fn static_pattern_asset(pattern: VanillaTrimPatternIdentity) -> TrimPatternAsset
     }
 }
 
-fn decode_material(value: &NbtSummaryValue) -> Result<TrimMaterialPresentation, DecodeFailure> {
+pub(super) fn decode_material(
+    value: &NbtSummaryValue,
+) -> Result<TrimMaterialPresentation, DecodeFailure> {
     let entries = root_compound(value)?;
     let asset_name = required_resource_path(entries, "asset_name")?;
     let mut override_armor_assets = BTreeMap::new();
@@ -415,7 +427,9 @@ fn decode_material(value: &NbtSummaryValue) -> Result<TrimMaterialPresentation, 
     })
 }
 
-fn decode_pattern(value: &NbtSummaryValue) -> Result<TrimPatternPresentation, DecodeFailure> {
+pub(super) fn decode_pattern(
+    value: &NbtSummaryValue,
+) -> Result<TrimPatternPresentation, DecodeFailure> {
     let entries = root_compound(value)?;
     let asset_id = required_string(entries, "asset_id")?;
     let asset_id = normalize_codec_identifier(asset_id)
@@ -509,9 +523,9 @@ fn resource_path(value: &str) -> Option<&str> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DecodeFailure {
-    field: &'static str,
-    reason: &'static str,
+pub(super) struct DecodeFailure {
+    pub field: &'static str,
+    pub reason: &'static str,
 }
 
 const fn failure(field: &'static str, reason: &'static str) -> DecodeFailure {

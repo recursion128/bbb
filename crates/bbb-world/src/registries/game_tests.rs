@@ -175,6 +175,9 @@ impl WorldStore {
         let Some(entry) = access.entry_by_holder_id(TEST_INSTANCE_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(definition) = self.registries.typed.test_instances.get(entry.resource_id) {
+            return Ok(Some(definition.clone()));
+        }
         let Some(data) = entry.element_data else {
             if entry_requires_typed_payload(entry) {
                 return Err(error(
@@ -455,7 +458,7 @@ fn decode_environment_holder(
     }
 }
 
-fn decode_test_instance(
+pub(super) fn decode_test_instance(
     resource_id: &str,
     element_source: RegistryElementSource,
     value: &NbtSummaryValue,

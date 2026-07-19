@@ -126,6 +126,15 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(registry, holder_id) else {
             return Ok(None);
         };
+        if let Some(presentation) = self
+            .registries
+            .typed
+            .farm_animal_variants
+            .get(registry)
+            .and_then(|variants| variants.get(&entry.id))
+        {
+            return Ok(Some(presentation.clone()));
+        }
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
@@ -141,6 +150,9 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(CAT_VARIANT_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(presentation) = self.registries.typed.cat_variants.get(&entry.id) {
+            return Ok(Some(presentation.clone()));
+        }
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
@@ -156,6 +168,9 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(FROG_VARIANT_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(presentation) = self.registries.typed.frog_variants.get(&entry.id) {
+            return Ok(Some(presentation.clone()));
+        }
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
@@ -171,6 +186,9 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(WOLF_VARIANT_REGISTRY, holder_id) else {
             return Ok(None);
         };
+        if let Some(presentation) = self.registries.typed.wolf_variants.get(&entry.id) {
+            return Ok(Some(presentation.clone()));
+        }
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
@@ -189,6 +207,14 @@ impl WorldStore {
         else {
             return Ok(None);
         };
+        if let Some(presentation) = self
+            .registries
+            .typed
+            .zombie_nautilus_variants
+            .get(&entry.id)
+        {
+            return Ok(Some(presentation.clone()));
+        }
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
@@ -196,7 +222,7 @@ impl WorldStore {
     }
 }
 
-fn decode_farm_animal_variant_value(
+pub(super) fn decode_farm_animal_variant_value(
     registry: &str,
     value: &NbtSummaryValue,
 ) -> Result<FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError> {
@@ -222,7 +248,7 @@ fn decode_farm_animal_variant_value(
     })
 }
 
-fn decode_cat_variant_value(
+pub(super) fn decode_cat_variant_value(
     value: &NbtSummaryValue,
 ) -> Result<CatVariantPresentation, CatVariantProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {
@@ -241,7 +267,7 @@ fn decode_cat_variant_value(
     })
 }
 
-fn decode_frog_variant_value(
+pub(super) fn decode_frog_variant_value(
     value: &NbtSummaryValue,
 ) -> Result<FrogVariantPresentation, FrogVariantProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {
@@ -256,7 +282,7 @@ fn decode_frog_variant_value(
     })
 }
 
-fn decode_wolf_variant_value(
+pub(super) fn decode_wolf_variant_value(
     value: &NbtSummaryValue,
 ) -> Result<WolfVariantPresentation, WolfVariantProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {
@@ -295,7 +321,7 @@ fn decode_wolf_asset_presentation(
     })
 }
 
-fn decode_zombie_nautilus_variant_value(
+pub(super) fn decode_zombie_nautilus_variant_value(
     value: &NbtSummaryValue,
 ) -> Result<ZombieNautilusVariantPresentation, ZombieNautilusVariantProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {
