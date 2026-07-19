@@ -104,6 +104,14 @@ impl WorldStore {
     pub fn publication_snapshot(&self) -> Self {
         self.clone()
     }
+
+    /// Returns the entity-shell construction observation recorded while this
+    /// immutable generation was built.
+    pub fn entity_publication_snapshot_observation(
+        &self,
+    ) -> crate::EntityPublicationSnapshotObservation {
+        self.entities.publication_snapshot_observation()
+    }
 }
 
 #[cfg(test)]
@@ -193,6 +201,22 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
+    }
+
+    #[test]
+    fn entity_tick_work_and_snapshot_rebuild_counts_match_the_generation() {
+        let mut world = WorldStore::new();
+        add_test_entity(&mut world, 1);
+        add_test_entity(&mut world, 2);
+
+        let work = world.advance_entity_client_animations_with_observation(3);
+        assert_eq!(work.scanned_entities, 6);
+        assert_eq!(work.mutated_entities, 6);
+
+        let generation = world.publication_snapshot();
+        let observation = generation.entity_publication_snapshot_observation();
+        assert_eq!(observation.rebuilt_entities, generation.entity_count());
+        assert_eq!(observation.rebuilt_entities, 2);
     }
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {

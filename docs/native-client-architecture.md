@@ -214,9 +214,11 @@ Owns external control-facing types, reports, and snapshots.
   world.
 - `WorldStore::publication_snapshot` retains immutable owners for unchanged
   chunk columns, the committed registry set, and individual item-profile
-  tables. Mutations copy only their semantic owner; the entity ECS remains an
-  explicit per-publication snapshot. This storage detail does not create a
-  second canonical world or a control-specific copy.
+  tables. Entity metadata/painting, equipment, attributes, passengers,
+  effects, damage, and minecart-step payloads use the same per-component-owner
+  sharing. Mutations copy only their semantic owner; each publication still
+  rebuilds the entity ECS shell and protocol-id handles. This storage detail
+  does not create a second canonical world or a control-specific copy.
 - `SharedControlRequests` is a producer facade: native installs the single
   simulation mailbox sink before the control server starts, so all control
   writes share the same ordered command path as winit input. Its compatibility
@@ -275,10 +277,12 @@ The event loop has no fallback direct pump and does not consult the control
 snapshot as a second lifecycle authority.
 
 `SimulationPublisher` builds the immutable world only through the structural
-snapshot boundary and records the complete publication construction duration.
-The latest and process-peak nanosecond values travel in the same generation's
-`NetCounters`; observation neither blocks the simulation nor introduces a
-separate reader publication.
+snapshot boundary and records both complete publication construction and the
+contained entity-shell snapshot duration. The tick owner separately records
+the most recent non-empty entity client-tick batch. Latest/process-peak
+nanoseconds and logical scanned, mutated, and rebuilt entity counts travel in
+the same generation's `NetCounters`; observation neither blocks the simulation
+nor introduces a separate reader publication.
 
 ### `bbb-item-model`
 
@@ -404,6 +408,15 @@ directly from the packet, re-adds reset components in place, and
 `EntityStore::clone` copies component-by-component; full `EntityState`
 projection exists only at the probe/serialize/debug boundary
 (`insert_or_replace` remains the serde deserialization path).
+
+Immutable publications rebuild one hecs entity and protocol-id handle per live
+entity, but heap-heavy component payloads retain immutable
+`PublicationShared<T>` owners. A later write reaches `Arc::make_mut` for only
+that metadata/equipment/attribute/passenger/effect/damage/minecart-step field.
+Direct transform and animation components remain values, so dense client ticks
+do not trigger whole-entity or whole-store COW. The generated metadata schema
+resolver uses a process-static reference-only inheritance index; it contains no
+copied accessors, defaults, type ids, or independently authored membership.
 
 ### Component Ownership
 

@@ -101,6 +101,32 @@ pub struct NetCounters {
     /// process, in nanoseconds.
     #[serde(default)]
     pub simulation_publication_build_peak_nanos: u64,
+    /// Wall-clock cost of the most recent non-empty entity client-tick batch,
+    /// excluding immutable publication construction, in nanoseconds.
+    #[serde(default)]
+    pub simulation_entity_client_tick_nanos: u64,
+    /// Largest non-empty entity client-tick batch observed in this process, in
+    /// nanoseconds.
+    #[serde(default)]
+    pub simulation_entity_client_tick_peak_nanos: u64,
+    /// Entity rows visited by the main animation query in the most recent
+    /// non-empty client-tick batch.
+    #[serde(default)]
+    pub simulation_entity_client_tick_scanned_entities: usize,
+    /// Entity rows whose animation component changed in that batch.
+    #[serde(default)]
+    pub simulation_entity_client_tick_mutated_entities: usize,
+    /// Wall-clock cost of rebuilding the entity ECS shell for the most recent
+    /// immutable simulation generation, in nanoseconds.
+    #[serde(default)]
+    pub simulation_entity_snapshot_build_nanos: u64,
+    /// Largest entity ECS shell rebuild observed in this process, in
+    /// nanoseconds.
+    #[serde(default)]
+    pub simulation_entity_snapshot_build_peak_nanos: u64,
+    /// Entity shells rebuilt for the most recent immutable generation.
+    #[serde(default)]
+    pub simulation_entity_snapshot_rebuilt_entities: usize,
     pub last_error: Option<String>,
 }
 
@@ -114,9 +140,23 @@ mod tests {
         let object = value.as_object_mut().unwrap();
         object.remove("simulation_publication_build_nanos");
         object.remove("simulation_publication_build_peak_nanos");
+        object.remove("simulation_entity_client_tick_nanos");
+        object.remove("simulation_entity_client_tick_peak_nanos");
+        object.remove("simulation_entity_client_tick_scanned_entities");
+        object.remove("simulation_entity_client_tick_mutated_entities");
+        object.remove("simulation_entity_snapshot_build_nanos");
+        object.remove("simulation_entity_snapshot_build_peak_nanos");
+        object.remove("simulation_entity_snapshot_rebuilt_entities");
 
         let counters: NetCounters = serde_json::from_value(value).unwrap();
         assert_eq!(counters.simulation_publication_build_nanos, 0);
         assert_eq!(counters.simulation_publication_build_peak_nanos, 0);
+        assert_eq!(counters.simulation_entity_client_tick_nanos, 0);
+        assert_eq!(counters.simulation_entity_client_tick_peak_nanos, 0);
+        assert_eq!(counters.simulation_entity_client_tick_scanned_entities, 0);
+        assert_eq!(counters.simulation_entity_client_tick_mutated_entities, 0);
+        assert_eq!(counters.simulation_entity_snapshot_build_nanos, 0);
+        assert_eq!(counters.simulation_entity_snapshot_build_peak_nanos, 0);
+        assert_eq!(counters.simulation_entity_snapshot_rebuilt_entities, 0);
     }
 }

@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     fmt,
+    time::{Duration, Instant},
 };
 
 use bbb_protocol::attribute_modifier_types::{
@@ -283,6 +284,26 @@ pub(crate) struct EntityStore {
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
     pending_firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState>,
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
+    publication_snapshot_observation: EntityPublicationSnapshotObservation,
+}
+
+/// Logical work performed by one batched entity client-tick advance.
+///
+/// Counts are query rows across all ticks in the batch. Every row in the main
+/// animation query changes `age_ticks`, so `mutated_entities` is an exact
+/// mutation count without comparing the large animation component afterward.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EntityClientTickWork {
+    pub scanned_entities: usize,
+    pub mutated_entities: usize,
+}
+
+/// Cost and logical work of rebuilding the entity shell for one immutable
+/// world generation.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EntityPublicationSnapshotObservation {
+    pub duration: Duration,
+    pub rebuilt_entities: usize,
 }
 
 #[cfg(test)]
@@ -4000,7 +4021,8 @@ impl EntityStore {
         minecart_improvements_enabled: bool,
         death_tick_player_chunk: Option<(i32, i32)>,
         death_tick_simulation_distance: Option<i32>,
-    ) {
+    ) -> EntityClientTickWork {
+        let mut work = EntityClientTickWork::default();
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
             for (_, (identity, transform)) in self
@@ -4033,6 +4055,7 @@ impl EntityStore {
                     &mut EntityClientAnimations,
                 )>()
             {
+                work.scanned_entities = work.scanned_entities.saturating_add(1);
                 // Vanilla `LivingEntity.calculateEntityAnimation` gates the limb
                 // swing on `!isPassenger()` and scales the position by `3` for a
                 // baby (`updateWalkAnimation`).
@@ -4144,6 +4167,9 @@ impl EntityStore {
                     client_animations_before_tick,
                     particle_triggers,
                 );
+                // `advance_client_tick` always advances `age_ticks`, including
+                // entities without a specialized animation family.
+                work.mutated_entities = work.mutated_entities.saturating_add(1);
             }
             if minecart_improvements_enabled {
                 for (_, (transform, minecart_lerp)) in self
@@ -4154,6 +4180,11 @@ impl EntityStore {
                 }
             }
         }
+        work
+    }
+
+    pub(crate) fn publication_snapshot_observation(&self) -> EntityPublicationSnapshotObservation {
+        self.publication_snapshot_observation
     }
 
     pub(crate) fn for_each_mount_mut(&mut self, mut update: impl FnMut(i32, &mut EntityMount)) {
@@ -4415,12 +4446,14 @@ impl Default for EntityStore {
             pending_evoker_fangs_crit_particles: Vec::new(),
             pending_firework_rocket_trail_particles: Vec::new(),
             pending_ominous_item_spawner_particles: Vec::new(),
+            publication_snapshot_observation: EntityPublicationSnapshotObservation::default(),
         }
     }
 }
 
 impl Clone for EntityStore {
     fn clone(&self) -> Self {
+        let snapshot_started_at = Instant::now();
         // Clone component-by-component instead of round-tripping every entity
         // through a full `EntityState` projection. Immutable simulation
         // publications still rebuild this ECS explicitly: keeping that cost at
@@ -4491,6 +4524,10 @@ impl Clone for EntityStore {
             self.pending_firework_rocket_trail_particles.clone();
         store.pending_ominous_item_spawner_particles =
             self.pending_ominous_item_spawner_particles.clone();
+        store.publication_snapshot_observation = EntityPublicationSnapshotObservation {
+            duration: snapshot_started_at.elapsed(),
+            rebuilt_entities: store.by_protocol_id.len(),
+        };
         store
     }
 }

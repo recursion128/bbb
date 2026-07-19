@@ -75,6 +75,7 @@ pub(crate) struct SimulationPublisher {
     control_world: SharedWorld,
     next_generation: u64,
     publication_build_peak: Duration,
+    entity_snapshot_build_peak: Duration,
 }
 
 pub(crate) struct SimulationPublicationInput<'a> {
@@ -104,8 +105,8 @@ impl SimulationPublisher {
         control_world: SharedWorld,
     ) -> Self {
         let initial_generation = control_snapshot.load().generation;
-        let (publication, publication_build_peak) =
-            build_publication(initial_generation, initial, Duration::ZERO);
+        let (publication, publication_build_peak, entity_snapshot_build_peak) =
+            build_publication(initial_generation, initial, Duration::ZERO, Duration::ZERO);
         publish_control_views(&control_snapshot, &control_world, &publication);
         let shared = Arc::new(ArcSwap::from(publication));
         Self {
@@ -114,6 +115,7 @@ impl SimulationPublisher {
             control_world,
             next_generation: initial_generation.saturating_add(1),
             publication_build_peak,
+            entity_snapshot_build_peak,
         }
     }
 
@@ -127,9 +129,14 @@ impl SimulationPublisher {
     ) -> Arc<SimulationPublication> {
         let generation = self.next_generation;
         self.next_generation = self.next_generation.saturating_add(1);
-        let (publication, publication_build_peak) =
-            build_publication(generation, input, self.publication_build_peak);
+        let (publication, publication_build_peak, entity_snapshot_build_peak) = build_publication(
+            generation,
+            input,
+            self.publication_build_peak,
+            self.entity_snapshot_build_peak,
+        );
         self.publication_build_peak = publication_build_peak;
+        self.entity_snapshot_build_peak = entity_snapshot_build_peak;
         publish_control_views(&self.control_snapshot, &self.control_world, &publication);
         self.shared.store(Arc::clone(&publication));
         publication
@@ -140,9 +147,12 @@ fn build_publication(
     generation: u64,
     input: SimulationPublicationInput<'_>,
     previous_build_peak: Duration,
-) -> (Arc<SimulationPublication>, Duration) {
+    previous_entity_snapshot_build_peak: Duration,
+) -> (Arc<SimulationPublication>, Duration, Duration) {
     let build_started_at = Instant::now();
-    let world = Arc::new(input.world.publication_snapshot());
+    let world_snapshot = input.world.publication_snapshot();
+    let entity_snapshot_observation = world_snapshot.entity_publication_snapshot_observation();
+    let world = Arc::new(world_snapshot);
     let mut publication = Arc::new(SimulationPublication {
         generation,
         effect_sequence: input.effect_sequence,
@@ -168,12 +178,20 @@ fn build_publication(
     });
     let build_duration = build_started_at.elapsed();
     let build_peak = previous_build_peak.max(build_duration);
+    let entity_snapshot_build_peak =
+        previous_entity_snapshot_build_peak.max(entity_snapshot_observation.duration);
     let net_counters = &mut Arc::get_mut(&mut publication)
         .expect("new simulation publication must have one owner")
         .net_counters;
     net_counters.simulation_publication_build_nanos = duration_nanos(build_duration);
     net_counters.simulation_publication_build_peak_nanos = duration_nanos(build_peak);
-    (publication, build_peak)
+    net_counters.simulation_entity_snapshot_build_nanos =
+        duration_nanos(entity_snapshot_observation.duration);
+    net_counters.simulation_entity_snapshot_build_peak_nanos =
+        duration_nanos(entity_snapshot_build_peak);
+    net_counters.simulation_entity_snapshot_rebuilt_entities =
+        entity_snapshot_observation.rebuilt_entities;
+    (publication, build_peak, entity_snapshot_build_peak)
 }
 
 fn duration_nanos(duration: Duration) -> u64 {
@@ -335,7 +353,7 @@ mod tests {
             frozen: true,
         });
         frozen_input.world = &frozen_world;
-        let (frozen, _) = build_publication(2, frozen_input, Duration::ZERO);
+        let (frozen, _, _) = build_publication(2, frozen_input, Duration::ZERO, Duration::ZERO);
         assert_eq!(frozen.partial_tick_at(now), 1.0);
     }
 
@@ -437,6 +455,18 @@ mod tests {
             initial.net_counters.simulation_publication_build_nanos,
             initial.net_counters.simulation_publication_build_peak_nanos
         );
+        assert_eq!(
+            initial.net_counters.simulation_entity_snapshot_build_nanos,
+            initial
+                .net_counters
+                .simulation_entity_snapshot_build_peak_nanos
+        );
+        assert_eq!(
+            initial
+                .net_counters
+                .simulation_entity_snapshot_rebuilt_entities,
+            initial.world.entity_count()
+        );
 
         let published = publisher.publish(input(
             &world,
@@ -461,6 +491,22 @@ mod tests {
                 .simulation_publication_build_peak_nanos
                 >= published.net_counters.simulation_publication_build_nanos
         );
+        assert!(
+            published
+                .net_counters
+                .simulation_entity_snapshot_build_peak_nanos
+                >= initial
+                    .net_counters
+                    .simulation_entity_snapshot_build_peak_nanos
+        );
+        assert!(
+            published
+                .net_counters
+                .simulation_entity_snapshot_build_peak_nanos
+                >= published
+                    .net_counters
+                    .simulation_entity_snapshot_build_nanos
+        );
         let control_snapshot = control.snapshot.load_full();
         assert_eq!(control_snapshot.generation, published.generation);
         assert_eq!(
@@ -472,6 +518,20 @@ mod tests {
             published
                 .net_counters
                 .simulation_publication_build_peak_nanos
+        );
+        assert_eq!(
+            control_snapshot.net.simulation_entity_snapshot_build_nanos,
+            published
+                .net_counters
+                .simulation_entity_snapshot_build_nanos
+        );
+        assert_eq!(
+            control_snapshot
+                .net
+                .simulation_entity_snapshot_rebuilt_entities,
+            published
+                .net_counters
+                .simulation_entity_snapshot_rebuilt_entities
         );
     }
 

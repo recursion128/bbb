@@ -315,6 +315,67 @@ effects/attributes, animation counters, passenger/leash/vehicle state,
 spawn/remove, entity event, and client-tick mutation, and also checks that a
 metadata mutation breaks only its corresponding Arc owner.
 
+### Phase 4 Runtime Observation And Final Rerun
+
+The existing generation-matched `NetCounters` view now separates the three
+owners that matter operationally:
+
+- `simulation_entity_client_tick_nanos` and its process peak measure one
+  non-empty due client-tick batch (one to ten catch-up ticks), excluding
+  publication;
+- `simulation_entity_client_tick_scanned_entities` and
+  `simulation_entity_client_tick_mutated_entities` count rows in the main
+  animation query across that batch. Every row advances `age_ticks`, so the
+  mutation count is exact without comparing the large animation component;
+- `simulation_entity_snapshot_build_nanos` and its process peak measure only
+  the `EntityStore::clone` hecs-shell rebuild, while
+  `simulation_entity_snapshot_rebuilt_entities` counts successfully rebuilt
+  entities; and
+- the pre-existing publication duration continues to cover the complete outer
+  generation build. All values enter the same immutable publication and exact
+  world `Arc` consumed by render and control.
+
+The instrumentation adds no log, allocator hook, cache, or reader copy. A
+simulation step with no due client tick retains the latest real tick sample
+instead of replacing it with scheduler bookkeeping. The snapshot timer is one
+`Instant` pair per entity-store clone; logical counts reuse the existing query
+and clone loops.
+
+The final full Criterion rerun includes this observation overhead. It used the
+same machine and configuration as the before baseline.
+
+| Scenario | Before | Final | Improvement |
+| --- | ---: | ---: | ---: |
+| 2,000 zombies tick-only | 85.410 ms | 8.141 ms | 10.49x |
+| 2,000 zombies tick + publication | 88.226 ms | 9.304 ms | 9.48x |
+| 2,000 heterogeneous tick-only | 78.730 ms | 8.892 ms | 8.85x |
+| 2,000 heterogeneous tick + publication | 80.204 ms | 10.175 ms | 7.88x |
+| retained next publication, 2,000 entities | 0.979 ms | 0.944 ms | 1.04x |
+| payload-heavy unchanged publication, 2,000 | 22.955 ms | 0.966 ms | 23.77x |
+| payload-heavy sparse metadata + retained publication | 22.987 ms | 1.010 ms | 22.77x |
+| 1,000 vehicles + 1,000 passengers tick + publication | 81.759 ms | 9.063 ms | 9.02x |
+| 2,000 firework ticks + trail-effect drain | 75.608 ms | 8.862 ms | 8.53x |
+| 17 accessor lookups x 2,000 zombies | 46.802 ms | 0.214 ms | 218.7x |
+| renderer model-source projection, 2,000 heterogeneous | 59.602 ms | 4.939 ms | 12.07x |
+
+The 100/500/2,000 zombie tick series remains linear at about 0.402/2.020/8.141
+ms. The approximately 0.94 ms entity-shell rebuild is now about 10% of the
+representative tick-plus-publication path and is not its dominant owner.
+Eliminating that shell would require a second immutable reader representation
+and migration of every render/control/probe query; measurement does not justify
+that architecture in this slice. Renderer model projection became cheaper from
+the same generated schema index rather than absorbing simulation work. Full
+owned debug projection remains an explicit, independently measured 1.53 ms API
+boundary and is not invoked by the client-tick path.
+
+Peak memory remains proportional to live hecs shells for retained generations,
+plus one payload version per retained generation that observed a later-mutated
+heavy field. Sparse mutation does not duplicate unrelated payloads; dense
+metadata/equipment/effect updates can temporarily retain every changed field.
+The process-static generated accessor reference index has the bounded footprint
+recorded in phase 2. No reliable byte count is reported because doing so would
+require allocator instrumentation outside the no-`unsafe` contract.
+
 ## Serial Phases And Checkpoints
 
 1. **Reproducible baseline and attribution surface.** Extend the existing

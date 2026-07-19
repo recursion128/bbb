@@ -189,14 +189,23 @@ reports `simulation_publication_build_nanos` and the process-lifetime peak in
 `simulation_publication_build_peak_nanos`; render and control still reuse the
 same world `Arc` and generation.
 
+The measured entity follow-up retained that outer boundary and added an inner
+entity-shell timer. `simulation_entity_snapshot_build_nanos` and its peak cover
+only `EntityStore::clone`, while
+`simulation_entity_snapshot_rebuilt_entities` reports the successfully rebuilt
+hecs shells. The same generation also carries the latest/peak non-empty entity
+tick batch time and its logical scanned/mutated row counts; see
+[`entity-tick-publication-cost-design.md`](entity-tick-publication-cost-design.md).
+
 Residual costs and memory behavior are explicit:
 
-- `EntityStore` publication remains O(entity count), about 0.90 ms for the
-  2,000-entity fixture. An outer entity COW was deliberately rejected because
-  entity ticks mutate broadly and would move this copy to the next tick.
-  The measured follow-up that optimizes tick plus entity publication end to end
-  is specified in
-  [`entity-tick-publication-cost-design.md`](entity-tick-publication-cost-design.md).
+- `EntityStore` publication remains O(entity count), about 1.0 ms for the
+  2,000-entity fixture, because each generation owns an isolated hecs shell and
+  protocol-id handle map. The follow-up shares heavy component fields at their
+  semantic owner: the 2,000-entity payload-heavy unchanged case fell from
+  22.955 ms to 0.966 ms, and sparse retained metadata mutation plus publication
+  fell from 22.987 ms to 1.010 ms. Transform/animation remain direct values;
+  no whole-store copy moved to the next tick.
 - The first registry mutation after a retained snapshot clones the complete
   `RegistrySet`; reload is rare, but its transient old-plus-new peak remains.
   Independent item-profile tables disconnect only when their setter changes

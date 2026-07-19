@@ -64,12 +64,12 @@ use bbb_renderer::{
 };
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
-    ContainerState, EvokerFangsCritParticleState, FireworkRocketTrailParticleState,
-    ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState, MerchantOffersState,
-    MobEffectState, MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
-    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
-    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
+    ContainerState, EntityClientTickWork, EvokerFangsCritParticleState,
+    FireworkRocketTrailParticleState, ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState,
+    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
+    OminousItemSpawnerParticleState, PrimedTntSmokeParticleState, RavagerStunParticleState,
+    SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState,
+    TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -626,6 +626,7 @@ fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usi
 pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
     entity_animation_tick_residual: f64,
+    last_entity_tick_work: EntityClientTickWork,
 }
 
 #[derive(Debug, Default)]
@@ -2189,7 +2190,15 @@ pub(crate) fn advance_simulation(
         wall_clock_millis_i64(),
     );
     hud_debug_tps_sampler.sync_subscription(input, net_counters, net_commands);
+    let entity_tick_started_at = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
+    if advanced_ticks > 0 {
+        record_entity_client_tick_observation(
+            net_counters,
+            entity_tick_started_at.elapsed(),
+            client_animation_ticks.last_entity_tick_work,
+        );
+    }
     let entity_partial_tick = client_animation_ticks.entity_partial_tick();
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
     // Vanilla `ClientLevel.tick` runs `this.getWorldBorder().tick()` right
@@ -12771,6 +12780,7 @@ fn advance_entity_client_animations(
     ticks: &mut ClientAnimationTickState,
     now: Instant,
 ) -> u32 {
+    ticks.last_entity_tick_work = EntityClientTickWork::default();
     let Some(last) = ticks.last_entity_animation_at else {
         ticks.last_entity_animation_at = Some(now);
         return 0;
@@ -12794,8 +12804,22 @@ fn advance_entity_client_animations(
     // mutation batch.
     let advanced_ticks = raw_ticks.min(f64::from(VANILLA_MAX_CLIENT_TICKS_PER_STEP)) as u32;
     ticks.entity_animation_tick_residual -= f64::from(advanced_ticks);
-    world.advance_entity_client_animations(advanced_ticks);
+    ticks.last_entity_tick_work =
+        world.advance_entity_client_animations_with_observation(advanced_ticks);
     advanced_ticks
+}
+
+fn record_entity_client_tick_observation(
+    counters: &mut NetCounters,
+    duration: Duration,
+    work: EntityClientTickWork,
+) {
+    let nanos = duration.as_nanos().min(u128::from(u64::MAX)) as u64;
+    counters.simulation_entity_client_tick_nanos = nanos;
+    counters.simulation_entity_client_tick_peak_nanos =
+        counters.simulation_entity_client_tick_peak_nanos.max(nanos);
+    counters.simulation_entity_client_tick_scanned_entities = work.scanned_entities;
+    counters.simulation_entity_client_tick_mutated_entities = work.mutated_entities;
 }
 
 pub(crate) fn world_client_tick_interval(world: &WorldStore) -> Duration {

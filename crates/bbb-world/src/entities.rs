@@ -492,6 +492,7 @@ pub use sound_variants::{
 };
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;
+pub use store::{EntityClientTickWork, EntityPublicationSnapshotObservation};
 
 // IDs are the vanilla 26.1 EntityType registry order from EntityType.java.
 const VANILLA_DEFAULT_ENTITY_OUTLINE_RGB: u32 = 0x00ff_ffff;

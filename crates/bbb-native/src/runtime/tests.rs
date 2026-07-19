@@ -620,6 +620,32 @@ fn entity_animation_partial_tick_tracks_time_since_last_client_tick() {
 }
 
 #[test]
+fn entity_client_tick_observation_reports_recent_work_and_running_peak() {
+    let mut counters = NetCounters::default();
+    record_entity_client_tick_observation(
+        &mut counters,
+        Duration::from_micros(20),
+        EntityClientTickWork {
+            scanned_entities: 500,
+            mutated_entities: 498,
+        },
+    );
+    record_entity_client_tick_observation(
+        &mut counters,
+        Duration::from_micros(10),
+        EntityClientTickWork {
+            scanned_entities: 100,
+            mutated_entities: 100,
+        },
+    );
+
+    assert_eq!(counters.simulation_entity_client_tick_nanos, 10_000);
+    assert_eq!(counters.simulation_entity_client_tick_peak_nanos, 20_000);
+    assert_eq!(counters.simulation_entity_client_tick_scanned_entities, 100);
+    assert_eq!(counters.simulation_entity_client_tick_mutated_entities, 100);
+}
+
+#[test]
 fn lightmap_tick_state_matches_vanilla_block_light_flicker_formula() {
     let mut lightmap = LightmapTickState::with_seed(0);
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);

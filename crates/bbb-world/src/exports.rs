@@ -259,6 +259,7 @@ pub use crate::entities::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
     PigSoundVariantIdentity, WolfSoundVariantIdentity,
 };
+pub use crate::entities::{EntityClientTickWork, EntityPublicationSnapshotObservation};
 pub use crate::entities::{
     VanillaEntityEventHandlerCatalogEntry, VANILLA_ENTITY_EVENT_HANDLERS_26_1,
 };

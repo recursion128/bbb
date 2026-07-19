@@ -200,10 +200,12 @@ it must never combine fields loaded from different generations.
 World construction goes only through `WorldStore::publication_snapshot`.
 Unchanged chunk-column palette/light payloads and session-static registry/item-
 profile tables retain immutable structural owners; the first later mutation
-copies only its semantic owner. Entity ECS state remains an explicit
-publication copy so mutation plus publication cost is not deferred to the next
-entity tick. Generation-matched runtime counters expose the most recent and
-process-peak publication build duration in nanoseconds.
+copies only its semantic owner. Entity ECS state remains an explicit shell
+copy, while heap-heavy component fields retain per-component immutable owners,
+so sparse mutation copies only its changed payload and dense animation ticks do
+not encounter a whole-store COW. Generation-matched runtime counters expose
+recent/process-peak total publication, entity snapshot, and non-empty entity
+client-tick batch durations plus scanned, mutated, and rebuilt entity counts.
 
 The first implementation publishes after any drained packet/input batch that
 changes observable state and after every due tick batch. It may coalesce

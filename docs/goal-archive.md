@@ -19562,3 +19562,28 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] block/light/chunk load-unload、entity transform/metadata、registry/reload、inventory/UI 的 A/B
   generation 隔离回归，serde shape、source guard、focused tests、三个阶段 full gate 与最终 fixture
   playable smoke 均通过；live playable 因环境无 Java executable 未运行并保留为外部门禁条件。
+
+## 2026-07-19：entity client tick 与 immutable publication 端到端成本
+
+- [x] repo-native Criterion 基线覆盖 empty、100/500/2,000、tick-only、publication-only、组合、
+  retained generation、sparse/dense、spawn/remove、metadata/equipment/effect/attribute、passenger/
+  interpolation、effect generation 与 heterogeneous mix，并单独测量 schema lookup、protocol-id
+  lookup、完整/窄 projection 和 renderer extraction；wall-clock 数字只作同机记录，不进入 CI。
+- [x] tick 路径删除无 Wither world 的逐实体 renderer/dimension 投影；Wither 只按生成 type catalog
+  收集 side-head target，再经稳定 protocol-id→hecs handle 索引读取实际 target。生成 metadata schema
+  新增一次构建的 reference-only inheritance index，并以全 entity/accessor 穷举测试对照直接继承遍历，
+  不复制 schema/default、不增加平行 membership 表。
+- [x] metadata/painting、equipment、attributes、passengers、effects、damage 与 minecart-step payload
+  改为 serde-transparent per-component `PublicationShared` owner；snapshot 仍重建隔离的 hecs shell，
+  transform/animation 保持直接值，因此 sparse 写只 COW 受影响 payload，dense tick 不触发 whole-store
+  COW。A/B isolation 覆盖全部 entity mutation family，serde/probe/control 形状保持不变。
+- [x] 最终含观测开销的同机数据：2,000 zombie tick-only 85.410→8.141 ms（10.49x），tick +
+  publication 88.226→9.304 ms（9.48x）；heterogeneous 组合 80.204→10.175 ms（7.88x）；
+  payload-heavy unchanged publication 22.955→0.966 ms（23.77x），retained sparse metadata +
+  publication 22.987→1.010 ms（22.77x）。renderer model projection 同时从 59.602→4.939 ms，
+  没有把 simulation 成本转移给 extraction。
+- [x] 同 generation `NetCounters` 分别发布最近/峰值非空 entity tick batch、entity snapshot 与完整
+  publication 耗时，并报告 tick query scanned/mutated rows 和 snapshot rebuilt entities；render/control
+  继续共享同一 world `Arc`/generation，effect sequence、blocked-render、shutdown/join、panic propagation
+  和单一 simulation owner 守卫不变。剩余约 0.94 ms O(n) hecs shell rebuild 与 retained-generation
+  shell/payload 版本峰值明确保留为后续测量边界。

@@ -6149,6 +6149,13 @@ pub(crate) fn warden_heartbeat_delay(entity_type_id: i32, data_values: &[EntityD
 
 impl WorldStore {
     pub fn advance_entity_client_animations(&mut self, ticks: u32) {
+        let _ = self.advance_entity_client_animations_with_observation(ticks);
+    }
+
+    pub fn advance_entity_client_animations_with_observation(
+        &mut self,
+        ticks: u32,
+    ) -> crate::EntityClientTickWork {
         // Vanilla `Guardian.aiStep` recomputes `isInWater()` each client tick, but
         // within one `advance` batch the entity transforms and the chunk fluid state
         // are static (only the animation accumulators mutate), so the per-entity
@@ -6182,7 +6189,7 @@ impl WorldStore {
         let death_tick_simulation_distance = self.local_player.simulation_distance;
         let minecart_improvements_enabled =
             self.is_feature_enabled("minecraft:minecart_improvements");
-        self.entities.advance_client_animations(
+        let work = self.entities.advance_client_animations(
             ticks,
             &in_water_by_id,
             minecart_improvements_enabled,
@@ -6190,6 +6197,7 @@ impl WorldStore {
             death_tick_simulation_distance,
         );
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
+        work
     }
 }
 
