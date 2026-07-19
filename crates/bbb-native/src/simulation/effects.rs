@@ -79,8 +79,8 @@ pub(crate) struct ResourceReloadEffect {
 
 /// Sequence-numbered, owned output of one simulation step.
 ///
-/// The render owner consumes every batch at most once. Empty batches retain a
-/// sequence so a lost batch is distinguishable from a step without effects.
+/// The render owner consumes every non-empty batch at most once. Steps without
+/// effects do not consume sequence space or enter the lossless FIFO.
 pub(crate) struct RenderEffectBatch {
     sequence: u64,
     effects: Vec<RenderEffect>,
@@ -117,12 +117,19 @@ impl RenderEffectCollector {
         PlatformEffectCollector { collector: self }
     }
 
-    pub(crate) fn finish(self, resource_reload: Option<ResourceReloadEffect>) -> RenderEffectBatch {
-        RenderEffectBatch {
-            sequence: self.sequence,
-            effects: self.effects.into_inner(),
-            resource_reload,
+    pub(crate) fn finish(
+        self,
+        resource_reload: Option<ResourceReloadEffect>,
+    ) -> Option<RenderEffectBatch> {
+        let effects = self.effects.into_inner();
+        if effects.is_empty() && resource_reload.is_none() {
+            return None;
         }
+        Some(RenderEffectBatch {
+            sequence: self.sequence,
+            effects,
+            resource_reload,
+        })
     }
 
     fn push(&self, effect: RenderEffect) {
@@ -372,20 +379,27 @@ mod tests {
             .submit(PlatformEffect::SetCursorCapture(false));
         audio.play_local_sound(&local_sound());
         drop((audio, particles));
-        collector.finish(None)
+        collector.finish(None).expect("ordered effects")
     }
 
     fn reload_batch(sequence: u64, generation: u64) -> RenderEffectBatch {
-        RenderEffectCollector::new(sequence, AudioCounters::default()).finish(Some(
-            ResourceReloadEffect {
+        RenderEffectCollector::new(sequence, AudioCounters::default())
+            .finish(Some(ResourceReloadEffect {
                 request: ServerResourcePackReload {
                     generation,
                     server_pack_roots: Vec::new(),
                 },
                 sound_events: SoundEventRegistry::default(),
                 jukebox_songs: JukeboxSongRegistry::default(),
-            },
-        ))
+            }))
+            .expect("resource reload effect")
+    }
+
+    #[test]
+    fn empty_step_does_not_create_an_effect_batch() {
+        assert!(RenderEffectCollector::new(1, AudioCounters::default())
+            .finish(None)
+            .is_none());
     }
 
     #[test]

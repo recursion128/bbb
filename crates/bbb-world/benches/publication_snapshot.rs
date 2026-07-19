@@ -301,6 +301,19 @@ fn bench_unchanged_publication(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_reused_world_arc(c: &mut Criterion) {
+    let mut group = c.benchmark_group("world_publication/reused_exact_world_arc");
+    let empty = Arc::new(WorldStore::new().publication_snapshot());
+    group.bench_function("empty", |b| {
+        b.iter(|| black_box(Arc::clone(black_box(&empty))));
+    });
+    let entities = Arc::new(build_entity_world(ENTITY_COUNT).publication_snapshot());
+    group.bench_function("entities/2000", |b| {
+        b.iter(|| black_box(Arc::clone(black_box(&entities))));
+    });
+    group.finish();
+}
+
 fn bench_entity_tick_only(c: &mut Criterion) {
     let mut group = c.benchmark_group("entity_tick/tick_only");
     let mut empty = WorldStore::new();
@@ -673,6 +686,7 @@ criterion_group! {
     config = benchmark_configuration();
     targets =
         bench_unchanged_publication,
+        bench_reused_world_arc,
         bench_entity_tick_only,
         bench_entity_tick_schema_lookups,
         bench_entity_tick_and_publication,

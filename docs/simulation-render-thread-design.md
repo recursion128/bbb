@@ -113,9 +113,11 @@ Repo facts that constrain the migration:
 - the simulation command inbox and ordered effect/publication sequence numbers.
 
 The core must be runnable directly in tests and, during migration, on the winit
-thread. `SimulationCore::step(now)` is the only operation that drains inputs,
-applies net events, advances due ticks, and publishes effects/state. Starting a
-thread changes its executor, not its semantics.
+thread. `SimulationCore::step(now, tick_deadline_reached)` is the only operation
+that drains inputs, applies net events, advances due ticks, and publishes
+effects/state. A producer wake with no queued command/event before the deadline
+returns no output and preserves the existing deadline. Starting a thread
+changes its executor, not its semantics.
 
 ### Render / winit thread
 
@@ -150,7 +152,7 @@ are fixed:
 ```text
 winit/control producers
   -> SimulationMailbox<SimulationCommand>
-  -> SimulationCore::step(now)
+  -> SimulationCore::step(now, tick_deadline_reached)
        -> NetCommand sender
        -> RenderEffectBatch sender
        -> ArcSwap<SimulationPublication>
@@ -174,6 +176,13 @@ the coalescing rule preserves their sum/latest-value semantics and cannot cross
 a discrete command ordering barrier. Saturation must never silently lose a key
 release, mouse release, control action, or shutdown. The render thread may take
 a short mailbox mutex but never waits for simulation progress.
+
+`TerrainReadiness` enters this ordered queue only for the first value of a
+client-level generation or a readiness edge. Renderer/audio counters use a
+separate latest-value mailbox slot: replacement neither advances the command
+sequence nor wakes simulation, and the next real tick/network/input step
+absorbs the latest value. Thus neither per-frame feedback source drives the
+simulation scheduler.
 
 Every command carries a monotonic sequence number assigned at enqueue. Tests
 pin ordering across winit and control producers. Platform-only results return as
@@ -206,6 +215,11 @@ so sparse mutation copies only its changed payload and dense animation ticks do
 not encounter a whole-store COW. Generation-matched runtime counters expose
 recent/process-peak total publication, entity snapshot, and non-empty entity
 client-tick batch durations plus scanned, mutated, and rebuilt entity counts.
+If a generation changes only the narrow render/input runtime facts audited by
+the command classifier, `SimulationPublisher` reuses the previous exact world
+`Arc` and reports zero rebuilt entity shells. Network work, due ticks, gameplay
+input, readiness/load transitions, reloads, and control mutations remain
+conservative rebuild boundaries.
 
 The first implementation publishes after any drained packet/input batch that
 changes observable state and after every due tick batch. It may coalesce
@@ -242,7 +256,7 @@ emitted; it does not wait for the GPU/backend to display those commands.
 
 ## Tick and Frame Ordering
 
-One `SimulationCore::step(now)` performs:
+One `SimulationCore::step(now, tick_deadline_reached)` performs:
 
 1. Drain a bounded batch of already queued net events in FIFO order, then
    ordered simulation commands up to the captured barrier.
@@ -254,8 +268,9 @@ One `SimulationCore::step(now)` performs:
 4. For each tick preserve the verified order: GUI/input systems, renderer-camera
    tick state, entity/block-entity/world systems, particle command generation,
    then `ClientTickEnd`.
-5. Seal ordered effect batches, build one immutable publication if state changed,
-   and compute the next deadline.
+5. Suppress an empty effect collector without consuming sequence space; seal
+   non-empty effects, build one immutable publication if state changed, and
+   compute the next deadline.
 
 If more than ten ticks remain due, the residual remains pending and the next
 step continues without sleeping. Network and shutdown commands are checked
@@ -267,6 +282,9 @@ The render thread loads one publication per frame, drains effects through its
 sequence, computes/clamps partial tick from the publication anchor, extracts one
 `RendererFrame`, services at most the existing terrain budgets, and renders.
 Frame time never feeds back into the simulation accumulator.
+Simulation output wakes use a pending flag. Multiple queued outputs share one
+event-loop wake until the consumer drains and race-safely clears the flag;
+shutdown and panic exit retain their unconditional terminal wake.
 
 ## Resource Reload Barrier
 

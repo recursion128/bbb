@@ -207,6 +207,43 @@ This host currently has no Java executable configured for
 `scripts/playable-gate.sh`; official live values remain an explicit phase-6
 external measurement, not fabricated phase-1 data.
 
+## Phase 2 Boundary Result
+
+The first runtime milestone removes the render feedback loop without adding a
+world dirty bit. Readiness is generation-scoped and edge-triggered; backend
+telemetry is one non-waking latest-value slot; output wakes are coalesced behind
+one pending flag; and an early wake with no command or network value emits no
+effect, generation, output, or replacement deadline. Empty effect collectors
+do not consume sequence space. Runtime observations now include productive and
+no-op steps, publication and world rebuild/reuse counts, non-empty/empty-
+suppressed effect counts, output backlog, and sent/coalesced render wakes in the
+next immutable generation.
+
+World reuse is intentionally conservative. A due tick or any pending network
+event rebuilds. The exhaustive command classifier rebuilds for gameplay input,
+control, readiness/load, and reload work; only surface/text-measurement and
+platform result commands plus shutdown can reuse. The reuse path publishes the
+previous exact world `Arc` to both render and control and reports zero entity
+snapshot time/rebuilt rows.
+
+Same-host Criterion after measurement:
+
+| World portion / scenario | Before rebuild | Exact Arc reuse | Reduction |
+| --- | ---: | ---: | ---: |
+| 2,000 entity unchanged world value | 914.69 us | 2.360 ns | about 387,600x |
+
+The 2.360 ns measurement covers only retaining/releasing the already immutable
+world owner, matching the eliminated `WorldStore::publication_snapshot`
+portion. It does not claim that the complete publication is 2.360 ns:
+`ClientInputState` and heap-backed `SimulationFrameState` work remain phase-3
+owners and are deliberately still visible in
+`simulation_publication_build_nanos`. The scheduler/backend tests are logical
+count assertions rather than unstable wall-clock thresholds: repeated backend
+frames leave both command length and wake generation unchanged; a synthetic
+producer wake before the deadline creates no output; blocked-render output
+creates one sent wake and coalesces later outputs while deadlines and network
+wakes continue.
+
 ## Serial Phases, Validation, And Gates
 
 1. **Baseline, contract, observation surface.** Add the headless Criterion

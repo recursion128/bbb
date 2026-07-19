@@ -867,13 +867,17 @@ fn main() -> Result<()> {
                         .as_ref()
                         .map(NativeAudioRuntime::counters)
                         .unwrap_or_else(|| audio_status.clone());
-                    simulation_mailbox.enqueue(SimulationCommand::BackendCounters {
-                        renderer: control_renderer_counters(renderer.counters()),
-                        audio: audio_counters,
-                    });
+                    let output_backlog = simulation_thread.output_backlog();
+                    simulation_mailbox.update_backend_telemetry(
+                        control_renderer_counters(renderer.counters()),
+                        audio_counters,
+                        output_backlog.render_wakes_sent as u64,
+                        output_backlog.render_wakes_coalesced as u64,
+                        output_backlog.pending as u64,
+                        output_backlog.peak as u64,
+                    );
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
                     let profiler_frame_duration = profiler_frame_started_at.elapsed();
-                    let output_backlog = simulation_thread.output_backlog();
                     let newest_publication = shared_publication.load();
                     let publication_generation_lag = newest_publication
                         .generation
@@ -893,6 +897,9 @@ fn main() -> Result<()> {
                             publish_millis = profiler_publish_duration.as_millis() as u64,
                             simulation_output_backlog = output_backlog.pending as u64,
                             simulation_output_backlog_peak = output_backlog.peak as u64,
+                            simulation_render_wakes_sent = output_backlog.render_wakes_sent as u64,
+                            simulation_render_wakes_coalesced =
+                                output_backlog.render_wakes_coalesced as u64,
                             publication_generation_lag,
                             effect_sequence_lag,
                             "slow frame"

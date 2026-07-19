@@ -4,7 +4,7 @@ use std::{
     any::Any,
     panic::{self, AssertUnwindSafe},
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         mpsc::{self, Receiver, TryRecvError},
         Arc,
     },
@@ -25,12 +25,17 @@ pub(crate) struct SimulationThread {
 pub(crate) struct SimulationOutputBacklog {
     pub(crate) pending: usize,
     pub(crate) peak: usize,
+    pub(crate) render_wakes_sent: usize,
+    pub(crate) render_wakes_coalesced: usize,
 }
 
 #[derive(Default)]
 struct OutputBacklog {
     pending: AtomicUsize,
     peak: AtomicUsize,
+    render_wake_pending: AtomicBool,
+    render_wakes_sent: AtomicUsize,
+    render_wakes_coalesced: AtomicUsize,
 }
 
 impl SimulationThread {
@@ -54,10 +59,12 @@ impl SimulationThread {
                         output_tx,
                         scheduler_backlog,
                         &render_wake,
-                        move |now| {
-                            let output = core.step(now);
-                            let running = output.running();
-                            let deadline = core.next_tick_deadline(now);
+                        move |now, tick_deadline_reached| {
+                            let output = core.step(now, tick_deadline_reached);
+                            let running = output
+                                .as_ref()
+                                .map_or_else(|| core.running(), SimulationStepResult::running);
+                            let deadline = output.as_ref().map(|_| core.next_tick_deadline(now));
                             ScheduledStep {
                                 output,
                                 running,
@@ -120,9 +127,9 @@ impl Drop for SimulationThread {
 }
 
 struct ScheduledStep<T> {
-    output: T,
+    output: Option<T>,
     running: bool,
-    deadline: Instant,
+    deadline: Option<Instant>,
 }
 
 struct ExitWake<'a, F: Fn()>(&'a F);
@@ -138,21 +145,27 @@ fn run_scheduled<T>(
     outputs: mpsc::Sender<T>,
     output_backlog: Arc<OutputBacklog>,
     render_wake: impl Fn(),
-    mut step: impl FnMut(Instant) -> ScheduledStep<T>,
+    mut step: impl FnMut(Instant, bool) -> ScheduledStep<T>,
 ) -> Result<(), String> {
+    let mut deadline = Instant::now();
     loop {
         // Capture before stepping so work published while this step is running
         // cannot be lost between the input barrier and the blocking wait.
         let observed_wake = mailbox.wake_generation();
-        let scheduled = step(Instant::now());
+        let now = Instant::now();
+        let scheduled = step(now, now >= deadline);
         let running = scheduled.running;
-        let deadline = scheduled.deadline;
-        output_backlog.record_enqueue();
-        if outputs.send(scheduled.output).is_err() {
-            output_backlog.record_dequeue();
-            return Err("simulation output receiver closed".to_string());
+        if let Some(next_deadline) = scheduled.deadline {
+            deadline = next_deadline;
         }
-        render_wake();
+        if let Some(output) = scheduled.output {
+            output_backlog.record_enqueue();
+            if outputs.send(output).is_err() {
+                output_backlog.record_dequeue();
+                return Err("simulation output receiver closed".to_string());
+            }
+            output_backlog.request_render_wake(&render_wake);
+        }
         if !running {
             return Ok(());
         }
@@ -164,11 +177,36 @@ fn receive_output<T>(
     outputs: &Receiver<T>,
     output_backlog: &OutputBacklog,
 ) -> Result<T, TryRecvError> {
-    let result = outputs.try_recv();
-    if result.is_ok() {
-        output_backlog.record_dequeue();
+    match outputs.try_recv() {
+        Ok(output) => {
+            output_backlog.record_dequeue();
+            Ok(output)
+        }
+        Err(TryRecvError::Empty) => {
+            // Clear only after the queue has drained, then recheck to close
+            // the producer race. A producer that publishes after the recheck
+            // observes false and sends the next event-loop wake.
+            output_backlog
+                .render_wake_pending
+                .store(false, Ordering::Release);
+            match outputs.try_recv() {
+                Ok(output) => {
+                    output_backlog
+                        .render_wake_pending
+                        .store(true, Ordering::Release);
+                    output_backlog.record_dequeue();
+                    Ok(output)
+                }
+                Err(error) => Err(error),
+            }
+        }
+        Err(TryRecvError::Disconnected) => {
+            output_backlog
+                .render_wake_pending
+                .store(false, Ordering::Release);
+            Err(TryRecvError::Disconnected)
+        }
     }
-    result
 }
 
 impl OutputBacklog {
@@ -182,6 +220,15 @@ impl OutputBacklog {
         debug_assert!(previous > 0, "output backlog underflow");
     }
 
+    fn request_render_wake(&self, render_wake: impl Fn()) {
+        if self.render_wake_pending.swap(true, Ordering::AcqRel) {
+            self.render_wakes_coalesced.fetch_add(1, Ordering::Relaxed);
+        } else {
+            self.render_wakes_sent.fetch_add(1, Ordering::Relaxed);
+            render_wake();
+        }
+    }
+
     fn snapshot(&self) -> SimulationOutputBacklog {
         let pending = self.pending.load(Ordering::Relaxed);
         SimulationOutputBacklog {
@@ -190,6 +237,8 @@ impl OutputBacklog {
             // the gauge invariant if a render-thread sample lands between
             // those two relaxed atomic operations.
             peak: self.peak.load(Ordering::Relaxed).max(pending),
+            render_wakes_sent: self.render_wakes_sent.load(Ordering::Relaxed),
+            render_wakes_coalesced: self.render_wakes_coalesced.load(Ordering::Relaxed),
         }
     }
 }
@@ -245,7 +294,7 @@ mod tests {
                 output_tx,
                 worker_backlog,
                 || {},
-                move |now| {
+                move |now, _tick_deadline_reached| {
                     let commands = worker_mailbox.drain_through_barrier();
                     let running = !commands
                         .iter()
@@ -256,9 +305,9 @@ mod tests {
                     let count = worker_stepped.fetch_add(1, Ordering::SeqCst) + 1;
                     let _ = progress_tx.send(count);
                     ScheduledStep {
-                        output: count,
+                        output: Some(count),
                         running,
-                        deadline: now + Duration::from_millis(10),
+                        deadline: Some(now + Duration::from_millis(10)),
                     }
                 },
             )
@@ -291,10 +340,71 @@ mod tests {
         let blocked_backlog = output_backlog.snapshot();
         assert!(blocked_backlog.pending >= 5);
         assert!(blocked_backlog.peak >= blocked_backlog.pending);
+        assert_eq!(blocked_backlog.render_wakes_sent, 1);
+        assert!(blocked_backlog.render_wakes_coalesced >= 4);
         while receive_output(&output_rx, &output_backlog).is_ok() {}
         let drained_backlog = output_backlog.snapshot();
         assert_eq!(drained_backlog.pending, 0);
         assert!(drained_backlog.peak >= blocked_backlog.peak);
+    }
+
+    #[test]
+    fn producer_wake_without_work_emits_no_output_and_preserves_deadline() {
+        let mailbox = SimulationMailbox::default();
+        let scheduler_mailbox = mailbox.clone();
+        let worker_mailbox = mailbox.clone();
+        let (output_tx, output_rx) = mpsc::channel::<usize>();
+        let output_backlog = Arc::new(OutputBacklog::default());
+        let worker_backlog = Arc::clone(&output_backlog);
+        let (attempt_tx, attempt_rx) = mpsc::channel();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let worker_attempts = Arc::clone(&attempts);
+        let worker = thread::spawn(move || {
+            run_scheduled(
+                scheduler_mailbox,
+                output_tx,
+                worker_backlog,
+                || {},
+                move |now, tick_deadline_reached| {
+                    let attempt = worker_attempts.fetch_add(1, Ordering::SeqCst) + 1;
+                    let commands = worker_mailbox.drain_through_barrier();
+                    let shutdown = commands
+                        .iter()
+                        .any(|command| matches!(command.command, SimulationCommand::Shutdown));
+                    let output = (attempt == 1 || shutdown).then_some(attempt);
+                    let deadline = (attempt == 1).then_some(now + Duration::from_secs(1));
+                    let _ = attempt_tx.send((attempt, tick_deadline_reached, output.is_some()));
+                    ScheduledStep {
+                        output,
+                        running: !shutdown,
+                        deadline,
+                    }
+                },
+            )
+        });
+
+        assert_eq!(
+            attempt_rx.recv_timeout(Duration::from_millis(200)).unwrap(),
+            (1, true, true)
+        );
+        mailbox.notify_external_work();
+        assert_eq!(
+            attempt_rx.recv_timeout(Duration::from_millis(200)).unwrap(),
+            (2, false, false)
+        );
+        mailbox.enqueue(SimulationCommand::Shutdown);
+        assert_eq!(
+            attempt_rx.recv_timeout(Duration::from_millis(200)).unwrap(),
+            (3, false, true)
+        );
+        assert_eq!(worker.join().unwrap(), Ok(()));
+        assert_eq!(receive_output(&output_rx, &output_backlog), Ok(1));
+        assert_eq!(receive_output(&output_rx, &output_backlog), Ok(3));
+        assert!(matches!(
+            receive_output(&output_rx, &output_backlog),
+            Err(TryRecvError::Empty | TryRecvError::Disconnected)
+        ));
+        assert_eq!(output_backlog.snapshot().pending, 0);
     }
 
     #[test]
@@ -309,7 +419,9 @@ mod tests {
                     output_tx,
                     output_backlog,
                     || {},
-                    |_now| -> ScheduledStep<()> { panic!("fake simulation failure") },
+                    |_now, _tick_deadline_reached| -> ScheduledStep<()> {
+                        panic!("fake simulation failure")
+                    },
                 )
             }))
             .map_err(|payload| panic_payload(payload.as_ref()).to_string())

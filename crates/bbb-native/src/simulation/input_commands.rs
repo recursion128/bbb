@@ -215,10 +215,6 @@ impl SimulationInputRuntime {
                 self.terrain_readiness =
                     Some((level_generation, player_section_compiled_and_visible));
             }
-            SimulationCommand::BackendCounters { renderer, audio } => {
-                *context.renderer_counters = renderer;
-                *context.audio_counters = audio;
-            }
             SimulationCommand::Control(request) => self.apply_control(request, context),
             SimulationCommand::Shutdown => self.request_shutdown(context),
         }
@@ -1064,8 +1060,6 @@ pub(crate) struct SimulationInputContext<'a, 'collector> {
     pub(crate) input: &'a mut crate::input::ClientInputState,
     pub(crate) world: &'a mut WorldStore,
     pub(crate) net_counters: &'a mut bbb_control::NetCounters,
-    pub(crate) renderer_counters: &'a mut bbb_control::RendererCounters,
-    pub(crate) audio_counters: &'a mut bbb_control::AudioCounters,
     pub(crate) net_commands: &'a Option<mpsc::Sender<NetCommand>>,
     pub(crate) server_resource_packs: &'a mut ServerResourcePackRuntime,
     pub(crate) particle_runtime: &'a mut Option<crate::particle_runtime::NativeParticleRuntime>,

@@ -58,6 +58,7 @@ pub(crate) struct TerrainUploadState {
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
     compiled_and_visible_chunks: HashSet<(i32, i32)>,
+    reported_readiness: Option<(u64, bool)>,
 }
 
 impl TerrainUploadState {
@@ -83,9 +84,39 @@ impl TerrainUploadState {
         ))
     }
 
+    /// Returns a command payload only when readiness changes or a new client
+    /// level generation becomes active.
+    pub(crate) fn take_readiness_edge(
+        &mut self,
+        level_generation: u64,
+        ready: bool,
+    ) -> Option<(u64, bool)> {
+        let next = (level_generation, ready);
+        if self.reported_readiness == Some(next) {
+            return None;
+        }
+        self.reported_readiness = Some(next);
+        Some(next)
+    }
+
     #[cfg(test)]
     pub(crate) fn reload_all_chunks_requested(&self) -> bool {
         self.reload_all_chunks_requested
+    }
+}
+
+#[cfg(test)]
+mod readiness_tests {
+    use super::TerrainUploadState;
+
+    #[test]
+    fn readiness_reports_only_edges_and_new_level_generations() {
+        let mut upload = TerrainUploadState::default();
+        assert_eq!(upload.take_readiness_edge(4, false), Some((4, false)));
+        assert_eq!(upload.take_readiness_edge(4, false), None);
+        assert_eq!(upload.take_readiness_edge(4, true), Some((4, true)));
+        assert_eq!(upload.take_readiness_edge(4, true), None);
+        assert_eq!(upload.take_readiness_edge(5, true), Some((5, true)));
     }
 }
 

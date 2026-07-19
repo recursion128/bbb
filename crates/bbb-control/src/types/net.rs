@@ -97,6 +97,41 @@ pub struct NetCounters {
     /// simulation generation, including its world snapshot, in nanoseconds.
     #[serde(default)]
     pub simulation_publication_build_nanos: u64,
+    /// Scheduler invocations that applied tick, network, or command work.
+    #[serde(default)]
+    pub simulation_productive_steps: u64,
+    /// Producer wakes that found no command, network event, or due tick and
+    /// therefore emitted no publication/output.
+    #[serde(default)]
+    pub simulation_noop_steps: u64,
+    /// Immutable simulation generations published after startup.
+    #[serde(default)]
+    pub simulation_publications: u64,
+    /// Published generations that rebuilt the immutable world snapshot.
+    #[serde(default)]
+    pub simulation_world_snapshot_rebuilds: u64,
+    /// Published generations that reused the previous exact world Arc.
+    #[serde(default)]
+    pub simulation_world_snapshot_reuses: u64,
+    /// Non-empty effect batches inserted into the lossless render FIFO.
+    #[serde(default)]
+    pub simulation_effect_batches: u64,
+    /// Productive steps whose empty effect collectors were suppressed.
+    #[serde(default)]
+    pub simulation_empty_effect_batches_suppressed: u64,
+    /// Event-loop wakes emitted for simulation outputs as of the latest
+    /// render-owned telemetry sample.
+    #[serde(default)]
+    pub simulation_render_wakes_sent: u64,
+    /// Simulation output wakes coalesced behind an already-pending wake.
+    #[serde(default)]
+    pub simulation_render_wakes_coalesced: u64,
+    /// Current queued simulation outputs at the latest render sample.
+    #[serde(default)]
+    pub simulation_output_backlog_current: u64,
+    /// Peak queued simulation outputs observed by the render owner.
+    #[serde(default)]
+    pub simulation_output_backlog_peak: u64,
     /// Largest immutable simulation publication build observed in this
     /// process, in nanoseconds.
     #[serde(default)]
@@ -139,6 +174,17 @@ mod tests {
         let mut value = serde_json::to_value(NetCounters::default()).unwrap();
         let object = value.as_object_mut().unwrap();
         object.remove("simulation_publication_build_nanos");
+        object.remove("simulation_productive_steps");
+        object.remove("simulation_noop_steps");
+        object.remove("simulation_publications");
+        object.remove("simulation_world_snapshot_rebuilds");
+        object.remove("simulation_world_snapshot_reuses");
+        object.remove("simulation_effect_batches");
+        object.remove("simulation_empty_effect_batches_suppressed");
+        object.remove("simulation_render_wakes_sent");
+        object.remove("simulation_render_wakes_coalesced");
+        object.remove("simulation_output_backlog_current");
+        object.remove("simulation_output_backlog_peak");
         object.remove("simulation_publication_build_peak_nanos");
         object.remove("simulation_entity_client_tick_nanos");
         object.remove("simulation_entity_client_tick_peak_nanos");
@@ -150,6 +196,17 @@ mod tests {
 
         let counters: NetCounters = serde_json::from_value(value).unwrap();
         assert_eq!(counters.simulation_publication_build_nanos, 0);
+        assert_eq!(counters.simulation_productive_steps, 0);
+        assert_eq!(counters.simulation_noop_steps, 0);
+        assert_eq!(counters.simulation_publications, 0);
+        assert_eq!(counters.simulation_world_snapshot_rebuilds, 0);
+        assert_eq!(counters.simulation_world_snapshot_reuses, 0);
+        assert_eq!(counters.simulation_effect_batches, 0);
+        assert_eq!(counters.simulation_empty_effect_batches_suppressed, 0);
+        assert_eq!(counters.simulation_render_wakes_sent, 0);
+        assert_eq!(counters.simulation_render_wakes_coalesced, 0);
+        assert_eq!(counters.simulation_output_backlog_current, 0);
+        assert_eq!(counters.simulation_output_backlog_peak, 0);
         assert_eq!(counters.simulation_publication_build_peak_nanos, 0);
         assert_eq!(counters.simulation_entity_client_tick_nanos, 0);
         assert_eq!(counters.simulation_entity_client_tick_peak_nanos, 0);

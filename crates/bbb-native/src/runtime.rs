@@ -2083,6 +2083,10 @@ impl SimulationFrameState {
     pub(crate) fn tick_anchor(&self) -> Instant {
         self.now
     }
+
+    pub(crate) fn advanced_ticks(&self) -> u32 {
+        self.advanced_ticks
+    }
 }
 
 pub(crate) fn advance_simulation(
@@ -2095,8 +2099,6 @@ pub(crate) fn advance_simulation(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     net_counters: &mut NetCounters,
-    renderer_counters: &mut RendererCounters,
-    audio_counters: &mut AudioCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
     camera_fov_ticks: &mut CameraFovTickState,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
@@ -2162,8 +2164,6 @@ pub(crate) fn advance_simulation(
             input,
             world,
             net_counters,
-            renderer_counters,
-            audio_counters,
             net_commands,
             server_resource_packs,
             particle_runtime,
@@ -3078,12 +3078,19 @@ pub(crate) fn update_renderer_from_publication(
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     let player_section_compiled_and_visible =
         terrain_upload.is_player_section_compiled_and_visible(world);
-    mailbox.enqueue(
-        crate::simulation::commands::SimulationCommand::TerrainReadiness {
-            level_generation: publication.client_level_generation,
+    if let Some((level_generation, player_section_compiled_and_visible)) = terrain_upload
+        .take_readiness_edge(
+            publication.client_level_generation,
             player_section_compiled_and_visible,
-        },
-    );
+        )
+    {
+        mailbox.enqueue(
+            crate::simulation::commands::SimulationCommand::TerrainReadiness {
+                level_generation,
+                player_section_compiled_and_visible,
+            },
+        );
+    }
     let pump_elapsed = pump_started_at.elapsed();
     // Section attribution for frames slow enough to starve the per-frame
     // synthetic-input and net-command consumers.

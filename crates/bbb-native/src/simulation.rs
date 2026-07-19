@@ -101,16 +101,46 @@ pub(crate) struct SimulationRenderContext<'a> {
 
 impl SimulationCore {
     /// Runs one ordered network/command/tick pump at the scheduler's monotonic
-    /// timestamp and publishes its immutable generation.
-    pub(crate) fn step(&mut self, now: Instant) -> SimulationStepResult {
-        let effect_sequence = self.next_effect_sequence;
-        self.next_effect_sequence = self.next_effect_sequence.saturating_add(1);
+    /// timestamp. Producer wakes without visible work return without creating
+    /// an effect batch, publication generation, or render output.
+    pub(crate) fn step(
+        &mut self,
+        now: Instant,
+        tick_deadline_reached: bool,
+    ) -> Option<SimulationStepResult> {
+        let commands = self.command_mailbox.drain_through_barrier();
+        let network_work_pending = self
+            .net_events
+            .as_ref()
+            .is_some_and(|events| !events.is_empty() || events.is_closed());
+        if !tick_deadline_reached && !network_work_pending && commands.is_empty() {
+            self.net_counters.simulation_noop_steps =
+                self.net_counters.simulation_noop_steps.saturating_add(1);
+            return None;
+        }
+        self.net_counters.simulation_productive_steps = self
+            .net_counters
+            .simulation_productive_steps
+            .saturating_add(1);
+        if let Some(telemetry) = self.command_mailbox.take_backend_telemetry() {
+            self.renderer_counters = telemetry.renderer;
+            self.audio_counters = telemetry.audio;
+            self.net_counters.simulation_render_wakes_sent = telemetry.render_wakes_sent;
+            self.net_counters.simulation_render_wakes_coalesced = telemetry.render_wakes_coalesced;
+            self.net_counters.simulation_output_backlog_current = telemetry.output_backlog_current;
+            self.net_counters.simulation_output_backlog_peak = telemetry.output_backlog_peak;
+        }
+        let mut rebuild_world_snapshot = tick_deadline_reached
+            || network_work_pending
+            || commands
+                .iter()
+                .any(|command| command.command.requires_world_snapshot_rebuild());
+        let next_effect_sequence = self.next_effect_sequence;
         let effects =
-            effects::RenderEffectCollector::new(effect_sequence, self.audio_counters.clone());
+            effects::RenderEffectCollector::new(next_effect_sequence, self.audio_counters.clone());
         let mut audio_effects = effects.audio();
         let mut particle_batches = effects.particles();
         let mut platform_effects = effects.platform();
-        let commands = self.command_mailbox.drain_through_barrier();
         let frame = advance_simulation(
             &mut self.net_events,
             &self.net_commands,
@@ -122,8 +152,6 @@ impl SimulationCore {
             &mut self.input,
             &mut self.world,
             &mut self.net_counters,
-            &mut self.renderer_counters,
-            &mut self.audio_counters,
             &mut self.client_animation_ticks,
             &mut self.camera_fov_ticks,
             &mut self.hud_debug_network_sampler,
@@ -141,6 +169,10 @@ impl SimulationCore {
             self.hide_lightning_flash,
             now,
         );
+        // Duration rounding can let the timer convert a tick at the edge of a
+        // conservatively classified input-only wake. Never reuse a world Arc
+        // when the actual pump reports canonical tick mutation.
+        rebuild_world_snapshot |= frame.advanced_ticks() > 0;
         drop((audio_effects, particle_batches, platform_effects));
         let resource_reload = self.server_resource_packs.take_reload().map(|request| {
             let (sound_events, jukebox_songs) = audio_registry_snapshot_from_world(&self.world);
@@ -150,8 +182,36 @@ impl SimulationCore {
                 jukebox_songs,
             }
         });
+        let effects = effects.finish(resource_reload);
+        let effect_sequence = if effects.is_some() {
+            self.net_counters.simulation_effect_batches = self
+                .net_counters
+                .simulation_effect_batches
+                .saturating_add(1);
+            self.next_effect_sequence = self.next_effect_sequence.saturating_add(1);
+            next_effect_sequence
+        } else {
+            self.net_counters.simulation_empty_effect_batches_suppressed = self
+                .net_counters
+                .simulation_empty_effect_batches_suppressed
+                .saturating_add(1);
+            next_effect_sequence.saturating_sub(1)
+        };
+        self.net_counters.simulation_publications =
+            self.net_counters.simulation_publications.saturating_add(1);
+        if rebuild_world_snapshot {
+            self.net_counters.simulation_world_snapshot_rebuilds = self
+                .net_counters
+                .simulation_world_snapshot_rebuilds
+                .saturating_add(1);
+        } else {
+            self.net_counters.simulation_world_snapshot_reuses = self
+                .net_counters
+                .simulation_world_snapshot_reuses
+                .saturating_add(1);
+        }
         let tick_anchor = frame.tick_anchor();
-        let publication = self.publisher.publish(SimulationPublicationInput {
+        let publication_input = SimulationPublicationInput {
             effect_sequence,
             world: &self.world,
             input: &self.input,
@@ -171,11 +231,16 @@ impl SimulationCore {
             code_of_conduct_accepted: self
                 .code_of_conduct
                 .current_world_acceptance_matches(&self.world),
-        });
-        SimulationStepResult {
-            effects: effects.finish(resource_reload),
+        };
+        let publication = if rebuild_world_snapshot {
+            self.publisher.publish(publication_input)
+        } else {
+            self.publisher.publish_reusing_world(publication_input)
+        };
+        Some(SimulationStepResult {
+            effects,
             running: publication.running,
-        }
+        })
     }
 
     pub(crate) fn next_tick_deadline(&self, now: Instant) -> Instant {
@@ -191,6 +256,10 @@ impl SimulationCore {
     fn world_tick_interval(&self) -> Duration {
         crate::runtime::world_client_tick_interval(&self.world)
     }
+
+    pub(crate) fn running(&self) -> bool {
+        self.input_runtime.running()
+    }
 }
 
 pub(crate) fn update_renderer_from_publication(
@@ -201,7 +270,7 @@ pub(crate) fn update_renderer_from_publication(
 }
 
 pub(crate) struct SimulationStepResult {
-    effects: effects::RenderEffectBatch,
+    effects: Option<effects::RenderEffectBatch>,
     running: bool,
 }
 
@@ -216,7 +285,10 @@ impl SimulationStepResult {
         audio: Option<&mut dyn AudioEventSink>,
         render: &mut dyn effects::RenderEffectSink,
     ) -> Result<Option<effects::ResourceReloadEffect>, effects::RenderEffectSequenceError> {
-        consumer.consume(self.effects, audio, render)
+        let Some(effects) = self.effects else {
+            return Ok(None);
+        };
+        consumer.consume(effects, audio, render)
     }
 }
 
@@ -232,6 +304,21 @@ mod tests {
     }
 
     #[test]
+    fn noop_guard_precedes_effect_collection_and_publication() {
+        let source = include_str!("simulation.rs");
+        let step = source
+            .split_once("pub(crate) fn step(")
+            .expect("step")
+            .1
+            .split_once("pub(crate) fn next_tick_deadline")
+            .expect("step end")
+            .0;
+        let noop = step.find("return None;").expect("no-op return");
+        assert!(noop < step.find("RenderEffectCollector::new").unwrap());
+        assert!(noop < step.find("self.publisher.publish(").unwrap());
+    }
+
+    #[test]
     fn main_spawns_one_named_simulation_owner_and_only_consumes_its_outputs() {
         let main = include_str!("main.rs");
         let thread = include_str!("simulation/thread.rs");
@@ -241,7 +328,12 @@ mod tests {
         assert!(!main.contains("SimulationStepContext"));
         assert!(!main.contains("simulation.step("));
         assert!(!main.contains("snapshot_is_running"));
-        assert_eq!(thread.matches("core.step(now)").count(), 1);
+        assert_eq!(
+            thread
+                .matches("core.step(now, tick_deadline_reached)")
+                .count(),
+            1
+        );
         assert!(thread.contains(".name(\"bbb-simulation\".to_string())"));
         assert!(!main.contains("pump_network_and_terrain("));
         assert!(!main.contains(".server_resource_packs.take_reload("));

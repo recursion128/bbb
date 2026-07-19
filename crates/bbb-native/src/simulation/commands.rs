@@ -61,12 +61,25 @@ pub(crate) enum SimulationCommand {
         level_generation: u64,
         player_section_compiled_and_visible: bool,
     },
-    BackendCounters {
-        renderer: RendererCounters,
-        audio: AudioCounters,
-    },
     Control(ControlWriteRequest),
     Shutdown,
+}
+
+impl SimulationCommand {
+    /// Conservatively identifies commands whose application can mutate the
+    /// canonical world. The false cases are render/platform-owned values whose
+    /// handlers only update simulation input runtime or diagnostics.
+    pub(crate) fn requires_world_snapshot_rebuild(&self) -> bool {
+        !matches!(
+            self,
+            Self::SurfaceResized(_)
+                | Self::TextMeasurements(_)
+                | Self::CursorCaptureResult { .. }
+                | Self::ClipboardWriteResult { .. }
+                | Self::OpenUriResult { .. }
+                | Self::Shutdown
+        )
+    }
 }
 
 /// A command with the global producer sequence assigned while holding the
@@ -78,11 +91,22 @@ pub(crate) struct SequencedSimulationCommand {
 }
 
 #[derive(Debug)]
+pub(crate) struct BackendTelemetry {
+    pub(crate) renderer: RendererCounters,
+    pub(crate) audio: AudioCounters,
+    pub(crate) render_wakes_sent: u64,
+    pub(crate) render_wakes_coalesced: u64,
+    pub(crate) output_backlog_current: u64,
+    pub(crate) output_backlog_peak: u64,
+}
+
+#[derive(Debug)]
 struct SimulationMailboxState {
     next_sequence: u64,
     wake_generation: u64,
     coalescing_threshold: usize,
     commands: VecDeque<SequencedSimulationCommand>,
+    backend_telemetry: Option<BackendTelemetry>,
 }
 
 impl Default for SimulationMailboxState {
@@ -92,6 +116,7 @@ impl Default for SimulationMailboxState {
             wake_generation: 0,
             coalescing_threshold: DEFAULT_COALESCING_THRESHOLD,
             commands: VecDeque::new(),
+            backend_telemetry: None,
         }
     }
 }
@@ -167,6 +192,42 @@ impl SimulationMailbox {
         state.wake_generation = state.wake_generation.saturating_add(1);
         drop(state);
         self.shared.wake.notify_one();
+    }
+
+    /// Replaces render-owned telemetry without waking simulation. The latest
+    /// value is absorbed at the next tick, network, or input step, so a high
+    /// render rate cannot create a simulation feedback loop.
+    pub(crate) fn update_backend_telemetry(
+        &self,
+        renderer: RendererCounters,
+        audio: AudioCounters,
+        render_wakes_sent: u64,
+        render_wakes_coalesced: u64,
+        output_backlog_current: u64,
+        output_backlog_peak: u64,
+    ) {
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        state.backend_telemetry = Some(BackendTelemetry {
+            renderer,
+            audio,
+            render_wakes_sent,
+            render_wakes_coalesced,
+            output_backlog_current,
+            output_backlog_peak,
+        });
+    }
+
+    pub(crate) fn take_backend_telemetry(&self) -> Option<BackendTelemetry> {
+        self.shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .backend_telemetry
+            .take()
     }
 
     pub(crate) fn wake_generation(&self) -> u64 {
@@ -297,17 +358,6 @@ fn try_coalesce_tail(
             *player_section_compiled_and_visible = *incoming_ready;
             true
         }
-        (
-            SimulationCommand::BackendCounters { renderer, audio },
-            SimulationCommand::BackendCounters {
-                renderer: incoming_renderer,
-                audio: incoming_audio,
-            },
-        ) => {
-            renderer.clone_from(incoming_renderer);
-            audio.clone_from(incoming_audio);
-            true
-        }
         _ => false,
     };
     if coalesced {
@@ -430,6 +480,61 @@ mod tests {
                 delta: (12.0, 14.0)
             }
         ));
+    }
+
+    #[test]
+    fn backend_telemetry_is_latest_value_and_does_not_wake_or_enqueue() {
+        let mailbox = SimulationMailbox::default();
+        let wake_generation = mailbox.wake_generation();
+        let mut latest_renderer = RendererCounters::default();
+        latest_renderer.frame_index = 259;
+        let mut latest_audio = AudioCounters::default();
+        latest_audio.commands_submitted = 259;
+
+        for frame in 0..260 {
+            let mut renderer = RendererCounters::default();
+            renderer.frame_index = frame;
+            let mut audio = AudioCounters::default();
+            audio.commands_submitted = frame;
+            mailbox.update_backend_telemetry(
+                renderer,
+                audio,
+                frame,
+                frame + 1,
+                frame + 2,
+                frame + 3,
+            );
+        }
+
+        assert_eq!(mailbox.wake_generation(), wake_generation);
+        assert_eq!(mailbox.pending_len(), 0);
+        let telemetry = mailbox.take_backend_telemetry().unwrap();
+        assert_eq!(telemetry.renderer.frame_index, latest_renderer.frame_index);
+        assert_eq!(
+            telemetry.audio.commands_submitted,
+            latest_audio.commands_submitted
+        );
+        assert_eq!(telemetry.render_wakes_sent, 259);
+        assert_eq!(telemetry.render_wakes_coalesced, 260);
+        assert_eq!(telemetry.output_backlog_current, 261);
+        assert_eq!(telemetry.output_backlog_peak, 262);
+        assert!(mailbox.take_backend_telemetry().is_none());
+    }
+
+    #[test]
+    fn only_narrow_render_runtime_commands_reuse_the_world_snapshot() {
+        assert!(!SimulationCommand::SurfaceResized(PhysicalSize::new(1, 1))
+            .requires_world_snapshot_rebuild());
+        assert!(!SimulationCommand::CursorCaptureResult { captured: true }
+            .requires_world_snapshot_rebuild());
+        assert!(SimulationCommand::TerrainReadiness {
+            level_generation: 1,
+            player_section_compiled_and_visible: true,
+        }
+        .requires_world_snapshot_rebuild());
+        assert!(
+            SimulationCommand::MouseMotion { delta: (1.0, 1.0) }.requires_world_snapshot_rebuild()
+        );
     }
 
     #[test]

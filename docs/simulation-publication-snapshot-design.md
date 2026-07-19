@@ -189,6 +189,17 @@ reports `simulation_publication_build_nanos` and the process-lifetime peak in
 `simulation_publication_build_peak_nanos`; render and control still reuse the
 same world `Arc` and generation.
 
+The performance follow-up distinguishes publication of a new world value from
+publication of input/diagnostic facts. `publish_reusing_world` clones the exact
+previous world `Arc` instead of invoking `WorldStore::publication_snapshot`;
+the paired render/control generation uses that same pointer and the entity
+snapshot observation is zero. The conservative caller permits this only for a
+narrow exhaustive set of render-runtime commands. A due tick, network event,
+gameplay input/control command, terrain readiness transition, or reload still
+rebuilds the immutable world value. This is not whole-store COW: later mutation
+continues against the single independent mutable simulation owner and pays no
+deferred clone of the retained snapshot.
+
 The measured entity follow-up retained that outer boundary and added an inner
 entity-shell timer. `simulation_entity_snapshot_build_nanos` and its peak cover
 only `EntityStore::clone`, while

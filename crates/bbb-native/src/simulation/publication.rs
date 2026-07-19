@@ -105,8 +105,13 @@ impl SimulationPublisher {
         control_world: SharedWorld,
     ) -> Self {
         let initial_generation = control_snapshot.load().generation;
-        let (publication, publication_build_peak, entity_snapshot_build_peak) =
-            build_publication(initial_generation, initial, Duration::ZERO, Duration::ZERO);
+        let (publication, publication_build_peak, entity_snapshot_build_peak) = build_publication(
+            initial_generation,
+            initial,
+            None,
+            Duration::ZERO,
+            Duration::ZERO,
+        );
         publish_control_views(&control_snapshot, &control_world, &publication);
         let shared = Arc::new(ArcSwap::from(publication));
         Self {
@@ -127,11 +132,30 @@ impl SimulationPublisher {
         &mut self,
         input: SimulationPublicationInput<'_>,
     ) -> Arc<SimulationPublication> {
+        self.publish_with_world(input, None)
+    }
+
+    /// Publishes diagnostics/input state while retaining the exact immutable
+    /// world Arc from the previous generation.
+    pub(crate) fn publish_reusing_world(
+        &mut self,
+        input: SimulationPublicationInput<'_>,
+    ) -> Arc<SimulationPublication> {
+        let world = Arc::clone(&self.shared.load().world);
+        self.publish_with_world(input, Some(world))
+    }
+
+    fn publish_with_world(
+        &mut self,
+        input: SimulationPublicationInput<'_>,
+        reused_world: Option<Arc<WorldStore>>,
+    ) -> Arc<SimulationPublication> {
         let generation = self.next_generation;
         self.next_generation = self.next_generation.saturating_add(1);
         let (publication, publication_build_peak, entity_snapshot_build_peak) = build_publication(
             generation,
             input,
+            reused_world,
             self.publication_build_peak,
             self.entity_snapshot_build_peak,
         );
@@ -146,13 +170,23 @@ impl SimulationPublisher {
 fn build_publication(
     generation: u64,
     input: SimulationPublicationInput<'_>,
+    reused_world: Option<Arc<WorldStore>>,
     previous_build_peak: Duration,
     previous_entity_snapshot_build_peak: Duration,
 ) -> (Arc<SimulationPublication>, Duration, Duration) {
     let build_started_at = Instant::now();
-    let world_snapshot = input.world.publication_snapshot();
-    let entity_snapshot_observation = world_snapshot.entity_publication_snapshot_observation();
-    let world = Arc::new(world_snapshot);
+    let (world, entity_snapshot_duration, rebuilt_entities) = match reused_world {
+        Some(world) => (world, Duration::ZERO, 0),
+        None => {
+            let world_snapshot = input.world.publication_snapshot();
+            let observation = world_snapshot.entity_publication_snapshot_observation();
+            (
+                Arc::new(world_snapshot),
+                observation.duration,
+                observation.rebuilt_entities,
+            )
+        }
+    };
     let mut publication = Arc::new(SimulationPublication {
         generation,
         effect_sequence: input.effect_sequence,
@@ -179,18 +213,16 @@ fn build_publication(
     let build_duration = build_started_at.elapsed();
     let build_peak = previous_build_peak.max(build_duration);
     let entity_snapshot_build_peak =
-        previous_entity_snapshot_build_peak.max(entity_snapshot_observation.duration);
+        previous_entity_snapshot_build_peak.max(entity_snapshot_duration);
     let net_counters = &mut Arc::get_mut(&mut publication)
         .expect("new simulation publication must have one owner")
         .net_counters;
     net_counters.simulation_publication_build_nanos = duration_nanos(build_duration);
     net_counters.simulation_publication_build_peak_nanos = duration_nanos(build_peak);
-    net_counters.simulation_entity_snapshot_build_nanos =
-        duration_nanos(entity_snapshot_observation.duration);
+    net_counters.simulation_entity_snapshot_build_nanos = duration_nanos(entity_snapshot_duration);
     net_counters.simulation_entity_snapshot_build_peak_nanos =
         duration_nanos(entity_snapshot_build_peak);
-    net_counters.simulation_entity_snapshot_rebuilt_entities =
-        entity_snapshot_observation.rebuilt_entities;
+    net_counters.simulation_entity_snapshot_rebuilt_entities = rebuilt_entities;
     (publication, build_peak, entity_snapshot_build_peak)
 }
 
@@ -353,7 +385,8 @@ mod tests {
             frozen: true,
         });
         frozen_input.world = &frozen_world;
-        let (frozen, _, _) = build_publication(2, frozen_input, Duration::ZERO, Duration::ZERO);
+        let (frozen, _, _) =
+            build_publication(2, frozen_input, None, Duration::ZERO, Duration::ZERO);
         assert_eq!(frozen.partial_tick_at(now), 1.0);
     }
 
@@ -421,6 +454,82 @@ mod tests {
         let control_world = control.world.load_full();
         assert_eq!(control_world.generation, published.generation);
         assert!(Arc::ptr_eq(&control_world.world, &published.world));
+    }
+
+    #[test]
+    fn input_only_publication_reuses_exact_world_arc_for_render_and_control() {
+        let control = bbb_control::ControlState::new("test");
+        let mut world = WorldStore::new();
+        let client_input = ClientInputState::default();
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let net = NetCounters::default();
+        let renderer = RendererCounters::default();
+        let audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let now = Instant::now();
+        let mut publisher = SimulationPublisher::new(
+            input(
+                &world,
+                &client_input,
+                &input_runtime,
+                &net,
+                &renderer,
+                &audio,
+                &network,
+                &tps,
+                now,
+            ),
+            Arc::clone(&control.snapshot),
+            Arc::clone(&control.world),
+        );
+        let generation_a = publisher.shared().load_full();
+
+        let generation_b = publisher.publish_reusing_world(input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &net,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            now,
+        ));
+
+        assert!(Arc::ptr_eq(&generation_a.world, &generation_b.world));
+        assert_eq!(
+            generation_b
+                .net_counters
+                .simulation_entity_snapshot_build_nanos,
+            0
+        );
+        assert_eq!(
+            generation_b
+                .net_counters
+                .simulation_entity_snapshot_rebuilt_entities,
+            0
+        );
+        let control_world = control.world.load_full();
+        assert_eq!(control_world.generation, generation_b.generation);
+        assert!(Arc::ptr_eq(&generation_b.world, &control_world.world));
+
+        world.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 3 });
+        let generation_c = publisher.publish(input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &net,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            now,
+        ));
+        assert_eq!(generation_a.world.counters().block_changed_ack_packets, 0);
+        assert_eq!(generation_b.world.counters().block_changed_ack_packets, 0);
+        assert_eq!(generation_c.world.counters().block_changed_ack_packets, 1);
+        assert!(!Arc::ptr_eq(&generation_b.world, &generation_c.world));
     }
 
     #[test]
