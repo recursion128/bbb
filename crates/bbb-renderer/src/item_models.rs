@@ -13,6 +13,8 @@
 //! the submitted tint; the shader applies vanilla-shaped normal diffuse and light. Vanilla item
 //! pipelines carry UV1 in the vertex format but do not sample the overlay texture.
 
+use std::sync::Arc;
+
 use anyhow::{bail, Result};
 use glam::{EulerRot, Mat4, Quat, Vec3};
 
@@ -40,7 +42,7 @@ pub use map::{
 };
 pub(crate) use map::{
     FirstPersonMapBackgroundAtlasGpu, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,
-    ItemFrameMapTextFontAtlasGpu,
+    ItemFrameMapTextFontAtlasGpu, MapSurfaceResidency, MapSurfaceTarget,
 };
 pub(crate) use residency::ItemModelResidency;
 pub(crate) use residency::{
@@ -105,13 +107,13 @@ pub enum GuiItemLightingEntry {
     EntityInUi,
 }
 
-/// A hotbar slot's 3D block item: the block model's quads (atlas-absolute UVs over the blocks atlas, in
-/// `0..=16` model space), its resolved `gui` display transform, and the vanilla GUI lighting entry. The
-/// renderer seats it in the slot's pixel rect and draws it under the GUI ortho camera (vanilla 3D
-/// inventory icon).
+/// A GUI slot's 3D block item: exact resource-model identity, immutable model-space quads, its resolved
+/// `gui` display transform, and the vanilla GUI lighting entry. The renderer seats a narrow instance in
+/// the slot and reuses the resource-generation GPU owner across frames.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudBlockItemModel {
-    pub quads: Vec<ItemModelQuad>,
+    pub identity: ItemModelAssetIdentity,
+    pub quads: Arc<[ItemModelQuad]>,
     pub gui_display: Mat4,
     pub lighting: GuiItemLightingEntry,
     /// Vanilla `ItemStack.hasFoil()` projected by the native layer for the stack occupying this GUI

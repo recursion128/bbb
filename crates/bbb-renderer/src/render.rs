@@ -641,35 +641,18 @@ impl Renderer {
             Some(crate::item_models::ItemModelAtlasKind::Blocks),
             stats,
         );
-        let (map_vertices, map_indices) = self.collect_item_frame_map_geometry();
-        if !map_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_atlas {
-                self.draw_item_model_geometry(
-                    &mut *encoder,
-                    main_view,
-                    &map_vertices,
-                    &map_indices,
-                    &atlas.bind_group,
-                );
-                stats.pipeline_switches += 1;
-                stats.item_model_draw_calls += 1;
-            }
-        }
-        let (map_decoration_vertices, map_decoration_indices) =
-            self.collect_item_frame_map_decoration_geometry();
-        if !map_decoration_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_decoration_atlas {
-                self.draw_item_model_geometry(
-                    &mut *encoder,
-                    main_view,
-                    &map_decoration_vertices,
-                    &map_decoration_indices,
-                    &atlas.bind_group,
-                );
-                stats.pipeline_switches += 1;
-                stats.item_model_draw_calls += 1;
-            }
-        }
+        self.resident_dynamic_map_main_pass(
+            &mut *encoder,
+            main_view,
+            crate::item_models::MapSurfaceTarget::World,
+            stats,
+        );
+        self.resident_map_decoration_main_pass(
+            &mut *encoder,
+            main_view,
+            crate::item_models::MapSurfaceTarget::World,
+            stats,
+        );
         let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
         if !flat_item_indices.is_empty() {
             if let Some(atlas) = &self.item_entity_atlas {
@@ -879,19 +862,33 @@ impl Renderer {
         // submitNodeCollector.order(1).submitText(...), so TextFeatureRenderer draws them during
         // renderTranslucentFeatures after order-0 model/custom geometry and before crumbling /
         // translucent terrain. The current renderer only has item-frame map labels for this path.
-        let (map_text_vertices, map_text_indices) = self.collect_item_frame_map_text_geometry();
-        if !map_text_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_text_font_atlas {
-                self.draw_item_model_geometry(
-                    &mut *encoder,
-                    main_view,
-                    &map_text_vertices,
-                    &map_text_indices,
-                    &atlas.bind_group,
-                );
-                stats.pipeline_switches += 1;
-                stats.item_model_draw_calls += 1;
-            }
+        if self.has_resident_map_text(crate::item_models::MapSurfaceTarget::World) {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("bbb-native-resident-map-text-feature-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: main_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            self.draw_resident_map_text(
+                &mut pass,
+                crate::item_models::MapSurfaceTarget::World,
+                stats,
+            );
         }
 
         // Vanilla AbstractSignRenderer.submitSignText also goes through
@@ -2151,19 +2148,6 @@ impl Renderer {
             self.collect_first_person_flat_item_model_translucent_geometry();
         let flat_translucent_buffers = self
             .create_item_model_frame_buffers(&flat_translucent_vertices, &flat_translucent_indices);
-        let (map_background_vertices, map_background_indices) =
-            self.collect_first_person_map_background_geometry();
-        let map_background_buffers =
-            self.create_item_model_frame_buffers(&map_background_vertices, &map_background_indices);
-        let (map_vertices, map_indices) = self.collect_first_person_map_geometry();
-        let map_buffers = self.create_item_model_frame_buffers(&map_vertices, &map_indices);
-        let (map_decoration_vertices, map_decoration_indices) =
-            self.collect_first_person_map_decoration_geometry();
-        let map_decoration_buffers =
-            self.create_item_model_frame_buffers(&map_decoration_vertices, &map_decoration_indices);
-        let (map_text_vertices, map_text_indices) = self.collect_first_person_map_text_geometry();
-        let map_text_buffers =
-            self.create_item_model_frame_buffers(&map_text_vertices, &map_text_indices);
         let (glint_vertices, glint_indices) = self.collect_first_person_item_model_glint_geometry();
         let glint_buffers = self.create_item_model_frame_buffers(&glint_vertices, &glint_indices);
         let (glint_translucent_vertices, glint_translucent_indices) =
@@ -2182,10 +2166,8 @@ impl Renderer {
             && block_translucent_buffers.is_none()
             && flat_buffers.is_none()
             && flat_translucent_buffers.is_none()
-            && map_background_buffers.is_none()
-            && map_buffers.is_none()
-            && map_decoration_buffers.is_none()
-            && map_text_buffers.is_none()
+            && !self.has_resident_map_surfaces(crate::item_models::MapSurfaceTarget::FirstPerson)
+            && !self.has_resident_map_text(crate::item_models::MapSurfaceTarget::FirstPerson)
             && glint_buffers.is_none()
             && glint_translucent_buffers.is_none()
             && !has_resident_items
@@ -2281,54 +2263,22 @@ impl Renderer {
             Some(crate::item_models::ItemModelAtlasKind::Items),
             stats,
         );
-        if let (Some(atlas), Some(buffers)) = (
-            &self.first_person_map_background_atlas,
-            &map_background_buffers,
-        ) {
-            self.draw_item_model_frame_buffers(
-                &mut pass,
-                &self.item_model_pipeline,
-                buffers,
-                &atlas.bind_group,
-            );
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
-        if let (Some(atlas), Some(buffers)) = (&self.item_frame_map_atlas, &map_buffers) {
-            self.draw_item_model_frame_buffers(
-                &mut pass,
-                &self.item_model_pipeline,
-                buffers,
-                &atlas.bind_group,
-            );
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
-        if let (Some(atlas), Some(buffers)) = (
-            &self.item_frame_map_decoration_atlas,
-            &map_decoration_buffers,
-        ) {
-            self.draw_item_model_frame_buffers(
-                &mut pass,
-                &self.item_model_pipeline,
-                buffers,
-                &atlas.bind_group,
-            );
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
-        if let (Some(atlas), Some(buffers)) =
-            (&self.item_frame_map_text_font_atlas, &map_text_buffers)
-        {
-            self.draw_item_model_frame_buffers(
-                &mut pass,
-                &self.item_model_pipeline,
-                buffers,
-                &atlas.bind_group,
-            );
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
+        self.draw_resident_map_backgrounds(&mut pass, stats);
+        self.draw_resident_dynamic_maps(
+            &mut pass,
+            crate::item_models::MapSurfaceTarget::FirstPerson,
+            stats,
+        );
+        self.draw_resident_map_decorations(
+            &mut pass,
+            crate::item_models::MapSurfaceTarget::FirstPerson,
+            stats,
+        );
+        self.draw_resident_map_text(
+            &mut pass,
+            crate::item_models::MapSurfaceTarget::FirstPerson,
+            stats,
+        );
         if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
             self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.main_bind_group);
             stats.pipeline_switches += 1;
@@ -2475,6 +2425,7 @@ impl Renderer {
                 encoder,
                 &surface_view,
                 &before_blur_items,
+                crate::item_models::ItemModelDrawTarget::GuiBeforeBlur,
                 "bbb-native-hud-item-before-blur-pass",
                 stats,
             );
@@ -2513,6 +2464,7 @@ impl Renderer {
                 encoder,
                 &surface_view,
                 &after_blur_items,
+                crate::item_models::ItemModelDrawTarget::GuiAfterBlur,
                 "bbb-native-hud-item-after-blur-pass",
                 stats,
             );
@@ -2546,6 +2498,7 @@ impl Renderer {
                 encoder,
                 &surface_view,
                 &gui_item_meshes,
+                crate::item_models::ItemModelDrawTarget::Gui,
                 "bbb-native-hud-item-pass",
                 stats,
             );
@@ -2619,10 +2572,16 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         surface_view: &wgpu::TextureView,
         meshes: &crate::item_models::ItemModelMeshSet,
+        target: crate::item_models::ItemModelDrawTarget,
         label: &str,
         stats: &mut FrameDrawStats,
     ) {
-        if meshes.is_empty() {
+        let has_resident = self
+            .item_model_residency
+            .draws()
+            .iter()
+            .any(|draw| draw.target == target);
+        if meshes.is_empty() && !has_resident {
             return;
         }
         let solid_buffers =
@@ -2668,11 +2627,25 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            target,
+            &[crate::item_models::ItemModelDrawPhase::Solid],
+            None,
+            stats,
+        );
         if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
             self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.gui_bind_group);
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            target,
+            &[crate::item_models::ItemModelDrawPhase::Glint],
+            None,
+            stats,
+        );
         if let Some(buffers) = &translucent_buffers {
             self.draw_item_model_frame_buffers(
                 &mut pass,
@@ -2683,12 +2656,26 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            target,
+            &[crate::item_models::ItemModelDrawPhase::Translucent],
+            None,
+            stats,
+        );
         if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_translucent_buffers)
         {
             self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.gui_bind_group);
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            target,
+            &[crate::item_models::ItemModelDrawPhase::GlintTranslucent],
+            None,
+            stats,
+        );
     }
 
     fn screen_blur_passes(
@@ -2861,6 +2848,235 @@ impl Renderer {
         );
     }
 
+    fn has_resident_map_surfaces(&self, target: crate::item_models::MapSurfaceTarget) -> bool {
+        (target == crate::item_models::MapSurfaceTarget::FirstPerson
+            && self.map_surface_residency.background_count != 0)
+            || self
+                .map_surface_residency
+                .dynamic_draws
+                .iter()
+                .any(|draw| draw.target == target)
+            || self
+                .map_surface_residency
+                .decoration_draws
+                .iter()
+                .any(|draw| draw.target == target)
+    }
+
+    fn resident_dynamic_map_main_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        target: crate::item_models::MapSurfaceTarget,
+        stats: &mut FrameDrawStats,
+    ) {
+        if !self
+            .map_surface_residency
+            .dynamic_draws
+            .iter()
+            .any(|draw| draw.target == target)
+        {
+            return;
+        }
+        let mut pass = self.begin_resident_map_main_pass(
+            encoder,
+            view,
+            "bbb-native-resident-dynamic-map-main-pass",
+        );
+        self.draw_resident_dynamic_maps(&mut pass, target, stats);
+    }
+
+    fn resident_map_decoration_main_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        target: crate::item_models::MapSurfaceTarget,
+        stats: &mut FrameDrawStats,
+    ) {
+        if !self
+            .map_surface_residency
+            .decoration_draws
+            .iter()
+            .any(|draw| draw.target == target)
+        {
+            return;
+        }
+        let mut pass = self.begin_resident_map_main_pass(
+            encoder,
+            view,
+            "bbb-native-resident-map-decoration-main-pass",
+        );
+        self.draw_resident_map_decorations(&mut pass, target, stats);
+    }
+
+    fn begin_resident_map_main_pass<'a>(
+        &'a self,
+        encoder: &'a mut wgpu::CommandEncoder,
+        view: &'a wgpu::TextureView,
+        label: &'static str,
+    ) -> wgpu::RenderPass<'a> {
+        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(label),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        })
+    }
+
+    fn draw_resident_dynamic_maps<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        target: crate::item_models::MapSurfaceTarget,
+        stats: &mut FrameDrawStats,
+    ) {
+        let (Some(atlas), Some(instance_buffer)) = (
+            &self.item_frame_map_atlas,
+            self.map_surface_residency.dynamic_buffer(),
+        ) else {
+            return;
+        };
+        pass.set_pipeline(&self.map_surface_residency.pipeline);
+        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        pass.set_vertex_buffer(0, self.map_surface_residency.vertex_buffer.slice(..));
+        pass.set_vertex_buffer(1, instance_buffer.slice(..));
+        pass.set_index_buffer(
+            self.map_surface_residency.index_buffer.slice(..),
+            wgpu::IndexFormat::Uint32,
+        );
+        stats.pipeline_switches = stats.pipeline_switches.saturating_add(1);
+        for draw in &self.map_surface_residency.dynamic_draws {
+            if draw.target != target {
+                continue;
+            }
+            let Some(bind_group) = atlas.page_bind_group(draw.page) else {
+                continue;
+            };
+            pass.set_bind_group(0, bind_group, &[]);
+            pass.draw_indexed(
+                0..self.map_surface_residency.index_count,
+                0,
+                draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+            );
+            stats.item_model_draw_calls = stats.item_model_draw_calls.saturating_add(1);
+        }
+    }
+
+    fn draw_resident_map_backgrounds<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        stats: &mut FrameDrawStats,
+    ) {
+        let (Some(atlas), Some(instance_buffer)) = (
+            &self.first_person_map_background_atlas,
+            self.map_surface_residency.background_buffer(),
+        ) else {
+            return;
+        };
+        self.bind_resident_map_surface(pass, &atlas.bind_group, instance_buffer);
+        pass.draw_indexed(
+            0..self.map_surface_residency.index_count,
+            0,
+            0..self.map_surface_residency.background_count,
+        );
+        stats.pipeline_switches = stats.pipeline_switches.saturating_add(1);
+        stats.item_model_draw_calls = stats.item_model_draw_calls.saturating_add(1);
+    }
+
+    fn draw_resident_map_decorations<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        target: crate::item_models::MapSurfaceTarget,
+        stats: &mut FrameDrawStats,
+    ) {
+        let (Some(atlas), Some(instance_buffer)) = (
+            &self.item_frame_map_decoration_atlas,
+            self.map_surface_residency.decoration_buffer(),
+        ) else {
+            return;
+        };
+        self.bind_resident_map_surface(pass, &atlas.bind_group, instance_buffer);
+        stats.pipeline_switches = stats.pipeline_switches.saturating_add(1);
+        for draw in &self.map_surface_residency.decoration_draws {
+            if draw.target != target {
+                continue;
+            }
+            pass.draw_indexed(
+                0..self.map_surface_residency.index_count,
+                0,
+                draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+            );
+            stats.item_model_draw_calls = stats.item_model_draw_calls.saturating_add(1);
+        }
+    }
+
+    fn has_resident_map_text(&self, target: crate::item_models::MapSurfaceTarget) -> bool {
+        self.item_frame_map_text_font_atlas.is_some()
+            && self
+                .map_surface_residency
+                .text_draws
+                .iter()
+                .any(|draw| draw.target == target)
+    }
+
+    fn draw_resident_map_text<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        target: crate::item_models::MapSurfaceTarget,
+        stats: &mut FrameDrawStats,
+    ) {
+        let (Some(atlas), Some(instance_buffer)) = (
+            &self.item_frame_map_text_font_atlas,
+            self.map_surface_residency.text_buffer(),
+        ) else {
+            return;
+        };
+        self.bind_resident_map_surface(pass, &atlas.bind_group, instance_buffer);
+        stats.pipeline_switches = stats.pipeline_switches.saturating_add(1);
+        for draw in &self.map_surface_residency.text_draws {
+            if draw.target != target {
+                continue;
+            }
+            pass.draw_indexed(
+                0..self.map_surface_residency.index_count,
+                0,
+                draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+            );
+            stats.item_model_draw_calls = stats.item_model_draw_calls.saturating_add(1);
+        }
+    }
+
+    fn bind_resident_map_surface<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        bind_group: &'a wgpu::BindGroup,
+        instance_buffer: &'a wgpu::Buffer,
+    ) {
+        pass.set_pipeline(&self.map_surface_residency.pipeline);
+        pass.set_bind_group(0, bind_group, &[]);
+        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        pass.set_vertex_buffer(0, self.map_surface_residency.vertex_buffer.slice(..));
+        pass.set_vertex_buffer(1, instance_buffer.slice(..));
+        pass.set_index_buffer(
+            self.map_surface_residency.index_buffer.slice(..),
+            wgpu::IndexFormat::Uint32,
+        );
+    }
+
     fn resident_item_model_main_pass(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -2953,15 +3169,24 @@ impl Renderer {
                 let Some(glint) = &self.item_glint_texture else {
                     continue;
                 };
-                pass.set_bind_group(0, &glint.main_bind_group, &[]);
+                let bind_group = if target.is_gui() {
+                    &glint.gui_bind_group
+                } else {
+                    &glint.main_bind_group
+                };
+                pass.set_bind_group(0, bind_group, &[]);
             } else {
-                let bind_group = match draw.asset.atlas() {
-                    crate::item_models::ItemModelAtlasKind::Blocks => &self.terrain_bind_group,
-                    crate::item_models::ItemModelAtlasKind::Items => {
-                        let Some(atlas) = &self.item_entity_atlas else {
-                            continue;
-                        };
-                        &atlas.bind_group
+                let bind_group = if target.is_gui() {
+                    &self.gui_item_bind_group
+                } else {
+                    match draw.asset.atlas() {
+                        crate::item_models::ItemModelAtlasKind::Blocks => &self.terrain_bind_group,
+                        crate::item_models::ItemModelAtlasKind::Items => {
+                            let Some(atlas) = &self.item_entity_atlas else {
+                                continue;
+                            };
+                            &atlas.bind_group
+                        }
                     }
                 };
                 pass.set_bind_group(0, bind_group, &[]);
@@ -4468,8 +4693,8 @@ mod tests {
         let copy_item_entity =
             depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
         let map_text_collect = source
-            .find("let (map_text_vertices, map_text_indices)")
-            .expect("item-frame map text collection is present");
+            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+            .expect("resident item-frame map text pass is present");
         let block_collect = source
             .find("let (block_item_translucent_vertices, block_item_translucent_indices)")
             .expect("translucent block item-model collection is present");
@@ -4984,13 +5209,13 @@ mod tests {
             .map(|index| entity_pass + index)
             .expect("entity translucent feature helper is called from the pass");
         let map_text_collect = source[draw_features..]
-            .find("let (map_text_vertices, map_text_indices)")
+            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
             .map(|index| draw_features + index)
-            .expect("item-frame map text geometry is collected after model translucent features");
+            .expect("resident item-frame map text pass follows model translucent features");
         let map_text_draw = source[map_text_collect..]
-            .find("self.draw_item_model_geometry(")
+            .find("self.draw_resident_map_text(")
             .map(|index| map_text_collect + index)
-            .expect("item-frame map text geometry is drawn");
+            .expect("resident item-frame map text instances are drawn");
         let block_destroy = source
             .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
             .expect("block destroy overlay pass label is used");
@@ -5011,6 +5236,34 @@ mod tests {
             source[map_text_draw..block_destroy].contains("main_view"),
             "item-frame map text writes the renderer-owned main color target"
         );
+    }
+
+    #[test]
+    fn map_base_background_and_decoration_use_instance_only_resident_draws() {
+        let source = include_str!("render.rs");
+
+        for legacy in [
+            ["self.collect_", "item_frame_map_geometry()"].concat(),
+            ["self.collect_", "first_person_map_geometry()"].concat(),
+            ["self.collect_", "first_person_map_background_geometry()"].concat(),
+            ["self.collect_", "item_frame_map_decoration_geometry()"].concat(),
+            ["self.collect_", "first_person_map_decoration_geometry()"].concat(),
+        ] {
+            assert!(
+                !source.contains(&legacy),
+                "legacy map geometry call: {legacy}"
+            );
+        }
+        for resident in [
+            ["self.draw_resident_", "dynamic_maps("].concat(),
+            ["self.draw_resident_", "map_backgrounds("].concat(),
+            ["self.draw_resident_", "map_decorations("].concat(),
+        ] {
+            assert!(
+                source.contains(&resident),
+                "missing resident map draw: {resident}"
+            );
+        }
     }
 
     #[test]
@@ -5115,8 +5368,8 @@ mod tests {
             .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
             .expect("entity translucent feature pass label is used");
         let map_text = source
-            .find("let (map_text_vertices, map_text_indices)")
-            .expect("item-frame map text collection is present");
+            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+            .expect("resident item-frame map text pass is present");
         let item_entity = source
             .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
             .expect("item-entity target pass label is used");

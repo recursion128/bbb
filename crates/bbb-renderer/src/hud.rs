@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{bail, Result};
 use winit::dpi::PhysicalSize;
 
@@ -5,8 +7,10 @@ use crate::entity_models::{
     EntityModelInstance, SignModelAttachment, SignModelWood, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
 };
 use crate::item_models::{
-    GuiItemLightingEntry, HudBlockItemModel, ItemModelFoil, ItemModelMesh, ItemModelMeshSet,
-    ItemModelVertex, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    GuiItemLightingEntry, HudBlockItemModel, ItemModelAssetRequest, ItemModelAssetSource,
+    ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
+    ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMesh, ItemModelMeshSet,
+    ItemModelResidencyFrame, ItemModelVertex, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use crate::Renderer;
 
@@ -4026,10 +4030,8 @@ impl Renderer {
         )
     }
 
-    /// Bakes this frame's hotbar 3D block items into GUI pixel space: each slot's block quads under its
-    /// slot placement (`translate(slot_center)·scale(slot_px,-slot_px,slot_px)`) composed with the item's
-    /// `gui` display transform. The returned set is split into vanilla solid/translucent item phases plus
-    /// matching glint buckets for the GUI item pass.
+    /// Returns only the explicit CPU-clipped fallback for scissored GUI items. Ordinary hotbar,
+    /// inventory, and debug-screen block items use model-space residency plus narrow GUI instances.
     pub(crate) fn collect_hud_block_item_mesh(&self) -> ItemModelMeshSet {
         self.collect_hud_block_item_mesh_for_stratum(HudScreenStratum::All)
     }
@@ -4038,17 +4040,59 @@ impl Renderer {
         &self,
         stratum: HudScreenStratum,
     ) -> ItemModelMeshSet {
-        let surface_size = self.surface_size();
         let mut meshes = ItemModelMeshSet::default();
-        let mut append_model = |model: &HudBlockItemModel,
-                                placement: glam::Mat4,
-                                scissor: Option<HudRect>| {
+        self.visit_hud_block_item_models_for_stratum(stratum, |model, placement, scissor| {
             if let Some(scissor) = scissor {
                 append_hud_block_item_model_mesh_clipped(&mut meshes, model, placement, scissor);
-            } else {
-                append_hud_block_item_model_mesh(&mut meshes, model, placement);
             }
-        };
+        });
+        meshes
+    }
+
+    pub(super) fn append_hud_block_item_residency(&self, frame: &mut ItemModelResidencyFrame) {
+        if self.hud_screen_blur {
+            self.append_hud_block_item_residency_for_stratum(
+                frame,
+                HudScreenStratum::BeforeBlur,
+                ItemModelDrawTarget::GuiBeforeBlur,
+            );
+            self.append_hud_block_item_residency_for_stratum(
+                frame,
+                HudScreenStratum::AfterBlur,
+                ItemModelDrawTarget::GuiAfterBlur,
+            );
+        } else {
+            self.append_hud_block_item_residency_for_stratum(
+                frame,
+                HudScreenStratum::All,
+                ItemModelDrawTarget::Gui,
+            );
+        }
+    }
+
+    fn append_hud_block_item_residency_for_stratum(
+        &self,
+        frame: &mut ItemModelResidencyFrame,
+        stratum: HudScreenStratum,
+        target: ItemModelDrawTarget,
+    ) {
+        self.visit_hud_block_item_models_for_stratum(stratum, |model, placement, scissor| {
+            if scissor.is_none() {
+                append_hud_block_item_model_residency(frame, model, placement, target);
+            }
+        });
+    }
+
+    fn visit_hud_block_item_models_for_stratum(
+        &self,
+        stratum: HudScreenStratum,
+        mut visit: impl FnMut(&HudBlockItemModel, glam::Mat4, Option<HudRect>),
+    ) {
+        let surface_size = self.surface_size();
+        let mut append_model =
+            |model: &HudBlockItemModel, placement: glam::Mat4, scissor: Option<HudRect>| {
+                visit(model, placement, scissor);
+            };
         if stratum != HudScreenStratum::AfterBlur {
             for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
                 if let Some(model) = model {
@@ -4125,7 +4169,6 @@ impl Renderer {
                 }
             }
         }
-        meshes
     }
 
     pub(super) fn collect_hud_draws(&self) -> HudDraws<'_> {
@@ -5666,6 +5709,89 @@ fn append_hud_block_item_model_mesh(
         ITEM_MODEL_NO_OVERLAY,
         ItemModelFoil::from_has_foil(model.foil),
     );
+}
+
+fn append_hud_block_item_model_residency(
+    frame: &mut ItemModelResidencyFrame,
+    model: &HudBlockItemModel,
+    placement: glam::Mat4,
+    target: ItemModelDrawTarget,
+) {
+    debug_assert_eq!(model.lighting, GuiItemLightingEntry::Items3d);
+    let transform = placement * model.gui_display;
+    let foil = ItemModelFoil::from_has_foil(model.foil);
+    for (geometry_class, base_phase, glint_phase) in [
+        (
+            ItemModelGeometryClass::Solid,
+            ItemModelDrawPhase::Solid,
+            ItemModelDrawPhase::Glint,
+        ),
+        (
+            ItemModelGeometryClass::Translucent,
+            ItemModelDrawPhase::Translucent,
+            ItemModelDrawPhase::GlintTranslucent,
+        ),
+    ] {
+        let translucent = geometry_class == ItemModelGeometryClass::Translucent;
+        if !model
+            .quads
+            .iter()
+            .any(|quad| quad.translucent == translucent)
+        {
+            continue;
+        }
+        frame.assets.push(ItemModelAssetRequest {
+            identity: model.identity.clone(),
+            atlas: ItemModelAtlasKind::Blocks,
+            geometry_class,
+            source: ItemModelAssetSource::Quads(Arc::clone(&model.quads)),
+        });
+        push_hud_block_item_instance(
+            frame,
+            model,
+            geometry_class,
+            transform,
+            foil,
+            target,
+            base_phase,
+        );
+        if foil != ItemModelFoil::None {
+            push_hud_block_item_instance(
+                frame,
+                model,
+                geometry_class,
+                transform,
+                foil,
+                target,
+                glint_phase,
+            );
+        }
+    }
+}
+
+fn push_hud_block_item_instance(
+    frame: &mut ItemModelResidencyFrame,
+    model: &HudBlockItemModel,
+    geometry_class: ItemModelGeometryClass,
+    transform: glam::Mat4,
+    foil: ItemModelFoil,
+    target: ItemModelDrawTarget,
+    phase: ItemModelDrawPhase,
+) {
+    let submit_order = u32::try_from(frame.instances.len()).expect("item instance order overflow");
+    frame.instances.push(ItemModelInstanceRequest {
+        identity: model.identity.clone(),
+        atlas: ItemModelAtlasKind::Blocks,
+        geometry_class,
+        transform,
+        tint: [1.0; 4],
+        light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+        overlay: ITEM_MODEL_NO_OVERLAY,
+        foil,
+        target,
+        phase,
+        submit_order,
+    });
 }
 
 fn append_hud_block_item_model_mesh_clipped(
@@ -14008,6 +14134,10 @@ mod tests {
         }
     }
 
+    fn test_hud_block_item_identity() -> crate::item_models::ItemModelAssetIdentity {
+        crate::item_models::ItemModelAssetIdentity::new("minecraft:test_block", "default", 0)
+    }
+
     #[test]
     fn stats_screen_sprite_catalog_and_states_match_vanilla() {
         assert_eq!(
@@ -14331,7 +14461,8 @@ mod tests {
         let mut translucent = solid.clone();
         translucent.translucent = true;
         let model = HudBlockItemModel {
-            quads: vec![solid, translucent],
+            identity: test_hud_block_item_identity(),
+            quads: vec![solid, translucent].into(),
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
             foil: true,
@@ -14370,7 +14501,8 @@ mod tests {
             translucent: false,
         };
         let model = HudBlockItemModel {
-            quads: vec![quad],
+            identity: test_hud_block_item_identity(),
+            quads: vec![quad].into(),
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
@@ -14453,12 +14585,19 @@ mod tests {
         };
         let mut models: Vec<Option<HudBlockItemModel>> = vec![None; HUD_HOTBAR_SLOTS];
         models[slot] = Some(HudBlockItemModel {
-            quads: vec![quad],
+            identity: test_hud_block_item_identity(),
+            quads: vec![quad].into(),
             gui_display,
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
         });
         renderer.set_hud_hotbar_block_item_models(models);
+        renderer
+            .set_item_model_residency_frame(ItemModelResidencyFrame::default())
+            .unwrap();
+        assert!(renderer.collect_hud_block_item_mesh().is_empty());
+        assert!(renderer.counters().item_model_vertex_upload_bytes > 0);
+        assert!(renderer.counters().item_model_index_upload_bytes > 0);
 
         // The slot-center pixel (framebuffer col,row from top-left) is where the placement seats
         // the model origin; pixel (0,0) is far from the bottom-centered hotbar, so it stays
@@ -14487,6 +14626,13 @@ mod tests {
             corner_pixel[2] > 128 && corner_pixel[0] < 128,
             "corner should stay background, got {corner_pixel:?}"
         );
+
+        renderer
+            .set_item_model_residency_frame(ItemModelResidencyFrame::default())
+            .unwrap();
+        assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
+        assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
+        assert!(renderer.counters().item_instance_upload_bytes > 0);
     }
 
     #[test]
@@ -15036,7 +15182,8 @@ mod tests {
             ..valid_icon.clone()
         };
         let empty_block_model = HudBlockItemModel {
-            quads: Vec::new(),
+            identity: test_hud_block_item_identity(),
+            quads: Arc::from([]),
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
@@ -15467,7 +15614,8 @@ mod tests {
             translucent: false,
         };
         let model = HudBlockItemModel {
-            quads: vec![quad],
+            identity: test_hud_block_item_identity(),
+            quads: vec![quad].into(),
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
@@ -15502,8 +15650,12 @@ mod tests {
         }));
 
         let meshes = renderer.collect_hud_block_item_mesh();
+        let mut residency = ItemModelResidencyFrame::default();
+        renderer.append_hud_block_item_residency(&mut residency);
 
-        assert_eq!(meshes.solid.indices.len(), 6);
+        assert!(meshes.is_empty());
+        assert_eq!(residency.instances.len(), 1);
+        assert_eq!(residency.instances[0].target, ItemModelDrawTarget::Gui);
     }
 
     #[test]
@@ -15512,6 +15664,7 @@ mod tests {
             return;
         };
         let model = HudBlockItemModel {
+            identity: test_hud_block_item_identity(),
             quads: vec![crate::item_models::ItemModelQuad {
                 corners: [
                     [0.0, 0.0, 8.0],
@@ -15524,7 +15677,8 @@ mod tests {
                 normal: [0.0, 0.0, 1.0],
                 shade: 1.0,
                 translucent: false,
-            }],
+            }]
+            .into(),
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
@@ -18533,6 +18687,7 @@ mod tests {
             return;
         };
         let model = HudBlockItemModel {
+            identity: test_hud_block_item_identity(),
             quads: vec![crate::item_models::ItemModelQuad {
                 corners: [
                     [0.0, 0.0, 8.0],
@@ -18545,7 +18700,8 @@ mod tests {
                 normal: [0.0, 0.0, 1.0],
                 shade: 1.0,
                 translucent: false,
-            }],
+            }]
+            .into(),
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
@@ -18560,13 +18716,32 @@ mod tests {
             block_model: Some(model),
         });
         renderer.set_hud_inventory_screen(Some(screen));
+        renderer.set_hud_screen_blur(true);
 
         let before = renderer.collect_hud_block_item_mesh_for_stratum(HudScreenStratum::BeforeBlur);
         let after = renderer.collect_hud_block_item_mesh_for_stratum(HudScreenStratum::AfterBlur);
         let all = renderer.collect_hud_block_item_mesh();
-        assert_eq!(before.solid.indices.len(), 6);
-        assert_eq!(after.solid.indices.len(), 6);
-        assert_eq!(all.solid.indices.len(), 12);
+        let mut residency = ItemModelResidencyFrame::default();
+        renderer.append_hud_block_item_residency(&mut residency);
+        assert!(before.is_empty());
+        assert!(after.is_empty());
+        assert!(all.is_empty());
+        assert_eq!(
+            residency
+                .instances
+                .iter()
+                .filter(|instance| instance.target == ItemModelDrawTarget::GuiBeforeBlur)
+                .count(),
+            1
+        );
+        assert_eq!(
+            residency
+                .instances
+                .iter()
+                .filter(|instance| instance.target == ItemModelDrawTarget::GuiAfterBlur)
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -19594,7 +19769,8 @@ mod tests {
             translucent: false,
         };
         let model = |quads: Vec<crate::item_models::ItemModelQuad>| HudBlockItemModel {
-            quads,
+            identity: test_hud_block_item_identity(),
+            quads: quads.into(),
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
@@ -19625,7 +19801,8 @@ mod tests {
             y: 0,
             icon: None,
             block_model: Some(HudBlockItemModel {
-                quads: vec![quad],
+                identity: test_hud_block_item_identity(),
+                quads: vec![quad].into(),
                 gui_display: glam::Mat4::IDENTITY,
                 lighting: GuiItemLightingEntry::ItemsFlat,
                 foil: false,

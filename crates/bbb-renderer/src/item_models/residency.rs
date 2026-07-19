@@ -10,7 +10,7 @@ use std::{
 };
 
 use anyhow::{bail, Result};
-use glam::{Mat3, Mat4};
+use glam::{Mat3, Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -24,7 +24,7 @@ use crate::{
 };
 
 use super::{
-    bake_item_model_mesh, ItemModelFoil, ItemModelQuad, ITEM_MODEL_GLINT_BLEND,
+    bake_item_model_mesh, sheeted_decal_uv, ItemModelFoil, ItemModelQuad, ITEM_MODEL_GLINT_BLEND,
     ITEM_MODEL_GLINT_CULL_MODE, ITEM_MODEL_GLINT_DEPTH_COMPARE,
     ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED, ITEM_MODEL_PIPELINE_CULL_MODE,
 };
@@ -155,6 +155,14 @@ pub enum ItemModelDrawTarget {
     Particle,
     FirstPerson,
     Gui,
+    GuiBeforeBlur,
+    GuiAfterBlur,
+}
+
+impl ItemModelDrawTarget {
+    pub(crate) fn is_gui(self) -> bool {
+        matches!(self, Self::Gui | Self::GuiBeforeBlur | Self::GuiAfterBlur)
+    }
 }
 
 /// Narrow per-frame item submission. Transform, tint, light, overlay, foil and
@@ -273,6 +281,7 @@ pub(crate) struct ItemModelResidentVertex {
     pub(crate) uv: [f32; 2],
     pub(crate) color: [f32; 4],
     pub(crate) normal_diffuse: [f32; 4],
+    pub(crate) decal_uv: [f32; 2],
 }
 
 #[repr(C)]
@@ -586,15 +595,6 @@ impl ItemModelResidency {
             if !self.owners.contains_key(&instance.asset) {
                 bail!("item-model instance references a missing resident owner");
             }
-            if matches!(
-                (instance.phase, instance.foil),
-                (
-                    ItemModelDrawPhase::Glint | ItemModelDrawPhase::GlintTranslucent,
-                    ItemModelFoil::Special { .. }
-                )
-            ) {
-                bail!("special item foil remains on the explicit legacy fallback");
-            }
         }
 
         for instance in &instances {
@@ -754,11 +754,15 @@ impl ItemModelResidency {
     }
 }
 
-const ITEM_MODEL_RESIDENT_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x4];
+const ITEM_MODEL_RESIDENT_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+    0 => Float32x3,
+    1 => Float32x2,
+    2 => Float32x4,
+    3 => Float32x4,
+    4 => Float32x2
+];
 
 const ITEM_MODEL_INSTANCE_ATTRIBUTES: [wgpu::VertexAttribute; 10] = wgpu::vertex_attr_array![
-    4 => Float32x4,
     5 => Float32x4,
     6 => Float32x4,
     7 => Float32x4,
@@ -767,7 +771,8 @@ const ITEM_MODEL_INSTANCE_ATTRIBUTES: [wgpu::VertexAttribute; 10] = wgpu::vertex
     10 => Float32x4,
     11 => Float32x4,
     12 => Float32x4,
-    13 => Float32x4
+    13 => Float32x4,
+    14 => Float32x4
 ];
 
 fn resident_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -814,16 +819,17 @@ struct VertexIn {
     @location(1) uv: vec2<f32>,
     @location(2) color: vec4<f32>,
     @location(3) normal_diffuse: vec4<f32>,
-    @location(4) model_0: vec4<f32>,
-    @location(5) model_1: vec4<f32>,
-    @location(6) model_2: vec4<f32>,
-    @location(7) model_3: vec4<f32>,
-    @location(8) normal_0: vec4<f32>,
-    @location(9) normal_1: vec4<f32>,
-    @location(10) normal_2: vec4<f32>,
-    @location(11) tint: vec4<f32>,
-    @location(12) light_overlay: vec4<f32>,
-    @location(13) foil: vec4<f32>,
+    @location(4) decal_uv: vec2<f32>,
+    @location(5) model_0: vec4<f32>,
+    @location(6) model_1: vec4<f32>,
+    @location(7) model_2: vec4<f32>,
+    @location(8) model_3: vec4<f32>,
+    @location(9) normal_0: vec4<f32>,
+    @location(10) normal_1: vec4<f32>,
+    @location(11) normal_2: vec4<f32>,
+    @location(12) tint: vec4<f32>,
+    @location(13) light_overlay: vec4<f32>,
+    @location(14) foil: vec4<f32>,
 };
 
 struct VertexOut {
@@ -928,11 +934,12 @@ struct Camera {
 struct VertexIn {
     @location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
     @location(2) color: vec4<f32>, @location(3) normal_diffuse: vec4<f32>,
-    @location(4) model_0: vec4<f32>, @location(5) model_1: vec4<f32>,
-    @location(6) model_2: vec4<f32>, @location(7) model_3: vec4<f32>,
-    @location(8) normal_0: vec4<f32>, @location(9) normal_1: vec4<f32>,
-    @location(10) normal_2: vec4<f32>, @location(11) tint: vec4<f32>,
-    @location(12) light_overlay: vec4<f32>, @location(13) foil: vec4<f32>,
+    @location(4) decal_uv: vec2<f32>,
+    @location(5) model_0: vec4<f32>, @location(6) model_1: vec4<f32>,
+    @location(7) model_2: vec4<f32>, @location(8) model_3: vec4<f32>,
+    @location(9) normal_0: vec4<f32>, @location(10) normal_1: vec4<f32>,
+    @location(11) normal_2: vec4<f32>, @location(12) tint: vec4<f32>,
+    @location(13) light_overlay: vec4<f32>, @location(14) foil: vec4<f32>,
 };
 
 struct VertexOut {
@@ -968,7 +975,9 @@ fn vs_main(input: VertexIn) -> VertexOut {
     let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
     let world = model * vec4<f32>(input.position, 1.0);
     out.position = camera.view_proj * world;
-    out.uv = glint_uv(input.uv);
+    let decal_scale = max(abs(input.foil.y), 0.0001);
+    let source_uv = select(input.uv, input.decal_uv / decal_scale, input.foil.x > 1.5);
+    out.uv = glint_uv(source_uv);
     let fog_pos = world.xyz - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -1102,11 +1111,22 @@ fn resident_geometry(
     let vertices = mesh
         .vertices
         .into_iter()
-        .map(|vertex: ItemModelVertex| ItemModelResidentVertex {
-            position: vertex.position,
-            uv: vertex.uv,
-            color: vertex.color,
-            normal_diffuse: vertex.normal_diffuse,
+        .map(|vertex: ItemModelVertex| {
+            let decal_uv = sheeted_decal_uv(
+                Vec3::from_array(vertex.position),
+                [
+                    vertex.normal_diffuse[0],
+                    vertex.normal_diffuse[1],
+                    vertex.normal_diffuse[2],
+                ],
+            );
+            ItemModelResidentVertex {
+                position: vertex.position,
+                uv: vertex.uv,
+                color: vertex.color,
+                normal_diffuse: vertex.normal_diffuse,
+                decal_uv,
+            }
         })
         .collect();
     (vertices, mesh.indices)
@@ -1182,7 +1202,11 @@ impl Renderer {
     /// Applies one atomic model-space asset/instance extraction. Exact keys
     /// are minted from the renderer's current resource generations, and each
     /// source is evaluated only after a miss.
-    pub fn set_item_model_residency_frame(&mut self, frame: ItemModelResidencyFrame) -> Result<()> {
+    pub fn set_item_model_residency_frame(
+        &mut self,
+        mut frame: ItemModelResidencyFrame,
+    ) -> Result<()> {
+        self.append_hud_block_item_residency(&mut frame);
         self.begin_item_model_frame();
         let mut requested_keys = BTreeSet::new();
         for request in frame.assets {
@@ -1400,6 +1424,34 @@ mod tests {
             renderer.resident_item_model_instance_orders_for_test(),
             vec![9]
         );
+    }
+
+    #[test]
+    fn special_foil_resident_decal_uv_matches_legacy_world_bake() {
+        let source = [quad(false)];
+        let transform = Mat4::from_translation(Vec3::new(2.0, -1.0, 4.0))
+            * Mat4::from_rotation_y(0.73)
+            * Mat4::from_scale(Vec3::new(0.5, 0.75, 1.25));
+        let (vertices, _) = resident_geometry(&source, ItemModelGeometryClass::Solid);
+
+        for decal_pose_scale in [1.0, 0.75, 0.5] {
+            let legacy = super::super::bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
+                &source,
+                transform,
+                [1.0; 2],
+                [0.0, 10.0],
+                ItemModelFoil::Special { decal_pose_scale },
+            );
+            assert_eq!(legacy.glint.vertices.len(), vertices.len());
+            for (legacy, resident) in legacy.glint.vertices.iter().zip(&vertices) {
+                let expected = [
+                    resident.decal_uv[0] / decal_pose_scale,
+                    resident.decal_uv[1] / decal_pose_scale,
+                ];
+                assert!((legacy.uv[0] - expected[0]).abs() < 1.0e-5);
+                assert!((legacy.uv[1] - expected[1]).abs() < 1.0e-5);
+            }
+        }
     }
 
     #[test]

@@ -358,14 +358,14 @@ pub(crate) fn dropped_item_models(
     enchantment_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> DroppedItemModels {
-    let mut block_meshes = Vec::new();
-    let mut block_translucent_meshes = Vec::new();
-    let mut block_glint_meshes = Vec::new();
-    let mut block_glint_translucent_meshes = Vec::new();
-    let mut flat_meshes = Vec::new();
-    let mut flat_translucent_meshes = Vec::new();
-    let mut flat_glint_meshes = Vec::new();
-    let mut flat_glint_translucent_meshes = Vec::new();
+    let block_meshes = Vec::new();
+    let block_translucent_meshes = Vec::new();
+    let block_glint_meshes = Vec::new();
+    let block_glint_translucent_meshes = Vec::new();
+    let flat_meshes = Vec::new();
+    let flat_translucent_meshes = Vec::new();
+    let flat_glint_meshes = Vec::new();
+    let flat_glint_translucent_meshes = Vec::new();
     let mut residency = ItemModelResidencyFrame::default();
     let mut handled_entity_ids = BTreeSet::new();
     let Some(item_runtime) = item_runtime else {
@@ -412,71 +412,46 @@ pub(crate) fn dropped_item_models(
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
                     let ground = ground(BLOCK_GROUND_FALLBACK);
-                    if matches!(foil, ItemModelFoil::Special { .. }) {
-                        push_mesh_set(
-                            stacked_item_mesh(
-                                &quads,
-                                position,
-                                age_ticks,
-                                state.entity_id,
-                                &ground,
-                                shader_light(state.light),
-                                count,
-                                seed,
-                                foil,
-                            ),
-                            &mut block_meshes,
-                            &mut block_translucent_meshes,
-                            &mut block_glint_meshes,
-                            &mut block_glint_translucent_meshes,
+                    let ground_matrix = display_matrix(&ground, false);
+                    let (min_y, depth) = ground_model_bounds(&quads, ground_matrix);
+                    let base =
+                        base_transform(position, age_ticks, state.entity_id, -min_y + 1.0 / 16.0);
+                    let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
+                    let identity = ItemModelAssetIdentity::new(
+                        Arc::<str>::from(resource_id),
+                        Arc::<str>::from("default"),
+                        0,
+                    );
+                    let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
+                    if quads.iter().any(|quad| !quad.translucent) {
+                        push_resident_item_instances(
+                            &mut residency,
+                            identity.clone(),
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Solid,
+                            source.clone(),
+                            &transforms,
+                            [1.0; 4],
+                            shader_light(state.light),
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::World,
                         );
-                    } else {
-                        let ground_matrix = display_matrix(&ground, false);
-                        let (min_y, depth) = ground_model_bounds(&quads, ground_matrix);
-                        let base = base_transform(
-                            position,
-                            age_ticks,
-                            state.entity_id,
-                            -min_y + 1.0 / 16.0,
+                    }
+                    if quads.iter().any(|quad| quad.translucent) {
+                        push_resident_item_instances(
+                            &mut residency,
+                            identity,
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Translucent,
+                            source,
+                            &transforms,
+                            [1.0; 4],
+                            shader_light(state.light),
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::World,
                         );
-                        let transforms =
-                            cluster_transforms(base, ground_matrix, count, seed, depth);
-                        let identity = ItemModelAssetIdentity::new(
-                            Arc::<str>::from(resource_id),
-                            Arc::<str>::from("default"),
-                            0,
-                        );
-                        let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
-                        if quads.iter().any(|quad| !quad.translucent) {
-                            push_resident_item_instances(
-                                &mut residency,
-                                identity.clone(),
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Solid,
-                                source.clone(),
-                                &transforms,
-                                [1.0; 4],
-                                shader_light(state.light),
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::World,
-                            );
-                        }
-                        if quads.iter().any(|quad| quad.translucent) {
-                            push_resident_item_instances(
-                                &mut residency,
-                                identity,
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Translucent,
-                                source,
-                                &transforms,
-                                [1.0; 4],
-                                shader_light(state.light),
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::World,
-                            );
-                        }
                     }
                     handled_entity_ids.insert(state.entity_id);
                     continue;
@@ -497,66 +472,35 @@ pub(crate) fn dropped_item_models(
             continue;
         }
         let ground = ground(GENERATED_GROUND_FALLBACK);
-        if matches!(foil, ItemModelFoil::Special { .. }) {
-            let quads = layers
-                .iter()
-                .flat_map(|layer| {
-                    bake_generated_item_quads(
-                        &layer.mask,
-                        layer.rect,
-                        layer.tint,
-                        layer.translucent,
-                    )
-                })
-                .collect::<Vec<_>>();
-            push_mesh_set(
-                stacked_item_mesh(
-                    &quads,
-                    position,
-                    age_ticks,
-                    state.entity_id,
-                    &ground,
-                    shader_light(state.light),
-                    count,
-                    seed,
-                    foil,
-                ),
-                &mut flat_meshes,
-                &mut flat_translucent_meshes,
-                &mut flat_glint_meshes,
-                &mut flat_glint_translucent_meshes,
+        let ground_matrix = display_matrix(&ground, false);
+        let (min_y, depth) = generated_ground_model_bounds(ground_matrix);
+        let base = base_transform(position, age_ticks, state.entity_id, -min_y + 1.0 / 16.0);
+        let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
+        for layer in layers {
+            let identity =
+                ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0);
+            let geometry_class = if layer.translucent {
+                ItemModelGeometryClass::Translucent
+            } else {
+                ItemModelGeometryClass::Solid
+            };
+            push_resident_item_instances(
+                &mut residency,
+                identity,
+                ItemModelAtlasKind::Items,
+                geometry_class,
+                ItemModelAssetSource::Generated {
+                    mask: layer.mask,
+                    rect: layer.rect,
+                    translucent: layer.translucent,
+                },
+                &transforms,
+                layer.tint,
+                shader_light(state.light),
+                ITEM_MODEL_NO_OVERLAY,
+                foil,
+                ItemModelDrawTarget::World,
             );
-        } else {
-            let ground_matrix = display_matrix(&ground, false);
-            let (min_y, depth) = generated_ground_model_bounds(ground_matrix);
-            let base = base_transform(position, age_ticks, state.entity_id, -min_y + 1.0 / 16.0);
-            let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
-            for layer in layers {
-                let identity =
-                    ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0);
-                let geometry_class = if layer.translucent {
-                    ItemModelGeometryClass::Translucent
-                } else {
-                    ItemModelGeometryClass::Solid
-                };
-                push_resident_item_instances(
-                    &mut residency,
-                    identity,
-                    ItemModelAtlasKind::Items,
-                    geometry_class,
-                    ItemModelAssetSource::Generated {
-                        mask: layer.mask,
-                        rect: layer.rect,
-                        translucent: layer.translucent,
-                    },
-                    &transforms,
-                    layer.tint,
-                    shader_light(state.light),
-                    ITEM_MODEL_NO_OVERLAY,
-                    foil,
-                    ItemModelDrawTarget::World,
-                );
-            }
         }
         handled_entity_ids.insert(state.entity_id);
     }
@@ -621,63 +565,44 @@ pub(crate) fn ominous_item_spawner_models(
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
                     let ground = ground(BLOCK_GROUND_FALLBACK);
-                    if matches!(foil, ItemModelFoil::Special { .. }) {
-                        push_mesh_set(
-                            item_cluster_mesh_with_base(
-                                &quads,
-                                base,
-                                &ground,
-                                ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                                count,
-                                seed,
-                                foil,
-                            ),
-                            &mut models.block_meshes,
-                            &mut models.block_translucent_meshes,
-                            &mut models.block_glint_meshes,
-                            &mut models.block_glint_translucent_meshes,
+                    let ground_matrix = display_matrix(&ground, false);
+                    let (_, depth) = ground_model_bounds(&quads, ground_matrix);
+                    let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
+                    let identity = ItemModelAssetIdentity::new(
+                        Arc::<str>::from(resource_id),
+                        Arc::<str>::from("default"),
+                        0,
+                    );
+                    let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
+                    if quads.iter().any(|quad| !quad.translucent) {
+                        push_resident_item_instances(
+                            &mut models.residency,
+                            identity.clone(),
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Solid,
+                            source.clone(),
+                            &transforms,
+                            [1.0; 4],
+                            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::World,
                         );
-                    } else {
-                        let ground_matrix = display_matrix(&ground, false);
-                        let (_, depth) = ground_model_bounds(&quads, ground_matrix);
-                        let transforms =
-                            cluster_transforms(base, ground_matrix, count, seed, depth);
-                        let identity = ItemModelAssetIdentity::new(
-                            Arc::<str>::from(resource_id),
-                            Arc::<str>::from("default"),
-                            0,
+                    }
+                    if quads.iter().any(|quad| quad.translucent) {
+                        push_resident_item_instances(
+                            &mut models.residency,
+                            identity,
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Translucent,
+                            source,
+                            &transforms,
+                            [1.0; 4],
+                            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::World,
                         );
-                        let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
-                        if quads.iter().any(|quad| !quad.translucent) {
-                            push_resident_item_instances(
-                                &mut models.residency,
-                                identity.clone(),
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Solid,
-                                source.clone(),
-                                &transforms,
-                                [1.0; 4],
-                                ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::World,
-                            );
-                        }
-                        if quads.iter().any(|quad| quad.translucent) {
-                            push_resident_item_instances(
-                                &mut models.residency,
-                                identity,
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Translucent,
-                                source,
-                                &transforms,
-                                [1.0; 4],
-                                ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::World,
-                            );
-                        }
                     }
                     models.handled_entity_ids.insert(state.entity_id);
                     continue;
@@ -697,60 +622,31 @@ pub(crate) fn ominous_item_spawner_models(
             continue;
         }
         let ground = ground(GENERATED_GROUND_FALLBACK);
-        if matches!(foil, ItemModelFoil::Special { .. }) {
-            let quads = layers
-                .iter()
-                .flat_map(|layer| {
-                    bake_generated_item_quads(
-                        &layer.mask,
-                        layer.rect,
-                        layer.tint,
-                        layer.translucent,
-                    )
-                })
-                .collect::<Vec<_>>();
-            push_mesh_set(
-                item_cluster_mesh_with_base(
-                    &quads,
-                    base,
-                    &ground,
-                    ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                    count,
-                    seed,
-                    foil,
-                ),
-                &mut models.flat_meshes,
-                &mut models.flat_translucent_meshes,
-                &mut models.flat_glint_meshes,
-                &mut models.flat_glint_translucent_meshes,
+        let ground_matrix = display_matrix(&ground, false);
+        let (_, depth) = generated_ground_model_bounds(ground_matrix);
+        let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
+        for layer in layers {
+            push_resident_item_instances(
+                &mut models.residency,
+                ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
+                ItemModelAtlasKind::Items,
+                if layer.translucent {
+                    ItemModelGeometryClass::Translucent
+                } else {
+                    ItemModelGeometryClass::Solid
+                },
+                ItemModelAssetSource::Generated {
+                    mask: layer.mask,
+                    rect: layer.rect,
+                    translucent: layer.translucent,
+                },
+                &transforms,
+                layer.tint,
+                ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                ITEM_MODEL_NO_OVERLAY,
+                foil,
+                ItemModelDrawTarget::World,
             );
-        } else {
-            let ground_matrix = display_matrix(&ground, false);
-            let (_, depth) = generated_ground_model_bounds(ground_matrix);
-            let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
-            for layer in layers {
-                push_resident_item_instances(
-                    &mut models.residency,
-                    ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
-                    ItemModelAtlasKind::Items,
-                    if layer.translucent {
-                        ItemModelGeometryClass::Translucent
-                    } else {
-                        ItemModelGeometryClass::Solid
-                    },
-                    ItemModelAssetSource::Generated {
-                        mask: layer.mask,
-                        rect: layer.rect,
-                        translucent: layer.translucent,
-                    },
-                    &transforms,
-                    layer.tint,
-                    ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                    ITEM_MODEL_NO_OVERLAY,
-                    foil,
-                    ItemModelDrawTarget::World,
-                );
-            }
         }
         models.handled_entity_ids.insert(state.entity_id);
     }
@@ -809,71 +705,50 @@ pub(crate) fn item_pickup_particle_item_models(
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
                     let ground = ground(BLOCK_GROUND_FALLBACK);
-                    if matches!(foil, ItemModelFoil::Special { .. }) {
-                        push_mesh_set(
-                            stacked_item_mesh(
-                                &quads,
-                                state.position,
-                                state.age_ticks,
-                                state.source_entity_id,
-                                &ground,
-                                state.light,
-                                count,
-                                seed,
-                                foil,
-                            ),
-                            &mut models.block_meshes,
-                            &mut models.block_translucent_meshes,
-                            &mut models.block_glint_meshes,
-                            &mut models.block_glint_translucent_meshes,
+                    let ground_matrix = display_matrix(&ground, false);
+                    let (min_y, depth) = ground_model_bounds(&quads, ground_matrix);
+                    let base = base_transform(
+                        state.position,
+                        state.age_ticks,
+                        state.source_entity_id,
+                        -min_y + 1.0 / 16.0,
+                    );
+                    let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
+                    let identity = ItemModelAssetIdentity::new(
+                        Arc::<str>::from(resource_id),
+                        Arc::<str>::from("default"),
+                        0,
+                    );
+                    let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
+                    if quads.iter().any(|quad| !quad.translucent) {
+                        push_resident_item_instances(
+                            &mut models.residency,
+                            identity.clone(),
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Solid,
+                            source.clone(),
+                            &transforms,
+                            [1.0; 4],
+                            state.light,
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::Particle,
                         );
-                    } else {
-                        let ground_matrix = display_matrix(&ground, false);
-                        let (min_y, depth) = ground_model_bounds(&quads, ground_matrix);
-                        let base = base_transform(
-                            state.position,
-                            state.age_ticks,
-                            state.source_entity_id,
-                            -min_y + 1.0 / 16.0,
+                    }
+                    if quads.iter().any(|quad| quad.translucent) {
+                        push_resident_item_instances(
+                            &mut models.residency,
+                            identity,
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Translucent,
+                            source,
+                            &transforms,
+                            [1.0; 4],
+                            state.light,
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::Particle,
                         );
-                        let transforms =
-                            cluster_transforms(base, ground_matrix, count, seed, depth);
-                        let identity = ItemModelAssetIdentity::new(
-                            Arc::<str>::from(resource_id),
-                            Arc::<str>::from("default"),
-                            0,
-                        );
-                        let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
-                        if quads.iter().any(|quad| !quad.translucent) {
-                            push_resident_item_instances(
-                                &mut models.residency,
-                                identity.clone(),
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Solid,
-                                source.clone(),
-                                &transforms,
-                                [1.0; 4],
-                                state.light,
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::Particle,
-                            );
-                        }
-                        if quads.iter().any(|quad| quad.translucent) {
-                            push_resident_item_instances(
-                                &mut models.residency,
-                                identity,
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Translucent,
-                                source,
-                                &transforms,
-                                [1.0; 4],
-                                state.light,
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::Particle,
-                            );
-                        }
                     }
                     continue;
                 }
@@ -892,68 +767,37 @@ pub(crate) fn item_pickup_particle_item_models(
             continue;
         }
         let ground = ground(GENERATED_GROUND_FALLBACK);
-        if matches!(foil, ItemModelFoil::Special { .. }) {
-            let quads = layers
-                .iter()
-                .flat_map(|layer| {
-                    bake_generated_item_quads(
-                        &layer.mask,
-                        layer.rect,
-                        layer.tint,
-                        layer.translucent,
-                    )
-                })
-                .collect::<Vec<_>>();
-            push_mesh_set(
-                stacked_item_mesh(
-                    &quads,
-                    state.position,
-                    state.age_ticks,
-                    state.source_entity_id,
-                    &ground,
-                    state.light,
-                    count,
-                    seed,
-                    foil,
-                ),
-                &mut models.flat_meshes,
-                &mut models.flat_translucent_meshes,
-                &mut models.flat_glint_meshes,
-                &mut models.flat_glint_translucent_meshes,
+        let ground_matrix = display_matrix(&ground, false);
+        let (min_y, depth) = generated_ground_model_bounds(ground_matrix);
+        let base = base_transform(
+            state.position,
+            state.age_ticks,
+            state.source_entity_id,
+            -min_y + 1.0 / 16.0,
+        );
+        let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
+        for layer in layers {
+            push_resident_item_instances(
+                &mut models.residency,
+                ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
+                ItemModelAtlasKind::Items,
+                if layer.translucent {
+                    ItemModelGeometryClass::Translucent
+                } else {
+                    ItemModelGeometryClass::Solid
+                },
+                ItemModelAssetSource::Generated {
+                    mask: layer.mask,
+                    rect: layer.rect,
+                    translucent: layer.translucent,
+                },
+                &transforms,
+                layer.tint,
+                state.light,
+                ITEM_MODEL_NO_OVERLAY,
+                foil,
+                ItemModelDrawTarget::Particle,
             );
-        } else {
-            let ground_matrix = display_matrix(&ground, false);
-            let (min_y, depth) = generated_ground_model_bounds(ground_matrix);
-            let base = base_transform(
-                state.position,
-                state.age_ticks,
-                state.source_entity_id,
-                -min_y + 1.0 / 16.0,
-            );
-            let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
-            for layer in layers {
-                push_resident_item_instances(
-                    &mut models.residency,
-                    ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
-                    ItemModelAtlasKind::Items,
-                    if layer.translucent {
-                        ItemModelGeometryClass::Translucent
-                    } else {
-                        ItemModelGeometryClass::Solid
-                    },
-                    ItemModelAssetSource::Generated {
-                        mask: layer.mask,
-                        rect: layer.rect,
-                        translucent: layer.translucent,
-                    },
-                    &transforms,
-                    layer.tint,
-                    state.light,
-                    ITEM_MODEL_NO_OVERLAY,
-                    foil,
-                    ItemModelDrawTarget::Particle,
-                );
-            }
         }
     }
 
@@ -1073,7 +917,7 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
             instance.phase,
             ItemModelDrawPhase::Glint | ItemModelDrawPhase::GlintTranslucent
         ) {
-            ItemModelFoil::Standard
+            instance.foil
         } else {
             ItemModelFoil::None
         };
@@ -2057,14 +1901,14 @@ pub(super) fn bake_item_stack_at_transform(
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
-    block_meshes: &mut Vec<ItemModelMesh>,
-    block_translucent_meshes: &mut Vec<ItemModelMesh>,
-    block_glint_meshes: &mut Vec<ItemModelMesh>,
-    block_glint_translucent_meshes: &mut Vec<ItemModelMesh>,
-    flat_meshes: &mut Vec<ItemModelMesh>,
-    flat_translucent_meshes: &mut Vec<ItemModelMesh>,
-    flat_glint_meshes: &mut Vec<ItemModelMesh>,
-    flat_glint_translucent_meshes: &mut Vec<ItemModelMesh>,
+    _block_meshes: &mut Vec<ItemModelMesh>,
+    _block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    _block_glint_meshes: &mut Vec<ItemModelMesh>,
+    _block_glint_translucent_meshes: &mut Vec<ItemModelMesh>,
+    _flat_meshes: &mut Vec<ItemModelMesh>,
+    _flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    _flat_glint_meshes: &mut Vec<ItemModelMesh>,
+    _flat_glint_translucent_meshes: &mut Vec<ItemModelMesh>,
     residency: &mut ItemModelResidencyFrame,
 ) {
     let Some(item_id) = stack.item_id else {
@@ -2088,57 +1932,41 @@ pub(super) fn bake_item_stack_at_transform(
             if !quads.is_empty() {
                 let display = retained.unwrap_or(block_fallback);
                 let transform = attach * display_matrix(&display, left_hand);
-                if matches!(foil, ItemModelFoil::Special { .. }) {
-                    push_mesh_set(
-                        bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
-                            &quads,
-                            transform,
-                            ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                            ITEM_MODEL_NO_OVERLAY,
-                            foil,
-                        ),
-                        block_meshes,
-                        block_translucent_meshes,
-                        block_glint_meshes,
-                        block_glint_translucent_meshes,
+                let identity = ItemModelAssetIdentity::new(
+                    Arc::<str>::from(resource_id),
+                    Arc::<str>::from("default"),
+                    0,
+                );
+                let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
+                if quads.iter().any(|quad| !quad.translucent) {
+                    push_resident_item_instances(
+                        residency,
+                        identity.clone(),
+                        ItemModelAtlasKind::Blocks,
+                        ItemModelGeometryClass::Solid,
+                        source.clone(),
+                        &[transform],
+                        [1.0; 4],
+                        ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        ITEM_MODEL_NO_OVERLAY,
+                        foil,
+                        target,
                     );
-                } else {
-                    let identity = ItemModelAssetIdentity::new(
-                        Arc::<str>::from(resource_id),
-                        Arc::<str>::from("default"),
-                        0,
+                }
+                if quads.iter().any(|quad| quad.translucent) {
+                    push_resident_item_instances(
+                        residency,
+                        identity,
+                        ItemModelAtlasKind::Blocks,
+                        ItemModelGeometryClass::Translucent,
+                        source,
+                        &[transform],
+                        [1.0; 4],
+                        ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        ITEM_MODEL_NO_OVERLAY,
+                        foil,
+                        target,
                     );
-                    let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
-                    if quads.iter().any(|quad| !quad.translucent) {
-                        push_resident_item_instances(
-                            residency,
-                            identity.clone(),
-                            ItemModelAtlasKind::Blocks,
-                            ItemModelGeometryClass::Solid,
-                            source.clone(),
-                            &[transform],
-                            [1.0; 4],
-                            ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                            ITEM_MODEL_NO_OVERLAY,
-                            foil,
-                            target,
-                        );
-                    }
-                    if quads.iter().any(|quad| quad.translucent) {
-                        push_resident_item_instances(
-                            residency,
-                            identity,
-                            ItemModelAtlasKind::Blocks,
-                            ItemModelGeometryClass::Translucent,
-                            source,
-                            &[transform],
-                            [1.0; 4],
-                            ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                            ITEM_MODEL_NO_OVERLAY,
-                            foil,
-                            target,
-                        );
-                    }
                 }
                 return;
             }
@@ -2174,50 +2002,28 @@ pub(super) fn bake_item_stack_at_transform(
     }
     let display = retained.unwrap_or(generated_fallback);
     let transform = attach * display_matrix(&display, left_hand);
-    if matches!(foil, ItemModelFoil::Special { .. }) {
-        let quads = layers
-            .iter()
-            .flat_map(|layer| {
-                bake_generated_item_quads(&layer.mask, layer.rect, layer.tint, layer.translucent)
-            })
-            .collect::<Vec<_>>();
-        push_mesh_set(
-            bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
-                &quads,
-                transform,
-                ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                ITEM_MODEL_NO_OVERLAY,
-                foil,
-            ),
-            flat_meshes,
-            flat_translucent_meshes,
-            flat_glint_meshes,
-            flat_glint_translucent_meshes,
+    for layer in layers {
+        push_resident_item_instances(
+            residency,
+            ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
+            ItemModelAtlasKind::Items,
+            if layer.translucent {
+                ItemModelGeometryClass::Translucent
+            } else {
+                ItemModelGeometryClass::Solid
+            },
+            ItemModelAssetSource::Generated {
+                mask: layer.mask,
+                rect: layer.rect,
+                translucent: layer.translucent,
+            },
+            &[transform],
+            layer.tint,
+            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            ITEM_MODEL_NO_OVERLAY,
+            foil,
+            target,
         );
-    } else {
-        for layer in layers {
-            push_resident_item_instances(
-                residency,
-                ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
-                ItemModelAtlasKind::Items,
-                if layer.translucent {
-                    ItemModelGeometryClass::Translucent
-                } else {
-                    ItemModelGeometryClass::Solid
-                },
-                ItemModelAssetSource::Generated {
-                    mask: layer.mask,
-                    rect: layer.rect,
-                    translucent: layer.translucent,
-                },
-                &[transform],
-                layer.tint,
-                ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                ITEM_MODEL_NO_OVERLAY,
-                foil,
-                target,
-            );
-        }
     }
 }
 
@@ -2235,6 +2041,7 @@ pub(super) fn rendered_amount(stack_count: i32) -> usize {
 /// Bakes the cluster of copies for one dropped item into a single mesh. `ground` is the item's GROUND
 /// display transform; the seating lift and cluster layout are derived from the resulting model bounds,
 /// exactly as vanilla derives them from `modelBoundingBox`.
+#[cfg(test)]
 pub(super) fn stacked_item_mesh(
     quads: &[ItemModelQuad],
     position: [f32; 3],
@@ -2252,32 +2059,6 @@ pub(super) fn stacked_item_mesh(
     let (min_y, depth) = ground_model_bounds(quads, ground_matrix);
     let min_offset_y = -min_y + 1.0 / 16.0;
     let base = base_transform(position, age_ticks, entity_id, min_offset_y);
-    let mut mesh = ItemModelMeshSet::default();
-    append_cluster(
-        &mut mesh,
-        quads,
-        base,
-        ground_matrix,
-        light,
-        count,
-        seed,
-        depth,
-        foil,
-    );
-    mesh
-}
-
-fn item_cluster_mesh_with_base(
-    quads: &[ItemModelQuad],
-    base: Mat4,
-    ground: &BlockModelDisplayTransform,
-    light: [f32; 2],
-    count: usize,
-    seed: i64,
-    foil: ItemModelFoil,
-) -> ItemModelMeshSet {
-    let ground_matrix = display_matrix(ground, false);
-    let (_, depth) = ground_model_bounds(quads, ground_matrix);
     let mut mesh = ItemModelMeshSet::default();
     append_cluster(
         &mut mesh,
@@ -2439,7 +2220,7 @@ pub(crate) fn push_resident_item_instances(
             base_phase,
         );
     }
-    if foil == ItemModelFoil::Standard {
+    if foil != ItemModelFoil::None {
         let glint_phase = match geometry_class {
             ItemModelGeometryClass::Solid => ItemModelDrawPhase::Glint,
             ItemModelGeometryClass::Translucent => ItemModelDrawPhase::GlintTranslucent,
@@ -2496,27 +2277,7 @@ fn push_resident_item_instance(
 /// thicker than [`FLAT_ITEM_DEPTH_THRESHOLD`] scatters its copies in 3D; a thin (flat) one stacks them
 /// back-to-front along Z with small in-plane jitter. The jitter draws from a Java-seeded RNG so the
 /// cluster arrangement matches vanilla.
-fn push_mesh_set(
-    meshes: ItemModelMeshSet,
-    solid: &mut Vec<ItemModelMesh>,
-    translucent: &mut Vec<ItemModelMesh>,
-    glint: &mut Vec<ItemModelMesh>,
-    glint_translucent: &mut Vec<ItemModelMesh>,
-) {
-    if !meshes.solid.is_empty() {
-        solid.push(meshes.solid);
-    }
-    if !meshes.translucent.is_empty() {
-        translucent.push(meshes.translucent);
-    }
-    if !meshes.glint.is_empty() {
-        glint.push(meshes.glint);
-    }
-    if !meshes.glint_translucent.is_empty() {
-        glint_translucent.push(meshes.glint_translucent);
-    }
-}
-
+#[cfg(test)]
 fn append_quads_to_mesh_set(
     meshes: &mut ItemModelMeshSet,
     quads: &[ItemModelQuad],
@@ -2533,6 +2294,7 @@ fn append_quads_to_mesh_set(
     );
 }
 
+#[cfg(test)]
 fn append_cluster(
     mesh: &mut ItemModelMeshSet,
     quads: &[ItemModelQuad],

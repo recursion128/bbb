@@ -2,10 +2,19 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
+use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec3};
+use wgpu::util::DeviceExt;
 
-use crate::{HudAsciiGlyph, HudFontGlyphMap, Renderer};
+use crate::{
+    frame_buffers::FrameDataBuffer,
+    gpu::DEPTH_FORMAT,
+    pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
+    HudAsciiGlyph, HudFontGlyphMap, Renderer,
+};
 
+use super::ITEM_MODEL_PIPELINE_CULL_MODE;
+#[cfg(test)]
 use super::{ItemModelMesh, ItemModelVertex};
 
 use bbb_render_types::vanilla_map_decoration_type;
@@ -17,7 +26,11 @@ pub use bbb_render_types::{
 const ITEM_FRAME_MAP_SIZE: u32 = 128;
 const ITEM_FRAME_MAP_RGBA_LEN: usize =
     ITEM_FRAME_MAP_SIZE as usize * ITEM_FRAME_MAP_SIZE as usize * 4;
+const MAP_ATLAS_PAGE_SIDE_SLOTS: u32 = 8;
+const MAP_ATLAS_PAGE_CAPACITY: usize =
+    (MAP_ATLAS_PAGE_SIDE_SLOTS * MAP_ATLAS_PAGE_SIDE_SLOTS) as usize;
 const MAX_RESIDENT_MAP_TEXTURES: usize = 4_096;
+const MAX_RESIDENT_MAP_PAGES: usize = MAX_RESIDENT_MAP_TEXTURES / MAP_ATLAS_PAGE_CAPACITY;
 const ITEM_FRAME_MAP_DECORATION_ATLAS_PATH: &str = "minecraft:textures/atlas/map_decorations.png";
 /// The uploaded map-text font texture is the baked multi-page
 /// `minecraft:default` glyph atlas (vanilla `Style.DEFAULT_FONT`), not a
@@ -160,53 +173,57 @@ pub struct ItemFrameMapTextSubmission {
     pub scale: f32,
 }
 
-/// The base map surface submit for an item frame. `mesh` is the single vanilla `MapRenderer` quad in
-/// world space with local 0..1 UVs; the renderer remaps those UVs to the dynamic map atlas at draw time.
+/// The base map surface submit for an item frame. Production retains only the
+/// narrow transform/light/map identity; tests reconstruct the legacy quad to
+/// prove the static model-space instance is pose-equivalent.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemFrameMapSurface {
     pub submission: ItemFrameMapSubmission,
+    #[cfg(test)]
     mesh: ItemModelMesh,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FirstPersonMapBackgroundSurface {
     pub submission: FirstPersonMapBackgroundSubmission,
+    #[cfg(test)]
     mesh: ItemModelMesh,
 }
 
 impl ItemFrameMapSurface {
     pub fn is_empty(&self) -> bool {
-        self.mesh.is_empty()
+        false
     }
 
     pub fn vertex_count(&self) -> usize {
-        self.mesh.vertices.len()
+        4
     }
 
     pub fn index_count(&self) -> usize {
-        self.mesh.indices.len()
+        6
     }
 }
 
 impl FirstPersonMapBackgroundSurface {
     pub fn is_empty(&self) -> bool {
-        self.mesh.is_empty()
+        false
     }
 
     pub fn vertex_count(&self) -> usize {
-        self.mesh.vertices.len()
+        4
     }
 
     pub fn index_count(&self) -> usize {
-        self.mesh.indices.len()
+        6
     }
 }
 
-/// A vanilla `MapRenderer` decoration sprite submit for an item-frame map. `mesh` carries the single
-/// local sprite quad with UVs in 0..1; the renderer remaps those UVs to the map-decoration atlas.
+/// A vanilla `MapRenderer` decoration sprite submit. Production carries only
+/// the narrow submission; tests retain the former world-space quad oracle.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemFrameMapDecorationSurface {
     pub submission: ItemFrameMapDecorationSubmission,
+    #[cfg(test)]
     mesh: ItemModelMesh,
 }
 
@@ -215,34 +232,42 @@ pub struct ItemFrameMapDecorationSurface {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemFrameMapTextSurface {
     pub submission: ItemFrameMapTextSubmission,
+    glyphs: Vec<ItemFrameMapTextGlyphInstance>,
+    #[cfg(test)]
     mesh: ItemModelMesh,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ItemFrameMapTextGlyphInstance {
+    transform: Mat4,
+    uv: ItemFrameMapUvRect,
 }
 
 impl ItemFrameMapTextSurface {
     pub fn is_empty(&self) -> bool {
-        self.mesh.is_empty()
+        self.glyphs.is_empty()
     }
 
     pub fn vertex_count(&self) -> usize {
-        self.mesh.vertices.len()
+        self.glyphs.len().saturating_mul(4)
     }
 
     pub fn index_count(&self) -> usize {
-        self.mesh.indices.len()
+        self.glyphs.len().saturating_mul(6)
     }
 }
 
 impl ItemFrameMapDecorationSurface {
     pub fn is_empty(&self) -> bool {
-        self.mesh.is_empty()
+        false
     }
 
     pub fn vertex_count(&self) -> usize {
-        self.mesh.vertices.len()
+        4
     }
 
     pub fn index_count(&self) -> usize {
-        self.mesh.indices.len()
+        6
     }
 }
 
@@ -253,6 +278,7 @@ pub(crate) struct ItemFrameMapUvRect {
 }
 
 impl ItemFrameMapUvRect {
+    #[cfg(test)]
     fn map(self, uv: [f32; 2]) -> [f32; 2] {
         [
             self.min[0] + (self.max[0] - self.min[0]) * uv[0],
@@ -269,25 +295,56 @@ pub(crate) struct ItemFrameMapAtlasLayout {
 }
 
 pub(crate) struct ItemFrameMapAtlasGpu {
+    pages: Vec<ItemFrameMapAtlasPageGpu>,
+    overflow_pages: Vec<ItemFrameMapAtlasPageGpu>,
+    overflow_locations: BTreeMap<i32, OverflowMapTexture>,
+    pub(crate) layout: ItemFrameMapAtlasLayout,
+    owners: BTreeMap<i32, ResidentMapTexture>,
+    frame_index: u64,
+    max_resident_textures: usize,
+}
+
+pub(crate) struct ItemFrameMapAtlasPageGpu {
     texture: wgpu::Texture,
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
-    pub(crate) layout: ItemFrameMapAtlasLayout,
-    owners: BTreeMap<i32, ResidentMapTexture>,
     free_slots: Vec<u32>,
-    side_slots: u32,
-    frame_index: u64,
 }
 
 #[derive(Debug, Clone)]
 struct ResidentMapTexture {
     map_id: i32,
+    page: usize,
     slot: u32,
     owner_generation: u64,
     content_revision: u64,
     rgba: Arc<[u8]>,
     last_used_frame: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct OverflowMapTexture {
+    page: usize,
+}
+
+impl ItemFrameMapAtlasGpu {
+    pub(crate) fn page_bind_group(&self, page: usize) -> Option<&wgpu::BindGroup> {
+        self.pages
+            .get(page)
+            .or_else(|| {
+                self.overflow_pages
+                    .get(page.saturating_sub(self.pages.len()))
+            })
+            .map(|page| &page.bind_group)
+    }
+
+    fn map_page(&self, map_id: i32) -> Option<usize> {
+        self.owners
+            .get(&map_id)
+            .map(|owner| owner.page)
+            .or_else(|| self.overflow_locations.get(&map_id).map(|owner| owner.page))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -327,6 +384,544 @@ pub(crate) struct ItemFrameMapTextFontAtlasGpu {
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub(crate) struct MapSurfaceVertex {
+    position: [f32; 3],
+    uv: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub(crate) struct MapSurfaceGpuInstance {
+    model: [[f32; 4]; 4],
+    uv_rect: [f32; 4],
+    light: [f32; 4],
+}
+
+impl MapSurfaceGpuInstance {
+    fn new(transform: Mat4, uv: ItemFrameMapUvRect, light: [f32; 2]) -> Self {
+        Self {
+            model: transform.to_cols_array_2d(),
+            uv_rect: [uv.min[0], uv.min[1], uv.max[0], uv.max[1]],
+            light: [light[0], light[1], 0.0, 0.0],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MapSurfaceTarget {
+    World,
+    FirstPerson,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct MapSurfaceDraw {
+    pub(crate) target: MapSurfaceTarget,
+    pub(crate) page: usize,
+    pub(crate) first_instance: u32,
+    pub(crate) instance_count: u32,
+}
+
+pub(crate) struct MapSurfaceResidency {
+    pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) index_buffer: wgpu::Buffer,
+    pub(crate) index_count: u32,
+    dynamic_instances: Vec<MapSurfaceGpuInstance>,
+    dynamic_buffer: FrameDataBuffer,
+    pub(crate) dynamic_draws: Vec<MapSurfaceDraw>,
+    dynamic_upload_bytes: u64,
+    background_instances: Vec<MapSurfaceGpuInstance>,
+    background_buffer: FrameDataBuffer,
+    pub(crate) background_count: u32,
+    background_upload_bytes: u64,
+    decoration_instances: Vec<MapSurfaceGpuInstance>,
+    decoration_buffer: FrameDataBuffer,
+    pub(crate) decoration_draws: Vec<MapSurfaceDraw>,
+    decoration_upload_bytes: u64,
+    text_instances: Vec<MapSurfaceGpuInstance>,
+    text_buffer: FrameDataBuffer,
+    pub(crate) text_draws: Vec<MapSurfaceDraw>,
+    text_upload_bytes: u64,
+}
+
+impl MapSurfaceResidency {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        atlas_bind_group_layout: &wgpu::BindGroupLayout,
+        lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let vertices = [
+            MapSurfaceVertex {
+                position: [0.0, 1.0, 0.0],
+                uv: [0.0, 1.0],
+            },
+            MapSurfaceVertex {
+                position: [1.0, 1.0, 0.0],
+                uv: [1.0, 1.0],
+            },
+            MapSurfaceVertex {
+                position: [1.0, 0.0, 0.0],
+                uv: [1.0, 0.0],
+            },
+            MapSurfaceVertex {
+                position: [0.0, 0.0, 0.0],
+                uv: [0.0, 0.0],
+            },
+        ];
+        let indices = [0u32, 1, 2, 0, 2, 3];
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bbb-map-surface-resident-vertices"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bbb-map-surface-resident-indices"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        Self {
+            pipeline: create_map_surface_pipeline(
+                device,
+                format,
+                atlas_bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            vertex_buffer,
+            index_buffer,
+            index_count: indices.len() as u32,
+            dynamic_instances: Vec::new(),
+            dynamic_buffer: FrameDataBuffer::vertex("bbb-map-surface-frame-instances"),
+            dynamic_draws: Vec::new(),
+            dynamic_upload_bytes: 0,
+            background_instances: Vec::new(),
+            background_buffer: FrameDataBuffer::vertex("bbb-map-background-frame-instances"),
+            background_count: 0,
+            background_upload_bytes: 0,
+            decoration_instances: Vec::new(),
+            decoration_buffer: FrameDataBuffer::vertex("bbb-map-decoration-frame-instances"),
+            decoration_draws: Vec::new(),
+            decoration_upload_bytes: 0,
+            text_instances: Vec::new(),
+            text_buffer: FrameDataBuffer::vertex("bbb-map-text-frame-instances"),
+            text_draws: Vec::new(),
+            text_upload_bytes: 0,
+        }
+    }
+
+    pub(crate) fn dynamic_buffer(&self) -> Option<&wgpu::Buffer> {
+        (!self.dynamic_instances.is_empty())
+            .then(|| self.dynamic_buffer.buffer())
+            .flatten()
+    }
+
+    pub(crate) fn background_buffer(&self) -> Option<&wgpu::Buffer> {
+        (self.background_count != 0)
+            .then(|| self.background_buffer.buffer())
+            .flatten()
+    }
+
+    pub(crate) fn decoration_buffer(&self) -> Option<&wgpu::Buffer> {
+        (!self.decoration_instances.is_empty())
+            .then(|| self.decoration_buffer.buffer())
+            .flatten()
+    }
+
+    pub(crate) fn text_buffer(&self) -> Option<&wgpu::Buffer> {
+        (!self.text_instances.is_empty())
+            .then(|| self.text_buffer.buffer())
+            .flatten()
+    }
+
+    fn set_dynamic(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        atlas: Option<&ItemFrameMapAtlasGpu>,
+        item_frame_surfaces: Vec<ItemFrameMapSurface>,
+        first_person_surfaces: Vec<ItemFrameMapSurface>,
+    ) -> MapInstanceUpload {
+        self.dynamic_instances.clear();
+        self.dynamic_draws.clear();
+        let Some(atlas) = atlas else {
+            self.dynamic_upload_bytes = 0;
+            return MapInstanceUpload::default();
+        };
+        self.push_dynamic_target(atlas, item_frame_surfaces, MapSurfaceTarget::World);
+        self.push_dynamic_target(atlas, first_person_surfaces, MapSurfaceTarget::FirstPerson);
+        let upload = upload_map_instances(
+            device,
+            queue,
+            &mut self.dynamic_buffer,
+            &self.dynamic_instances,
+        );
+        self.dynamic_upload_bytes = upload.bytes;
+        upload
+    }
+
+    fn push_dynamic_target(
+        &mut self,
+        atlas: &ItemFrameMapAtlasGpu,
+        surfaces: Vec<ItemFrameMapSurface>,
+        target: MapSurfaceTarget,
+    ) {
+        for surface in surfaces {
+            let Some(rect) = atlas.layout.rects.get(&surface.submission.map_id).copied() else {
+                continue;
+            };
+            let Some(page) = atlas.map_page(surface.submission.map_id) else {
+                continue;
+            };
+            let first_instance = u32::try_from(self.dynamic_instances.len())
+                .expect("map surface instance count fits u32");
+            self.dynamic_instances.push(MapSurfaceGpuInstance::new(
+                surface.submission.transform
+                    * Mat4::from_translation(Vec3::new(0.0, 0.0, -0.01))
+                    * Mat4::from_scale(Vec3::new(
+                        ITEM_FRAME_MAP_SIZE as f32,
+                        ITEM_FRAME_MAP_SIZE as f32,
+                        1.0,
+                    )),
+                rect,
+                surface.submission.light,
+            ));
+            if let Some(draw) = self.dynamic_draws.last_mut() {
+                if draw.target == target
+                    && draw.page == page
+                    && draw.first_instance.saturating_add(draw.instance_count) == first_instance
+                {
+                    draw.instance_count = draw.instance_count.saturating_add(1);
+                    continue;
+                }
+            }
+            self.dynamic_draws.push(MapSurfaceDraw {
+                target,
+                page,
+                first_instance,
+                instance_count: 1,
+            });
+        }
+    }
+
+    fn set_background(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        atlas: Option<&FirstPersonMapBackgroundAtlasGpu>,
+        surfaces: Vec<FirstPersonMapBackgroundSurface>,
+    ) -> MapInstanceUpload {
+        self.background_instances.clear();
+        let Some(atlas) = atlas else {
+            self.background_count = 0;
+            self.background_upload_bytes = 0;
+            return MapInstanceUpload::default();
+        };
+        self.background_instances
+            .extend(surfaces.into_iter().filter_map(|surface| {
+                let rect = atlas.layout.rects.get(&surface.submission.kind).copied()?;
+                Some(MapSurfaceGpuInstance::new(
+                    surface.submission.transform
+                        * Mat4::from_translation(Vec3::new(
+                            -FIRST_PERSON_MAP_BACKGROUND_BORDER,
+                            -FIRST_PERSON_MAP_BACKGROUND_BORDER,
+                            0.0,
+                        ))
+                        * Mat4::from_scale(Vec3::new(
+                            FIRST_PERSON_MAP_BACKGROUND_SIZE,
+                            FIRST_PERSON_MAP_BACKGROUND_SIZE,
+                            1.0,
+                        )),
+                    rect,
+                    surface.submission.light,
+                ))
+            }));
+        self.background_count = u32::try_from(self.background_instances.len())
+            .expect("map background instance count fits u32");
+        let upload = upload_map_instances(
+            device,
+            queue,
+            &mut self.background_buffer,
+            &self.background_instances,
+        );
+        self.background_upload_bytes = upload.bytes;
+        upload
+    }
+
+    fn set_decorations(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        atlas: Option<&ItemFrameMapDecorationAtlasGpu>,
+        item_frame_surfaces: Vec<ItemFrameMapDecorationSurface>,
+        first_person_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    ) -> MapInstanceUpload {
+        self.decoration_instances.clear();
+        self.decoration_draws.clear();
+        let Some(atlas) = atlas else {
+            self.decoration_upload_bytes = 0;
+            return MapInstanceUpload::default();
+        };
+        self.push_decoration_target(atlas, item_frame_surfaces, MapSurfaceTarget::World);
+        self.push_decoration_target(atlas, first_person_surfaces, MapSurfaceTarget::FirstPerson);
+        let upload = upload_map_instances(
+            device,
+            queue,
+            &mut self.decoration_buffer,
+            &self.decoration_instances,
+        );
+        self.decoration_upload_bytes = upload.bytes;
+        upload
+    }
+
+    fn push_decoration_target(
+        &mut self,
+        atlas: &ItemFrameMapDecorationAtlasGpu,
+        surfaces: Vec<ItemFrameMapDecorationSurface>,
+        target: MapSurfaceTarget,
+    ) {
+        let first_instance = self.decoration_instances.len();
+        self.decoration_instances
+            .extend(surfaces.into_iter().filter_map(|surface| {
+                let rect = atlas
+                    .layout
+                    .rects
+                    .get(surface.submission.texture.sprite_id)
+                    .copied()?;
+                let rect = ItemFrameMapUvRect {
+                    min: [rect.min[0], rect.max[1]],
+                    max: [rect.max[0], rect.min[1]],
+                };
+                let local_z = surface.submission.decoration_index as f32 * -0.001;
+                Some(MapSurfaceGpuInstance::new(
+                    surface.submission.transform
+                        * Mat4::from_translation(Vec3::new(-1.0, -1.0, local_z))
+                        * Mat4::from_scale(Vec3::new(2.0, 2.0, 1.0)),
+                    rect,
+                    surface.submission.light,
+                ))
+            }));
+        let instance_count = self
+            .decoration_instances
+            .len()
+            .saturating_sub(first_instance);
+        if instance_count != 0 {
+            self.decoration_draws.push(MapSurfaceDraw {
+                target,
+                page: 0,
+                first_instance: u32::try_from(first_instance)
+                    .expect("map decoration instance count fits u32"),
+                instance_count: u32::try_from(instance_count)
+                    .expect("map decoration instance count fits u32"),
+            });
+        }
+    }
+
+    fn set_text(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        enabled: bool,
+        item_frame_surfaces: Vec<ItemFrameMapTextSurface>,
+        first_person_surfaces: Vec<ItemFrameMapTextSurface>,
+    ) -> MapInstanceUpload {
+        self.text_instances.clear();
+        self.text_draws.clear();
+        if !enabled {
+            self.text_upload_bytes = 0;
+            return MapInstanceUpload::default();
+        }
+        self.push_text_target(item_frame_surfaces, MapSurfaceTarget::World);
+        self.push_text_target(first_person_surfaces, MapSurfaceTarget::FirstPerson);
+        let upload =
+            upload_map_instances(device, queue, &mut self.text_buffer, &self.text_instances);
+        self.text_upload_bytes = upload.bytes;
+        upload
+    }
+
+    fn push_text_target(
+        &mut self,
+        surfaces: Vec<ItemFrameMapTextSurface>,
+        target: MapSurfaceTarget,
+    ) {
+        let first_instance = self.text_instances.len();
+        for surface in surfaces {
+            self.text_instances
+                .extend(surface.glyphs.into_iter().map(|glyph| {
+                    MapSurfaceGpuInstance::new(glyph.transform, glyph.uv, surface.submission.light)
+                }));
+        }
+        let instance_count = self.text_instances.len().saturating_sub(first_instance);
+        if instance_count != 0 {
+            self.text_draws.push(MapSurfaceDraw {
+                target,
+                page: 0,
+                first_instance: u32::try_from(first_instance)
+                    .expect("map text instance count fits u32"),
+                instance_count: u32::try_from(instance_count)
+                    .expect("map text instance count fits u32"),
+            });
+        }
+    }
+
+    fn instance_count(&self) -> usize {
+        self.dynamic_instances
+            .len()
+            .saturating_add(self.background_instances.len())
+            .saturating_add(self.decoration_instances.len())
+            .saturating_add(self.text_instances.len())
+    }
+
+    fn upload_bytes(&self) -> u64 {
+        self.dynamic_upload_bytes
+            .saturating_add(self.background_upload_bytes)
+            .saturating_add(self.decoration_upload_bytes)
+            .saturating_add(self.text_upload_bytes)
+    }
+
+    fn clear(&mut self) {
+        self.dynamic_instances.clear();
+        self.dynamic_draws.clear();
+        self.dynamic_upload_bytes = 0;
+        self.background_instances.clear();
+        self.background_count = 0;
+        self.background_upload_bytes = 0;
+        self.decoration_instances.clear();
+        self.decoration_draws.clear();
+        self.decoration_upload_bytes = 0;
+        self.text_instances.clear();
+        self.text_draws.clear();
+        self.text_upload_bytes = 0;
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct MapInstanceUpload {
+    bytes: u64,
+    capacity_grew: bool,
+}
+
+fn upload_map_instances(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    buffer: &mut FrameDataBuffer,
+    instances: &[MapSurfaceGpuInstance],
+) -> MapInstanceUpload {
+    if instances.is_empty() {
+        return MapInstanceUpload::default();
+    }
+    let previous_capacity = buffer.capacity();
+    let bytes = bytemuck::cast_slice(instances);
+    let _uploaded = buffer.upload(device, queue, bytes);
+    MapInstanceUpload {
+        bytes: bytes.len() as u64,
+        capacity_grew: buffer.capacity() > previous_capacity,
+    }
+}
+
+const MAP_SURFACE_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
+const MAP_SURFACE_INSTANCE_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![
+    2 => Float32x4,
+    3 => Float32x4,
+    4 => Float32x4,
+    5 => Float32x4,
+    6 => Float32x4,
+    7 => Float32x4
+];
+
+fn create_map_surface_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    atlas_bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-map-surface-resident-pipeline")
+        .shader("bbb-map-surface-resident-shader", MAP_SURFACE_SHADER)
+        .layout(
+            "bbb-map-surface-resident-pipeline-layout",
+            &[atlas_bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[
+            wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<MapSurfaceVertex>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &MAP_SURFACE_VERTEX_ATTRIBUTES,
+            },
+            wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<MapSurfaceGpuInstance>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Instance,
+                attributes: &MAP_SURFACE_INSTANCE_ATTRIBUTES,
+            },
+        ])
+        .color_target(format, Some(wgpu::BlendState::REPLACE))
+        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            true,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
+}
+
+const MAP_SURFACE_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>, lightmap_factors: vec4<f32>, lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>, sky_light_color: vec4<f32>, ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>, camera_position: vec4<f32>, fog_color: vec4<f32>,
+    fog_distances: vec4<f32>, fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>, minecraft_light1: vec4<f32>,
+};
+@group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var map_atlas: texture_2d<f32>;
+@group(0) @binding(2) var map_sampler: sampler;
+@group(1) @binding(0) var lightmap_texture: texture_2d<f32>;
+@group(1) @binding(1) var lightmap_sampler: sampler;
+struct VertexIn {
+    @location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
+    @location(2) model_0: vec4<f32>, @location(3) model_1: vec4<f32>,
+    @location(4) model_2: vec4<f32>, @location(5) model_3: vec4<f32>,
+    @location(6) uv_rect: vec4<f32>, @location(7) light: vec4<f32>,
+};
+struct VertexOut {
+    @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>,
+    @location(1) light: vec2<f32>, @location(2) spherical_distance: f32,
+    @location(3) cylindrical_distance: f32,
+};
+fn linear_fog_value(distance: f32, start: f32, end: f32) -> f32 {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0), vec2<f32>(0.5 / 16.0), vec2<f32>(15.5 / 16.0));
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+@vertex fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
+    let world = model * vec4<f32>(input.position, 1.0);
+    out.position = camera.view_proj * world;
+    out.uv = mix(input.uv_rect.xy, input.uv_rect.zw, input.uv);
+    out.light = input.light.xy;
+    let fog_position = world.xyz - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_position);
+    out.cylindrical_distance = max(length(fog_position.xz), abs(fog_position.y));
+    return out;
+}
+@fragment fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let sampled = textureSample(map_atlas, map_sampler, input.uv);
+    if (sampled.a < 0.1) { discard; }
+    let fog_value = max(
+        linear_fog_value(input.spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(input.cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    let lit = vec4<f32>(sampled.rgb * sample_lightmap(input.light), sampled.a);
+    return vec4<f32>(mix(lit.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), lit.a);
+}
+"#;
+
 pub fn item_frame_map_decoration_type(type_id: i32) -> Option<ItemFrameMapDecorationType> {
     vanilla_map_decoration_type(type_id)
 }
@@ -339,25 +934,16 @@ pub fn bake_item_frame_map_surface(
     transform: Mat4,
     light: [f32; 2],
 ) -> ItemFrameMapSurface {
-    let mut mesh = ItemModelMesh::new();
-    let corners = [
-        transform
-            .transform_point3(Vec3::new(0.0, 128.0, -0.01))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(128.0, 128.0, -0.01))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(128.0, 0.0, -0.01))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(0.0, 0.0, -0.01))
-            .to_array(),
-    ];
-    mesh.append_raw_textured_quad(
-        corners,
+    #[cfg(test)]
+    let mesh = legacy_map_surface_mesh(
+        transform,
+        [
+            Vec3::new(0.0, 128.0, -0.01),
+            Vec3::new(128.0, 128.0, -0.01),
+            Vec3::new(128.0, 0.0, -0.01),
+            Vec3::new(0.0, 0.0, -0.01),
+        ],
         [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-        [1.0, 1.0, 1.0, 1.0],
         light,
     );
     ItemFrameMapSurface {
@@ -371,6 +957,7 @@ pub fn bake_item_frame_map_surface(
             order: 0,
             submit_sequence: 0,
         },
+        #[cfg(test)]
         mesh,
     }
 }
@@ -384,29 +971,22 @@ pub fn bake_first_person_map_background_surface(
     transform: Mat4,
     light: [f32; 2],
 ) -> FirstPersonMapBackgroundSurface {
-    let min = -FIRST_PERSON_MAP_BACKGROUND_BORDER;
-    let max = FIRST_PERSON_MAP_BACKGROUND_SIZE - FIRST_PERSON_MAP_BACKGROUND_BORDER;
-    let mut mesh = ItemModelMesh::new();
-    let corners = [
-        transform
-            .transform_point3(Vec3::new(min, max, 0.0))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(max, max, 0.0))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(max, min, 0.0))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(min, min, 0.0))
-            .to_array(),
-    ];
-    mesh.append_raw_textured_quad(
-        corners,
-        [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-        [1.0, 1.0, 1.0, 1.0],
-        light,
-    );
+    #[cfg(test)]
+    let mesh = {
+        let min = -FIRST_PERSON_MAP_BACKGROUND_BORDER;
+        let max = FIRST_PERSON_MAP_BACKGROUND_SIZE - FIRST_PERSON_MAP_BACKGROUND_BORDER;
+        legacy_map_surface_mesh(
+            transform,
+            [
+                Vec3::new(min, max, 0.0),
+                Vec3::new(max, max, 0.0),
+                Vec3::new(max, min, 0.0),
+                Vec3::new(min, min, 0.0),
+            ],
+            [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+            light,
+        )
+    };
     FirstPersonMapBackgroundSurface {
         submission: FirstPersonMapBackgroundSubmission {
             kind,
@@ -418,6 +998,7 @@ pub fn bake_first_person_map_background_surface(
             order: 0,
             submit_sequence: 0,
         },
+        #[cfg(test)]
         mesh,
     }
 }
@@ -496,28 +1077,21 @@ fn bake_map_decoration_surface(
         * Mat4::from_rotation_z((f32::from(rot & 15) * 360.0 / 16.0).to_radians())
         * Mat4::from_scale(Vec3::new(4.0, 4.0, 3.0))
         * Mat4::from_translation(Vec3::new(-0.125, 0.125, 0.0));
-    let z = decoration_index as f32 * -0.001;
-    let corners = [
-        transform
-            .transform_point3(Vec3::new(-1.0, 1.0, z))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(1.0, 1.0, z))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(1.0, -1.0, z))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(-1.0, -1.0, z))
-            .to_array(),
-    ];
-    let mut mesh = ItemModelMesh::new();
-    mesh.append_raw_textured_quad(
-        corners,
-        [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-        [1.0, 1.0, 1.0, 1.0],
-        light,
-    );
+    #[cfg(test)]
+    let mesh = {
+        let z = decoration_index as f32 * -0.001;
+        legacy_map_surface_mesh(
+            transform,
+            [
+                Vec3::new(-1.0, 1.0, z),
+                Vec3::new(1.0, 1.0, z),
+                Vec3::new(1.0, -1.0, z),
+                Vec3::new(-1.0, -1.0, z),
+            ],
+            [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            light,
+        )
+    };
     Some(ItemFrameMapDecorationSurface {
         submission: ItemFrameMapDecorationSubmission {
             type_id,
@@ -532,8 +1106,26 @@ fn bake_map_decoration_surface(
             submit_sequence,
             decoration_index,
         },
+        #[cfg(test)]
         mesh,
     })
+}
+
+#[cfg(test)]
+fn legacy_map_surface_mesh(
+    transform: Mat4,
+    corners: [Vec3; 4],
+    uvs: [[f32; 2]; 4],
+    light: [f32; 2],
+) -> ItemModelMesh {
+    let mut mesh = ItemModelMesh::new();
+    mesh.append_raw_textured_quad(
+        corners.map(|corner| transform.transform_point3(corner).to_array()),
+        uvs,
+        [1.0; 4],
+        light,
+    );
+    mesh
 }
 
 /// Bakes one item-frame-visible vanilla `MapRenderer` decoration name submit. `MapRenderer.render`
@@ -618,43 +1210,58 @@ fn bake_map_text_surface(
         * Mat4::from_scale(Vec3::new(scale, scale, -1.0))
         * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.1));
 
+    let mut glyph_instances = Vec::with_capacity(text.chars().count());
+    #[cfg(test)]
     let mut mesh = ItemModelMesh::new();
     let mut pen_x = 0.0;
     for ch in text.chars() {
         let glyph = item_frame_map_text_glyph(ch, glyphs);
         if glyph.width > 0 && glyph.height > 0 {
             let x0 = pen_x;
+            #[cfg(test)]
             let x1 = pen_x + glyph.width as f32;
             // Baseline alignment across font pages (vanilla
             // `GlyphBitmap.getTop()` = `7 - ascent`): ascent-7 pages keep
             // y0 = 0, the accented page rises 3px above the line top.
             let y0 = glyph.baseline_offset();
             let y1 = y0 + glyph.height as f32;
-            let corners = [
-                transform
-                    .transform_point3(Vec3::new(x0, y0, 0.0))
-                    .to_array(),
-                transform
-                    .transform_point3(Vec3::new(x1, y0, 0.0))
-                    .to_array(),
-                transform
-                    .transform_point3(Vec3::new(x1, y1, 0.0))
-                    .to_array(),
-                transform
-                    .transform_point3(Vec3::new(x0, y1, 0.0))
-                    .to_array(),
-            ];
-            mesh.append_raw_textured_quad(
-                corners,
-                [
-                    [glyph.uv.min[0], glyph.uv.min[1]],
-                    [glyph.uv.max[0], glyph.uv.min[1]],
-                    [glyph.uv.max[0], glyph.uv.max[1]],
-                    [glyph.uv.min[0], glyph.uv.max[1]],
-                ],
-                [1.0, 1.0, 1.0, 1.0],
-                light,
-            );
+            glyph_instances.push(ItemFrameMapTextGlyphInstance {
+                transform: transform
+                    * Mat4::from_translation(Vec3::new(x0, y1, 0.0))
+                    * Mat4::from_scale(Vec3::new(glyph.width as f32, -(glyph.height as f32), 1.0)),
+                uv: ItemFrameMapUvRect {
+                    min: [glyph.uv.min[0], glyph.uv.max[1]],
+                    max: [glyph.uv.max[0], glyph.uv.min[1]],
+                },
+            });
+            #[cfg(test)]
+            {
+                let corners = [
+                    transform
+                        .transform_point3(Vec3::new(x0, y0, 0.0))
+                        .to_array(),
+                    transform
+                        .transform_point3(Vec3::new(x1, y0, 0.0))
+                        .to_array(),
+                    transform
+                        .transform_point3(Vec3::new(x1, y1, 0.0))
+                        .to_array(),
+                    transform
+                        .transform_point3(Vec3::new(x0, y1, 0.0))
+                        .to_array(),
+                ];
+                mesh.append_raw_textured_quad(
+                    corners,
+                    [
+                        [glyph.uv.min[0], glyph.uv.min[1]],
+                        [glyph.uv.max[0], glyph.uv.min[1]],
+                        [glyph.uv.max[0], glyph.uv.max[1]],
+                        [glyph.uv.min[0], glyph.uv.max[1]],
+                    ],
+                    [1.0, 1.0, 1.0, 1.0],
+                    light,
+                );
+            }
         }
         pen_x += glyph.advance as f32;
     }
@@ -674,6 +1281,8 @@ fn bake_map_text_surface(
             width,
             scale,
         },
+        glyphs: glyph_instances,
+        #[cfg(test)]
         mesh,
     })
 }
@@ -695,6 +1304,7 @@ fn item_frame_map_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyp
         .unwrap_or_default()
 }
 
+#[cfg(test)]
 pub(crate) fn merge_item_frame_map_surfaces(
     surfaces: &[ItemFrameMapSurface],
     atlas: &ItemFrameMapAtlasLayout,
@@ -715,6 +1325,7 @@ pub(crate) fn merge_item_frame_map_surfaces(
     (vertices, indices)
 }
 
+#[cfg(test)]
 pub(crate) fn merge_first_person_map_background_surfaces(
     surfaces: &[FirstPersonMapBackgroundSurface],
     atlas: &FirstPersonMapBackgroundAtlasLayout,
@@ -736,20 +1347,7 @@ pub(crate) fn merge_first_person_map_background_surfaces(
     (vertices, indices)
 }
 
-pub(crate) fn merge_item_frame_map_text_surfaces(
-    surfaces: &[ItemFrameMapTextSurface],
-) -> (Vec<ItemModelVertex>, Vec<u32>) {
-    let mut vertices = Vec::new();
-    let mut indices = Vec::new();
-    for surface in surfaces {
-        let base =
-            u32::try_from(vertices.len()).expect("item-frame map text vertex count fits in u32");
-        vertices.extend(surface.mesh.vertices.iter().copied());
-        indices.extend(surface.mesh.indices.iter().map(|index| index + base));
-    }
-    (vertices, indices)
-}
-
+#[cfg(test)]
 pub(crate) fn merge_item_frame_map_decoration_surfaces(
     surfaces: &[ItemFrameMapDecorationSurface],
     atlas: &ItemFrameMapDecorationAtlasLayout,
@@ -776,11 +1374,23 @@ pub(crate) fn merge_item_frame_map_decoration_surfaces(
 }
 
 impl Renderer {
+    #[cfg(test)]
+    fn set_map_texture_residency_limit_for_test(&mut self, max_resident_textures: usize) {
+        let atlas = self
+            .item_frame_map_atlas
+            .get_or_insert_with(create_item_frame_map_atlas_gpu);
+        atlas.max_resident_textures = max_resident_textures;
+    }
+
     pub fn set_first_person_map_background_surfaces(
         &mut self,
         textures: Vec<FirstPersonMapBackgroundTexture>,
         surfaces: Vec<FirstPersonMapBackgroundSurface>,
     ) {
+        #[cfg(test)]
+        {
+            self.first_person_map_background_surfaces = surfaces.clone();
+        }
         if self.first_person_map_background_atlas.is_none() {
             self.first_person_map_background_atlas =
                 build_first_person_map_background_atlas(&textures).map(|(layout, rgba)| {
@@ -794,18 +1404,13 @@ impl Renderer {
                     )
                 });
         }
-        self.first_person_map_background_surfaces = if let Some(atlas) =
-            &self.first_person_map_background_atlas
-        {
-            surfaces
-                .into_iter()
-                .filter(|surface| {
-                    !surface.is_empty() && atlas.layout.rects.contains_key(&surface.submission.kind)
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let upload = self.map_surface_residency.set_background(
+            &self.device,
+            &self.queue,
+            self.first_person_map_background_atlas.as_ref(),
+            surfaces,
+        );
+        self.record_map_instance_upload(upload);
     }
 
     /// Sets this frame's filled-map item-frame submissions and updates only
@@ -829,6 +1434,11 @@ impl Renderer {
         item_frame_surfaces: Vec<ItemFrameMapSurface>,
         first_person_surfaces: Vec<ItemFrameMapSurface>,
     ) {
+        #[cfg(test)]
+        {
+            self.item_frame_map_surfaces = item_frame_surfaces.clone();
+            self.first_person_map_surfaces = first_person_surfaces.clone();
+        }
         self.counters.item_map_upload_bytes = 0;
         let mut textures = BTreeMap::new();
         for texture in item_frame_textures.into_iter().chain(first_person_textures) {
@@ -837,137 +1447,94 @@ impl Renderer {
             }
         }
         self.prepare_map_atlas_capacity(&textures);
+        let mut overflow = Vec::new();
         for texture in textures.into_values() {
-            self.update_resident_map_texture(texture);
+            if let Some(texture) = self.update_resident_map_texture(texture) {
+                overflow.push(texture);
+            }
         }
+        self.install_overflow_map_textures(overflow);
         self.refresh_map_texture_counters();
-        self.item_frame_map_surfaces = if let Some(atlas) = &self.item_frame_map_atlas {
-            item_frame_surfaces
-                .into_iter()
-                .filter(|surface| {
-                    !surface.is_empty()
-                        && atlas.layout.rects.contains_key(&surface.submission.map_id)
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-        self.first_person_map_surfaces = if let Some(atlas) = &self.item_frame_map_atlas {
-            first_person_surfaces
-                .into_iter()
-                .filter(|surface| {
-                    !surface.is_empty()
-                        && atlas.layout.rects.contains_key(&surface.submission.map_id)
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let upload = self.map_surface_residency.set_dynamic(
+            &self.device,
+            &self.queue,
+            self.item_frame_map_atlas.as_ref(),
+            item_frame_surfaces,
+            first_person_surfaces,
+        );
+        self.record_map_instance_upload(upload);
     }
 
     fn prepare_map_atlas_capacity(&mut self, textures: &BTreeMap<i32, ItemFrameMapTexture>) {
-        if let Some(atlas) = &mut self.item_frame_map_atlas {
-            atlas.frame_index = atlas
-                .frame_index
-                .checked_add(1)
-                .expect("map atlas frame overflow");
+        if textures.is_empty() {
+            if let Some(atlas) = &mut self.item_frame_map_atlas {
+                atlas.overflow_pages.clear();
+                atlas.overflow_locations.clear();
+                atlas
+                    .layout
+                    .rects
+                    .retain(|map_id, _| atlas.owners.contains_key(map_id));
+            }
+            return;
         }
+        let atlas = self
+            .item_frame_map_atlas
+            .get_or_insert_with(|| create_item_frame_map_atlas_gpu());
+        atlas.frame_index = atlas
+            .frame_index
+            .checked_add(1)
+            .expect("map atlas frame overflow");
+        atlas.overflow_pages.clear();
+        atlas.overflow_locations.clear();
+        atlas
+            .layout
+            .rects
+            .retain(|map_id, _| atlas.owners.contains_key(map_id));
         let requested = textures
             .keys()
             .copied()
             .collect::<std::collections::BTreeSet<_>>();
-        if let Some(atlas) = &mut self.item_frame_map_atlas {
-            let mut missing = requested
+        let mut missing = requested
+            .iter()
+            .filter(|map_id| !atlas.owners.contains_key(map_id))
+            .count();
+        while atlas.owners.len().saturating_add(missing) > atlas.max_resident_textures {
+            let candidate = atlas
+                .owners
+                .iter()
+                .filter(|(map_id, _)| !requested.contains(map_id))
+                .min_by_key(|(map_id, owner)| (owner.last_used_frame, **map_id))
+                .map(|(map_id, _)| *map_id);
+            let Some(candidate) = candidate else {
+                break;
+            };
+            remove_resident_map_texture(atlas, candidate);
+            missing = requested
                 .iter()
                 .filter(|map_id| !atlas.owners.contains_key(map_id))
                 .count();
-            while atlas.owners.len().saturating_add(missing) > MAX_RESIDENT_MAP_TEXTURES {
-                let candidate = atlas
-                    .owners
-                    .iter()
-                    .filter(|(map_id, _)| !requested.contains(map_id))
-                    .min_by_key(|(map_id, owner)| (owner.last_used_frame, **map_id))
-                    .map(|(map_id, _)| *map_id);
-                let Some(candidate) = candidate else {
-                    break;
-                };
-                remove_resident_map_texture(atlas, candidate);
-                missing = requested
-                    .iter()
-                    .filter(|map_id| !atlas.owners.contains_key(map_id))
-                    .count();
-            }
         }
-
-        let owner_count = self
-            .item_frame_map_atlas
-            .as_ref()
-            .map_or(0, |atlas| atlas.owners.len());
-        let missing = requested
-            .iter()
-            .filter(|map_id| {
-                self.item_frame_map_atlas
-                    .as_ref()
-                    .is_none_or(|atlas| !atlas.owners.contains_key(map_id))
-            })
-            .count();
-        let required = owner_count
-            .saturating_add(missing)
-            .min(MAX_RESIDENT_MAP_TEXTURES);
-        if required == 0 {
-            return;
-        }
-        let required_side = map_atlas_side_for_capacity(required);
-        let current_side = self
-            .item_frame_map_atlas
-            .as_ref()
-            .map_or(0, |atlas| atlas.side_slots);
-        if current_side >= required_side {
-            return;
-        }
-
-        let previous = self.item_frame_map_atlas.take();
-        let mut atlas = create_item_frame_map_atlas_gpu(
-            &self.device,
-            &self.terrain_bind_group_layout,
-            &self.camera_buffer,
-            required_side,
-        );
-        if let Some(previous) = previous {
-            atlas.frame_index = previous.frame_index;
-            let owners = previous.owners.into_values().collect::<Vec<_>>();
-            for owner in owners {
-                write_full_map_texture(&self.queue, &atlas.texture, atlas.side_slots, &owner);
-                self.counters.item_map_upload_bytes = self
-                    .counters
-                    .item_map_upload_bytes
-                    .saturating_add(owner.rgba.len() as u64);
-                insert_resident_map_texture(&mut atlas, owner);
-            }
-            self.counters.item_full_residency_replacements = self
-                .counters
-                .item_full_residency_replacements
-                .saturating_add(1);
-            self.counters.map_full_residency_replacements = self
-                .counters
-                .map_full_residency_replacements
-                .saturating_add(1);
-        }
-        self.item_frame_map_atlas = Some(atlas);
     }
 
-    fn update_resident_map_texture(&mut self, texture: ItemFrameMapTexture) {
+    fn update_resident_map_texture(
+        &mut self,
+        texture: ItemFrameMapTexture,
+    ) -> Option<ItemFrameMapTexture> {
         let Some(atlas) = &mut self.item_frame_map_atlas else {
-            return;
+            return Some(texture);
         };
-        if let Some(owner) = atlas.owners.get_mut(&texture.map_id) {
-            owner.last_used_frame = atlas.frame_index;
+        if let Some(owner) = atlas.owners.get(&texture.map_id).cloned() {
             if owner.owner_generation == texture.owner_generation
                 && owner.content_revision == texture.content_revision
             {
+                atlas
+                    .owners
+                    .get_mut(&texture.map_id)
+                    .expect("resident map owner checked above")
+                    .last_used_frame = atlas.frame_index;
                 self.counters.map_textures_reused =
                     self.counters.map_textures_reused.saturating_add(1);
-                return;
+                return None;
             }
             if owner.owner_generation > texture.owner_generation
                 || (owner.owner_generation == texture.owner_generation
@@ -975,15 +1542,16 @@ impl Renderer {
             {
                 self.counters.map_textures_stale =
                     self.counters.map_textures_stale.saturating_add(1);
-                return;
+                return None;
             }
+            let page = &atlas.pages[owner.page];
             let patched = owner.owner_generation == texture.owner_generation
                 && owner.content_revision.checked_add(1) == Some(texture.content_revision)
                 && texture.patch.as_ref().is_some_and(|patch| {
                     write_map_texture_patch(
                         &self.queue,
-                        &atlas.texture,
-                        atlas.side_slots,
+                        &page.texture,
+                        MAP_ATLAS_PAGE_SIDE_SLOTS,
                         owner.slot,
                         patch,
                     )
@@ -996,15 +1564,21 @@ impl Renderer {
             } else {
                 let replacement = ResidentMapTexture {
                     map_id: texture.map_id,
+                    page: owner.page,
                     slot: owner.slot,
                     owner_generation: texture.owner_generation,
                     content_revision: texture.content_revision,
                     rgba: Arc::clone(&texture.rgba),
                     last_used_frame: atlas.frame_index,
                 };
-                write_full_map_texture(&self.queue, &atlas.texture, atlas.side_slots, &replacement);
+                write_full_map_texture(&self.queue, &page.texture, &replacement);
                 texture.rgba.len() as u64
             };
+            let owner = atlas
+                .owners
+                .get_mut(&texture.map_id)
+                .expect("resident map owner checked above");
+            owner.last_used_frame = atlas.frame_index;
             owner.owner_generation = texture.owner_generation;
             owner.content_revision = texture.content_revision;
             owner.rgba = texture.rgba;
@@ -1014,32 +1588,87 @@ impl Renderer {
                 .saturating_add(uploaded_bytes);
             self.counters.map_textures_updated =
                 self.counters.map_textures_updated.saturating_add(1);
-            return;
+            return None;
         }
 
-        let Some(slot) = atlas.free_slots.pop() else {
-            return;
+        if atlas.owners.len() >= atlas.max_resident_textures {
+            return Some(texture);
+        }
+        let Some((page_index, slot)) = allocate_resident_map_slot(
+            atlas,
+            &self.device,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+        ) else {
+            return Some(texture);
         };
         let owner = ResidentMapTexture {
             map_id: texture.map_id,
+            page: page_index,
             slot,
             owner_generation: texture.owner_generation,
             content_revision: texture.content_revision,
             rgba: texture.rgba,
             last_used_frame: atlas.frame_index,
         };
-        write_full_map_texture(&self.queue, &atlas.texture, atlas.side_slots, &owner);
+        write_full_map_texture(&self.queue, &atlas.pages[page_index].texture, &owner);
         self.counters.item_map_upload_bytes = self
             .counters
             .item_map_upload_bytes
             .saturating_add(owner.rgba.len() as u64);
         self.counters.map_textures_created = self.counters.map_textures_created.saturating_add(1);
         insert_resident_map_texture(atlas, owner);
+        None
+    }
+
+    fn install_overflow_map_textures(&mut self, textures: Vec<ItemFrameMapTexture>) {
+        let Some(atlas) = &mut self.item_frame_map_atlas else {
+            return;
+        };
+        for texture in textures {
+            let local_page = atlas.overflow_pages.len().saturating_sub(1);
+            let needs_page = atlas
+                .overflow_pages
+                .get(local_page)
+                .is_none_or(|page| page.free_slots.is_empty());
+            if needs_page {
+                atlas
+                    .overflow_pages
+                    .push(create_item_frame_map_atlas_page_gpu(
+                        &self.device,
+                        &self.terrain_bind_group_layout,
+                        &self.camera_buffer,
+                    ));
+            }
+            let local_page = atlas.overflow_pages.len() - 1;
+            let page = &mut atlas.overflow_pages[local_page];
+            let slot = page
+                .free_slots
+                .pop()
+                .expect("new overflow map page has a free slot");
+            write_full_map_pixels(&self.queue, &page.texture, slot, &texture.rgba);
+            let page_index = atlas.pages.len() + local_page;
+            atlas.layout.rects.insert(
+                texture.map_id,
+                map_texture_slot_rect(slot, MAP_ATLAS_PAGE_SIDE_SLOTS),
+            );
+            atlas
+                .overflow_locations
+                .insert(texture.map_id, OverflowMapTexture { page: page_index });
+            self.counters.item_map_upload_bytes = self
+                .counters
+                .item_map_upload_bytes
+                .saturating_add(texture.rgba.len() as u64);
+            self.counters.map_texture_fallbacks =
+                self.counters.map_texture_fallbacks.saturating_add(1);
+        }
     }
 
     pub fn remove_map_texture(&mut self, map_id: i32) {
         if let Some(atlas) = &mut self.item_frame_map_atlas {
             remove_resident_map_texture(atlas, map_id);
+            atlas.overflow_locations.remove(&map_id);
+            atlas.layout.rects.remove(&map_id);
         }
         self.refresh_map_texture_counters();
     }
@@ -1054,16 +1683,37 @@ impl Renderer {
         self.item_frame_map_atlas = None;
         self.first_person_map_background_atlas = None;
         self.item_frame_map_decoration_atlas = None;
+        self.map_surface_residency.clear();
         self.refresh_map_texture_counters();
+        self.refresh_map_instance_counters();
     }
 
     fn refresh_map_texture_counters(&mut self) {
         let bytes = self.item_frame_map_atlas.as_ref().map_or(0, |atlas| {
-            (atlas.owners.len() as u64).saturating_mul(ITEM_FRAME_MAP_RGBA_LEN as u64)
+            (atlas
+                .owners
+                .len()
+                .saturating_add(atlas.overflow_locations.len()) as u64)
+                .saturating_mul(ITEM_FRAME_MAP_RGBA_LEN as u64)
         });
         self.counters.map_texture_resident_bytes = bytes;
         self.counters.map_texture_peak_resident_bytes =
             self.counters.map_texture_peak_resident_bytes.max(bytes);
+    }
+
+    fn record_map_instance_upload(&mut self, upload: MapInstanceUpload) {
+        if upload.capacity_grew {
+            self.counters.item_extraction_scratch_capacity_growths = self
+                .counters
+                .item_extraction_scratch_capacity_growths
+                .saturating_add(1);
+        }
+        self.refresh_map_instance_counters();
+    }
+
+    fn refresh_map_instance_counters(&mut self) {
+        self.counters.map_instance_upload_bytes = self.map_surface_residency.upload_bytes();
+        self.counters.map_surface_instances = self.map_surface_residency.instance_count();
     }
 
     /// Sets this frame's `MapRenderer` decoration sprite submissions for filled-map item frames. The
@@ -1087,6 +1737,11 @@ impl Renderer {
         item_frame_surfaces: Vec<ItemFrameMapDecorationSurface>,
         first_person_surfaces: Vec<ItemFrameMapDecorationSurface>,
     ) {
+        #[cfg(test)]
+        {
+            self.item_frame_map_decoration_surfaces = item_frame_surfaces.clone();
+            self.first_person_map_decoration_surfaces = first_person_surfaces.clone();
+        }
         if self.item_frame_map_decoration_atlas.is_none() {
             self.item_frame_map_decoration_atlas = build_item_frame_map_decoration_atlas(
                 item_frame_textures
@@ -1104,41 +1759,18 @@ impl Renderer {
                 )
             });
         }
-        self.item_frame_map_decoration_surfaces =
-            if let Some(atlas) = &self.item_frame_map_decoration_atlas {
-                item_frame_surfaces
-                    .into_iter()
-                    .filter(|surface| {
-                        !surface.is_empty()
-                            && atlas
-                                .layout
-                                .rects
-                                .contains_key(surface.submission.texture.sprite_id)
-                    })
-                    .collect()
-            } else {
-                Vec::new()
-            };
-        self.first_person_map_decoration_surfaces =
-            if let Some(atlas) = &self.item_frame_map_decoration_atlas {
-                first_person_surfaces
-                    .into_iter()
-                    .filter(|surface| {
-                        !surface.is_empty()
-                            && atlas
-                                .layout
-                                .rects
-                                .contains_key(surface.submission.texture.sprite_id)
-                    })
-                    .collect()
-            } else {
-                Vec::new()
-            };
+        let upload = self.map_surface_residency.set_decorations(
+            &self.device,
+            &self.queue,
+            self.item_frame_map_decoration_atlas.as_ref(),
+            item_frame_surfaces,
+            first_person_surfaces,
+        );
+        self.record_map_instance_upload(upload);
     }
 
-    /// Uploads the vanilla ASCII font atlas for world-space item-frame map label text. Native also uses
-    /// the same glyph metrics when baking the text submissions, so width-based label placement and UVs
-    /// stay in sync.
+    /// Uploads the persistent vanilla ASCII font atlas for map label text. Native uses the same glyph
+    /// metrics to emit narrow glyph instances; no world-space glyph mesh is retained in production.
     pub fn upload_item_frame_map_text_font(&mut self, width: u32, height: u32, rgba: &[u8]) {
         self.item_frame_map_text_font_atlas = create_item_frame_map_text_font_atlas_gpu(
             &self.device,
@@ -1160,88 +1792,14 @@ impl Renderer {
         item_frame_surfaces: Vec<ItemFrameMapTextSurface>,
         first_person_surfaces: Vec<ItemFrameMapTextSurface>,
     ) {
-        self.item_frame_map_text_surfaces = if self.item_frame_map_text_font_atlas.is_some() {
-            item_frame_surfaces
-                .into_iter()
-                .filter(|surface| !surface.is_empty())
-                .collect()
-        } else {
-            Vec::new()
-        };
-        self.first_person_map_text_surfaces = if self.item_frame_map_text_font_atlas.is_some() {
-            first_person_surfaces
-                .into_iter()
-                .filter(|surface| !surface.is_empty())
-                .collect()
-        } else {
-            Vec::new()
-        };
-    }
-
-    pub(crate) fn collect_item_frame_map_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        let Some(atlas) = &self.item_frame_map_atlas else {
-            return (Vec::new(), Vec::new());
-        };
-        merge_item_frame_map_surfaces(&self.item_frame_map_surfaces, &atlas.layout)
-    }
-
-    pub(crate) fn collect_first_person_map_background_geometry(
-        &self,
-    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        let Some(atlas) = &self.first_person_map_background_atlas else {
-            return (Vec::new(), Vec::new());
-        };
-        merge_first_person_map_background_surfaces(
-            &self.first_person_map_background_surfaces,
-            &atlas.layout,
-        )
-    }
-
-    pub(crate) fn collect_first_person_map_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        let Some(atlas) = &self.item_frame_map_atlas else {
-            return (Vec::new(), Vec::new());
-        };
-        merge_item_frame_map_surfaces(&self.first_person_map_surfaces, &atlas.layout)
-    }
-
-    pub(crate) fn collect_item_frame_map_decoration_geometry(
-        &self,
-    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        let Some(atlas) = &self.item_frame_map_decoration_atlas else {
-            return (Vec::new(), Vec::new());
-        };
-        merge_item_frame_map_decoration_surfaces(
-            &self.item_frame_map_decoration_surfaces,
-            &atlas.layout,
-        )
-    }
-
-    pub(crate) fn collect_first_person_map_decoration_geometry(
-        &self,
-    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        let Some(atlas) = &self.item_frame_map_decoration_atlas else {
-            return (Vec::new(), Vec::new());
-        };
-        merge_item_frame_map_decoration_surfaces(
-            &self.first_person_map_decoration_surfaces,
-            &atlas.layout,
-        )
-    }
-
-    pub(crate) fn collect_item_frame_map_text_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        if self.item_frame_map_text_font_atlas.is_none() {
-            return (Vec::new(), Vec::new());
-        }
-        merge_item_frame_map_text_surfaces(&self.item_frame_map_text_surfaces)
-    }
-
-    pub(crate) fn collect_first_person_map_text_geometry(
-        &self,
-    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        if self.item_frame_map_text_font_atlas.is_none() {
-            return (Vec::new(), Vec::new());
-        }
-        merge_item_frame_map_text_surfaces(&self.first_person_map_text_surfaces)
+        let upload = self.map_surface_residency.set_text(
+            &self.device,
+            &self.queue,
+            self.item_frame_map_text_font_atlas.is_some(),
+            item_frame_surfaces,
+            first_person_surfaces,
+        );
+        self.record_map_instance_upload(upload);
     }
 }
 
@@ -1424,15 +1982,6 @@ fn build_item_frame_map_atlas<'a>(
     ))
 }
 
-fn map_atlas_side_for_capacity(capacity: usize) -> u32 {
-    let capacity = u32::try_from(capacity.max(1)).expect("map atlas capacity fits u32");
-    let mut side = 1u32;
-    while side.saturating_mul(side) < capacity {
-        side = side.checked_mul(2).expect("map atlas side overflow");
-    }
-    side
-}
-
 fn map_texture_slot_origin(slot: u32, side_slots: u32) -> wgpu::Origin3d {
     wgpu::Origin3d {
         x: (slot % side_slots) * ITEM_FRAME_MAP_SIZE,
@@ -1456,15 +2005,29 @@ fn map_texture_slot_rect(slot: u32, side_slots: u32) -> ItemFrameMapUvRect {
     }
 }
 
-fn create_item_frame_map_atlas_gpu(
+fn create_item_frame_map_atlas_gpu() -> ItemFrameMapAtlasGpu {
+    let atlas_size = MAP_ATLAS_PAGE_SIDE_SLOTS * ITEM_FRAME_MAP_SIZE;
+    ItemFrameMapAtlasGpu {
+        pages: Vec::new(),
+        overflow_pages: Vec::new(),
+        overflow_locations: BTreeMap::new(),
+        layout: ItemFrameMapAtlasLayout {
+            width: atlas_size,
+            height: atlas_size,
+            rects: BTreeMap::new(),
+        },
+        owners: BTreeMap::new(),
+        frame_index: 0,
+        max_resident_textures: MAX_RESIDENT_MAP_TEXTURES,
+    }
+}
+
+fn create_item_frame_map_atlas_page_gpu(
     device: &wgpu::Device,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
-    side_slots: u32,
-) -> ItemFrameMapAtlasGpu {
-    let atlas_size = side_slots
-        .checked_mul(ITEM_FRAME_MAP_SIZE)
-        .expect("map atlas extent overflow");
+) -> ItemFrameMapAtlasPageGpu {
+    let atlas_size = MAP_ATLAS_PAGE_SIDE_SLOTS * ITEM_FRAME_MAP_SIZE;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("bbb-item-frame-map-atlas-texture"),
         size: wgpu::Extent3d {
@@ -1508,37 +2071,64 @@ fn create_item_frame_map_atlas_gpu(
             },
         ],
     });
-    ItemFrameMapAtlasGpu {
+    ItemFrameMapAtlasPageGpu {
         texture,
         _view: view,
         _sampler: sampler,
         bind_group,
-        layout: ItemFrameMapAtlasLayout {
-            width: atlas_size,
-            height: atlas_size,
-            rects: BTreeMap::new(),
-        },
-        owners: BTreeMap::new(),
-        free_slots: (0..side_slots * side_slots).rev().collect(),
-        side_slots,
-        frame_index: 1,
+        free_slots: (0..MAP_ATLAS_PAGE_SIDE_SLOTS * MAP_ATLAS_PAGE_SIDE_SLOTS)
+            .rev()
+            .collect(),
     }
+}
+
+fn allocate_resident_map_slot(
+    atlas: &mut ItemFrameMapAtlasGpu,
+    device: &wgpu::Device,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+) -> Option<(usize, u32)> {
+    if let Some((page_index, slot)) = atlas
+        .pages
+        .iter_mut()
+        .enumerate()
+        .find_map(|(page, owner)| owner.free_slots.pop().map(|slot| (page, slot)))
+    {
+        return Some((page_index, slot));
+    }
+    if atlas.pages.len() >= MAX_RESIDENT_MAP_PAGES {
+        return None;
+    }
+    atlas.pages.push(create_item_frame_map_atlas_page_gpu(
+        device,
+        bind_group_layout,
+        camera_buffer,
+    ));
+    let page_index = atlas.pages.len() - 1;
+    let slot = atlas.pages[page_index]
+        .free_slots
+        .pop()
+        .expect("new resident map page has a free slot");
+    Some((page_index, slot))
 }
 
 fn write_full_map_texture(
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
-    side_slots: u32,
     owner: &ResidentMapTexture,
 ) {
+    write_full_map_pixels(queue, texture, owner.slot, &owner.rgba);
+}
+
+fn write_full_map_pixels(queue: &wgpu::Queue, texture: &wgpu::Texture, slot: u32, rgba: &[u8]) {
     queue.write_texture(
         wgpu::ImageCopyTexture {
             texture,
             mip_level: 0,
-            origin: map_texture_slot_origin(owner.slot, side_slots),
+            origin: map_texture_slot_origin(slot, MAP_ATLAS_PAGE_SIDE_SLOTS),
             aspect: wgpu::TextureAspect::All,
         },
-        &owner.rgba,
+        rgba,
         wgpu::ImageDataLayout {
             offset: 0,
             bytes_per_row: Some(ITEM_FRAME_MAP_SIZE * 4),
@@ -1599,18 +2189,17 @@ fn write_map_texture_patch(
 }
 
 fn insert_resident_map_texture(atlas: &mut ItemFrameMapAtlasGpu, owner: ResidentMapTexture) {
-    atlas.free_slots.retain(|slot| *slot != owner.slot);
     let map_id = owner.map_id;
-    atlas
-        .layout
-        .rects
-        .insert(map_id, map_texture_slot_rect(owner.slot, atlas.side_slots));
+    atlas.layout.rects.insert(
+        map_id,
+        map_texture_slot_rect(owner.slot, MAP_ATLAS_PAGE_SIDE_SLOTS),
+    );
     atlas.owners.insert(map_id, owner);
 }
 
 fn remove_resident_map_texture(atlas: &mut ItemFrameMapAtlasGpu, map_id: i32) {
     if let Some(owner) = atlas.owners.remove(&map_id) {
-        atlas.free_slots.push(owner.slot);
+        atlas.pages[owner.page].free_slots.push(owner.slot);
         atlas.layout.rects.remove(&map_id);
     }
 }
@@ -1967,6 +2556,11 @@ mod tests {
         assert_eq!(renderer.counters().item_map_upload_bytes, 131_072);
         assert_eq!(renderer.counters().map_textures_created, 2);
         assert_eq!(renderer.counters().map_texture_resident_bytes, 131_072);
+        assert_eq!(renderer.counters().map_surface_instances, 2);
+        assert!(renderer.counters().map_instance_upload_bytes > 0);
+        renderer
+            .render(None)
+            .expect("resident map instances render through the static quad pipeline");
         let slot = renderer
             .item_frame_map_atlas
             .as_ref()
@@ -2048,6 +2642,60 @@ mod tests {
         assert_eq!(second_owner.slot, second_slot);
         assert_eq!(second_owner.content_revision, 0);
         assert!(Arc::ptr_eq(&second_owner.rgba, &second_owner_rgba));
+    }
+
+    #[test]
+    fn map_owner_capacity_falls_back_to_current_frame_page_without_hiding_surface() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer.set_map_texture_residency_limit_for_test(1);
+        renderer.set_map_surfaces(
+            vec![
+                map_texture(10, vec![1; ITEM_FRAME_MAP_RGBA_LEN]),
+                map_texture(11, vec![2; ITEM_FRAME_MAP_RGBA_LEN]),
+            ],
+            Vec::new(),
+            vec![
+                bake_item_frame_map_surface(10, Mat4::IDENTITY, [1.0; 2]),
+                bake_item_frame_map_surface(11, Mat4::IDENTITY, [1.0; 2]),
+            ],
+            Vec::new(),
+        );
+
+        let atlas = renderer.item_frame_map_atlas.as_ref().unwrap();
+        assert_eq!(atlas.owners.len(), 1);
+        assert_eq!(atlas.overflow_locations.len(), 1);
+        assert_eq!(renderer.map_surface_residency.dynamic_draws.len(), 2);
+        assert_eq!(renderer.counters().map_surface_instances, 2);
+        assert_eq!(renderer.counters().map_texture_fallbacks, 1);
+        assert_eq!(renderer.counters().item_map_upload_bytes, 131_072);
+        assert_eq!(renderer.counters().map_full_residency_replacements, 0);
+    }
+
+    #[test]
+    fn adding_second_map_page_uploads_only_new_owner_without_replacing_first_page() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let first_page = (0..MAP_ATLAS_PAGE_CAPACITY as i32)
+            .map(|map_id| map_texture(map_id, vec![map_id as u8; ITEM_FRAME_MAP_RGBA_LEN]))
+            .collect::<Vec<_>>();
+        renderer.set_map_surfaces(first_page.clone(), Vec::new(), Vec::new(), Vec::new());
+        assert_eq!(
+            renderer.item_frame_map_atlas.as_ref().unwrap().pages.len(),
+            1
+        );
+        assert_eq!(renderer.counters().map_full_residency_replacements, 0);
+
+        let mut second_page = first_page;
+        second_page.push(map_texture(64, vec![64; ITEM_FRAME_MAP_RGBA_LEN]));
+        renderer.set_map_surfaces(second_page, Vec::new(), Vec::new(), Vec::new());
+        let atlas = renderer.item_frame_map_atlas.as_ref().unwrap();
+        assert_eq!(atlas.pages.len(), 2);
+        assert_eq!(atlas.owners.len(), MAP_ATLAS_PAGE_CAPACITY + 1);
+        assert_eq!(renderer.counters().item_map_upload_bytes, 65_536);
+        assert_eq!(renderer.counters().map_full_residency_replacements, 0);
     }
 
     #[test]
@@ -2319,7 +2967,6 @@ mod tests {
             .vertices
             .iter()
             .all(|vertex| vertex.color == [1.0, 1.0, 1.0, 1.0] && vertex.light == light));
-
         assert!(
             bake_item_frame_map_decoration_surface(0, 0, 0, 0, 0, map_transform, light, 1)
                 .is_none(),
@@ -2395,6 +3042,31 @@ mod tests {
             .vertices
             .iter()
             .all(|vertex| vertex.color == [1.0, 1.0, 1.0, 1.0] && vertex.light == light));
+        let unit_positions = [
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec3::new(1.0, 1.0, 0.0),
+            Vec3::new(1.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, 0.0),
+        ];
+        let unit_uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+        for (glyph, vertices) in surface
+            .glyphs
+            .iter()
+            .zip(surface.mesh.vertices.chunks_exact(4))
+        {
+            for ((position, uv), legacy) in unit_positions.iter().zip(unit_uvs).zip(vertices) {
+                let position = glyph.transform.transform_point3(*position).to_array();
+                let uv = glyph.uv.map(uv);
+                assert!(position
+                    .iter()
+                    .zip(legacy.position)
+                    .all(|(actual, expected)| (*actual - expected).abs() < 1.0e-5));
+                assert!(uv
+                    .iter()
+                    .zip(legacy.uv)
+                    .all(|(actual, expected)| (*actual - expected).abs() < 1.0e-6));
+            }
+        }
 
         assert!(
             bake_item_frame_map_text_surface(
@@ -2425,6 +3097,46 @@ mod tests {
         .expect("first-person maps render text for non-frame decorations");
         assert_eq!(first_person.submission.type_id, 0);
         assert_eq!(first_person.submission.text, "Player");
+    }
+
+    #[test]
+    fn map_text_uses_resident_quad_and_narrow_glyph_instances() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer.upload_item_frame_map_text_font(1, 1, &[255, 255, 255, 255]);
+        let surface = bake_item_frame_map_text_surface(
+            1,
+            "Frame",
+            0,
+            0,
+            0,
+            Mat4::IDENTITY,
+            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            0,
+            &test_map_text_glyphs(),
+        )
+        .expect("map text");
+        let glyph_count = surface.glyphs.len();
+        renderer.set_map_text_surfaces(vec![surface], Vec::new());
+
+        assert_eq!(
+            renderer.map_surface_residency.text_instances.len(),
+            glyph_count
+        );
+        assert_eq!(renderer.map_surface_residency.text_draws.len(), 1);
+        assert_eq!(
+            renderer.map_surface_residency.text_draws[0].target,
+            MapSurfaceTarget::World
+        );
+        assert_eq!(renderer.counters().map_surface_instances, glyph_count);
+        assert_eq!(
+            renderer.counters().map_instance_upload_bytes,
+            (glyph_count * std::mem::size_of::<MapSurfaceGpuInstance>()) as u64
+        );
+        renderer.update_camera();
+        renderer.render_offscreen_frame().unwrap();
+        assert_eq!(renderer.counters().item_transient_buffer_creations, 0);
     }
 
     #[test]

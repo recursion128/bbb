@@ -1,19 +1,17 @@
-//! CPU baseline for the legacy world-space item/map frame path.
+//! CPU comparison for the legacy world-space item/map path and resident narrow-instance path.
 //!
-//! The production path at this baseline resolves model-space quads, bakes every
-//! visible or rejected instance into fresh world-space meshes, and later merges
-//! and uploads those meshes. These cases intentionally include the repeated
-//! bake and owner materialization; later residency measurements use the same
-//! matrix and separately assert exact GPU upload counts in offscreen tests.
+//! Legacy cases intentionally include repeated bake/owner materialization;
+//! resident cases stop after payload-independent identity and instance
+//! extraction. Offscreen tests separately assert exact static/instance uploads.
 
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use bbb_renderer::{
-    bake_item_model_meshes_with_light_and_overlay_and_foil_mode, ItemFrameMapTexture,
-    ItemFrameMapTexturePatch, ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource,
-    ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
-    ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMeshSet, ItemModelQuad,
-    ItemModelResidencyFrame, ITEM_MODEL_NO_OVERLAY,
+    bake_item_frame_map_surface, bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
+    ItemFrameMapTexture, ItemFrameMapTexturePatch, ItemModelAssetIdentity, ItemModelAssetRequest,
+    ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget,
+    ItemModelFoil, ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMeshSet,
+    ItemModelQuad, ItemModelResidencyFrame, ITEM_MODEL_NO_OVERLAY,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use glam::{Mat4, Vec3};
@@ -237,6 +235,22 @@ fn resident_instance_frame(
     frame
 }
 
+fn resident_gui_instance_frame(
+    quads: &Arc<[ItemModelQuad]>,
+    count: usize,
+) -> ItemModelResidencyFrame {
+    let mut frame = resident_instance_frame(quads, count, count, DynamicWork::Stable);
+    for (index, instance) in frame.instances.iter_mut().enumerate() {
+        instance.target = ItemModelDrawTarget::Gui;
+        instance.transform = Mat4::from_translation(Vec3::new(
+            (index % 9) as f32 * 18.0,
+            (index / 9) as f32 * 18.0,
+            0.0,
+        )) * Mat4::from_scale(Vec3::new(16.0, -16.0, 16.0));
+    }
+    frame
+}
+
 fn representative_map(id: i32, revision: u8) -> ItemFrameMapTexture {
     let mut rgba = vec![0_u8; MAP_BYTES];
     for (index, pixel) in rgba.chunks_exact_mut(4).enumerate() {
@@ -306,6 +320,36 @@ fn resident_map_owner_decision(
         }
     }
     uploaded
+}
+
+fn legacy_world_space_map_surfaces(transforms: &[Mat4]) -> (Vec<[f32; 7]>, Vec<u32>) {
+    let surfaces = transforms
+        .iter()
+        .map(|transform| {
+            let corners = [
+                Vec3::new(0.0, 128.0, -0.01),
+                Vec3::new(128.0, 128.0, -0.01),
+                Vec3::new(128.0, 0.0, -0.01),
+                Vec3::new(0.0, 0.0, -0.01),
+            ];
+            corners
+                .into_iter()
+                .zip([[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]])
+                .map(|(corner, uv)| {
+                    let position = transform.transform_point3(corner);
+                    [position.x, position.y, position.z, uv[0], uv[1], 1.0, 1.0]
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let mut vertices = Vec::with_capacity(surfaces.len() * 4);
+    let mut indices = Vec::with_capacity(surfaces.len() * 6);
+    for surface in surfaces {
+        let base = vertices.len() as u32;
+        vertices.extend(surface);
+        indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+    (vertices, indices)
 }
 
 fn benchmark_configuration() -> Criterion {
@@ -442,6 +486,38 @@ fn bench_dynamic_mutations(c: &mut Criterion) {
     });
 }
 
+fn bench_gui_block_items(c: &mut Criterion) {
+    let quads = representative_quads();
+    let resident_quads: Arc<[ItemModelQuad]> = quads.clone().into();
+    let mut legacy = c.benchmark_group("item_legacy/gui_block_world_bake_merge");
+    for count in [0, 1, 9, 46, 100] {
+        legacy.bench_with_input(BenchmarkId::from_parameter(count), &count, |b, &count| {
+            b.iter(|| {
+                black_box(legacy_world_space_frame(
+                    black_box(&quads),
+                    count,
+                    count,
+                    DynamicWork::Stable,
+                ))
+            });
+        });
+    }
+    legacy.finish();
+
+    let mut resident = c.benchmark_group("item_resident/gui_block_instance_extract");
+    for count in [0, 1, 9, 46, 100] {
+        resident.bench_with_input(BenchmarkId::from_parameter(count), &count, |b, &count| {
+            b.iter(|| {
+                black_box(resident_gui_instance_frame(
+                    black_box(&resident_quads),
+                    count,
+                ))
+            });
+        });
+    }
+    resident.finish();
+}
+
 fn bench_map_frames(c: &mut Criterion) {
     for count in [1, 8, 32] {
         let mut maps = (0..count)
@@ -532,6 +608,34 @@ fn bench_map_frames(c: &mut Criterion) {
             },
         );
     }
+
+    for count in [1, 8, 32] {
+        let transforms = (0..count)
+            .map(|index| Mat4::from_translation(Vec3::new(index as f32, 0.0, 0.0)))
+            .collect::<Vec<_>>();
+        c.bench_with_input(
+            BenchmarkId::new("map_legacy/world_bake_merge", count),
+            &count,
+            |b, _| b.iter(|| black_box(legacy_world_space_map_surfaces(black_box(&transforms)))),
+        );
+        c.bench_with_input(
+            BenchmarkId::new("map_resident/narrow_instance_extract", count),
+            &count,
+            |b, _| {
+                b.iter(|| {
+                    black_box(
+                        transforms
+                            .iter()
+                            .enumerate()
+                            .map(|(map_id, transform)| {
+                                bake_item_frame_map_surface(map_id as i32, *transform, [1.0, 1.0])
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                })
+            },
+        );
+    }
 }
 
 fn bench_steady_fps_batches(c: &mut Criterion) {
@@ -565,6 +669,7 @@ criterion_group! {
         bench_instance_counts,
         bench_visibility,
         bench_dynamic_mutations,
+        bench_gui_block_items,
         bench_map_frames,
         bench_steady_fps_batches
 }

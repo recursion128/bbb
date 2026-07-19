@@ -87,11 +87,17 @@ pub struct RendererCounters {
     #[serde(default)]
     pub map_textures_stale: u64,
     #[serde(default)]
+    pub map_texture_fallbacks: u64,
+    #[serde(default)]
     pub map_full_residency_replacements: u64,
     #[serde(default)]
     pub map_texture_resident_bytes: u64,
     #[serde(default)]
     pub map_texture_peak_resident_bytes: u64,
+    #[serde(default)]
+    pub map_instance_upload_bytes: u64,
+    #[serde(default)]
+    pub map_surface_instances: usize,
     #[serde(default)]
     pub item_extraction_scratch_capacity_growths: u64,
     pub hud_draw_calls: u64,

@@ -73,9 +73,8 @@ use crate::{
         create_resident_item_model_glint_pipeline, create_resident_item_model_pipeline,
         create_resident_item_model_translucent_pipeline,
         create_resident_item_model_z_offset_forward_pipeline, FirstPersonMapBackgroundAtlasGpu,
-        FirstPersonMapBackgroundSurface, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,
-        ItemFrameMapDecorationSurface, ItemFrameMapSurface, ItemFrameMapTextFontAtlasGpu,
-        ItemFrameMapTextSurface, ItemGlintTextureGpu, ItemModelMesh, ItemModelResidency,
+        ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu, ItemFrameMapTextFontAtlasGpu,
+        ItemGlintTextureGpu, ItemModelMesh, ItemModelResidency, MapSurfaceResidency,
         SignTextSurface,
     },
     lightmap::{
@@ -475,18 +474,25 @@ pub struct Renderer {
     pub(super) first_person_flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(super) first_person_item_model_glint_meshes: Vec<ItemModelMesh>,
     pub(super) first_person_item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
-    pub(super) item_frame_map_surfaces: Vec<ItemFrameMapSurface>,
-    pub(super) first_person_map_surfaces: Vec<ItemFrameMapSurface>,
-    pub(super) first_person_map_background_surfaces: Vec<FirstPersonMapBackgroundSurface>,
+    #[cfg(test)]
+    pub(super) item_frame_map_surfaces: Vec<crate::item_models::ItemFrameMapSurface>,
+    #[cfg(test)]
+    pub(super) first_person_map_surfaces: Vec<crate::item_models::ItemFrameMapSurface>,
+    #[cfg(test)]
+    pub(super) first_person_map_background_surfaces:
+        Vec<crate::item_models::FirstPersonMapBackgroundSurface>,
     pub(super) first_person_map_background_atlas: Option<FirstPersonMapBackgroundAtlasGpu>,
     pub(super) item_frame_map_atlas: Option<ItemFrameMapAtlasGpu>,
-    pub(super) item_frame_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
-    pub(super) first_person_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    #[cfg(test)]
+    pub(super) item_frame_map_decoration_surfaces:
+        Vec<crate::item_models::ItemFrameMapDecorationSurface>,
+    #[cfg(test)]
+    pub(super) first_person_map_decoration_surfaces:
+        Vec<crate::item_models::ItemFrameMapDecorationSurface>,
     pub(super) item_frame_map_decoration_atlas: Option<ItemFrameMapDecorationAtlasGpu>,
-    pub(super) item_frame_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
-    pub(super) first_person_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
     pub(super) sign_text_surfaces: Vec<SignTextSurface>,
     pub(super) item_frame_map_text_font_atlas: Option<ItemFrameMapTextFontAtlasGpu>,
+    pub(super) map_surface_residency: MapSurfaceResidency,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) chunk_border_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
@@ -1395,6 +1401,12 @@ impl Renderer {
             CloudShape::Fancy,
         );
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
+        let map_surface_residency = MapSurfaceResidency::new(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let hud_white_pixel = create_hud_sprite_gpu(
             &device,
             &queue,
@@ -1689,18 +1701,22 @@ impl Renderer {
             first_person_flat_item_model_translucent_meshes: Vec::new(),
             first_person_item_model_glint_meshes: Vec::new(),
             first_person_item_model_glint_translucent_meshes: Vec::new(),
+            #[cfg(test)]
             item_frame_map_surfaces: Vec::new(),
+            #[cfg(test)]
             first_person_map_surfaces: Vec::new(),
+            #[cfg(test)]
             first_person_map_background_surfaces: Vec::new(),
             first_person_map_background_atlas: None,
             item_frame_map_atlas: None,
+            #[cfg(test)]
             item_frame_map_decoration_surfaces: Vec::new(),
+            #[cfg(test)]
             first_person_map_decoration_surfaces: Vec::new(),
             item_frame_map_decoration_atlas: None,
-            item_frame_map_text_surfaces: Vec::new(),
-            first_person_map_text_surfaces: Vec::new(),
             sign_text_surfaces: Vec::new(),
             item_frame_map_text_font_atlas: None,
+            map_surface_residency,
             selection_outline: None,
             chunk_border_outline: None,
             entity_scene_outline: None,

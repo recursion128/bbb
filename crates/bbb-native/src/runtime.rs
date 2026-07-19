@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
+    sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
@@ -50,12 +51,12 @@ use bbb_renderer::{
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
     HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStyledTextRun, HudSystemToast, HudTextStyle,
-    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
-    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
-    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudUvRect, HudVehicleHealth, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -3580,7 +3581,12 @@ fn block_item_3d_model(
         .item_display_transform_for_stack(item, bbb_pack::BlockModelDisplayContext::Gui)
         .unwrap_or_default();
     Some(HudBlockItemModel {
-        quads: quads.to_vec(),
+        identity: ItemModelAssetIdentity::new(
+            Arc::<str>::from(resource_id),
+            Arc::<str>::from("default"),
+            0,
+        ),
+        quads,
         gui_display: crate::item_models::display_matrix(&gui, false),
         lighting: GuiItemLightingEntry::Items3d,
         foil: item.has_foil(),
@@ -14266,9 +14272,12 @@ pub(crate) fn control_renderer_counters(
         map_textures_updated: counters.map_textures_updated,
         map_textures_reused: counters.map_textures_reused,
         map_textures_stale: counters.map_textures_stale,
+        map_texture_fallbacks: counters.map_texture_fallbacks,
         map_full_residency_replacements: counters.map_full_residency_replacements,
         map_texture_resident_bytes: counters.map_texture_resident_bytes,
         map_texture_peak_resident_bytes: counters.map_texture_peak_resident_bytes,
+        map_instance_upload_bytes: counters.map_instance_upload_bytes,
+        map_surface_instances: counters.map_surface_instances,
         item_extraction_scratch_capacity_growths: counters.item_extraction_scratch_capacity_growths,
         hud_draw_calls: counters.hud_draw_calls,
         screen_blur_draw_calls: counters.screen_blur_draw_calls,

@@ -1,5 +1,5 @@
-//! Item-frame 3D models: renders item-frame / glow-item-frame entities as the wooden border model plus
-//! the framed item (vanilla `ItemFrameRenderer`), baked into the renderer's item-model pass. The border
+//! Item-frame 3D extraction: renders item-frame / glow-item-frame entities as the wooden border model plus
+//! the framed item (vanilla `ItemFrameRenderer`) through resident model-space owners. The border
 //! comes from the blocks-atlas `block/item_frame` model (`terrain_runtime`); the framed item resolves to
 //! block or flat quads exactly like dropped / held items and uses its `FIXED` display transform. The
 //! frame's facing wall orients the whole model; the `0..=7` item rotation spins the item in-plane.
@@ -10,13 +10,12 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
-    bake_item_frame_map_text_surface, bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelAssetIdentity, ItemModelAssetRequest,
-    ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget,
-    ItemModelFoil, ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMesh,
-    ItemModelMeshSet, ItemModelResidencyFrame, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
+    bake_item_frame_map_text_surface, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelAssetIdentity,
+    ItemModelAssetRequest, ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawPhase,
+    ItemModelDrawTarget, ItemModelFoil, ItemModelGeometryClass, ItemModelInstanceRequest,
+    ItemModelMesh, ItemModelResidencyFrame, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{ItemFrameFacing, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -98,15 +97,15 @@ pub(crate) fn item_frame_models_with_map_cache(
     enchantment_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> ItemFrameModels {
-    let mut block_meshes = Vec::new();
+    let block_meshes = Vec::new();
     let block_z_offset_forward_meshes = Vec::new();
-    let mut block_translucent_meshes = Vec::new();
-    let mut block_glint_meshes = Vec::new();
-    let mut block_glint_translucent_meshes = Vec::new();
-    let mut flat_meshes = Vec::new();
-    let mut flat_translucent_meshes = Vec::new();
-    let mut flat_glint_meshes = Vec::new();
-    let mut flat_glint_translucent_meshes = Vec::new();
+    let block_translucent_meshes = Vec::new();
+    let block_glint_meshes = Vec::new();
+    let block_glint_translucent_meshes = Vec::new();
+    let flat_meshes = Vec::new();
+    let flat_translucent_meshes = Vec::new();
+    let flat_glint_meshes = Vec::new();
+    let flat_glint_translucent_meshes = Vec::new();
     let mut residency = ItemModelResidencyFrame::default();
     let mut map_textures = BTreeMap::new();
     let mut map_surfaces = Vec::new();
@@ -242,57 +241,41 @@ pub(crate) fn item_frame_models_with_map_cache(
                 if !quads.is_empty() {
                     let foil =
                         item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed);
-                    if matches!(foil, ItemModelFoil::Special { .. }) {
-                        push_mesh_set(
-                            bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
-                                &quads,
-                                item_transform,
-                                item_light,
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                            ),
-                            &mut block_meshes,
-                            &mut block_translucent_meshes,
-                            &mut block_glint_meshes,
-                            &mut block_glint_translucent_meshes,
+                    let identity = ItemModelAssetIdentity::new(
+                        Arc::<str>::from(resource_id),
+                        Arc::<str>::from("default"),
+                        0,
+                    );
+                    let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
+                    if quads.iter().any(|quad| !quad.translucent) {
+                        push_resident_item_instances(
+                            &mut residency,
+                            identity.clone(),
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Solid,
+                            source.clone(),
+                            &[item_transform],
+                            [1.0; 4],
+                            item_light,
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::World,
                         );
-                    } else {
-                        let identity = ItemModelAssetIdentity::new(
-                            Arc::<str>::from(resource_id),
-                            Arc::<str>::from("default"),
-                            0,
+                    }
+                    if quads.iter().any(|quad| quad.translucent) {
+                        push_resident_item_instances(
+                            &mut residency,
+                            identity,
+                            ItemModelAtlasKind::Blocks,
+                            ItemModelGeometryClass::Translucent,
+                            source,
+                            &[item_transform],
+                            [1.0; 4],
+                            item_light,
+                            ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            ItemModelDrawTarget::World,
                         );
-                        let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
-                        if quads.iter().any(|quad| !quad.translucent) {
-                            push_resident_item_instances(
-                                &mut residency,
-                                identity.clone(),
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Solid,
-                                source.clone(),
-                                &[item_transform],
-                                [1.0; 4],
-                                item_light,
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::World,
-                            );
-                        }
-                        if quads.iter().any(|quad| quad.translucent) {
-                            push_resident_item_instances(
-                                &mut residency,
-                                identity,
-                                ItemModelAtlasKind::Blocks,
-                                ItemModelGeometryClass::Translucent,
-                                source,
-                                &[item_transform],
-                                [1.0; 4],
-                                item_light,
-                                ITEM_MODEL_NO_OVERLAY,
-                                foil,
-                                ItemModelDrawTarget::World,
-                            );
-                        }
                     }
                     continue;
                 }
@@ -312,55 +295,28 @@ pub(crate) fn item_frame_models_with_map_cache(
             continue;
         }
         let foil = item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed);
-        if matches!(foil, ItemModelFoil::Special { .. }) {
-            let quads = layers
-                .iter()
-                .flat_map(|layer| {
-                    bake_generated_item_quads(
-                        &layer.mask,
-                        layer.rect,
-                        layer.tint,
-                        layer.translucent,
-                    )
-                })
-                .collect::<Vec<_>>();
-            push_mesh_set(
-                bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
-                    &quads,
-                    item_transform,
-                    item_light,
-                    ITEM_MODEL_NO_OVERLAY,
-                    foil,
-                ),
-                &mut flat_meshes,
-                &mut flat_translucent_meshes,
-                &mut flat_glint_meshes,
-                &mut flat_glint_translucent_meshes,
+        for layer in layers {
+            push_resident_item_instances(
+                &mut residency,
+                ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
+                ItemModelAtlasKind::Items,
+                if layer.translucent {
+                    ItemModelGeometryClass::Translucent
+                } else {
+                    ItemModelGeometryClass::Solid
+                },
+                ItemModelAssetSource::Generated {
+                    mask: layer.mask,
+                    rect: layer.rect,
+                    translucent: layer.translucent,
+                },
+                &[item_transform],
+                layer.tint,
+                item_light,
+                ITEM_MODEL_NO_OVERLAY,
+                foil,
+                ItemModelDrawTarget::World,
             );
-        } else {
-            for layer in layers {
-                push_resident_item_instances(
-                    &mut residency,
-                    ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
-                    ItemModelAtlasKind::Items,
-                    if layer.translucent {
-                        ItemModelGeometryClass::Translucent
-                    } else {
-                        ItemModelGeometryClass::Solid
-                    },
-                    ItemModelAssetSource::Generated {
-                        mask: layer.mask,
-                        rect: layer.rect,
-                        translucent: layer.translucent,
-                    },
-                    &[item_transform],
-                    layer.tint,
-                    item_light,
-                    ITEM_MODEL_NO_OVERLAY,
-                    foil,
-                    ItemModelDrawTarget::World,
-                );
-            }
         }
     }
 
@@ -389,27 +345,6 @@ pub(crate) fn item_frame_models_with_map_cache(
         map_decoration_textures,
         map_decoration_surfaces,
         map_text_surfaces,
-    }
-}
-
-fn push_mesh_set(
-    meshes: ItemModelMeshSet,
-    solid: &mut Vec<ItemModelMesh>,
-    translucent: &mut Vec<ItemModelMesh>,
-    glint: &mut Vec<ItemModelMesh>,
-    glint_translucent: &mut Vec<ItemModelMesh>,
-) {
-    if !meshes.solid.is_empty() {
-        solid.push(meshes.solid);
-    }
-    if !meshes.translucent.is_empty() {
-        translucent.push(meshes.translucent);
-    }
-    if !meshes.glint.is_empty() {
-        glint.push(meshes.glint);
-    }
-    if !meshes.glint_translucent.is_empty() {
-        glint_translucent.push(meshes.glint_translucent);
     }
 }
 
