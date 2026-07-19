@@ -210,6 +210,24 @@ player for the subsequent synthetic pick/destroy/place sequence; this removes
 renderer-frame timing from centering without weakening any movement or block
 interaction assertion.
 
+### Phase 3 transfer result
+
+Commit `d890952a6` passed the workspace full gate and a current-HEAD explicit
+live run with artifact `/tmp/bbb-playable-gate.GXeoYO`. One native/control
+process observed one Transfer packet and a third Play login; registry revision
+advanced from session 1 to 2, the first-server chunk at `(-100,-100)` was absent,
+the target decoded a fresh chunk, the prior death location and resource-pack set
+were empty, and the target official server logged the transferred player. The
+final publication remained connected in Overworld Play with zero unsupported
+packets and zero canonical apply errors.
+
+The first development run, `/tmp/bbb-playable-gate.1ppmEq`, already completed
+the Transfer but timed out on an incorrect target-MOTD expectation. Local
+`PlayerList.placeNewPlayer` evidence showed that Vanilla intentionally skips
+`ServerData` for a transferred cookie. The final assertion now preserves that
+carry rule and uses the canonical target plus the second official server log as
+the target identity proof.
+
 ## Failure localization and safe stops
 
 The lifecycle evidence records a monotonic current stage plus the observations

@@ -19694,3 +19694,31 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   simulation/render 边界。generic line channel 暂以线段表示 vanilla arrow head，Breeze target
   使用 published transform；这两个纯 gizmo 几何/partial-frame refinement 不重开 subscriber
   canonical ownership。
+
+## 2026-07-19：playable session lifecycle 双服务器闭环
+
+- [x] `f9229e2ca` 冻结高风险工程合同；`cdd85d327` 在一台未修改的官方 Vanilla 26.1
+  server 上依次驱动 server-authoritative death/respawn、Overworld→Nether→Overworld、
+  production resource-pack accept/apply/pop 两次 reload barrier，以及
+  Play→Configuration→Play。每个 level replacement 都验证旧 chunk 不可见，reconfiguration
+  期间 level/chunk 清空且 carried registry revision 不变。
+- [x] `d890952a6` 同时启动第二台 `accepts-transfers=true` 官方 server；第一台通过真实
+  `transfer 127.0.0.1 <port> @s` 命令驱动同一 bbb-native/control 进程以 Transfer intent
+  重连。live evidence 固定 Transfer packet +1、Play login +1、registry session 1→2、首服
+  `(-100,-100)` chunk 缺失、目标 fresh chunk、旧 death location 与 pack set 清空、canonical
+  host/port 和第二服 join log 一致；最终 Play 连接的 unsupported packet 与 world apply error
+  都为 0。
+- [x] 多会话 packet timeline 只在首个 FinishConfiguration 之前计算 registry/tag tail，避免
+  第二次 Login/Configuration trace 反向污染首会话顺序证明。failure evidence 同时列出两份
+  server log；cleanup 覆盖两个独立进程组、resource-pack HTTP server 与 native client。
+- [x] 本地 `PlayerList.placeNewPlayer` 证明 transferred cookie 会跳过 `ServerData`；失败 artifact
+  `/tmp/bbb-playable-gate.1ppmEq` 中 Transfer、目标 Play 和 registry reset 均已完成，只有错误的
+  target-MOTD 谓词超时。最终断言改为保留 Vanilla 的首服 presentation carry，并以 canonical
+  target 加第二官方 server join log 证明目标身份，不伪造 target `ServerData`。
+- [x] 阶段 3 workspace full gate 在 `d890952a6` 通过；current-HEAD build 时间晚于提交与触发源码，
+  显式 live artifact `/tmp/bbb-playable-gate.GXeoYO` 输出 `live smoke passed` 与
+  `live vanilla 26.1 session passed`。该结果只证明仓库定义的真实登录、Play 与 lifecycle
+  交互闭环，不代表全部 Play packet、entity、presentation 或长期玩法已完成。
+- [x] 剩余 playable breadth 继续由 `docs/unsupported-features.md` 跟踪：entity/hotbar/container/
+  inventory/chat server-result、代表性 audio/particle presentation 和 deterministic screenshot；
+  lifecycle closure 不再作为这些可见覆盖项的替代证明。

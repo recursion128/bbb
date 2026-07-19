@@ -453,6 +453,11 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
 工程切片的冻结合同、Vanilla 依据、串行阶段与门禁见
 `docs/playable-session-lifecycle-design.md`。
 
+生命周期工程切片已闭环 death/respawn、Overworld↔Nether、生产 resource-pack push/pop、
+Play→Configuration→Play 和同进程双官方 server Transfer；registry session、旧 chunk/
+level/pack 清理与 Vanilla server-data carry 均进入 schema-2 live 断言。阶段提交为
+`cdd85d327`、`d890952a6`，里程碑证据与剩余边界见设计文档和归档。
+
 剩余阶段：
 
 1. **基础游玩**：通过 control/CLI 驱动实体交互、hotbar、容器、inventory、
@@ -460,12 +465,10 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
    acknowledgement、world 结果和呈现 side effect，而不只检查命令入队。已闭环：
    移动与视角、破坏/放置、连接活性（pending-state 门控消除 main↔stream 死锁
    环）——见 `docs/goal-archive.md` 2026-07-18 归档小节。
-2. **生命周期场景**：覆盖 respawn、dimension change、death、resource-pack push/pop、
-   configuration re-entry、disconnect/reconnect 与第二 session registry；断言旧 world、
-   registry、renderer/audio runtime 和 pending request 不泄漏。
-3. **扩展失败证据**：在已有 packet/session timeline、world/control snapshot 与 server log
-   基础上增加 renderer/audio counters 和最后 screenshot；失败继续区分 server 启动、
-   网络、canonical apply、runtime side effect 和 presentation 阶段。
+2. **扩展失败证据**：在已有 packet/session timeline、world/control snapshot 与双 server log
+   基础上增加同 lifecycle generation 的 renderer/audio counters、pending request 断言和最后
+   screenshot；失败继续区分 server 启动、网络、canonical apply、runtime side effect 和
+   presentation 阶段。
 
 持续架构优化（高优先级跟进，2026-07-18 排队）：
 

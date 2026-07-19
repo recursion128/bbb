@@ -100,6 +100,9 @@ Owns connection lifecycle and packet/event transport.
 
 - Login/configuration/play flow, keepalive, ping, compression, resource-pack
   responses, cookie responses, and command sending.
+- Server-directed Transfer drains only its bounded StoreCookie/latest-Transfer
+  closing tail, reconnects with the Transfer handshake intent, and re-enters
+  Login/Configuration/Play in the same event stream and native process.
 - Online event stream and offline probe behavior.
 - Converts decoded packets into `NetEvent` values.
 - Does not own canonical client state.
@@ -126,6 +129,14 @@ Owns canonical client state.
 `WorldStore` must stay deterministic and serializable. It may store decoded
 semantic state and lightweight event summaries. It must not store backend
 handles.
+
+A fresh Login starts a new registry session, while Play reconfiguration carries
+the frozen registry access. Every connection edge clears connection-owned
+resource-pack tracking; level replacement clears chunk/entity/local-level
+owners. Vanilla deliberately carries the prior server-list presentation across
+Transfer because the target skips `ServerData` for a transferred login. These
+transitions mutate the one simulation-owned `WorldStore`; renderer and control
+observe their result through the same immutable publication generation.
 
 ### `bbb-pack`
 

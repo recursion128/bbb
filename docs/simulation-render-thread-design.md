@@ -389,10 +389,12 @@ added when their surfaces change.
 
 Full gates are required after phases 2 and 4, immediately after phase 5, and at
 final delivery. Any Cargo/workspace, protocol, `unsafe`, or additional
-concurrency change triggers the forced gate policy in `goal.md`. Phase 5 and the
-final closeout run `scripts/playable-gate.sh auto`; when the live Java fixture is
-available, the live portion must demonstrate that an injected slow render frame
-does not delay client ticks, movement acknowledgements, or network application.
+concurrency change triggers the forced gate policy in `goal.md`. Phase 5 uses
+the applicable playable checkpoint. Final delivery with the fixed Java/Weston
+fixture must build the committed `HEAD`, run `scripts/playable-gate.sh live`
+without fallback, then run `auto` when project policy still requests it. The
+live portion must demonstrate that an injected slow render frame does not delay
+client ticks, movement acknowledgements, or network application.
 
 Useful deterministic regressions include:
 
