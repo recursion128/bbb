@@ -5111,7 +5111,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("let camera_pose = camera_pose_from_world(world);")
         .expect("pump should bind frame camera pose before particle light refresh");
     let block_destroy_extract = source
-        .find("let block_destroy_overlays = block_destroy_overlays_from_world(")
+        .find("RendererFrameUpdate::Replace(block_destroy_overlays_from_world(")
         .expect("pump should extract block-destroy overlays before particle light refresh");
     let particle_light_refresh = source
         .find("renderer.refresh_particle_lights(")
