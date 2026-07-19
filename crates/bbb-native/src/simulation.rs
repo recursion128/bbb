@@ -85,6 +85,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) terrain_upload: &'a mut TerrainUploadState,
     pub(crate) terrain_textures: &'a mut TerrainTextureState,
     pub(crate) entity_variant_textures: &'a mut NativeEntityVariantTextureRuntime,
+    pub(crate) entity_render_extraction: &'a mut crate::entity_scene::EntityRenderExtractionScratch,
     pub(crate) item_runtime: Option<&'a NativeItemRuntime>,
     pub(crate) hud_render_runtime: &'a mut HudRenderRuntime,
     pub(crate) hud_debug_fps_sampler: &'a mut HudDebugFpsSampler,
@@ -401,7 +402,13 @@ mod tests {
             .expect("publication render end")
             .0;
         assert!(render.contains("publication.world.as_ref()"));
-        assert!(render.contains("publication.input.as_ref().clone()"));
+        assert!(render.contains("let input = publication.input.as_state();"));
+        assert!(!render.contains("let mut render_input = publication.input.as_ref().clone()"));
+        assert!(!render.contains("must contain a frame\")\n        .clone()"));
         assert!(!render.contains("&mut WorldStore"));
+
+        let publication = include_str!("simulation/publication.rs");
+        assert!(publication.contains("input.input.render_publication()"));
+        assert!(!publication.contains("input.input.clone()"));
     }
 }

@@ -124,6 +124,18 @@ pub struct VanillaBoatRendererKind {
     pub chest: bool,
 }
 
+/// Source-derived renderer culling behavior used by visibility-first render
+/// extraction. Exceptional membership follows the generated renderer-class
+/// catalog rather than a second entity-type table.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum VanillaEntityRendererCullingKind {
+    Standard,
+    NoFrustum,
+    Inflate([f32; 3]),
+    ExtendMinYByHalfHeight,
+    ConservativeSpecial,
+}
+
 include!("renderer_catalog/generated_26_1.rs");
 
 pub(super) fn vanilla_living_entity_renderer_name_is_upside_down(name: &str) -> bool {
@@ -151,6 +163,31 @@ pub fn vanilla_entity_renderer_minimum_block_light(entity_type_id: i32) -> Optio
 pub fn vanilla_entity_renderer_is_noop(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.renderer_class == "NoopRenderer")
+}
+
+pub fn vanilla_entity_renderer_culling_kind(
+    entity_type_id: i32,
+) -> VanillaEntityRendererCullingKind {
+    let Some(renderer_class) =
+        vanilla_entity_renderer_registration(entity_type_id).map(|entry| entry.renderer_class)
+    else {
+        return VanillaEntityRendererCullingKind::Standard;
+    };
+    match renderer_class {
+        "LightningBoltRenderer" | "EnderDragonRenderer" => {
+            VanillaEntityRendererCullingKind::NoFrustum
+        }
+        "SnifferRenderer" => VanillaEntityRendererCullingKind::Inflate([0.6; 3]),
+        "IllusionerRenderer" => VanillaEntityRendererCullingKind::Inflate([3.0, 0.0, 3.0]),
+        "HappyGhastRenderer" => VanillaEntityRendererCullingKind::ExtendMinYByHalfHeight,
+        "GuardianRenderer" | "ElderGuardianRenderer" | "EndCrystalRenderer" | "ShulkerRenderer" => {
+            VanillaEntityRendererCullingKind::ConservativeSpecial
+        }
+        class if class.starts_with("DisplayRenderer.") => {
+            VanillaEntityRendererCullingKind::ConservativeSpecial
+        }
+        _ => VanillaEntityRendererCullingKind::Standard,
+    }
 }
 
 pub fn vanilla_entity_renderer_thrown_item_scale(entity_type_id: i32) -> Option<f32> {
@@ -380,6 +417,51 @@ mod tests {
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
+
+    #[test]
+    fn generated_renderer_classes_drive_visibility_culling_exceptions() {
+        assert_eq!(
+            vanilla_entity_renderer_culling_kind(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID
+            ),
+            VanillaEntityRendererCullingKind::NoFrustum
+        );
+        assert_eq!(
+            vanilla_entity_renderer_culling_kind(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SNIFFER_ID
+            ),
+            VanillaEntityRendererCullingKind::Inflate([0.6; 3])
+        );
+        assert_eq!(
+            vanilla_entity_renderer_culling_kind(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ILLUSIONER_ID
+            ),
+            VanillaEntityRendererCullingKind::Inflate([3.0, 0.0, 3.0])
+        );
+        assert_eq!(
+            vanilla_entity_renderer_culling_kind(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            ),
+            VanillaEntityRendererCullingKind::ExtendMinYByHalfHeight
+        );
+        for entity_type_id in [
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SHULKER_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_renderer_culling_kind(entity_type_id),
+                VanillaEntityRendererCullingKind::ConservativeSpecial
+            );
+        }
+        assert_eq!(
+            vanilla_entity_renderer_culling_kind(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            ),
+            VanillaEntityRendererCullingKind::Standard
+        );
+    }
 
     use super::*;
 

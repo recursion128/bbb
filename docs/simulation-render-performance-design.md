@@ -203,9 +203,11 @@ end-to-end frame/tail metrics collected by equivalent external instrumentation;
 do not compare internal section timers from different profilers as if they were
 the same quantity.
 
-This host currently has no Java executable configured for
-`scripts/playable-gate.sh`; official live values remain an explicit phase-6
-external measurement, not fabricated phase-1 data.
+This host has the fixed Java 25 runtime and vanilla 26.1 server jar required by
+`scripts/playable-gate.sh live`. Those paths validate bbb's live session; a
+strict official-client CPU comparison still requires a reproducible official
+client launch/capture with the equal-load settings above and remains phase 6,
+not fabricated phase-1 data.
 
 ## Phase 2 Boundary Result
 
@@ -244,6 +246,43 @@ producer wake before the deadline creates no output; blocked-render output
 creates one sent wake and coalesces later outputs while deadlines and network
 wakes continue.
 
+## Phase 3 Boundary Result
+
+Entity rendering now fills a retained narrow hecs batch of identity, current
+transform, dynamic model bounds, mount/leash, spectator/sleeping, fishing-owner,
+and generated renderer-culling facts. Native applies vanilla's dispatcher,
+compiled-terrain, camera/local-player, passenger, leash and renderer-class
+rules before a single full projection of survivors. The complete candidate set
+remains available to relationship logic, while the established public full
+projection preserves protocol order. Candidate/survivor/id-index/source/final-
+instance allocations are reused; applying a frame swaps the renderer's previous
+entity-instance allocation back to extraction scratch.
+
+Publication now carries explicit `RenderInputPublication`. It copies only the
+keys/buttons and screen/debug state read by render/event-loop code, not gameplay
+movement accumulators, click timers, outbound request queues, query/crash state,
+or other simulation-only heaps. Render borrows `SimulationFrameState` instead
+of cloning its particle context vectors. Conditional command-suggestion and
+stats-screen projection may clone only this already-narrow display state.
+
+Same-host Criterion after data for 2,000 heterogeneous entities:
+
+| Full projection survivors | Before: project all then filter | Visibility first | Reduction |
+| --- | ---: | ---: | ---: |
+| 0% | 5.743 ms | 1.267 ms | 4.53x |
+| 10% | 5.729 ms | 1.676 ms | 3.42x |
+| 50% | 5.715 ms | 3.299 ms | 1.73x |
+| 100% | 5.783 ms | 5.338 ms | 1.08x |
+
+The retained narrow candidate batch alone is 60.814 us / 309.39 us / 1.238 ms
+for 100 / 500 / 2,000 entities. Its remaining cost is dominated by exact
+dynamic model/culling bounds rather than the 82.917 us transform-only hecs
+query. Rare Guardian/EndCrystal/Shulker/display specialized culling stays
+conservative when the narrow row lacks its renderer-owned beam/interpolation
+box; it may over-project but cannot hide visible content. Section-granular
+compiled visibility and the remaining non-entity `RendererFrame` vector owners
+remain measured phase-4/final tails rather than being claimed complete here.
+
 ## Serial Phases, Validation, And Gates
 
 1. **Baseline, contract, observation surface.** Add the headless Criterion
@@ -269,7 +308,16 @@ wakes continue.
    its own focused lifecycle/stale-result tests and full gate.
 6. **Official comparison and closeout.** Record before/after/official runs,
    update architecture/ledger/archive with remaining CPU/GPU/memory risks, and
-   run final full gate plus `scripts/playable-gate.sh auto` at delivered HEAD.
+   run the final delivery sequence at the same committed HEAD: full gate,
+   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo build -p bbb-native`, verify the
+   resulting binary timestamp is newer than that HEAD, then run the required
+   Weston-backed `scripts/playable-gate.sh live`. The live run must use the
+   configured local Java 25 runtime, vanilla 26.1 server jar, and `bbb-gate`
+   Wayland socket, and must complete the status/login/configuration/play,
+   control, movement, and block-interaction phases. Run
+   `scripts/playable-gate.sh auto` afterwards when project policy still
+   requires it; fixture or auto fallback never substitutes for the explicit
+   live result.
 
 No milestone contains more than four normal commits before a full gate. Every
 phase commit is buildable and receives affected focused tests, fmt, diff check,
@@ -285,3 +333,11 @@ Once a runtime owner migration starts, a safe stop exists only at its successful
 full-gated milestone—dual selectable paths, mixed generations, or partially
 incremental terrain residency are not deliverable states. Missing Java/GPU
 fixture can block only the final live comparison, not the repo-native phases.
+The current host already has both a live Weston process and
+`/run/user/1000/bbb-gate`; final validation rechecks both rather than trusting a
+stale socket. A live failure records its artifact directory and is classified
+as environment, stale binary, client exit, control disconnect, timeout, or
+gameplay assertion before any code conclusion. Fix-forward runs rebuild the
+same delivery HEAD and rerun the complete live gate. Headless synthetic input
+keeps the existing `input.focus {"focused": true}` command ahead of look,
+keyboard, and mouse input.

@@ -14,7 +14,7 @@ use bbb_world::WorldStore;
 
 use super::input_commands::SimulationInputPublication;
 use crate::{
-    input::ClientInputState,
+    input::{ClientInputState, RenderInputPublication},
     runtime::{
         CameraFovTickState, HudDebugNetworkSampler, HudDebugTpsSampler, SimulationFrameState,
     },
@@ -28,7 +28,7 @@ pub(crate) struct SimulationPublication {
     pub(crate) effect_sequence: u64,
     pub(crate) client_tick_index: u64,
     pub(crate) world: Arc<WorldStore>,
-    pub(crate) input: Arc<ClientInputState>,
+    pub(crate) input: Arc<RenderInputPublication>,
     pub(crate) input_runtime: SimulationInputPublication,
     pub(crate) frame: Option<SimulationFrameState>,
     pub(crate) tick_interval: Duration,
@@ -195,7 +195,7 @@ fn build_publication(
         client_level_generation: world.client_level_generation(),
         frozen: world.ticking().frozen,
         world,
-        input: Arc::new(input.input.clone()),
+        input: Arc::new(input.input.render_publication()),
         input_runtime: input.input_runtime,
         frame: input.frame,
         tick_interval: input.tick_interval,

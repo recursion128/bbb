@@ -95,9 +95,10 @@ use crate::{
     end_portal_scene::end_portal_model_instances_from_world_at_partial_tick,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
-        entity_model_instances_from_world_with_variant_textures_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
+        visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick,
+        EntityRenderVisibilityContext,
     },
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
@@ -2388,6 +2389,7 @@ pub(crate) fn update_renderer_from_publication(
         terrain_upload,
         terrain_textures,
         entity_variant_textures,
+        entity_render_extraction,
         item_runtime,
         hud_render_runtime,
         hud_debug_fps_sampler,
@@ -2404,28 +2406,24 @@ pub(crate) fn update_renderer_from_publication(
     let state = publication
         .frame
         .as_ref()
-        .expect("rendered simulation publication must contain a frame")
-        .clone();
-    let SimulationFrameState {
-        pump_started_at,
-        pump_net_drained_at,
-        pump_control_synced_at,
-        pump_client_ticked_at,
-        now,
-        advanced_ticks,
-        lightmap_environment,
-        clear_color,
-        fog_environment,
-        sky_environment,
-        cloud_environment,
-        particle_scope_context,
-        particle_player_motion_contexts,
-        particle_entity_target_contexts,
-        particle_sound_camera_position,
-        terrain_textures_changed,
-    } = state;
-    let mut render_input = publication.input.as_ref().clone();
-    let input = &mut render_input;
+        .expect("rendered simulation publication must contain a frame");
+    let pump_started_at = state.pump_started_at;
+    let pump_net_drained_at = state.pump_net_drained_at;
+    let pump_control_synced_at = state.pump_control_synced_at;
+    let pump_client_ticked_at = state.pump_client_ticked_at;
+    let now = state.now;
+    let advanced_ticks = state.advanced_ticks;
+    let lightmap_environment = state.lightmap_environment;
+    let clear_color = state.clear_color;
+    let fog_environment = state.fog_environment;
+    let sky_environment = state.sky_environment;
+    let cloud_environment = state.cloud_environment;
+    let particle_scope_context = state.particle_scope_context;
+    let particle_player_motion_contexts = &state.particle_player_motion_contexts;
+    let particle_entity_target_contexts = &state.particle_entity_target_contexts;
+    let particle_sound_camera_position = state.particle_sound_camera_position;
+    let terrain_textures_changed = state.terrain_textures_changed;
+    let input = publication.input.as_state();
     let world = publication.world.as_ref();
     debug_assert_eq!(publication.terrain_revision, world.terrain_revision());
     debug_assert_eq!(publication.frozen, world.ticking().frozen);
@@ -2460,8 +2458,8 @@ pub(crate) fn update_renderer_from_publication(
         },
         |query| renderer_particle_block_fluid_surface_sample(world, query.position),
         particle_scope_context,
-        &particle_player_motion_contexts,
-        &particle_entity_target_contexts,
+        particle_player_motion_contexts,
+        particle_entity_target_contexts,
         particle_sound_camera_position,
     );
     let particle_sound_events = renderer.drain_particle_sound_events();
@@ -2561,21 +2559,27 @@ pub(crate) fn update_renderer_from_publication(
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade = input.advancement_hover_fade();
     let hud_debug_options_screen = hud_debug_options_screen(input, world, surface_size);
-    let hud_command_suggestions = if hud_debug_options_screen.is_none() {
-        hud_command_suggestions(input, world, renderer, surface_size)
-    } else {
-        None
-    };
+    let hud_command_suggestions =
+        if hud_debug_options_screen.is_none() && input.command_suggestions_active() {
+            let mut suggestion_input = input.clone();
+            hud_command_suggestions(&mut suggestion_input, world, renderer, surface_size)
+        } else {
+            None
+        };
     let hud_pause_screen = if hud_debug_options_screen.is_some() {
         None
     } else {
         hud_pause_screen(input, surface_size)
     };
-    let hud_stats_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some() {
+    let hud_stats_screen = if hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || !world.stats_screen_is_open()
+    {
         None
     } else {
+        let mut stats_input = input.clone();
         hud_stats_screen(
-            input,
+            &mut stats_input,
             world,
             item_runtime,
             terrain_textures,
@@ -2737,11 +2741,19 @@ pub(crate) fn update_renderer_from_publication(
     // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
     // the two atlas draws).
     let mut entity_instances =
-        entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+        visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick(
             world,
             item_runtime,
             entity_variant_textures,
             entity_partial_tick,
+            EntityRenderVisibilityContext {
+                camera_pose,
+                surface_size: [surface_size.width, surface_size.height],
+                camera_fov_degrees,
+                render_distance_chunks,
+                terrain_upload,
+            },
+            entity_render_extraction,
         );
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
@@ -3072,6 +3084,7 @@ pub(crate) fn update_renderer_from_publication(
             debug_lines,
             block_destroy_overlays,
         },
+        entity_render_extraction,
     );
     let pump_scene_extracted_at = Instant::now();
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
@@ -14179,6 +14192,18 @@ pub(crate) fn control_renderer_counters(
         particle_instances_expired: counters.particle_instances_expired,
         dropped_active_particle_instances: counters.dropped_active_particle_instances,
         dropped_limited_particle_instances: counters.dropped_limited_particle_instances,
+        entity_render_candidates: 0,
+        entity_render_survivors: 0,
+        entity_render_projected: 0,
+        entity_candidate_nanos: 0,
+        entity_candidate_peak_nanos: 0,
+        entity_cull_nanos: 0,
+        entity_cull_peak_nanos: 0,
+        entity_full_projection_nanos: 0,
+        entity_full_projection_peak_nanos: 0,
+        entity_model_build_nanos: 0,
+        entity_model_build_peak_nanos: 0,
+        entity_extraction_capacity_growths: 0,
     }
 }
 

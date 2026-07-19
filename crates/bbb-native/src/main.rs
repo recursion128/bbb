@@ -64,6 +64,7 @@ use code_of_conduct_overlay::CodeOfConductOverlayRenderer;
 use debug_entries::DebugScreenEntryList;
 use debug_profiler::{DebugProfiler, DebugProfilerSectionSample};
 use entity_assets::load_entity_model_textures;
+use entity_scene::EntityRenderExtractionScratch;
 use entity_variant_textures::NativeEntityVariantTextureRuntime;
 use hud_assets::load_hud_textures;
 use input::{ClientInputState, DebugClipboard};
@@ -557,6 +558,7 @@ fn main() -> Result<()> {
         }
     }
     let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
+    let mut entity_render_extraction = EntityRenderExtractionScratch::default();
     let mut screenshot = args.screenshot;
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
@@ -789,6 +791,7 @@ fn main() -> Result<()> {
                             terrain_upload: &mut terrain_upload,
                             terrain_textures: &mut terrain_textures,
                             entity_variant_textures: &mut entity_variant_textures,
+                            entity_render_extraction: &mut entity_render_extraction,
                             item_runtime: item_runtime.as_ref(),
                             hud_render_runtime: &mut hud_render_runtime,
                             hud_debug_fps_sampler: &mut hud_debug_fps_sampler,
@@ -868,8 +871,28 @@ fn main() -> Result<()> {
                         .map(NativeAudioRuntime::counters)
                         .unwrap_or_else(|| audio_status.clone());
                     let output_backlog = simulation_thread.output_backlog();
+                    let mut renderer_counters = control_renderer_counters(renderer.counters());
+                    let entity_observation = entity_render_extraction.observation();
+                    renderer_counters.entity_render_candidates = entity_observation.candidates;
+                    renderer_counters.entity_render_survivors = entity_observation.survivors;
+                    renderer_counters.entity_render_projected = entity_observation.projected;
+                    renderer_counters.entity_candidate_nanos = entity_observation.candidate_nanos;
+                    renderer_counters.entity_candidate_peak_nanos =
+                        entity_observation.candidate_peak_nanos;
+                    renderer_counters.entity_cull_nanos = entity_observation.cull_nanos;
+                    renderer_counters.entity_cull_peak_nanos = entity_observation.cull_peak_nanos;
+                    renderer_counters.entity_full_projection_nanos =
+                        entity_observation.projection_nanos;
+                    renderer_counters.entity_full_projection_peak_nanos =
+                        entity_observation.projection_peak_nanos;
+                    renderer_counters.entity_model_build_nanos =
+                        entity_observation.model_build_nanos;
+                    renderer_counters.entity_model_build_peak_nanos =
+                        entity_observation.model_build_peak_nanos;
+                    renderer_counters.entity_extraction_capacity_growths =
+                        entity_observation.capacity_growths;
                     simulation_mailbox.update_backend_telemetry(
-                        control_renderer_counters(renderer.counters()),
+                        renderer_counters,
                         audio_counters,
                         output_backlog.render_wakes_sent as u64,
                         output_backlog.render_wakes_coalesced as u64,

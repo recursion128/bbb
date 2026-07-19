@@ -84,6 +84,21 @@ impl TerrainUploadState {
         ))
     }
 
+    pub(crate) fn is_entity_section_compiled_and_visible(
+        &self,
+        world: &WorldStore,
+        position: bbb_world::EntityVec3,
+    ) -> bool {
+        let block_y = position.y.floor() as i32;
+        if !world.dimension().contains_y(block_y) {
+            return true;
+        }
+        self.compiled_and_visible_chunks.contains(&(
+            (position.x.floor() as i32).div_euclid(16),
+            (position.z.floor() as i32).div_euclid(16),
+        ))
+    }
+
     /// Returns a command payload only when readiness changes or a new client
     /// level generation becomes active.
     pub(crate) fn take_readiness_edge(

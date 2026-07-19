@@ -93,4 +93,28 @@ pub struct RendererCounters {
     pub dropped_active_particle_instances: u64,
     #[serde(default)]
     pub dropped_limited_particle_instances: u64,
+    #[serde(default)]
+    pub entity_render_candidates: usize,
+    #[serde(default)]
+    pub entity_render_survivors: usize,
+    #[serde(default)]
+    pub entity_render_projected: usize,
+    #[serde(default)]
+    pub entity_candidate_nanos: u64,
+    #[serde(default)]
+    pub entity_candidate_peak_nanos: u64,
+    #[serde(default)]
+    pub entity_cull_nanos: u64,
+    #[serde(default)]
+    pub entity_cull_peak_nanos: u64,
+    #[serde(default)]
+    pub entity_full_projection_nanos: u64,
+    #[serde(default)]
+    pub entity_full_projection_peak_nanos: u64,
+    #[serde(default)]
+    pub entity_model_build_nanos: u64,
+    #[serde(default)]
+    pub entity_model_build_peak_nanos: u64,
+    #[serde(default)]
+    pub entity_extraction_capacity_growths: u64,
 }

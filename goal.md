@@ -636,6 +636,10 @@ model/font/sound/texture handle。
 功能 parity 之外，目标客户端必须能长期连接不可信服务器、加载不可信资源并在支持平台
 稳定运行。优化不得改变 canonical 语义或以删除 diagnostics/fallback 换取指标；性能基线
 只使用可复现场景和稳定统计，不把单机瞬时 wall-clock 当成脆弱单元测试。
+当前 simulation/publication/render extraction/terrain residency 工程切片的开放边界、
+等负载 official 对比合同与阶段门禁以
+`docs/simulation-render-performance-design.md` 为准；剩余具体缺口只在
+`docs/unsupported-features.md` 的 runtime performance 条目维护。
 
 1. **输入与资源安全**：为 packet frame/compression、NBT/component、JSON/model/font、
    image/audio/ZIP 增加 size/depth/count/ratio/time 限制、路径规范化与 fuzz/property tests；

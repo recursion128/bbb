@@ -620,7 +620,10 @@ fn minecart_display_blocks_expand_model_culling_bounds() {
         );
     }
 
-    fn target_bounds(targets: &[EntityModelTargetState], entity_id: i32) -> EntityPickBoundsState {
+    fn target_bounds(
+        targets: &[EntityRenderCandidateState],
+        entity_id: i32,
+    ) -> EntityPickBoundsState {
         targets
             .iter()
             .find(|target| target.entity_id == entity_id)
@@ -640,7 +643,7 @@ fn minecart_display_blocks_expand_model_culling_bounds() {
 
     let targets = store
         .entities
-        .model_targets_at_partial_tick(1.0, &store.registries);
+        .model_candidates_at_partial_tick(1.0, &store.registries);
     let plain = target_bounds(&targets, 23);
     let tnt = target_bounds(&targets, 24);
     let chest = target_bounds(&targets, 25);
@@ -681,7 +684,7 @@ fn minecart_display_blocks_expand_model_culling_bounds() {
 
     let targets = store
         .entities
-        .model_targets_at_partial_tick(1.0, &store.registries);
+        .model_candidates_at_partial_tick(1.0, &store.registries);
     let custom = target_bounds(&targets, 23);
     assert_close(custom.max[1], plain.max[1], "negative offset max y");
     assert_close(

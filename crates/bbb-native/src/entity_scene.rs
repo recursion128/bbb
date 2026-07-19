@@ -1,6 +1,10 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
+use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
 use bbb_protocol::{
@@ -18,21 +22,21 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
-    CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
-    DonkeyModelFamily, EndCrystalBeamRenderState, EnderDragonBeamRenderState, EntityArmorMaterial,
-    EntityArmorTrim, EntityAttachmentFace, EntityCustomHeadSkull, EntityDefaultPlayerSkin,
-    EntityDyeColor, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityDynamicTexture, EntityEquipmentLayerTexture, EntityModelInstance, EntityModelKind,
-    EntityPlayerSkin, FoxModelVariant, FrogModelVariant, GuardianBeamRenderState,
-    HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness,
-    LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
-    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-    SalmonModelSize, SelectionBox, SelectionColoredBox, SelectionLine, SelectionOutline,
-    SelectionPoint, SelectionTextLabel, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, SpearKineticWeapon, TropicalFishModelShape, TropicalFishPattern,
-    UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession, VillagerModelType,
-    WolfArmorCrackiness, WolfModelVariant, ZombieNautilusModelVariant, ZombieVariantModelFamily,
-    ENTITY_DEFAULT_OUTLINE_COLOR,
+    CameraFrustum, CameraPose, CatModelVariant, ChickenModelVariant, CopperGolemWeathering,
+    CowModelVariant, DonkeyModelFamily, EndCrystalBeamRenderState, EnderDragonBeamRenderState,
+    EntityArmorMaterial, EntityArmorTrim, EntityAttachmentFace, EntityCustomHeadSkull,
+    EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerTexture,
+    EntityDynamicPlayerTextureKind, EntityDynamicTexture, EntityEquipmentLayerTexture,
+    EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
+    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+    IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
+    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox,
+    SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint, SelectionTextLabel,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon,
+    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+    VillagerModelProfession, VillagerModelType, WolfArmorCrackiness, WolfModelVariant,
+    ZombieNautilusModelVariant, ZombieVariantModelFamily, ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -89,17 +93,20 @@ use bbb_world::WolfVariantAssetPresentation;
 use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
-    vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_living,
-    ArmorMaterialKind as WorldArmorMaterialKind, ArmorTrimSprite as WorldArmorTrimSprite,
-    CatVariantPresentation, EndCrystalBeamSource as WorldEndCrystalBeamSource,
+    vanilla_entity_renderer_culling_kind, vanilla_entity_type_illager_arm_pose_uses_celebrating,
+    vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
+    ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation,
+    EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
-    EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
-    FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
+    EntityPickTargetState, EntityRenderCandidateState, FarmAnimalVariantModel,
+    FarmAnimalVariantPresentation, FrogVariantPresentation,
+    GuardianBeamSource as WorldGuardianBeamSource,
     HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemFrameFacing as WorldItemFrameFacing,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, VanillaArmorStandMetadataAccessors,
-    WolfArmorCrackiness as WorldWolfArmorCrackiness, WolfVariantPresentation, WorldStore,
-    ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
+    VanillaEntityRendererCullingKind, WolfArmorCrackiness as WorldWolfArmorCrackiness,
+    WolfVariantPresentation, WorldStore, ZombieNautilusVariantModelType,
+    ZombieNautilusVariantPresentation,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION as AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID as AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
 };
@@ -338,6 +345,186 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     )
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct EntityRenderExtractionObservation {
+    pub(crate) candidates: usize,
+    pub(crate) survivors: usize,
+    pub(crate) projected: usize,
+    pub(crate) candidate_nanos: u64,
+    pub(crate) cull_nanos: u64,
+    pub(crate) projection_nanos: u64,
+    pub(crate) model_build_nanos: u64,
+    pub(crate) candidate_peak_nanos: u64,
+    pub(crate) cull_peak_nanos: u64,
+    pub(crate) projection_peak_nanos: u64,
+    pub(crate) model_build_peak_nanos: u64,
+    pub(crate) capacity_growths: u64,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct EntityRenderExtractionScratch {
+    candidates: Vec<EntityRenderCandidateState>,
+    survivors: Vec<EntityRenderCandidateState>,
+    candidate_index: HashMap<i32, usize>,
+    sources: Vec<EntityModelSourceState>,
+    instances: Vec<EntityModelInstance>,
+    observation: EntityRenderExtractionObservation,
+}
+
+impl EntityRenderExtractionScratch {
+    pub(crate) fn observation(&self) -> EntityRenderExtractionObservation {
+        self.observation
+    }
+
+    pub(crate) fn recycle_instances(&mut self, mut instances: Vec<EntityModelInstance>) {
+        instances.clear();
+        self.instances = instances;
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct EntityRenderVisibilityContext<'a> {
+    pub(crate) camera_pose: Option<CameraPose>,
+    pub(crate) surface_size: [u32; 2],
+    pub(crate) camera_fov_degrees: f32,
+    pub(crate) render_distance_chunks: u32,
+    pub(crate) terrain_upload: &'a TerrainUploadState,
+}
+
+pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    textures: &NativeEntityVariantTextureRuntime,
+    entity_partial_tick: f32,
+    visibility: EntityRenderVisibilityContext<'_>,
+    scratch: &mut EntityRenderExtractionScratch,
+) -> Vec<EntityModelInstance> {
+    let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
+    let previous_capacities = [
+        scratch.candidates.capacity(),
+        scratch.survivors.capacity(),
+        scratch.candidate_index.capacity(),
+        scratch.sources.capacity(),
+        scratch.instances.capacity(),
+    ];
+
+    let candidate_started_at = Instant::now();
+    world.fill_entity_render_candidates_at_partial_tick(
+        entity_partial_tick,
+        &mut scratch.candidates,
+    );
+    let candidate_duration = candidate_started_at.elapsed();
+
+    let cull_started_at = Instant::now();
+    scratch.candidate_index.clear();
+    scratch.candidate_index.reserve(scratch.candidates.len());
+    scratch.candidate_index.extend(
+        scratch
+            .candidates
+            .iter()
+            .enumerate()
+            .map(|(index, candidate)| (candidate.entity_id, index)),
+    );
+    scratch.survivors.clear();
+    scratch.survivors.reserve(scratch.candidates.len());
+    if let Some(camera_pose) = visibility.camera_pose {
+        let aspect = visibility.surface_size[0] as f32 / visibility.surface_size[1].max(1) as f32;
+        let frustum = CameraFrustum::from_pose(camera_pose, aspect, visibility.camera_fov_degrees);
+        let camera_entity_id = world.local_player().camera.entity_id;
+        let camera_sleeping = camera_entity_id
+            .and_then(|id| scratch.candidate_index.get(&id).copied())
+            .is_some_and(|index| scratch.candidates[index].is_sleeping);
+        scratch
+            .survivors
+            .extend(scratch.candidates.iter().copied().filter(|candidate| {
+                entity_render_candidate_is_visible(
+                    world,
+                    *candidate,
+                    &scratch.candidates,
+                    &scratch.candidate_index,
+                    camera_pose,
+                    frustum,
+                    camera_sleeping,
+                    visibility,
+                )
+            }));
+    } else {
+        scratch.survivors.extend(
+            scratch
+                .candidates
+                .iter()
+                .copied()
+                .filter(|candidate| !candidate.is_spectator),
+        );
+    }
+    let cull_duration = cull_started_at.elapsed();
+
+    let projection_started_at = Instant::now();
+    world.fill_entity_model_sources_for_candidates_at_partial_tick(
+        &scratch.survivors,
+        &scratch.candidates,
+        entity_partial_tick,
+        &mut scratch.sources,
+    );
+    let projection_duration = projection_started_at.elapsed();
+    let projected = scratch.sources.len();
+
+    let model_started_at = Instant::now();
+    let context = EntityVariantRenderContext { world, textures };
+    fill_entity_model_instances_from_sources(
+        world,
+        item_runtime,
+        entity_partial_tick,
+        Some(&context),
+        scratch.sources.drain(..),
+        &mut scratch.instances,
+    );
+    let model_duration = model_started_at.elapsed();
+    let current_capacities = [
+        scratch.candidates.capacity(),
+        scratch.survivors.capacity(),
+        scratch.candidate_index.capacity(),
+        scratch.sources.capacity(),
+        scratch.instances.capacity(),
+    ];
+    let capacity_growths = previous_capacities
+        .into_iter()
+        .zip(current_capacities)
+        .filter(|(before, after)| after > before)
+        .count() as u64;
+    scratch.observation = EntityRenderExtractionObservation {
+        candidates: scratch.candidates.len(),
+        survivors: scratch.survivors.len(),
+        projected,
+        candidate_nanos: duration_nanos(candidate_duration),
+        cull_nanos: duration_nanos(cull_duration),
+        projection_nanos: duration_nanos(projection_duration),
+        model_build_nanos: duration_nanos(model_duration),
+        candidate_peak_nanos: scratch
+            .observation
+            .candidate_peak_nanos
+            .max(duration_nanos(candidate_duration)),
+        cull_peak_nanos: scratch
+            .observation
+            .cull_peak_nanos
+            .max(duration_nanos(cull_duration)),
+        projection_peak_nanos: scratch
+            .observation
+            .projection_peak_nanos
+            .max(duration_nanos(projection_duration)),
+        model_build_peak_nanos: scratch
+            .observation
+            .model_build_peak_nanos
+            .max(duration_nanos(model_duration)),
+        capacity_growths: scratch
+            .observation
+            .capacity_growths
+            .saturating_add(capacity_growths),
+    };
+    std::mem::take(&mut scratch.instances)
+}
+
+#[cfg(test)]
 pub(crate) fn entity_model_instances_from_world_with_variant_textures_at_partial_tick(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -353,6 +540,7 @@ pub(crate) fn entity_model_instances_from_world_with_variant_textures_at_partial
     )
 }
 
+#[cfg(test)]
 fn entity_model_instances_from_world_with_registry_at_partial_tick(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -360,31 +548,293 @@ fn entity_model_instances_from_world_with_registry_at_partial_tick(
     variant_registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> Vec<EntityModelInstance> {
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
+    let sources = world.entity_model_sources_at_partial_tick(entity_partial_tick);
+    entity_model_instances_from_sources(
+        world,
+        item_runtime,
+        entity_partial_tick,
+        variant_registries,
+        sources,
+    )
+}
+
+#[cfg(test)]
+fn entity_model_instances_from_sources(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_partial_tick: f32,
+    variant_registries: Option<&dyn EntityVariantRegistryLookup>,
+    sources: impl IntoIterator<Item = EntityModelSourceState>,
+) -> Vec<EntityModelInstance> {
+    let mut instances = Vec::new();
+    fill_entity_model_instances_from_sources(
+        world,
+        item_runtime,
+        entity_partial_tick,
+        variant_registries,
+        sources,
+        &mut instances,
+    );
+    instances
+}
+
+fn fill_entity_model_instances_from_sources(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_partial_tick: f32,
+    variant_registries: Option<&dyn EntityVariantRegistryLookup>,
+    sources: impl IntoIterator<Item = EntityModelSourceState>,
+    instances: &mut Vec<EntityModelInstance>,
+) {
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
-    world
-        .entity_model_sources_at_partial_tick(entity_partial_tick)
-        .into_iter()
-        .filter(|source| {
-            local_player_id != Some(source.entity_id) && camera_entity_id != Some(source.entity_id)
-        })
-        .flat_map(|source| {
-            if let Some(instances) = painting_model_instances(&source, world, variant_registries) {
-                return instances;
-            }
-            entity_model_instance(
-                source,
-                world,
-                item_runtime,
-                game_time,
-                entity_partial_tick,
-                variant_registries,
-            )
-            .into_iter()
-            .collect()
-        })
-        .collect()
+    instances.clear();
+    for source in sources {
+        if local_player_id == Some(source.entity_id) || camera_entity_id == Some(source.entity_id) {
+            continue;
+        }
+        if let Some(painting_instances) =
+            painting_model_instances(&source, world, variant_registries)
+        {
+            instances.extend(painting_instances);
+        } else if let Some(instance) = entity_model_instance(
+            source,
+            world,
+            item_runtime,
+            game_time,
+            entity_partial_tick,
+            variant_registries,
+        ) {
+            instances.push(instance);
+        }
+    }
+}
+
+fn entity_render_candidate_is_visible(
+    world: &WorldStore,
+    candidate: EntityRenderCandidateState,
+    candidates: &[EntityRenderCandidateState],
+    candidate_index: &HashMap<i32, usize>,
+    camera_pose: CameraPose,
+    frustum: CameraFrustum,
+    camera_sleeping: bool,
+    visibility: EntityRenderVisibilityContext<'_>,
+) -> bool {
+    if candidate.is_spectator {
+        return false;
+    }
+    // Vanilla `LevelRenderer.extractVisibleEntities`: dispatcher visibility
+    // or the local-player indirect-passenger exception comes first.
+    if !candidate_has_local_player_indirect_passenger(
+        candidate.entity_id,
+        world.local_player_id(),
+        candidates,
+        candidate_index,
+    ) && !entity_renderer_should_render(
+        candidate,
+        candidates,
+        candidate_index,
+        camera_pose,
+        frustum,
+        visibility.render_distance_chunks,
+    ) {
+        return false;
+    }
+
+    // The current terrain owner records compiled chunks; phase 4 narrows this
+    // to section owners without changing this ordering contract.
+    if !visibility
+        .terrain_upload
+        .is_entity_section_compiled_and_visible(world, candidate.position)
+    {
+        return false;
+    }
+
+    let camera_entity_id = world.local_player().camera.entity_id;
+    // bbb currently exposes only vanilla's first-person camera type, so
+    // `Camera.isDetached()` is false. A sleeping living camera remains visible.
+    if camera_entity_id == Some(candidate.entity_id) && !camera_sleeping {
+        return false;
+    }
+    if world.local_player_id() == Some(candidate.entity_id)
+        && camera_entity_id != Some(candidate.entity_id)
+    {
+        return false;
+    }
+    true
+}
+
+fn entity_renderer_should_render(
+    candidate: EntityRenderCandidateState,
+    candidates: &[EntityRenderCandidateState],
+    candidate_index: &HashMap<i32, usize>,
+    camera_pose: CameraPose,
+    frustum: CameraFrustum,
+    render_distance_chunks: u32,
+) -> bool {
+    let culling_kind = vanilla_entity_renderer_culling_kind(candidate.entity_type_id);
+    if candidate.entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
+        && !candidate
+            .fishing_hook_owner_id
+            .and_then(|owner_id| candidate_index.get(&owner_id))
+            .and_then(|index| candidates.get(*index))
+            .is_some_and(|owner| owner.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID)
+    {
+        return false;
+    }
+    if culling_kind == VanillaEntityRendererCullingKind::ConservativeSpecial {
+        // Shulker interpolation, guardian/end-crystal beams, and Display's
+        // metadata-owned no-cull box need data outside the narrow row. Keeping
+        // these catalog-derived exceptional families is conservative and never
+        // hides content; their exact specialized boxes remain a measured tail.
+        return true;
+    }
+    if !entity_passes_vanilla_render_distance(candidate, camera_pose, render_distance_chunks) {
+        return false;
+    }
+    if culling_kind == VanillaEntityRendererCullingKind::NoFrustum {
+        return true;
+    }
+
+    let bounds = entity_renderer_culling_bounds(candidate, true);
+    if frustum.intersects_aabb(bounds.0, bounds.1) {
+        return true;
+    }
+    let Some(holder_id) = candidate.leash_holder_id else {
+        return false;
+    };
+    let Some(holder) = candidate_index
+        .get(&holder_id)
+        .and_then(|index| candidates.get(*index))
+        .copied()
+    else {
+        return false;
+    };
+    let holder_bounds = entity_renderer_culling_bounds(holder, false);
+    if frustum.intersects_aabb(holder_bounds.0, holder_bounds.1) {
+        return true;
+    }
+    frustum.intersects_aabb(
+        [
+            bounds.0[0].min(holder_bounds.0[0]),
+            bounds.0[1].min(holder_bounds.0[1]),
+            bounds.0[2].min(holder_bounds.0[2]),
+        ],
+        [
+            bounds.1[0].max(holder_bounds.1[0]),
+            bounds.1[1].max(holder_bounds.1[1]),
+            bounds.1[2].max(holder_bounds.1[2]),
+        ],
+    )
+}
+
+fn candidate_has_local_player_indirect_passenger(
+    candidate_id: i32,
+    local_player_id: Option<i32>,
+    candidates: &[EntityRenderCandidateState],
+    candidate_index: &HashMap<i32, usize>,
+) -> bool {
+    let mut current = local_player_id
+        .and_then(|entity_id| candidate_index.get(&entity_id))
+        .and_then(|index| candidates.get(*index))
+        .and_then(|player| player.vehicle_id);
+    for _ in 0..candidates.len() {
+        let Some(vehicle_id) = current else {
+            return false;
+        };
+        if vehicle_id == candidate_id {
+            return true;
+        }
+        current = candidate_index
+            .get(&vehicle_id)
+            .and_then(|index| candidates.get(*index))
+            .and_then(|vehicle| vehicle.vehicle_id);
+    }
+    false
+}
+
+fn entity_passes_vanilla_render_distance(
+    candidate: EntityRenderCandidateState,
+    camera_pose: CameraPose,
+    render_distance_chunks: u32,
+) -> bool {
+    let x_size = f64::from(candidate.bounds.max[0] - candidate.bounds.min[0]);
+    let y_size = f64::from(candidate.bounds.max[1] - candidate.bounds.min[1]);
+    let z_size = f64::from(candidate.bounds.max[2] - candidate.bounds.min[2]);
+    let mut size = (x_size + y_size + z_size) / 3.0;
+    if size.is_nan() {
+        size = 1.0;
+    }
+    if candidate.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+        // `RemotePlayer.shouldRenderAtSqrDistance` expands the average AABB
+        // size before applying the shared static view scale.
+        size *= 10.0;
+    }
+    let view_scale = (f64::from(render_distance_chunks) / 8.0).clamp(1.0, 2.5);
+    let max_distance = size * 64.0 * view_scale;
+    let camera = [
+        f64::from(camera_pose.position[0]),
+        f64::from(camera_pose.position[1] + camera_pose.eye_height),
+        f64::from(camera_pose.position[2]),
+    ];
+    let dx = candidate.position.x - camera[0];
+    let dy = candidate.position.y - camera[1];
+    let dz = candidate.position.z - camera[2];
+    dx * dx + dy * dy + dz * dz < max_distance * max_distance
+}
+
+fn entity_renderer_culling_bounds(
+    candidate: EntityRenderCandidateState,
+    inflate_for_dispatcher: bool,
+) -> ([f64; 3], [f64; 3]) {
+    let mut min = candidate.bounds.min.map(f64::from);
+    let mut max = candidate.bounds.max.map(f64::from);
+    if candidate.wears_dragon_head && vanilla_entity_type_is_living(candidate.entity_type_id) {
+        inflate_aabb(&mut min, &mut max, [0.5; 3]);
+    }
+    match vanilla_entity_renderer_culling_kind(candidate.entity_type_id) {
+        VanillaEntityRendererCullingKind::Inflate(inflation) => {
+            inflate_aabb(&mut min, &mut max, inflation.map(f64::from));
+        }
+        VanillaEntityRendererCullingKind::ExtendMinYByHalfHeight => {
+            min[1] -= (max[1] - min[1]) * 0.5;
+        }
+        VanillaEntityRendererCullingKind::Standard
+        | VanillaEntityRendererCullingKind::NoFrustum
+        | VanillaEntityRendererCullingKind::ConservativeSpecial => {}
+    }
+    if inflate_for_dispatcher {
+        inflate_aabb(&mut min, &mut max, [0.5; 3]);
+    }
+    let average_size = ((max[0] - min[0]) + (max[1] - min[1]) + (max[2] - min[2])) / 3.0;
+    if min.into_iter().chain(max).any(|value| value.is_nan()) || average_size == 0.0 {
+        min = [-2.0; 3];
+        max = [2.0; 3];
+    }
+    (
+        [
+            candidate.position.x + min[0],
+            candidate.position.y + min[1],
+            candidate.position.z + min[2],
+        ],
+        [
+            candidate.position.x + max[0],
+            candidate.position.y + max[1],
+            candidate.position.z + max[2],
+        ],
+    )
+}
+
+fn inflate_aabb(min: &mut [f64; 3], max: &mut [f64; 3], inflation: [f64; 3]) {
+    for axis in 0..3 {
+        min[axis] -= inflation[axis];
+        max[axis] += inflation[axis];
+    }
+}
+
+fn duration_nanos(duration: Duration) -> u64 {
+    duration.as_nanos().min(u128::from(u64::MAX)) as u64
 }
 
 pub(crate) fn entity_model_instance_from_world_entity_at_partial_tick(

@@ -319,6 +319,80 @@ impl CameraPose {
     }
 }
 
+/// Immutable perspective frustum used by render extraction before building
+/// heap-heavy entity render state. It shares the renderer's camera convention
+/// and WGPU zero-to-one clip depth.
+#[derive(Debug, Clone, Copy)]
+pub struct CameraFrustum {
+    view_projection: Mat4,
+}
+
+impl CameraFrustum {
+    pub fn from_pose(pose: CameraPose, aspect: f32, fov_degrees: f32) -> Self {
+        let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
+        let yaw = pose.y_rot.to_radians();
+        let pitch = pose.x_rot.to_radians();
+        let cos_pitch = pitch.cos();
+        let forward = Vec3::new(-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch)
+            .normalize_or_zero();
+        let target = eye
+            + if forward.length_squared() > 0.0 {
+                forward
+            } else {
+                Vec3::Z
+            };
+        let fov_degrees = if fov_degrees.is_finite() {
+            fov_degrees.clamp(7.0, 105.0)
+        } else {
+            70.0
+        };
+        let projection =
+            Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, 2048.0);
+        let view = Mat4::look_at_rh(eye, target, Vec3::Y);
+        Self {
+            view_projection: projection * view,
+        }
+    }
+
+    /// Conservative AABB/frustum intersection. Invalid coordinates remain
+    /// visible so malformed presentation data cannot hide a canonical entity.
+    pub fn intersects_aabb(self, min: [f64; 3], max: [f64; 3]) -> bool {
+        if min
+            .into_iter()
+            .chain(max)
+            .any(|coordinate| !coordinate.is_finite())
+        {
+            return true;
+        }
+        let corners = [
+            [min[0], min[1], min[2]],
+            [min[0], min[1], max[2]],
+            [min[0], max[1], min[2]],
+            [min[0], max[1], max[2]],
+            [max[0], min[1], min[2]],
+            [max[0], min[1], max[2]],
+            [max[0], max[1], min[2]],
+            [max[0], max[1], max[2]],
+        ]
+        .map(|corner| {
+            self.view_projection
+                * Vec4::new(corner[0] as f32, corner[1] as f32, corner[2] as f32, 1.0)
+        });
+        let outside_left = corners.iter().all(|corner| corner.x < -corner.w);
+        let outside_right = corners.iter().all(|corner| corner.x > corner.w);
+        let outside_bottom = corners.iter().all(|corner| corner.y < -corner.w);
+        let outside_top = corners.iter().all(|corner| corner.y > corner.w);
+        let outside_near = corners.iter().all(|corner| corner.z < 0.0);
+        let outside_far = corners.iter().all(|corner| corner.z > corner.w);
+        !(outside_left
+            || outside_right
+            || outside_bottom
+            || outside_top
+            || outside_near
+            || outside_far)
+    }
+}
+
 /// Camera-facing basis shared by item, particle, and debug-text billboards.
 /// `forward` points from the camera into the scene; `right`/`up` are the
 /// billboard plane axes used after vanilla's camera-orientation transform.
@@ -983,6 +1057,24 @@ mod tests {
             actual.abs_diff_eq(expected, 1.0e-5),
             "expected {expected:?}, got {actual:?}"
         );
+    }
+
+    #[test]
+    fn camera_frustum_accepts_front_intersections_and_rejects_behind_boxes() {
+        let frustum = CameraFrustum::from_pose(
+            CameraPose {
+                position: [0.0; 3],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 0.0,
+            },
+            16.0 / 9.0,
+            70.0,
+        );
+        assert!(frustum.intersects_aabb([-0.5, -0.5, 4.0], [0.5, 0.5, 5.0]));
+        assert!(!frustum.intersects_aabb([-0.5, -0.5, -5.0], [0.5, 0.5, -4.0]));
+        assert!(frustum.intersects_aabb([-100.0, -1.0, 1.0], [100.0, 1.0, 2.0]));
+        assert!(frustum.intersects_aabb([f64::NAN, 0.0, 0.0], [1.0; 3]));
     }
 
     #[test]

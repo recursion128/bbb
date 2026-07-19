@@ -284,6 +284,23 @@ nanoseconds and logical scanned, mutated, and rebuilt entity counts travel in
 the same generation's `NetCounters`; observation neither blocks the simulation
 nor introduces a separate reader publication.
 
+The publication carries `RenderInputPublication`, an explicit immutable
+projection of only keys/buttons and screen/debug presentation state consumed by
+render or the event loop. Movement accumulators, click timers, network request
+queues, debug query/crash state, and other simulation-only heaps are not cloned
+at this boundary. `SimulationFrameState` is borrowed from the loaded generation
+during extraction; render does not clone its particle context vectors.
+
+Entity rendering uses a render-owned `EntityRenderExtractionScratch`. One hecs
+batch query fills narrow identity/transform/bounds/culling rows, and the native
+owner applies vanilla distance, frustum, compiled-terrain, camera/local-player,
+spectator, passenger, leash, and generated renderer-class exceptions before
+full model-source projection. Only survivors are projected. Candidate, survivor,
+id-index, model-source, and final entity-instance allocations are cleared and
+reused; the renderer swaps its previous instance allocation back to this owner.
+The latest/peak phase durations, row counts, and capacity-growth count are
+published in the next immutable generation's renderer telemetry.
+
 Remote debug subscriptions follow the same boundary. The simulation thread is
 the only request-set/tick/expiry owner; typed block, chunk, UUID, and event maps
 live in `WorldStore` and are cleared by their connection/level/chunk/entity

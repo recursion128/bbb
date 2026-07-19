@@ -1137,7 +1137,7 @@ fn armor_stand_marker_has_model_target_without_pick_target() {
 
     let model_targets = store
         .entities
-        .model_targets_at_partial_tick(1.0, &store.registries);
+        .model_candidates_at_partial_tick(1.0, &store.registries);
     let model_target = model_targets
         .iter()
         .find(|target| target.entity_id == 28)

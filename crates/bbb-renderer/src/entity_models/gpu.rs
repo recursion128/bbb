@@ -2420,13 +2420,25 @@ impl Renderer {
     }
 
     pub fn set_entity_model_instances(&mut self, instances: Vec<EntityModelInstance>) {
-        let instances = sanitize_entity_model_instances(instances);
+        let _ = self.replace_entity_model_instances(instances);
+    }
+
+    /// Replaces entity instances and returns a cleared allocation owned by the
+    /// previous or unchanged input so render extraction can reuse its capacity.
+    pub fn replace_entity_model_instances(
+        &mut self,
+        instances: Vec<EntityModelInstance>,
+    ) -> Vec<EntityModelInstance> {
+        let mut instances = sanitize_entity_model_instances(instances);
         if self.entity_model_instances.as_slice() == instances.as_slice() {
-            return;
+            instances.clear();
+            return instances;
         }
 
-        self.entity_model_instances = instances;
+        let mut previous = std::mem::replace(&mut self.entity_model_instances, instances);
         self.rebuild_entity_model_meshes();
+        previous.clear();
+        previous
     }
 
     pub fn set_first_person_player_arms(&mut self, arms: Vec<FirstPersonPlayerArm>) {

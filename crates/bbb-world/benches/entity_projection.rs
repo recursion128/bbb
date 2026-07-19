@@ -189,6 +189,55 @@ fn bench_current_projection_before_visibility(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_visibility_first_projection(c: &mut Criterion) {
+    let mut candidate_group = c.benchmark_group("entity_render/narrow_candidates");
+    candidate_group.warm_up_time(Duration::from_millis(500));
+    candidate_group.measurement_time(Duration::from_secs(2));
+    for &count in &ENTITY_COUNTS {
+        let store = build_store(count);
+        let mut candidates = Vec::new();
+        candidate_group.bench_with_input(BenchmarkId::from_parameter(count), &count, |b, _| {
+            b.iter(|| {
+                store
+                    .fill_entity_render_candidates_at_partial_tick(black_box(0.5), &mut candidates);
+                black_box(candidates.len())
+            });
+        });
+    }
+    candidate_group.finish();
+
+    let mut projection_group = c.benchmark_group("entity_render/visibility_first_projection");
+    projection_group.warm_up_time(Duration::from_millis(500));
+    projection_group.measurement_time(Duration::from_secs(2));
+    for &count in &ENTITY_COUNTS {
+        let store = build_store(count);
+        for &visible_percentage in &VISIBLE_PERCENTAGES {
+            let survivor_count = count * visible_percentage / 100;
+            projection_group.bench_with_input(
+                BenchmarkId::new(format!("visible_{visible_percentage}_percent"), count),
+                &(count, survivor_count),
+                |b, &(_, survivor_count)| {
+                    b.iter(|| {
+                        let candidates =
+                            store.entity_render_candidates_at_partial_tick(black_box(0.5));
+                        let survivors = candidates
+                            .iter()
+                            .copied()
+                            .take(survivor_count)
+                            .collect::<Vec<_>>();
+                        black_box(store.entity_model_sources_for_candidates_at_partial_tick(
+                            &survivors,
+                            &candidates,
+                            0.5,
+                        ))
+                    });
+                },
+            );
+        }
+    }
+    projection_group.finish();
+}
+
 fn bench_advance_client_tick(c: &mut Criterion) {
     let mut group = c.benchmark_group("advance_entity_client_animations");
     group.warm_up_time(Duration::from_millis(500));
@@ -207,6 +256,7 @@ criterion_group!(
     bench_model_sources,
     bench_pick_targets,
     bench_current_projection_before_visibility,
+    bench_visibility_first_projection,
     bench_advance_client_tick
 );
 criterion_main!(benches);

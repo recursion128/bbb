@@ -23,9 +23,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use bbb_protocol::entity_types::{
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-    VANILLA_ENTITY_TYPE_WITHER_ID,
+    VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
 };
+use bbb_protocol::item_types::VANILLA_ITEM_DRAGON_HEAD_ID;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{
@@ -79,11 +80,10 @@ use super::{
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
     VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -1408,38 +1408,94 @@ impl EntityStore {
         targets
     }
 
-    pub(crate) fn model_targets_at_partial_tick(
+    pub(crate) fn fill_model_candidates_at_partial_tick(
         &self,
         _partial_ticks: f32,
         registries: &RegistrySet,
-    ) -> Vec<super::EntityModelTargetState> {
-        let mut targets = Vec::new();
-        for id in &self.order {
-            let Some(entity) = self.by_protocol_id.get(id).copied() else {
-                continue;
-            };
-            let Ok(mut query) = self
-                .ecs
-                .query_one::<(&EntityIdentity, &EntityTransform)>(entity)
-            else {
-                continue;
-            };
-            let Some((identity, transform)) = query.get() else {
-                continue;
-            };
+        candidates: &mut Vec<super::EntityRenderCandidateState>,
+    ) {
+        candidates.clear();
+        candidates.reserve(self.ecs.len() as usize);
+        let mut query = self.ecs.query::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityEquipment,
+            &EntityAttributes,
+            &EntityClientAnimations,
+            Option<&EntityMount>,
+            Option<&EntityLeash>,
+        )>();
+        for (_, (identity, transform, metadata, equipment, attributes, animations, mount, leash)) in
+            query.iter()
+        {
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
                 continue;
             }
-            let Some(bounds) = self.model_source_bounds(identity.id, registries) else {
+            let Some(mut bounds) = vanilla_model_source_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
                 continue;
             };
-            targets.push(super::EntityModelTargetState {
+            if let Some(display_offset) = minecart_display_offset_for_components(
+                identity.entity_type_id,
+                &metadata.data_values,
+                registries,
+            ) {
+                bounds = bounds.expand_towards_y(display_offset as f32 * 0.75 / 16.0);
+            }
+            candidates.push(super::EntityRenderCandidateState {
                 entity_id: identity.id,
+                uuid: identity.uuid,
+                entity_type_id: identity.entity_type_id,
                 position: transform.position,
                 bounds,
+                vehicle_id: mount.and_then(|mount| mount.vehicle_id),
+                leash_holder_id: leash.and_then(|leash| leash.holder_id),
+                fishing_hook_owner_id: (identity.entity_type_id
+                    == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
+                    .then_some(identity.data),
+                is_spectator: false,
+                is_sleeping: vanilla_living_entity_type(identity.entity_type_id)
+                    && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID,
+                wears_dragon_head: equipment.equipment.iter().any(|update| {
+                    update.slot == ProtocolEquipmentSlot::Head
+                        && update.item.item_id == Some(VANILLA_ITEM_DRAGON_HEAD_ID)
+                }),
             });
         }
-        targets
+    }
+
+    pub(crate) fn restore_protocol_order_for_model_candidates(
+        &self,
+        candidates: &mut Vec<super::EntityRenderCandidateState>,
+    ) {
+        let mut by_id = candidates
+            .drain(..)
+            .map(|candidate| (candidate.entity_id, candidate))
+            .collect::<HashMap<_, _>>();
+        candidates.reserve(by_id.len());
+        candidates.extend(
+            self.order
+                .iter()
+                .filter_map(|entity_id| by_id.remove(entity_id)),
+        );
+    }
+
+    #[cfg(test)]
+    pub(crate) fn model_candidates_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+        registries: &RegistrySet,
+    ) -> Vec<super::EntityRenderCandidateState> {
+        let mut candidates = Vec::new();
+        self.fill_model_candidates_at_partial_tick(partial_ticks, registries, &mut candidates);
+        candidates
     }
 
     pub(crate) fn refresh_client_position_from_entity_data(&mut self, id: i32) -> Option<()> {
@@ -4541,13 +4597,49 @@ impl fmt::Debug for EntityStore {
     }
 }
 
+fn minecart_display_offset_for_components(
+    entity_type_id: i32,
+    data_values: &[ProtocolEntityDataValue],
+    registries: &RegistrySet,
+) -> Option<i32> {
+    if !is_vanilla_minecart_type(entity_type_id) {
+        return None;
+    }
+    let accessors =
+        vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(entity_type_id)?;
+    let custom_state_id = data_values
+        .iter()
+        .find(|value| value.data_id == accessors.custom_display_block_data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::OptionalBlockState(state) => *state,
+            _ => None,
+        });
+    let has_display = if let Some(state_id) = custom_state_id {
+        registries
+            .block_state(state_id)
+            .is_some_and(|state| state.name != "minecraft:air")
+    } else {
+        default_minecart_display_block_kind(entity_type_id).is_some()
+    };
+    has_display.then(|| {
+        data_values
+            .iter()
+            .find(|value| value.data_id == accessors.display_offset_data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::Int(value) => Some(*value),
+                _ => None,
+            })
+            .unwrap_or(accessors.display_offset_default)
+    })
+}
+
 fn default_minecart_display_block_state(
     entity_type_id: i32,
     furnace_has_fuel: bool,
     registries: &RegistrySet,
 ) -> Option<EntityBlockModelState> {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => registered_block_model_state(
+    match default_minecart_display_block_kind(entity_type_id)? {
+        DefaultMinecartDisplayBlockKind::Chest => registered_block_model_state(
             registries,
             "minecraft:chest",
             BTreeMap::from([
@@ -4556,7 +4648,7 @@ fn default_minecart_display_block_state(
                 ("waterlogged".to_string(), "false".to_string()),
             ]),
         ),
-        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID => registered_block_model_state(
+        DefaultMinecartDisplayBlockKind::CommandBlock => registered_block_model_state(
             registries,
             "minecraft:command_block",
             BTreeMap::from([
@@ -4564,7 +4656,7 @@ fn default_minecart_display_block_state(
                 ("facing".to_string(), "north".to_string()),
             ]),
         ),
-        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID => registered_block_model_state(
+        DefaultMinecartDisplayBlockKind::Furnace => registered_block_model_state(
             registries,
             "minecraft:furnace",
             BTreeMap::from([
@@ -4572,7 +4664,7 @@ fn default_minecart_display_block_state(
                 ("lit".to_string(), furnace_has_fuel.to_string()),
             ]),
         ),
-        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => registered_block_model_state(
+        DefaultMinecartDisplayBlockKind::Hopper => registered_block_model_state(
             registries,
             "minecraft:hopper",
             BTreeMap::from([
@@ -4580,15 +4672,39 @@ fn default_minecart_display_block_state(
                 ("facing".to_string(), "down".to_string()),
             ]),
         ),
-        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID => {
+        DefaultMinecartDisplayBlockKind::Spawner => {
             registered_block_model_state(registries, "minecraft:spawner", BTreeMap::new())
         }
-        VANILLA_ENTITY_TYPE_TNT_MINECART_ID => registered_block_model_state(
+        DefaultMinecartDisplayBlockKind::Tnt => registered_block_model_state(
             registries,
             "minecraft:tnt",
             BTreeMap::from([("unstable".to_string(), "false".to_string())]),
         ),
-        VANILLA_ENTITY_TYPE_MINECART_ID => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DefaultMinecartDisplayBlockKind {
+    Chest,
+    CommandBlock,
+    Furnace,
+    Hopper,
+    Spawner,
+    Tnt,
+}
+
+fn default_minecart_display_block_kind(
+    entity_type_id: i32,
+) -> Option<DefaultMinecartDisplayBlockKind> {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => Some(DefaultMinecartDisplayBlockKind::Chest),
+        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID => {
+            Some(DefaultMinecartDisplayBlockKind::CommandBlock)
+        }
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID => Some(DefaultMinecartDisplayBlockKind::Furnace),
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => Some(DefaultMinecartDisplayBlockKind::Hopper),
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID => Some(DefaultMinecartDisplayBlockKind::Spawner),
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID => Some(DefaultMinecartDisplayBlockKind::Tnt),
         _ => None,
     }
 }

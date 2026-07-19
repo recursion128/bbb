@@ -54,8 +54,8 @@ pub(crate) use events::{vanilla_entity_event_kind, VanillaEntityEventKind};
 use movement::entity_vec3;
 pub use renderer_catalog::{
     vanilla_entity_renderer_boat_kind, vanilla_entity_renderer_camel_kind,
-    vanilla_entity_renderer_extracts_parrot_pose, vanilla_entity_renderer_extracts_sheep_head_eat,
-    vanilla_entity_renderer_extracts_wolf_sitting,
+    vanilla_entity_renderer_culling_kind, vanilla_entity_renderer_extracts_parrot_pose,
+    vanilla_entity_renderer_extracts_sheep_head_eat, vanilla_entity_renderer_extracts_wolf_sitting,
     vanilla_entity_renderer_extracts_zombie_underwater_converting,
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_horse_kind,
     vanilla_entity_renderer_illager_kind, vanilla_entity_renderer_is_noop,
@@ -64,8 +64,9 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_undead_horse_kind,
     vanilla_entity_renderer_uses_native_non_model_pass, vanilla_entity_renderer_zombie_kind,
     VanillaBoatRendererFamily, VanillaBoatRendererKind, VanillaCamelRendererKind,
-    VanillaHorseRendererKind, VanillaIllagerRendererKind, VanillaLlamaRendererKind,
-    VanillaSkeletonRendererKind, VanillaUndeadHorseRendererKind, VanillaZombieRendererKind,
+    VanillaEntityRendererCullingKind, VanillaHorseRendererKind, VanillaIllagerRendererKind,
+    VanillaLlamaRendererKind, VanillaSkeletonRendererKind, VanillaUndeadHorseRendererKind,
+    VanillaZombieRendererKind,
 };
 pub use renderer_catalog::{vanilla_entity_renderer_guardian_kind, VanillaGuardianRendererKind};
 pub use renderer_catalog::{vanilla_entity_renderer_hoglin_kind, VanillaHoglinRendererKind};
@@ -1085,11 +1086,21 @@ pub struct EntityPickTargetState {
     pub bounds: EntityPickBoundsState,
 }
 
+/// Narrow immutable row used to decide renderer visibility before projecting
+/// the heap-heavy [`EntityModelSourceState`].
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct EntityModelTargetState {
+pub struct EntityRenderCandidateState {
     pub entity_id: i32,
+    pub uuid: Uuid,
+    pub entity_type_id: i32,
     pub position: EntityVec3,
     pub bounds: EntityPickBoundsState,
+    pub vehicle_id: Option<i32>,
+    pub leash_holder_id: Option<i32>,
+    pub fishing_hook_owner_id: Option<i32>,
+    pub is_spectator: bool,
+    pub is_sleeping: bool,
+    pub wears_dragon_head: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3288,15 +3299,87 @@ impl WorldStore {
         &self,
         partial_ticks: f32,
     ) -> Vec<EntityModelSourceState> {
-        let targets = self
-            .entities
-            .model_targets_at_partial_tick(partial_ticks, &self.registries);
-        targets
+        let candidates = self.entity_render_candidates_at_partial_tick(partial_ticks);
+        let survivors = candidates
             .iter()
             .copied()
-            .filter(|target| self.entity_passes_spectator_filter(target.entity_id))
-            .filter_map(|target| self.project_entity_model_source(target, partial_ticks, &targets))
-            .collect()
+            .filter(|candidate| !candidate.is_spectator)
+            .collect::<Vec<_>>();
+        self.entity_model_sources_for_candidates_at_partial_tick(
+            &survivors,
+            &candidates,
+            partial_ticks,
+        )
+    }
+
+    /// Performs one narrow ECS query and annotates the spectator flag for
+    /// render culling. No full model source, item/effect projection, or
+    /// light/fluid sampling is performed here.
+    pub fn entity_render_candidates_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<EntityRenderCandidateState> {
+        let mut candidates = Vec::new();
+        self.fill_entity_render_candidates_at_partial_tick(partial_ticks, &mut candidates);
+        // Preserve the established public projection order for control/debug
+        // consumers. The renderer uses the allocation-retaining `fill_*`
+        // surface directly because culling is order-independent.
+        self.entities
+            .restore_protocol_order_for_model_candidates(&mut candidates);
+        candidates
+    }
+
+    /// Fills render candidates while retaining the caller's allocation.
+    pub fn fill_entity_render_candidates_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+        candidates: &mut Vec<EntityRenderCandidateState>,
+    ) {
+        self.entities.fill_model_candidates_at_partial_tick(
+            partial_ticks,
+            &self.registries,
+            candidates,
+        );
+        for candidate in candidates {
+            candidate.is_spectator = candidate.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                && self
+                    .player_info_entry(candidate.uuid)
+                    .is_some_and(|info| info.is_spectator());
+        }
+    }
+
+    /// Full-projects only `survivors`, while retaining the complete narrow
+    /// candidate set for relationship rules such as cats searching sleeping
+    /// players. Each survivor is projected exactly once.
+    pub fn entity_model_sources_for_candidates_at_partial_tick(
+        &self,
+        survivors: &[EntityRenderCandidateState],
+        all_candidates: &[EntityRenderCandidateState],
+        partial_ticks: f32,
+    ) -> Vec<EntityModelSourceState> {
+        let mut sources = Vec::new();
+        self.fill_entity_model_sources_for_candidates_at_partial_tick(
+            survivors,
+            all_candidates,
+            partial_ticks,
+            &mut sources,
+        );
+        sources
+    }
+
+    /// Full-projects survivors while retaining the caller's outer allocation.
+    pub fn fill_entity_model_sources_for_candidates_at_partial_tick(
+        &self,
+        survivors: &[EntityRenderCandidateState],
+        all_candidates: &[EntityRenderCandidateState],
+        partial_ticks: f32,
+        sources: &mut Vec<EntityModelSourceState>,
+    ) {
+        sources.clear();
+        sources.reserve(survivors.len());
+        sources.extend(survivors.iter().copied().filter_map(|candidate| {
+            self.project_entity_model_source(candidate, partial_ticks, all_candidates)
+        }));
     }
 
     /// Whether an entity should appear in the rendered model-source set. Vanilla hides spectator
@@ -3320,17 +3403,15 @@ impl WorldStore {
         entity_id: i32,
         partial_ticks: f32,
     ) -> Option<EntityModelSourceState> {
-        let targets = self
-            .entities
-            .model_targets_at_partial_tick(partial_ticks, &self.registries);
-        let target = targets
+        let candidates = self.entity_render_candidates_at_partial_tick(partial_ticks);
+        let candidate = candidates
             .iter()
             .copied()
-            .find(|target| target.entity_id == entity_id)?;
-        if !self.entity_passes_spectator_filter(target.entity_id) {
+            .find(|candidate| candidate.entity_id == entity_id)?;
+        if candidate.is_spectator {
             return None;
         }
-        self.project_entity_model_source(target, partial_ticks, &targets)
+        self.project_entity_model_source(candidate, partial_ticks, &candidates)
     }
 
     /// Per-entity projection shared by [`Self::entity_model_sources_at_partial_tick`] and
@@ -3340,9 +3421,9 @@ impl WorldStore {
     /// needed by the cat "lying on a sleeping player" search.
     fn project_entity_model_source(
         &self,
-        target: EntityModelTargetState,
+        target: EntityRenderCandidateState,
         partial_ticks: f32,
-        targets: &[EntityModelTargetState],
+        targets: &[EntityRenderCandidateState],
     ) -> Option<EntityModelSourceState> {
         let mut source = self.entities.model_source(
             target.entity_id,
@@ -3561,8 +3642,8 @@ impl WorldStore {
     fn cat_is_lying_on_top_of_sleeping_player(
         &self,
         source: &EntityModelSourceState,
-        cat_target: EntityModelTargetState,
-        targets: &[EntityModelTargetState],
+        cat_target: EntityRenderCandidateState,
+        targets: &[EntityRenderCandidateState],
     ) -> bool {
         if !cat_is_lying(source.entity_type_id, &source.data_values) {
             return false;
@@ -3962,7 +4043,7 @@ fn cat_sleeping_player_search_aabb(cat_position: EntityVec3) -> ([f64; 3], [f64;
     ([x - 2.0, y - 2.0, z - 2.0], [x + 3.0, y + 3.0, z + 3.0])
 }
 
-fn model_target_world_aabb(target: EntityModelTargetState) -> ([f64; 3], [f64; 3]) {
+fn model_target_world_aabb(target: EntityRenderCandidateState) -> ([f64; 3], [f64; 3]) {
     (
         [
             target.position.x + f64::from(target.bounds.min[0]),

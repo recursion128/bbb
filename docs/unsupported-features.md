@@ -36,6 +36,24 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 # Todo
 
+## Runtime performance parity and stable frame tails
+
+Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
+
+- Replace terrain GPU residency per stable chunk/section/layer owner, including
+  changed-owner vertex/index byte counters and index-only translucent resort;
+  ordinary block/chunk mutation must not clear or upload unchanged owners.
+- Reuse the remaining heap-heavy non-entity `RendererFrame` extraction owners
+  and revision-cache stable HUD/item/block-entity/debug projections without
+  caching partial-tick or animation-dependent state.
+- Narrow Guardian/EndCrystal/Shulker/display specialized culling to their exact
+  vanilla beam/interpolation/metadata boxes, and add section-granular compiled
+  visibility; follow `LevelRenderer.extractVisibleEntities` and the registered
+  renderer overrides without a parallel entity-type table.
+- Add bounded immutable background terrain meshing only if end-to-end captures
+  show a material frame/tail win, then complete equal-load official Java 26.1
+  CPU p50/p95/p99, GPU-frame, 1%-low, and chunk-update comparison captures.
+
 ## Protocol coverage for remaining required 26.1 packet families
 
 Owner: `bbb-protocol`

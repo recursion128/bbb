@@ -19588,6 +19588,26 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   和单一 simulation owner 守卫不变。剩余约 0.94 ms O(n) hecs shell rebuild 与 retained-generation
   shell/payload 版本峰值明确保留为后续测量边界。
 
+## 2026-07-19：simulation/render 性能 phase 3 visibility-first extraction
+
+- [x] `bbb-world` 新增一次 hecs batch 的窄 entity render candidate：identity、current transform、
+  dynamic bounds、mount/leash、spectator/sleeping、FishingHook player owner 与 generated renderer
+  culling family；全体 candidate 保留给关系规则，survivor 才执行一次完整 model-source projection，
+  公共完整 projection 继续保持既有 protocol order。
+- [x] native 按 vanilla `LevelRenderer.extractVisibleEntities` 顺序执行 dispatcher distance/frustum、
+  leash union、compiled terrain、camera/local player、sleeping/spectator 与 indirect-passenger gate；
+  candidate/survivor/id-index/source/final-instance 容量跨帧复用，renderer apply 把上一帧 entity
+  instance allocation 交换回 scratch。低开销 counters 同 generation 报告 candidate/survivor/
+  projected 数量、各 phase 最近/峰值耗时和 capacity growth。
+- [x] publication 改为显式 `RenderInputPublication`，不再逐 generation 克隆 gameplay movement、
+  click timing、outbound request、debug query/crash 等 simulation-only heaps；render 借用
+  `SimulationFrameState`，只在 command-suggestion/stats screen 实际打开时克隆已经窄化的展示状态。
+- [x] 同机 2,000 heterogeneous entity 的 visibility-first projection：0%/10%/50%/100% visible
+  从 5.743/5.729/5.715/5.783 ms 降为 1.267/1.676/3.299/5.338 ms（4.53x/3.42x/
+  1.73x/1.08x）；100/500/2,000 retained narrow batch 为 60.814 us/309.39 us/1.238 ms。
+  exact rare specialized culling、section-level compiled visibility、非 entity frame Vec 与增量 terrain
+  residency 继续留在同一工程 slice 的后续 phase。
+
 ## 2026-07-19：vanilla remote debug subscription 全路径
 
 - [x] 从本地 vanilla `DebugSubscriptions` 机械固定 16 项 built-in catalog；block/chunk/entity/

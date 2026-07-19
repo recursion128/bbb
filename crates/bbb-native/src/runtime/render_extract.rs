@@ -1083,7 +1083,11 @@ pub(crate) struct RendererFrame {
 }
 
 /// Commits one extracted frame to the renderer in a single call.
-pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame) {
+pub(crate) fn apply_renderer_frame(
+    renderer: &mut Renderer,
+    frame: RendererFrame,
+    entity_render_extraction: &mut crate::entity_scene::EntityRenderExtractionScratch,
+) {
     renderer.set_lightmap_environment(frame.lightmap_environment);
     renderer.set_clear_color(frame.clear_color);
     renderer.set_fog_environment(frame.fog_environment);
@@ -1172,7 +1176,8 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
         frame.first_person_map_text_surfaces,
     );
     renderer.set_sign_text_surfaces(frame.sign_text_surfaces);
-    renderer.set_entity_model_instances(frame.entity_model_instances);
+    let recycled_instances = renderer.replace_entity_model_instances(frame.entity_model_instances);
+    entity_render_extraction.recycle_instances(recycled_instances);
     renderer.set_camera_hurt_effect(frame.camera_hurt_effect);
     renderer.set_camera_fov_degrees(frame.camera_fov_degrees);
     renderer.set_camera_pose(frame.camera_pose);

@@ -221,6 +221,15 @@ the command classifier, `SimulationPublisher` reuses the previous exact world
 input, readiness/load transitions, reloads, and control mutations remain
 conservative rebuild boundaries.
 
+The input member is a narrow `RenderInputPublication`, not a complete clone of
+the mutable `ClientInputState`. It includes the key/button and screen/debug state
+that render/event-loop readers actually consume, while simulation movement,
+timing, request, query, and crash owners remain absent. Render borrows the
+generation's `SimulationFrameState` heap fields. Its entity extraction scratch
+retains candidate, survivor, relationship-index, full-source, and final-instance
+capacity across frames; the renderer returns the previous instance allocation
+when applying a changed frame.
+
 The first implementation publishes after any drained packet/input batch that
 changes observable state and after every due tick batch. It may coalesce
 multiple changes handled in one `step`, but must not wait for a rendered frame.
@@ -282,6 +291,12 @@ The render thread loads one publication per frame, drains effects through its
 sequence, computes/clamps partial tick from the publication anchor, extracts one
 `RendererFrame`, services at most the existing terrain budgets, and renders.
 Frame time never feeds back into the simulation accumulator.
+Entity extraction follows `LevelRenderer.extractVisibleEntities`: a narrow ECS
+batch is filtered by dispatcher distance/frustum (including leash and generated
+renderer exceptions), compiled terrain, camera/local-player, sleeping,
+spectator, and indirect-passenger rules before exactly one full projection of
+each survivor. Relationship rules reuse the same candidate id index rather than
+performing a full-table lookup per survivor.
 Simulation output wakes use a pending flag. Multiple queued outputs share one
 event-loop wake until the consumer drains and race-safely clears the flag;
 shutdown and panic exit retain their unconditional terminal wake.

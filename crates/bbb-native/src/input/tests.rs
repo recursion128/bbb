@@ -1341,6 +1341,66 @@ fn world_with_sleeping_local_player(player_id: i32) -> WorldStore {
 }
 
 #[test]
+fn render_input_publication_projects_display_state_without_simulation_queues() {
+    let mut input = ClientInputState::new(true);
+    input.forward = true;
+    input.mouse_delta_x = 12.5;
+    input.shift_left_down = true;
+    input.pressed_keys.insert(KeyCode::Tab);
+    input.inventory_hovered_slot = Some(7);
+    input.inventory_cursor_position = Some((123, 45));
+    input.inventory_quick_craft_button_num = Some(1);
+    input.inventory_quick_craft_slots = vec![2, 5, 7];
+    input.recipe_book_search_text = "visible recipe".to_owned();
+    input.advancement_scroll_deltas = BTreeMap::from([("minecraft:test".to_owned(), (2.0, 3.0))]);
+    input.debug_profiler_chart_visible = true;
+    input.debug_fog_enabled = false;
+    input
+        .debug_frustum_requests
+        .push(DebugFrustumRequest::Capture);
+    input.debug_resource_pack_reload_requests = 3;
+    input.chat_entry = Some(ChatEntryState {
+        text: "/help".to_owned(),
+        ..ChatEntryState::default()
+    });
+    input.riding_jump_charge_seconds = Some(0.6);
+    input.last_move_command_at = Some(Instant::now());
+    input.move_position_reminder_ticks = 19;
+
+    let publication = input.render_publication();
+    let projected = publication.as_state();
+
+    assert!(projected.focused);
+    assert!(projected.shift_left_down);
+    assert!(projected.pressed_keys.contains(&KeyCode::Tab));
+    assert_eq!(projected.inventory_hovered_slot, Some(7));
+    assert_eq!(projected.inventory_cursor_position, Some((123, 45)));
+    assert_eq!(projected.inventory_quick_craft_slots, [2, 5, 7]);
+    assert_eq!(projected.recipe_book_search_text, "visible recipe");
+    assert_eq!(
+        projected.advancement_scroll_deltas["minecraft:test"],
+        (2.0, 3.0)
+    );
+    assert!(projected.debug_profiler_chart_visible);
+    assert!(!projected.debug_fog_enabled);
+    assert_eq!(
+        projected
+            .chat_entry
+            .as_ref()
+            .map(|entry| entry.text.as_str()),
+        Some("/help")
+    );
+    assert_eq!(projected.riding_jump_charge_seconds, Some(0.6));
+
+    assert!(!projected.forward);
+    assert_eq!(projected.mouse_delta_x, 0.0);
+    assert!(projected.debug_frustum_requests.is_empty());
+    assert_eq!(projected.debug_resource_pack_reload_requests, 0);
+    assert!(projected.last_move_command_at.is_none());
+    assert_eq!(projected.move_position_reminder_ticks, 0);
+}
+
+#[test]
 fn prediction_sequence_starts_at_one_and_wraps_positive() {
     let mut world = WorldStore::new();
 

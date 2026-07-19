@@ -666,6 +666,26 @@ pub(crate) struct ClientInputState {
     creative_flight_jump_trigger_elapsed_seconds: f64,
 }
 
+/// Immutable input projection consumed by render and event-loop readers.
+/// Gameplay movement accumulators, outbound request queues, click timing, and
+/// crash/query state remain owned only by the simulation-side input owner.
+#[derive(Debug, Clone)]
+pub(crate) struct RenderInputPublication(ClientInputState);
+
+impl RenderInputPublication {
+    pub(crate) fn as_state(&self) -> &ClientInputState {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for RenderInputPublication {
+    type Target = ClientInputState;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_state()
+    }
+}
+
 #[derive(Debug, Clone)]
 struct DialogImePreeditState {
     text: String,
@@ -920,6 +940,93 @@ impl ClientInputState {
             debug_query_transaction_id: -1,
             ..Self::default()
         }
+    }
+
+    /// Builds the immutable subset consumed by render and event-loop readers.
+    ///
+    /// This is intentionally an explicit projection instead of `self.clone()`:
+    /// movement accumulators, click timers, outbound command requests, crash
+    /// state, and query transactions remain private to the mutable simulation
+    /// owner and therefore cannot add heap work to every publication.
+    pub(crate) fn render_publication(&self) -> RenderInputPublication {
+        RenderInputPublication(Self {
+            focused: self.focused,
+            shift_left_down: self.shift_left_down,
+            shift_right_down: self.shift_right_down,
+            control_left_down: self.control_left_down,
+            control_right_down: self.control_right_down,
+            pressed_keys: self.pressed_keys.clone(),
+            mouse_left_down: self.mouse_left_down,
+            mouse_right_down: self.mouse_right_down,
+            mouse_middle_down: self.mouse_middle_down,
+            inventory_hovered_slot: self.inventory_hovered_slot,
+            inventory_cursor_position: self.inventory_cursor_position,
+            dialog_ime_preedit: self.dialog_ime_preedit.clone(),
+            dialog_native_previous_screen: self.dialog_native_previous_screen.clone(),
+            inventory_quick_craft_button_num: self.inventory_quick_craft_button_num,
+            inventory_quick_craft_slots: self.inventory_quick_craft_slots.clone(),
+            stonecutter_recipe_scroll_row: self.stonecutter_recipe_scroll_row,
+            loom_pattern_scroll_row: self.loom_pattern_scroll_row,
+            loom_selected_pattern_index: self.loom_selected_pattern_index,
+            beacon_primary_effect: self.beacon_primary_effect,
+            beacon_secondary_effect: self.beacon_secondary_effect,
+            anvil_rename_input: self.anvil_rename_input.clone(),
+            anvil_rename_text: self.anvil_rename_text.clone(),
+            anvil_rename_cursor: self.anvil_rename_cursor,
+            anvil_rename_selection: self.anvil_rename_selection,
+            anvil_rename_hover_name: self.anvil_rename_hover_name.clone(),
+            recipe_book_search_text: self.recipe_book_search_text.clone(),
+            recipe_book_search_cursor: self.recipe_book_search_cursor,
+            recipe_book_search_selection: self.recipe_book_search_selection,
+            recipe_book_search_focused: self.recipe_book_search_focused,
+            recipe_book_crafting_tab_index: self.recipe_book_crafting_tab_index,
+            recipe_book_furnace_tab_index: self.recipe_book_furnace_tab_index,
+            recipe_book_blast_furnace_tab_index: self.recipe_book_blast_furnace_tab_index,
+            recipe_book_smoker_tab_index: self.recipe_book_smoker_tab_index,
+            recipe_book_crafting_page: self.recipe_book_crafting_page,
+            recipe_book_furnace_page: self.recipe_book_furnace_page,
+            recipe_book_blast_furnace_page: self.recipe_book_blast_furnace_page,
+            recipe_book_smoker_page: self.recipe_book_smoker_page,
+            recipe_book_overlay: self.recipe_book_overlay,
+            advancement_scroll_deltas: self.advancement_scroll_deltas.clone(),
+            advancement_hover_fade: self.advancement_hover_fade,
+            stats_screen_cursor_position: self.stats_screen_cursor_position,
+            stats_screen_scroll_amount: self.stats_screen_scroll_amount,
+            stats_screen_max_scroll_amount: self.stats_screen_max_scroll_amount,
+            stats_screen_scroller_height: self.stats_screen_scroller_height,
+            stats_screen_scrolling: self.stats_screen_scrolling,
+            stats_screen_tab: self.stats_screen_tab,
+            stats_screen_item_sort_column: self.stats_screen_item_sort_column,
+            stats_screen_item_sort_order: self.stats_screen_item_sort_order,
+            stats_screen_item_effective_sort: self.stats_screen_item_effective_sort,
+            stats_screen_tab_row_counts: self.stats_screen_tab_row_counts,
+            stats_screen_total_rows: self.stats_screen_total_rows,
+            stats_screen_focus: self.stats_screen_focus,
+            stats_screen_was_loading: self.stats_screen_was_loading,
+            pause_screen_disconnect_requested: self.pause_screen_disconnect_requested,
+            debug_entries: self.debug_entries.clone(),
+            debug_profiler_chart_visible: self.debug_profiler_chart_visible,
+            debug_fps_charts_visible: self.debug_fps_charts_visible,
+            debug_network_charts_visible: self.debug_network_charts_visible,
+            debug_lightmap_texture_visible: self.debug_lightmap_texture_visible,
+            debug_advanced_item_tooltips: self.debug_advanced_item_tooltips,
+            debug_show_local_server_entity_hit_boxes: self.debug_show_local_server_entity_hit_boxes,
+            remote_debug_renderers: self.remote_debug_renderers,
+            debug_fog_enabled: self.debug_fog_enabled,
+            debug_smart_cull_enabled: self.debug_smart_cull_enabled,
+            debug_wireframe_enabled: self.debug_wireframe_enabled,
+            debug_pause_on_lost_focus: self.debug_pause_on_lost_focus,
+            debug_profiling_recording: self.debug_profiling_recording,
+            debug_options_screen: self.debug_options_screen.clone(),
+            debug_pause_screen: self.debug_pause_screen.clone(),
+            debug_game_mode_switcher: self.debug_game_mode_switcher.clone(),
+            sign_editor: self.sign_editor.clone(),
+            dismissed_sign_editor: self.dismissed_sign_editor.clone(),
+            merchant_trade_scrolling: self.merchant_trade_scrolling,
+            chat_entry: self.chat_entry.clone(),
+            riding_jump_charge_seconds: self.riding_jump_charge_seconds,
+            ..Self::default()
+        })
     }
 
     pub(crate) fn dialog_mouse_click_is_double(
@@ -1220,6 +1327,10 @@ impl ClientInputState {
         sync_chat_suggestion_list(entry, world);
         update_chat_suggestion_list_rect(entry, world, measurer, surface_size);
         Some(chat_suggestion_hud_state(entry, world))
+    }
+
+    pub(crate) fn command_suggestions_active(&self) -> bool {
+        self.chat_entry.is_some()
     }
 
     pub(crate) fn handle_command_suggestion_cursor_moved(

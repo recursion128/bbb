@@ -369,6 +369,163 @@ fn armor_stand_default_model_pose() -> ArmorStandModelPose {
     }
 }
 
+fn render_candidate(
+    entity_id: i32,
+    entity_type_id: i32,
+    position: [f64; 3],
+) -> EntityRenderCandidateState {
+    EntityRenderCandidateState {
+        entity_id,
+        uuid: Uuid::from_u128(entity_id as u128),
+        entity_type_id,
+        position: EntityVec3 {
+            x: position[0],
+            y: position[1],
+            z: position[2],
+        },
+        bounds: EntityPickBoundsState::from_base_size(1.0, 2.0, 0.0),
+        vehicle_id: None,
+        leash_holder_id: None,
+        fishing_hook_owner_id: None,
+        is_spectator: false,
+        is_sleeping: false,
+        wears_dragon_head: false,
+    }
+}
+
+#[test]
+fn visibility_first_culling_applies_distance_frustum_and_leash_union() {
+    let camera = CameraPose {
+        position: [0.0; 3],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: 0.0,
+    };
+    let frustum = CameraFrustum::from_pose(camera, 16.0 / 9.0, 70.0);
+    let front = render_candidate(1, VANILLA_ENTITY_TYPE_ZOMBIE_ID, [0.0, 0.0, 10.0]);
+    let behind = render_candidate(2, VANILLA_ENTITY_TYPE_ZOMBIE_ID, [0.0, 0.0, -10.0]);
+    assert!(entity_renderer_should_render(
+        front,
+        &[front],
+        &HashMap::from([(front.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+    assert!(!entity_renderer_should_render(
+        behind,
+        &[behind],
+        &HashMap::from([(behind.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+
+    let holder = render_candidate(3, VANILLA_ENTITY_TYPE_COW_ID, [0.0, 0.0, 10.0]);
+    let mut leashed = render_candidate(4, VANILLA_ENTITY_TYPE_COW_ID, [30.0, 0.0, 10.0]);
+    leashed.leash_holder_id = Some(holder.entity_id);
+    let candidates = [leashed, holder];
+    assert!(entity_renderer_should_render(
+        leashed,
+        &candidates,
+        &HashMap::from([(leashed.entity_id, 0), (holder.entity_id, 1)]),
+        camera,
+        frustum,
+        12,
+    ));
+
+    let local_player = render_candidate(5, VANILLA_ENTITY_TYPE_PLAYER_ID, [0.0, 0.0, 0.0]);
+    let mut first_vehicle = render_candidate(6, VANILLA_ENTITY_TYPE_COW_ID, [0.0, 0.0, -10.0]);
+    let root_vehicle = render_candidate(7, VANILLA_ENTITY_TYPE_COW_ID, [0.0, 0.0, -10.0]);
+    let mut riding_player = local_player;
+    riding_player.vehicle_id = Some(first_vehicle.entity_id);
+    first_vehicle.vehicle_id = Some(root_vehicle.entity_id);
+    let candidates = [riding_player, first_vehicle, root_vehicle];
+    let index = HashMap::from([
+        (riding_player.entity_id, 0),
+        (first_vehicle.entity_id, 1),
+        (root_vehicle.entity_id, 2),
+    ]);
+    assert!(candidate_has_local_player_indirect_passenger(
+        root_vehicle.entity_id,
+        Some(riding_player.entity_id),
+        &candidates,
+        &index,
+    ));
+    assert!(!candidate_has_local_player_indirect_passenger(
+        99,
+        Some(riding_player.entity_id),
+        &candidates,
+        &index,
+    ));
+
+    let mut fishing_hook =
+        render_candidate(8, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, [0.0, 0.0, 10.0]);
+    assert!(!entity_renderer_should_render(
+        fishing_hook,
+        &[fishing_hook],
+        &HashMap::from([(fishing_hook.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+    fishing_hook.fishing_hook_owner_id = Some(local_player.entity_id);
+    let candidates = [fishing_hook, local_player];
+    assert!(entity_renderer_should_render(
+        fishing_hook,
+        &candidates,
+        &HashMap::from([(fishing_hook.entity_id, 0), (local_player.entity_id, 1)]),
+        camera,
+        frustum,
+        12,
+    ));
+    fishing_hook.position.z = -10.0;
+    let candidates = [fishing_hook, local_player];
+    assert!(!entity_renderer_should_render(
+        fishing_hook,
+        &candidates,
+        &HashMap::from([(fishing_hook.entity_id, 0), (local_player.entity_id, 1)]),
+        camera,
+        frustum,
+        12,
+    ));
+}
+
+#[test]
+fn visibility_first_culling_keeps_catalog_exceptions_and_custom_bounds() {
+    let camera = CameraPose {
+        position: [0.0; 3],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: 0.0,
+    };
+    let frustum = CameraFrustum::from_pose(camera, 16.0 / 9.0, 70.0);
+    let lightning = render_candidate(1, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, [0.0, 0.0, -10.0]);
+    assert!(entity_renderer_should_render(
+        lightning,
+        &[lightning],
+        &HashMap::from([(lightning.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+
+    let sniffer = render_candidate(2, VANILLA_ENTITY_TYPE_SNIFFER_ID, [0.0, 4.0, 10.0]);
+    let (sniffer_min, sniffer_max) = entity_renderer_culling_bounds(sniffer, true);
+    for (actual, expected) in sniffer_min.into_iter().zip([-1.6, 2.9, 8.4]) {
+        assert!((actual - expected).abs() < 1.0e-5);
+    }
+    for (actual, expected) in sniffer_max.into_iter().zip([1.6, 7.1, 11.6]) {
+        assert!((actual - expected).abs() < 1.0e-5);
+    }
+
+    let mut zombie = render_candidate(3, VANILLA_ENTITY_TYPE_ZOMBIE_ID, [0.0, 4.0, 10.0]);
+    zombie.wears_dragon_head = true;
+    let (dragon_head_min, dragon_head_max) = entity_renderer_culling_bounds(zombie, true);
+    assert_eq!(dragon_head_min, [-1.5, 3.0, 8.5]);
+    assert_eq!(dragon_head_max, [1.5, 7.0, 11.5]);
+}
+
 fn tamable_animal_flags_data(entity_type_id: i32, tame: bool, sitting: bool) -> EntityDataValue {
     let accessors =
         bbb_world::vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
