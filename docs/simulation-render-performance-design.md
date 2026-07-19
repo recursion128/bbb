@@ -328,6 +328,41 @@ and the final live capture owns end-to-end GPU timing. Wgpu may defer destructio
 of a replaced buffer, so `terrain_peak_resident_bytes` is a logical resident
 peak rather than a claim about short-lived driver allocation peaks.
 
+## Phase 5 Boundary Result
+
+The measured synchronous residual justified one bounded terrain mesh worker:
+one representative changed chunk costs about 1.85 ms, which is 27% of a
+144-FPS CPU frame budget, while a 32-chunk burst contains about 71 ms of mesh
+work. The native render owner now converts canonical world data into immutable
+`Arc<TerrainChunkSnapshot>` values and lazily starts one named
+`bbb-terrain-mesh` thread. A job contains only the level/mesh/content key,
+target and neighbor snapshot Arcs, an immutable atlas Arc, camera position, and
+priority. It contains no `WorldStore`, renderer, wgpu object, or mutable
+canonical owner.
+
+The priority queue holds at most four jobs, first prefers chunks with an active
+canonical local block prediction, then the nearest selected chunk (the
+player/camera chunk has distance zero). A newer queued revision for
+the same chunk replaces the old entry; a nearer job may evict the farthest
+queued entry. The result channel holds at most five meshes—the queue plus the
+single in-flight job—so a blocked render thread cannot create unbounded mesh
+memory. Every accepted result must still match client-level generation,
+resource/mesh generation, chunk mesh revision, desired selection, and retained
+snapshot owner. Reload/reset cancels queued values, and in-flight stale values
+are counted and discarded. GPU creation/upload remains render-thread-only.
+
+Renderer telemetry now publishes cumulative queued/completed/stale/queue-full
+jobs, current/peak queue depth, and recent/peak worker build nanoseconds with
+the next immutable generation. The worker propagates a panic on the next render
+interaction, stops through its condition variable, and is always joined by the
+terrain upload owner's drop path. Focused tests cover bounded priority and
+same-owner replacement, immutable source ownership, build/result delivery,
+join, stale-result rejection, reset identity, and counter projection. The
+historical 1/8/32 Criterion remains the amount of CPU mesh work rather than a
+claim that work disappeared; final live frame/tail capture owns the end-to-end
+benefit. Snapshot extraction and section-dirty granularity remain render-thread
+costs recorded as follow-up boundaries.
+
 ## Serial Phases, Validation, And Gates
 
 1. **Baseline, contract, observation surface.** Add the headless Criterion

@@ -1,14 +1,15 @@
 use std::{
     collections::{HashMap, HashSet},
+    sync::Arc,
     time::{Duration, Instant},
 };
 
 use bbb_renderer::terrain::{
-    build_terrain_chunk_section_mesh_layers_with_atlas_and_camera, TerrainCardinalLighting,
-    TerrainCell, TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind, TerrainLight,
-    TerrainMaterialClass, TerrainSectionMeshLayers, TerrainSkipRendering, TerrainTint,
+    TerrainCardinalLighting, TerrainCell, TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind,
+    TerrainLight, TerrainMaterialClass, TerrainSectionMeshLayers, TerrainSkipRendering,
+    TerrainTextureAtlas, TerrainTint,
 };
-use bbb_renderer::TerrainChunkMeshOwner;
+use bbb_renderer::{TerrainChunkMeshOwner, TerrainMeshWorkerCounters};
 use bbb_world::{
     block_name_is_half_transparent, block_name_is_leaves, ChunkPos, WorldCardinalLighting,
     WorldStore,
@@ -20,7 +21,11 @@ use crate::biome_tint::{
 };
 use crate::camera_pose::camera_pose_from_world;
 
+mod mesh_worker;
 mod textures;
+use mesh_worker::{
+    TerrainMeshJob, TerrainMeshJobKey, TerrainMeshResult, TerrainMeshSubmit, TerrainMeshWorker,
+};
 pub(crate) use textures::{
     load_terrain_textures, try_load_terrain_textures, BlockRenderPosition,
     TerrainParticleTintCatalog, TerrainTextureState,
@@ -33,20 +38,21 @@ const TERRAIN_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
 struct CachedTerrainSnapshot {
     content_revision: u64,
     mesh_revision: u64,
-    snapshot: Option<TerrainChunkSnapshot>,
+    snapshot: Option<Arc<TerrainChunkSnapshot>>,
 }
 
 #[derive(Debug)]
 struct CachedTerrainMesh {
     revision: u64,
     resident_revision: u64,
+    camera_position: [f32; 3],
     layers: TerrainSectionMeshLayers,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TerrainCacheWork {
     RefreshSnapshot(ChunkPos),
-    RebuildMesh(ChunkPos),
+    QueueMesh(ChunkPos),
     Idle,
 }
 
@@ -58,6 +64,11 @@ pub(crate) struct TerrainUploadState {
     snapshots: HashMap<ChunkPos, CachedTerrainSnapshot>,
     meshes: HashMap<ChunkPos, CachedTerrainMesh>,
     next_resident_revision: u64,
+    mesh_generation: u64,
+    pending_mesh_jobs: HashMap<ChunkPos, TerrainMeshJobKey>,
+    mesh_worker: Option<TerrainMeshWorker>,
+    mesh_atlas: Option<Arc<TerrainTextureAtlas>>,
+    mesh_worker_counters: TerrainMeshWorkerCounters,
     reload_all_chunks_requested: bool,
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
@@ -193,13 +204,15 @@ pub(crate) fn maybe_upload_decoded_terrain(
     upload: &mut TerrainUploadState,
     textures: &TerrainTextureState,
 ) {
+    let mut renderer_dirty = drain_terrain_mesh_results(world, upload);
     let level_changed =
         synchronize_terrain_level_generation(upload, world.client_level_generation());
     if world.chunk_count() == 0 {
         let terrain_cleared = synchronize_empty_terrain_upload(upload, world.terrain_revision());
-        if level_changed || terrain_cleared {
+        if renderer_dirty || level_changed || terrain_cleared {
             upload_cached_terrain(renderer, upload);
         }
+        publish_mesh_worker_counters(renderer, upload);
         return;
     }
 
@@ -214,9 +227,12 @@ pub(crate) fn maybe_upload_decoded_terrain(
         .filter(|pos| loaded.contains(pos))
         .collect();
 
-    let mut renderer_dirty = level_changed;
+    renderer_dirty |= level_changed;
     if upload.reload_all_chunks_requested {
-        renderer_dirty = !upload.meshes.is_empty();
+        renderer_dirty |= !upload.meshes.is_empty();
+        cancel_queued_terrain_mesh_jobs(upload);
+        upload.mesh_generation = upload.mesh_generation.saturating_add(1);
+        upload.mesh_atlas = None;
         upload.snapshots.clear();
         upload.meshes.clear();
         upload.compiled_and_visible_chunks.clear();
@@ -234,9 +250,8 @@ pub(crate) fn maybe_upload_decoded_terrain(
         TerrainCacheWork::RefreshSnapshot(pos) => {
             refresh_terrain_snapshot(world, upload, textures, pos);
         }
-        TerrainCacheWork::RebuildMesh(pos) => {
-            rebuild_terrain_chunk_mesh(world, upload, textures, pos);
-            renderer_dirty = true;
+        TerrainCacheWork::QueueMesh(pos) => {
+            renderer_dirty |= queue_terrain_chunk_mesh(world, upload, textures, pos);
         }
         TerrainCacheWork::Idle => {}
     }
@@ -244,6 +259,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
     if renderer_dirty {
         upload_cached_terrain(renderer, upload);
     }
+    publish_mesh_worker_counters(renderer, upload);
     upload.observed_world_revision = world.terrain_revision();
 }
 
@@ -255,6 +271,8 @@ fn synchronize_terrain_level_generation(
         return false;
     }
     let clear_renderer = !upload.meshes.is_empty();
+    cancel_queued_terrain_mesh_jobs(upload);
+    upload.mesh_generation = upload.mesh_generation.saturating_add(1);
     upload.observed_level_generation = level_generation;
     upload.selected_chunks.clear();
     upload.snapshots.clear();
@@ -266,6 +284,7 @@ fn synchronize_terrain_level_generation(
 
 fn synchronize_empty_terrain_upload(upload: &mut TerrainUploadState, world_revision: u64) -> bool {
     let clear_renderer = !upload.meshes.is_empty();
+    cancel_queued_terrain_mesh_jobs(upload);
     upload.observed_world_revision = world_revision;
     upload.selected_chunks.clear();
     upload.snapshots.clear();
@@ -310,7 +329,11 @@ fn next_terrain_cache_work(
                 return TerrainCacheWork::RefreshSnapshot(pos);
             }
         }
-        return TerrainCacheWork::RebuildMesh(target);
+        let key = terrain_mesh_job_key(world, upload, target);
+        if upload.pending_mesh_jobs.get(&target) == Some(&key) {
+            continue;
+        }
+        return TerrainCacheWork::QueueMesh(target);
     }
     TerrainCacheWork::Idle
 }
@@ -325,12 +348,12 @@ fn refresh_terrain_snapshot(
     let mesh_revision = world.terrain_chunk_mesh_revision(pos);
     let snapshot = world.extract_terrain_chunk(pos).map(|snapshot| {
         let biome_sampler = world.chunk_biome_sampler(pos);
-        convert_terrain_snapshot(
+        Arc::new(convert_terrain_snapshot(
             snapshot,
             textures,
             terrain_cardinal_lighting(world),
             &biome_sampler,
-        )
+        ))
     });
     upload.snapshots.insert(
         pos,
@@ -342,41 +365,188 @@ fn refresh_terrain_snapshot(
     );
 }
 
-fn rebuild_terrain_chunk_mesh(
+fn terrain_mesh_job_key(
+    world: &WorldStore,
+    upload: &TerrainUploadState,
+    pos: ChunkPos,
+) -> TerrainMeshJobKey {
+    TerrainMeshJobKey {
+        level_generation: world.client_level_generation(),
+        mesh_generation: upload.mesh_generation,
+        pos,
+        mesh_revision: world.terrain_chunk_mesh_revision(pos),
+    }
+}
+
+fn queue_terrain_chunk_mesh(
     world: &WorldStore,
     upload: &mut TerrainUploadState,
     textures: &TerrainTextureState,
     pos: ChunkPos,
-) {
-    let revision = world.terrain_chunk_mesh_revision(pos);
-    let layers = upload
+) -> bool {
+    let key = terrain_mesh_job_key(world, upload, pos);
+    let target = upload
         .snapshots
         .get(&pos)
         .and_then(|cached| cached.snapshot.as_ref())
-        .map(|target| {
-            let neighborhood = chunk_neighborhood(pos).filter_map(|neighbor| {
-                upload
-                    .snapshots
-                    .get(&neighbor)
-                    .and_then(|cached| cached.snapshot.as_ref())
-            });
-            build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
-                target,
-                neighborhood,
-                &textures.atlas,
-                terrain_camera_position(world),
-            )
+        .cloned();
+    let Some(target) = target else {
+        upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
+        upload.meshes.insert(
+            pos,
+            CachedTerrainMesh {
+                revision: key.mesh_revision,
+                resident_revision: upload.next_resident_revision,
+                camera_position: terrain_camera_position(world),
+                layers: TerrainSectionMeshLayers::default(),
+            },
+        );
+        return true;
+    };
+    let neighborhood = chunk_neighborhood(pos)
+        .filter(|neighbor| *neighbor != pos)
+        .filter_map(|neighbor| {
+            upload
+                .snapshots
+                .get(&neighbor)
+                .and_then(|cached| cached.snapshot.as_ref())
+                .cloned()
         })
-        .unwrap_or_default();
+        .collect();
+    let atlas = upload
+        .mesh_atlas
+        .get_or_insert_with(|| Arc::new(textures.atlas.clone()))
+        .clone();
+    let center = terrain_upload_center(world);
+    let player_changed = world.local_block_predictions().iter().any(|prediction| {
+        prediction.pos.x.div_euclid(16) == pos.x && prediction.pos.z.div_euclid(16) == pos.z
+    });
+    let job = TerrainMeshJob {
+        key,
+        priority: (
+            u8::from(!player_changed),
+            chunk_distance_key(pos, center),
+            pos.x,
+            pos.z,
+        ),
+        target,
+        neighborhood,
+        atlas,
+        camera_position: terrain_camera_position(world),
+    };
+    let worker = upload
+        .mesh_worker
+        .get_or_insert_with(TerrainMeshWorker::spawn);
+    match worker.submit(job) {
+        TerrainMeshSubmit::Queued { evicted } => {
+            if let Some(evicted) = evicted {
+                if upload.pending_mesh_jobs.get(&evicted.pos) == Some(&evicted) {
+                    upload.pending_mesh_jobs.remove(&evicted.pos);
+                }
+                upload.mesh_worker_counters.stale_jobs =
+                    upload.mesh_worker_counters.stale_jobs.saturating_add(1);
+            }
+            upload.pending_mesh_jobs.insert(pos, key);
+            upload.mesh_worker_counters.queued_jobs =
+                upload.mesh_worker_counters.queued_jobs.saturating_add(1);
+        }
+        TerrainMeshSubmit::AlreadyQueued => {
+            upload.pending_mesh_jobs.insert(pos, key);
+        }
+        TerrainMeshSubmit::Full => {
+            upload.mesh_worker_counters.queue_full =
+                upload.mesh_worker_counters.queue_full.saturating_add(1);
+        }
+    }
+    update_mesh_worker_queue_depth(upload);
+    false
+}
+
+fn drain_terrain_mesh_results(world: &WorldStore, upload: &mut TerrainUploadState) -> bool {
+    let mut renderer_dirty = false;
+    loop {
+        let result = match upload.mesh_worker.as_mut() {
+            Some(worker) => worker.try_recv(),
+            None => None,
+        };
+        let Some(result) = result else {
+            break;
+        };
+        renderer_dirty |= accept_terrain_mesh_result(world, upload, result);
+    }
+    update_mesh_worker_queue_depth(upload);
+    renderer_dirty
+}
+
+fn accept_terrain_mesh_result(
+    world: &WorldStore,
+    upload: &mut TerrainUploadState,
+    result: TerrainMeshResult,
+) -> bool {
+    upload.mesh_worker_counters.completed_jobs =
+        upload.mesh_worker_counters.completed_jobs.saturating_add(1);
+    upload.mesh_worker_counters.recent_build_nanos = result.build_nanos;
+    upload.mesh_worker_counters.peak_build_nanos = upload
+        .mesh_worker_counters
+        .peak_build_nanos
+        .max(result.build_nanos);
+    if upload.pending_mesh_jobs.get(&result.key.pos) == Some(&result.key) {
+        upload.pending_mesh_jobs.remove(&result.key.pos);
+    }
+    let current = terrain_mesh_job_key(world, upload, result.key.pos);
+    let valid = result.key == current
+        && upload.selected_chunks.contains(&result.key.pos)
+        && upload.snapshots.contains_key(&result.key.pos);
+    if !valid {
+        upload.mesh_worker_counters.stale_jobs =
+            upload.mesh_worker_counters.stale_jobs.saturating_add(1);
+        return false;
+    }
     upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
     upload.meshes.insert(
-        pos,
+        result.key.pos,
         CachedTerrainMesh {
-            revision,
+            revision: result.key.mesh_revision,
             resident_revision: upload.next_resident_revision,
-            layers,
+            camera_position: result.camera_position,
+            layers: result.layers,
         },
     );
+    true
+}
+
+fn cancel_queued_terrain_mesh_jobs(upload: &mut TerrainUploadState) {
+    let cancelled = upload
+        .mesh_worker
+        .as_mut()
+        .map(TerrainMeshWorker::cancel_queued)
+        .unwrap_or_default();
+    for key in cancelled {
+        if upload.pending_mesh_jobs.get(&key.pos) == Some(&key) {
+            upload.pending_mesh_jobs.remove(&key.pos);
+        }
+        upload.mesh_worker_counters.stale_jobs =
+            upload.mesh_worker_counters.stale_jobs.saturating_add(1);
+    }
+    update_mesh_worker_queue_depth(upload);
+}
+
+fn update_mesh_worker_queue_depth(upload: &mut TerrainUploadState) {
+    let depth = upload
+        .mesh_worker
+        .as_ref()
+        .map(TerrainMeshWorker::queue_depth)
+        .unwrap_or(0);
+    upload.mesh_worker_counters.queue_depth = depth;
+    upload.mesh_worker_counters.peak_queue_depth =
+        upload.mesh_worker_counters.peak_queue_depth.max(depth);
+}
+
+fn publish_mesh_worker_counters(
+    renderer: &mut bbb_renderer::Renderer,
+    upload: &TerrainUploadState,
+) {
+    renderer.set_terrain_mesh_worker_counters(upload.mesh_worker_counters);
 }
 
 fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut TerrainUploadState) {
@@ -406,6 +576,7 @@ fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut Ter
                 },
                 cached.resident_revision,
                 &cached.layers,
+                cached.camera_position,
             )
         }),
     );
@@ -749,6 +920,7 @@ mod tests {
                 CachedTerrainMesh {
                     revision: 3,
                     resident_revision: 1,
+                    camera_position: [0.0; 3],
                     layers: TerrainSectionMeshLayers::default(),
                 },
             )]),
@@ -777,6 +949,7 @@ mod tests {
                 CachedTerrainMesh {
                     revision: 3,
                     resident_revision: 8,
+                    camera_position: [0.0; 3],
                     layers: TerrainSectionMeshLayers::default(),
                 },
             )]),
@@ -793,6 +966,66 @@ mod tests {
         assert!(upload.compiled_and_visible_chunks.is_empty());
         assert_eq!(upload.next_resident_revision, 8);
         assert!(!synchronize_terrain_level_generation(&mut upload, 5));
+    }
+
+    #[test]
+    fn stale_worker_result_cannot_replace_current_chunk_revision() {
+        let pos = ChunkPos { x: 0, z: 0 };
+        let mut world = WorldStore::new();
+        world.insert_decoded_chunk(test_chunk(pos));
+        let mut upload = TerrainUploadState {
+            observed_level_generation: world.client_level_generation(),
+            mesh_generation: 3,
+            selected_chunks: vec![pos],
+            snapshots: HashMap::from([(
+                pos,
+                CachedTerrainSnapshot {
+                    content_revision: world.terrain_chunk_content_revision(pos),
+                    mesh_revision: world.terrain_chunk_mesh_revision(pos),
+                    snapshot: None,
+                },
+            )]),
+            ..Default::default()
+        };
+        let current = terrain_mesh_job_key(&world, &upload, pos);
+        let stale = TerrainMeshJobKey {
+            mesh_generation: current.mesh_generation - 1,
+            ..current
+        };
+        upload.pending_mesh_jobs.insert(pos, stale);
+
+        assert!(!accept_terrain_mesh_result(
+            &world,
+            &mut upload,
+            TerrainMeshResult {
+                key: stale,
+                camera_position: [1.0, 2.0, 3.0],
+                build_nanos: 17,
+                layers: TerrainSectionMeshLayers::default(),
+            },
+        ));
+        assert!(upload.meshes.is_empty());
+        assert_eq!(upload.mesh_worker_counters.completed_jobs, 1);
+        assert_eq!(upload.mesh_worker_counters.stale_jobs, 1);
+
+        upload.pending_mesh_jobs.insert(pos, current);
+        assert!(accept_terrain_mesh_result(
+            &world,
+            &mut upload,
+            TerrainMeshResult {
+                key: current,
+                camera_position: [4.0, 5.0, 6.0],
+                build_nanos: 23,
+                layers: TerrainSectionMeshLayers::default(),
+            },
+        ));
+        let cached = upload.meshes.get(&pos).expect("current result installed");
+        assert_eq!(cached.revision, current.mesh_revision);
+        assert_eq!(cached.camera_position, [4.0, 5.0, 6.0]);
+        assert_eq!(upload.mesh_worker_counters.completed_jobs, 2);
+        assert_eq!(upload.mesh_worker_counters.stale_jobs, 1);
+        assert_eq!(upload.mesh_worker_counters.recent_build_nanos, 23);
+        assert_eq!(upload.mesh_worker_counters.peak_build_nanos, 23);
     }
 
     #[test]
@@ -835,25 +1068,27 @@ mod tests {
         );
         assert_eq!(
             next_terrain_cache_work(&world, &upload, &loaded),
-            TerrainCacheWork::RebuildMesh(center)
+            TerrainCacheWork::QueueMesh(center)
         );
         upload.meshes.insert(
             center,
             CachedTerrainMesh {
                 revision: world.terrain_chunk_mesh_revision(center),
                 resident_revision: 1,
+                camera_position: [0.0; 3],
                 layers: TerrainSectionMeshLayers::default(),
             },
         );
         assert_eq!(
             next_terrain_cache_work(&world, &upload, &loaded),
-            TerrainCacheWork::RebuildMesh(east)
+            TerrainCacheWork::QueueMesh(east)
         );
         upload.meshes.insert(
             east,
             CachedTerrainMesh {
                 revision: world.terrain_chunk_mesh_revision(east),
                 resident_revision: 2,
+                camera_position: [0.0; 3],
                 layers: TerrainSectionMeshLayers::default(),
             },
         );

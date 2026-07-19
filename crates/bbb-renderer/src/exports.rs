@@ -12,7 +12,7 @@ pub use crate::clouds::{
     CloudEnvironment, CloudFrame, CloudShape, CloudTextureImage, VANILLA_DEFAULT_CLOUD_COLOR,
     VANILLA_DEFAULT_CLOUD_HEIGHT,
 };
-pub use crate::counters::RendererCounters;
+pub use crate::counters::{RendererCounters, TerrainMeshWorkerCounters};
 pub use crate::debug_filled_boxes::{DebugCuboidFace, DebugFilledBox, DebugFilledRect};
 pub use crate::debug_text_billboards::DebugTextBillboard;
 pub use crate::debug_textures::DynamicTextureDumpSummary;

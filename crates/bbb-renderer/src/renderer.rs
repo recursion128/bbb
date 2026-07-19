@@ -25,7 +25,7 @@ use crate::{
         create_cloud_uniform_buffer, write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu,
         CloudShape, CloudTarget, CloudTextureData, CloudTextureImage,
     },
-    counters::RendererCounters,
+    counters::{RendererCounters, TerrainMeshWorkerCounters},
     debug_filled_boxes::{
         create_debug_filled_box_pipeline, sanitize_debug_filled_boxes, sanitize_debug_filled_rects,
         DebugFilledBox, DebugFilledRect,
@@ -1985,6 +1985,17 @@ impl Renderer {
         self.counters.clone()
     }
 
+    pub fn set_terrain_mesh_worker_counters(&mut self, counters: TerrainMeshWorkerCounters) {
+        self.counters.terrain_mesh_jobs_queued = counters.queued_jobs;
+        self.counters.terrain_mesh_jobs_completed = counters.completed_jobs;
+        self.counters.terrain_mesh_jobs_stale = counters.stale_jobs;
+        self.counters.terrain_mesh_queue_full = counters.queue_full;
+        self.counters.terrain_mesh_queue_depth = counters.queue_depth;
+        self.counters.terrain_mesh_peak_queue_depth = counters.peak_queue_depth;
+        self.counters.terrain_mesh_recent_build_nanos = counters.recent_build_nanos;
+        self.counters.terrain_mesh_peak_build_nanos = counters.peak_build_nanos;
+    }
+
     pub fn set_current_post_effect_id(&mut self, id: Option<String>) {
         self.current_post_effect_id = id;
     }
@@ -2207,19 +2218,19 @@ impl Renderer {
         self.terrain_translucent.clear();
 
         for mesh in opaque {
-            if let Some(resident) = self.create_resident_terrain_mesh(mesh, None) {
+            if let Some(resident) = self.create_resident_terrain_mesh(mesh, None, None) {
                 self.terrain_opaque.push(resident);
                 self.counters.terrain_uploaded_owners += 1;
             }
         }
         for mesh in cutout {
-            if let Some(resident) = self.create_resident_terrain_mesh(mesh, None) {
+            if let Some(resident) = self.create_resident_terrain_mesh(mesh, None, None) {
                 self.terrain_cutout.push(resident);
                 self.counters.terrain_uploaded_owners += 1;
             }
         }
         for mesh in translucent {
-            if let Some(resident) = self.create_resident_terrain_mesh(mesh, None) {
+            if let Some(resident) = self.create_resident_terrain_mesh(mesh, None, None) {
                 self.terrain_translucent.push(resident);
                 self.counters.terrain_uploaded_owners += 1;
             }
@@ -2245,11 +2256,12 @@ impl Renderer {
                 TerrainChunkMeshOwner,
                 u64,
                 &'a terrain::TerrainSectionMeshLayers,
+                [f32; 3],
             ),
         >,
     ) {
         let chunks: Vec<_> = chunks.into_iter().collect();
-        let desired_chunks: BTreeSet<_> = chunks.iter().map(|(owner, _, _)| *owner).collect();
+        let desired_chunks: BTreeSet<_> = chunks.iter().map(|(owner, _, _, _)| *owner).collect();
 
         self.terrain_source_sections = source_sections;
         self.counters.queued_sections = source_sections;
@@ -2270,7 +2282,7 @@ impl Renderer {
         self.counters.terrain_removed_owners +=
             retain_resident_terrain_chunks(&mut self.terrain_translucent, &desired_chunks);
 
-        for (chunk, revision, layers) in chunks {
+        for (chunk, revision, layers, mesh_camera_position) in chunks {
             if self.terrain_chunk_revisions.get(&chunk) == Some(&revision) {
                 continue;
             }
@@ -2287,9 +2299,11 @@ impl Renderer {
                     chunk,
                     section_y: section.section_y,
                 };
-                if let Some(resident) =
-                    self.create_resident_terrain_mesh(&section.mesh, Some(owner))
-                {
+                if let Some(resident) = self.create_resident_terrain_mesh(
+                    &section.mesh,
+                    Some(owner),
+                    Some(mesh_camera_position),
+                ) {
                     self.terrain_opaque.push(resident);
                     self.counters.terrain_uploaded_owners += 1;
                 }
@@ -2299,9 +2313,11 @@ impl Renderer {
                     chunk,
                     section_y: section.section_y,
                 };
-                if let Some(resident) =
-                    self.create_resident_terrain_mesh(&section.mesh, Some(owner))
-                {
+                if let Some(resident) = self.create_resident_terrain_mesh(
+                    &section.mesh,
+                    Some(owner),
+                    Some(mesh_camera_position),
+                ) {
                     self.terrain_cutout.push(resident);
                     self.counters.terrain_uploaded_owners += 1;
                 }
@@ -2311,9 +2327,11 @@ impl Renderer {
                     chunk,
                     section_y: section.section_y,
                 };
-                if let Some(resident) =
-                    self.create_resident_terrain_mesh(&section.mesh, Some(owner))
-                {
+                if let Some(resident) = self.create_resident_terrain_mesh(
+                    &section.mesh,
+                    Some(owner),
+                    Some(mesh_camera_position),
+                ) {
                     self.terrain_translucent.push(resident);
                     self.counters.terrain_uploaded_owners += 1;
                 }
@@ -2451,6 +2469,7 @@ impl Renderer {
         &mut self,
         mesh: &terrain::TerrainMesh,
         owner: Option<TerrainResidentMeshOwner>,
+        translucent_camera_position: Option<[f32; 3]>,
     ) -> Option<ResidentTerrainMesh> {
         if mesh.vertices.is_empty() || mesh.indices.is_empty() {
             return None;
@@ -2461,7 +2480,7 @@ impl Renderer {
             .then(|| {
                 TerrainTranslucentSortState::from_vertices(
                     &mesh.vertices,
-                    self.camera_sort_position(),
+                    translucent_camera_position,
                 )
             })
             .flatten();
@@ -2835,7 +2854,7 @@ mod tests {
         choose_format, choose_present_mode, translucent_section_draw_order, TerrainChunkMeshOwner,
         TerrainTranslucentSortState,
     };
-    use crate::camera::TerrainBounds;
+    use crate::camera::{CameraPose, TerrainBounds};
     use crate::terrain::{
         TerrainMesh, TerrainSectionMesh, TerrainSectionMeshLayers, TerrainVertex,
     };
@@ -3004,7 +3023,7 @@ mod tests {
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
             2,
-            [(west, 1, &layers), (east, 1, &layers)],
+            [(west, 1, &layers, [0.0; 3]), (east, 1, &layers, [0.0; 3])],
         );
         let one_owner_bytes = renderer.counters().upload_bytes / 2;
         assert_eq!(renderer.counters().terrain_changed_owners, 2);
@@ -3014,7 +3033,7 @@ mod tests {
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
             2,
-            [(west, 1, &layers), (east, 1, &layers)],
+            [(west, 1, &layers, [0.0; 3]), (east, 1, &layers, [0.0; 3])],
         );
         assert_eq!(renderer.counters().terrain_changed_owners, 0);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 0);
@@ -3024,7 +3043,7 @@ mod tests {
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
             2,
-            [(west, 2, &layers), (east, 1, &layers)],
+            [(west, 2, &layers, [0.0; 3]), (east, 1, &layers, [0.0; 3])],
         );
         assert_eq!(renderer.counters().terrain_changed_owners, 1);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 1);
@@ -3033,7 +3052,7 @@ mod tests {
         assert_eq!(renderer.counters().terrain_full_replacements, 0);
         assert_eq!(renderer.terrain_opaque.len(), 2);
 
-        renderer.synchronize_terrain_section_mesh_layer_refs(1, [(east, 1, &layers)]);
+        renderer.synchronize_terrain_section_mesh_layer_refs(1, [(east, 1, &layers, [0.0; 3])]);
         assert_eq!(renderer.counters().terrain_changed_owners, 0);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 0);
         assert_eq!(renderer.counters().terrain_removed_owners, 1);
@@ -3050,10 +3069,73 @@ mod tests {
             level_generation: 8,
             ..east
         };
-        renderer.synchronize_terrain_section_mesh_layer_refs(1, [(next_level_east, 1, &layers)]);
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            1,
+            [(next_level_east, 1, &layers, [0.0; 3])],
+        );
         assert_eq!(renderer.counters().terrain_changed_owners, 1);
         assert_eq!(renderer.counters().terrain_uploaded_owners, 1);
         assert_eq!(renderer.counters().terrain_removed_owners, 1);
+        assert_eq!(renderer.counters().terrain_full_replacements, 0);
+    }
+
+    #[test]
+    fn translucent_camera_resort_uploads_indices_without_replacing_vertices() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let vertices = vec![
+            terrain_vertex([0.0, 0.0, 0.0]),
+            terrain_vertex([1.0, 0.0, 0.0]),
+            terrain_vertex([1.0, 1.0, 0.0]),
+            terrain_vertex([0.0, 1.0, 0.0]),
+            terrain_vertex([0.0, 0.0, 1.0]),
+            terrain_vertex([1.0, 0.0, 1.0]),
+            terrain_vertex([1.0, 1.0, 1.0]),
+            terrain_vertex([0.0, 1.0, 1.0]),
+        ];
+        let layers = TerrainSectionMeshLayers {
+            translucent: vec![TerrainSectionMesh {
+                section_y: 0,
+                mesh: TerrainMesh {
+                    vertices,
+                    indices: vec![4, 5, 6, 6, 7, 4, 0, 1, 2, 2, 3, 0],
+                    source_sections: 1,
+                    translucent_faces: 2,
+                    ..TerrainMesh::default()
+                },
+            }],
+            source_sections: 1,
+            ..TerrainSectionMeshLayers::default()
+        };
+        let owner = TerrainChunkMeshOwner {
+            level_generation: 1,
+            chunk_x: 0,
+            chunk_z: 0,
+        };
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            1,
+            [(owner, 1, &layers, [0.5, 0.5, -4.0])],
+        );
+        let vertex_upload_bytes = renderer.counters().terrain_vertex_upload_bytes;
+
+        renderer.set_camera_pose(Some(CameraPose {
+            position: [0.5, 0.5, 4.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }));
+
+        assert_eq!(renderer.counters().terrain_translucent_resort_owners, 1);
+        assert_eq!(
+            renderer.counters().terrain_translucent_resort_index_bytes,
+            12 * size_of::<u32>() as u64
+        );
+        assert_eq!(
+            renderer.counters().terrain_vertex_upload_bytes,
+            vertex_upload_bytes
+        );
+        assert_eq!(renderer.counters().terrain_changed_owners, 1);
         assert_eq!(renderer.counters().terrain_full_replacements, 0);
     }
 

@@ -311,6 +311,14 @@ resort writes index buffers without retransmitting vertices. Logical upload and
 resident counters cross through the non-waking backend telemetry path and are
 published with the next immutable generation.
 
+One lazy bounded terrain worker may consume only render-materialized immutable
+snapshot/atlas Arcs. Its four-entry local-prediction/nearest-first queue and
+five-entry result channel are derived caches, not another world owner. Level/resource/chunk
+revisions gate every result before the render owner adopts it; queued reset work
+is cancelled and in-flight stale work is discarded. Wgpu resources and GPU
+upload never leave the render thread. The worker is named, panic-propagating,
+stopped, and joined with `TerrainUploadState` lifecycle.
+
 Remote debug subscriptions follow the same boundary. The simulation thread is
 the only request-set/tick/expiry owner; typed block, chunk, UUID, and event maps
 live in `WorldStore` and are cleared by their connection/level/chunk/entity

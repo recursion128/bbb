@@ -19626,6 +19626,25 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   更细的 section CPU dirty revision、driver deferred-release 峰值与 background meshing 保留为
   后续可测边界。
 
+## 2026-07-19：simulation/render 性能 phase 5 有界后台 terrain meshing
+
+- [x] 同机 representative chunk 的同步 mesh residual 约 1.85 ms（144 FPS 帧预算的 27%），
+  32-chunk burst 约 71 ms，因此启用一个 lazy named `bbb-terrain-mesh` worker；render 仅发送
+  已物化的 immutable target/neighborhood snapshot Arc、atlas Arc、camera 与完整 revision key，
+  source guard 禁止 `WorldStore`、renderer/wgpu 或 mutable canonical owner 进入 worker。
+- [x] 四项 player-prediction/nearest-first queue 与五项 result bound 覆盖 single in-flight；
+  canonical local block prediction owner 优先，camera/player chunk distance 为 0，same-owner 新
+  revision 替换旧 queued value，player-changed/near owner 可淘汰 far queued value。
+  level/resource reset 取消 queued work，in-flight 结果必须重新验证 level/mesh/chunk revision、
+  desired selection 与 snapshot owner，stale result 不得覆盖新 residency。
+- [x] worker panic 在下一次 render interaction 传播，owner drop 通过 condition-variable stop 后 join；
+  GPU upload 仍只在 render thread。telemetry 随下一 immutable generation 报告 queued/completed/
+  stale/queue-full、current/peak depth 与 recent/peak build nanos。
+- [x] focused tests 覆盖 priority/capacity、same-owner replacement、immutable source、build delivery、
+  shutdown join、stale rejection、level identity 和 translucent index-only upload。bounded result 最坏
+  保留五个 completed mesh，snapshot extraction、section-level CPU dirty revision 与 final live/official
+  tail capture 仍是明确剩余边界。
+
 ## 2026-07-19：vanilla remote debug subscription 全路径
 
 - [x] 从本地 vanilla `DebugSubscriptions` 机械固定 16 项 built-in catalog；block/chunk/entity/
