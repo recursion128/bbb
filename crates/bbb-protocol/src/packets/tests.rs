@@ -2955,25 +2955,42 @@ fn play_custom_payload_rejects_invalid_ids_and_oversized_brand() {
 }
 
 #[test]
-fn encodes_play_debug_subscription_request_for_tick_time() {
+fn encodes_play_debug_subscription_request_as_validated_deterministic_set() {
     use crate::debug_subscription_types::VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID;
 
-    let (id, payload) = encode_play_debug_subscription_request(true);
+    let (id, payload) = encode_play_debug_subscription_request(&[
+        15,
+        VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID,
+        8,
+        15,
+    ])
+    .unwrap();
     assert_eq!(id, ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST);
 
     let mut decoder = Decoder::new(&payload);
-    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 3);
     assert_eq!(
         decoder.read_var_i32().unwrap(),
         VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID
     );
+    assert_eq!(decoder.read_var_i32().unwrap(), 8);
+    assert_eq!(decoder.read_var_i32().unwrap(), 15);
     assert!(decoder.is_empty());
 
-    let (id, payload) = encode_play_debug_subscription_request(false);
+    let (id, payload) = encode_play_debug_subscription_request(&[]).unwrap();
     assert_eq!(id, ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 0);
     assert!(decoder.is_empty());
+
+    assert!(encode_play_debug_subscription_request(&[-1])
+        .unwrap_err()
+        .to_string()
+        .contains("invalid debug subscription id -1"));
+    assert!(encode_play_debug_subscription_request(&[16])
+        .unwrap_err()
+        .to_string()
+        .contains("invalid debug subscription id 16"));
 }
 
 #[test]

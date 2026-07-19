@@ -13,6 +13,7 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
     data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+    debug_subscription_types::VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID,
     heightmap_types::{
         vanilla_heightmap_type, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
         VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID, VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID,
@@ -1019,7 +1020,12 @@ impl HudDebugTpsSampler {
         }
         if let Some(tx) = net_commands {
             if tx
-                .try_send(NetCommand::DebugSubscriptionRequest { tick_time: desired })
+                .try_send(NetCommand::DebugSubscriptionRequest {
+                    subscription_ids: desired
+                        .then_some(VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID)
+                        .into_iter()
+                        .collect(),
+                })
                 .is_ok()
             {
                 self.tick_time_subscribed = desired;

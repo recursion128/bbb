@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 pub use crate::client_command_actions::ClientCommandAction;
 pub use crate::container_inputs::ContainerInput;
-use crate::debug_subscription_types::VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID;
+use crate::debug_subscription_types::vanilla_debug_subscription_type_by_id;
 pub use crate::interaction_hands::InteractionHand;
 pub use crate::player_action_kinds::PlayerActionKind;
 pub use crate::player_command_actions::PlayerCommandAction;
@@ -534,16 +534,28 @@ pub fn encode_play_custom_click_action(packet: &CustomClickAction) -> Result<(i3
     ))
 }
 
-pub fn encode_play_debug_subscription_request(tick_time: bool) -> (i32, Vec<u8>) {
-    let mut out = Encoder::new();
-    out.write_var_i32(if tick_time { 1 } else { 0 });
-    if tick_time {
-        out.write_var_i32(VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID);
+pub fn encode_play_debug_subscription_request(subscription_ids: &[i32]) -> Result<(i32, Vec<u8>)> {
+    let mut subscription_ids = subscription_ids.to_vec();
+    subscription_ids.sort_unstable();
+    subscription_ids.dedup();
+    for id in &subscription_ids {
+        if vanilla_debug_subscription_type_by_id(*id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid debug subscription id {id}"
+            )));
+        }
     }
-    (
+    let mut out = Encoder::new();
+    out.write_var_i32(i32::try_from(subscription_ids.len()).map_err(|_| {
+        ProtocolError::InvalidData("too many debug subscriptions requested".to_string())
+    })?);
+    for id in subscription_ids {
+        out.write_var_i32(id);
+    }
+    Ok((
         ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST,
         out.into_inner(),
-    )
+    ))
 }
 
 pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<u8>) {

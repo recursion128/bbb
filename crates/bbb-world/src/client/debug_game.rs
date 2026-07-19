@@ -32,24 +32,34 @@ pub struct ClientDebugGameState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebugBlockValueState {
     pub pos: BlockPos,
-    pub raw_update_payload_len: usize,
+    #[serde(default)]
+    pub subscription_id: i32,
+    #[serde(default)]
+    pub value_present: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebugChunkValueState {
     pub pos: ChunkPos,
-    pub raw_update_payload_len: usize,
+    #[serde(default)]
+    pub subscription_id: i32,
+    #[serde(default)]
+    pub value_present: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebugEntityValueState {
     pub entity_id: i32,
-    pub raw_update_payload_len: usize,
+    #[serde(default)]
+    pub subscription_id: i32,
+    #[serde(default)]
+    pub value_present: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebugEventState {
-    pub raw_event_payload_len: usize,
+    #[serde(default)]
+    pub subscription_id: i32,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -104,7 +114,8 @@ impl WorldStore {
         self.counters.debug_block_value_packets += 1;
         self.client_debug_game.last_debug_block_value = Some(DebugBlockValueState {
             pos: protocol_block_pos(packet.pos),
-            raw_update_payload_len: packet.raw_update_payload.len(),
+            subscription_id: packet.update.subscription_id,
+            value_present: packet.update.value.is_some(),
         });
     }
 
@@ -115,7 +126,8 @@ impl WorldStore {
                 x: packet.pos.x,
                 z: packet.pos.z,
             },
-            raw_update_payload_len: packet.raw_update_payload.len(),
+            subscription_id: packet.update.subscription_id,
+            value_present: packet.update.value.is_some(),
         });
     }
 
@@ -123,14 +135,15 @@ impl WorldStore {
         self.counters.debug_entity_value_packets += 1;
         self.client_debug_game.last_debug_entity_value = Some(DebugEntityValueState {
             entity_id: packet.entity_id,
-            raw_update_payload_len: packet.raw_update_payload.len(),
+            subscription_id: packet.update.subscription_id,
+            value_present: packet.update.value.is_some(),
         });
     }
 
     pub fn apply_debug_event(&mut self, packet: ProtocolDebugEvent) {
         self.counters.debug_event_packets += 1;
         self.client_debug_game.last_debug_event = Some(DebugEventState {
-            raw_event_payload_len: packet.raw_event_payload.len(),
+            subscription_id: packet.event.subscription_id,
         });
     }
 
@@ -232,29 +245,60 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, DebugBlockValue,
-        DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, GameRuleValue, GameRuleValues,
-        GameTestHighlightPos, RemoteDebugSampleType, TestInstanceBlockStatus,
+        DebugChunkValue, DebugEntityBlockIntersection, DebugEntityValue, DebugEvent, DebugSample,
+        DebugSubscriptionEvent, DebugSubscriptionUpdate, DebugSubscriptionValue, GameRuleValue,
+        GameRuleValues, GameTestHighlightPos, RemoteDebugSampleType, TestInstanceBlockStatus,
     };
+
+    fn block_update(pos: ProtocolBlockPos) -> DebugBlockValue {
+        DebugBlockValue {
+            pos,
+            update: DebugSubscriptionUpdate {
+                subscription_id: 6,
+                value: Some(DebugSubscriptionValue::EntityBlockIntersection(
+                    DebugEntityBlockIntersection::InAir,
+                )),
+            },
+        }
+    }
+
+    fn chunk_remove(pos: ProtocolChunkPos) -> DebugChunkValue {
+        DebugChunkValue {
+            pos,
+            update: DebugSubscriptionUpdate {
+                subscription_id: 11,
+                value: None,
+            },
+        }
+    }
+
+    fn entity_remove(entity_id: i32) -> DebugEntityValue {
+        DebugEntityValue {
+            entity_id,
+            update: DebugSubscriptionUpdate {
+                subscription_id: 3,
+                value: None,
+            },
+        }
+    }
+
+    fn neighbor_event(pos: ProtocolBlockPos) -> DebugEvent {
+        DebugEvent {
+            event: DebugSubscriptionEvent {
+                subscription_id: 14,
+                value: DebugSubscriptionValue::NeighborUpdate(pos),
+            },
+        }
+    }
 
     #[test]
     fn tracks_debug_game_events_and_counters() {
         let mut store = WorldStore::new();
 
-        store.apply_debug_block_value(DebugBlockValue {
-            pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
-            raw_update_payload: vec![5, 1, 0xaa],
-        });
-        store.apply_debug_chunk_value(DebugChunkValue {
-            pos: ProtocolChunkPos { x: 3, z: -4 },
-            raw_update_payload: vec![7, 0],
-        });
-        store.apply_debug_entity_value(DebugEntityValue {
-            entity_id: 123,
-            raw_update_payload: vec![9, 1, 0xbb],
-        });
-        store.apply_debug_event(DebugEvent {
-            raw_event_payload: vec![4, 0xcc],
-        });
+        store.apply_debug_block_value(block_update(ProtocolBlockPos { x: 1, y: 64, z: -2 }));
+        store.apply_debug_chunk_value(chunk_remove(ProtocolChunkPos { x: 3, z: -4 }));
+        store.apply_debug_entity_value(entity_remove(123));
+        store.apply_debug_event(neighbor_event(ProtocolBlockPos { x: 4, y: 5, z: 6 }));
         store.apply_debug_sample(DebugSample {
             sample: vec![100, -50],
             sample_type: RemoteDebugSampleType::TickTime,
@@ -288,27 +332,30 @@ mod tests {
             store.last_debug_block_value(),
             Some(&DebugBlockValueState {
                 pos: BlockPos { x: 1, y: 64, z: -2 },
-                raw_update_payload_len: 3,
+                subscription_id: 6,
+                value_present: true,
             })
         );
         assert_eq!(
             store.last_debug_chunk_value(),
             Some(&DebugChunkValueState {
                 pos: ChunkPos { x: 3, z: -4 },
-                raw_update_payload_len: 2,
+                subscription_id: 11,
+                value_present: false,
             })
         );
         assert_eq!(
             store.last_debug_entity_value(),
             Some(&DebugEntityValueState {
                 entity_id: 123,
-                raw_update_payload_len: 3,
+                subscription_id: 3,
+                value_present: false,
             })
         );
         assert_eq!(
             store.last_debug_event(),
             Some(&DebugEventState {
-                raw_event_payload_len: 2,
+                subscription_id: 14
             })
         );
         assert_eq!(
@@ -368,10 +415,7 @@ mod tests {
     fn debug_game_state_survives_world_store_json_round_trip() {
         let mut store = WorldStore::new();
 
-        store.apply_debug_block_value(DebugBlockValue {
-            pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
-            raw_update_payload: vec![5, 1, 0xaa],
-        });
+        store.apply_debug_block_value(block_update(ProtocolBlockPos { x: 1, y: 64, z: -2 }));
         store.apply_game_rule_values(GameRuleValues {
             values: vec![GameRuleValue {
                 rule: "minecraft:random_tick_speed".to_string(),
@@ -393,7 +437,8 @@ mod tests {
             restored.last_debug_block_value(),
             Some(&DebugBlockValueState {
                 pos: BlockPos { x: 1, y: 64, z: -2 },
-                raw_update_payload_len: 3,
+                subscription_id: 6,
+                value_present: true,
             })
         );
         assert_eq!(
@@ -417,21 +462,10 @@ mod tests {
     #[test]
     fn configuration_reentry_clears_subscriber_values_and_preserves_overlay_diagnostics() {
         let mut store = WorldStore::new();
-        store.apply_debug_block_value(DebugBlockValue {
-            pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
-            raw_update_payload: vec![5, 1, 0xaa],
-        });
-        store.apply_debug_chunk_value(DebugChunkValue {
-            pos: ProtocolChunkPos { x: 3, z: -4 },
-            raw_update_payload: vec![7, 0],
-        });
-        store.apply_debug_entity_value(DebugEntityValue {
-            entity_id: 123,
-            raw_update_payload: vec![9, 1, 0xbb],
-        });
-        store.apply_debug_event(DebugEvent {
-            raw_event_payload: vec![4, 0xcc],
-        });
+        store.apply_debug_block_value(block_update(ProtocolBlockPos { x: 1, y: 64, z: -2 }));
+        store.apply_debug_chunk_value(chunk_remove(ProtocolChunkPos { x: 3, z: -4 }));
+        store.apply_debug_entity_value(entity_remove(123));
+        store.apply_debug_event(neighbor_event(ProtocolBlockPos { x: 4, y: 5, z: 6 }));
         store.apply_debug_sample(DebugSample {
             sample: vec![100, -50],
             sample_type: RemoteDebugSampleType::TickTime,

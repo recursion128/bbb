@@ -178,8 +178,8 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::ResourcePackResponse { id, action }) => {
                         send_resource_pack_response(conn, state, id, action).await?;
                     }
-                    Some(NetCommand::DebugSubscriptionRequest { tick_time }) => {
-                        send_debug_subscription_request(conn, tick_time).await?;
+                    Some(NetCommand::DebugSubscriptionRequest { subscription_ids }) => {
+                        send_debug_subscription_request(conn, &subscription_ids).await?;
                     }
                     Some(NetCommand::AttackEntity(packet)) => {
                         send_attack_entity(conn, packet).await?;

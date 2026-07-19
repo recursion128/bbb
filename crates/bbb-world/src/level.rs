@@ -1319,18 +1319,21 @@ mod tests {
         });
         store.client_debug_game.last_debug_block_value = Some(crate::DebugBlockValueState {
             pos: BlockPos { x: 1, y: 2, z: 3 },
-            raw_update_payload_len: 4,
+            subscription_id: 6,
+            value_present: true,
         });
         store.client_debug_game.last_debug_chunk_value = Some(crate::DebugChunkValueState {
             pos: ChunkPos { x: 1, z: -2 },
-            raw_update_payload_len: 5,
+            subscription_id: 11,
+            value_present: false,
         });
         store.client_debug_game.last_debug_entity_value = Some(crate::DebugEntityValueState {
             entity_id: 123,
-            raw_update_payload_len: 6,
+            subscription_id: 3,
+            value_present: false,
         });
         store.client_debug_game.last_debug_event = Some(crate::DebugEventState {
-            raw_event_payload_len: 7,
+            subscription_id: 14,
         });
         store.client_debug_game.last_debug_sample = Some(crate::DebugSampleState {
             sample_len: 2,

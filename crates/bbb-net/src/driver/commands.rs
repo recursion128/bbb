@@ -137,9 +137,9 @@ pub(crate) async fn send_custom_click_action(
 
 pub(crate) async fn send_debug_subscription_request(
     conn: &mut RawConnection,
-    tick_time: bool,
+    subscription_ids: &[i32],
 ) -> Result<()> {
-    let (id, payload) = packets::encode_play_debug_subscription_request(tick_time);
+    let (id, payload) = packets::encode_play_debug_subscription_request(subscription_ids)?;
     conn.send_packet(id, &payload).await
 }
 

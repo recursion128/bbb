@@ -3717,7 +3717,12 @@ mod tests {
 
         let debug_block = packets::DebugBlockValue {
             pos: packets::BlockPos { x: 1, y: 64, z: -2 },
-            raw_update_payload: vec![5, 1, 0xaa],
+            update: packets::DebugSubscriptionUpdate {
+                subscription_id: 6,
+                value: Some(packets::DebugSubscriptionValue::EntityBlockIntersection(
+                    packets::DebugEntityBlockIntersection::InAir,
+                )),
+            },
         };
         stream
             .handle_play_packet(PlayClientbound::DebugBlockValue(debug_block.clone()))
@@ -3734,7 +3739,10 @@ mod tests {
 
         let debug_chunk = packets::DebugChunkValue {
             pos: packets::ChunkPos { x: 3, z: -4 },
-            raw_update_payload: vec![7, 0],
+            update: packets::DebugSubscriptionUpdate {
+                subscription_id: 11,
+                value: None,
+            },
         };
         stream
             .handle_play_packet(PlayClientbound::DebugChunkValue(debug_chunk.clone()))
@@ -3751,7 +3759,10 @@ mod tests {
 
         let debug_entity = packets::DebugEntityValue {
             entity_id: 123,
-            raw_update_payload: vec![9, 1, 0xbb],
+            update: packets::DebugSubscriptionUpdate {
+                subscription_id: 3,
+                value: None,
+            },
         };
         stream
             .handle_play_packet(PlayClientbound::DebugEntityValue(debug_entity.clone()))
@@ -3767,7 +3778,14 @@ mod tests {
         ));
 
         let debug_event = packets::DebugEvent {
-            raw_event_payload: vec![4, 0xcc],
+            event: packets::DebugSubscriptionEvent {
+                subscription_id: 14,
+                value: packets::DebugSubscriptionValue::NeighborUpdate(packets::BlockPos {
+                    x: 4,
+                    y: 5,
+                    z: 6,
+                }),
+            },
         };
         stream
             .handle_play_packet(PlayClientbound::DebugEvent(debug_event.clone()))

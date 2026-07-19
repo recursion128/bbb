@@ -2580,7 +2580,9 @@ fn hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription() {
     sampler.sync_subscription(&input, &net_counters, &net_commands);
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::DebugSubscriptionRequest { tick_time: true }
+        NetCommand::DebugSubscriptionRequest {
+            subscription_ids: vec![0]
+        }
     );
     sampler.sync_subscription(&input, &net_counters, &net_commands);
     assert!(rx.try_recv().is_err());
@@ -2610,7 +2612,9 @@ fn hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription() {
     sampler.sync_subscription(&input, &net_counters, &net_commands);
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::DebugSubscriptionRequest { tick_time: false }
+        NetCommand::DebugSubscriptionRequest {
+            subscription_ids: Vec::new()
+        }
     );
 }
 

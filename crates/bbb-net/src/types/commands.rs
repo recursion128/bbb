@@ -216,7 +216,7 @@ pub enum NetCommand {
     CustomPayload(ServerboundCustomPayload),
     CustomClickAction(CustomClickAction),
     DebugSubscriptionRequest {
-        tick_time: bool,
+        subscription_ids: Vec<i32>,
     },
     AttackEntity(AttackEntity),
     InteractEntity(InteractEntity),

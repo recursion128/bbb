@@ -1258,26 +1258,44 @@ fn debug_game_events_update_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::DebugBlockValue(
         DebugBlockValue {
             pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
-            raw_update_payload: vec![5, 1, 0xaa],
+            update: bbb_protocol::packets::DebugSubscriptionUpdate {
+                subscription_id: 6,
+                value: Some(
+                    bbb_protocol::packets::DebugSubscriptionValue::EntityBlockIntersection(
+                        bbb_protocol::packets::DebugEntityBlockIntersection::InAir,
+                    ),
+                ),
+            },
         },
     )))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::DebugChunkValue(
         DebugChunkValue {
             pos: ProtocolChunkPos { x: 3, z: -4 },
-            raw_update_payload: vec![7, 0],
+            update: bbb_protocol::packets::DebugSubscriptionUpdate {
+                subscription_id: 11,
+                value: None,
+            },
         },
     )))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::DebugEntityValue(
         DebugEntityValue {
             entity_id: 123,
-            raw_update_payload: vec![9, 1, 0xbb],
+            update: bbb_protocol::packets::DebugSubscriptionUpdate {
+                subscription_id: 3,
+                value: None,
+            },
         },
     )))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::DebugEvent(DebugEvent {
-        raw_event_payload: vec![4, 0xcc],
+        event: bbb_protocol::packets::DebugSubscriptionEvent {
+            subscription_id: 14,
+            value: bbb_protocol::packets::DebugSubscriptionValue::NeighborUpdate(
+                ProtocolBlockPos { x: 4, y: 5, z: 6 },
+            ),
+        },
     })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::DebugSample(DebugSample {
@@ -1340,27 +1358,30 @@ fn debug_game_events_update_world_counters() {
         world.last_debug_block_value(),
         Some(&bbb_world::DebugBlockValueState {
             pos: BlockPos { x: 1, y: 64, z: -2 },
-            raw_update_payload_len: 3,
+            subscription_id: 6,
+            value_present: true,
         })
     );
     assert_eq!(
         world.last_debug_chunk_value(),
         Some(&bbb_world::DebugChunkValueState {
             pos: ChunkPos { x: 3, z: -4 },
-            raw_update_payload_len: 2,
+            subscription_id: 11,
+            value_present: false,
         })
     );
     assert_eq!(
         world.last_debug_entity_value(),
         Some(&bbb_world::DebugEntityValueState {
             entity_id: 123,
-            raw_update_payload_len: 3,
+            subscription_id: 3,
+            value_present: false,
         })
     );
     assert_eq!(
         world.last_debug_event(),
         Some(&bbb_world::DebugEventState {
-            raw_event_payload_len: 2,
+            subscription_id: 14
         })
     );
     assert_eq!(

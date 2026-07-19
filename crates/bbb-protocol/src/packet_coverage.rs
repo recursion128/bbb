@@ -2433,7 +2433,7 @@ mod tests {
     }
 
     #[test]
-    fn play_debug_subscription_packets_do_not_treat_raw_payloads_as_typed_support() {
+    fn play_debug_subscription_packets_close_typed_decode_before_canonical_lifecycle() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "CLIENTBOUND_DEBUG_BLOCK_VALUE",
@@ -2458,9 +2458,13 @@ mod tests {
                 .collect();
             assert_eq!(
                 partial,
-                BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"]),
+                BTreeSet::from(["canonical_apply", "runtime_side_effect"]),
                 "{}",
                 entry.constant_name
+            );
+            assert_eq!(
+                entry.coverage["decode"].status,
+                PacketCoverageStatus::Complete
             );
         }
     }
@@ -3554,7 +3558,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_debug_subscription_keeps_registry_family_open() {
+    fn play_serverbound_debug_subscription_closes_set_encoder_before_lifecycle() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3565,10 +3569,21 @@ mod tests {
             })
             .expect("play serverbound debug subscription coverage row");
 
-        assert!(entry
-            .coverage
-            .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+        assert_eq!(
+            entry.coverage["encoder"].status,
+            PacketCoverageStatus::Complete
+        );
+        assert_eq!(
+            entry.coverage["tests"].status,
+            PacketCoverageStatus::Complete
+        );
+        for dimension in ["ack_response", "command_surface", "state_guard"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
     }
 
     #[test]

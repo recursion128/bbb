@@ -62,13 +62,14 @@ Owner: `bbb-protocol`
 - Preserve or explicitly reject lone-surrogate `\u`/`\U`/`\N{name}`
   SNBT escapes instead of passing them through the current UTF-8-backed canonical
   string state; follow `TagParser` and the Java UTF-16 string model.
-- Decode block/chunk/entity/event debug subscription payloads through the synced
-  `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
-  expiry/removal semantics, ignore entity updates whose target is absent, and feed
-  the matching debug renderers. The fixed 16-entry vanilla registration-order and
-  resource-id catalog now owns the serverbound tick-time subscription ID, but it
-  does not implement the per-subscription value codecs. Bounded raw payload
-  diagnostics are not typed subscription support.
+- Retain typed block/chunk/entity/event debug subscription values with vanilla
+  game-time expiry/removal semantics, ignore entity updates whose target is absent,
+  and feed the matching debug renderers. The fixed built-in 16-entry vanilla
+  registration-order/resource-id catalog now dispatches every per-subscription
+  value codec and validates the complete deterministic serverbound request set;
+  POI and game-event values still carry session registry holder ids for the
+  canonical subscriber to resolve. Canonical keyed maps, requested-set gating,
+  lifecycle drops, expiry, and renderer consumers remain open.
 - Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
   beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,

@@ -1341,7 +1341,7 @@ async fn send_ping_request_encodes_play_ping_request_packet() {
 }
 
 #[tokio::test]
-async fn send_debug_subscription_request_encodes_tick_time_collection() {
+async fn send_debug_subscription_request_encodes_complete_deterministic_set() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
@@ -1353,8 +1353,10 @@ async fn send_debug_subscription_request_encodes_tick_time_collection() {
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST);
         let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 8);
+        assert_eq!(decoder.read_var_i32().unwrap(), 15);
         assert!(decoder.is_empty());
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
@@ -1370,10 +1372,10 @@ async fn send_debug_subscription_request_encodes_tick_time_collection() {
         .await
         .unwrap();
 
-    send_debug_subscription_request(&mut conn, true)
+    send_debug_subscription_request(&mut conn, &[15, 0, 8, 15])
         .await
         .unwrap();
-    send_debug_subscription_request(&mut conn, false)
+    send_debug_subscription_request(&mut conn, &[])
         .await
         .unwrap();
 

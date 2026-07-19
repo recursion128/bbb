@@ -3080,7 +3080,14 @@ fn client_debug_game_reads_canonical_world_state() {
         let mut store = WorldStore::new();
         store.apply_debug_block_value(DebugBlockValue {
             pos: ProtocolBlockPos { x: 4, y: 65, z: -9 },
-            raw_update_payload: vec![0xaa, 0xbb, 0xcc],
+            update: bbb_protocol::packets::DebugSubscriptionUpdate {
+                subscription_id: 6,
+                value: Some(
+                    bbb_protocol::packets::DebugSubscriptionValue::EntityBlockIntersection(
+                        bbb_protocol::packets::DebugEntityBlockIntersection::InAir,
+                    ),
+                ),
+            },
         });
         store.apply_game_rule_values(GameRuleValues {
             values: vec![
@@ -3110,10 +3117,8 @@ fn client_debug_game_reads_canonical_world_state() {
     assert_eq!(debug_game["last_debug_block_value"]["pos"]["x"], 4);
     assert_eq!(debug_game["last_debug_block_value"]["pos"]["y"], 65);
     assert_eq!(debug_game["last_debug_block_value"]["pos"]["z"], -9);
-    assert_eq!(
-        debug_game["last_debug_block_value"]["raw_update_payload_len"],
-        3
-    );
+    assert_eq!(debug_game["last_debug_block_value"]["subscription_id"], 6);
+    assert_eq!(debug_game["last_debug_block_value"]["value_present"], true);
     assert_eq!(
         debug_game["last_game_rule_values"]["values"],
         json!([
