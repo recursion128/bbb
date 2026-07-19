@@ -89,7 +89,7 @@ impl WorldStore {
             self.local_player_vehicle_id = None;
         }
         self.entities.with_mount_mut(packet.vehicle_id, |vehicle| {
-            vehicle.passengers = mounted;
+            *vehicle.passengers = mounted;
         });
         self.counters.entity_passenger_updates_applied += 1;
         true

@@ -188,7 +188,7 @@ impl WorldStore {
         let damage_event =
             EntityDamageEventState::from_packet(packet, source_type_resource_id, source_effects);
         let Some(()) = self.entities.with_damage_mut(entity_id, |damage| {
-            damage.last_damage = Some(damage_event);
+            *damage.last_damage = Some(damage_event);
         }) else {
             self.counters.damage_events_ignored += 1;
             return false;
@@ -217,7 +217,7 @@ impl WorldStore {
     pub fn entity_effects(&self, entity_id: i32) -> Option<BTreeMap<i32, MobEffectState>> {
         self.entities
             .mob_effects(entity_id)
-            .map(|effects| effects.effects)
+            .map(|effects| effects.effects.into_value())
     }
 
     pub fn entity_effect(&self, entity_id: i32, effect_id: i32) -> Option<MobEffectState> {
@@ -229,7 +229,7 @@ impl WorldStore {
     }
 
     pub fn entity_last_damage(&self, entity_id: i32) -> Option<EntityDamageEventState> {
-        self.entities.damage(entity_id)?.last_damage.clone()
+        self.entities.damage(entity_id)?.last_damage.into_value()
     }
 
     fn update_cooldown_count(&mut self) {
@@ -456,7 +456,7 @@ mod tests {
             })
         );
         assert_eq!(
-            store.entities.damage(7).unwrap().last_damage,
+            store.entities.damage(7).unwrap().last_damage.into_value(),
             Some(damage.clone())
         );
         assert_eq!(store.counters().damage_event_packets, 1);

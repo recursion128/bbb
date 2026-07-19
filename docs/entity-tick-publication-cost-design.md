@@ -262,6 +262,59 @@ upper bound is 157 x 227 references (about 279 KiB on a 64-bit target) plus 157
 box descriptors, while actual inheritance contains far fewer entries. It is
 process-static and does not multiply with worlds or retained generations.
 
+### Phase 3 Entity Payload Sharing
+
+The phase-1 zombie fixture owns mostly empty component containers, so it bounds
+the hecs shell rebuild but not non-empty payload cloning. A payload-heavy
+partition fills all 2,000 entities with eight metadata values, six equipment
+slots, an attribute, and three mob effects. Before structural sharing, unchanged
+publication measured 22.955 ms and mutating metadata on 8/2,000 while retaining
+the previous generation measured 22.987 ms.
+
+The live hecs world remains the only mutable canonical entity owner. Its
+metadata/painting projection, equipment, attribute, passenger, effect, damage,
+and minecart-step containers now use the same serde-transparent
+`PublicationShared<T>` owner as other world payloads. An `EntityStore` snapshot
+still rebuilds its hecs entities and protocol-id handles, but clones only the
+small component shells and payload Arcs. A mutation reaches
+`PublicationShared::deref_mut`, which calls `Arc::make_mut` for that exact field;
+transform and animation components remain direct values so a dense client tick
+does not COW a whole entity or heavy component family.
+
+On the same machine:
+
+| Scenario | Before sharing | Phase 3 | Improvement |
+| --- | ---: | ---: | ---: |
+| payload-heavy unchanged publication, 2,000 | 22.955 ms | 1.003 ms | 22.90x |
+| payload-heavy sparse metadata + publication, retained generation | 22.987 ms | 1.033 ms | 22.26x |
+| default sparse transform/metadata + publication | 1.197 ms | 1.003 ms | 1.19x |
+| metadata/equipment/effect/attribute/event + publication | 1.071 ms | 1.018 ms | 1.05x |
+| spawn/remove 16/2,000 + publication | 1.970 ms | 1.962 ms | unchanged |
+| 2,000 zombies tick-only | 8.237 ms | 8.025 ms | no regression |
+| 2,000 zombies tick + publication | 9.308 ms | 9.135 ms | no regression |
+
+Both sparse cases mutate while the benchmark retains the preceding snapshot,
+and the tick-plus-publication benchmark likewise retains each preceding
+generation, so the COW cost is included rather than deferred. Full owned
+`EntityState` and renderer/debug projections still materialize their requested
+Vec/map values at the existing API boundary; the serialization and probe shape
+is unchanged. The remaining roughly 1 ms O(n) hecs shell rebuild is about 11%
+of the representative zombie tick-plus-publication path and is no longer the
+dominant end-to-end owner. It remains the next boundary for publication-only or
+very sparse, empty-payload workloads; eliminating it would require a separate
+immutable reader representation and query migration, which would add more risk
+than the measured residual justifies in this slice.
+
+Unchanged heavy payloads are shared across any number of retained generations.
+If every entity mutates a heavy field while an older generation is retained,
+one new copy of each changed field is necessarily live; retaining several
+generations that each mutate the same payload can retain one version per
+generation. No world-wide payload copy occurs for a sparse mutation. The
+isolation matrix covers transform/rotation, metadata, equipment,
+effects/attributes, animation counters, passenger/leash/vehicle state,
+spawn/remove, entity event, and client-tick mutation, and also checks that a
+metadata mutation breaks only its corresponding Arc owner.
+
 ## Serial Phases And Checkpoints
 
 1. **Reproducible baseline and attribution surface.** Extend the existing

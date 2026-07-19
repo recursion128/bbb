@@ -192,7 +192,12 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         vec![entity_invisible_data(), entity_air_supply_data(301)]
     );
     assert_eq!(
-        store.entities.metadata(123).unwrap().data_values,
+        store
+            .entities
+            .metadata(123)
+            .unwrap()
+            .data_values
+            .into_value(),
         entity.data_values
     );
 
@@ -250,7 +255,12 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         ]
     );
     assert_eq!(
-        store.entities.equipment(123).unwrap().equipment,
+        store
+            .entities
+            .equipment(123)
+            .unwrap()
+            .equipment
+            .into_value(),
         entity.equipment
     );
     assert_eq!(
@@ -327,7 +337,12 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         ]
     );
     assert_eq!(
-        store.entities.attributes(123).unwrap().attributes,
+        store
+            .entities
+            .attributes(123)
+            .unwrap()
+            .attributes
+            .into_value(),
         entity.attributes
     );
 

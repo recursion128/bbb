@@ -20,7 +20,10 @@ fn tracks_entity_passenger_updates() {
     assert_eq!(store.probe_entity(10).unwrap().passengers, vec![20, 21]);
     assert_eq!(store.probe_entity(20).unwrap().vehicle_id, Some(10));
     assert_eq!(store.probe_entity(21).unwrap().vehicle_id, Some(10));
-    assert_eq!(store.entities.mount(10).unwrap().passengers, vec![20, 21]);
+    assert_eq!(
+        store.entities.mount(10).unwrap().passengers.into_value(),
+        vec![20, 21]
+    );
     assert_eq!(store.entities.mount(20).unwrap().vehicle_id, Some(10));
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
@@ -31,7 +34,10 @@ fn tracks_entity_passenger_updates() {
     assert_eq!(store.probe_entity(20).unwrap().vehicle_id, Some(30));
     assert_eq!(store.probe_entity(30).unwrap().passengers, vec![20]);
     assert_eq!(store.entities.mount(20).unwrap().vehicle_id, Some(30));
-    assert_eq!(store.entities.mount(30).unwrap().passengers, vec![20]);
+    assert_eq!(
+        store.entities.mount(30).unwrap().passengers.into_value(),
+        vec![20]
+    );
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 10,
@@ -1401,7 +1407,10 @@ fn minecart_along_track_appends_pending_steps_behind_active_batch() {
         })
     );
     store.advance_entity_client_animations(1);
-    assert_eq!(store.entities.minecart_lerp(10).unwrap().steps, vec![first]);
+    assert_eq!(
+        store.entities.minecart_lerp(10).unwrap().steps.into_value(),
+        vec![first]
+    );
 
     assert!(
         store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
@@ -1416,13 +1425,13 @@ fn minecart_along_track_appends_pending_steps_behind_active_batch() {
         })
     );
     let lerp = store.entities.minecart_lerp(10).unwrap();
-    assert_eq!(lerp.steps, vec![first]);
-    assert_eq!(lerp.pending_steps, vec![second, third]);
+    assert_eq!(lerp.steps.as_slice(), &[first]);
+    assert_eq!(lerp.pending_steps.as_slice(), &[second, third]);
     assert_eq!(store.counters().minecart_lerp_steps_tracked, 3);
 
     store.advance_entity_client_animations(3);
     let lerp = store.entities.minecart_lerp(10).unwrap();
-    assert_eq!(lerp.steps, vec![second, third]);
+    assert_eq!(lerp.steps.as_slice(), &[second, third]);
     assert!(lerp.pending_steps.is_empty());
     assert_eq!(lerp.delay, 3);
     let entity = store.probe_entity(10).unwrap();

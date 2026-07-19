@@ -10,7 +10,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::WorldStore;
 
-/// Serde-transparent structural owner used only inside [`WorldStore`].
+/// Serde-transparent structural owner for immutable publication payloads.
 ///
 /// Cloning retains the immutable payload. Any mutation through `DerefMut`
 /// first obtains a unique value, so existing field-level mutation boundaries
@@ -19,8 +19,14 @@ pub(crate) struct PublicationShared<T>(Arc<T>);
 
 impl<T> PublicationShared<T> {
     #[cfg(test)]
-    fn ptr_eq(&self, other: &Self) -> bool {
+    pub(crate) fn ptr_eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl<T: Clone> PublicationShared<T> {
+    pub(crate) fn into_value(self) -> T {
+        Arc::unwrap_or_clone(self.0)
     }
 }
 
@@ -103,12 +109,16 @@ impl WorldStore {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
+        attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
         entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-        entity_types::VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        entity_types::{VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_COW_ID},
+        mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
         packets::{
-            AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, EntityDataValue,
-            EntityDataValueKind, EntityMove, ItemStackSummary, LightUpdate, LightUpdateData,
-            SetEntityData, SetPlayerInventory, Vec3d,
+            AddEntity, AttributeSnapshot, BlockPos as ProtocolBlockPos, BlockUpdate,
+            EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove, EquipmentSlot,
+            EquipmentSlotUpdate, ItemStackSummary, LightUpdate, LightUpdateData, MobEffectFlags,
+            RemoveEntities, SetEntityData, SetEntityLink, SetEquipment, SetPassengers,
+            SetPlayerInventory, UpdateAttributes, UpdateMobEffect, Vec3d,
         },
     };
 
@@ -164,10 +174,14 @@ mod tests {
     }
 
     fn add_test_entity(world: &mut WorldStore, id: i32) {
+        add_test_entity_with_type(world, id, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID);
+    }
+
+    fn add_test_entity_with_type(world: &mut WorldStore, id: i32, entity_type_id: i32) {
         world.apply_add_entity(AddEntity {
             id,
             uuid: uuid::Uuid::from_u128(id as u128 + 1),
-            entity_type_id: VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            entity_type_id,
             position: Vec3d {
                 x: 1.0,
                 y: 64.0,
@@ -328,6 +342,136 @@ mod tests {
     }
 
     #[test]
+    fn retained_generation_isolated_from_all_entity_mutation_families() {
+        let mut world = WorldStore::new();
+        for id in [7, 8, 10] {
+            add_test_entity(&mut world, id);
+        }
+        add_test_entity_with_type(&mut world, 11, VANILLA_ENTITY_TYPE_COW_ID);
+        let generation_a = world.publication_snapshot();
+
+        let unchanged = world
+            .entities
+            .publication_payload_sharing(&generation_a.entities, 7)
+            .unwrap();
+        assert!(unchanged.data_values);
+        assert!(unchanged.painting_variant);
+        assert!(unchanged.equipment);
+        assert!(unchanged.attributes);
+        assert!(unchanged.passengers);
+        assert!(unchanged.effects);
+        assert!(unchanged.damage);
+
+        assert!(world.apply_entity_move(EntityMove {
+            id: 7,
+            has_position: true,
+            delta_x: 4_096,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: Some(45.0),
+            x_rot: Some(15.0),
+            on_ground: true,
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 7,
+            values: vec![EntityDataValue {
+                data_id: crate::VANILLA_ENTITY_SHARED_FLAGS_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(0x20),
+            }],
+        }));
+        let after_metadata = world
+            .entities
+            .publication_payload_sharing(&generation_a.entities, 7)
+            .unwrap();
+        assert!(!after_metadata.data_values);
+        assert!(after_metadata.painting_variant);
+        assert!(after_metadata.equipment);
+        assert!(after_metadata.attributes);
+        assert!(after_metadata.passengers);
+        assert!(after_metadata.effects);
+        assert!(after_metadata.damage);
+
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 7,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: stack(5, 1),
+            }],
+        }));
+        assert!(world.apply_update_attributes(UpdateAttributes {
+            entity_id: 7,
+            attributes: vec![AttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+                base: 24.0,
+                modifiers: Vec::new(),
+            }],
+        }));
+        assert!(world.apply_update_mob_effect(UpdateMobEffect {
+            entity_id: 7,
+            effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
+            amplifier: 1,
+            duration_ticks: 200,
+            flags: MobEffectFlags::default(),
+        }));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 7,
+            passenger_ids: vec![8],
+        }));
+        assert!(world.apply_set_entity_link(SetEntityLink {
+            source_id: 11,
+            dest_id: 7,
+        }));
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 7,
+            event_id: 2,
+        }));
+        world.advance_entity_client_animations(1);
+        assert_eq!(
+            world.apply_remove_entities(RemoveEntities {
+                entity_ids: vec![10],
+            }),
+            1
+        );
+        add_test_entity(&mut world, 9);
+        let generation_b = world.publication_snapshot();
+
+        let entity_a = generation_a.probe_entity(7).unwrap();
+        let entity_b = generation_b.probe_entity(7).unwrap();
+        assert_eq!(entity_a.position_base.x, 1.0);
+        assert_eq!(entity_a.y_rot, 0.0);
+        assert_eq!(entity_a.x_rot, 0.0);
+        assert_eq!(entity_b.position_base.x, 2.0);
+        assert_eq!(entity_b.y_rot, 15.0);
+        assert_eq!(entity_b.x_rot, 5.0);
+        assert!(entity_a.data_values.is_empty());
+        assert_eq!(entity_b.data_values.len(), 1);
+        assert!(entity_a.equipment.is_empty());
+        assert_eq!(entity_b.equipment.len(), 1);
+        assert!(entity_a.attributes.is_empty());
+        assert_eq!(entity_b.attributes.len(), 1);
+        assert!(entity_a.mob_effects.is_empty());
+        assert!(entity_b
+            .mob_effects
+            .contains_key(&VANILLA_MOB_EFFECT_SPEED_ID));
+        assert!(entity_a.passengers.is_empty());
+        assert_eq!(entity_b.passengers, vec![8]);
+        assert_eq!(entity_a.last_event_id, None);
+        assert_eq!(entity_b.last_event_id, Some(2));
+        assert_eq!(entity_a.client_animations.age_ticks, 0);
+        assert_eq!(entity_b.client_animations.age_ticks, 1);
+        assert_eq!(generation_a.probe_entity(11).unwrap().leash_holder_id, None);
+        assert_eq!(
+            generation_b.probe_entity(11).unwrap().leash_holder_id,
+            Some(7)
+        );
+        assert!(generation_a.probe_entity(10).is_some());
+        assert!(generation_b.probe_entity(10).is_none());
+        assert!(generation_a.probe_entity(9).is_none());
+        assert!(generation_b.probe_entity(9).is_some());
+    }
+
+    #[test]
     fn retained_generation_isolated_from_registry_reload_and_item_profile_mutations() {
         let mut world = WorldStore::new();
         world.record_registry("benchmark:before", 1);
@@ -383,6 +527,29 @@ mod tests {
         let mut world = chunk_world();
         world.record_registry("benchmark:registry", 9);
         world.set_furnace_fuel_profile([3].into(), vec![crate::FurnaceFuelRule::AddItem(3)]);
+        add_test_entity(&mut world, 7);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 7,
+            values: vec![EntityDataValue {
+                data_id: crate::VANILLA_ENTITY_SHARED_FLAGS_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(1),
+            }],
+        }));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 7,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: stack(5, 1),
+            }],
+        }));
+        assert!(world.apply_update_mob_effect(UpdateMobEffect {
+            entity_id: 7,
+            effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
+            amplifier: 0,
+            duration_ticks: 20,
+            flags: MobEffectFlags::default(),
+        }));
 
         let json = serde_json::to_value(&world).unwrap();
         assert!(json["registries"].is_object());
@@ -391,6 +558,10 @@ mod tests {
         assert!(json["default_item_max_stack_sizes"].is_object());
         assert!(json["furnace_fuel_item_ids"].is_array());
         assert!(json["furnace_fuel_rules"].is_array());
+        assert!(json["entities"].is_array());
+        assert!(json["entities"][0]["data_values"].is_array());
+        assert!(json["entities"][0]["equipment"].is_array());
+        assert!(json["entities"][0]["mob_effects"].is_object());
         assert!(json.get("value").is_none());
         assert!(json.get("inner").is_none());
 

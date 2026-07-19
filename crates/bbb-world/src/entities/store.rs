@@ -285,7 +285,60 @@ pub(crate) struct EntityStore {
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
 }
 
+#[cfg(test)]
+pub(crate) struct EntityPublicationPayloadSharing {
+    pub(crate) data_values: bool,
+    pub(crate) painting_variant: bool,
+    pub(crate) equipment: bool,
+    pub(crate) attributes: bool,
+    pub(crate) passengers: bool,
+    pub(crate) effects: bool,
+    pub(crate) damage: bool,
+}
+
 impl EntityStore {
+    #[cfg(test)]
+    pub(crate) fn publication_payload_sharing(
+        &self,
+        other: &Self,
+        id: i32,
+    ) -> Option<EntityPublicationPayloadSharing> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let other_entity = other.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let other_metadata = other.ecs.get::<&EntityMetadata>(other_entity).ok()?;
+        let data_values = metadata.data_values.ptr_eq(&other_metadata.data_values);
+        let painting_variant = metadata
+            .painting_variant_projection
+            .ptr_eq(&other_metadata.painting_variant_projection);
+        drop(metadata);
+        drop(other_metadata);
+        let equipment = self.ecs.get::<&EntityEquipment>(entity).ok()?;
+        let other_equipment = other.ecs.get::<&EntityEquipment>(other_entity).ok()?;
+        let equipment = equipment.equipment.ptr_eq(&other_equipment.equipment);
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let other_attributes = other.ecs.get::<&EntityAttributes>(other_entity).ok()?;
+        let attributes = attributes.attributes.ptr_eq(&other_attributes.attributes);
+        let mount = self.ecs.get::<&EntityMount>(entity).ok()?;
+        let other_mount = other.ecs.get::<&EntityMount>(other_entity).ok()?;
+        let passengers = mount.passengers.ptr_eq(&other_mount.passengers);
+        let effects = self.ecs.get::<&EntityMobEffects>(entity).ok()?;
+        let other_effects = other.ecs.get::<&EntityMobEffects>(other_entity).ok()?;
+        let effects = effects.effects.ptr_eq(&other_effects.effects);
+        let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
+        let other_damage = other.ecs.get::<&EntityDamage>(other_entity).ok()?;
+        let damage = damage.last_damage.ptr_eq(&other_damage.last_damage);
+        Some(EntityPublicationPayloadSharing {
+            data_values,
+            painting_variant,
+            equipment,
+            attributes,
+            passengers,
+            effects,
+            damage,
+        })
+    }
+
     pub(crate) fn insert_or_replace(&mut self, state: EntityState) {
         if let Some(entity) = self.by_protocol_id.get(&state.id).copied() {
             self.replace_existing_components(entity, state);
@@ -2409,7 +2462,7 @@ impl EntityStore {
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),
-            painting_variant_projection: metadata.painting_variant_projection.clone(),
+            painting_variant_projection: (*metadata.painting_variant_projection).clone(),
             painting_facing: vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(
                 identity.entity_type_id,
             )
@@ -2694,7 +2747,7 @@ impl EntityStore {
             nautilus_body_armor,
             nautilus_body_armor_trim,
             nautilus_body_armor_foil,
-            data_values: metadata.data_values.clone(),
+            data_values: (*metadata.data_values).clone(),
         })
     }
 
@@ -3651,7 +3704,7 @@ impl EntityStore {
         }
         if let Ok(mut attributes) = self.ecs.get::<&mut EntityAttributes>(entity) {
             if !keep_attribute_modifiers {
-                for attribute in &mut attributes.attributes {
+                for attribute in &mut *attributes.attributes {
                     attribute.modifiers.clear();
                 }
             }

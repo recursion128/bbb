@@ -53,7 +53,7 @@ impl WorldStore {
             }
             metadata.data_values.sort_by_key(|value| value.data_id);
             if let Some(projection) = painting_variant_projection {
-                metadata.painting_variant_projection = projection;
+                *metadata.painting_variant_projection = projection;
             }
         }) else {
             self.counters.entity_data_updates_ignored += 1;

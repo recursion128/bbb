@@ -152,6 +152,62 @@ fn build_heterogeneous_entity_world(count: usize) -> WorldStore {
     })
 }
 
+fn build_payload_heavy_entity_world(count: usize) -> WorldStore {
+    let mut world = build_entity_world(count);
+    for id in 1..=count as i32 {
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: (0..8)
+                .map(|data_id| EntityDataValue {
+                    data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    value: EntityDataValueKind::Byte(data_id as i8),
+                })
+                .collect(),
+        }));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: id,
+            slots: [
+                EquipmentSlot::MainHand,
+                EquipmentSlot::OffHand,
+                EquipmentSlot::Feet,
+                EquipmentSlot::Legs,
+                EquipmentSlot::Chest,
+                EquipmentSlot::Head,
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(slot_index, slot)| EquipmentSlotUpdate {
+                slot,
+                item: ItemStackSummary {
+                    item_id: Some(slot_index as i32 + 1),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            })
+            .collect(),
+        }));
+        assert!(world.apply_update_attributes(UpdateAttributes {
+            entity_id: id,
+            attributes: vec![AttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+                base: 20.0 + f64::from(id % 5),
+                modifiers: Vec::new(),
+            }],
+        }));
+        for effect_offset in 0..3 {
+            assert!(world.apply_update_mob_effect(UpdateMobEffect {
+                entity_id: id,
+                effect_id: VANILLA_MOB_EFFECT_SPEED_ID + effect_offset,
+                amplifier: effect_offset,
+                duration_ticks: 200,
+                flags: MobEffectFlags::default(),
+            }));
+        }
+    }
+    world
+}
+
 fn entity_move(id: i32, delta: i16) -> EntityMove {
     EntityMove {
         id,
@@ -357,6 +413,36 @@ fn bench_entity_retained_snapshot(c: &mut Criterion) {
     let mut held = Arc::new(world.publication_snapshot());
     group.bench_function("next_generation/2000_entities", |b| {
         b.iter(|| {
+            held = black_box(Arc::new(world.publication_snapshot()));
+        });
+    });
+    black_box(held);
+    group.finish();
+}
+
+fn bench_entity_payload_heavy_publication(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_publication/payload_heavy");
+    let mut world = build_payload_heavy_entity_world(ENTITY_COUNT);
+    let mut held = Arc::new(world.publication_snapshot());
+    group.bench_function("unchanged/2000", |b| {
+        b.iter(|| {
+            held = black_box(Arc::new(world.publication_snapshot()));
+        });
+    });
+    group.bench_function("sparse_metadata_8_of_2000_then_publish", |b| {
+        let mut value = 1_i8;
+        b.iter(|| {
+            value = -value;
+            for id in 1..=SPARSE_ENTITY_COUNT as i32 {
+                assert!(world.apply_set_entity_data(SetEntityData {
+                    id,
+                    values: vec![EntityDataValue {
+                        data_id: 0,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                        value: EntityDataValueKind::Byte(value),
+                    }],
+                }));
+            }
             held = black_box(Arc::new(world.publication_snapshot()));
         });
     });
@@ -591,6 +677,7 @@ criterion_group! {
         bench_entity_tick_schema_lookups,
         bench_entity_tick_and_publication,
         bench_entity_retained_snapshot,
+        bench_entity_payload_heavy_publication,
         bench_entity_sparse_mutation,
         bench_entity_mutation_families,
         bench_entity_spawn_remove_churn,

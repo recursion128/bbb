@@ -12,8 +12,7 @@ use super::{
     EntityClientAnimationState, EntityInterpolationState, EntityState, EntityVec3,
     HurtingProjectileState, ProjectileLifecycleState,
 };
-use crate::BlockPos;
-use crate::PaintingVariantClientProjection;
+use crate::{BlockPos, PaintingVariantClientProjection, PublicationShared};
 
 // Match the protocol decoder's per-packet allocation guard while also preventing
 // several packets received within one client tick from accumulating without bound.
@@ -49,18 +48,19 @@ pub(crate) struct EntitySupportingBlock {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMetadata {
-    pub(crate) data_values: Vec<ProtocolEntityDataValue>,
-    pub(crate) painting_variant_projection: Option<PaintingVariantClientProjection>,
+    pub(crate) data_values: PublicationShared<Vec<ProtocolEntityDataValue>>,
+    pub(crate) painting_variant_projection:
+        PublicationShared<Option<PaintingVariantClientProjection>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityEquipment {
-    pub(crate) equipment: Vec<ProtocolEquipmentSlotUpdate>,
+    pub(crate) equipment: PublicationShared<Vec<ProtocolEquipmentSlotUpdate>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityAttributes {
-    pub(crate) attributes: Vec<ProtocolAttributeSnapshot>,
+    pub(crate) attributes: PublicationShared<Vec<ProtocolAttributeSnapshot>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -73,7 +73,7 @@ pub(crate) struct EntityTransientEvents {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct EntityMount {
     pub(crate) vehicle_id: Option<i32>,
-    pub(crate) passengers: Vec<i32>,
+    pub(crate) passengers: PublicationShared<Vec<i32>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -83,7 +83,7 @@ pub(crate) struct EntityLeash {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct EntityMobEffects {
-    pub(crate) effects: BTreeMap<i32, MobEffectState>,
+    pub(crate) effects: PublicationShared<BTreeMap<i32, MobEffectState>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -93,13 +93,13 @@ pub(crate) struct EntityClientAnimations {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityDamage {
-    pub(crate) last_damage: Option<EntityDamageEventState>,
+    pub(crate) last_damage: PublicationShared<Option<EntityDamageEventState>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMinecartLerp {
-    pub(crate) pending_steps: Vec<ProtocolMinecartStep>,
-    pub(crate) steps: Vec<ProtocolMinecartStep>,
+    pub(crate) pending_steps: PublicationShared<Vec<ProtocolMinecartStep>>,
+    pub(crate) steps: PublicationShared<Vec<ProtocolMinecartStep>>,
     pub(crate) old_step: Option<ProtocolMinecartStep>,
     pub(crate) delay: i32,
 }
@@ -156,8 +156,8 @@ impl From<&EntityState> for EntitySupportingBlock {
 impl From<&EntityState> for EntityMetadata {
     fn from(state: &EntityState) -> Self {
         Self {
-            data_values: state.data_values.clone(),
-            painting_variant_projection: state.painting_variant_projection.clone(),
+            data_values: state.data_values.clone().into(),
+            painting_variant_projection: state.painting_variant_projection.clone().into(),
         }
     }
 }
@@ -165,7 +165,7 @@ impl From<&EntityState> for EntityMetadata {
 impl From<&EntityState> for EntityEquipment {
     fn from(state: &EntityState) -> Self {
         Self {
-            equipment: state.equipment.clone(),
+            equipment: state.equipment.clone().into(),
         }
     }
 }
@@ -173,7 +173,7 @@ impl From<&EntityState> for EntityEquipment {
 impl From<&EntityState> for EntityAttributes {
     fn from(state: &EntityState) -> Self {
         Self {
-            attributes: state.attributes.clone(),
+            attributes: state.attributes.clone().into(),
         }
     }
 }
@@ -192,7 +192,7 @@ impl From<&EntityState> for EntityMount {
     fn from(state: &EntityState) -> Self {
         Self {
             vehicle_id: state.vehicle_id,
-            passengers: state.passengers.clone(),
+            passengers: state.passengers.clone().into(),
         }
     }
 }
@@ -208,7 +208,7 @@ impl From<&EntityState> for EntityLeash {
 impl From<&EntityState> for EntityMobEffects {
     fn from(state: &EntityState) -> Self {
         Self {
-            effects: state.mob_effects.clone(),
+            effects: state.mob_effects.clone().into(),
         }
     }
 }
@@ -224,7 +224,7 @@ impl From<&EntityState> for EntityClientAnimations {
 impl From<&EntityState> for EntityDamage {
     fn from(state: &EntityState) -> Self {
         Self {
-            last_damage: state.last_damage.clone(),
+            last_damage: state.last_damage.clone().into(),
         }
     }
 }
@@ -232,8 +232,8 @@ impl From<&EntityState> for EntityDamage {
 impl From<&EntityState> for EntityMinecartLerp {
     fn from(state: &EntityState) -> Self {
         Self {
-            pending_steps: state.minecart_lerp_pending_steps.clone(),
-            steps: state.minecart_lerp_steps.clone(),
+            pending_steps: state.minecart_lerp_pending_steps.clone().into(),
+            steps: state.minecart_lerp_steps.clone().into(),
             old_step: state.minecart_lerp_old_step,
             delay: state.minecart_lerp_delay,
         }
@@ -553,20 +553,20 @@ impl EntitySupportingBlock {
 
 impl EntityMetadata {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
-        state.data_values = self.data_values;
-        state.painting_variant_projection = self.painting_variant_projection;
+        state.data_values = self.data_values.into_value();
+        state.painting_variant_projection = self.painting_variant_projection.into_value();
     }
 }
 
 impl EntityEquipment {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
-        state.equipment = self.equipment;
+        state.equipment = self.equipment.into_value();
     }
 }
 
 impl EntityAttributes {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
-        state.attributes = self.attributes;
+        state.attributes = self.attributes.into_value();
     }
 }
 
@@ -581,7 +581,7 @@ impl EntityTransientEvents {
 impl EntityMount {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.vehicle_id = self.vehicle_id;
-        state.passengers = self.passengers;
+        state.passengers = self.passengers.into_value();
     }
 }
 
@@ -593,7 +593,7 @@ impl EntityLeash {
 
 impl EntityMobEffects {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
-        state.mob_effects = self.effects;
+        state.mob_effects = self.effects.into_value();
     }
 }
 
@@ -605,14 +605,14 @@ impl EntityClientAnimations {
 
 impl EntityDamage {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
-        state.last_damage = self.last_damage;
+        state.last_damage = self.last_damage.into_value();
     }
 }
 
 impl EntityMinecartLerp {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
-        state.minecart_lerp_pending_steps = self.pending_steps;
-        state.minecart_lerp_steps = self.steps;
+        state.minecart_lerp_pending_steps = self.pending_steps.into_value();
+        state.minecart_lerp_steps = self.steps.into_value();
         state.minecart_lerp_old_step = self.old_step;
         state.minecart_lerp_delay = self.delay;
     }
