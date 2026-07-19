@@ -289,5 +289,41 @@ class PlayableGateStatusTests(unittest.TestCase):
             playable_gate.normalize_status_capture(capture, protocol)
 
 
+class PlayableGateScriptContractTests(unittest.TestCase):
+    def test_live_success_reports_both_required_markers(self):
+        source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('echo "playable gate: live smoke passed"', source)
+        self.assertIn(
+            'echo "playable gate: live vanilla 26.1 session passed"', source
+        )
+
+    def test_headless_control_focus_precedes_synthetic_input(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        movement = source[
+            source.index("def drive_basic_movement(") : source.index(
+                "def _probe_block(", source.index("def drive_basic_movement(")
+            )
+        ]
+        interaction = source[
+            source.index("def drive_block_interaction(") : source.index(
+                "def collect_live(",
+                source.index("def drive_block_interaction("),
+            )
+        ]
+
+        self.assertLess(
+            movement.index('"input.focus"'), movement.index('"input.look_delta"')
+        )
+        self.assertLess(
+            movement.index('"input.focus"'), movement.index('"forward", True')
+        )
+        self.assertLess(
+            interaction.index('"input.focus"'), interaction.index("_press_mouse(")
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

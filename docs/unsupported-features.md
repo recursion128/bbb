@@ -1412,11 +1412,6 @@ back into a todo. Do not delete these.
   block-entity special renderer presentation.
 ## GPU and resources
 
-- **Simulation/render performance closeout.** Eliminate render-driven simulation
-  wake/publication feedback, cull entity candidates before full projection,
-  reuse render extraction capacity, and retain terrain GPU buffers per changed
-  chunk/section owner. Record same-load bbb/vanilla 26.1 CPU-frame p50/p95/p99,
-  GPU frame, 1% low, and chunk-update spikes before removing this item.
 - **Fine-grained/coalesced GPU render-state split.** The backend folds compatible
   submissions into atlas buckets. Later GPU work should split the remaining
   coalesced render-type state, dynamic `LightTexture` / darkness-adjusted gamma,

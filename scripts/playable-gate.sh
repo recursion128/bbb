@@ -305,6 +305,7 @@ fi
 run_python assert \
   --evidence "$evidence_json" \
   --protocol-source "$repo_root/crates/bbb-protocol/src/lib.rs"
+echo "playable gate: live smoke passed"
 echo "playable gate: live vanilla 26.1 session passed"
 echo "playable gate evidence: packet/session timeline: $client_log"
 echo "playable gate evidence: world snapshot: $evidence_json"

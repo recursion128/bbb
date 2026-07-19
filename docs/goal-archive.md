@@ -19645,6 +19645,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   保留五个 completed mesh，snapshot extraction、section-level CPU dirty revision 与 final live/official
   tail capture 仍是明确剩余边界。
 
+## 2026-07-19：simulation/render 性能 phase 6 交付门禁合同
+
+- [x] `scripts/playable-gate.sh live` 仅在 shared live evidence assertions 完成后分别输出
+  `live smoke passed` 与 `live vanilla 26.1 session passed`；source contract test 同时固定 headless
+  control 在 look/key/mouse 合成输入前先发送 `input.focus {"focused": true}`。
+- [x] 最终门禁顺序固定为 committed HEAD workspace full gate、`/tmp/bbb-target-main` 当前 HEAD
+  build 与 timestamp 核验、真实 Weston process + socket 核验、显式 `live`，之后才允许按项目政策
+  运行 `auto`；fixture/auto fallback 和旧 binary 均不能替代 live 结果。
+- [x] 本机 official-client audit 找到 client jar/version JSON/107 libraries/Java/perf，但缺少
+  451 MB asset tree、launcher/account profile、同 camera path controller 与共同逐帧 CPU/GPU capture；
+  因此没有用 process sample 或不同内部 profiler 伪造 p50/p95/p99。严格 equal-load official 胜出
+  仍保留在 performance gap ledger，当前交付只证明仓库定义的真实 server Play 交互闭环。
+
 ## 2026-07-19：vanilla remote debug subscription 全路径
 
 - [x] 从本地 vanilla `DebugSubscriptions` 机械固定 16 项 built-in catalog；block/chunk/entity/

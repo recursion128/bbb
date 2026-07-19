@@ -209,6 +209,19 @@ strict official-client CPU comparison still requires a reproducible official
 client launch/capture with the equal-load settings above and remains phase 6,
 not fabricated phase-1 data.
 
+The phase-6 host audit found `client-26.1.jar`, `26.1.json`, 107 downloaded
+library artifacts (including the Linux native jars), and `/usr/bin/perf`.
+It did not find the version's 451 MB asset index/object tree, launcher/account
+profile, a controller capable of replaying the same camera path into the
+official client under the headless compositor, or an equivalent external
+per-frame CPU/GPU capture tool. `perf` process samples do not supply CPU-frame
+p50/p95/p99 or GPU-frame timing, and vanilla internal profiler sections are not
+comparable to bbb's internal observations. Therefore no official number is
+recorded from this host and the equal-load win criterion is explicitly
+unproven. Completing it requires a provisioned official launch plus
+deterministic camera replay and one common frame/GPU capture path; downloading
+assets alone would not close that measurement contract.
+
 ## Phase 2 Boundary Result
 
 The first runtime milestone removes the render feedback loop without adding a
@@ -362,6 +375,25 @@ historical 1/8/32 Criterion remains the amount of CPU mesh work rather than a
 claim that work disappeared; final live frame/tail capture owns the end-to-end
 benefit. Snapshot extraction and section-dirty granularity remain render-thread
 costs recorded as follow-up boundaries.
+
+## Phase 6 Delivery Boundary
+
+Repository-native implementation milestones end at the phase-5 gated tip; the
+remaining performance-parity items stay in `docs/unsupported-features.md`
+rather than being marked complete without the strict capture above. Delivery
+still runs the real bbb/vanilla-server session: the live gate now emits separate
+`live smoke passed` and `live vanilla 26.1 session passed` markers only after
+the shared evidence assertions. Script contract tests also keep
+`input.focus {"focused": true}` before the first synthetic look/key/mouse
+operation, because headless Weston exposes no `wl_seat` focus event.
+
+The final validation sequence is deliberately source-bound: run the workspace
+full gate, build `bbb-native` into `/tmp/bbb-target-main` from the committed
+delivery HEAD, compare binary/commit timestamps, verify both a live Weston
+process and its socket, then run `scripts/playable-gate.sh live`. `auto` may run
+afterwards as the project-policy smoke, but its fixture fallback is never live
+evidence. The artifact directory and exact exit status belong in the delivery
+report instead of this stable design record.
 
 ## Serial Phases, Validation, And Gates
 
