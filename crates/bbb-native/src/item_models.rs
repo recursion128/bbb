@@ -10,6 +10,7 @@
 use std::{
     borrow::Cow,
     collections::{BTreeMap, BTreeSet},
+    sync::Arc,
 };
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
@@ -28,7 +29,6 @@ use bbb_renderer::{
     allay_hand_attach_transform, bake_first_person_map_background_surface,
     bake_first_person_map_decoration_surface, bake_first_person_map_text_surface,
     bake_generated_item_quads, bake_item_frame_map_surface,
-    bake_item_model_mesh_with_light_and_overlay,
     bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
     custom_head_item_transforms, dolphin_carried_item_transform, enderman_carried_block_transform,
@@ -40,10 +40,12 @@ use bbb_renderer::{
     FirstPersonMapBackgroundKind, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HumanoidModelFamily, IllagerModelFamily, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
-    ItemFrameMapTexture, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    ItemPickupParticleRenderState, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
-    SpearKineticWeapon, ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT,
-    ITEM_MODEL_NO_OVERLAY,
+    ItemFrameMapTexture, ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource,
+    ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
+    ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMesh, ItemModelMeshSet,
+    ItemModelQuad, ItemModelResidencyFrame, ItemPickupParticleRenderState, MooshroomVariant,
+    PiglinModelFamily, SkeletonModelFamily, SpearKineticWeapon, ZombieVariantModelFamily,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -68,6 +70,7 @@ use transforms::*;
 pub(crate) use dropped::{
     display_matrix, dropped_item_models, entity_block_models, held_item_models,
     item_pickup_particle_item_models, item_stack_foil_mode, ominous_item_spawner_models,
+    push_resident_item_instances,
 };
 pub(crate) use first_person::{first_person_item_models, first_person_player_arms};
 

@@ -1580,6 +1580,8 @@ fn item_frame_border_bakes_the_five_template_elements() {
     // back panel preserves vanilla's fractional `from.z = 15.5`.
     let textures = TerrainTextureState::default();
     let quads = textures.item_frame_border_quads(false, false);
+    let cached = textures.item_frame_border_quads(false, false);
+    assert!(std::sync::Arc::ptr_eq(&quads, &cached));
     assert_eq!(quads.len(), 22);
     let back_panel = quads
         .iter()

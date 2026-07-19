@@ -14,11 +14,20 @@ use glam::{Mat3, Mat4};
 use wgpu::util::DeviceExt;
 
 use crate::{
-    counters::RendererCounters, frame_buffers::FrameDataBuffer, item_models::ItemModelVertex,
-    Renderer,
+    bake_generated_item_quads,
+    counters::RendererCounters,
+    frame_buffers::FrameDataBuffer,
+    gpu::DEPTH_FORMAT,
+    item_models::ItemModelVertex,
+    pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
+    ItemSpriteRect, Renderer, SpriteAlphaMask,
 };
 
-use super::{bake_item_model_mesh, ItemModelFoil, ItemModelQuad};
+use super::{
+    bake_item_model_mesh, ItemModelFoil, ItemModelQuad, ITEM_MODEL_GLINT_BLEND,
+    ITEM_MODEL_GLINT_CULL_MODE, ITEM_MODEL_GLINT_DEPTH_COMPARE,
+    ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED, ITEM_MODEL_PIPELINE_CULL_MODE,
+};
 
 const DEFAULT_MAX_RESIDENT_OWNERS: usize = 4_096;
 const DEFAULT_MAX_RESIDENT_BYTES: u64 = 256 * 1024 * 1024;
@@ -139,6 +148,15 @@ pub enum ItemModelDrawPhase {
     GlintTranslucent,
 }
 
+/// Render target/lifetime lane. It is not part of static asset identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ItemModelDrawTarget {
+    World,
+    Particle,
+    FirstPerson,
+    Gui,
+}
+
 /// Narrow per-frame item submission. Transform, tint, light, overlay, foil and
 /// order may change every frame without changing the resident asset key.
 #[derive(Debug, Clone, PartialEq)]
@@ -149,6 +167,7 @@ pub struct ItemModelInstanceRecord {
     pub light: [f32; 2],
     pub overlay: [f32; 2],
     pub foil: ItemModelFoil,
+    pub target: ItemModelDrawTarget,
     pub phase: ItemModelDrawPhase,
     pub submit_order: u32,
 }
@@ -162,6 +181,7 @@ impl ItemModelInstanceRecord {
         light: [f32; 2],
         overlay: [f32; 2],
         foil: ItemModelFoil,
+        target: ItemModelDrawTarget,
         phase: ItemModelDrawPhase,
         submit_order: u32,
     ) -> Self {
@@ -172,10 +192,69 @@ impl ItemModelInstanceRecord {
             light,
             overlay,
             foil,
+            target,
             phase,
             submit_order,
         }
     }
+}
+
+/// Small model-space source carried across the native extraction boundary.
+/// The renderer consults the exact resident key before evaluating this source.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ItemModelAssetSource {
+    Quads(Arc<[ItemModelQuad]>),
+    Generated {
+        mask: SpriteAlphaMask,
+        rect: ItemSpriteRect,
+        translucent: bool,
+    },
+}
+
+impl ItemModelAssetSource {
+    fn build(self) -> Vec<ItemModelQuad> {
+        match self {
+            Self::Quads(quads) => quads.as_ref().to_vec(),
+            Self::Generated {
+                mask,
+                rect,
+                translucent,
+            } => bake_generated_item_quads(&mask, rect, [1.0; 4], translucent),
+        }
+    }
+}
+
+/// One exact static owner requested by a render extraction. This contains no
+/// entity/level identity and no frame-varying transform or tint.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemModelAssetRequest {
+    pub identity: ItemModelAssetIdentity,
+    pub atlas: ItemModelAtlasKind,
+    pub geometry_class: ItemModelGeometryClass,
+    pub source: ItemModelAssetSource,
+}
+
+/// Payload-independent identity plus one narrow frame-varying submission.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemModelInstanceRequest {
+    pub identity: ItemModelAssetIdentity,
+    pub atlas: ItemModelAtlasKind,
+    pub geometry_class: ItemModelGeometryClass,
+    pub transform: Mat4,
+    pub tint: [f32; 4],
+    pub light: [f32; 2],
+    pub overlay: [f32; 2],
+    pub foil: ItemModelFoil,
+    pub target: ItemModelDrawTarget,
+    pub phase: ItemModelDrawPhase,
+    pub submit_order: u32,
+}
+
+/// Atomic resident-item portion of a renderer frame.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ItemModelResidencyFrame {
+    pub assets: Vec<ItemModelAssetRequest>,
+    pub instances: Vec<ItemModelInstanceRequest>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -250,11 +329,20 @@ impl ItemModelGpuInstance {
 pub(crate) struct ResidentItemModelGpu {
     pub(crate) vertices: Arc<[ItemModelResidentVertex]>,
     pub(crate) indices: Arc<[u32]>,
-    pub(crate) _vertex_buffer: wgpu::Buffer,
-    pub(crate) _index_buffer: wgpu::Buffer,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) index_buffer: wgpu::Buffer,
     pub(crate) index_count: u32,
     pub(crate) logical_bytes: u64,
     last_used_frame: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ResidentItemModelDraw {
+    pub(crate) asset: ItemModelAssetKey,
+    pub(crate) target: ItemModelDrawTarget,
+    pub(crate) phase: ItemModelDrawPhase,
+    pub(crate) first_instance: u32,
+    pub(crate) instance_count: u32,
 }
 
 pub(crate) struct ItemModelResidency {
@@ -265,11 +353,23 @@ pub(crate) struct ItemModelResidency {
     pinned: BTreeSet<ItemModelAssetKey>,
     instances: Vec<ItemModelInstanceRecord>,
     gpu_instances: Vec<ItemModelGpuInstance>,
+    draws: Vec<ResidentItemModelDraw>,
     instance_buffer: FrameDataBuffer,
     frame_index: u64,
     resident_bytes: u64,
     max_owners: usize,
     max_bytes: u64,
+    pending_vertex_upload_bytes: u64,
+    pending_index_upload_bytes: u64,
+    pending_instance_upload_bytes: u64,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct ItemModelUploadObservation {
+    pub(crate) vertex_bytes: u64,
+    pub(crate) index_bytes: u64,
+    pub(crate) instance_bytes: u64,
+    pub(crate) instances: usize,
 }
 
 impl ItemModelResidency {
@@ -286,11 +386,15 @@ impl ItemModelResidency {
             pinned: BTreeSet::new(),
             instances: Vec::new(),
             gpu_instances: Vec::new(),
+            draws: Vec::new(),
             instance_buffer: FrameDataBuffer::vertex("bbb-item-model-frame-instances"),
             frame_index: 0,
             resident_bytes: 0,
             max_owners,
             max_bytes,
+            pending_vertex_upload_bytes: 0,
+            pending_index_upload_bytes: 0,
+            pending_instance_upload_bytes: 0,
         }
     }
 
@@ -329,6 +433,7 @@ impl ItemModelResidency {
         self.pinned.clear();
         self.instances.clear();
         self.gpu_instances.clear();
+        self.draws.clear();
         counters.item_model_lookup_nanos = 0;
         counters.item_gpu_apply_nanos = 0;
         counters.item_model_vertex_upload_bytes = 0;
@@ -409,8 +514,8 @@ impl ItemModelResidency {
         let owner = ResidentItemModelGpu {
             vertices,
             indices,
-            _vertex_buffer: vertex_buffer,
-            _index_buffer: index_buffer,
+            vertex_buffer,
+            index_buffer,
             index_count,
             logical_bytes,
             last_used_frame: self.frame_index,
@@ -426,6 +531,12 @@ impl ItemModelResidency {
             .saturating_add(vertex_upload_bytes);
         counters.item_model_index_upload_bytes = counters
             .item_model_index_upload_bytes
+            .saturating_add(index_upload_bytes);
+        self.pending_vertex_upload_bytes = self
+            .pending_vertex_upload_bytes
+            .saturating_add(vertex_upload_bytes);
+        self.pending_index_upload_bytes = self
+            .pending_index_upload_bytes
             .saturating_add(index_upload_bytes);
         self.refresh_resident_counters(counters);
         record_apply_time(counters, apply_started);
@@ -463,6 +574,9 @@ impl ItemModelResidency {
         counters: &mut RendererCounters,
         instances: Vec<ItemModelInstanceRecord>,
     ) -> Result<()> {
+        if instances.len() > u32::MAX as usize {
+            bail!("item-model frame exceeds the u32 instance address space");
+        }
         for instance in &instances {
             if !self.key_is_current(&instance.asset) {
                 counters.item_model_residency_stale =
@@ -471,6 +585,15 @@ impl ItemModelResidency {
             }
             if !self.owners.contains_key(&instance.asset) {
                 bail!("item-model instance references a missing resident owner");
+            }
+            if matches!(
+                (instance.phase, instance.foil),
+                (
+                    ItemModelDrawPhase::Glint | ItemModelDrawPhase::GlintTranslucent,
+                    ItemModelFoil::Special { .. }
+                )
+            ) {
+                bail!("special item foil remains on the explicit legacy fallback");
             }
         }
 
@@ -485,6 +608,30 @@ impl ItemModelResidency {
         self.gpu_instances.clear();
         self.gpu_instances
             .extend(instances.iter().map(ItemModelGpuInstance::from_record));
+        self.draws.clear();
+        for (index, instance) in instances.iter().enumerate() {
+            let index = u32::try_from(index).expect("instance count checked above");
+            if let Some(previous) = self.draws.last_mut() {
+                if previous.asset == instance.asset
+                    && previous.target == instance.target
+                    && previous.phase == instance.phase
+                    && previous
+                        .first_instance
+                        .saturating_add(previous.instance_count)
+                        == index
+                {
+                    previous.instance_count = previous.instance_count.saturating_add(1);
+                    continue;
+                }
+            }
+            self.draws.push(ResidentItemModelDraw {
+                asset: instance.asset.clone(),
+                target: instance.target,
+                phase: instance.phase,
+                first_instance: index,
+                instance_count: 1,
+            });
+        }
         let previous_capacity = self.instance_buffer.capacity();
         let bytes = bytemuck::cast_slice(&self.gpu_instances);
         let _uploaded = self.instance_buffer.upload(device, queue, bytes);
@@ -494,6 +641,9 @@ impl ItemModelResidency {
                 .saturating_add(1);
         }
         counters.item_instance_upload_bytes = bytes.len() as u64;
+        self.pending_instance_upload_bytes = self
+            .pending_instance_upload_bytes
+            .saturating_add(bytes.len() as u64);
         counters.item_model_instances = instances.len();
         self.instances = instances;
         record_apply_time(counters, apply_started);
@@ -556,6 +706,7 @@ impl ItemModelResidency {
         self.pinned.clear();
         self.instances.clear();
         self.gpu_instances.clear();
+        self.draws.clear();
         self.resident_bytes = 0;
         self.refresh_resident_counters(counters);
     }
@@ -571,11 +722,369 @@ impl ItemModelResidency {
             .max(self.resident_bytes);
     }
 
+    pub(crate) fn owner(&self, key: &ItemModelAssetKey) -> Option<&ResidentItemModelGpu> {
+        self.owners.get(key)
+    }
+
+    pub(crate) fn draws(&self) -> &[ResidentItemModelDraw] {
+        &self.draws
+    }
+
+    pub(crate) fn instance_buffer(&self) -> Option<&wgpu::Buffer> {
+        self.instance_buffer.buffer()
+    }
+
+    pub(crate) fn take_upload_observation(&mut self) -> ItemModelUploadObservation {
+        let observation = ItemModelUploadObservation {
+            vertex_bytes: self.pending_vertex_upload_bytes,
+            index_bytes: self.pending_index_upload_bytes,
+            instance_bytes: self.pending_instance_upload_bytes,
+            instances: self.instances.len(),
+        };
+        self.pending_vertex_upload_bytes = 0;
+        self.pending_index_upload_bytes = 0;
+        self.pending_instance_upload_bytes = 0;
+        observation
+    }
+
     #[cfg(test)]
     fn set_limits(&mut self, max_owners: usize, max_bytes: u64) {
         self.max_owners = max_owners;
         self.max_bytes = max_bytes;
     }
+}
+
+const ITEM_MODEL_RESIDENT_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x4];
+
+const ITEM_MODEL_INSTANCE_ATTRIBUTES: [wgpu::VertexAttribute; 10] = wgpu::vertex_attr_array![
+    4 => Float32x4,
+    5 => Float32x4,
+    6 => Float32x4,
+    7 => Float32x4,
+    8 => Float32x4,
+    9 => Float32x4,
+    10 => Float32x4,
+    11 => Float32x4,
+    12 => Float32x4,
+    13 => Float32x4
+];
+
+fn resident_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<ItemModelResidentVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ITEM_MODEL_RESIDENT_VERTEX_ATTRIBUTES,
+    }
+}
+
+fn instance_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<ItemModelGpuInstance>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Instance,
+        attributes: &ITEM_MODEL_INSTANCE_ATTRIBUTES,
+    }
+}
+
+const ITEM_MODEL_RESIDENT_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var item_atlas: texture_2d<f32>;
+@group(0) @binding(2) var item_sampler: sampler;
+@group(1) @binding(0) var lightmap_texture: texture_2d<f32>;
+@group(1) @binding(1) var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+    @location(3) normal_diffuse: vec4<f32>,
+    @location(4) model_0: vec4<f32>,
+    @location(5) model_1: vec4<f32>,
+    @location(6) model_2: vec4<f32>,
+    @location(7) model_3: vec4<f32>,
+    @location(8) normal_0: vec4<f32>,
+    @location(9) normal_1: vec4<f32>,
+    @location(10) normal_2: vec4<f32>,
+    @location(11) tint: vec4<f32>,
+    @location(12) light_overlay: vec4<f32>,
+    @location(13) foil: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) light: vec2<f32>,
+    @location(3) normal_diffuse: vec4<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
+};
+
+const ALPHA_CUTOUT: f32 = 0.1;
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) { return 0.0; }
+    if (vertex_distance >= fog_end) { return 1.0; }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0), vec2<f32>(0.5 / 16.0), vec2<f32>(15.5 / 16.0));
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
+    let normal_matrix = mat3x3<f32>(input.normal_0.xyz, input.normal_1.xyz, input.normal_2.xyz);
+    let world = model * vec4<f32>(input.position, 1.0);
+    var normal = normal_matrix * input.normal_diffuse.xyz;
+    if (dot(normal, normal) <= 0.0000001) { normal = vec3<f32>(0.0, 0.0, 1.0); }
+    out.position = camera.view_proj * world;
+    out.uv = input.uv;
+    out.color = input.color * input.tint;
+    out.light = input.light_overlay.xy;
+    out.normal_diffuse = vec4<f32>(normalize(normal), input.normal_diffuse.w);
+    let fog_pos = world.xyz - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let sampled = textureSample(item_atlas, item_sampler, input.uv);
+    if (sampled.a < ALPHA_CUTOUT) { discard; }
+    let texel = sampled * input.color;
+    let light_color = sample_lightmap(input.light);
+    let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w);
+    return apply_fog(vec4<f32>(texel.rgb * diffuse * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
+fn resident_z_offset_forward_shader() -> String {
+    ITEM_MODEL_RESIDENT_SHADER
+        .replace(
+            "    minecraft_light1: vec4<f32>,\n};",
+            "    minecraft_light1: vec4<f32>,\n    glint_offsets: vec4<f32>,\n    view_proj_view_offset_z: mat4x4<f32>,\n    view_proj_view_offset_z_forward: mat4x4<f32>,\n};",
+        )
+        .replace("out.position = camera.view_proj * world;", "out.position = camera.view_proj_view_offset_z_forward * world;")
+}
+
+const ITEM_MODEL_RESIDENT_GLINT_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var item_glint_texture: texture_2d<f32>;
+@group(0) @binding(2) var item_glint_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>, @location(3) normal_diffuse: vec4<f32>,
+    @location(4) model_0: vec4<f32>, @location(5) model_1: vec4<f32>,
+    @location(6) model_2: vec4<f32>, @location(7) model_3: vec4<f32>,
+    @location(8) normal_0: vec4<f32>, @location(9) normal_1: vec4<f32>,
+    @location(10) normal_2: vec4<f32>, @location(11) tint: vec4<f32>,
+    @location(12) light_overlay: vec4<f32>, @location(13) foil: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>,
+    @location(1) spherical_distance: f32, @location(2) cylindrical_distance: f32,
+};
+
+const GLINT_UV_SCALE: f32 = 8.0;
+const GLINT_ALPHA: f32 = 0.75;
+const GLINT_ANGLE: f32 = 0.1745329252;
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) { return 0.0; }
+    if (vertex_distance >= fog_end) { return 1.0; }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn total_fog_value(spherical_distance: f32, cylindrical_distance: f32) -> f32 {
+    return max(linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y), linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w));
+}
+
+fn glint_uv(local_uv: vec2<f32>) -> vec2<f32> {
+    let scaled = local_uv * GLINT_UV_SCALE;
+    let cos_angle = cos(GLINT_ANGLE);
+    let sin_angle = sin(GLINT_ANGLE);
+    let rotated = vec2<f32>(scaled.x * cos_angle - scaled.y * sin_angle, scaled.x * sin_angle + scaled.y * cos_angle);
+    return rotated + camera.glint_offsets.xy;
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
+    let world = model * vec4<f32>(input.position, 1.0);
+    out.position = camera.view_proj * world;
+    out.uv = glint_uv(input.uv);
+    let fog_pos = world.xyz - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let color = textureSample(item_glint_texture, item_glint_sampler, fract(input.uv));
+    if (color.a < 0.1) { discard; }
+    let fade = (1.0 - total_fog_value(input.spherical_distance, input.cylindrical_distance)) * GLINT_ALPHA;
+    return vec4<f32>(color.rgb * fade, color.a);
+}
+"#;
+
+pub(crate) fn create_resident_item_model_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_resident_item_model_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        ITEM_MODEL_RESIDENT_SHADER,
+        "bbb-item-model-resident-pipeline",
+        wgpu::BlendState::REPLACE,
+    )
+}
+
+pub(crate) fn create_resident_item_model_z_offset_forward_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = resident_z_offset_forward_shader();
+    create_resident_item_model_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        &shader,
+        "bbb-item-model-resident-z-offset-forward-pipeline",
+        wgpu::BlendState::REPLACE,
+    )
+}
+
+pub(crate) fn create_resident_item_model_translucent_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_resident_item_model_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        ITEM_MODEL_RESIDENT_SHADER,
+        "bbb-item-model-resident-translucent-pipeline",
+        wgpu::BlendState::ALPHA_BLENDING,
+    )
+}
+
+pub(crate) fn create_resident_item_model_glint_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-item-model-resident-glint-pipeline")
+        .shader(
+            "bbb-item-model-resident-glint-shader",
+            ITEM_MODEL_RESIDENT_GLINT_SHADER,
+        )
+        .layout(
+            "bbb-item-model-resident-glint-pipeline-layout",
+            &[bind_group_layout],
+        )
+        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+        .color_target(format, Some(ITEM_MODEL_GLINT_BLEND))
+        .cull_mode(ITEM_MODEL_GLINT_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+            ITEM_MODEL_GLINT_DEPTH_COMPARE,
+        ))
+        .build()
+}
+
+fn create_resident_item_model_pipeline_with_blend(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    shader: &str,
+    label: &str,
+    blend: wgpu::BlendState,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, label)
+        .shader(label, shader)
+        .layout(
+            &format!("{label}-layout"),
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+        .color_target(format, Some(blend))
+        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            true,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
 }
 
 fn resident_geometry(
@@ -670,6 +1179,55 @@ impl Renderer {
         )
     }
 
+    /// Applies one atomic model-space asset/instance extraction. Exact keys
+    /// are minted from the renderer's current resource generations, and each
+    /// source is evaluated only after a miss.
+    pub fn set_item_model_residency_frame(&mut self, frame: ItemModelResidencyFrame) -> Result<()> {
+        self.begin_item_model_frame();
+        let mut requested_keys = BTreeSet::new();
+        for request in frame.assets {
+            let key =
+                self.item_model_asset_key(request.identity, request.atlas, request.geometry_class);
+            if !requested_keys.insert(key.clone()) {
+                continue;
+            }
+            match self.ensure_item_model_resident(key, || request.source.build()) {
+                ItemModelResidencyOutcome::Reused | ItemModelResidencyOutcome::Created => {}
+                ItemModelResidencyOutcome::Empty => {
+                    bail!("item-model frame requested an empty resident geometry owner")
+                }
+                ItemModelResidencyOutcome::Stale => {
+                    bail!("renderer minted a stale item-model asset key")
+                }
+                ItemModelResidencyOutcome::CapacityExceeded => {
+                    bail!("item-model resident owner capacity exceeded")
+                }
+            }
+        }
+        let instances = frame
+            .instances
+            .into_iter()
+            .map(|request| {
+                ItemModelInstanceRecord::new(
+                    self.item_model_asset_key(
+                        request.identity,
+                        request.atlas,
+                        request.geometry_class,
+                    ),
+                    request.transform,
+                    request.tint,
+                    request.light,
+                    request.overlay,
+                    request.foil,
+                    request.target,
+                    request.phase,
+                    request.submit_order,
+                )
+            })
+            .collect();
+        self.set_resident_item_model_instances(instances)
+    }
+
     /// Advances the resource generation and drops all derived model owners.
     pub fn invalidate_item_model_resources(&mut self) {
         self.item_model_residency
@@ -722,6 +1280,31 @@ mod tests {
 
     fn identity(name: &str) -> ItemModelAssetIdentity {
         ItemModelAssetIdentity::new(Arc::<str>::from(name), Arc::<str>::from("plain"), 0)
+    }
+
+    fn block_frame(transform: Mat4) -> ItemModelResidencyFrame {
+        let identity = identity("minecraft:stone");
+        ItemModelResidencyFrame {
+            assets: vec![ItemModelAssetRequest {
+                identity: identity.clone(),
+                atlas: ItemModelAtlasKind::Blocks,
+                geometry_class: ItemModelGeometryClass::Solid,
+                source: ItemModelAssetSource::Quads(Arc::from([quad(false)])),
+            }],
+            instances: vec![ItemModelInstanceRequest {
+                identity,
+                atlas: ItemModelAtlasKind::Blocks,
+                geometry_class: ItemModelGeometryClass::Solid,
+                transform,
+                tint: [1.0; 4],
+                light: [1.0; 2],
+                overlay: [0.0, 10.0],
+                foil: ItemModelFoil::None,
+                target: ItemModelDrawTarget::FirstPerson,
+                phase: ItemModelDrawPhase::Solid,
+                submit_order: 0,
+            }],
+        }
     }
 
     #[test]
@@ -783,6 +1366,7 @@ mod tests {
                 [1.0; 2],
                 [0.0, 10.0],
                 ItemModelFoil::None,
+                ItemModelDrawTarget::World,
                 ItemModelDrawPhase::Solid,
                 9,
             )])
@@ -801,6 +1385,7 @@ mod tests {
                 [0.5, 1.0],
                 [0.0, 10.0],
                 ItemModelFoil::Standard,
+                ItemModelDrawTarget::World,
                 ItemModelDrawPhase::Glint,
                 9,
             )])
@@ -814,6 +1399,59 @@ mod tests {
         assert_eq!(
             renderer.resident_item_model_instance_orders_for_test(),
             vec![9]
+        );
+    }
+
+    #[test]
+    fn high_level_frame_reuses_static_owner_and_full_render_consumes_upload_once() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer
+            .update_terrain_texture_atlas(&[255, 255, 255, 255])
+            .unwrap();
+        renderer.update_camera();
+        renderer
+            .set_item_model_residency_frame(block_frame(Mat4::IDENTITY))
+            .unwrap();
+        renderer.render_offscreen_frame().unwrap();
+        assert!(renderer.counters().item_model_vertex_upload_bytes > 0);
+        assert!(renderer.counters().item_model_index_upload_bytes > 0);
+        assert!(renderer.counters().item_instance_upload_bytes > 0);
+
+        renderer
+            .set_item_model_residency_frame(block_frame(Mat4::from_translation(glam::Vec3::new(
+                0.25, 0.0, 0.0,
+            ))))
+            .unwrap();
+        renderer.render_offscreen_frame().unwrap();
+        assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
+        assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
+        assert!(renderer.counters().item_instance_upload_bytes > 0);
+
+        renderer.render_offscreen_frame().unwrap();
+        assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
+        assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
+        assert_eq!(renderer.counters().item_instance_upload_bytes, 0);
+    }
+
+    #[test]
+    fn consecutive_instances_share_one_draw_without_reordering() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let mut frame = block_frame(Mat4::IDENTITY);
+        let mut second = frame.instances[0].clone();
+        second.transform = Mat4::from_translation(glam::Vec3::X);
+        second.submit_order = 1;
+        frame.instances.push(second);
+        renderer.set_item_model_residency_frame(frame).unwrap();
+
+        assert_eq!(renderer.item_model_residency.draws().len(), 1);
+        assert_eq!(renderer.item_model_residency.draws()[0].instance_count, 2);
+        assert_eq!(
+            renderer.resident_item_model_instance_orders_for_test(),
+            vec![0, 1]
         );
     }
 

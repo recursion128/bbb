@@ -615,6 +615,12 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.resident_item_model_main_pass(
+            &mut *encoder,
+            crate::item_models::ItemModelDrawPhase::Solid,
+            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            stats,
+        );
         let (block_item_z_offset_forward_vertices, block_item_z_offset_forward_indices) =
             self.collect_block_item_model_z_offset_forward_geometry();
         if !block_item_z_offset_forward_indices.is_empty() {
@@ -629,6 +635,12 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.resident_item_model_main_pass(
+            &mut *encoder,
+            crate::item_models::ItemModelDrawPhase::SolidZOffsetForward,
+            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            stats,
+        );
         let (map_vertices, map_indices) = self.collect_item_frame_map_geometry();
         if !map_indices.is_empty() {
             if let Some(atlas) = &self.item_frame_map_atlas {
@@ -672,6 +684,12 @@ impl Renderer {
                 stats.item_model_draw_calls += 1;
             }
         }
+        self.resident_item_model_main_pass(
+            &mut *encoder,
+            crate::item_models::ItemModelDrawPhase::Solid,
+            Some(crate::item_models::ItemModelAtlasKind::Items),
+            stats,
+        );
         let (item_model_glint_vertices, item_model_glint_indices) =
             self.collect_item_model_glint_geometry();
         if !item_model_glint_indices.is_empty() {
@@ -687,6 +705,12 @@ impl Renderer {
                 stats.item_model_draw_calls += 1;
             }
         }
+        self.resident_item_model_main_pass(
+            &mut *encoder,
+            crate::item_models::ItemModelDrawPhase::Glint,
+            None,
+            stats,
+        );
     }
 
     /// Vanilla `ParticleFeatureRenderer.render` (26.1 lines 46-57) picks the render target with
@@ -1094,6 +1118,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::World,
+                &[crate::item_models::ItemModelDrawPhase::Translucent],
+                Some(crate::item_models::ItemModelAtlasKind::Blocks),
+                stats,
+            );
             if let (Some(atlas), Some(buffers)) =
                 (&self.item_entity_atlas, &flat_item_translucent_buffers)
             {
@@ -1106,6 +1137,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::World,
+                &[crate::item_models::ItemModelDrawPhase::Translucent],
+                Some(crate::item_models::ItemModelAtlasKind::Items),
+                stats,
+            );
             if let (Some(glint), Some(buffers)) = (
                 &self.item_glint_texture,
                 &item_model_glint_translucent_buffers,
@@ -1118,6 +1156,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::World,
+                &[crate::item_models::ItemModelDrawPhase::GlintTranslucent],
+                None,
+                stats,
+            );
             if let (Some(atlas), true) = (&self.item_entity_atlas, has_item_entity_vertices) {
                 let vertex_buffer = self.frame_item_entity_vertices.buffer().expect("uploaded");
                 pass.set_pipeline(&self.item_entity_pipeline);
@@ -1533,6 +1578,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[crate::item_models::ItemModelDrawPhase::Solid],
+                Some(crate::item_models::ItemModelAtlasKind::Blocks),
+                stats,
+            );
             if let (Some(atlas), Some(buffers)) =
                 (&self.item_entity_atlas, &item_pickup_flat_buffers)
             {
@@ -1545,6 +1597,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[crate::item_models::ItemModelDrawPhase::Solid],
+                Some(crate::item_models::ItemModelAtlasKind::Items),
+                stats,
+            );
             if let (Some(glint), Some(buffers)) =
                 (&self.item_glint_texture, &item_pickup_glint_buffers)
             {
@@ -1556,6 +1615,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[crate::item_models::ItemModelDrawPhase::Glint],
+                None,
+                stats,
+            );
             if let Some(buffers) = &item_pickup_block_translucent_buffers {
                 self.draw_item_model_frame_buffers(
                     &mut pass,
@@ -1566,6 +1632,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[crate::item_models::ItemModelDrawPhase::Translucent],
+                Some(crate::item_models::ItemModelAtlasKind::Blocks),
+                stats,
+            );
             if let (Some(atlas), Some(buffers)) = (
                 &self.item_entity_atlas,
                 &item_pickup_flat_translucent_buffers,
@@ -1579,6 +1652,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[crate::item_models::ItemModelDrawPhase::Translucent],
+                Some(crate::item_models::ItemModelAtlasKind::Items),
+                stats,
+            );
             if let (Some(glint), Some(buffers)) = (
                 &self.item_glint_texture,
                 &item_pickup_glint_translucent_buffers,
@@ -1591,6 +1671,13 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[crate::item_models::ItemModelDrawPhase::GlintTranslucent],
+                None,
+                stats,
+            );
             if let (Some(index_count), Some(atlas)) = (
                 experience_orb_pickup_particle_index_count,
                 self.entity_model_texture_atlas.as_ref(),
@@ -2085,6 +2172,11 @@ impl Renderer {
             &glint_translucent_vertices,
             &glint_translucent_indices,
         );
+        let has_resident_items = self
+            .item_model_residency
+            .draws()
+            .iter()
+            .any(|draw| draw.target == crate::item_models::ItemModelDrawTarget::FirstPerson);
 
         if block_buffers.is_none()
             && block_translucent_buffers.is_none()
@@ -2096,6 +2188,7 @@ impl Renderer {
             && map_text_buffers.is_none()
             && glint_buffers.is_none()
             && glint_translucent_buffers.is_none()
+            && !has_resident_items
             && self.first_person_player_arm_mesh.is_none()
             && self.first_person_dynamic_player_arm_mesh.is_none()
         {
@@ -2164,6 +2257,13 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[crate::item_models::ItemModelDrawPhase::Solid],
+            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            stats,
+        );
         if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_buffers) {
             self.draw_item_model_frame_buffers(
                 &mut pass,
@@ -2174,6 +2274,13 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[crate::item_models::ItemModelDrawPhase::Solid],
+            Some(crate::item_models::ItemModelAtlasKind::Items),
+            stats,
+        );
         if let (Some(atlas), Some(buffers)) = (
             &self.first_person_map_background_atlas,
             &map_background_buffers,
@@ -2227,6 +2334,13 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[crate::item_models::ItemModelDrawPhase::Glint],
+            None,
+            stats,
+        );
         if let Some(buffers) = &block_translucent_buffers {
             self.draw_item_model_frame_buffers(
                 &mut pass,
@@ -2237,6 +2351,13 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[crate::item_models::ItemModelDrawPhase::Translucent],
+            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            stats,
+        );
         if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_translucent_buffers) {
             self.draw_item_model_frame_buffers(
                 &mut pass,
@@ -2247,12 +2368,26 @@ impl Renderer {
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[crate::item_models::ItemModelDrawPhase::Translucent],
+            Some(crate::item_models::ItemModelAtlasKind::Items),
+            stats,
+        );
         if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_translucent_buffers)
         {
             self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.main_bind_group);
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[crate::item_models::ItemModelDrawPhase::GlintTranslucent],
+            None,
+            stats,
+        );
     }
 
     /// GUI entity picture-in-picture targets (vanilla `GuiRenderer.preparePictureInPicture` →
@@ -2650,11 +2785,18 @@ impl Renderer {
 
         self.counters.frame_index += 1;
         let item_upload = self.legacy_item_model_upload_observation();
-        self.counters.item_model_instances = item_upload.phase_meshes;
+        let resident_upload = self.item_model_residency.take_upload_observation();
+        self.counters.item_model_instances = item_upload
+            .phase_meshes
+            .saturating_add(resident_upload.instances);
         self.counters.item_transient_buffer_creations = item_upload.transient_buffers;
-        self.counters.item_model_vertex_upload_bytes = item_upload.vertex_bytes;
-        self.counters.item_model_index_upload_bytes = item_upload.index_bytes;
-        self.counters.item_instance_upload_bytes = 0;
+        self.counters.item_model_vertex_upload_bytes = item_upload
+            .vertex_bytes
+            .saturating_add(resident_upload.vertex_bytes);
+        self.counters.item_model_index_upload_bytes = item_upload
+            .index_bytes
+            .saturating_add(resident_upload.index_bytes);
+        self.counters.item_instance_upload_bytes = resident_upload.instance_bytes;
         self.counters.opaque_draw_calls = stats.opaque_draw_calls;
         self.counters.cutout_draw_calls = stats.cutout_draw_calls;
         self.counters.translucent_draw_calls = stats.translucent_draw_calls;
@@ -2717,6 +2859,122 @@ impl Renderer {
             bind_group,
             &self.item_model_pipeline,
         );
+    }
+
+    fn resident_item_model_main_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        phase: crate::item_models::ItemModelDrawPhase,
+        atlas: Option<crate::item_models::ItemModelAtlasKind>,
+        stats: &mut FrameDrawStats,
+    ) {
+        if !self.item_model_residency.draws().iter().any(|draw| {
+            draw.target == crate::item_models::ItemModelDrawTarget::World
+                && draw.phase == phase
+                && atlas.is_none_or(|atlas| draw.asset.atlas() == atlas)
+        }) {
+            return;
+        }
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("bbb-native-resident-item-model-main-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.main_target.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::World,
+            &[phase],
+            atlas,
+            stats,
+        );
+    }
+
+    fn draw_resident_item_models<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        target: crate::item_models::ItemModelDrawTarget,
+        phases: &[crate::item_models::ItemModelDrawPhase],
+        atlas: Option<crate::item_models::ItemModelAtlasKind>,
+        stats: &mut FrameDrawStats,
+    ) {
+        let Some(instance_buffer) = self.item_model_residency.instance_buffer() else {
+            return;
+        };
+        let mut active_phase = None;
+        for draw in self.item_model_residency.draws() {
+            if draw.target != target
+                || !phases.contains(&draw.phase)
+                || atlas.is_some_and(|atlas| draw.asset.atlas() != atlas)
+            {
+                continue;
+            }
+            let Some(owner) = self.item_model_residency.owner(&draw.asset) else {
+                continue;
+            };
+            let pipeline = match draw.phase {
+                crate::item_models::ItemModelDrawPhase::Solid => &self.resident_item_model_pipeline,
+                crate::item_models::ItemModelDrawPhase::SolidZOffsetForward => {
+                    &self.resident_item_model_z_offset_forward_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::Translucent => {
+                    &self.resident_item_model_translucent_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::Glint
+                | crate::item_models::ItemModelDrawPhase::GlintTranslucent => {
+                    &self.resident_item_model_glint_pipeline
+                }
+            };
+            if active_phase != Some(draw.phase) {
+                pass.set_pipeline(pipeline);
+                active_phase = Some(draw.phase);
+                stats.pipeline_switches = stats.pipeline_switches.saturating_add(1);
+            }
+            if matches!(
+                draw.phase,
+                crate::item_models::ItemModelDrawPhase::Glint
+                    | crate::item_models::ItemModelDrawPhase::GlintTranslucent
+            ) {
+                let Some(glint) = &self.item_glint_texture else {
+                    continue;
+                };
+                pass.set_bind_group(0, &glint.main_bind_group, &[]);
+            } else {
+                let bind_group = match draw.asset.atlas() {
+                    crate::item_models::ItemModelAtlasKind::Blocks => &self.terrain_bind_group,
+                    crate::item_models::ItemModelAtlasKind::Items => {
+                        let Some(atlas) = &self.item_entity_atlas else {
+                            continue;
+                        };
+                        &atlas.bind_group
+                    }
+                };
+                pass.set_bind_group(0, bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            }
+            pass.set_vertex_buffer(0, owner.vertex_buffer.slice(..));
+            pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            pass.set_index_buffer(owner.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            let instances =
+                draw.first_instance..draw.first_instance.saturating_add(draw.instance_count);
+            pass.draw_indexed(0..owner.index_count, 0, instances);
+            stats.item_model_draw_calls = stats.item_model_draw_calls.saturating_add(1);
+        }
     }
 
     fn draw_item_model_geometry_with_pipeline(
@@ -4285,9 +4543,13 @@ mod tests {
             .find("&item_pickup_flat_buffers")
             .map(|index| pickup_block + index)
             .expect("item-pickup flat item meshes draw in particle target");
-        let experience_orb = source[pickup_flat..]
-            .find("experience_orb_pickup_particle_index_count")
+        let resident_pickup = source[pickup_flat..]
+            .find("ItemModelDrawTarget::Particle")
             .map(|index| pickup_flat + index)
+            .expect("resident item-pickup models draw in the particle target");
+        let experience_orb = source[resident_pickup..]
+            .find("experience_orb_pickup_particle_index_count")
+            .map(|index| resident_pickup + index)
             .expect("experience-orb pickup billboard draws in item-pickup group");
         let elder_guardian = source[experience_orb..]
             .find("elder_guardian_particle_index_count")
@@ -4297,7 +4559,8 @@ mod tests {
         assert!(
             translucent_particles < pickup_block
                 && pickup_block < pickup_flat
-                && pickup_flat < experience_orb
+                && pickup_flat < resident_pickup
+                && resident_pickup < experience_orb
                 && experience_orb < elder_guardian,
             "vanilla particle group order is SINGLE_QUADS, ITEM_PICKUP, ELDER_GUARDIANS"
         );

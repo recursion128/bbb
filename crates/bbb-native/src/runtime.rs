@@ -2876,18 +2876,58 @@ pub(crate) fn update_renderer_from_publication(
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
-    let entity_block_meshes = entity_block_models(
+    let entity_block_models = entity_block_models(
         &entity_instances,
         world,
         item_runtime,
         terrain_textures,
         entity_partial_tick,
     );
+    let mut item_model_residency = dropped_item_models.residency;
+    item_model_residency
+        .assets
+        .extend(ominous_item_spawner_models.residency.assets);
+    item_model_residency
+        .instances
+        .extend(ominous_item_spawner_models.residency.instances);
+    item_model_residency
+        .assets
+        .extend(item_pickup_particle_models.residency.assets);
+    item_model_residency
+        .instances
+        .extend(item_pickup_particle_models.residency.instances);
+    item_model_residency
+        .assets
+        .extend(held_item_models.residency.assets);
+    item_model_residency
+        .instances
+        .extend(held_item_models.residency.instances);
+    item_model_residency
+        .assets
+        .extend(first_person_item_models.residency.assets);
+    item_model_residency
+        .instances
+        .extend(first_person_item_models.residency.instances);
+    item_model_residency
+        .assets
+        .extend(item_frame_models.residency.assets);
+    item_model_residency
+        .instances
+        .extend(item_frame_models.residency.instances);
+    item_model_residency
+        .assets
+        .extend(entity_block_models.assets);
+    item_model_residency
+        .instances
+        .extend(entity_block_models.instances);
+    for (submit_order, instance) in item_model_residency.instances.iter_mut().enumerate() {
+        instance.submit_order =
+            u32::try_from(submit_order).expect("resident item-model submit order overflow");
+    }
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(ominous_item_spawner_models.block_meshes);
     block_item_meshes.extend(held_item_models.block_meshes);
     block_item_meshes.extend(item_frame_models.block_meshes);
-    block_item_meshes.extend(entity_block_meshes);
     let block_item_z_offset_forward_meshes = item_frame_models.block_z_offset_forward_meshes;
     let mut block_item_translucent_meshes = dropped_item_models.block_translucent_meshes;
     block_item_translucent_meshes.extend(ominous_item_spawner_models.block_translucent_meshes);
@@ -3044,6 +3084,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_debug_overlay,
             hud_boss_bars,
             item_entity_billboards,
+            item_model_residency,
             block_item_model_meshes: block_item_meshes,
             block_item_model_z_offset_forward_meshes: block_item_z_offset_forward_meshes,
             block_item_model_translucent_meshes: block_item_translucent_meshes,
@@ -3531,7 +3572,7 @@ fn block_item_3d_model(
         .item_display_transform_for_stack(item, bbb_pack::BlockModelDisplayContext::Gui)
         .unwrap_or_default();
     Some(HudBlockItemModel {
-        quads,
+        quads: quads.to_vec(),
         gui_display: crate::item_models::display_matrix(&gui, false),
         lighting: GuiItemLightingEntry::Items3d,
         foil: item.has_foil(),

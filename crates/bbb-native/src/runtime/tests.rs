@@ -4800,7 +4800,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");
     let entity_block_meshes = source
-        .find("let entity_block_meshes =")
+        .find("let entity_block_models = entity_block_models(")
         .expect("pump should extract entity block item models");
 
     for advance in [
@@ -10914,10 +10914,12 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         None,
     );
 
-    assert_eq!(fallback.flat_meshes.len(), 1);
-    assert_eq!(trimmed.flat_meshes.len(), 1);
+    assert!(fallback.flat_meshes.is_empty());
+    assert!(trimmed.flat_meshes.is_empty());
+    assert_eq!(fallback.residency.assets.len(), 1);
+    assert_eq!(trimmed.residency.assets.len(), 1);
     assert_eq!(fallback.handled_entity_ids, trimmed.handled_entity_ids);
-    assert_ne!(fallback.flat_meshes[0], trimmed.flat_meshes[0]);
+    assert_ne!(fallback.residency.assets, trimmed.residency.assets);
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -10960,9 +10962,23 @@ fn item_frame_models_use_world_trim_material_select_context() {
         None,
     );
 
-    assert_eq!(fallback.flat_meshes.len(), 1);
-    assert_eq!(trimmed.flat_meshes.len(), 1);
-    assert_ne!(fallback.flat_meshes[0], trimmed.flat_meshes[0]);
+    assert!(fallback.flat_meshes.is_empty());
+    assert!(trimmed.flat_meshes.is_empty());
+    let fallback_item_assets = fallback
+        .residency
+        .assets
+        .iter()
+        .filter(|asset| asset.atlas == bbb_renderer::ItemModelAtlasKind::Items)
+        .collect::<Vec<_>>();
+    let trimmed_item_assets = trimmed
+        .residency
+        .assets
+        .iter()
+        .filter(|asset| asset.atlas == bbb_renderer::ItemModelAtlasKind::Items)
+        .collect::<Vec<_>>();
+    assert_eq!(fallback_item_assets.len(), 1);
+    assert_eq!(trimmed_item_assets.len(), 1);
+    assert_ne!(fallback_item_assets, trimmed_item_assets);
 
     std::fs::remove_dir_all(root).unwrap();
 }

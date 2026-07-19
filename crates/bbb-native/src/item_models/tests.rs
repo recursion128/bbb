@@ -1190,7 +1190,8 @@ fn first_person_item_models_bake_ordinary_local_hand_stack() {
 
     assert!(models.block_meshes.is_empty());
     assert_eq!(models.flat_meshes.len(), 1);
-    assert!(!models.flat_meshes[0].is_empty());
+    assert_eq!(models.residency.assets.len(), 1);
+    assert_eq!(models.residency.instances.len(), 1);
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -3404,6 +3405,7 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
         let mut flat_translucent_meshes = Vec::new();
         let mut flat_glint_meshes = Vec::new();
         let mut flat_glint_translucent_meshes = Vec::new();
+        let mut residency = ItemModelResidencyFrame::default();
         bake_item_stack_at_transform(
             &stack,
             &world,
@@ -3430,6 +3432,7 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
             &mut flat_translucent_meshes,
             &mut flat_glint_meshes,
             &mut flat_glint_translucent_meshes,
+            &mut residency,
         );
         assert!(block_meshes.is_empty());
         assert!(block_translucent_meshes.is_empty());
@@ -3438,8 +3441,9 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
         assert!(flat_translucent_meshes.is_empty());
         assert!(flat_glint_meshes.is_empty());
         assert!(flat_glint_translucent_meshes.is_empty());
-        assert_eq!(flat_meshes.len(), 1);
-        flat_meshes.remove(0)
+        assert!(flat_meshes.is_empty());
+        assert_eq!(residency.assets.len(), 1);
+        residency.assets.remove(0)
     };
 
     let fallback = bake(None);
@@ -3478,6 +3482,7 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
         let mut flat_translucent_meshes = Vec::new();
         let mut flat_glint_meshes = Vec::new();
         let mut flat_glint_translucent_meshes = Vec::new();
+        let mut residency = ItemModelResidencyFrame::default();
         bake_item_stack_at_transform(
             &stack,
             &world,
@@ -3504,6 +3509,7 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
             &mut flat_translucent_meshes,
             &mut flat_glint_meshes,
             &mut flat_glint_translucent_meshes,
+            &mut residency,
         );
         assert!(block_meshes.is_empty());
         assert!(block_translucent_meshes.is_empty());
@@ -3512,8 +3518,9 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
         assert!(flat_translucent_meshes.is_empty());
         assert!(flat_glint_meshes.is_empty());
         assert!(flat_glint_translucent_meshes.is_empty());
-        assert_eq!(flat_meshes.len(), 1);
-        flat_meshes.remove(0)
+        assert!(flat_meshes.is_empty());
+        assert_eq!(residency.assets.len(), 1);
+        residency.assets.remove(0)
     };
 
     let player_kind = EntityModelKind::Humanoid {
@@ -4078,8 +4085,9 @@ fn ominous_item_spawner_models_emit_item_cluster_meshes() {
     );
 
     assert!(models.block_meshes.is_empty());
-    assert_eq!(models.flat_meshes.len(), 1);
-    assert!(!models.flat_meshes[0].is_empty());
+    assert!(models.flat_meshes.is_empty());
+    assert_eq!(models.residency.assets.len(), 1);
+    assert_eq!(models.residency.instances.len(), 2);
     assert!(models.handled_entity_ids.contains(&801));
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -4117,8 +4125,9 @@ fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
     );
 
     assert!(models.block_meshes.is_empty());
-    assert_eq!(models.flat_meshes.len(), 1);
-    assert!(!models.flat_meshes[0].is_empty());
+    assert!(models.flat_meshes.is_empty());
+    assert_eq!(models.residency.assets.len(), 1);
+    assert_eq!(models.residency.instances.len(), 3);
     assert!(models.handled_entity_ids.is_empty());
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -4209,14 +4218,25 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
     );
 
     assert!(dropped.block_meshes.is_empty());
-    assert_eq!(dropped.flat_meshes.len(), 1);
-    assert!(!dropped.flat_meshes[0].is_empty());
-    // Equality: the component-rich pickup bake matches the dropped-item bake.
+    assert!(dropped.flat_meshes.is_empty());
+    assert_eq!(dropped.residency.assets.len(), 1);
+    assert_eq!(dropped.residency.instances.len(), 1);
+    // Equality: the component-rich pickup selects the same immutable asset and
+    // transform/tint as the dropped item; only its render target differs.
     assert_eq!(pickup.block_meshes, dropped.block_meshes);
     assert_eq!(pickup.flat_meshes, dropped.flat_meshes);
     assert_eq!(
         pickup.flat_translucent_meshes,
         dropped.flat_translucent_meshes
+    );
+    assert_eq!(pickup.residency.assets, dropped.residency.assets);
+    assert_eq!(
+        pickup.residency.instances[0].transform,
+        dropped.residency.instances[0].transform
+    );
+    assert_eq!(
+        pickup.residency.instances[0].tint,
+        dropped.residency.instances[0].tint
     );
 
     // Consumption proof: dropping the patch selects `pickup_tool`'s own model,
@@ -4238,8 +4258,8 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         None,
         None,
     );
-    assert_eq!(plain.flat_meshes.len(), 1);
-    assert_ne!(pickup.flat_meshes, plain.flat_meshes);
+    assert_eq!(plain.residency.assets.len(), 1);
+    assert_ne!(pickup.residency.assets, plain.residency.assets);
 
     std::fs::remove_dir_all(root).unwrap();
 }

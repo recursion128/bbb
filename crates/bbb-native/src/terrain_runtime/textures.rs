@@ -1,4 +1,8 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 use anyhow::Result;
 use bbb_pack::{
@@ -35,6 +39,11 @@ pub(crate) struct TerrainTextureState {
     sprite_alphas: HashMap<String, SpriteAlpha>,
     fallback_index: u32,
     animation: Option<TerrainTextureAnimation>,
+    block_item_default_quads: RefCell<HashMap<String, Option<Arc<[bbb_renderer::ItemModelQuad]>>>>,
+    block_item_property_quads: RefCell<
+        HashMap<(String, BTreeMap<String, String>), Option<Arc<[bbb_renderer::ItemModelQuad]>>>,
+    >,
+    item_frame_border_quads: RefCell<HashMap<(bool, bool), Arc<[bbb_renderer::ItemModelQuad]>>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -63,6 +72,9 @@ impl Default for TerrainTextureState {
             sprite_alphas: HashMap::new(),
             fallback_index: 0,
             animation: None,
+            block_item_default_quads: RefCell::new(HashMap::new()),
+            block_item_property_quads: RefCell::new(HashMap::new()),
+            item_frame_border_quads: RefCell::new(HashMap::new()),
         }
     }
 }
@@ -225,6 +237,9 @@ impl TerrainTextureState {
             sprite_alphas,
             fallback_index,
             animation: None,
+            block_item_default_quads: RefCell::new(HashMap::new()),
+            block_item_property_quads: RefCell::new(HashMap::new()),
+            item_frame_border_quads: RefCell::new(HashMap::new()),
         }
     }
 
@@ -612,7 +627,34 @@ impl TerrainTextureState {
         &self,
         block_name: &str,
         properties: &BTreeMap<String, String>,
-    ) -> Option<Vec<bbb_renderer::ItemModelQuad>> {
+    ) -> Option<Arc<[bbb_renderer::ItemModelQuad]>> {
+        if properties.is_empty() {
+            if let Some(cached) = self.block_item_default_quads.borrow().get(block_name) {
+                return cached.clone();
+            }
+            let quads = self.build_block_item_quads(block_name, properties);
+            self.block_item_default_quads
+                .borrow_mut()
+                .insert(block_name.to_string(), quads.clone());
+            return quads;
+        }
+
+        let key = (block_name.to_string(), properties.clone());
+        if let Some(cached) = self.block_item_property_quads.borrow().get(&key) {
+            return cached.clone();
+        }
+        let quads = self.build_block_item_quads(block_name, properties);
+        self.block_item_property_quads
+            .borrow_mut()
+            .insert(key, quads.clone());
+        quads
+    }
+
+    fn build_block_item_quads(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<Arc<[bbb_renderer::ItemModelQuad]>> {
         let models = self.block_models.as_ref()?;
         models.block_render_model_with_seed(block_name, properties, None)?;
         let (texture_indices, tint, _transparency, shape, _ao) = self.block_render_data(
@@ -623,12 +665,12 @@ impl TerrainTextureState {
             None,
             None,
         );
-        Some(bbb_renderer::terrain::bake_block_item_quads(
+        Some(Arc::from(bbb_renderer::terrain::bake_block_item_quads(
             &shape,
             texture_indices,
             tint,
             &self.atlas,
-        ))
+        )))
     }
 
     /// The 3D item-frame border (vanilla `block/item_frame` / `block/glow_item_frame`, or the
@@ -636,6 +678,22 @@ impl TerrainTextureState {
     /// `glow_item_frame` texture, baked over the blocks atlas into item-model quads in `0..=16` model
     /// space while preserving the vanilla templates' fractional `15.5` / `15.001` depths.
     pub(crate) fn item_frame_border_quads(
+        &self,
+        glow: bool,
+        map: bool,
+    ) -> Arc<[bbb_renderer::ItemModelQuad]> {
+        if let Some(quads) = self.item_frame_border_quads.borrow().get(&(glow, map)) {
+            return Arc::clone(quads);
+        }
+        let quads: Arc<[bbb_renderer::ItemModelQuad]> =
+            Arc::from(self.build_item_frame_border_quads(glow, map));
+        self.item_frame_border_quads
+            .borrow_mut()
+            .insert((glow, map), Arc::clone(&quads));
+        quads
+    }
+
+    fn build_item_frame_border_quads(
         &self,
         glow: bool,
         map: bool,

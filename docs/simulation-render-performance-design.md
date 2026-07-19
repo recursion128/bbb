@@ -456,9 +456,61 @@ generation; a successful resource-reload barrier additionally advances the
 global item resource generation.  Tests pin builder suppression on exact hits,
 zero static upload for dynamic-only changes, submit-order retention, stale-key
 rejection, atlas-specific invalidation, bounded current-frame pinning and
-immutable alpha-mask sharing.  Consumer draw migration remains phase 3; these
-owners are not counted as a completed render-path win until the legacy phase
-mesh setters and transient buffers are removed.
+immutable alpha-mask sharing.
+
+Phase 3 connects that owner to production draws.  `RendererFrame` now carries
+one atomic `ItemModelResidencyFrame`: small exact asset requests plus ordered
+instances.  The renderer mints generation keys and de-duplicates requests
+before evaluating `ItemModelAssetSource`; generated-sprite extrusion and the
+model-space-to-GPU bake therefore run only on a miss.  Block-item and
+item-frame-border quads are immutable `Arc` assets cached by the loaded terrain
+resource owner, so repeated selection does not rebake or copy their quad
+payload either.  Dropped items, pickup-particle clusters, ominous spawners,
+third-person held/equipped items, first-person hand items, item-frame borders
+and contents, and entity block attachments now submit resident instances.
+Their ordinary production path no longer appends world-space phase meshes.
+Special clock/compass foil remains the explicit legacy fallback until its
+sheeted-decal resident shader is completed in phase 5; no ordinary item uses
+that fallback.
+
+The resident pipelines consume persistent model-space vertex/index buffers and
+one grow-only instance buffer.  Equal consecutive owner/target/phase records
+collapse to one instanced draw without sorting; phase filters preserve the
+existing world, item-entity and depth-cleared first-person pass positions.
+Static and instance uploads are accumulated until the next actual render and
+then consumed, so a second render of the same extraction reports zero upload
+rather than repeating stale telemetry.  Test builds reconstruct legacy meshes
+only under `cfg(test)` to keep the large vanilla pose-equivalence corpus
+checking final geometry; that compatibility projection is absent from normal
+and benchmark builds.
+
+The phase-3 isolated instance-contract run on the same Ryzen 9 7945HX host uses
+the phase-1 Criterion configuration and the same six-quad mixed
+solid/translucent model.  It constructs two narrow records per visible item and
+retains one shared model-space `Arc`; it excludes wgpu queue time and is paired
+with the offscreen upload assertions rather than presented as an integrated
+frame timer.
+
+| Item instance extraction workload | Legacy world-space | Resident instance | Speedup |
+| --- | ---: | ---: | ---: |
+| 500 unchanged | 259.14 us | 18.046 us | 14.36x |
+| 500 camera-only | 259.80 us | 18.049 us | 14.39x |
+| 500 one transform | 259.17 us | 18.912 us | 13.70x |
+| 500 one light | 259.31 us | 18.928 us | 13.70x |
+| 500 one foil | 257.75 us | 18.022 us | 14.30x |
+| 500 dense animation | 263.13 us | 18.318 us | 14.36x |
+| 500 item-frame / first-person poses | 266.40 / 260.59 us | 18.123 / 18.120 us | 14.70x / 14.38x |
+| 2,000 candidates, 0% / 10% / 50% / 100% retained | 2.526 / 2.551 / 1.834 / 1.827 ms | 0.396 / 7.696 / 39.034 / 73.732 us | isolated 100%: 24.78x |
+
+The 0-50% resident figures measure the already-frozen visibility-first
+contract (reject before full instance construction); they do not by themselves
+prove every item producer applies equivalent culling.  The production hard
+assertion is stronger at the residency boundary: after a first offscreen owner
+build, transform/camera-only replacement reports zero vertex/index bytes and
+only instance bytes, and another render without replacement reports zero for
+all three upload classes.  The representative two-owner cube retains 1,392
+logical CPU geometry bytes plus driver-owned GPU buffers; driver-deferred
+release remains outside logical peak accounting.
 
 Every phase is a normal reviewable commit with affected-crate focused tests,
 `cargo fmt --all --check`, `git diff --check`, documentation lint when needed,

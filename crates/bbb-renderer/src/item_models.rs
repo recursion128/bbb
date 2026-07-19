@@ -42,10 +42,16 @@ pub(crate) use map::{
     ItemFrameMapTextFontAtlasGpu,
 };
 pub(crate) use residency::ItemModelResidency;
+pub(crate) use residency::{
+    create_resident_item_model_glint_pipeline, create_resident_item_model_pipeline,
+    create_resident_item_model_translucent_pipeline,
+    create_resident_item_model_z_offset_forward_pipeline,
+};
 pub use residency::{
-    ItemModelAssetIdentity, ItemModelAssetKey, ItemModelAtlasGeneration, ItemModelAtlasKind,
-    ItemModelDrawPhase, ItemModelGeometryClass, ItemModelInstanceRecord, ItemModelResidencyOutcome,
-    ItemModelResourceGeneration,
+    ItemModelAssetIdentity, ItemModelAssetKey, ItemModelAssetRequest, ItemModelAssetSource,
+    ItemModelAtlasGeneration, ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget,
+    ItemModelGeometryClass, ItemModelInstanceRecord, ItemModelInstanceRequest,
+    ItemModelResidencyFrame, ItemModelResidencyOutcome, ItemModelResourceGeneration,
 };
 pub use sign_text::{
     bake_sign_text_surface, sign_line_runs_width, sign_max_text_line_width, sign_text_base_color,

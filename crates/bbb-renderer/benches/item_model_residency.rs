@@ -6,11 +6,14 @@
 //! bake and owner materialization; later residency measurements use the same
 //! matrix and separately assert exact GPU upload counts in offscreen tests.
 
-use std::{collections::BTreeMap, time::Duration};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use bbb_renderer::{
     bake_item_model_meshes_with_light_and_overlay_and_foil_mode, ItemFrameMapTexture,
-    ItemModelFoil, ItemModelMeshSet, ItemModelQuad, ITEM_MODEL_NO_OVERLAY,
+    ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource, ItemModelAtlasKind,
+    ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil, ItemModelGeometryClass,
+    ItemModelInstanceRequest, ItemModelMeshSet, ItemModelQuad, ItemModelResidencyFrame,
+    ITEM_MODEL_NO_OVERLAY,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use glam::{Mat4, Vec3};
@@ -170,6 +173,70 @@ fn legacy_world_space_frame(
     (meshes, bytes)
 }
 
+fn resident_instance_frame(
+    quads: &Arc<[ItemModelQuad]>,
+    candidate_count: usize,
+    visible_count: usize,
+    work: DynamicWork,
+) -> ItemModelResidencyFrame {
+    let identity = ItemModelAssetIdentity::new(
+        Arc::<str>::from("minecraft:benchmark_cube"),
+        Arc::<str>::from("default"),
+        0,
+    );
+    let mut frame = ItemModelResidencyFrame::default();
+    if visible_count != 0 {
+        for geometry_class in [
+            ItemModelGeometryClass::Solid,
+            ItemModelGeometryClass::Translucent,
+        ] {
+            frame.assets.push(ItemModelAssetRequest {
+                identity: identity.clone(),
+                atlas: ItemModelAtlasKind::Blocks,
+                geometry_class,
+                source: ItemModelAssetSource::Quads(Arc::clone(quads)),
+            });
+        }
+    }
+    for index in 0..candidate_count {
+        if index >= visible_count {
+            continue;
+        }
+        let light = if matches!(work, DynamicWork::SparseLight) && index == 0 {
+            [0.4, 0.8]
+        } else {
+            [0.8, 1.0]
+        };
+        let foil = if matches!(work, DynamicWork::SparseFoil) && index == 0 {
+            ItemModelFoil::Standard
+        } else {
+            ItemModelFoil::None
+        };
+        for (geometry_class, phase) in [
+            (ItemModelGeometryClass::Solid, ItemModelDrawPhase::Solid),
+            (
+                ItemModelGeometryClass::Translucent,
+                ItemModelDrawPhase::Translucent,
+            ),
+        ] {
+            frame.instances.push(ItemModelInstanceRequest {
+                identity: identity.clone(),
+                atlas: ItemModelAtlasKind::Blocks,
+                geometry_class,
+                transform: instance_transform(index, work),
+                tint: [1.0; 4],
+                light,
+                overlay: ITEM_MODEL_NO_OVERLAY,
+                foil,
+                target: ItemModelDrawTarget::World,
+                phase,
+                submit_order: frame.instances.len() as u32,
+            });
+        }
+    }
+    frame
+}
+
 fn representative_map(id: i32, revision: u8) -> ItemFrameMapTexture {
     let mut rgba = vec![0_u8; MAP_BYTES];
     for (index, pixel) in rgba.chunks_exact_mut(4).enumerate() {
@@ -245,6 +312,27 @@ fn bench_visibility(c: &mut Criterion) {
         );
     }
     group.finish();
+
+    let quads: Arc<[ItemModelQuad]> = quads.into();
+    let mut group = c.benchmark_group("item_resident/instance_frame/visible_2000");
+    for percent in [0, 10, 50, 100] {
+        let visible = 2_000 * percent / 100;
+        group.bench_with_input(
+            BenchmarkId::new("percent", percent),
+            &visible,
+            |b, &visible| {
+                b.iter(|| {
+                    black_box(resident_instance_frame(
+                        black_box(&quads),
+                        2_000,
+                        visible,
+                        DynamicWork::Stable,
+                    ))
+                });
+            },
+        );
+    }
+    group.finish();
 }
 
 fn bench_dynamic_mutations(c: &mut Criterion) {
@@ -263,6 +351,22 @@ fn bench_dynamic_mutations(c: &mut Criterion) {
     for (name, work) in cases {
         group.bench_function(name, |b| {
             b.iter(|| black_box(legacy_world_space_frame(black_box(&quads), 500, 500, work)));
+        });
+    }
+    group.finish();
+
+    let resident_quads: Arc<[ItemModelQuad]> = quads.clone().into();
+    let mut group = c.benchmark_group("item_resident/instance_frame/mutation_500");
+    for (name, work) in cases {
+        group.bench_function(name, |b| {
+            b.iter(|| {
+                black_box(resident_instance_frame(
+                    black_box(&resident_quads),
+                    500,
+                    500,
+                    work,
+                ))
+            });
         });
     }
     group.finish();

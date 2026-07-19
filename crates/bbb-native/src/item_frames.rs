@@ -6,21 +6,22 @@
 //! Invisible frames skip the border and use vanilla's deeper item offset. Filled maps render as a
 //! full-frame decoded map surface when the world has the corresponding `MapItemData`.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
-    bake_item_frame_map_text_surface, bake_item_model_mesh_with_light,
-    bake_item_model_meshes_with_light_and_overlay_and_foil_mode, ItemFrameMapDecorationSurface,
-    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
-    ItemFrameMapTexture, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    bake_item_frame_map_text_surface, bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelAssetIdentity, ItemModelAssetRequest,
+    ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget,
+    ItemModelFoil, ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMesh,
+    ItemModelMeshSet, ItemModelResidencyFrame, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{ItemFrameFacing, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
-use crate::item_models::{display_matrix, item_stack_foil_mode};
+use crate::item_models::{display_matrix, item_stack_foil_mode, push_resident_item_instances};
 use crate::map_textures::{map_item_texture, MAP_SIZE};
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::NativeItemRuntime;
@@ -49,6 +50,7 @@ pub(crate) struct ItemFrameModels {
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub residency: ItemModelResidencyFrame,
     pub map_textures: Vec<ItemFrameMapTexture>,
     pub map_surfaces: Vec<ItemFrameMapSurface>,
     pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -72,7 +74,7 @@ pub(crate) fn item_frame_models(
     attribute_keys: Option<&[String]>,
 ) -> ItemFrameModels {
     let mut block_meshes = Vec::new();
-    let mut block_z_offset_forward_meshes = Vec::new();
+    let block_z_offset_forward_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
     let mut block_glint_meshes = Vec::new();
     let mut block_glint_translucent_meshes = Vec::new();
@@ -80,6 +82,7 @@ pub(crate) fn item_frame_models(
     let mut flat_translucent_meshes = Vec::new();
     let mut flat_glint_meshes = Vec::new();
     let mut flat_glint_translucent_meshes = Vec::new();
+    let mut residency = ItemModelResidencyFrame::default();
     let mut map_textures = BTreeMap::new();
     let mut map_surfaces = Vec::new();
     let mut map_decoration_surfaces = Vec::new();
@@ -103,11 +106,35 @@ pub(crate) fn item_frame_models(
         let border = terrain_textures.item_frame_border_quads(state.glow, map.is_some());
         if !state.invisible && !border.is_empty() {
             let border_transform = base * Mat4::from_translation(Vec3::splat(-0.5));
-            block_z_offset_forward_meshes.push(bake_item_model_mesh_with_light(
-                &border,
-                border_transform,
-                item_frame_border_light(state.glow, state.light),
-            ));
+            let identity = ItemModelAssetIdentity::new(
+                Arc::<str>::from(if state.glow {
+                    "minecraft:block/glow_item_frame"
+                } else {
+                    "minecraft:block/item_frame"
+                }),
+                Arc::<str>::from(if map.is_some() { "map" } else { "normal" }),
+                0,
+            );
+            residency.assets.push(ItemModelAssetRequest {
+                identity: identity.clone(),
+                atlas: ItemModelAtlasKind::Blocks,
+                geometry_class: ItemModelGeometryClass::Solid,
+                source: ItemModelAssetSource::Quads(Arc::clone(&border)),
+            });
+            residency.instances.push(ItemModelInstanceRequest {
+                identity,
+                atlas: ItemModelAtlasKind::Blocks,
+                geometry_class: ItemModelGeometryClass::Solid,
+                transform: border_transform,
+                tint: [1.0; 4],
+                light: item_frame_border_light(state.glow, state.light),
+                overlay: ITEM_MODEL_NO_OVERLAY,
+                foil: ItemModelFoil::None,
+                target: ItemModelDrawTarget::World,
+                phase: ItemModelDrawPhase::SolidZOffsetForward,
+                submit_order: u32::try_from(residency.instances.len())
+                    .expect("item-frame submit order overflow"),
+            });
         }
 
         if let Some(map) = map {
@@ -188,61 +215,128 @@ pub(crate) fn item_frame_models(
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
-                    push_mesh_set(
-                        bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
-                            &quads,
-                            item_transform,
-                            item_light,
-                            ITEM_MODEL_NO_OVERLAY,
-                            item_stack_foil_mode(
-                                stack,
-                                item_runtime,
-                                BlockModelDisplayContext::Fixed,
+                    let foil =
+                        item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed);
+                    if matches!(foil, ItemModelFoil::Special { .. }) {
+                        push_mesh_set(
+                            bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
+                                &quads,
+                                item_transform,
+                                item_light,
+                                ITEM_MODEL_NO_OVERLAY,
+                                foil,
                             ),
-                        ),
-                        &mut block_meshes,
-                        &mut block_translucent_meshes,
-                        &mut block_glint_meshes,
-                        &mut block_glint_translucent_meshes,
-                    );
+                            &mut block_meshes,
+                            &mut block_translucent_meshes,
+                            &mut block_glint_meshes,
+                            &mut block_glint_translucent_meshes,
+                        );
+                    } else {
+                        let identity = ItemModelAssetIdentity::new(
+                            Arc::<str>::from(resource_id),
+                            Arc::<str>::from("default"),
+                            0,
+                        );
+                        let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
+                        if quads.iter().any(|quad| !quad.translucent) {
+                            push_resident_item_instances(
+                                &mut residency,
+                                identity.clone(),
+                                ItemModelAtlasKind::Blocks,
+                                ItemModelGeometryClass::Solid,
+                                source.clone(),
+                                &[item_transform],
+                                [1.0; 4],
+                                item_light,
+                                ITEM_MODEL_NO_OVERLAY,
+                                foil,
+                                ItemModelDrawTarget::World,
+                            );
+                        }
+                        if quads.iter().any(|quad| quad.translucent) {
+                            push_resident_item_instances(
+                                &mut residency,
+                                identity,
+                                ItemModelAtlasKind::Blocks,
+                                ItemModelGeometryClass::Translucent,
+                                source,
+                                &[item_transform],
+                                [1.0; 4],
+                                item_light,
+                                ITEM_MODEL_NO_OVERLAY,
+                                foil,
+                                ItemModelDrawTarget::World,
+                            );
+                        }
+                    }
                     continue;
                 }
             }
         }
 
         // Flat path.
-        let mut quads: Vec<ItemModelQuad> = Vec::new();
-        for layer in item_runtime.generated_item_layers_for_stack_with_registry_context(
+        let layers = item_runtime.generated_item_layers_for_stack_with_registry_context(
             stack,
             BlockModelDisplayContext::Fixed,
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
             attribute_keys,
-        ) {
-            quads.extend(bake_generated_item_quads(
-                &layer.mask,
-                layer.rect,
-                layer.tint,
-                layer.translucent,
-            ));
-        }
-        if quads.is_empty() {
+        );
+        if layers.is_empty() {
             continue;
         }
-        push_mesh_set(
-            bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
-                &quads,
-                item_transform,
-                item_light,
-                ITEM_MODEL_NO_OVERLAY,
-                item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed),
-            ),
-            &mut flat_meshes,
-            &mut flat_translucent_meshes,
-            &mut flat_glint_meshes,
-            &mut flat_glint_translucent_meshes,
-        );
+        let foil = item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed);
+        if matches!(foil, ItemModelFoil::Special { .. }) {
+            let quads = layers
+                .iter()
+                .flat_map(|layer| {
+                    bake_generated_item_quads(
+                        &layer.mask,
+                        layer.rect,
+                        layer.tint,
+                        layer.translucent,
+                    )
+                })
+                .collect::<Vec<_>>();
+            push_mesh_set(
+                bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
+                    &quads,
+                    item_transform,
+                    item_light,
+                    ITEM_MODEL_NO_OVERLAY,
+                    foil,
+                ),
+                &mut flat_meshes,
+                &mut flat_translucent_meshes,
+                &mut flat_glint_meshes,
+                &mut flat_glint_translucent_meshes,
+            );
+        } else {
+            for layer in layers {
+                push_resident_item_instances(
+                    &mut residency,
+                    ItemModelAssetIdentity::new(layer.asset_id, Arc::<str>::from("generated"), 0),
+                    ItemModelAtlasKind::Items,
+                    if layer.translucent {
+                        ItemModelGeometryClass::Translucent
+                    } else {
+                        ItemModelGeometryClass::Solid
+                    },
+                    ItemModelAssetSource::Generated {
+                        mask: layer.mask,
+                        rect: layer.rect,
+                        translucent: layer.translucent,
+                    },
+                    &[item_transform],
+                    layer.tint,
+                    item_light,
+                    ITEM_MODEL_NO_OVERLAY,
+                    foil,
+                    ItemModelDrawTarget::World,
+                );
+            }
+        }
     }
 
     let map_decoration_textures = if map_decoration_surfaces.is_empty() {
@@ -264,6 +358,7 @@ pub(crate) fn item_frame_models(
         flat_translucent_meshes,
         flat_glint_meshes,
         flat_glint_translucent_meshes,
+        residency,
         map_textures: map_textures.into_values().collect(),
         map_surfaces,
         map_decoration_textures,
@@ -451,7 +546,12 @@ mod tests {
             None,
         );
         assert!(visible.block_meshes.is_empty());
-        assert_eq!(visible.block_z_offset_forward_meshes.len(), 1);
+        assert!(visible.block_z_offset_forward_meshes.is_empty());
+        assert_eq!(visible.residency.instances.len(), 1);
+        assert_eq!(
+            visible.residency.instances[0].phase,
+            ItemModelDrawPhase::SolidZOffsetForward
+        );
         assert!(visible.flat_meshes.is_empty());
         assert!(visible.map_textures.is_empty());
         assert!(visible.map_surfaces.is_empty());
@@ -472,6 +572,7 @@ mod tests {
         );
         assert!(hidden.block_meshes.is_empty());
         assert!(hidden.block_z_offset_forward_meshes.is_empty());
+        assert!(hidden.residency.instances.is_empty());
         assert!(hidden.flat_meshes.is_empty());
         assert!(hidden.map_textures.is_empty());
         assert!(hidden.map_surfaces.is_empty());
@@ -501,7 +602,8 @@ mod tests {
             None,
         );
         assert!(models.block_meshes.is_empty());
-        assert_eq!(models.block_z_offset_forward_meshes.len(), 1);
+        assert!(models.block_z_offset_forward_meshes.is_empty());
+        assert_eq!(models.residency.instances.len(), 1);
         assert!(models.flat_meshes.is_empty());
         assert!(
             models.map_surfaces.is_empty(),
@@ -546,7 +648,8 @@ mod tests {
             None,
         );
         assert!(models.block_meshes.is_empty());
-        assert_eq!(models.block_z_offset_forward_meshes.len(), 1);
+        assert!(models.block_z_offset_forward_meshes.is_empty());
+        assert_eq!(models.residency.instances.len(), 1);
         assert!(models.flat_meshes.is_empty());
         assert_eq!(models.map_textures.len(), 1);
         assert_eq!(models.map_textures[0].map_id, 7);

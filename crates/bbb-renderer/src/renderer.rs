@@ -70,10 +70,13 @@ use crate::{
     item_models::{
         create_item_model_glint_pipeline, create_item_model_pipeline,
         create_item_model_translucent_pipeline, create_item_model_z_offset_forward_pipeline,
-        FirstPersonMapBackgroundAtlasGpu, FirstPersonMapBackgroundSurface, ItemFrameMapAtlasGpu,
-        ItemFrameMapDecorationAtlasGpu, ItemFrameMapDecorationSurface, ItemFrameMapSurface,
-        ItemFrameMapTextFontAtlasGpu, ItemFrameMapTextSurface, ItemGlintTextureGpu, ItemModelMesh,
-        ItemModelResidency, SignTextSurface,
+        create_resident_item_model_glint_pipeline, create_resident_item_model_pipeline,
+        create_resident_item_model_translucent_pipeline,
+        create_resident_item_model_z_offset_forward_pipeline, FirstPersonMapBackgroundAtlasGpu,
+        FirstPersonMapBackgroundSurface, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,
+        ItemFrameMapDecorationSurface, ItemFrameMapSurface, ItemFrameMapTextFontAtlasGpu,
+        ItemFrameMapTextSurface, ItemGlintTextureGpu, ItemModelMesh, ItemModelResidency,
+        SignTextSurface,
     },
     lightmap::{
         create_lightmap_bind_group_layout, create_lightmap_gpu, create_lightmap_pipeline,
@@ -301,6 +304,10 @@ pub struct Renderer {
     pub(super) item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_glint_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_translucent_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_glint_pipeline: wgpu::RenderPipeline,
     pub(super) hud_item_glint_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) translucent_debug_line_pipeline: wgpu::RenderPipeline,
@@ -1239,6 +1246,28 @@ impl Renderer {
         );
         let item_model_glint_pipeline =
             create_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
+        let resident_item_model_pipeline = create_resident_item_model_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let resident_item_model_z_offset_forward_pipeline =
+            create_resident_item_model_z_offset_forward_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+                &lightmap_sample_bind_group_layout,
+            );
+        let resident_item_model_translucent_pipeline =
+            create_resident_item_model_translucent_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+                &lightmap_sample_bind_group_layout,
+            );
+        let resident_item_model_glint_pipeline =
+            create_resident_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_item_glint_pipeline = create_hud_item_glint_pipeline(
             &device,
             format,
@@ -1503,6 +1532,10 @@ impl Renderer {
             item_model_z_offset_forward_pipeline,
             item_model_translucent_pipeline,
             item_model_glint_pipeline,
+            resident_item_model_pipeline,
+            resident_item_model_z_offset_forward_pipeline,
+            resident_item_model_translucent_pipeline,
+            resident_item_model_glint_pipeline,
             hud_item_glint_pipeline,
             selection_pipeline,
             translucent_debug_line_pipeline,

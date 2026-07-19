@@ -1,4 +1,6 @@
 use super::dropped::bake_item_stack_at_transform;
+#[cfg(test)]
+use super::dropped::resident_item_test_meshes;
 use super::*;
 
 /// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
@@ -32,6 +34,7 @@ pub(crate) struct FirstPersonItemModels {
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub residency: ItemModelResidencyFrame,
     pub map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
     pub map_background_surfaces: Vec<FirstPersonMapBackgroundSurface>,
     pub map_textures: Vec<ItemFrameMapTexture>,
@@ -52,6 +55,7 @@ impl FirstPersonItemModels {
             flat_translucent_meshes: Vec::new(),
             flat_glint_meshes: Vec::new(),
             flat_glint_translucent_meshes: Vec::new(),
+            residency: ItemModelResidencyFrame::default(),
             map_background_textures: Vec::new(),
             map_background_surfaces: Vec::new(),
             map_textures: Vec::new(),
@@ -342,6 +346,7 @@ pub(crate) fn first_person_item_models(
             &mut models.flat_translucent_meshes,
             &mut models.flat_glint_meshes,
             &mut models.flat_glint_translucent_meshes,
+            &mut models.residency,
         );
     }
 
@@ -351,6 +356,26 @@ pub(crate) fn first_person_item_models(
     models.map_textures = map_textures.into_values().collect();
     if !models.map_decoration_surfaces.is_empty() {
         models.map_decoration_textures = item_runtime.map_decoration_textures().to_vec();
+    }
+    #[cfg(test)]
+    {
+        let test_meshes = resident_item_test_meshes(&models.residency);
+        models.block_meshes.extend(test_meshes.block);
+        models
+            .block_translucent_meshes
+            .extend(test_meshes.block_translucent);
+        models.block_glint_meshes.extend(test_meshes.block_glint);
+        models
+            .block_glint_translucent_meshes
+            .extend(test_meshes.block_glint_translucent);
+        models.flat_meshes.extend(test_meshes.flat);
+        models
+            .flat_translucent_meshes
+            .extend(test_meshes.flat_translucent);
+        models.flat_glint_meshes.extend(test_meshes.flat_glint);
+        models
+            .flat_glint_translucent_meshes
+            .extend(test_meshes.flat_glint_translucent);
     }
     models
 }

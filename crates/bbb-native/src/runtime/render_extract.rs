@@ -16,8 +16,8 @@ use bbb_renderer::{
     HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen,
     HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
-    SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
+    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use super::*;
@@ -1036,6 +1036,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_debug_overlay: Option<HudDebugOverlay>,
     pub(crate) hud_boss_bars: RendererFrameUpdate<Vec<HudBossBar>>,
     pub(crate) item_entity_billboards: Vec<ItemEntityBillboard>,
+    pub(crate) item_model_residency: ItemModelResidencyFrame,
     pub(crate) block_item_model_meshes: Vec<ItemModelMesh>,
     pub(crate) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
     pub(crate) block_item_model_translucent_meshes: Vec<ItemModelMesh>,
@@ -1257,6 +1258,9 @@ pub(crate) fn apply_renderer_frame(
         renderer.set_hud_boss_bars(bars);
     }
     renderer.set_item_entity_billboards(frame.item_entity_billboards);
+    renderer
+        .set_item_model_residency_frame(frame.item_model_residency)
+        .expect("resident item-model frame must reference available exact owners");
     renderer.set_block_item_model_meshes(frame.block_item_model_meshes);
     renderer.set_block_item_model_z_offset_forward_meshes(
         frame.block_item_model_z_offset_forward_meshes,
