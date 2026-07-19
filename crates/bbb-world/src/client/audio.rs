@@ -341,7 +341,8 @@ impl WorldStore {
                     && profile.volume.is_finite()
                     && profile.pitch.is_finite()
             })
-            .collect();
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub fn apply_sound_event(&mut self, packet: ProtocolSoundEvent) -> SoundEventState {

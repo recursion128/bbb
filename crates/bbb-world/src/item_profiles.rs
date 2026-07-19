@@ -15,7 +15,7 @@ use bbb_protocol::item_types::{
 use bbb_protocol::packets::DataComponentPatchSummary;
 
 use crate::{
-    ItemAttackRange, ItemEquipmentSlot, ItemUseEffects, MountArmorSlotKind,
+    ItemAttackRange, ItemEquipmentSlot, ItemUseEffects, MountArmorSlotKind, PublicationShared,
     WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile,
 };
 
@@ -25,78 +25,85 @@ pub struct ItemProfiles {
     /// resolved only by the registry candidate owner below.
     #[serde(default)]
     pub(crate) registry_dependent_component_initializer_rules:
-        BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
+        PublicationShared<BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>>,
     /// Component values resolved from the same frozen registry revision that
     /// is currently committed in `WorldStore`.
     #[serde(default)]
-    pub(crate) registry_dependent_item_defaults: BTreeMap<i32, DataComponentPatchSummary>,
+    pub(crate) registry_dependent_item_defaults:
+        PublicationShared<BTreeMap<i32, DataComponentPatchSummary>>,
     #[serde(default)]
-    pub(crate) default_item_max_stack_sizes: BTreeMap<i32, i32>,
+    pub(crate) default_item_max_stack_sizes: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
-    pub(crate) default_item_max_damage: BTreeMap<i32, i32>,
+    pub(crate) default_item_max_damage: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
-    pub(crate) default_item_crafting_remainders: BTreeMap<i32, i32>,
+    pub(crate) default_item_crafting_remainders: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
     pub(crate) default_item_crafting_remainders_known: bool,
     #[serde(default)]
-    pub(crate) recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
+    pub(crate) recipe_specific_crafting_remainder_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
+    pub(crate) default_item_equipment_slots: PublicationShared<BTreeMap<i32, ItemEquipmentSlot>>,
     /// Item protocol id → humanoid armor material (`HumanoidArmorLayer` equipment asset), for
     /// projecting worn armor onto the entity render source.
     #[serde(default)]
-    pub(crate) default_item_armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+    pub(crate) default_item_armor_materials:
+        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
     /// Item protocol id → normalized equipment asset id for assets with a WINGS layer. The world
     /// combines this pack-derived identity with synchronized trim registries when projecting elytra.
     #[serde(default)]
-    pub(crate) default_item_wings_equipment_assets: BTreeMap<i32, String>,
+    pub(crate) default_item_wings_equipment_assets: PublicationShared<BTreeMap<i32, String>>,
     #[serde(default)]
-    pub(crate) default_mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
+    pub(crate) default_mount_body_armor_kinds: PublicationShared<BTreeMap<i32, MountArmorSlotKind>>,
     #[serde(default)]
-    pub(crate) default_llama_body_decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
+    pub(crate) default_llama_body_decor_colors:
+        PublicationShared<BTreeMap<i32, crate::entities::LlamaBodyDecorColor>>,
     #[serde(default)]
     pub(crate) default_happy_ghast_harness_colors:
-        BTreeMap<i32, crate::entities::HappyGhastHarnessColor>,
+        PublicationShared<BTreeMap<i32, crate::entities::HappyGhastHarnessColor>>,
     #[serde(default)]
     pub(crate) default_nautilus_body_armor_materials:
-        BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
     #[serde(default)]
     pub(crate) default_horse_body_armor_materials:
-        BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
     #[serde(default)]
-    pub(crate) default_wolf_body_armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+    pub(crate) default_wolf_body_armor_materials:
+        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
     #[serde(default)]
-    pub(crate) default_item_attack_ranges: BTreeMap<i32, ItemAttackRange>,
+    pub(crate) default_item_attack_ranges: PublicationShared<BTreeMap<i32, ItemAttackRange>>,
     #[serde(default)]
-    pub(crate) default_item_swing_animation_durations: BTreeMap<i32, i32>,
+    pub(crate) default_item_swing_animation_durations: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
-    pub(crate) default_item_use_effects: BTreeMap<i32, ItemUseEffects>,
+    pub(crate) default_item_use_effects: PublicationShared<BTreeMap<i32, ItemUseEffects>>,
     #[serde(default)]
-    pub(crate) default_damageable_item_ids: BTreeSet<i32>,
+    pub(crate) default_damageable_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) default_piercing_weapon_item_ids: BTreeSet<i32>,
+    pub(crate) default_piercing_weapon_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) furnace_fuel_item_ids: BTreeSet<i32>,
+    pub(crate) furnace_fuel_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) furnace_fuel_rules: Vec<FurnaceFuelRule>,
+    pub(crate) furnace_fuel_rules: PublicationShared<Vec<FurnaceFuelRule>>,
     #[serde(default)]
-    pub(crate) brewing_potion_item_ids: BTreeSet<i32>,
+    pub(crate) brewing_potion_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) brewing_ingredient_item_ids: BTreeSet<i32>,
+    pub(crate) brewing_ingredient_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) enchantment_lapis_lazuli_item_ids: BTreeSet<i32>,
+    pub(crate) enchantment_lapis_lazuli_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) cartography_additional_item_ids: BTreeSet<i32>,
+    pub(crate) cartography_additional_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) freeze_immune_wearable_item_ids: BTreeSet<i32>,
+    pub(crate) freeze_immune_wearable_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
+    pub(crate) powder_snow_walkable_foot_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
-    pub(crate) default_item_mining_profiles: BTreeMap<i32, WorldItemMiningProfile>,
+    pub(crate) default_item_mining_profiles:
+        PublicationShared<BTreeMap<i32, WorldItemMiningProfile>>,
     #[serde(default)]
-    pub(crate) default_block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
+    pub(crate) default_block_destroy_profiles:
+        PublicationShared<BTreeMap<String, WorldBlockDestroyProfile>>,
     #[serde(default)]
-    pub(crate) default_block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
+    pub(crate) default_block_sound_profiles:
+        PublicationShared<BTreeMap<String, WorldBlockSoundProfile>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,7 +125,8 @@ impl ItemProfiles {
         self.registry_dependent_component_initializer_rules = rules
             .into_iter()
             .filter(|(item_id, rules)| *item_id >= 0 && !rules.is_empty())
-            .collect();
+            .collect::<BTreeMap<_, _>>()
+            .into();
         self.registry_dependent_item_defaults.clear();
     }
 
@@ -126,7 +134,7 @@ impl ItemProfiles {
         &mut self,
         defaults: BTreeMap<i32, DataComponentPatchSummary>,
     ) {
-        self.registry_dependent_item_defaults = defaults;
+        self.registry_dependent_item_defaults = defaults.into();
     }
 
     pub(crate) fn clear_registry_dependent_item_defaults(&mut self) {
@@ -187,14 +195,16 @@ impl ItemProfiles {
             .into_iter()
             .filter(|(item_id, size)| *item_id >= 0 && *size > 0)
             .map(|(item_id, size)| (item_id, clamp_vanilla_item_max_stack_size(size)))
-            .collect();
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_item_max_damage(&mut self, max_damage: BTreeMap<i32, i32>) {
         self.default_item_max_damage = max_damage
             .into_iter()
             .filter(|(item_id, max_damage)| *item_id >= 0 && *max_damage > 0)
-            .collect();
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_item_crafting_remainders(&mut self, remainders: BTreeMap<i32, i32>) {
@@ -202,14 +212,15 @@ impl ItemProfiles {
         self.default_item_crafting_remainders = remainders
             .into_iter()
             .filter(|(item_id, remainder_id)| *item_id >= 0 && *remainder_id >= 0)
-            .collect();
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_recipe_specific_crafting_remainder_item_ids(
         &mut self,
         item_ids: BTreeSet<i32>,
     ) {
-        self.recipe_specific_crafting_remainder_item_ids = filter_item_ids(item_ids);
+        self.recipe_specific_crafting_remainder_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn item_max_stack_size_for_protocol_id(&self, item_id: i32) -> i32 {
@@ -229,7 +240,7 @@ impl ItemProfiles {
     }
 
     pub(crate) fn set_furnace_fuel_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.furnace_fuel_item_ids = filter_item_ids(item_ids);
+        self.furnace_fuel_item_ids = filter_item_ids(item_ids).into();
         self.furnace_fuel_rules.clear();
     }
 
@@ -238,11 +249,12 @@ impl ItemProfiles {
         item_ids: BTreeSet<i32>,
         rules: Vec<FurnaceFuelRule>,
     ) {
-        self.furnace_fuel_item_ids = filter_item_ids(item_ids);
+        self.furnace_fuel_item_ids = filter_item_ids(item_ids).into();
         self.furnace_fuel_rules = rules
             .into_iter()
             .filter(|rule| !matches!(rule, FurnaceFuelRule::AddItem(item_id) if *item_id < 0))
-            .collect();
+            .collect::<Vec<_>>()
+            .into();
     }
 
     pub(crate) fn refresh_furnace_fuel_item_ids(&mut self, registries: &crate::RegistrySet) {
@@ -251,7 +263,7 @@ impl ItemProfiles {
         }
 
         let mut item_ids = BTreeSet::new();
-        for rule in &self.furnace_fuel_rules {
+        for rule in self.furnace_fuel_rules.iter() {
             match rule {
                 FurnaceFuelRule::AddItem(item_id) => {
                     item_ids.insert(*item_id);
@@ -273,46 +285,46 @@ impl ItemProfiles {
                 }
             }
         }
-        self.furnace_fuel_item_ids = item_ids;
+        self.furnace_fuel_item_ids = item_ids.into();
     }
 
     pub(crate) fn set_brewing_potion_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.brewing_potion_item_ids = filter_item_ids(item_ids);
+        self.brewing_potion_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_brewing_ingredient_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.brewing_ingredient_item_ids = filter_item_ids(item_ids);
+        self.brewing_ingredient_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_enchantment_lapis_lazuli_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.enchantment_lapis_lazuli_item_ids = filter_item_ids(item_ids);
+        self.enchantment_lapis_lazuli_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_cartography_additional_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.cartography_additional_item_ids = filter_item_ids(item_ids);
+        self.cartography_additional_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_default_damageable_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.default_damageable_item_ids = filter_item_ids(item_ids);
+        self.default_damageable_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_freeze_immune_wearable_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.freeze_immune_wearable_item_ids = filter_item_ids(item_ids);
+        self.freeze_immune_wearable_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_powder_snow_walkable_foot_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.powder_snow_walkable_foot_item_ids = filter_item_ids(item_ids);
+        self.powder_snow_walkable_foot_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_default_piercing_weapon_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.default_piercing_weapon_item_ids = filter_item_ids(item_ids);
+        self.default_piercing_weapon_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_default_item_attack_ranges(
         &mut self,
         attack_ranges: BTreeMap<i32, ItemAttackRange>,
     ) {
-        self.default_item_attack_ranges = filter_item_id_keys(attack_ranges);
+        self.default_item_attack_ranges = filter_item_id_keys(attack_ranges).into();
     }
 
     pub(crate) fn set_default_item_swing_animation_durations(
@@ -322,28 +334,29 @@ impl ItemProfiles {
         self.default_item_swing_animation_durations = durations
             .into_iter()
             .filter(|(item_id, duration)| *item_id >= 0 && *duration > 0)
-            .collect();
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_item_use_effects(
         &mut self,
         use_effects: BTreeMap<i32, ItemUseEffects>,
     ) {
-        self.default_item_use_effects = filter_item_id_keys(use_effects);
+        self.default_item_use_effects = filter_item_id_keys(use_effects).into();
     }
 
     pub(crate) fn set_default_item_equipment_slots(
         &mut self,
         equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     ) {
-        self.default_item_equipment_slots = filter_item_id_keys(equipment_slots);
+        self.default_item_equipment_slots = filter_item_id_keys(equipment_slots).into();
     }
 
     pub(crate) fn set_item_armor_materials(
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_item_armor_materials = filter_item_id_keys(armor_materials);
+        self.default_item_armor_materials = filter_item_id_keys(armor_materials).into();
     }
 
     pub(crate) fn set_default_item_wings_equipment_assets(
@@ -353,49 +366,50 @@ impl ItemProfiles {
         self.default_item_wings_equipment_assets = equipment_assets
             .into_iter()
             .filter(|(item_id, asset_id)| *item_id >= 0 && !asset_id.is_empty())
-            .collect();
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_mount_body_armor_kinds(
         &mut self,
         armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     ) {
-        self.default_mount_body_armor_kinds = filter_item_id_keys(armor_kinds);
+        self.default_mount_body_armor_kinds = filter_item_id_keys(armor_kinds).into();
     }
 
     pub(crate) fn set_default_llama_body_decor_colors(
         &mut self,
         decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
     ) {
-        self.default_llama_body_decor_colors = filter_item_id_keys(decor_colors);
+        self.default_llama_body_decor_colors = filter_item_id_keys(decor_colors).into();
     }
 
     pub(crate) fn set_default_happy_ghast_harness_colors(
         &mut self,
         harness_colors: BTreeMap<i32, crate::entities::HappyGhastHarnessColor>,
     ) {
-        self.default_happy_ghast_harness_colors = filter_item_id_keys(harness_colors);
+        self.default_happy_ghast_harness_colors = filter_item_id_keys(harness_colors).into();
     }
 
     pub(crate) fn set_default_nautilus_body_armor_materials(
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_nautilus_body_armor_materials = filter_item_id_keys(armor_materials);
+        self.default_nautilus_body_armor_materials = filter_item_id_keys(armor_materials).into();
     }
 
     pub(crate) fn set_default_horse_body_armor_materials(
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_horse_body_armor_materials = filter_item_id_keys(armor_materials);
+        self.default_horse_body_armor_materials = filter_item_id_keys(armor_materials).into();
     }
 
     pub(crate) fn set_default_wolf_body_armor_materials(
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_wolf_body_armor_materials = filter_item_id_keys(armor_materials);
+        self.default_wolf_body_armor_materials = filter_item_id_keys(armor_materials).into();
     }
 }
 

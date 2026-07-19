@@ -4348,10 +4348,10 @@ impl Default for EntityStore {
 impl Clone for EntityStore {
     fn clone(&self) -> Self {
         // Clone component-by-component instead of round-tripping every entity
-        // through a full `EntityState` projection. Control snapshot publishes
-        // no longer copy the store (the control API reads the authoritative
-        // `WorldStore` through a shared lock), so this only runs for callers
-        // that explicitly deep-copy a world.
+        // through a full `EntityState` projection. Immutable simulation
+        // publications still rebuild this ECS explicitly: keeping that cost at
+        // publication avoids a whole-store COW that would merely move the same
+        // work into the next entity mutation.
         let mut store = Self::default();
         for (&id, &entity) in &self.by_protocol_id {
             let (

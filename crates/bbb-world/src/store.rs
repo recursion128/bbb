@@ -11,9 +11,9 @@ use crate::{
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
     LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState, LocalPlayerState,
-    MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet, ScoreboardState,
-    ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState, WorldCounters,
-    WorldDimension, WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
+    MapItemState, PlayerInfoState, ProjectilePowerUpdateState, PublicationShared, RegistrySet,
+    ScoreboardState, ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState,
+    WorldCounters, WorldDimension, WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -59,8 +59,8 @@ pub struct WorldStore {
     /// Monotonic presentation edge for the native toast owner.
     #[serde(default)]
     pub(crate) insecure_chat_warning_count: usize,
-    pub(crate) registries: RegistrySet,
-    pub(crate) chunks: Vec<ChunkColumn>,
+    pub(crate) registries: PublicationShared<RegistrySet>,
+    pub(crate) chunks: Vec<PublicationShared<ChunkColumn>>,
     /// Runtime extraction revisions for the chunk terrain cache. These are
     /// deterministic derivatives of canonical chunk mutations, but are not
     /// part of serialized world snapshots: a restored runtime starts with an
@@ -131,7 +131,7 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) features: ClientFeatureState,
     #[serde(skip)]
-    pub(crate) selected_known_pack_data: Option<KnownPackDataSource>,
+    pub(crate) selected_known_pack_data: Option<PublicationShared<KnownPackDataSource>>,
     #[serde(skip)]
     pub(crate) known_pack_data_error: Option<String>,
     #[serde(default)]
@@ -179,19 +179,8 @@ pub struct WorldStore {
 impl WorldStore {
     pub fn new() -> Self {
         Self {
-            registries: RegistrySet::vanilla_26_1(),
+            registries: RegistrySet::vanilla_26_1().into(),
             ..Self::default()
         }
-    }
-
-    /// Builds the immutable world value carried by one simulation publication.
-    ///
-    /// Keeping this boundary in the world owner makes publication cost directly
-    /// benchmarkable without constructing the native runtime. The initial
-    /// implementation deliberately preserves the existing deep-clone behavior;
-    /// the publication snapshot benchmark records that baseline before storage
-    /// owners gain narrower structural sharing.
-    pub fn publication_snapshot(&self) -> Self {
-        self.clone()
     }
 }

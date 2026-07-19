@@ -286,7 +286,7 @@ impl WorldStore {
     pub fn with_dimension(dimension: WorldDimension) -> Self {
         Self {
             dimension,
-            registries: crate::RegistrySet::vanilla_26_1(),
+            registries: crate::RegistrySet::vanilla_26_1().into(),
             ..Self::default()
         }
     }
@@ -1074,7 +1074,7 @@ mod tests {
     #[test]
     fn play_login_updates_world_dimension_and_level_info() {
         let mut store = WorldStore::new();
-        store.chunks.push(stale_chunk());
+        store.chunks.push(stale_chunk().into());
 
         store.apply_login(&ProtocolPlayLogin {
             player_id: 42,
@@ -1137,7 +1137,7 @@ mod tests {
         for x in [11, 12] {
             let mut chunk = stale_chunk();
             chunk.pos = ChunkPos { x, z: 0 };
-            store.chunks.push(chunk);
+            store.chunks.push(chunk.into());
         }
         store.apply_set_chunk_cache_center(bbb_protocol::packets::SetChunkCacheCenter {
             chunk_x: 0,
@@ -1183,7 +1183,7 @@ mod tests {
     fn login_rebuilds_local_player_camera_and_game_mode_abilities() {
         let mut store = WorldStore::new();
         store.local_player_id = Some(7);
-        store.chunks.push(stale_chunk());
+        store.chunks.push(stale_chunk().into());
         store.apply_add_entity(protocol_add_entity(99));
         store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
             invulnerable: false,
@@ -1301,7 +1301,7 @@ mod tests {
             .available_levels
             .insert("minecraft:overworld".to_string());
         store.server_enforces_secure_chat = Some(true);
-        store.chunks.push(stale_chunk());
+        store.chunks.push(stale_chunk().into());
         store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
         store.apply_add_entity(protocol_add_entity(123));
         assert!(store.apply_map_item_data(ProtocolMapItemData {
@@ -1601,7 +1601,7 @@ mod tests {
             .available_levels
             .insert("minecraft:the_nether".to_string());
         store.server_enforces_secure_chat = Some(true);
-        store.chunks.push(stale_chunk());
+        store.chunks.push(stale_chunk().into());
         store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
         store.apply_add_entity(protocol_add_entity(123));
         assert!(store.apply_block_destruction(ProtocolBlockDestruction {

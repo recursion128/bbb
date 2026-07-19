@@ -120,7 +120,7 @@ impl WorldStore {
         };
         self.counters.known_packs_offered = self.features.known_packs.offered.len();
         self.counters.known_packs_selected = self.features.known_packs.selected.len();
-        self.selected_known_pack_data = data;
+        self.selected_known_pack_data = data.map(Into::into);
         self.known_pack_data_error = error;
     }
 

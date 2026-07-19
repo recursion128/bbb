@@ -51,7 +51,8 @@ impl WorldStore {
         self.items.default_block_destroy_profiles = profiles
             .into_iter()
             .filter(|(block_name, _)| !block_name.is_empty())
-            .collect();
+            .collect::<std::collections::BTreeMap<_, _>>()
+            .into();
     }
 
     pub fn set_default_item_mining_profiles(
@@ -65,7 +66,8 @@ impl WorldStore {
                     && profile.default_mining_speed_thousandths > 0
                     && !profile.rules.is_empty()
             })
-            .collect();
+            .collect::<std::collections::BTreeMap<_, _>>()
+            .into();
     }
 
     pub fn set_local_destroy_delay_ticks(&mut self, ticks: u8) {

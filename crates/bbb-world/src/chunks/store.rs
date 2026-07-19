@@ -68,9 +68,9 @@ impl WorldStore {
         }
         self.first_chunk.get_or_insert(pos);
         if let Some(existing) = self.chunks.iter_mut().find(|chunk| chunk.pos == pos) {
-            *existing = column;
+            *existing = column.into();
         } else {
-            self.chunks.push(column);
+            self.chunks.push(column.into());
         }
         self.mark_terrain_chunk_and_neighbors_changed(pos);
     }
@@ -346,7 +346,10 @@ impl WorldStore {
     }
 
     pub fn probe_chunk(&self, pos: ChunkPos) -> Option<&ChunkColumn> {
-        self.chunks.iter().find(|chunk| chunk.pos == pos)
+        self.chunks
+            .iter()
+            .find(|chunk| chunk.pos == pos)
+            .map(|chunk| &**chunk)
     }
 
     pub fn probe_chunk_summary(&self, pos: ChunkPos) -> Option<ChunkProbeSummaryState> {

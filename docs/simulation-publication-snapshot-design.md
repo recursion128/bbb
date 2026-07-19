@@ -19,8 +19,9 @@ The slice is complete when:
 - unchanged columns share their complete `ChunkColumn` payload between
   generations and a block, biome, light, or block-entity update copies only
   the affected column;
-- committed `RegistrySet` and `ItemProfiles` values share across ordinary
-  publications and copy only at configuration/reload mutation boundaries;
+- committed `RegistrySet` and individual `ItemProfiles` tables share across
+  ordinary publications and copy only at their configuration/reload setter
+  boundaries;
 - retained generation A cannot observe any later block, light, chunk
   load/unload, entity transform/metadata, registry/reload, inventory, or UI
   mutation, while generation B observes it;
@@ -65,10 +66,11 @@ The frozen storage contract is:
    returning `&ChunkColumn`; every column mutation obtains uniqueness at the
    existing `bbb-world::chunks` mutation boundary before writing. Load replaces
    or inserts one owner and unload removes one owner.
-3. The committed registry set and item profiles each have one shared immutable
-   owner. Their existing startup/configuration/reload setters obtain uniqueness
-   before mutation. Pending registry collection stays inside the registry
-   owner and a committed candidate remains atomic with its item defaults.
+3. The committed registry set has one shared immutable owner and each item-
+   profile table has its own shared owner. Their existing startup/configuration/
+   reload setters obtain uniqueness before mutation. Pending registry
+   collection stays inside the registry owner and a committed candidate remains
+   atomic with its item defaults.
 4. Entity state stays in the one live hecs owner and is snapshot explicitly at
    publication. It is not placed behind whole-store COW. The baseline shows its
    publication-only cost separately from the much larger entity client-tick

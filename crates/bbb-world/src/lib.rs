@@ -25,6 +25,7 @@ mod maps;
 mod painting_variants;
 mod play_apply;
 mod position;
+mod publication_snapshot;
 mod recipe_book;
 mod recipes;
 mod registries;
@@ -39,3 +40,4 @@ mod world_state;
 
 pub use exports::*;
 pub(crate) use internal::*;
+pub(crate) use publication_snapshot::PublicationShared;

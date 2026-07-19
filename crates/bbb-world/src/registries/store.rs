@@ -28,7 +28,7 @@ impl WorldStore {
     /// server's holder order when the next server sends no registry contents.
     pub fn reset_registry_session(&mut self) {
         let next_session = self.registries.revision.session.saturating_add(1);
-        self.registries = super::RegistrySet::vanilla_26_1();
+        self.registries = super::RegistrySet::vanilla_26_1().into();
         self.registries.revision.session = next_session;
         self.begin_known_pack_configuration();
         self.counters.last_registry_data_registry = None;
@@ -54,7 +54,9 @@ impl WorldStore {
         let candidate = RegistryRevisionCandidate::build(
             &self.registries,
             pending,
-            self.selected_known_pack_data.as_ref(),
+            self.selected_known_pack_data
+                .as_ref()
+                .map(|source| &**source),
             self.known_pack_data_error.as_deref(),
             !self.features.known_packs.selected.is_empty(),
             &self.items.registry_dependent_component_initializer_rules,
@@ -64,7 +66,7 @@ impl WorldStore {
             failure.error
         })?;
         let (registries, item_defaults) = candidate.into_parts();
-        self.registries = registries;
+        self.registries = registries.into();
         self.items
             .commit_registry_dependent_item_defaults(item_defaults);
         self.sync_registry_counters();
