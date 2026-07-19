@@ -4711,7 +4711,7 @@
           "crates/bbb-native/src/runtime/tests.rs#weather_render_state_is_empty_without_rain_or_weather_dimension",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#biome_colors_follow_active_registry_resource_order_after_finish",
           "crates/bbb-world/src/registries/biomes.rs#decodes_network_biome_client_projection",
-          "crates/bbb-world/src/registries/biomes.rs#rejects_relevant_attribute_modifier_without_guessing",
+          "crates/bbb-world/src/registries/biomes.rs#decodes_relevant_attribute_modifier_through_the_shared_codec",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#synchronized_biome_data_overrides_pack_fallback_without_guessing_malformed_entries",
           "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_tint_snapshot_accepts_session_biome_remap",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_biome_from_camera_feet_block",
