@@ -75,12 +75,12 @@ fn representative_chunk(pos: ChunkPos) -> ChunkColumn {
 }
 
 fn build_chunk_world(count: usize) -> WorldStore {
-    let side = match count {
-        81 => 9,
-        289 => 17,
-        625 => 25,
-        _ => panic!("unsupported representative chunk count {count}"),
-    };
+    let side = count.isqrt();
+    assert_eq!(
+        side * side,
+        count,
+        "representative chunk count must be square"
+    );
     let offset = side / 2;
     let mut world = WorldStore::new();
     for z in 0..side {
