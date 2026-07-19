@@ -159,13 +159,80 @@ mod tests {
             if data_type.validator == Some("RegistryValidator.nonEmpty ()")
                 && data_type.resource_id != omitted_registry
             {
-                world.record_registry_entries(
-                    data_type.resource_id,
-                    0,
-                    vec![RegistryPacketEntry::stub("minecraft:base")],
-                );
+                let entry = minimal_sound_variant_nbt(data_type.resource_id)
+                    .map(|data| RegistryPacketEntry::with_raw_data("minecraft:base", data))
+                    .unwrap_or_else(|| RegistryPacketEntry::stub("minecraft:base"));
+                world.record_registry_entries(data_type.resource_id, 0, vec![entry]);
             }
         }
+    }
+
+    fn minimal_sound_variant_nbt(registry: &str) -> Option<Vec<u8>> {
+        let fields = match registry {
+            "minecraft:cat_sound_variant" => [
+                "ambient_sound",
+                "stray_ambient_sound",
+                "hiss_sound",
+                "hurt_sound",
+                "death_sound",
+                "eat_sound",
+                "beg_for_food_sound",
+                "purr_sound",
+                "purreow_sound",
+            ]
+            .as_slice(),
+            "minecraft:chicken_sound_variant" | "minecraft:cow_sound_variant" => {
+                ["ambient_sound", "hurt_sound", "death_sound", "step_sound"].as_slice()
+            }
+            "minecraft:pig_sound_variant" => [
+                "ambient_sound",
+                "hurt_sound",
+                "death_sound",
+                "step_sound",
+                "eat_sound",
+            ]
+            .as_slice(),
+            "minecraft:wolf_sound_variant" => [
+                "ambient_sound",
+                "death_sound",
+                "growl_sound",
+                "hurt_sound",
+                "pant_sound",
+                "whine_sound",
+                "step_sound",
+            ]
+            .as_slice(),
+            _ => return None,
+        };
+        let write_string = |out: &mut Vec<u8>, value: &str| {
+            out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+            out.extend_from_slice(value.as_bytes());
+        };
+        let write_sound_set = |out: &mut Vec<u8>| {
+            for field in fields {
+                out.push(10);
+                write_string(out, field);
+                out.push(8);
+                write_string(out, "sound_id");
+                write_string(out, "minecraft:entity.cat.ambient");
+                out.push(0);
+            }
+        };
+        let mut data = vec![10];
+        if registry == "minecraft:cow_sound_variant" {
+            write_sound_set(&mut data);
+        } else {
+            data.push(10);
+            write_string(&mut data, "adult_sounds");
+            write_sound_set(&mut data);
+            data.push(0);
+            data.push(10);
+            write_string(&mut data, "baby_sounds");
+            write_sound_set(&mut data);
+            data.push(0);
+        }
+        data.push(0);
+        Some(data)
     }
 
     #[tokio::test]

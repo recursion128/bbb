@@ -23,12 +23,14 @@ pub(crate) fn known_packs_manager(label: &str) -> bbb_pack::KnownPacksManager {
     );
     for registry in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
         let (_, registry_path) = registry.resource_id.split_once(':').unwrap();
+        let contents =
+            minimal_sound_variant_json(registry.resource_id).unwrap_or_else(|| "{}".to_string());
         write_file(
             &root
                 .join("data/minecraft")
                 .join(registry_path)
                 .join("base.json"),
-            "{}",
+            &contents,
         );
     }
     let roots = bbb_pack::PackRoots {
@@ -41,6 +43,55 @@ pub(crate) fn known_packs_manager(label: &str) -> bbb_pack::KnownPacksManager {
     let manager = bbb_pack::KnownPacksManager::load(&roots).unwrap();
     fs::remove_dir_all(root).unwrap();
     manager
+}
+
+fn minimal_sound_variant_json(registry: &str) -> Option<String> {
+    let fields = match registry {
+        "minecraft:cat_sound_variant" => [
+            "ambient_sound",
+            "stray_ambient_sound",
+            "hiss_sound",
+            "hurt_sound",
+            "death_sound",
+            "eat_sound",
+            "beg_for_food_sound",
+            "purr_sound",
+            "purreow_sound",
+        ]
+        .as_slice(),
+        "minecraft:chicken_sound_variant" | "minecraft:cow_sound_variant" => {
+            ["ambient_sound", "hurt_sound", "death_sound", "step_sound"].as_slice()
+        }
+        "minecraft:pig_sound_variant" => [
+            "ambient_sound",
+            "hurt_sound",
+            "death_sound",
+            "step_sound",
+            "eat_sound",
+        ]
+        .as_slice(),
+        "minecraft:wolf_sound_variant" => [
+            "ambient_sound",
+            "death_sound",
+            "growl_sound",
+            "hurt_sound",
+            "pant_sound",
+            "whine_sound",
+            "step_sound",
+        ]
+        .as_slice(),
+        _ => return None,
+    };
+    let sound_set = fields
+        .iter()
+        .map(|field| format!(r#""{field}":{{"sound_id":"minecraft:entity.cat.ambient"}}"#))
+        .collect::<Vec<_>>()
+        .join(",");
+    Some(if registry == "minecraft:cow_sound_variant" {
+        format!("{{{sound_set}}}")
+    } else {
+        format!(r#"{{"adult_sounds":{{{sound_set}}},"baby_sounds":{{{sound_set}}}}}"#)
+    })
 }
 
 fn write_file(path: &Path, contents: &str) {
