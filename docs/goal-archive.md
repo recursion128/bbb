@@ -19661,6 +19661,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   fail-closed guard；biome positional attributes 现在复用已完成的 `EnvironmentAttributeMap` modifier
   codec，known-pack JSON 与 network NBT 的 `water_fog_end_distance multiply 0.85` 都按 vanilla 默认
   96.0 得到 81.6。失败证据保留在 `/tmp/bbb-playable-gate.2U437g`，不把开局快照误作断开时状态。
+- [x] 第二次 live run 进一步定位 `minecraft:always_pass.required` 的 source-neutral NBT
+  数值归一与 known-pack JSON boolean 类型区分；test-instance 现在对 known-pack 严格读取
+  JSON bool，对 network NBT 接受 Codec.BOOL 的 0/1 数值表示，并保留默认值。失败证据
+  保留在 `/tmp/bbb-playable-gate.e1bZ0j`；修复后同 server probe 已到达 Play、解码首个
+  chunk 且 `world_apply_errors=0`，完整 live 交互仍由最终 committed-HEAD gate 给出。
 
 ## 2026-07-19：vanilla remote debug subscription 全路径
 

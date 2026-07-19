@@ -502,7 +502,15 @@ pub(super) fn decode_test_instance(
     let max_ticks_path = child(path, "max_ticks");
     let max_ticks = required_positive_i32(fields, resource_id, &max_ticks_path)?;
     let setup_ticks = optional_non_negative_i32(fields, resource_id, path, "setup_ticks", 0)?;
-    let required = optional_bool(fields, resource_id, path, "required", true)?;
+    let known_pack_fields = known_pack_json.and_then(serde_json::Value::as_object);
+    let required = optional_bool(
+        fields,
+        known_pack_fields,
+        resource_id,
+        path,
+        "required",
+        true,
+    )?;
     let rotation_path = child(path, "rotation");
     let rotation = match optional_string(fields, resource_id, &rotation_path)?.unwrap_or("none") {
         "none" => TestRotation::None,
@@ -517,11 +525,25 @@ pub(super) fn decode_test_instance(
             ))
         }
     };
-    let manual_only = optional_bool(fields, resource_id, path, "manual_only", false)?;
+    let manual_only = optional_bool(
+        fields,
+        known_pack_fields,
+        resource_id,
+        path,
+        "manual_only",
+        false,
+    )?;
     let max_attempts = optional_positive_i32(fields, resource_id, path, "max_attempts", 1)?;
     let required_successes =
         optional_positive_i32(fields, resource_id, path, "required_successes", 1)?;
-    let sky_access = optional_bool(fields, resource_id, path, "sky_access", false)?;
+    let sky_access = optional_bool(
+        fields,
+        known_pack_fields,
+        resource_id,
+        path,
+        "sky_access",
+        false,
+    )?;
     let padding = optional_non_negative_i32(fields, resource_id, path, "padding", 0)?;
     if padding > 128 {
         return Err(error(
@@ -725,15 +747,23 @@ fn optional_positive_i32(
 
 fn optional_bool(
     fields: &[NbtSummaryEntry],
+    known_pack_fields: Option<&serde_json::Map<String, serde_json::Value>>,
     resource_id: &str,
     parent: &str,
     name: &str,
     default: bool,
 ) -> Result<bool, GameTestRegistryProjectionError> {
     let path = child(parent, name);
+    if let Some(known_pack_fields) = known_pack_fields {
+        return match known_pack_fields.get(name) {
+            Some(serde_json::Value::Bool(value)) => Ok(*value),
+            Some(_) => Err(error(resource_id, path, "expected boolean")),
+            None => Ok(default),
+        };
+    }
     match field(fields, name) {
-        Some(NbtSummaryValue::Byte(0)) => Ok(false),
-        Some(NbtSummaryValue::Byte(1)) => Ok(true),
+        Some(NbtSummaryValue::Long(0)) => Ok(false),
+        Some(NbtSummaryValue::Long(1)) => Ok(true),
         Some(_) => Err(error(resource_id, path, "expected boolean")),
         None => Ok(default),
     }
@@ -905,6 +935,31 @@ mod tests {
             error("example:broken", "weather", "unknown weather snow")
         );
 
+        let mut network_store = WorldStore::new();
+        network_store.record_registry_entries(
+            TEST_ENVIRONMENT_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "example:rain",
+                weather_environment_nbt("rain"),
+            )],
+        );
+        network_store.record_registry_entries(
+            TEST_INSTANCE_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "example:network_instance",
+                test_instance_nbt("example:rain", false, true, true),
+            )],
+        );
+        let network_instance = network_store
+            .synchronized_test_instance_definition(0)
+            .unwrap()
+            .unwrap();
+        assert!(!network_instance.required);
+        assert!(network_instance.manual_only);
+        assert!(network_instance.sky_access);
+
         store.record_registry_entries(
             TEST_INSTANCE_REGISTRY,
             0,
@@ -971,6 +1026,10 @@ mod tests {
                     }"#
                     .to_vec(),
                 ),
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "minecraft:default",
+                    br#"{"type":"minecraft:all_of","definitions":[]}"#.to_vec(),
+                ),
             ],
         );
 
@@ -1011,16 +1070,31 @@ mod tests {
         store.record_registry_entries(
             TEST_INSTANCE_REGISTRY,
             0,
-            vec![RegistryPacketEntry::with_known_pack_data_for_test(
-                "example:block_test",
-                br#"{
-                    "type":"minecraft:block_based",
-                    "environment":{"type":"minecraft:weather","weather":"clear"},
-                    "structure":"example:block_test",
-                    "max_ticks":20
-                }"#
-                .to_vec(),
-            )],
+            vec![
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:block_test",
+                    br#"{
+                        "type":"minecraft:block_based",
+                        "environment":{"type":"minecraft:weather","weather":"clear"},
+                        "structure":"example:block_test",
+                        "max_ticks":20
+                    }"#
+                    .to_vec(),
+                ),
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "minecraft:always_pass",
+                    br#"{
+                        "type":"minecraft:function",
+                        "environment":"minecraft:default",
+                        "function":"minecraft:always_pass",
+                        "max_ticks":1,
+                        "required":false,
+                        "setup_ticks":1,
+                        "structure":"minecraft:empty"
+                    }"#
+                    .to_vec(),
+                ),
+            ],
         );
         let instance = store
             .synchronized_test_instance_definition(0)
@@ -1039,6 +1113,51 @@ mod tests {
         assert_eq!(instance.required_successes, 1);
         assert!(!instance.sky_access);
         assert_eq!(instance.padding, 0);
+
+        let always_pass = store
+            .synchronized_test_instance_definition(1)
+            .unwrap()
+            .unwrap();
+        assert!(!always_pass.required);
+        assert_eq!(always_pass.setup_ticks, 1);
+        assert!(matches!(
+            always_pass.environment,
+            TestEnvironmentHolder::Named(reference)
+                if reference.holder_id == 3 && reference.resource_id == "minecraft:default"
+        ));
+    }
+
+    #[test]
+    fn known_pack_test_instance_boolean_fields_reject_json_numbers() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            TEST_ENVIRONMENT_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "minecraft:default",
+                br#"{"type":"minecraft:all_of","definitions":[]}"#.to_vec(),
+            )],
+        );
+        store.record_registry_entries(
+            TEST_INSTANCE_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:invalid_boolean",
+                br#"{
+                    "type":"minecraft:block_based",
+                    "environment":"minecraft:default",
+                    "structure":"minecraft:empty",
+                    "max_ticks":1,
+                    "required":0
+                }"#
+                .to_vec(),
+            )],
+        );
+
+        assert_eq!(
+            store.synchronized_test_instance_definition(0).unwrap_err(),
+            error("example:invalid_boolean", "required", "expected boolean")
+        );
     }
 
     #[test]
@@ -1166,6 +1285,37 @@ mod tests {
         write_nbt_string(&mut out, "minecraft:random_tick_speed");
         out.extend_from_slice(&random_tick_speed.to_be_bytes());
         out.push(0);
+        out.push(0);
+        out
+    }
+
+    fn test_instance_nbt(
+        environment: &str,
+        required: bool,
+        manual_only: bool,
+        sky_access: bool,
+    ) -> Vec<u8> {
+        let mut out = vec![10, 8];
+        write_nbt_string(&mut out, "type");
+        write_nbt_string(&mut out, "minecraft:block_based");
+        out.push(8);
+        write_nbt_string(&mut out, "environment");
+        write_nbt_string(&mut out, environment);
+        out.push(8);
+        write_nbt_string(&mut out, "structure");
+        write_nbt_string(&mut out, "example:network_instance");
+        out.push(3);
+        write_nbt_string(&mut out, "max_ticks");
+        out.extend_from_slice(&20_i32.to_be_bytes());
+        for (name, value) in [
+            ("required", required),
+            ("manual_only", manual_only),
+            ("sky_access", sky_access),
+        ] {
+            out.push(1);
+            write_nbt_string(&mut out, name);
+            out.push(u8::from(value));
+        }
         out.push(0);
         out
     }
