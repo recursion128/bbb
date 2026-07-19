@@ -75,7 +75,6 @@ fn decode_biome_client_projection_value(
     };
     let attributes = optional_compound(fields, "attributes")?
         .map(|entries| {
-            reject_unowned_biome_attribute_modifiers(entries)?;
             decode_client_environment_attributes(entries)
                 .map_err(|err| error(format!("attributes.{}", err.field), err.reason))
         })
@@ -97,23 +96,6 @@ fn decode_biome_client_projection_value(
         water_fog_color: attributes.water_fog_color,
         water_fog_end_distance: attributes.water_fog_end_distance,
     })
-}
-
-fn reject_unowned_biome_attribute_modifiers(
-    entries: &[NbtSummaryEntry],
-) -> Result<(), BiomeProjectionError> {
-    for entry in entries {
-        if matches!(
-            &entry.value,
-            NbtSummaryValue::Compound(fields) if field_value(fields, "modifier").is_some()
-        ) {
-            return Err(error(
-                format!("attributes.{}", entry.name),
-                "attribute modifiers are not yet supported",
-            ));
-        }
-    }
-    Ok(())
 }
 
 fn required_bool(entries: &[NbtSummaryEntry], field: &str) -> Result<bool, BiomeProjectionError> {
@@ -255,7 +237,13 @@ mod tests {
                 "temperature": 0.35,
                 "downfall": 0.8,
                 "effects": {"water_color": "#112233"},
-                "attributes": {"minecraft:visual/fog_color": "#446688"}
+                "attributes": {
+                    "minecraft:visual/fog_color": "#446688",
+                    "minecraft:visual/water_fog_end_distance": {
+                        "argument": 0.85,
+                        "modifier": "multiply"
+                    }
+                }
             }"##,
         )
         .unwrap();
@@ -264,19 +252,14 @@ mod tests {
         assert!(projection.has_precipitation);
         assert_eq!(projection.water_color, [0x11, 0x22, 0x33]);
         assert_eq!(projection.fog_color, Some([0x44, 0x66, 0x88]));
+        assert!((projection.water_fog_end_distance.unwrap() - 81.6).abs() < 0.0001);
     }
 
     #[test]
-    fn rejects_relevant_attribute_modifier_without_guessing() {
+    fn decodes_relevant_attribute_modifier_through_the_shared_codec() {
         let entry = RegistryPacketEntry::with_raw_data("example:custom", biome_nbt(true));
-        let error = decode_biome_client_projection(&entry).unwrap_err();
-        assert_eq!(
-            error,
-            BiomeProjectionError {
-                field: "attributes.minecraft:visual/water_fog_end_distance".to_string(),
-                reason: "attribute modifiers are not yet supported",
-            }
-        );
+        let projection = decode_biome_client_projection(&entry).unwrap().unwrap();
+        assert!((projection.water_fog_end_distance.unwrap() - 81.6).abs() < 0.0001);
         assert_eq!(
             decode_biome_client_projection(&RegistryPacketEntry::stub("example:stub")).unwrap(),
             None
@@ -301,8 +284,8 @@ mod tests {
         write_int(&mut out, "minecraft:visual/water_fog_color", 0x6688aa);
         if modified_distance {
             begin_compound(&mut out, "minecraft:visual/water_fog_end_distance");
-            write_string(&mut out, "modifier", "override");
-            write_float(&mut out, "argument", 48.0);
+            write_string(&mut out, "modifier", "multiply");
+            write_float(&mut out, "argument", 0.85);
             out.push(0);
         } else {
             write_float(&mut out, "minecraft:visual/water_fog_end_distance", 48.0);

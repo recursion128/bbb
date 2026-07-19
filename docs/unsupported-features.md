@@ -1272,12 +1272,13 @@ back into a todo. Do not delete these.
   chunk/light data, typed debug-subscription chunk/block values, and last-chunk
   GPU terrain are already removed; add the reverse test for the future queued
   light owner so stale light presentation cannot survive the packet.
-- Decode synchronized biome environment-attribute modifier compounds and the
-  remaining positional visual fields beyond current fog/sky/water-fog colors
-  and water-fog end distance; then match vanilla's 3x3 neighboring-section
-  rerender/tint invalidation. Direct custom climate and color effects already
-  project through the active holder order; malformed synchronized data is
-  omitted instead of falling back to a same-name pack default.
+- Complete the remaining synchronized biome positional visual fields beyond
+  current fog/sky/water-fog colors and water-fog end distance; then match
+  vanilla's 3x3 neighboring-section rerender/tint invalidation. All current
+  fields use the shared `EnvironmentAttributeMap` modifier codec. Direct custom
+  climate and color effects project through the active holder order; malformed
+  synchronized data is omitted instead of falling back to a same-name pack
+  default.
 - **Block-entity `breakProgress` crumbling** and per-block-entity distance/frustum
   culling. A cross-cutting boundary shared by every block-entity renderer slice:
   block entities currently submit like entities, unculled.

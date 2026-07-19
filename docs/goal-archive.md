@@ -19657,6 +19657,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   451 MB asset tree、launcher/account profile、同 camera path controller 与共同逐帧 CPU/GPU capture；
   因此没有用 process sample 或不同内部 profiler 伪造 p50/p95/p99。严格 equal-load official 胜出
   仍保留在 performance gap ledger，当前交付只证明仓库定义的真实 server Play 交互闭环。
+- [x] 首次最终 live run 的 configuration apply diagnostics 定位出 biome decoder 遗留的 modifier
+  fail-closed guard；biome positional attributes 现在复用已完成的 `EnvironmentAttributeMap` modifier
+  codec，known-pack JSON 与 network NBT 的 `water_fog_end_distance multiply 0.85` 都按 vanilla 默认
+  96.0 得到 81.6。失败证据保留在 `/tmp/bbb-playable-gate.2U437g`，不把开局快照误作断开时状态。
 
 ## 2026-07-19：vanilla remote debug subscription 全路径
 
