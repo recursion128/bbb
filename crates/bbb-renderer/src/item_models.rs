@@ -35,7 +35,8 @@ pub use map::{
     ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapDecorationTextureRef,
     ItemFrameMapDecorationType, ItemFrameMapRenderType, ItemFrameMapSubmission,
     ItemFrameMapSurface, ItemFrameMapTextSubmission, ItemFrameMapTextSurface,
-    ItemFrameMapTextTextureRef, ItemFrameMapTexture, ItemFrameMapTextureRef,
+    ItemFrameMapTextTextureRef, ItemFrameMapTexture, ItemFrameMapTexturePatch,
+    ItemFrameMapTextureRef,
 };
 pub(crate) use map::{
     FirstPersonMapBackgroundAtlasGpu, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,

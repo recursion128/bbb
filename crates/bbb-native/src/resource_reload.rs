@@ -141,6 +141,11 @@ fn apply_native_resource_reload(
         .items
         .enable_http_player_skin_downloads(player_skin_cache_dir.to_path_buf());
 
+    // Map pixels are canonical world data, but their atlas slots/bind groups
+    // and the background/decoration atlases are renderer-derived resource
+    // owners. Invalidate them before the atomic upload attempt; recovery
+    // reloads the previous pack assets on failure.
+    renderer.invalidate_map_texture_residency();
     let upload_result =
         upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
             .and_then(|()| {

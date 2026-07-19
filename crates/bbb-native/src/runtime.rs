@@ -139,9 +139,9 @@ use crate::{
         STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT,
     },
     item_entities::item_entity_billboards_from_world,
-    item_frames::item_frame_models,
+    item_frames::item_frame_models_with_map_cache,
     item_models::{
-        dropped_item_models, entity_block_models, first_person_item_models,
+        dropped_item_models, entity_block_models, first_person_item_models_with_map_cache,
         first_person_player_arms, held_item_models, item_pickup_particle_item_models,
         ominous_item_spawner_models, world_attribute_keys, world_banner_pattern_tooltip_context,
         world_enchantment_keys, world_instrument_tooltip_context,
@@ -2428,6 +2428,11 @@ pub(crate) fn update_renderer_from_publication(
     let world = publication.world.as_ref();
     let stable_world_unchanged =
         non_entity_render_extraction.begin_stable_world_frame(&publication.world);
+    if non_entity_render_extraction
+        .synchronize_map_texture_level(publication.client_level_generation)
+    {
+        renderer.invalidate_map_texture_residency();
+    }
     debug_assert_eq!(publication.terrain_revision, world.terrain_revision());
     debug_assert_eq!(publication.frozen, world.ticking().frozen);
     let surface_size = publication.input_runtime.surface_size;
@@ -2844,10 +2849,12 @@ pub(crate) fn update_renderer_from_publication(
     ));
     let block_entity_duration = block_entity_started_at.elapsed();
     let item_tail_started_at = Instant::now();
-    let first_person_item_models = first_person_item_models(
+    let map_texture_cache = non_entity_render_extraction.begin_map_texture_frame();
+    let first_person_item_models = first_person_item_models_with_map_cache(
         world,
         item_runtime,
         terrain_textures,
+        map_texture_cache,
         camera_pose,
         entity_partial_tick,
     );
@@ -2867,10 +2874,11 @@ pub(crate) fn update_renderer_from_publication(
         entity_partial_tick,
     );
     // Item frames render their wooden border + framed item into the same two atlas draws.
-    let item_frame_models = item_frame_models(
+    let item_frame_models = item_frame_models_with_map_cache(
         world,
         item_runtime,
         terrain_textures,
+        map_texture_cache,
         trim_material_keys.as_deref(),
         trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
@@ -14257,6 +14265,10 @@ pub(crate) fn control_renderer_counters(
         map_textures_created: counters.map_textures_created,
         map_textures_updated: counters.map_textures_updated,
         map_textures_reused: counters.map_textures_reused,
+        map_textures_stale: counters.map_textures_stale,
+        map_full_residency_replacements: counters.map_full_residency_replacements,
+        map_texture_resident_bytes: counters.map_texture_resident_bytes,
+        map_texture_peak_resident_bytes: counters.map_texture_peak_resident_bytes,
         item_extraction_scratch_capacity_growths: counters.item_extraction_scratch_capacity_growths,
         hud_draw_calls: counters.hud_draw_calls,
         screen_blur_draw_calls: counters.screen_blur_draw_calls,

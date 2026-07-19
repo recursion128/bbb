@@ -512,6 +512,43 @@ all three upload classes.  The representative two-owner cube retains 1,392
 logical CPU geometry bytes plus driver-owned GPU buffers; driver-deferred
 release remains outside logical peak accounting.
 
+Phase 4 of the item-residency slice moves dynamic map pixels below the same
+stable-owner boundary. Canonical `MapColors` is an Arc-COW byte owner with an
+allocation generation and monotonic content revision; its serde representation
+remains the existing byte array. A retained publication shares the allocation,
+and the first valid patch copies only when that old generation is retained.
+Invalid and zero-area patches do not advance the pixel revision.
+
+The render-thread extraction cache decodes one full RGBA owner per map and
+emits a rectangle only for the next consecutive canonical patch. Repeated
+item-frame and first-person uses in one frame share the exact request. The
+renderer assigns stable slots in a grow-only square atlas, retains immutable
+full pixels for recovery/growth, writes zero bytes for an unchanged revision,
+and writes only the patch bytes for a consecutive update. Older retained
+publication revisions are counted and rejected. Resource reload and client
+level generation changes invalidate dynamic slots plus the persistent
+background/decoration atlases; explicit removal and bounded LRU reuse release
+unused map owners. The font atlas was already resource-owned and remains so.
+
+The same-host isolated revision-decision Criterion run excludes wgpu queue
+time and the still-legacy world-space map-surface merge. Offscreen tests pair
+it with exact upload accounting: two initial 128x128 owners upload 131,072
+bytes, their unchanged frame uploads zero, and a one-pixel patch uploads four
+bytes without replacing the unrelated owner or the full atlas.
+
+| Dynamic map owner workload | Legacy transient atlas | Resident decision | Isolated reduction |
+| --- | ---: | ---: | ---: |
+| unchanged, 1 / 8 / 32 maps | 0.826 / 7.824 / 33.698 us | 2.441 / 19.747 / 109.46 ns | about 338x / 396x / 308x |
+| one patch, 1 / 8 / 32 maps | 0.825 / 7.584 / 32.192 us | 18.336 / 53.637 / 229.13 ns | about 45x / 141x / 141x |
+
+This boundary is not yet the complete map rendering result: base,
+background, and decoration quads still merge world-space geometry and create
+transient vertex/index buffers during render. Phase 5 converts those surfaces
+to static quads plus narrow instances and supplies an explicit paged/fallback
+path if one frame exceeds the 4,096-owner single-atlas hardware budget. The
+single-page table is bounded at 256 MiB logical pixels; driver-deferred texture
+release during atlas growth is not included in that logical peak.
+
 Every phase is a normal reviewable commit with affected-crate focused tests,
 `cargo fmt --all --check`, `git diff --check`, documentation lint when needed,
 and full-diff review. The safe stop after any phase is its clean, full-gated

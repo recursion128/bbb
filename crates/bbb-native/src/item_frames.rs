@@ -22,7 +22,7 @@ use bbb_world::{ItemFrameFacing, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::item_models::{display_matrix, item_stack_foil_mode, push_resident_item_instances};
-use crate::map_textures::{map_item_texture, MAP_SIZE};
+use crate::map_textures::{MapTextureExtractionCache, MAP_SIZE};
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::NativeItemRuntime;
 #[cfg(test)]
@@ -64,10 +64,35 @@ pub(crate) struct ItemFrameModels {
 /// `0..=7` rotation, scaled `0.5`, and placed by its `FIXED` display transform. Empty visible frames show
 /// only the border; invisible frames skip the border; map frames render a full-frame decoded map surface
 /// only when the matching world map data is available.
+#[cfg(test)]
 pub(crate) fn item_frame_models(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+    trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
+    enchantment_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
+) -> ItemFrameModels {
+    let mut map_textures = MapTextureExtractionCache::default();
+    map_textures.begin_frame();
+    item_frame_models_with_map_cache(
+        world,
+        item_runtime,
+        terrain_textures,
+        &mut map_textures,
+        trim_material_keys,
+        trim_pattern_keys,
+        enchantment_keys,
+        attribute_keys,
+    )
+}
+
+pub(crate) fn item_frame_models_with_map_cache(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    map_texture_cache: &mut MapTextureExtractionCache,
     trim_material_keys: Option<&[String]>,
     trim_pattern_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
@@ -140,7 +165,7 @@ pub(crate) fn item_frame_models(
         if let Some(map) = map {
             map_textures
                 .entry(map.id)
-                .or_insert_with(|| map_item_texture(map));
+                .or_insert_with(|| map_texture_cache.texture(map));
             let map_transform = item_frame_map_transform(base, state.invisible, state.rotation);
             let map_light = item_frame_map_light(state.glow, state.light);
             map_surfaces.push(bake_item_frame_map_surface(

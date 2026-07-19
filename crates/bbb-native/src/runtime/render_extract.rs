@@ -1118,6 +1118,8 @@ pub(crate) struct NonEntityRenderExtractionScratch {
     observation: NonEntityRenderExtractionObservation,
     stable_world: Option<Arc<WorldStore>>,
     item_registry_keys: CachedItemRegistryKeys,
+    map_textures: crate::map_textures::MapTextureExtractionCache,
+    map_texture_level_generation: Option<u64>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1159,6 +1161,28 @@ impl NonEntityRenderExtractionScratch {
 
     pub(crate) fn invalidate_resources(&mut self) {
         self.stable_world = None;
+        self.map_textures.clear();
+    }
+
+    /// Invalidates render-thread map pixels when the canonical level owner
+    /// changes. Map ids are scoped to that owner and must not retain decoded
+    /// pixels or GPU slots across disconnect, respawn, or dimension reset.
+    pub(crate) fn synchronize_map_texture_level(&mut self, level_generation: u64) -> bool {
+        let changed = self
+            .map_texture_level_generation
+            .replace(level_generation)
+            .is_some_and(|previous| previous != level_generation);
+        if changed {
+            self.map_textures.clear();
+        }
+        changed
+    }
+
+    pub(crate) fn begin_map_texture_frame(
+        &mut self,
+    ) -> &mut crate::map_textures::MapTextureExtractionCache {
+        self.map_textures.begin_frame();
+        &mut self.map_textures
     }
 
     pub(crate) fn item_registry_keys(&mut self, world: &WorldStore) -> ItemRegistryKeySet {

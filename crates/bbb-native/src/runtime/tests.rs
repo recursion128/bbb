@@ -127,6 +127,16 @@ fn non_entity_stable_world_cache_requires_exact_arc_and_resource_epoch() {
 }
 
 #[test]
+fn map_texture_cache_invalidates_only_on_level_generation_edge() {
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+
+    assert!(!scratch.synchronize_map_texture_level(4));
+    assert!(!scratch.synchronize_map_texture_level(4));
+    assert!(scratch.synchronize_map_texture_level(5));
+    assert!(!scratch.synchronize_map_texture_level(5));
+}
+
+#[test]
 fn item_registry_key_cache_follows_registry_access_revision() {
     let mut world = WorldStore::new();
     let mut scratch = NonEntityRenderExtractionScratch::default();
@@ -4797,7 +4807,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .expect("pump should pass shader GameTime through RendererFrame");
     assert!(shader_time_extract < shader_time_frame);
     let item_frame_models = source
-        .find("let item_frame_models = item_frame_models(")
+        .find("let item_frame_models = item_frame_models_with_map_cache(")
         .expect("pump should extract item frame models");
     let entity_block_meshes = source
         .find("let entity_block_models = entity_block_models(")

@@ -51,7 +51,7 @@ use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::entity_scene::default_spear_kinetic_weapon_for_resource_id;
-use crate::map_textures::map_item_texture;
+use crate::map_textures::MapTextureExtractionCache;
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
 #[cfg(test)]
@@ -72,7 +72,9 @@ pub(crate) use dropped::{
     item_pickup_particle_item_models, item_stack_foil_mode, ominous_item_spawner_models,
     push_resident_item_instances,
 };
-pub(crate) use first_person::{first_person_item_models, first_person_player_arms};
+#[cfg(test)]
+pub(crate) use first_person::first_person_item_models;
+pub(crate) use first_person::{first_person_item_models_with_map_cache, first_person_player_arms};
 
 /// Item-model registry keys indexed by network holder id. The checked world
 /// registry API owns wire-order identity; these wrappers only materialize the

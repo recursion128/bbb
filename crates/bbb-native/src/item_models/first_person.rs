@@ -67,10 +67,31 @@ impl FirstPersonItemModels {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn first_person_item_models(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    partial_ticks: f32,
+) -> FirstPersonItemModels {
+    let mut map_textures = MapTextureExtractionCache::default();
+    map_textures.begin_frame();
+    first_person_item_models_with_map_cache(
+        world,
+        item_runtime,
+        terrain_textures,
+        &mut map_textures,
+        camera_pose,
+        partial_ticks,
+    )
+}
+
+pub(crate) fn first_person_item_models_with_map_cache(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    map_texture_cache: &mut MapTextureExtractionCache,
     camera_pose: Option<CameraPose>,
     partial_ticks: f32,
 ) -> FirstPersonItemModels {
@@ -169,7 +190,7 @@ pub(crate) fn first_person_item_models(
             if let Some(map) = map {
                 map_textures
                     .entry(map.id)
-                    .or_insert_with(|| map_item_texture(map));
+                    .or_insert_with(|| map_texture_cache.texture(map));
                 models.map_surfaces.push(bake_item_frame_map_surface(
                     map.id,
                     map_transform,
