@@ -18,7 +18,7 @@ pub(crate) use decode::{decode_biome_sections, decode_nbt_payload_summary};
 pub(crate) use end_gateway::decode_end_gateway_block_entity_data;
 pub use heightmap::ChunkHeightmapSampler;
 pub use light::LightData;
-pub(crate) use light::{merge_light_data, sample_terrain_light};
+pub(crate) use light::{merge_light_data, sample_terrain_light, updated_light_section_indices};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub(crate) use pot_decorations::decode_decorated_pot_sherds;
 pub(crate) use spawner::decode_spawner_block_entity_data;

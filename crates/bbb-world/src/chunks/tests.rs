@@ -132,6 +132,193 @@ fn terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation() {
 }
 
 #[test]
+fn block_terrain_revisions_follow_three_dimensional_section_boundaries() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 48,
+    });
+    let chunk = ChunkPos { x: 2, z: -3 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet_with_sections(3))
+        .unwrap();
+    let inserted = store.terrain_revision();
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 34,
+            y: 17,
+            z: -45,
+        },
+        block_state_id: 0,
+    }));
+    let interior = store.terrain_revision();
+    assert_eq!(
+        terrain_section_revisions(&store, chunk),
+        [inserted, interior, inserted]
+    );
+    assert_eq!(
+        terrain_section_revisions(&store, ChunkPos { x: 1, z: -3 }),
+        [inserted; 3]
+    );
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 32,
+            y: 15,
+            z: -48,
+        },
+        block_state_id: 9,
+    }));
+    let corner = store.terrain_revision();
+    for pos in [
+        chunk,
+        ChunkPos { x: 1, z: -3 },
+        ChunkPos { x: 2, z: -4 },
+        ChunkPos { x: 1, z: -4 },
+    ] {
+        assert_eq!(
+            terrain_section_revisions(&store, pos),
+            [corner, corner, inserted]
+        );
+    }
+    assert_eq!(
+        terrain_section_revisions(&store, ChunkPos { x: 3, z: -3 }),
+        [inserted; 3]
+    );
+}
+
+#[test]
+fn standalone_light_revisions_touch_only_masked_section_neighbors() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 48,
+    });
+    let chunk = ChunkPos { x: 2, z: -3 };
+    let diagonal = ChunkPos { x: 1, z: -4 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet_with_sections(3))
+        .unwrap();
+    let inserted = store.terrain_revision();
+    let diagonal_snapshot = store.terrain_chunk_snapshot_revision(diagonal);
+
+    assert!(store
+        .apply_light_update(ProtocolLightUpdate {
+            chunk_x: chunk.x,
+            chunk_z: chunk.z,
+            // Light-section index 1 is absolute section y=0 because the
+            // light engine includes one section below minSectionY.
+            light_data: light_update_data(
+                &[0b10],
+                &[],
+                &[],
+                &[],
+                vec![vec![7; LIGHT_ARRAY_BYTES]],
+                Vec::new(),
+            ),
+        })
+        .unwrap());
+    let relit = store.terrain_revision();
+    assert_eq!(
+        terrain_section_revisions(&store, chunk),
+        [relit, relit, inserted]
+    );
+    assert_eq!(
+        terrain_section_revisions(&store, diagonal),
+        [relit, relit, inserted]
+    );
+    assert_eq!(store.terrain_chunk_snapshot_revision(chunk), relit);
+    assert_eq!(
+        store.terrain_chunk_snapshot_revision(diagonal),
+        diagonal_snapshot
+    );
+
+    assert!(store
+        .apply_light_update(ProtocolLightUpdate {
+            chunk_x: chunk.x,
+            chunk_z: chunk.z,
+            light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+        })
+        .unwrap());
+    assert_eq!(store.terrain_revision(), relit);
+}
+
+#[test]
+fn retained_publication_keeps_exact_section_revision_generation() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 32,
+    });
+    let chunk = ChunkPos { x: 2, z: -3 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet_with_sections(2))
+        .unwrap();
+    let generation_a = store.publication_snapshot();
+    let inserted = store.terrain_revision();
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 34,
+            y: 17,
+            z: -45,
+        },
+        block_state_id: 0,
+    }));
+    let changed = store.terrain_revision();
+    let generation_b = store.publication_snapshot();
+
+    assert_eq!(
+        terrain_section_revisions(&generation_a, chunk),
+        [inserted; 2]
+    );
+    assert_eq!(
+        terrain_section_revisions(&generation_b, chunk),
+        [inserted, changed]
+    );
+}
+
+#[test]
+fn full_chunk_biome_reload_and_unload_invalidate_full_neighbor_height() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 32,
+    });
+    let chunk = ChunkPos { x: 2, z: -3 };
+    let diagonal = ChunkPos { x: 1, z: -4 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet_with_sections(2))
+        .unwrap();
+
+    let replacement = store.probe_chunk(chunk).unwrap().clone();
+    let mut diagonal_column = replacement.clone();
+    diagonal_column.pos = diagonal;
+    store.insert_decoded_chunk(diagonal_column);
+    store.insert_decoded_chunk(replacement);
+    let reloaded = store.terrain_revision();
+    assert_eq!(terrain_section_revisions(&store, chunk), [reloaded; 2]);
+    assert_eq!(terrain_section_revisions(&store, diagonal), [reloaded; 2]);
+    assert_eq!(store.terrain_chunk_snapshot_revision(diagonal), reloaded);
+
+    store
+        .apply_biome_update(ProtocolChunksBiomes {
+            chunks: vec![ProtocolChunkBiomeData {
+                pos: ProtocolChunkPos { x: 2, z: -3 },
+                raw_biomes: repeated_single_biome_payload(7, 2),
+            }],
+        })
+        .unwrap();
+    let rebiomed = store.terrain_revision();
+    assert_eq!(terrain_section_revisions(&store, chunk), [rebiomed; 2]);
+    assert_eq!(terrain_section_revisions(&store, diagonal), [rebiomed; 2]);
+    assert_eq!(store.terrain_chunk_snapshot_revision(diagonal), rebiomed);
+
+    assert!(store.forget_chunk(chunk));
+    let unloaded = store.terrain_revision();
+    assert_eq!(terrain_section_revisions(&store, chunk), [0; 2]);
+    assert_eq!(terrain_section_revisions(&store, diagonal), [unloaded; 2]);
+    assert_eq!(store.terrain_chunk_snapshot_revision(diagonal), unloaded);
+}
+
+#[test]
 fn light_and_chunk_removal_invalidate_neighbor_meshes_without_fabricating_content() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
@@ -152,7 +339,14 @@ fn light_and_chunk_removal_invalidate_neighbor_meshes_without_fabricating_conten
         .apply_light_update(ProtocolLightUpdate {
             chunk_x: chunk.x,
             chunk_z: chunk.z,
-            light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+            light_data: light_update_data(
+                &[0b10],
+                &[],
+                &[],
+                &[],
+                vec![vec![5; LIGHT_ARRAY_BYTES]],
+                Vec::new(),
+            ),
         })
         .unwrap());
     let relit = store.terrain_revision();
@@ -1773,12 +1967,18 @@ fn synthetic_level_chunk_packet() -> LevelChunkWithLight {
 }
 
 fn synthetic_local_palette_chunk_packet() -> LevelChunkWithLight {
+    synthetic_local_palette_chunk_packet_with_sections(1)
+}
+
+fn synthetic_local_palette_chunk_packet_with_sections(section_count: usize) -> LevelChunkWithLight {
     let mut sections = Encoder::new();
-    sections.write_i16(4096);
-    sections.write_i16(0);
-    write_local_block_palette(&mut sections);
-    sections.write_u8(0);
-    sections.write_var_i32(4);
+    for _ in 0..section_count {
+        sections.write_i16(4096);
+        sections.write_i16(0);
+        write_local_block_palette(&mut sections);
+        sections.write_u8(0);
+        sections.write_var_i32(4);
+    }
     let sections = sections.into_inner();
 
     LevelChunkWithLight {
@@ -1791,6 +1991,16 @@ fn synthetic_local_palette_chunk_packet() -> LevelChunkWithLight {
         },
         light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
     }
+}
+
+fn terrain_section_revisions<const N: usize>(store: &WorldStore, pos: ChunkPos) -> [u64; N] {
+    store
+        .terrain_chunk_section_mesh_revisions(pos)
+        .map(|section| section.revision)
+        .collect::<Vec<_>>()
+        .try_into()
+        .ok()
+        .expect("dimension has the expected section count")
 }
 
 fn motion_blocking_heightmap(
@@ -1845,6 +2055,11 @@ fn single_biome_payload(biome_id: i32) -> Vec<u8> {
     payload.write_u8(0);
     payload.write_var_i32(biome_id);
     payload.into_inner()
+}
+
+fn repeated_single_biome_payload(biome_id: i32, section_count: usize) -> Vec<u8> {
+    let section = single_biome_payload(biome_id);
+    section.repeat(section_count)
 }
 
 fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {

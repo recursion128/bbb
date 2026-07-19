@@ -48,6 +48,22 @@ impl WorldDimension {
         self.min_y.div_euclid(16)
     }
 
+    pub fn section_count(self) -> usize {
+        usize::try_from(self.height.max(0))
+            .unwrap_or(0)
+            .div_ceil(16)
+    }
+
+    pub fn contains_section_y(self, section_y: i32) -> bool {
+        let Some(section_offset) = section_y.checked_sub(self.min_section_y()) else {
+            return false;
+        };
+        let Ok(offset) = usize::try_from(section_offset) else {
+            return false;
+        };
+        offset < self.section_count()
+    }
+
     pub fn contains_y(self, y: i32) -> bool {
         y >= self.min_y && y < self.min_y + self.height
     }

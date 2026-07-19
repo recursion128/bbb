@@ -164,6 +164,76 @@ pub struct TerrainChunkSnapshot {
     pub cells: Vec<TerrainBlockCell>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TerrainSectionMeshRevision {
+    pub section_y: i32,
+    pub revision: u64,
+}
+
+/// Small publication-shared render invalidation owner for one chunk column.
+///
+/// Full-height events advance `full_mesh_revision` and clear the per-section
+/// overrides. Local block/light changes then copy and update only this small
+/// owner while older publication generations retain their exact values.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct TerrainChunkRenderRevisions {
+    snapshot_context_revision: u64,
+    full_mesh_revision: u64,
+    section_mesh_revisions: Vec<u64>,
+}
+
+impl TerrainChunkRenderRevisions {
+    pub(crate) fn snapshot_context_revision(&self) -> u64 {
+        self.snapshot_context_revision
+    }
+
+    pub(crate) fn mark_snapshot_context(&mut self, revision: u64) {
+        self.snapshot_context_revision = revision;
+    }
+
+    pub(crate) fn mark_all_sections(&mut self, revision: u64) {
+        self.full_mesh_revision = revision;
+        self.section_mesh_revisions.clear();
+    }
+
+    pub(crate) fn mark_section(
+        &mut self,
+        min_section_y: i32,
+        section_count: usize,
+        section_y: i32,
+        revision: u64,
+    ) {
+        let Some(section_offset) = section_y.checked_sub(min_section_y) else {
+            return;
+        };
+        let Ok(section_index) = usize::try_from(section_offset) else {
+            return;
+        };
+        if section_index >= section_count {
+            return;
+        }
+        if self.section_mesh_revisions.len() < section_count {
+            self.section_mesh_revisions.resize(section_count, 0);
+        }
+        self.section_mesh_revisions[section_index] = revision;
+    }
+
+    pub(crate) fn mesh_revision(&self) -> u64 {
+        self.section_mesh_revisions
+            .iter()
+            .copied()
+            .fold(self.full_mesh_revision, u64::max)
+    }
+
+    pub(crate) fn section_revision(&self, section_index: usize) -> u64 {
+        self.section_mesh_revisions
+            .get(section_index)
+            .copied()
+            .unwrap_or(0)
+            .max(self.full_mesh_revision)
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerrainChunkSummary {
     pub pos: Option<ChunkPos>,

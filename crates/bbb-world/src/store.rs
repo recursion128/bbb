@@ -4,6 +4,7 @@ use bbb_pack::KnownPackDataSource;
 use serde::{Deserialize, Serialize};
 
 use crate::item_profiles::ItemProfiles;
+use crate::terrain::TerrainChunkRenderRevisions;
 use crate::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkPos,
     ChunkViewState, ClientAdvancementsState, ClientAudioState, ClientChatState, ClientCombatState,
@@ -70,7 +71,8 @@ pub struct WorldStore {
     #[serde(skip)]
     pub(crate) terrain_chunk_content_revisions: BTreeMap<ChunkPos, u64>,
     #[serde(skip)]
-    pub(crate) terrain_chunk_mesh_revisions: BTreeMap<ChunkPos, u64>,
+    pub(crate) terrain_chunk_mesh_revisions:
+        BTreeMap<ChunkPos, PublicationShared<TerrainChunkRenderRevisions>>,
     #[serde(default)]
     pub(crate) first_chunk: Option<ChunkPos>,
     #[serde(default)]

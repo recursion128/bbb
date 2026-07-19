@@ -32,6 +32,7 @@ use super::{
     },
     merge_light_data, sample_terrain_light,
     sign_text::decode_sign_block_entity_text,
+    updated_light_section_indices,
 };
 
 impl WorldStore {
@@ -215,6 +216,7 @@ impl WorldStore {
     pub fn apply_light_update(&mut self, update: ProtocolLightUpdate) -> Result<bool> {
         self.counters.light_updates_received += 1;
         let update_light = update.light_data.into();
+        let updated_sections = updated_light_section_indices(&update_light);
         let pos = ChunkPos {
             x: update.chunk_x,
             z: update.chunk_z,
@@ -226,7 +228,9 @@ impl WorldStore {
 
         merge_light_data(&mut chunk.light, update_light);
         self.counters.light_updates_applied += 1;
-        self.mark_terrain_chunk_and_neighbors_changed(pos);
+        if !updated_sections.is_empty() {
+            self.mark_terrain_light_sections_changed(pos, &updated_sections);
+        }
         Ok(true)
     }
 
@@ -752,14 +756,47 @@ impl WorldStore {
             .unwrap_or(0)
     }
 
+    /// Revision of the converted render snapshot for one chunk. Its own
+    /// canonical content and only neighbor events that affect biome/context
+    /// projection participate; a boundary block in another chunk does not
+    /// force this chunk's full cell projection to be rebuilt.
+    pub fn terrain_chunk_snapshot_revision(&self, pos: ChunkPos) -> u64 {
+        let content = self.terrain_chunk_content_revision(pos);
+        let context = self
+            .terrain_chunk_mesh_revisions
+            .get(&pos)
+            .map(|revisions| revisions.snapshot_context_revision())
+            .unwrap_or(0);
+        content.max(context)
+    }
+
     /// Revision of the final mesh for one chunk. Neighbor changes can advance
     /// this without changing the chunk's own extracted cell snapshot because
     /// face culling and biome/light sampling cross chunk edges.
     pub fn terrain_chunk_mesh_revision(&self, pos: ChunkPos) -> u64 {
         self.terrain_chunk_mesh_revisions
             .get(&pos)
-            .copied()
+            .map(|revisions| revisions.mesh_revision())
             .unwrap_or(0)
+    }
+
+    /// Exact per-section mesh revisions in bottom-to-top dimension order.
+    /// The iterator borrows one small publication-shared chunk owner and does
+    /// not allocate a dense world-wide section table.
+    pub fn terrain_chunk_section_mesh_revisions(
+        &self,
+        pos: ChunkPos,
+    ) -> impl ExactSizeIterator<Item = crate::TerrainSectionMeshRevision> + '_ {
+        let min_section_y = self.dimension.min_section_y();
+        let section_count = self.dimension.section_count();
+        let revisions = self.terrain_chunk_mesh_revisions.get(&pos);
+        (0..section_count).map(move |section_index| crate::TerrainSectionMeshRevision {
+            section_y: min_section_y
+                .saturating_add(i32::try_from(section_index).unwrap_or(i32::MAX)),
+            revision: revisions
+                .map(|revisions| revisions.section_revision(section_index))
+                .unwrap_or(0),
+        })
     }
 
     pub fn predict_local_destroy_block(&mut self, pos: BlockPos, sequence: i32) -> bool {
@@ -951,7 +988,12 @@ impl WorldStore {
         let revision = self.advance_terrain_revision();
         self.terrain_chunk_content_revisions.insert(pos, revision);
         for neighbor in chunk_neighborhood(pos) {
-            self.terrain_chunk_mesh_revisions.insert(neighbor, revision);
+            let revisions = &mut *self
+                .terrain_chunk_mesh_revisions
+                .entry(neighbor)
+                .or_default();
+            revisions.mark_snapshot_context(revision);
+            revisions.mark_all_sections(revision);
         }
     }
 
@@ -960,7 +1002,12 @@ impl WorldStore {
         self.terrain_chunk_content_revisions.remove(&pos);
         self.terrain_chunk_mesh_revisions.remove(&pos);
         for neighbor in chunk_neighborhood(pos).filter(|neighbor| *neighbor != pos) {
-            self.terrain_chunk_mesh_revisions.insert(neighbor, revision);
+            let revisions = &mut *self
+                .terrain_chunk_mesh_revisions
+                .entry(neighbor)
+                .or_default();
+            revisions.mark_snapshot_context(revision);
+            revisions.mark_all_sections(revision);
         }
     }
 
@@ -982,15 +1029,62 @@ impl WorldStore {
             15 => &[0, 1],
             _ => &[0],
         };
-        for dz in z_offsets {
-            for dx in x_offsets {
-                self.terrain_chunk_mesh_revisions.insert(
-                    ChunkPos {
-                        x: chunk.x + dx,
-                        z: chunk.z + dz,
-                    },
-                    revision,
-                );
+        let min_section_y = self.dimension.min_section_y();
+        let section_count = self.dimension.section_count();
+        let section_ys = [
+            (pos.y - 1).div_euclid(16),
+            pos.y.div_euclid(16),
+            (pos.y + 1).div_euclid(16),
+        ];
+        for section_y in section_ys {
+            if !self.dimension.contains_section_y(section_y) {
+                continue;
+            }
+            for dz in z_offsets {
+                for dx in x_offsets {
+                    let revisions = &mut *self
+                        .terrain_chunk_mesh_revisions
+                        .entry(ChunkPos {
+                            x: chunk.x + dx,
+                            z: chunk.z + dz,
+                        })
+                        .or_default();
+                    revisions.mark_section(min_section_y, section_count, section_y, revision);
+                }
+            }
+        }
+    }
+
+    fn mark_terrain_light_sections_changed(
+        &mut self,
+        chunk: ChunkPos,
+        light_section_indices: &[usize],
+    ) {
+        let revision = self.advance_terrain_revision();
+        self.terrain_chunk_content_revisions.insert(chunk, revision);
+        let min_section_y = self.dimension.min_section_y();
+        let section_count = self.dimension.section_count();
+        for &light_section_index in light_section_indices {
+            let Ok(light_section_offset) = i32::try_from(light_section_index) else {
+                continue;
+            };
+            let light_section_y = min_section_y - 1 + light_section_offset;
+            for section_y in light_section_y - 1..=light_section_y + 1 {
+                if !self.dimension.contains_section_y(section_y) {
+                    continue;
+                }
+                for dz in -1..=1 {
+                    for dx in -1..=1 {
+                        let revisions = &mut *self
+                            .terrain_chunk_mesh_revisions
+                            .entry(ChunkPos {
+                                x: chunk.x + dx,
+                                z: chunk.z + dz,
+                            })
+                            .or_default();
+                        revisions.mark_section(min_section_y, section_count, section_y, revision);
+                    }
+                }
             }
         }
     }

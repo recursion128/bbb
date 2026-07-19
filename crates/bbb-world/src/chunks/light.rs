@@ -1,5 +1,6 @@
 use bbb_protocol::packets::LightUpdateData;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 use crate::{section_block_index, TerrainLight, WorldDimension};
 
@@ -46,6 +47,19 @@ pub(crate) fn merge_light_data(target: &mut LightData, update: LightData) {
         &update.empty_block_y_mask,
         &update.block_updates,
     );
+}
+
+pub(crate) fn updated_light_section_indices(update: &LightData) -> Vec<usize> {
+    let mut sections = BTreeSet::new();
+    for mask in [
+        &update.sky_y_mask,
+        &update.block_y_mask,
+        &update.empty_sky_y_mask,
+        &update.empty_block_y_mask,
+    ] {
+        sections.extend(set_bit_indices(mask));
+    }
+    sections.into_iter().collect()
 }
 
 fn merge_light_layer(

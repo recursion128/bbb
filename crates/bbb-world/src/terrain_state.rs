@@ -89,5 +89,6 @@ pub use crate::terrain::{
     block_name_is_wall_sign, block_name_is_wall_skull, block_name_is_wall_torch,
     block_name_is_wool_carpet, block_name_should_spawn_terrain_particles, BlockProbe,
     TerrainBlockCell, TerrainChunkSnapshot, TerrainChunkSummary, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, TerrainSkipRendering,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, TerrainSectionMeshRevision,
+    TerrainSkipRendering,
 };
