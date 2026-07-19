@@ -5,6 +5,8 @@
 //! colors, cloud frames, weather and lightning render state. No side
 //! effects; everything GPU-facing stays in bbb-renderer.
 
+use std::sync::Arc;
+
 use bbb_renderer::{
     BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     EntityModelInstance, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
@@ -997,7 +999,12 @@ pub(crate) fn hud_player_list_from_world(
 /// client-tick sequence point, then commits the whole frame to the renderer in
 /// one `apply_renderer_frame` call. Sky-flash-dependent environment fields read
 /// after the `ClientLevel.tick`-equivalent `advance_sky_flash_time`.
-pub(crate) struct RendererFrame {
+pub(crate) enum RendererFrameUpdate<T> {
+    Unchanged,
+    Replace(T),
+}
+
+pub(crate) struct RendererFrame<'a> {
     pub(crate) lightmap_environment: LightmapEnvironment,
     pub(crate) clear_color: ClearColor,
     pub(crate) fog_environment: FogEnvironment,
@@ -1014,7 +1021,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_selected_slot: u8,
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
-    pub(crate) hud_hotbar_block_item_models: Vec<Option<HudBlockItemModel>>,
+    pub(crate) hud_hotbar_block_item_models: RendererFrameUpdate<Vec<Option<HudBlockItemModel>>>,
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
     pub(crate) hud_screen_blur: bool,
     pub(crate) hud_sign_editor_screen: Option<HudSignEditorScreen>,
@@ -1027,7 +1034,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_player_list: Option<HudPlayerList>,
     pub(crate) hud_command_suggestions: Option<HudCommandSuggestions>,
     pub(crate) hud_debug_overlay: Option<HudDebugOverlay>,
-    pub(crate) hud_boss_bars: Vec<HudBossBar>,
+    pub(crate) hud_boss_bars: RendererFrameUpdate<Vec<HudBossBar>>,
     pub(crate) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(crate) block_item_model_meshes: Vec<ItemModelMesh>,
     pub(crate) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
@@ -1066,7 +1073,7 @@ pub(crate) struct RendererFrame {
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
     pub(crate) camera_fov_degrees: f32,
-    pub(crate) current_post_effect_id: Option<String>,
+    pub(crate) current_post_effect_id: Option<&'a str>,
     pub(crate) shader_game_time_ticks: f64,
     pub(crate) cloud_frame: CloudFrame,
     pub(crate) weather_render_state: WeatherRenderState,
@@ -1079,7 +1086,7 @@ pub(crate) struct RendererFrame {
     pub(crate) debug_filled_rects: Vec<DebugFilledRect>,
     pub(crate) debug_text_billboards: Vec<DebugTextBillboard>,
     pub(crate) debug_lines: Vec<DebugLine>,
-    pub(crate) block_destroy_overlays: Vec<BlockDestroyOverlay>,
+    pub(crate) block_destroy_overlays: RendererFrameUpdate<Vec<BlockDestroyOverlay>>,
 }
 
 /// Render-thread-only observations for heap-backed non-entity extraction.
@@ -1108,11 +1115,69 @@ pub(crate) struct NonEntityRenderExtractionObservation {
 #[derive(Debug, Default)]
 pub(crate) struct NonEntityRenderExtractionScratch {
     observation: NonEntityRenderExtractionObservation,
+    stable_world: Option<Arc<WorldStore>>,
+    item_registry_keys: CachedItemRegistryKeys,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ItemRegistryKeySet {
+    pub(crate) trim_materials: Option<Arc<[String]>>,
+    pub(crate) trim_patterns: Option<Arc<[String]>>,
+    pub(crate) enchantments: Option<Arc<[String]>>,
+    pub(crate) attributes: Option<Arc<[String]>>,
+}
+
+#[derive(Debug, Default)]
+struct CachedItemRegistryKeys {
+    revision: Option<bbb_world::RegistryAccessRevision>,
+    keys: ItemRegistryKeySet,
 }
 
 impl NonEntityRenderExtractionScratch {
     pub(crate) fn observation(&self) -> NonEntityRenderExtractionObservation {
         self.observation
+    }
+
+    /// Returns whether the exact immutable world owner was already applied to
+    /// the renderer. Retaining this Arc pins at most the most recently rendered
+    /// generation and never exposes a mutable world path.
+    pub(crate) fn begin_stable_world_frame(&mut self, world: &Arc<WorldStore>) -> bool {
+        let unchanged = self
+            .stable_world
+            .as_ref()
+            .is_some_and(|previous| Arc::ptr_eq(previous, world));
+        if unchanged {
+            self.observation.cache_hits = self.observation.cache_hits.saturating_add(3);
+        } else {
+            self.stable_world = Some(Arc::clone(world));
+            self.observation.cache_misses = self.observation.cache_misses.saturating_add(3);
+            self.observation.rebuilt_owners = self.observation.rebuilt_owners.saturating_add(3);
+        }
+        unchanged
+    }
+
+    pub(crate) fn invalidate_resources(&mut self) {
+        self.stable_world = None;
+    }
+
+    pub(crate) fn item_registry_keys(&mut self, world: &WorldStore) -> ItemRegistryKeySet {
+        let revision = world.registry_access_revision();
+        if self.item_registry_keys.revision == Some(revision) {
+            self.observation.cache_hits = self.observation.cache_hits.saturating_add(4);
+            return self.item_registry_keys.keys.clone();
+        }
+
+        self.item_registry_keys = CachedItemRegistryKeys {
+            revision: Some(revision),
+            keys: ItemRegistryKeySet {
+                trim_materials: world_trim_material_keys(world).map(Arc::from),
+                trim_patterns: world_trim_pattern_keys(world).map(Arc::from),
+                enchantments: world_enchantment_keys(world).map(Arc::from),
+                attributes: world_attribute_keys(world).map(Arc::from),
+            },
+        };
+        self.observation.cache_misses = self.observation.cache_misses.saturating_add(4);
+        self.item_registry_keys.keys.clone()
     }
 
     pub(crate) fn record_frame(
@@ -1154,7 +1219,7 @@ fn duration_nanos(duration: Duration) -> u64 {
 /// Commits one extracted frame to the renderer in a single call.
 pub(crate) fn apply_renderer_frame(
     renderer: &mut Renderer,
-    frame: RendererFrame,
+    frame: RendererFrame<'_>,
     entity_render_extraction: &mut crate::entity_scene::EntityRenderExtractionScratch,
 ) {
     renderer.set_lightmap_environment(frame.lightmap_environment);
@@ -1173,7 +1238,9 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
-    renderer.set_hud_hotbar_block_item_models(frame.hud_hotbar_block_item_models);
+    if let RendererFrameUpdate::Replace(models) = frame.hud_hotbar_block_item_models {
+        renderer.set_hud_hotbar_block_item_models(models);
+    }
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
     renderer.set_hud_screen_blur(frame.hud_screen_blur);
     renderer.set_hud_sign_editor_screen(frame.hud_sign_editor_screen);
@@ -1186,7 +1253,9 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_command_suggestions(frame.hud_command_suggestions);
     renderer.set_hud_player_list(frame.hud_player_list);
     renderer.set_hud_debug_overlay(frame.hud_debug_overlay);
-    renderer.set_hud_boss_bars(frame.hud_boss_bars);
+    if let RendererFrameUpdate::Replace(bars) = frame.hud_boss_bars {
+        renderer.set_hud_boss_bars(bars);
+    }
     renderer.set_item_entity_billboards(frame.item_entity_billboards);
     renderer.set_block_item_model_meshes(frame.block_item_model_meshes);
     renderer.set_block_item_model_z_offset_forward_meshes(
@@ -1226,17 +1295,15 @@ pub(crate) fn apply_renderer_frame(
         frame.first_person_map_background_textures,
         frame.first_person_map_background_surfaces,
     );
-    let mut map_textures = frame.item_frame_map_textures;
-    map_textures.extend(frame.first_person_map_textures);
     renderer.set_map_surfaces(
-        map_textures,
+        frame.item_frame_map_textures,
+        frame.first_person_map_textures,
         frame.item_frame_map_surfaces,
         frame.first_person_map_surfaces,
     );
-    let mut map_decoration_textures = frame.item_frame_map_decoration_textures;
-    map_decoration_textures.extend(frame.first_person_map_decoration_textures);
     renderer.set_map_decoration_surfaces(
-        map_decoration_textures,
+        frame.item_frame_map_decoration_textures,
+        frame.first_person_map_decoration_textures,
         frame.item_frame_map_decoration_surfaces,
         frame.first_person_map_decoration_surfaces,
     );
@@ -1263,5 +1330,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_debug_filled_rects(frame.debug_filled_rects);
     renderer.set_debug_text_billboards(frame.debug_text_billboards);
     renderer.set_debug_lines(frame.debug_lines);
-    renderer.set_block_destroy_overlays(frame.block_destroy_overlays);
+    if let RendererFrameUpdate::Replace(overlays) = frame.block_destroy_overlays {
+        renderer.set_block_destroy_overlays(overlays);
+    }
 }

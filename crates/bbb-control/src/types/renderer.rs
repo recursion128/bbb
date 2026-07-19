@@ -32,6 +32,60 @@ pub struct RendererCounters {
     pub entity_scene_boxes: usize,
     #[serde(default)]
     pub item_entity_billboards: usize,
+    #[serde(default)]
+    pub item_model_residency_hits: u64,
+    #[serde(default)]
+    pub item_model_residency_misses: u64,
+    #[serde(default)]
+    pub item_model_residency_builds: u64,
+    #[serde(default)]
+    pub item_model_residency_stale: u64,
+    #[serde(default)]
+    pub item_model_lookup_nanos: u64,
+    #[serde(default)]
+    pub item_model_lookup_peak_nanos: u64,
+    #[serde(default)]
+    pub item_instance_extraction_nanos: u64,
+    #[serde(default)]
+    pub item_instance_extraction_peak_nanos: u64,
+    #[serde(default)]
+    pub item_gpu_apply_nanos: u64,
+    #[serde(default)]
+    pub item_gpu_apply_peak_nanos: u64,
+    #[serde(default)]
+    pub item_gpu_owners_created: u64,
+    #[serde(default)]
+    pub item_gpu_owners_reused: u64,
+    #[serde(default)]
+    pub item_gpu_owners_replaced: u64,
+    #[serde(default)]
+    pub item_model_vertex_upload_bytes: u64,
+    #[serde(default)]
+    pub item_model_index_upload_bytes: u64,
+    #[serde(default)]
+    pub item_instance_upload_bytes: u64,
+    #[serde(default)]
+    pub item_map_upload_bytes: u64,
+    #[serde(default)]
+    pub item_transient_buffer_creations: u64,
+    #[serde(default)]
+    pub item_full_residency_replacements: u64,
+    #[serde(default)]
+    pub item_model_resident_bytes: u64,
+    #[serde(default)]
+    pub item_model_peak_resident_bytes: u64,
+    #[serde(default)]
+    pub item_model_instances: usize,
+    #[serde(default)]
+    pub item_model_fallbacks: u64,
+    #[serde(default)]
+    pub map_textures_created: u64,
+    #[serde(default)]
+    pub map_textures_updated: u64,
+    #[serde(default)]
+    pub map_textures_reused: u64,
+    #[serde(default)]
+    pub item_extraction_scratch_capacity_growths: u64,
     pub hud_draw_calls: u64,
     #[serde(default)]
     pub screen_blur_draw_calls: u64,

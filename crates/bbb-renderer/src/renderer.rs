@@ -2001,8 +2001,11 @@ impl Renderer {
         self.counters.terrain_mesh_peak_build_sections = counters.peak_build_sections;
     }
 
-    pub fn set_current_post_effect_id(&mut self, id: Option<String>) {
-        self.current_post_effect_id = id;
+    pub fn set_current_post_effect_id(&mut self, id: Option<&str>) {
+        if self.current_post_effect_id.as_deref() == id {
+            return;
+        }
+        self.current_post_effect_id = id.map(str::to_owned);
     }
 
     pub fn current_post_effect_id(&self) -> Option<&str> {

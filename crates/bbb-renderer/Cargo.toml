@@ -31,3 +31,7 @@ harness = false
 [[bench]]
 name = "frame_extraction_storage"
 harness = false
+
+[[bench]]
+name = "item_model_residency"
+harness = false

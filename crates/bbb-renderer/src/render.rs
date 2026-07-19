@@ -2649,6 +2649,12 @@ impl Renderer {
         }
 
         self.counters.frame_index += 1;
+        let item_upload = self.legacy_item_model_upload_observation();
+        self.counters.item_model_instances = item_upload.phase_meshes;
+        self.counters.item_transient_buffer_creations = item_upload.transient_buffers;
+        self.counters.item_model_vertex_upload_bytes = item_upload.vertex_bytes;
+        self.counters.item_model_index_upload_bytes = item_upload.index_bytes;
+        self.counters.item_instance_upload_bytes = 0;
         self.counters.opaque_draw_calls = stats.opaque_draw_calls;
         self.counters.cutout_draw_calls = stats.cutout_draw_calls;
         self.counters.translucent_draw_calls = stats.translucent_draw_calls;

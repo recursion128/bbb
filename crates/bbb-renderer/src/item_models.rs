@@ -172,6 +172,14 @@ pub struct ItemModelMeshSet {
     pub glint_translucent: ItemModelMesh,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct LegacyItemModelUploadObservation {
+    pub(crate) phase_meshes: usize,
+    pub(crate) transient_buffers: u64,
+    pub(crate) vertex_bytes: u64,
+    pub(crate) index_bytes: u64,
+}
+
 pub(crate) struct ItemGlintTextureGpu {
     _texture: wgpu::Texture,
     _view: wgpu::TextureView,
@@ -187,6 +195,24 @@ impl ItemModelMesh {
 
     pub fn is_empty(&self) -> bool {
         self.indices.is_empty()
+    }
+
+    /// Logical vertex count used by residency diagnostics and repository
+    /// benchmarks. This does not expose the backend vertex representation.
+    pub fn vertex_count(&self) -> usize {
+        self.vertices.len()
+    }
+
+    /// Logical index count used by residency diagnostics and repository
+    /// benchmarks.
+    pub fn index_count(&self) -> usize {
+        self.indices.len()
+    }
+
+    /// CPU/GPU payload bytes represented by this mesh before backend alignment.
+    pub fn logical_bytes(&self) -> u64 {
+        (self.vertices.len() * std::mem::size_of::<ItemModelVertex>()
+            + self.indices.len() * std::mem::size_of::<u32>()) as u64
     }
 
     /// Appends `quads` at full brightness. Use [`append_quads_with_light`](Self::append_quads_with_light)
@@ -322,6 +348,15 @@ impl ItemModelMeshSet {
             && self.translucent.is_empty()
             && self.glint.is_empty()
             && self.glint_translucent.is_empty()
+    }
+
+    /// Logical payload size across the five vanilla item feature phases.
+    pub fn logical_bytes(&self) -> u64 {
+        self.solid.logical_bytes()
+            + self.solid_z_offset_forward.logical_bytes()
+            + self.translucent.logical_bytes()
+            + self.glint.logical_bytes()
+            + self.glint_translucent.logical_bytes()
     }
 
     /// Appends model quads into this mesh set's vanilla solid/translucent item phases, and mirrors
@@ -567,6 +602,31 @@ fn decal_direction_rotation(direction: DecalDirection) -> Quat {
 }
 
 impl Renderer {
+    pub(crate) fn legacy_item_model_upload_observation(&self) -> LegacyItemModelUploadObservation {
+        let buckets: [&[ItemModelMesh]; 19] = [
+            &self.block_item_model_meshes,
+            &self.block_item_model_z_offset_forward_meshes,
+            &self.block_item_model_translucent_meshes,
+            &self.flat_item_model_meshes,
+            &self.flat_item_model_translucent_meshes,
+            &self.item_model_glint_meshes,
+            &self.item_model_glint_translucent_meshes,
+            &self.item_pickup_block_item_model_meshes,
+            &self.item_pickup_block_item_model_translucent_meshes,
+            &self.item_pickup_flat_item_model_meshes,
+            &self.item_pickup_flat_item_model_translucent_meshes,
+            &self.item_pickup_item_model_glint_meshes,
+            &self.item_pickup_item_model_glint_translucent_meshes,
+            &self.first_person_block_item_model_meshes,
+            &self.first_person_block_item_model_translucent_meshes,
+            &self.first_person_flat_item_model_meshes,
+            &self.first_person_flat_item_model_translucent_meshes,
+            &self.first_person_item_model_glint_meshes,
+            &self.first_person_item_model_glint_translucent_meshes,
+        ];
+        observe_legacy_item_model_buckets(&buckets)
+    }
+
     /// Sets the baked **block-item** model meshes to draw this frame — those whose UVs are absolute into
     /// the blocks atlas (the same atlas terrain samples). Each mesh is already in world space with
     /// `tint × shade` vertex colors (the caller applies the world / display transform at bake time via
@@ -821,6 +881,31 @@ impl Renderer {
     ) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.first_person_item_model_glint_translucent_meshes)
     }
+}
+
+fn observe_legacy_item_model_buckets(
+    buckets: &[&[ItemModelMesh]],
+) -> LegacyItemModelUploadObservation {
+    let mut observation = LegacyItemModelUploadObservation::default();
+    for meshes in buckets {
+        if meshes.iter().any(|mesh| !mesh.is_empty()) {
+            // The legacy helper creates one vertex and one index buffer for
+            // every non-empty phase bucket on every rendered frame.
+            observation.transient_buffers = observation.transient_buffers.saturating_add(2);
+        }
+        observation.phase_meshes = observation
+            .phase_meshes
+            .saturating_add(meshes.iter().filter(|mesh| !mesh.is_empty()).count());
+        for mesh in *meshes {
+            observation.vertex_bytes = observation.vertex_bytes.saturating_add(
+                (mesh.vertices.len() * std::mem::size_of::<ItemModelVertex>()) as u64,
+            );
+            observation.index_bytes = observation
+                .index_bytes
+                .saturating_add((mesh.indices.len() * std::mem::size_of::<u32>()) as u64);
+        }
+    }
+    observation
 }
 
 const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![
@@ -1350,6 +1435,24 @@ mod tests {
             (actual[1] - expected[1]).abs() < 1e-6,
             "v mismatch: actual {actual:?}, expected {expected:?}"
         );
+    }
+
+    #[test]
+    fn legacy_upload_observation_counts_only_nonempty_phase_owners() {
+        let populated =
+            bake_item_model_mesh(&[unit_quad(1.0, [1.0, 1.0, 1.0, 1.0])], Mat4::IDENTITY);
+        let vertex_bytes =
+            (populated.vertex_count() * std::mem::size_of::<ItemModelVertex>()) as u64;
+        let index_bytes = (populated.index_count() * std::mem::size_of::<u32>()) as u64;
+        let bucket = [ItemModelMesh::default(), populated];
+        let empty_bucket = [ItemModelMesh::default()];
+
+        let observation = observe_legacy_item_model_buckets(&[&bucket, &empty_bucket]);
+
+        assert_eq!(observation.phase_meshes, 1);
+        assert_eq!(observation.transient_buffers, 2);
+        assert_eq!(observation.vertex_bytes, vertex_bytes);
+        assert_eq!(observation.index_bytes, index_bytes);
     }
 
     #[test]

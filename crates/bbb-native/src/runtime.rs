@@ -2426,6 +2426,8 @@ pub(crate) fn update_renderer_from_publication(
     let terrain_textures_changed = state.terrain_textures_changed;
     let input = publication.input.as_state();
     let world = publication.world.as_ref();
+    let stable_world_unchanged =
+        non_entity_render_extraction.begin_stable_world_frame(&publication.world);
     debug_assert_eq!(publication.terrain_revision, world.terrain_revision());
     debug_assert_eq!(publication.frozen, world.ticking().frozen);
     let surface_size = publication.input_runtime.surface_size;
@@ -2546,7 +2548,11 @@ pub(crate) fn update_renderer_from_publication(
     let hud_player_list = hud_player_list_from_world(input, world);
     // Vanilla `Gui.extractBossOverlay` re-walks the tracked boss events every
     // frame with no countdown state, so the projection is pure world state.
-    let hud_boss_bars = hud_boss_bars_from_world(world);
+    let hud_boss_bars = if stable_world_unchanged {
+        RendererFrameUpdate::Unchanged
+    } else {
+        RendererFrameUpdate::Replace(hud_boss_bars_from_world(world))
+    };
     let item_model_keybind_context = input.item_model_keybind_context();
     let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(
         world,
@@ -2555,8 +2561,15 @@ pub(crate) fn update_renderer_from_publication(
         input.shift_down(),
         item_model_keybind_context,
     );
-    let hud_hotbar_block_item_models =
-        hotbar_block_item_models(world, item_runtime, terrain_textures);
+    let hud_hotbar_block_item_models = if stable_world_unchanged {
+        RendererFrameUpdate::Unchanged
+    } else {
+        RendererFrameUpdate::Replace(hotbar_block_item_models(
+            world,
+            item_runtime,
+            terrain_textures,
+        ))
+    };
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade = input.advancement_hover_fade();
@@ -2665,10 +2678,11 @@ pub(crate) fn update_renderer_from_publication(
         .map(|time| time.game_time as f64)
         .unwrap_or(0.0)
         + f64::from(entity_partial_tick);
-    let trim_material_keys = world_trim_material_keys(world);
-    let trim_pattern_keys = world_trim_pattern_keys(world);
-    let enchantment_keys = world_enchantment_keys(world);
-    let attribute_keys = world_attribute_keys(world);
+    let item_registry_keys = non_entity_render_extraction.item_registry_keys(world);
+    let trim_material_keys = item_registry_keys.trim_materials;
+    let trim_pattern_keys = item_registry_keys.trim_patterns;
+    let enchantment_keys = item_registry_keys.enchantments;
+    let attribute_keys = item_registry_keys.attributes;
     let camera_pose = camera_pose_from_world(world);
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
@@ -2985,7 +2999,11 @@ pub(crate) fn update_renderer_from_publication(
     debug_lines.extend(remote_debug_gizmos.lines);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
-    let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
+    let block_destroy_overlays = if stable_world_unchanged {
+        RendererFrameUpdate::Unchanged
+    } else {
+        RendererFrameUpdate::Replace(block_destroy_overlays_from_world(world, terrain_textures))
+    };
     let world_debug_duration = world_debug_started_at.elapsed();
     // Vanilla `ParticleEngine.extract` calls `SingleQuadParticle.getLightCoords(partialTicks)`
     // during level render extraction; sample world light for the current particle positions before
@@ -3083,7 +3101,7 @@ pub(crate) fn update_renderer_from_publication(
             camera_pose,
             camera_hurt_effect,
             camera_fov_degrees,
-            current_post_effect_id: current_post_effect_id.map(str::to_owned),
+            current_post_effect_id,
             shader_game_time_ticks,
             cloud_frame,
             weather_render_state,
@@ -14172,6 +14190,33 @@ pub(crate) fn control_renderer_counters(
         chunk_border_boxes: counters.chunk_border_boxes,
         entity_scene_boxes: counters.entity_scene_boxes,
         item_entity_billboards: counters.item_entity_billboards,
+        item_model_residency_hits: counters.item_model_residency_hits,
+        item_model_residency_misses: counters.item_model_residency_misses,
+        item_model_residency_builds: counters.item_model_residency_builds,
+        item_model_residency_stale: counters.item_model_residency_stale,
+        item_model_lookup_nanos: counters.item_model_lookup_nanos,
+        item_model_lookup_peak_nanos: counters.item_model_lookup_peak_nanos,
+        item_instance_extraction_nanos: counters.item_instance_extraction_nanos,
+        item_instance_extraction_peak_nanos: counters.item_instance_extraction_peak_nanos,
+        item_gpu_apply_nanos: counters.item_gpu_apply_nanos,
+        item_gpu_apply_peak_nanos: counters.item_gpu_apply_peak_nanos,
+        item_gpu_owners_created: counters.item_gpu_owners_created,
+        item_gpu_owners_reused: counters.item_gpu_owners_reused,
+        item_gpu_owners_replaced: counters.item_gpu_owners_replaced,
+        item_model_vertex_upload_bytes: counters.item_model_vertex_upload_bytes,
+        item_model_index_upload_bytes: counters.item_model_index_upload_bytes,
+        item_instance_upload_bytes: counters.item_instance_upload_bytes,
+        item_map_upload_bytes: counters.item_map_upload_bytes,
+        item_transient_buffer_creations: counters.item_transient_buffer_creations,
+        item_full_residency_replacements: counters.item_full_residency_replacements,
+        item_model_resident_bytes: counters.item_model_resident_bytes,
+        item_model_peak_resident_bytes: counters.item_model_peak_resident_bytes,
+        item_model_instances: counters.item_model_instances,
+        item_model_fallbacks: counters.item_model_fallbacks,
+        map_textures_created: counters.map_textures_created,
+        map_textures_updated: counters.map_textures_updated,
+        map_textures_reused: counters.map_textures_reused,
+        item_extraction_scratch_capacity_growths: counters.item_extraction_scratch_capacity_growths,
         hud_draw_calls: counters.hud_draw_calls,
         screen_blur_draw_calls: counters.screen_blur_draw_calls,
         pipeline_switches: counters.pipeline_switches,

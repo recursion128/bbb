@@ -268,6 +268,171 @@ must therefore include both retained owner/cache-hit measurements and runtime
 apply/residency counters; an outer-vector-only speedup cannot close the
 milestone.
 
+## Item / map model-space residency engineering contract (2026-07-19)
+
+This high-risk continuation supersedes phases 2-4 of the broad non-entity
+milestone above.  The exact-world-`Arc` cache remains an optional rejection
+fast path for projections that are pure functions of one immutable world owner;
+it is neither the item residency identity nor completion evidence.  The primary
+semantic goal is to replace per-frame world-space item baking, phase-wide mesh
+merging, transient vertex/index buffer creation, and repeated map-atlas upload
+with persistent resource owners and narrow frame instances, without changing
+visible submissions or their ordering.
+
+Completion requires stable item geometry to follow this boundary:
+
+```text
+exact resolved model identity + resource/atlas generation
+  -> immutable model-space CPU geometry
+  -> renderer-owned persistent GPU vertex/index owner
+  -> per-frame instance (pose, normal pose, tint/light/overlay, foil, lane/order)
+```
+
+An unchanged frame and a partial-tick/camera-only frame upload no item
+vertex/index bytes.  A changed transform, light, overlay, foil flag, held-item
+pose, bob, rotation, or glint offset uploads only the grow-only instance stream.
+A resource reload advances the generation and prevents every old mesh/texture
+handle from matching.  One model or map change replaces only that owner; an
+ordinary mutation never increments the explicit full-replacement counter.  The
+same rules cover dropped, equipped/held, item-frame, first-person, GUI 3D block,
+pickup-particle, ominous-spawner, and entity block-attachment consumers across
+solid, z-offset-forward, translucent, glint, and glint-translucent lanes.
+
+### Frozen owners and identities
+
+- `bbb-item-model` owns model selection and dynamic property evaluation.  Its
+  resolved identity is the exact small semantic selection chain plus exact tint
+  bits and foil/animated facts, matching Vanilla's
+  `TrackingItemStackRenderState`; it does not expose or own a GPU handle.
+- `bbb-native` owns visibility and consumer-specific transforms, light,
+  overlay, lane and submission order.  It emits model identities, model-space
+  build input only on a cache miss, and narrow instances through the single
+  `RendererFrame` boundary.  Entity/level ids may identify a transient
+  instance but never a resource mesh.
+- `bbb-renderer` exclusively owns derived CPU/GPU residency.  An exact owner
+  key contains resource generation, atlas generation, atlas/material class,
+  render phase where it changes static geometry, and the complete semantic
+  model identity.  Hashing may accelerate the table lookup but equality of the
+  exact key decides a hit; no vertex/index scan is permitted on the hit path.
+- Model-space vertex/index owners are bounded by owner count and logical bytes,
+  evict only values not referenced by the current frame, and report the
+  explicit measured fallback if a single frame exceeds the bound.  The normal
+  path never falls back to per-frame world-space baking.  Level reset drops
+  instances but does not poison resource identity; resource/atlas reload drops
+  or generations every asset owner.  Entity-id reuse cannot recover an old
+  instance because frame instances are cleared and rebuilt.
+- The dynamic instance buffer is a render-owned grow-only `FrameDataBuffer`;
+  capacity growth is counted.  Draw batching may combine equal consecutive
+  owners, but translucent and feature submission order must remain identical.
+  A CPU microbenchmark win is rejected if draw calls or pipeline switches cause
+  a worse end-to-end frame result.
+- Static glint reuses the base model owner.  Standard glint uses static atlas
+  UVs and a time uniform; special clock/compass foil derives its sheeted-decal
+  UV from model-space position plus the instance pose/scale.  Neither path
+  rebuilds geometry for wall-clock animation.
+
+Maps use a separate exact owner contract.  `bbb-world` owns a monotonically
+changing per-map content revision (and decoration revision when needed) with
+the canonical 128x128 color payload.  The renderer owns one GPU texture per
+`(level/session generation, map id, content revision)` lineage, writes only a
+changed full image or exact patch, and removes owners on map unload/session or
+level reset.  Map backgrounds, decoration sprites and font atlases are
+resource-generation owners.  Item-frame and first-person map frames therefore
+submit only surface/decorations/text instances.  They never rebuild one
+transient atlas containing every visible map.
+
+The world remains the sole canonical mutable owner.  Renderer residency is a
+discardable derivation, render/control still pair one exact world `Arc` and
+publication generation, and effect-before-publication, blocked-render,
+shutdown/join and resource reload barriers remain unchanged.  No protocol,
+tick, input, interpolation, visible content, graphics setting, second canonical
+store, `unsafe`, allocator hook, Rayon, or configuration UI is introduced.
+
+### Vanilla evidence
+
+Local 26.1 `ItemModelResolver` clears and updates a retained
+`ItemStackRenderState`; `TrackingItemStackRenderState` records selected model
+objects, foil type and exact tint values as the reusable model identity.
+`ModelManager` retains baked item-model maps until its reload `apply` replaces
+them.  `ItemFeatureRenderer` submits the same baked quads into solid or
+translucent render types, layers standard/special glint from pose and uniform
+state, and preserves submit order.  Dropped, held, item-frame, first-person and
+ominous-spawner renderers change poses/light around the retained item render
+state rather than rebaking the model resource.  `MapTextureManager` owns one
+`DynamicTexture` per map id and uploads only while `requiresUpload` is true;
+`MapRenderer` rebuilds narrow map/decorative render state against that texture.
+`GuiRenderState` clears retained frame containers and also tracks item model
+identities for GUI atlas reuse.
+
+### Serial phases, validation and safe stops
+
+1. Extend Criterion with empty and 1/100/500/2,000 instance workloads,
+   visibility ratios, unchanged/dynamic/sparse/dense/churn cases, maps and
+   reload/retained-generation cases; add logical upload/residency observations
+   and record the unoptimized run.  Focused renderer/native/control tests,
+   benchmark execution, fmt/diff/docs checks, normal commit.
+2. Add the exact resolved identity, model-space CPU/GPU owner and instance
+   buffer API.  Tests pin exact-key hit/miss, zero unchanged geometry upload,
+   dynamic-only instance upload, reload rejection, bounds/eviction and draw
+   order.  Commit and run the milestone full gate; this clean gated tip is the
+   first safe stop.
+3. Migrate ordinary item consumers and remove their world-space bake/merge/
+   transient-buffer path.  Tests compare every visible submission field and
+   special phase ordering; commit normally.
+4. Add canonical map revisions and persistent per-map texture plus resource
+   atlases.  Tests cover one/8/32 patches, unload, level/session reset and
+   reload; commit and run the milestone full gate.  This is the second safe
+   stop.
+5. Migrate remaining item phases, reuse extraction scratch, audit explicit
+   special fallback, instance ordering, owner bounds and logical peak memory;
+   commit normally.
+6. Rerun the identical matrix, record before/after, update architecture,
+   unsupported ledger and goal archive, and commit.
+7. At the committed final HEAD run the full workspace gate, build
+   `bbb-native` into `/tmp/bbb-target-main`, verify the binary timestamp against
+   HEAD, then run the explicit Weston-backed live playable gate followed by the
+   policy auto gate.
+
+Failures localize to measurement/observation, exact identity/residency,
+consumer migration, or map ownership.  Once phases 2 or 4 begin, no safe stop
+exists until that owner transition is buildable, reviewed and full-gated.
+Failures are fixed forward by normal commits.  A cache uncertainty rebuilds or
+uses the explicit bounded fallback without accepting a stale hit; a resource
+replacement failure keeps the previous accepted generation until the reload
+barrier reports failure.
+
+The phase-1 legacy-path run uses gated base `364426578` plus only the benchmark,
+contract and observation changes on the same AMD Ryzen 9 7945HX host and Rust
+toolchain recorded above.  Criterion uses ten samples, a 400 ms warm-up and a
+two-second measurement window.  The item cases bake six representative quads,
+including one translucent face and periodic special foil, into fresh
+world-space phase meshes.  The visibility cases deliberately bake all 2,000
+candidates before discarding rejected complete owners, matching the cost gap
+being removed.  Map cases reproduce id de-duplication, fresh atlas allocation
+and full visible-map pixel copies.  They are CPU-owner baselines, not claims
+about wgpu submission or complete frame time.
+
+| Legacy item/map workload | Before mean |
+| --- | ---: |
+| empty / 1 item instance | 6.921 ns / 1.212 us |
+| 100 / 500 / 2,000 item instances | 51.161 us / 253.75 us / 2.525 ms |
+| 2,000 candidates, 0% / 10% / 50% / 100% retained | 2.526 / 2.551 / 1.834 / 1.827 ms |
+| 500 unchanged / camera-only / one transform | 259.14 / 259.80 / 259.17 us |
+| 500 one light / one foil / dense animation | 259.31 / 257.75 / 263.13 us |
+| 500 item-frame / first-person poses | 266.40 / 260.59 us |
+| spawn/remove 500↔250 / retained old frame next generation | 197.76 / 245.70 us |
+| transient map atlas unchanged, 1 / 8 / 32 maps | 0.826 / 7.824 / 33.698 us |
+| one map patch with 1 / 8 / 32 resident maps | 0.825 / 7.584 / 32.192 us |
+| unload one of 32 / resource reload clone+atlas 32 | 38.653 us / 1.193 ms |
+| 100 items repeated for 60 / 144 / 260 / 520 frames | 3.168 / 7.580 / 13.606 / 27.584 ms |
+
+The visibility values vary with allocator/drop behavior after truncation, but
+all four retain the same O(2,000) bake and demonstrate that rejection does not
+avoid model work.  The steady batches scale linearly with render cadence.  The
+after run must use the identical cases and pair them with exact logical
+vertex/index/instance/map upload counts, resident/peak bytes, owner hit/miss,
+draw calls and pipeline switches.
+
 Every phase is a normal reviewable commit with affected-crate focused tests,
 `cargo fmt --all --check`, `git diff --check`, documentation lint when needed,
 and full-diff review. The safe stop after any phase is its clean, full-gated

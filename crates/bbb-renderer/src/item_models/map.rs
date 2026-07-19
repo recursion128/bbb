@@ -787,7 +787,7 @@ impl Renderer {
         textures: Vec<ItemFrameMapTexture>,
         surfaces: Vec<ItemFrameMapSurface>,
     ) {
-        self.set_map_surfaces(textures, surfaces, Vec::new());
+        self.set_map_surfaces(textures, Vec::new(), surfaces, Vec::new());
     }
 
     /// Sets all decoded-map base surfaces that sample the transient dynamic map atlas. World-space
@@ -795,11 +795,22 @@ impl Renderer {
     /// respective render passes.
     pub fn set_map_surfaces(
         &mut self,
-        textures: Vec<ItemFrameMapTexture>,
+        item_frame_textures: Vec<ItemFrameMapTexture>,
+        first_person_textures: Vec<ItemFrameMapTexture>,
         item_frame_surfaces: Vec<ItemFrameMapSurface>,
         first_person_surfaces: Vec<ItemFrameMapSurface>,
     ) {
-        self.item_frame_map_atlas = build_item_frame_map_atlas(&textures).map(|(layout, rgba)| {
+        self.item_frame_map_atlas = build_item_frame_map_atlas(
+            item_frame_textures
+                .iter()
+                .chain(first_person_textures.iter()),
+        )
+        .map(|(layout, rgba)| {
+            self.counters.map_textures_created = self
+                .counters
+                .map_textures_created
+                .saturating_add(layout.rects.len() as u64);
+            self.counters.item_map_upload_bytes = rgba.len() as u64;
             create_item_frame_map_atlas_gpu(
                 &self.device,
                 &self.queue,
@@ -809,6 +820,9 @@ impl Renderer {
                 &rgba,
             )
         });
+        if self.item_frame_map_atlas.is_none() {
+            self.counters.item_map_upload_bytes = 0;
+        }
         self.item_frame_map_surfaces = if let Some(atlas) = &self.item_frame_map_atlas {
             item_frame_surfaces
                 .into_iter()
@@ -841,7 +855,7 @@ impl Renderer {
         textures: Vec<ItemFrameMapDecorationTexture>,
         surfaces: Vec<ItemFrameMapDecorationSurface>,
     ) {
-        self.set_map_decoration_surfaces(textures, surfaces, Vec::new());
+        self.set_map_decoration_surfaces(textures, Vec::new(), surfaces, Vec::new());
     }
 
     /// Sets all `MapRenderer` decoration sprite submissions. Item-frame maps use
@@ -849,21 +863,26 @@ impl Renderer {
     /// vanilla map-decoration atlas.
     pub fn set_map_decoration_surfaces(
         &mut self,
-        textures: Vec<ItemFrameMapDecorationTexture>,
+        item_frame_textures: Vec<ItemFrameMapDecorationTexture>,
+        first_person_textures: Vec<ItemFrameMapDecorationTexture>,
         item_frame_surfaces: Vec<ItemFrameMapDecorationSurface>,
         first_person_surfaces: Vec<ItemFrameMapDecorationSurface>,
     ) {
-        self.item_frame_map_decoration_atlas = build_item_frame_map_decoration_atlas(&textures)
-            .map(|(layout, rgba)| {
-                create_item_frame_map_decoration_atlas_gpu(
-                    &self.device,
-                    &self.queue,
-                    &self.terrain_bind_group_layout,
-                    &self.camera_buffer,
-                    layout,
-                    &rgba,
-                )
-            });
+        self.item_frame_map_decoration_atlas = build_item_frame_map_decoration_atlas(
+            item_frame_textures
+                .iter()
+                .chain(first_person_textures.iter()),
+        )
+        .map(|(layout, rgba)| {
+            create_item_frame_map_decoration_atlas_gpu(
+                &self.device,
+                &self.queue,
+                &self.terrain_bind_group_layout,
+                &self.camera_buffer,
+                layout,
+                &rgba,
+            )
+        });
         self.item_frame_map_decoration_surfaces =
             if let Some(atlas) = &self.item_frame_map_decoration_atlas {
                 item_frame_surfaces
@@ -1142,8 +1161,8 @@ fn create_first_person_map_background_atlas_gpu(
     }
 }
 
-fn build_item_frame_map_atlas(
-    textures: &[ItemFrameMapTexture],
+fn build_item_frame_map_atlas<'a>(
+    textures: impl IntoIterator<Item = &'a ItemFrameMapTexture>,
 ) -> Option<(ItemFrameMapAtlasLayout, Vec<u8>)> {
     let mut by_id: BTreeMap<i32, &[u8]> = BTreeMap::new();
     for texture in textures {
@@ -1262,8 +1281,8 @@ fn create_item_frame_map_atlas_gpu(
     }
 }
 
-fn build_item_frame_map_decoration_atlas(
-    textures: &[ItemFrameMapDecorationTexture],
+fn build_item_frame_map_decoration_atlas<'a>(
+    textures: impl IntoIterator<Item = &'a ItemFrameMapDecorationTexture>,
 ) -> Option<(ItemFrameMapDecorationAtlasLayout, Vec<u8>)> {
     let mut by_id: BTreeMap<&str, &ItemFrameMapDecorationTexture> = BTreeMap::new();
     for texture in textures {

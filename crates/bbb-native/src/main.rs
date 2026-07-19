@@ -722,6 +722,7 @@ fn main() -> Result<()> {
                 client_particle_status,
                 &player_skin_cache_dir,
             );
+            non_entity_render_extraction.invalidate_resources();
             simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
                 renderer.hud_text_measurements(),
             ));
@@ -900,6 +901,10 @@ fn main() -> Result<()> {
                     renderer_counters.non_entity_item_nanos = non_entity_observation.item_nanos;
                     renderer_counters.non_entity_item_peak_nanos =
                         non_entity_observation.item_peak_nanos;
+                    renderer_counters.item_instance_extraction_nanos =
+                        non_entity_observation.item_nanos;
+                    renderer_counters.item_instance_extraction_peak_nanos =
+                        non_entity_observation.item_peak_nanos;
                     renderer_counters.non_entity_block_entity_nanos =
                         non_entity_observation.block_entity_nanos;
                     renderer_counters.non_entity_block_entity_peak_nanos =
@@ -912,6 +917,8 @@ fn main() -> Result<()> {
                     renderer_counters.non_entity_apply_peak_nanos =
                         non_entity_observation.apply_peak_nanos;
                     renderer_counters.non_entity_extraction_capacity_growths =
+                        non_entity_observation.capacity_growths;
+                    renderer_counters.item_extraction_scratch_capacity_growths =
                         non_entity_observation.capacity_growths;
                     renderer_counters.non_entity_cache_hits = non_entity_observation.cache_hits;
                     renderer_counters.non_entity_cache_misses = non_entity_observation.cache_misses;

@@ -2,6 +2,7 @@ use super::*;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
@@ -104,6 +105,45 @@ fn non_entity_render_observation_keeps_recent_and_peak_phase_costs() {
     assert_eq!(observation.world_debug_peak_nanos, 23);
     assert_eq!(observation.apply_nanos, 1);
     assert_eq!(observation.apply_peak_nanos, 17);
+}
+
+#[test]
+fn non_entity_stable_world_cache_requires_exact_arc_and_resource_epoch() {
+    let world = Arc::new(WorldStore::new());
+    let cloned_world = Arc::new((*world).clone());
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+
+    assert!(!scratch.begin_stable_world_frame(&world));
+    assert!(scratch.begin_stable_world_frame(&world));
+    assert!(!scratch.begin_stable_world_frame(&cloned_world));
+    assert!(scratch.begin_stable_world_frame(&cloned_world));
+    scratch.invalidate_resources();
+    assert!(!scratch.begin_stable_world_frame(&cloned_world));
+
+    let observation = scratch.observation();
+    assert_eq!(observation.cache_hits, 6);
+    assert_eq!(observation.cache_misses, 9);
+    assert_eq!(observation.rebuilt_owners, 9);
+}
+
+#[test]
+fn item_registry_key_cache_follows_registry_access_revision() {
+    let mut world = WorldStore::new();
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+
+    let first = scratch.item_registry_keys(&world);
+    let second = scratch.item_registry_keys(&world);
+    assert_eq!(first.trim_materials, second.trim_materials);
+    assert_eq!(first.trim_patterns, second.trim_patterns);
+    assert_eq!(first.enchantments, second.enchantments);
+    assert_eq!(first.attributes, second.attributes);
+    assert_eq!(scratch.observation().cache_misses, 4);
+    assert_eq!(scratch.observation().cache_hits, 4);
+
+    world.reset_registry_session();
+    let _ = scratch.item_registry_keys(&world);
+    assert_eq!(scratch.observation().cache_misses, 8);
+    assert_eq!(scratch.observation().cache_hits, 4);
 }
 
 /// A hover-name tooltip line: rarity colour run, italic when custom-named
@@ -4806,12 +4846,12 @@ fn renderer_frame_commits_the_same_current_post_effect_used_by_hud() {
         .find("            current_post_effect_id,\n")
         .expect("HUD should consume the same-frame current post effect");
     let frame_projection = runtime_source
-        .find("current_post_effect_id: current_post_effect_id.map(str::to_owned),")
+        .find("            current_post_effect_id,\n            shader_game_time_ticks,")
         .expect("RendererFrame should carry the same current post effect");
     assert!(extraction < hud_projection && hud_projection < frame_projection);
 
     let frame_source = include_str!("render_extract.rs");
-    assert!(frame_source.contains("pub(crate) current_post_effect_id: Option<String>"));
+    assert!(frame_source.contains("pub(crate) current_post_effect_id: Option<&'a str>"));
     assert!(
         frame_source.contains("renderer.set_current_post_effect_id(frame.current_post_effect_id);")
     );
@@ -4824,7 +4864,7 @@ fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
         .find("advance_block_destruction_render_ticks(world, running_ticks);")
         .expect("pump should advance block-destroy render ticks");
     let block_destroy_extract = source
-        .find("let block_destroy_overlays = block_destroy_overlays_from_world(")
+        .find("RendererFrameUpdate::Replace(block_destroy_overlays_from_world(")
         .expect("pump should extract block-destroy overlays");
 
     assert!(
