@@ -253,6 +253,9 @@ impl WorldStore {
     }
 
     fn entity_is_ticking(&self, entity_id: i32) -> bool {
+        if self.level.is_none() {
+            return false;
+        }
         let Some(identity) = self.entities.identity(entity_id) else {
             return false;
         };

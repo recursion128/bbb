@@ -11332,6 +11332,7 @@ fn shift_f3_i_with_permission_copies_local_falling_block_save_nbt_to_clipboard()
         .id;
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    insert_empty_chunk_for_block(&mut world, BlockPos { x: 0, y: 1, z: 2 });
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 61,
@@ -11413,6 +11414,7 @@ fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
         .id;
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    insert_empty_chunk_for_block(&mut world, BlockPos { x: 0, y: 1, z: 2 });
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 62,

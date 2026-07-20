@@ -530,6 +530,29 @@ fn rotation_only_retarget_keeps_the_active_position_target() {
 #[test]
 fn position_sync_uses_loaded_chunk_ticking_distance_and_keeps_packet_velocity_unchanged() {
     let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        204,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 204,
+            position: ProtocolVec3d {
+                x: 3.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 40.0,
+            x_rot: 10.0,
+            on_ground: true,
+        })
+    );
+    assert_eq!(store.entities.transform(204).unwrap().position.x, 3.0);
+    assert_eq!(store.entities.transform(204).unwrap().interpolation, None);
+
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(999));
     store.apply_add_entity(protocol_add_entity(205));
 
     assert!(

@@ -17,12 +17,24 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
-    ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
-    HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemEquipmentSlot,
-    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
-    VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+    ArmorMaterialKind as WorldArmorMaterialKind, ChunkColumn, ChunkPos, ChunkState,
+    EntityPickBoundsState, EntityVec3, HappyGhastHarnessColor as WorldHappyGhastHarnessColor,
+    ItemEquipmentSlot, LightData, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
+    RegistryPacketEntry, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use uuid::Uuid;
+
+fn insert_loaded_entity_chunk(world: &mut WorldStore, pos: ChunkPos) {
+    world.insert_decoded_chunk(ChunkColumn {
+        pos,
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: Vec::new(),
+        block_entities: Vec::new(),
+        light: LightData::default(),
+    });
+}
 
 fn bee_metadata_accessors() -> bbb_world::VanillaBeeMetadataAccessors {
     bbb_world::vanilla_entity_metadata_bee_accessors_for_entity_type(VANILLA_ENTITY_TYPE_BEE_ID)
@@ -1870,6 +1882,7 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
         login.common_spawn_info.dimension_type_id = dimension_type_id;
         login.common_spawn_info.dimension = dimension.to_string();
         world.apply_login(&login);
+        insert_loaded_entity_chunk(&mut world, ChunkPos { x: 0, z: -1 });
         world
     }
 
@@ -4692,6 +4705,7 @@ fn entity_model_instances_project_panda_unhappy_and_sneezing() {
     let accessors = panda_metadata_accessors();
     let mut world = WorldStore::new();
     world.apply_login(&protocol_play_login(1));
+    insert_loaded_entity_chunk(&mut world, ChunkPos { x: 0, z: -1 });
     world.apply_add_entity(protocol_add_entity(
         190,
         VANILLA_ENTITY_TYPE_PANDA_ID,
