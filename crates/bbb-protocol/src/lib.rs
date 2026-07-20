@@ -82,6 +82,12 @@ pub const MC_RESOURCE_PACK_FORMAT: PackFormatVersion = PackFormatVersion::new(84
 pub const MC_DATA_PACK_FORMAT: PackFormatVersion = PackFormatVersion::new(101, 1);
 pub const MC_STABLE: bool = true;
 
+/// Applies the same namespace/path validation and default namespace used by
+/// packet resource locations without requiring a wire decoder.
+pub fn normalize_resource_location(raw: String) -> codec::Result<String> {
+    packets::normalize_resource_location(raw)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PackFormatVersion {
     pub major: u32,

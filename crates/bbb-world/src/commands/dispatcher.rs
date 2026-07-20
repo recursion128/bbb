@@ -15,6 +15,8 @@ use super::{
     CommandArgumentParserState, CommandNodeKindState, CommandTreeState, SignableCommandArgument,
 };
 
+mod context_free;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandParseResult {
     /// Byte cursor into the original command text, including a normalized
@@ -111,9 +113,9 @@ impl ParseCandidate {
     }
 }
 
-struct ParsedValue {
-    end: usize,
-    validated: bool,
+pub(super) struct ParsedValue {
+    pub(super) end: usize,
+    pub(super) validated: bool,
 }
 
 impl CommandTreeState {
@@ -439,7 +441,8 @@ fn parse_argument(
         (VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID, CommandArgumentTemplate::Unit) => {
             parse_message(command, start)
         }
-        (_, _) => parse_unimplemented_family(command, start, &parser.name),
+        (type_id, template) => context_free::parse(type_id, command, start, &template)
+            .unwrap_or_else(|| parse_unimplemented_family(command, start, &parser.name)),
     }
 }
 
@@ -559,7 +562,10 @@ fn parse_double(
     })
 }
 
-fn number_lexeme(command: &str, start: usize) -> Result<(usize, &str), CommandSyntaxErrorState> {
+pub(super) fn number_lexeme(
+    command: &str,
+    start: usize,
+) -> Result<(usize, &str), CommandSyntaxErrorState> {
     let mut end = start;
     while command
         .as_bytes()
@@ -624,7 +630,7 @@ fn parse_read_string(command: &str, start: usize) -> Result<usize, CommandSyntax
     }
 }
 
-fn parse_unquoted_string(command: &str, start: usize) -> usize {
+pub(super) fn parse_unquoted_string(command: &str, start: usize) -> usize {
     let mut end = start;
     while command.as_bytes().get(end).is_some_and(|byte| {
         byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.' | b'+')
@@ -766,7 +772,7 @@ fn parse_balanced_token(command: &str, start: usize) -> Option<usize> {
     (cursor > start && quote.is_none() && delimiters.is_empty()).then_some(cursor)
 }
 
-fn syntax_error(
+pub(super) fn syntax_error(
     kind: CommandSyntaxErrorKind,
     cursor: usize,
     message: impl Into<String>,
@@ -930,6 +936,26 @@ mod tests {
         assert!(parsed.is_valid_command());
         assert_eq!(parsed.arguments[0].name, "head");
         assert_eq!(parsed.arguments[1].name, "tail");
+    }
+
+    #[test]
+    fn context_free_family_marks_the_selected_dispatch_route_validated() {
+        let tree = numeric_tree(
+            bbb_protocol::packets::VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID,
+            "minecraft:gamemode",
+            vec![],
+        );
+
+        let valid = tree.parse_command("number survival");
+        assert!(valid.is_valid_command());
+        assert!(valid.arguments[0].validated);
+
+        let invalid = tree.parse_command("number builder");
+        assert!(!invalid.is_valid_command());
+        assert_eq!(
+            invalid.error.map(|error| error.kind),
+            Some(CommandSyntaxErrorKind::InvalidArgument)
+        );
     }
 
     fn primitive_tree() -> CommandTreeState {
