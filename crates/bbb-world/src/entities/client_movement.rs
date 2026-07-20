@@ -1,11 +1,17 @@
 use std::collections::HashMap;
 
+use bbb_protocol::item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID;
 use bbb_protocol::packets::EntityDataValueKind;
+use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use hecs::Entity;
 
-use super::components::{EntityHurtingProjectile, EntityIdentity, EntityMetadata, EntityTransform};
+use super::components::{
+    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityMetadata, EntityTransform,
+};
 use super::schema::{
-    vanilla_entity_metadata_entity_accessors, vanilla_entity_metadata_type_client_movement_policy,
+    vanilla_entity_metadata_entity_accessors,
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    vanilla_entity_metadata_type_client_movement_policy, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     VanillaEntityClientMovementPolicy,
 };
@@ -13,6 +19,7 @@ use super::{
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityStore, EntityVec3, EyeOfEnderTrailParticleState,
     FireworkRocketTrailParticleState, ShulkerBulletTrailParticleState,
+    VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
 
 pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
@@ -98,8 +105,7 @@ impl EntityStore {
                     );
                 }
                 VanillaEntityClientMovementPolicy::EyeOfEnder
-                | VanillaEntityClientMovementPolicy::ShulkerBullet
-                | VanillaEntityClientMovementPolicy::FireworkRocket => {
+                | VanillaEntityClientMovementPolicy::ShulkerBullet => {
                     let Ok(mut transform) = self.ecs.get::<&mut EntityTransform>(entity) else {
                         continue;
                     };
@@ -142,23 +148,167 @@ impl EntityStore {
                                 },
                             ));
                         }
-                        VanillaEntityClientMovementPolicy::FireworkRocket => {
-                            particles.push(EntityClientMovementParticleState::FireworkRocket(
-                                FireworkRocketTrailParticleState {
-                                    entity_id,
-                                    position: transform.position,
-                                    delta_movement: transform.delta_movement,
-                                },
-                            ));
-                        }
                         _ => unreachable!("narrow direct movement policy match"),
                     }
+                }
+                VanillaEntityClientMovementPolicy::LlamaSpit => {
+                    let Ok((metadata, transform)) = self
+                        .ecs
+                        .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
+                    else {
+                        continue;
+                    };
+                    advance_llama_spit(metadata, transform);
+                }
+                VanillaEntityClientMovementPolicy::FireworkRocket => {
+                    self.advance_firework_rocket(entity, entity_id, entity_type_id, &mut particles);
                 }
                 _ => {}
             }
         }
         self.pending_entity_client_movement_particles
             .extend(particles);
+    }
+
+    fn advance_firework_rocket(
+        &mut self,
+        entity: Entity,
+        entity_id: i32,
+        entity_type_id: i32,
+        particles: &mut Vec<EntityClientMovementParticleState>,
+    ) {
+        let Some(accessors) =
+            vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(entity_type_id)
+        else {
+            return;
+        };
+        let (attached_to_target, shot_at_angle) = {
+            let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
+                return;
+            };
+            (
+                entity_data_optional_unsigned_int(
+                    &metadata.data_values,
+                    accessors.attached_to_target_data_id,
+                    accessors.attached_to_target_default,
+                ),
+                entity_data_bool(
+                    &metadata.data_values,
+                    accessors.shot_at_angle_data_id,
+                    accessors.shot_at_angle_default,
+                ),
+            )
+        };
+
+        let attachment =
+            attached_to_target.and_then(|target_id| self.firework_attachment_target(target_id));
+        let Ok(mut transform) = self.ecs.get::<&mut EntityTransform>(entity) else {
+            return;
+        };
+        if let Some((position, delta_movement)) = attachment {
+            transform.position = position;
+            transform.delta_movement = delta_movement;
+        } else if attached_to_target.is_none() {
+            if !shot_at_angle {
+                // The exact `horizontalCollision ? 1.0 : 1.15` branch remains
+                // false in this free-flight owner; collision facts belong to
+                // the dedicated movement/collision stage.
+                transform.delta_movement.x *= 1.15;
+                transform.delta_movement.y += 0.04;
+                transform.delta_movement.z *= 1.15;
+            }
+            advance_position(&mut transform);
+        }
+        update_projectile_rotation(&mut transform);
+        particles.push(EntityClientMovementParticleState::FireworkRocket(
+            FireworkRocketTrailParticleState {
+                entity_id,
+                position: transform.position,
+                delta_movement: transform.delta_movement,
+            },
+        ));
+    }
+
+    fn firework_attachment_target(&mut self, target_id: i32) -> Option<(EntityVec3, EntityVec3)> {
+        let target = self.by_protocol_id.get(&target_id).copied()?;
+        let (target_type_id, is_fall_flying) = {
+            let identity = self.ecs.get::<&EntityIdentity>(target).ok()?;
+            if !vanilla_entity_metadata_type_is_living(identity.entity_type_id) {
+                return None;
+            }
+            let metadata = self.ecs.get::<&EntityMetadata>(target).ok()?;
+            let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+            let shared_flags = metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == entity_accessors.shared_flags_data_id)
+                .and_then(|value| match value.value {
+                    EntityDataValueKind::Byte(value) => Some(value),
+                    _ => None,
+                })
+                .unwrap_or(entity_accessors.shared_flags_default);
+            (
+                identity.entity_type_id,
+                shared_flags as u8 & entity_accessors.fall_flying_mask as u8 != 0,
+            )
+        };
+        let item_arm_right = if target_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            let (main_firework, off_firework) = self
+                .ecs
+                .get::<&EntityEquipment>(target)
+                .ok()
+                .map(|equipment| {
+                    let item_in = |slot| {
+                        equipment
+                            .equipment
+                            .iter()
+                            .find(|update| update.slot == slot)
+                            .and_then(|update| update.item.item_id)
+                            == Some(VANILLA_ITEM_FIREWORK_ROCKET_ID)
+                    };
+                    (
+                        item_in(ProtocolEquipmentSlot::MainHand),
+                        item_in(ProtocolEquipmentSlot::OffHand),
+                    )
+                })
+                .unwrap_or_default();
+            let main_arm_left = self.main_arm_left(target_id).unwrap_or(false);
+            if off_firework && !main_firework {
+                main_arm_left
+            } else {
+                !main_arm_left
+            }
+        } else {
+            false
+        };
+
+        let mut target_transform = self.ecs.get::<&mut EntityTransform>(target).ok()?;
+        let hand_angle = if is_fall_flying {
+            let look = calculate_view_vector(target_transform.x_rot, target_transform.y_rot);
+            let movement = target_transform.delta_movement;
+            target_transform.delta_movement = EntityVec3 {
+                x: movement.x + look.x * 0.1 + (look.x * 1.5 - movement.x) * 0.5,
+                y: movement.y + look.y * 0.1 + (look.y * 1.5 - movement.y) * 0.5,
+                z: movement.z + look.z * 0.1 + (look.z * 1.5 - movement.z) * 0.5,
+            };
+            if target_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                scale(
+                    calculate_view_vector(
+                        0.0,
+                        target_transform.y_rot + if item_arm_right { 80.0 } else { -80.0 },
+                    ),
+                    0.5,
+                )
+            } else {
+                EntityVec3::default()
+            }
+        } else {
+            EntityVec3::default()
+        };
+        Some((
+            add(target_transform.position, hand_angle),
+            target_transform.delta_movement,
+        ))
     }
 }
 
@@ -252,6 +402,23 @@ fn advance_hurting_projectile(
     }
 }
 
+fn advance_llama_spit(metadata: &EntityMetadata, transform: &mut EntityTransform) {
+    let movement = transform.delta_movement;
+    advance_position(transform);
+    update_projectile_rotation(transform);
+    transform.delta_movement = scale(movement, f64::from(0.99_f32));
+    let no_gravity = vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+        entity_data_bool(
+            &metadata.data_values,
+            accessors.no_gravity_data_id,
+            accessors.no_gravity_default,
+        )
+    });
+    if !no_gravity {
+        transform.delta_movement.y -= 0.06;
+    }
+}
+
 fn throwable_gravity(policy: VanillaEntityClientMovementPolicy) -> f64 {
     match policy {
         VanillaEntityClientMovementPolicy::ThrownExperienceBottle => 0.07,
@@ -316,6 +483,21 @@ fn entity_data_bool(
         .unwrap_or(default)
 }
 
+fn entity_data_optional_unsigned_int(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: Option<i32>,
+) -> Option<i32> {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match value.value {
+            EntityDataValueKind::OptionalUnsignedInt(value) => Some(value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
 fn add(left: EntityVec3, right: EntityVec3) -> EntityVec3 {
     EntityVec3 {
         x: left.x + right.x,
@@ -339,6 +521,34 @@ fn normalize(value: EntityVec3) -> EntityVec3 {
     } else {
         scale(value, length.recip())
     }
+}
+
+fn calculate_view_vector(x_rot: f32, y_rot: f32) -> EntityVec3 {
+    let radians_per_degree = (std::f64::consts::PI / 180.0) as f32;
+    let real_x_rot = x_rot * radians_per_degree;
+    let real_y_rot = -y_rot * radians_per_degree;
+    let y_cos = vanilla_mth_cos(f64::from(real_y_rot));
+    let y_sin = vanilla_mth_sin(f64::from(real_y_rot));
+    let x_cos = vanilla_mth_cos(f64::from(real_x_rot));
+    let x_sin = vanilla_mth_sin(f64::from(real_x_rot));
+    EntityVec3 {
+        x: f64::from(y_sin * x_cos),
+        y: f64::from(-x_sin),
+        z: f64::from(y_cos * x_cos),
+    }
+}
+
+fn vanilla_mth_sin(angle: f64) -> f32 {
+    vanilla_mth_sin_table_value((angle * 10_430.378_350_470_453) as i64)
+}
+
+fn vanilla_mth_cos(angle: f64) -> f32 {
+    vanilla_mth_sin_table_value((angle * 10_430.378_350_470_453 + 16_384.0) as i64)
+}
+
+fn vanilla_mth_sin_table_value(raw_index: i64) -> f32 {
+    let index = raw_index & 65_535;
+    (index as f64 / 10_430.378_350_470_453).sin() as f32
 }
 
 fn advance_position(transform: &mut EntityTransform) {
@@ -395,9 +605,10 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
         VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue, SetEntityData as ProtocolSetEntityData,
@@ -692,6 +903,181 @@ mod tests {
         assert_vec3_near(
             transform.delta_movement,
             scale(gravity_movement, f64::from(0.8_f32)),
+        );
+    }
+
+    #[test]
+    fn llama_spit_and_unattached_firework_apply_subclass_free_flight() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            60,
+            VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+            ProtocolVec3d {
+                x: 0.4,
+                y: 0.2,
+                z: -0.6,
+            },
+        ));
+        store.apply_add_entity(projectile(
+            61,
+            VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+            ProtocolVec3d {
+                x: 0.2,
+                y: 0.8,
+                z: -0.4,
+            },
+        ));
+        store.apply_add_entity(projectile(
+            62,
+            VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+            ProtocolVec3d {
+                x: 0.2,
+                y: 0.8,
+                z: -0.4,
+            },
+        ));
+        let firework_accessors = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 62,
+            values: vec![EntityDataValue {
+                data_id: firework_accessors.shot_at_angle_data_id,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+
+        store.advance_entity_client_animations(1);
+
+        let llama_inertia = f64::from(0.99_f32);
+        assert_vec3_near(
+            store.probe_entity_transform(60).unwrap().position,
+            EntityVec3 {
+                x: 1.4,
+                y: 64.2,
+                z: -2.6,
+            },
+        );
+        assert_vec3_near(
+            store.probe_entity_transform(60).unwrap().delta_movement,
+            EntityVec3 {
+                x: 0.4 * llama_inertia,
+                y: 0.2 * llama_inertia - 0.06,
+                z: -0.6 * llama_inertia,
+            },
+        );
+        assert_vec3_near(
+            store.probe_entity_transform(61).unwrap().position,
+            EntityVec3 {
+                x: 1.23,
+                y: 64.84,
+                z: -2.46,
+            },
+        );
+        assert_vec3_near(
+            store.probe_entity_transform(62).unwrap().position,
+            EntityVec3 {
+                x: 1.2,
+                y: 64.8,
+                z: -2.4,
+            },
+        );
+        assert_eq!(
+            store
+                .drain_entity_client_movement_particle_states()
+                .map(|state| match state {
+                    EntityClientMovementParticleState::FireworkRocket(state) => state.entity_id,
+                    _ => -1,
+                })
+                .collect::<Vec<_>>(),
+            vec![61, 62]
+        );
+    }
+
+    #[test]
+    fn attached_firework_uses_stable_target_lookup_and_boosts_fall_flying_target() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            70,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ProtocolVec3d {
+                x: 0.2,
+                y: 0.1,
+                z: -0.3,
+            },
+        ));
+        store.apply_add_entity(projectile(
+            71,
+            VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+            ProtocolVec3d::default(),
+        ));
+        let entity_accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+        let firework_accessors = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 70,
+            values: vec![EntityDataValue {
+                data_id: entity_accessors.shared_flags_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(entity_accessors.fall_flying_mask),
+            }],
+        }));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 71,
+            values: vec![EntityDataValue {
+                data_id: firework_accessors.attached_to_target_data_id,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
+                value: EntityDataValueKind::OptionalUnsignedInt(Some(70)),
+            }],
+        }));
+        let generation_a = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+
+        let expected_movement = EntityVec3 {
+            x: 0.1,
+            y: 0.05,
+            z: 0.7,
+        };
+        assert_vec3_near(
+            store.probe_entity_transform(70).unwrap().delta_movement,
+            expected_movement,
+        );
+        let rocket = store.probe_entity_transform(71).unwrap();
+        assert_vec3_near(
+            rocket.position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+        );
+        assert_vec3_near(rocket.delta_movement, expected_movement);
+        assert_vec3_near(
+            generation_a
+                .probe_entity_transform(70)
+                .unwrap()
+                .delta_movement,
+            EntityVec3 {
+                x: 0.2,
+                y: 0.1,
+                z: -0.3,
+            },
+        );
+        assert_eq!(
+            store
+                .drain_entity_client_movement_particle_states()
+                .map(|state| match state {
+                    EntityClientMovementParticleState::FireworkRocket(state) => state.entity_id,
+                    _ => -1,
+                })
+                .collect::<Vec<_>>(),
+            vec![71]
         );
     }
 

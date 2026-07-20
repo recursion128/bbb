@@ -1954,21 +1954,43 @@ fn firework_rocket_trail_particles_queue_once_per_client_tick() {
         .drain_entity_client_movement_particle_states()
         .collect::<Vec<_>>();
     assert_eq!(states.len(), 2);
-    assert!(states.iter().all(|state| matches!(
-        state,
-        EntityClientMovementParticleState::FireworkRocket(state)
-            if state.entity_id == 210
-                && state.position == EntityVec3 {
-                    x: 3.5,
-                    y: 70.25,
-                    z: -6.75,
-                }
-                && state.delta_movement == EntityVec3 {
-                    x: 0.2,
-                    y: 0.8,
-                    z: -0.4,
-                }
-    )));
+    let trails = states
+        .into_iter()
+        .map(|state| match state {
+            EntityClientMovementParticleState::FireworkRocket(state) => state,
+            other => panic!("unexpected movement particle: {other:?}"),
+        })
+        .collect::<Vec<_>>();
+    let first_delta = EntityVec3 {
+        x: 0.2 * 1.15,
+        y: 0.8 + 0.04,
+        z: -0.4 * 1.15,
+    };
+    let second_delta = EntityVec3 {
+        x: first_delta.x * 1.15,
+        y: first_delta.y + 0.04,
+        z: first_delta.z * 1.15,
+    };
+    assert_eq!(trails[0].entity_id, 210);
+    assert_eq!(
+        trails[0].position,
+        EntityVec3 {
+            x: 3.5 + first_delta.x,
+            y: 70.25 + first_delta.y,
+            z: -6.75 + first_delta.z,
+        }
+    );
+    assert_eq!(trails[0].delta_movement, first_delta);
+    assert_eq!(trails[1].entity_id, 210);
+    assert_eq!(
+        trails[1].position,
+        EntityVec3 {
+            x: 3.5 + first_delta.x + second_delta.x,
+            y: 70.25 + first_delta.y + second_delta.y,
+            z: -6.75 + first_delta.z + second_delta.z,
+        }
+    );
+    assert_eq!(trails[1].delta_movement, second_delta);
     assert!(store
         .drain_entity_client_movement_particle_states()
         .next()
