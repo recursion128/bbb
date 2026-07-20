@@ -9,6 +9,7 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 from gameplay_id_catalog_extractor import (  # noqa: E402
+    ChatFormattingEntry,
     GameplayIdExtractionError,
     attribute_entries,
     attribute_modifier_type_entries,
@@ -44,6 +45,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     map_color_entries,
     mob_effect_entries,
     objective_render_type_entries,
+    objective_criteria_names,
     player_info_action_entries,
     player_action_kind_entries,
     player_command_action_entries,
@@ -845,6 +847,29 @@ public class ObjectiveCriteria {
                 for entry in objective_render_type_entries(source)
             ],
             [("INTEGER", 0, "integer"), ("HEARTS", 1, "hearts")],
+        )
+
+    def test_objective_criteria_names_expand_source_derived_team_colors(self) -> None:
+        source = parse_source(
+            "fixture/ObjectiveCriteria.java",
+            b'''\
+package fixture;
+public class ObjectiveCriteria {
+  public static final ObjectiveCriteria DUMMY = registerCustom("dummy");
+  public static final ObjectiveCriteria[] TEAM_KILL = new ObjectiveCriteria[]{
+    registerCustom("teamkill." + ChatFormatting.BLACK.getName()),
+    registerCustom("teamkill." + ChatFormatting.WHITE.getName())
+  };
+}
+''',
+        )
+        colors = [
+            ChatFormattingEntry("BLACK", 0, "black", "0", 0, False, 0),
+            ChatFormattingEntry("WHITE", 1, "white", "f", 15, False, 0xFFFFFF),
+        ]
+        self.assertEqual(
+            objective_criteria_names(source, colors, expected_count=3),
+            ["dummy", "teamkill.black", "teamkill.white"],
         )
 
     def test_advancement_frame_types_preserve_top_level_order_and_names(self) -> None:

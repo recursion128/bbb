@@ -1563,6 +1563,62 @@ def objective_render_type_entries(
     return entries
 
 
+def objective_criteria_names(
+    source: JavaSource,
+    chat_formatting: list[ChatFormattingEntry],
+    expected_count: int = 43,
+) -> list[str]:
+    colors = {
+        entry.constant_name: entry.serialized_name
+        for entry in chat_formatting
+        if not entry.is_format
+    }
+    names = []
+    for field in _fields(source, "ObjectiveCriteria"):
+        initializer = field.initializer
+        if initializer is None:
+            continue
+        for call in _calls(source, initializer, "registerCustom"):
+            if not call.arguments:
+                _fail(source, initializer, f"{field.name} registerCustom lacks a name")
+            name = _objective_criteria_name(source, call.arguments[0], colors)
+            names.append(name)
+    if len(names) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} objective criteria, extracted {len(names)}"
+        )
+    if len(set(names)) != len(names):
+        raise GameplayIdExtractionError("objective criteria names are not unique")
+    return names
+
+
+def _objective_criteria_name(
+    source: JavaSource,
+    expression: JavaExpression,
+    colors: dict[str, str],
+) -> str:
+    if expression.node.type == "string_literal":
+        return _string(source, expression)
+    if expression.node.type != "binary_expression":
+        _fail(source, expression, "unsupported objective criteria name")
+    left = expression.node.child_by_field_name("left")
+    right = expression.node.child_by_field_name("right")
+    if left is None or right is None:
+        _fail(source, expression, "incomplete objective criteria name")
+    prefix = _string(source, source.expression(left))
+    if right.type != "method_invocation":
+        _fail(source, source.expression(right), "objective criteria suffix is not getName")
+    name = right.child_by_field_name("name")
+    object_node = right.child_by_field_name("object")
+    if name is None or source.text(name) != "getName" or object_node is None:
+        _fail(source, source.expression(right), "objective criteria suffix is not getName")
+    color_ref = source.expression(object_node).canonical
+    color_name = color_ref.removeprefix("ChatFormatting.")
+    if color_name not in colors or color_ref == color_name:
+        _fail(source, source.expression(object_node), "unknown objective criteria color")
+    return prefix + colors[color_name]
+
+
 def advancement_frame_type_entries(
     source: JavaSource, expected_count: int = 3
 ) -> list[AdvancementFrameTypeEntry]:

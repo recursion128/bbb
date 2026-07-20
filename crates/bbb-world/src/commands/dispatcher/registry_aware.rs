@@ -1,12 +1,13 @@
 use bbb_protocol::{
     normalize_resource_location,
     packets::{
-        CommandArgumentTemplate, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
+        CommandArgumentTemplate, VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_CRITERIA_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_KEY_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_SELECTOR_ID,
     },
+    stat_types::{VANILLA_OBJECTIVE_CRITERIA_NAMES, VANILLA_STAT_TYPES},
 };
 
 use super::{syntax_error, CommandSyntaxErrorKind, CommandSyntaxErrorState, ParsedValue};
@@ -20,6 +21,9 @@ pub(super) fn parse(
     registry_access: Option<FrozenRegistryAccess<'_>>,
 ) -> Option<Result<ParsedValue, CommandSyntaxErrorState>> {
     let result = match type_id {
+        VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_CRITERIA_ID => {
+            parse_objective_criteria(command, start, registry_access)
+        }
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_ID => {
             parse_resource_or_tag(command, start, template, registry_access, true)
         }
@@ -38,6 +42,53 @@ pub(super) fn parse(
         _ => return None,
     };
     Some(result)
+}
+
+fn parse_objective_criteria(
+    command: &str,
+    start: usize,
+    registry_access: Option<FrozenRegistryAccess<'_>>,
+) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    let end = command[start..]
+        .find(' ')
+        .map_or(command.len(), |offset| start + offset);
+    let raw = &command[start..end];
+    if VANILLA_OBJECTIVE_CRITERIA_NAMES.contains(&raw) {
+        return Ok(validated(end, true));
+    }
+    let Some(registry_access) = registry_access else {
+        return Ok(validated(end, false));
+    };
+    let mut registry_unavailable = false;
+    for stat_type in VANILLA_STAT_TYPES {
+        let type_key = location_to_stat_key(stat_type.resource_id);
+        let Some(value_key) = raw
+            .strip_prefix(&type_key)
+            .and_then(|suffix| suffix.strip_prefix(':'))
+        else {
+            continue;
+        };
+        let Some(values) = registry_access.resource_ids_in_holder_order(stat_type.value_registry)
+        else {
+            registry_unavailable = true;
+            continue;
+        };
+        if values
+            .iter()
+            .any(|value| location_to_stat_key(value) == value_key)
+        {
+            return Ok(validated(end, true));
+        }
+    }
+    if registry_unavailable {
+        Ok(validated(end, false))
+    } else {
+        Err(invalid(end, format!("invalid objective criteria {raw}")))
+    }
+}
+
+fn location_to_stat_key(resource_id: &str) -> String {
+    resource_id.replace(':', ".")
 }
 
 fn registry_key(
@@ -218,12 +269,13 @@ fn invalid(cursor: usize, message: impl Into<String>) -> CommandSyntaxErrorState
 #[cfg(test)]
 mod tests {
     use bbb_protocol::packets::{
-        CommandArgumentTemplate, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
+        CommandArgumentTemplate, VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_CRITERIA_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_KEY_ID,
     };
 
     use super::{parse, wildcard_matches};
+    use crate::RegistrySet;
 
     #[test]
     fn resource_selector_wildcards_match_filename_utils_shapes() {
@@ -274,5 +326,40 @@ mod tests {
         .expect("resource syntax");
         assert_eq!(resource.end, "example:future".len());
         assert!(!resource.validated);
+    }
+
+    #[test]
+    fn objective_criteria_uses_generated_fixed_names_and_stat_registries() {
+        let fixed = parse(
+            VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_CRITERIA_ID,
+            "teamkill.dark_blue",
+            0,
+            &CommandArgumentTemplate::Unit,
+            None,
+        )
+        .expect("registry-aware parser")
+        .expect("fixed criteria");
+        assert!(fixed.validated);
+
+        let registries = RegistrySet::vanilla_26_1();
+        let dynamic = parse(
+            VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_CRITERIA_ID,
+            "minecraft.mined:minecraft.oak_log",
+            0,
+            &CommandArgumentTemplate::Unit,
+            Some(registries.frozen_access()),
+        )
+        .expect("registry-aware parser")
+        .expect("dynamic criteria");
+        assert!(dynamic.validated);
+        assert!(parse(
+            VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_CRITERIA_ID,
+            "minecraft.mined:minecraft.missing",
+            0,
+            &CommandArgumentTemplate::Unit,
+            Some(registries.frozen_access()),
+        )
+        .expect("registry-aware parser")
+        .is_err());
     }
 }
