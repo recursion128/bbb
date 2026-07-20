@@ -6597,41 +6597,57 @@
           "evidence": [
             "crates/bbb-world/src/entities/spawn.rs#apply_add_entity_packet",
             "crates/bbb-world/src/entities/spawn.rs#packet_entity_type_uses_session_resource_identity_not_holder_ordinal",
-            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddEntity"
+            "crates/bbb-world/src/entities/spawn.rs#rejected_factory_admission_preserves_existing_same_id_entity",
+            "crates/bbb-world/src/entities/spawn.rs#player_packet_requires_current_player_info_before_replacement",
+            "crates/bbb-world/src/entities/spawn.rs#fishing_hook_requires_a_resolved_player_owner_before_replacement",
+            "crates/bbb-world/src/entities/spawn.rs#recreation_seeds_living_and_shulker_body_yaw_before_first_tick",
+            "crates/bbb-world/src/entities/spawn.rs#warden_spawn_data_one_sets_emerging_pose_and_animation",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddEntity",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#createEntityFromPacket"
           ],
-          "gap": "docs/unsupported-features.md#renderer-scene-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/entities.rs#decode_add_entity",
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
             "vanilla:net/minecraft/network/protocol/game/ClientboundAddEntityPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
-            "crates/bbb-world/src/play_apply.rs#PlayClientbound::AddEntity"
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::AddEntity",
+            "crates/bbb-world/src/entities/spawn.rs#play_dispatch_cannot_bypass_packet_registry_admission"
           ],
           "gap": null,
           "status": "complete"
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/entity_scene/tests.rs#entity_scene_outline_projects_pick_bounds_for_all_visible_targets",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#createEntityFromPacket"
+            "crates/bbb-world/src/play_apply.rs#add_entity_emits_post_add_sounds_and_llama_spit_recreation_effects",
+            "crates/bbb-world/src/client/audio.rs#minecart_and_bee_tickable_sounds_match_client_instance_math_and_generation_isolation",
+            "crates/bbb-native/src/particle_runtime/tests.rs#llama_spit_recreation_batch_matches_vanilla_horizontal_velocity_scales",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#llama_spit_add_entity_routes_recreation_particles_after_world_insert",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#add_entity_starts_minecart_and_bee_tickable_sound_instances",
+            "crates/bbb-native/src/audio_runtime.rs#tickable_sound_owner_requires_start_after_event_switch_or_reload",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#postAddEntitySoundInstance",
+            "vanilla:net/minecraft/world/entity/projectile/LlamaSpit.java#recreateFromPacket",
+            "vanilla:net/minecraft/client/resources/sounds/MinecartSoundInstance.java#tick",
+            "vanilla:net/minecraft/client/resources/sounds/BeeSoundInstance.java#tick"
           ],
-          "gap": "docs/unsupported-features.md#renderer-scene-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
             "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world",
-            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+            "crates/bbb-world/src/entities/spawn.rs#retained_publication_keeps_pre_replacement_entity_generation",
+            "crates/bbb-world/src/play_apply.rs#add_entity_emits_post_add_sounds_and_llama_spit_recreation_effects",
             "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#add_entity_replacement_updates_world_active_effect_counters"
           ],
           "gap": null,

@@ -136,3 +136,33 @@ side effects, or coverage evidence. Once phases 2 or 3 start, do not cross
 their safe-stop boundary until the phase is buildable, reviewed, committed,
 and full-gated. Fix failures forward with normal commits; never amend, rebase,
 reset, or rewrite history.
+
+## Delivered Ownership and Residual Boundary
+
+The implementation landed as the frozen serial phases rather than as a second
+entity creation path. `3df38cb7d` established exact session-registry admission,
+PlayerInfo/FishingHook gates, specialization recreation, same-id safety, and
+retained-publication isolation. Fixture and evidence repairs followed in
+`2f6496629` and `9f6a9a453`; the latter passed the phase-2 full gate.
+`dae892d9a` added ordered LlamaSpit particles plus canonical minecart/bee
+ticking-sound owners and passed the phase-3 full gate.
+
+The final ownership shape is:
+
+- one production AddEntity dispatch path calls world-owned admission and
+  canonical replacement;
+- static entity-type identity comes from the generated catalog only after the
+  current session holder resolves to an exact resource id;
+- recreation particles cross `PlayApplyEffects` after insertion and before the
+  matching immutable publication;
+- active minecart/bee loop state lives in `WorldStore`, is removed on entity
+  replacement/removal/reset, and remains isolated in retained generations; and
+- native audio retains only discardable backend keys, restarting the correct
+  loop after a bee anger transition or resource reload.
+
+This closes the five packet-coverage dimensions for AddEntity itself. It does
+not close the entity-family matrix: renderer/model/texture/layer/animation,
+metadata callbacks, later entity events, and family-specific client ticks stay
+owned by their existing ledger cells. Custom synchronized EntityType resources
+also remain rejected because the fixed client has no matching factory or
+presentation owner.

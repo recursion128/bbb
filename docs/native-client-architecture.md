@@ -359,6 +359,12 @@ Owns runtime orchestration.
   boundary use, command queues, and integration tests.
 - Routes `NetEvent::Play` into `WorldStore::apply_play_packet`, providing the
   runtime `PlayApplyEffects` sinks (audio, particles, acknowledgements).
+- AddEntity admission is world-owned: the raw wire holder resolves through the
+  frozen session EntityType registry and exact generated resource identity
+  before the canonical entity is replaced. PlayerInfo and FishingHook owner
+  gates run before replacement. Packet-caused LlamaSpit particles are sealed
+  after insertion, while minecart/bee ticking sounds remain canonical,
+  entity-bound world owners whose backend handles are discardable derivatives.
 - Runs systems or forwards derived commands to renderer/audio/control.
 - Does not duplicate world-owned canonical state.
 

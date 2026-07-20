@@ -19987,3 +19987,22 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   font provider 未加载时使用默认字体，server `open_file` 保持 inert。`SystemChat`
   overlay=false 已走 rich chat，overlay=true 仍是 plain action-bar draw，因此 packet runtime
   coverage 保持 partial，不能据此宣称所有富文本 HUD 或社交/举报功能完成。
+
+## 2026-07-20：AddEntity client lifecycle
+
+- [x] `3df38cb7d` 将 wire EntityType holder id 先经当前 frozen RegistryAccess 解析为
+  exact resource identity，再映射 generated fixed EntityType catalog；custom/unknown
+  resource、缺失 PlayerInfo 与无效 FishingHook owner 均在 same-id replacement 前拒绝。
+  Living/Shulker body-yaw seed、Warden emerging pose、retained publication isolation 与唯一
+  production dispatch 均有 focused tests。`2f6496629`、`9f6a9a453` 修复 runtime fixture 和
+  稳定 coverage evidence，后者通过 phase-2 milestone full gate。
+- [x] `dae892d9a` 在 canonical insert 后、matching publication 前发出 LlamaSpit 的七个
+  SPIT recreation particles，并为 minecart/bee 建立 world-owned entity-bound ticking sound
+  state。速度、运行 tick、rail、baby/anger 分支匹配 Vanilla client sound instance；
+  replacement/removal/reset 清理 owner，bee event switch/resource reload 只重建 discardable
+  backend handle，retained generation 保持旧 pitch/volume。该提交通过 phase-3 milestone
+  full gate。
+- [x] AddEntity packet 的 decode、ownership、canonical apply、runtime side effect 与 tests
+  五维覆盖已经闭合。该结论只覆盖 packet-caused creation/recreation lifecycle；custom
+  EntityType factory/presentation、各 entity family 的 model/texture/layer/animation、后续
+  metadata callback/event/client-tick 仍由 entity matrix 与现有 unsupported 条目约束。
