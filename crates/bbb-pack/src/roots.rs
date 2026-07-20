@@ -21,7 +21,7 @@ use crate::{
     particle_definitions::ParticleDefinitionCatalog,
     particle_sprites::ParticleSpriteCatalog,
     resources::{PackResourceStack, ResourceLocation},
-    selected_packs::SelectedClientPackStack,
+    selected_packs::{ClientResourceGeneration, SelectedClientPackStack},
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
     tags::TagCatalog,
@@ -42,7 +42,7 @@ pub struct PackRoots {
     #[serde(default)]
     resource_pack_dirs: Vec<PathBuf>,
     #[serde(skip)]
-    selected_client_packs: Option<Arc<SelectedClientPackStack>>,
+    client_resource_generation: Option<Arc<ClientResourceGeneration>>,
 }
 
 impl PackRoots {
@@ -81,7 +81,7 @@ impl PackRoots {
             assets_dir: assets_dir.into(),
             generated_assets_dir,
             resource_pack_dirs: Vec::new(),
-            selected_client_packs: None,
+            client_resource_generation: None,
         }
     }
 
@@ -95,11 +95,20 @@ impl PackRoots {
         dirs: impl IntoIterator<Item = impl Into<PathBuf>>,
     ) -> Self {
         self.resource_pack_dirs = dirs.into_iter().map(Into::into).collect();
-        self.selected_client_packs = None;
+        self.client_resource_generation = None;
         self
     }
 
     pub fn with_selected_client_packs(mut self, packs: SelectedClientPackStack) -> Result<Self> {
+        self = self.with_client_resource_generation(0, packs)?;
+        Ok(self)
+    }
+
+    pub fn with_client_resource_generation(
+        mut self,
+        generation: u64,
+        packs: SelectedClientPackStack,
+    ) -> Result<Self> {
         let vanilla = packs
             .packs()
             .first()
@@ -117,7 +126,9 @@ impl PackRoots {
             .skip(1)
             .map(|pack| pack.root.clone())
             .collect();
-        self.selected_client_packs = Some(Arc::new(packs));
+        self.client_resource_generation = Some(Arc::new(ClientResourceGeneration::prepare(
+            generation, packs,
+        )?));
         Ok(self)
     }
 
@@ -126,19 +137,23 @@ impl PackRoots {
     }
 
     pub fn selected_client_packs(&self) -> Option<&SelectedClientPackStack> {
-        self.selected_client_packs.as_deref()
+        self.client_resource_generation()
+            .map(ClientResourceGeneration::selected_packs)
+    }
+
+    pub fn client_resource_generation(&self) -> Option<&ClientResourceGeneration> {
+        self.client_resource_generation.as_deref()
     }
 
     pub fn selected_client_packs_or_unmanaged(&self) -> SelectedClientPackStack {
-        self.selected_client_packs
-            .as_deref()
+        self.selected_client_packs()
             .cloned()
             .unwrap_or_else(|| SelectedClientPackStack::from_unmanaged_roots(self))
     }
 
     pub fn resource_stack(&self) -> PackResourceStack {
-        if let Some(packs) = self.selected_client_packs() {
-            return PackResourceStack::from_selected_client_packs(packs.packs());
+        if let Some(generation) = self.client_resource_generation() {
+            return generation.resources().clone();
         }
         let mut roots = Vec::with_capacity(1 + self.resource_pack_dirs.len());
         roots.push(self.sources_dir.clone());
@@ -147,8 +162,8 @@ impl PackRoots {
     }
 
     fn resource_pack_stack(&self) -> PackResourceStack {
-        if let Some(packs) = self.selected_client_packs() {
-            return PackResourceStack::from_selected_client_packs(&packs.packs()[1..]);
+        if let Some(generation) = self.client_resource_generation() {
+            return generation.resources().without_first();
         }
         PackResourceStack::from_roots(self.resource_pack_dirs.iter().cloned())
     }

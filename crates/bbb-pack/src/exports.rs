@@ -44,11 +44,12 @@ pub use crate::resources::{PackResource, PackResourceStack, ResourceLocation};
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
 pub use crate::selected_packs::{
     ClientPackCompatibility, ClientPackPosition, ClientPackSelection, ClientPackSource,
-    SelectedClientPack, SelectedClientPackStack,
+    ClientResourceGeneration, SelectedClientPack, SelectedClientPackStack,
 };
 pub use crate::server_pack::{
     materialize_server_pack_archive, read_client_resource_pack_format_range,
-    ServerPackArchiveLimits, ServerPackFormat, ServerPackFormatRange, ServerPackMaterialization,
+    read_client_resource_pack_metadata, ClientPackMetadata, ServerPackArchiveLimits,
+    ServerPackFormat, ServerPackFormatRange, ServerPackMaterialization,
 };
 pub use crate::sound_event_registry::SoundEventRegistry;
 pub use crate::sounds::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};

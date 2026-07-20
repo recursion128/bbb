@@ -1,13 +1,14 @@
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use anyhow::{bail, Context, Result};
 use regex::Regex;
 use serde::Deserialize;
 
-use crate::SelectedClientPack;
+use crate::{ClientPackSource, SelectedClientPack};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceLocation {
@@ -55,10 +56,11 @@ pub struct PackResource {
     pub metadata_path: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct PackResourceStack {
-    roots: Vec<PathBuf>,
-    pack_ids: Vec<String>,
+    roots: Arc<Vec<PathBuf>>,
+    entries: Arc<Vec<PackEntry>>,
+    start: usize,
 }
 
 impl PackResourceStack {
@@ -66,19 +68,57 @@ impl PackResourceStack {
         let roots = roots.into_iter().map(Into::into).collect::<Vec<_>>();
         let pack_ids = (0..roots.len())
             .map(|index| format!("unmanaged/{index}"))
+            .collect::<Vec<_>>();
+        let entries = roots
+            .iter()
+            .cloned()
+            .zip(pack_ids)
+            .map(|(root, pack_id)| PackEntry::new_unmanaged(pack_id, root))
             .collect();
-        Self { roots, pack_ids }
-    }
-
-    pub fn from_selected_client_packs(packs: &[SelectedClientPack]) -> Self {
         Self {
-            roots: packs.iter().map(|pack| pack.root.clone()).collect(),
-            pack_ids: packs.iter().map(|pack| pack.id.clone()).collect(),
+            roots: Arc::new(roots),
+            entries: Arc::new(entries),
+            start: 0,
         }
     }
 
+    pub fn prepare_selected_client_packs(packs: &[SelectedClientPack]) -> Result<Self> {
+        let roots = packs
+            .iter()
+            .map(|pack| pack.root.clone())
+            .collect::<Vec<_>>();
+        let entries = packs
+            .iter()
+            .map(|pack| {
+                PackEntry::prepare(
+                    pack.id.clone(),
+                    pack.root.clone(),
+                    pack.metadata.as_ref(),
+                    matches!(
+                        pack.source,
+                        ClientPackSource::Startup { .. } | ClientPackSource::Server { .. }
+                    ),
+                )
+                .with_context(|| format!("prepare selected client pack {}", pack.id))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(Self {
+            roots: Arc::new(roots),
+            entries: Arc::new(entries),
+            start: 0,
+        })
+    }
+
     pub fn roots(&self) -> &[PathBuf] {
-        &self.roots
+        &self.roots[self.start..]
+    }
+
+    pub(crate) fn without_first(&self) -> Self {
+        Self {
+            roots: Arc::clone(&self.roots),
+            entries: Arc::clone(&self.entries),
+            start: (self.start + 1).min(self.entries.len()),
+        }
     }
 
     pub fn namespaces(&self) -> Result<Vec<String>> {
@@ -91,8 +131,8 @@ impl PackResourceStack {
 
     fn namespaces_in(&self, domain: &str) -> Result<Vec<String>> {
         let mut namespaces = BTreeMap::new();
-        for pack in self.pack_entries(domain) {
-            for content_root in pack.content_roots {
+        for pack in self.pack_entries() {
+            for content_root in pack.content_roots(domain) {
                 let domain_root = content_root.join(domain);
                 if !domain_root.is_dir() {
                     continue;
@@ -134,7 +174,7 @@ impl PackResourceStack {
     }
 
     fn get_resource_in(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
-        let pack_entries = self.pack_entries(domain);
+        let pack_entries = self.pack_entries();
         for (pack_index, pack) in pack_entries.iter().enumerate().rev() {
             if let Some(mut resource) = pack.get_resource(domain, location) {
                 resource.metadata_path =
@@ -162,10 +202,10 @@ impl PackResourceStack {
 
     fn filters_lower_priority_resource_in(
         &self,
-        domain: &str,
+        _domain: &str,
         location: &ResourceLocation,
     ) -> bool {
-        self.pack_entries(domain)
+        self.pack_entries()
             .iter()
             .rev()
             .any(|pack| pack.is_filtered(location))
@@ -179,7 +219,7 @@ impl PackResourceStack {
         let metadata_location = metadata_location(location).ok();
         let mut resources = Vec::new();
         let mut filter_metadata = false;
-        for pack in self.pack_entries(domain).iter().rev() {
+        for pack in self.pack_entries().iter().rev() {
             if let Some(mut resource) = pack.get_resource(domain, location) {
                 if !filter_metadata {
                     resource.metadata_path = metadata_location
@@ -229,7 +269,7 @@ impl PackResourceStack {
         extension: &str,
     ) -> Result<Vec<PackResource>> {
         validate_resource_path_prefix(path_prefix)?;
-        let pack_entries = self.pack_entries(domain);
+        let pack_entries = self.pack_entries();
         let mut resources: BTreeMap<ResourceLocation, (usize, PackResource)> = BTreeMap::new();
         for (pack_index, pack) in pack_entries.iter().enumerate() {
             if let Some(filter) = &pack.filter {
@@ -265,7 +305,7 @@ impl PackResourceStack {
     ) -> Result<BTreeMap<ResourceLocation, Vec<PackResource>>> {
         validate_resource_path_prefix(path_prefix)?;
         let mut resources: BTreeMap<ResourceLocation, Vec<PackResource>> = BTreeMap::new();
-        for pack in self.pack_entries(domain) {
+        for pack in self.pack_entries() {
             if let Some(filter) = &pack.filter {
                 resources.retain(|location, stack| {
                     if filter.is_filtered(location) {
@@ -293,13 +333,14 @@ impl PackResourceStack {
         Ok(resources)
     }
 
-    fn pack_entries(&self, domain: &str) -> Vec<PackEntry> {
-        self.roots
-            .iter()
-            .cloned()
-            .zip(self.pack_ids.iter().cloned())
-            .map(|(root, pack_id)| PackEntry::new(pack_id, root, domain))
-            .collect()
+    fn pack_entries(&self) -> &[PackEntry] {
+        &self.entries[self.start..]
+    }
+}
+
+impl Default for PackResourceStack {
+    fn default() -> Self {
+        Self::from_roots(std::iter::empty::<PathBuf>())
     }
 }
 
@@ -376,22 +417,69 @@ fn resource_path_in(root: &Path, domain: &str, location: &ResourceLocation) -> P
 #[derive(Debug)]
 struct PackEntry {
     pack_id: String,
-    content_roots: Vec<PathBuf>,
+    asset_content_roots: Vec<PathBuf>,
+    data_content_roots: Vec<PathBuf>,
     filter: Option<PackFilter>,
 }
 
 impl PackEntry {
-    fn new(pack_id: String, root: PathBuf, domain: &str) -> Self {
-        let mut content_roots = vec![root.clone()];
-        content_roots.extend(
-            applicable_overlays(&root, pack_format_for_domain(domain))
-                .into_iter()
-                .map(|overlay| root.join(overlay)),
-        );
-        Self {
+    fn new_unmanaged(pack_id: String, root: PathBuf) -> Self {
+        let metadata = read_pack_resource_metadata(&root).ok().flatten();
+        Self::from_metadata(pack_id, root, metadata, false)
+            .expect("lenient unmanaged pack metadata cannot fail")
+    }
+
+    fn prepare(
+        pack_id: String,
+        root: PathBuf,
+        selected_metadata: Option<&crate::ClientPackMetadata>,
+        metadata_required: bool,
+    ) -> Result<Self> {
+        let metadata = selected_metadata
+            .map(|metadata| {
+                serde_json::from_value::<RawPackMetadata>(metadata.document().clone())
+                    .context("decode client pack resource metadata sections")
+            })
+            .transpose()?;
+        if metadata_required && metadata.is_none() {
+            bail!("missing pack.mcmeta in {}", root.display());
+        }
+        Self::from_metadata(pack_id, root, metadata, true)
+    }
+
+    fn from_metadata(
+        pack_id: String,
+        root: PathBuf,
+        metadata: Option<RawPackMetadata>,
+        strict: bool,
+    ) -> Result<Self> {
+        let filter = match metadata
+            .as_ref()
+            .and_then(|metadata| metadata.filter.as_ref())
+        {
+            Some(filter) => PackFilter::prepare(filter, strict)?,
+            None => None,
+        };
+        let asset_content_roots = content_roots(
+            &root,
+            metadata.as_ref(),
+            CLIENT_RESOURCE_PACK_FORMAT,
+            strict,
+        )?;
+        let data_content_roots =
+            content_roots(&root, metadata.as_ref(), SERVER_DATA_PACK_FORMAT, strict)?;
+        Ok(Self {
             pack_id,
-            filter: pack_filter(&root),
-            content_roots,
+            asset_content_roots,
+            data_content_roots,
+            filter,
+        })
+    }
+
+    fn content_roots(&self, domain: &str) -> &[PathBuf] {
+        match domain {
+            "data" => &self.data_content_roots,
+            _ => &self.asset_content_roots,
         }
     }
 
@@ -412,7 +500,7 @@ impl PackEntry {
     }
 
     fn resource_path(&self, domain: &str, location: &ResourceLocation) -> Option<PathBuf> {
-        self.content_roots.iter().rev().find_map(|root| {
+        self.content_roots(domain).iter().rev().find_map(|root| {
             let path = resource_path_in(root, domain, location);
             path.is_file().then_some(path)
         })
@@ -425,7 +513,7 @@ impl PackEntry {
         extension: &str,
     ) -> Result<BTreeMap<ResourceLocation, PackResource>> {
         let mut resources = BTreeMap::new();
-        for root in &self.content_roots {
+        for root in self.content_roots(domain) {
             let domain_root = root.join(domain);
             if !domain_root.is_dir() {
                 continue;
@@ -505,19 +593,25 @@ const SERVER_DATA_PACK_FORMAT: PackFormat = PackFormat {
     minor: 1,
 };
 
-fn pack_format_for_domain(domain: &str) -> PackFormat {
-    match domain {
-        "data" => SERVER_DATA_PACK_FORMAT,
-        _ => CLIENT_RESOURCE_PACK_FORMAT,
-    }
-}
-
 #[derive(Debug)]
 struct PackFilter {
     blocks: Vec<ResourceFilterPattern>,
 }
 
 impl PackFilter {
+    fn prepare(raw: &RawResourceFilterSection, strict: bool) -> Result<Option<Self>> {
+        let blocks = raw
+            .block
+            .iter()
+            .map(RawResourceFilterPattern::to_pattern)
+            .collect::<Result<Vec<_>>>();
+        match blocks {
+            Ok(blocks) => Ok(Some(Self { blocks })),
+            Err(error) if strict => Err(error).context("compile client pack resource filter"),
+            Err(_) => Ok(None),
+        }
+    }
+
     fn is_filtered(&self, location: &ResourceLocation) -> bool {
         self.blocks
             .iter()
@@ -563,15 +657,44 @@ struct RawOverlayEntry {
 }
 
 impl RawOverlayEntry {
-    fn applies_to(&self, current: PackFormat) -> bool {
+    fn applies_to(&self, current: PackFormat, strict: bool) -> Result<bool> {
         if !is_valid_overlay_directory(&self.directory) {
-            return false;
+            if strict {
+                bail!("invalid client pack overlay directory {:?}", self.directory);
+            }
+            return Ok(false);
+        }
+        if self.min_format.is_some() != self.max_format.is_some() {
+            if strict {
+                bail!("client pack overlay must declare both min_format and max_format");
+            }
+            return Ok(false);
         }
         if let (Some(min), Some(max)) = (self.min_format, self.max_format) {
-            return current >= min.into_pack_format(0) && current <= max.into_pack_format(u32::MAX);
+            let min = min.into_pack_format(0);
+            let max = max.into_pack_format(u32::MAX);
+            if min > max {
+                if strict {
+                    bail!("client pack overlay min_format exceeds max_format");
+                }
+                return Ok(false);
+            }
+            return Ok(current >= min && current <= max);
         }
-        self.formats
-            .is_some_and(|range| range.contains(current.major))
+        let Some(formats) = self.formats else {
+            if strict {
+                bail!("client pack overlay is missing its format range");
+            }
+            return Ok(false);
+        };
+        let (min, max) = formats.bounds();
+        if min > max {
+            if strict {
+                bail!("client pack overlay format minimum exceeds maximum");
+            }
+            return Ok(false);
+        }
+        Ok(formats.contains(current.major))
     }
 }
 
@@ -606,15 +729,19 @@ enum RawMajorFormatRange {
 }
 
 impl RawMajorFormatRange {
-    fn contains(self, value: u32) -> bool {
-        let (min, max) = match self {
+    fn bounds(self) -> (u32, u32) {
+        match self {
             Self::Single(value) => (value, value),
             Self::Pair([min, max]) => (min, max),
             Self::Object {
                 min_inclusive,
                 max_inclusive,
             } => (min_inclusive, max_inclusive),
-        };
+        }
+    }
+
+    fn contains(self, value: u32) -> bool {
+        let (min, max) = self.bounds();
         min <= value && value <= max
     }
 }
@@ -631,50 +758,54 @@ struct RawResourceFilterPattern {
 }
 
 impl RawResourceFilterPattern {
-    fn into_pattern(self) -> Result<ResourceFilterPattern> {
+    fn to_pattern(&self) -> Result<ResourceFilterPattern> {
         Ok(ResourceFilterPattern {
             namespace: self
                 .namespace
-                .map(|pattern| Regex::new(&pattern))
+                .as_ref()
+                .map(|pattern| Regex::new(pattern))
                 .transpose()?,
-            path: self.path.map(|pattern| Regex::new(&pattern)).transpose()?,
+            path: self
+                .path
+                .as_ref()
+                .map(|pattern| Regex::new(pattern))
+                .transpose()?,
         })
     }
 }
 
-fn pack_filter(root: &Path) -> Option<PackFilter> {
+fn read_pack_resource_metadata(root: &Path) -> Result<Option<RawPackMetadata>> {
     let metadata_path = root.join("pack.mcmeta");
-    let bytes = std::fs::read(metadata_path).ok()?;
-    let metadata: RawPackMetadata = serde_json::from_slice(&bytes).ok()?;
-    let filter = metadata.filter?;
-    let blocks = filter
-        .block
-        .into_iter()
-        .map(RawResourceFilterPattern::into_pattern)
-        .collect::<Result<Vec<_>>>()
-        .ok()?;
-    Some(PackFilter { blocks })
+    let bytes = match std::fs::read(&metadata_path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(error)
+                .with_context(|| format!("read client pack metadata {}", metadata_path.display()));
+        }
+    };
+    serde_json::from_slice(&bytes)
+        .with_context(|| format!("parse client pack metadata {}", metadata_path.display()))
+        .map(Some)
 }
 
-fn applicable_overlays(root: &Path, current_format: PackFormat) -> Vec<String> {
-    let metadata_path = root.join("pack.mcmeta");
-    let Ok(bytes) = std::fs::read(metadata_path) else {
-        return Vec::new();
-    };
-    let Ok(metadata) = serde_json::from_slice::<RawPackMetadata>(&bytes) else {
-        return Vec::new();
-    };
-    metadata
-        .overlays
-        .map(|overlays| {
-            overlays
-                .entries
-                .into_iter()
-                .filter(|entry| entry.applies_to(current_format))
-                .map(|entry| entry.directory)
-                .collect()
-        })
-        .unwrap_or_default()
+fn content_roots(
+    root: &Path,
+    metadata: Option<&RawPackMetadata>,
+    current_format: PackFormat,
+    strict: bool,
+) -> Result<Vec<PathBuf>> {
+    let mut roots = vec![root.to_path_buf()];
+    let overlays = metadata
+        .and_then(|metadata| metadata.overlays.as_ref())
+        .map(|overlays| overlays.entries.as_slice())
+        .unwrap_or_default();
+    for overlay in overlays {
+        if overlay.applies_to(current_format, strict)? {
+            roots.push(root.join(&overlay.directory));
+        }
+    }
+    Ok(roots)
 }
 
 fn is_valid_overlay_directory(directory: &str) -> bool {

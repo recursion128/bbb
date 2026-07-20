@@ -3,7 +3,10 @@ use std::{
     fs::{File, OpenOptions},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use anyhow::{bail, Context, Result};
@@ -53,6 +56,32 @@ pub struct ServerPackFormatRange {
     pub max: ServerPackFormat,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientPackMetadata {
+    pub supported_formats: ServerPackFormatRange,
+    document: Arc<serde_json::Value>,
+}
+
+impl ClientPackMetadata {
+    pub fn parse(bytes: &[u8]) -> Result<Self> {
+        let document: serde_json::Value =
+            serde_json::from_slice(bytes).context("parse client resource pack metadata JSON")?;
+        let metadata: RawMetadata = serde_json::from_value(document.clone())
+            .context("decode client resource pack metadata")?;
+        if metadata.pack.description.is_null() {
+            bail!("client resource pack metadata description cannot be null");
+        }
+        Ok(Self {
+            supported_formats: metadata.pack.supported_format_range()?,
+            document: Arc::new(document),
+        })
+    }
+
+    pub(crate) fn document(&self) -> &serde_json::Value {
+        &self.document
+    }
+}
+
 impl ServerPackFormatRange {
     pub fn supports_current_client(self) -> bool {
         self.min <= CLIENT_RESOURCE_PACK_FORMAT && CLIENT_RESOURCE_PACK_FORMAT <= self.max
@@ -70,7 +99,7 @@ pub struct ServerPackMaterialization {
     pub entries: usize,
     pub files: usize,
     pub uncompressed_bytes: u64,
-    pub supported_formats: ServerPackFormatRange,
+    pub metadata: ClientPackMetadata,
 }
 
 #[derive(Debug)]
@@ -134,7 +163,7 @@ pub fn materialize_server_pack_archive(
     })?;
     let mut cleanup = StagingCleanup::new(staging_dir.clone());
     extract_archive_entries(&mut archive, &plans, &staging_dir, limits)?;
-    let supported_formats = read_client_resource_pack_format_range(&staging_dir)?;
+    let metadata = read_client_resource_pack_metadata(&staging_dir)?;
     std::fs::rename(&staging_dir, output_dir).with_context(|| {
         format!(
             "publish server pack staging directory {} as {}",
@@ -150,7 +179,7 @@ pub fn materialize_server_pack_archive(
         entries: plans.len(),
         files,
         uncompressed_bytes,
-        supported_formats,
+        metadata,
     })
 }
 
@@ -368,15 +397,15 @@ fn extract_archive_entries(
 }
 
 pub fn read_client_resource_pack_format_range(root: &Path) -> Result<ServerPackFormatRange> {
+    Ok(read_client_resource_pack_metadata(root)?.supported_formats)
+}
+
+pub fn read_client_resource_pack_metadata(root: &Path) -> Result<ClientPackMetadata> {
     let path = root.join("pack.mcmeta");
     let bytes = std::fs::read(&path)
         .with_context(|| format!("read client resource pack metadata {}", path.display()))?;
-    let metadata: RawMetadata = serde_json::from_slice(&bytes)
-        .with_context(|| format!("parse client resource pack metadata {}", path.display()))?;
-    if metadata.pack.description.is_null() {
-        bail!("client resource pack metadata description cannot be null");
-    }
-    metadata.pack.supported_format_range()
+    ClientPackMetadata::parse(&bytes)
+        .with_context(|| format!("parse client resource pack metadata {}", path.display()))
 }
 
 #[derive(Debug, Deserialize)]
@@ -608,7 +637,7 @@ mod tests {
         assert_eq!(result.root, output);
         assert_eq!(result.files, 2);
         assert_eq!(result.entries, 2);
-        assert!(result.supported_formats.supports_current_client());
+        assert!(result.metadata.supported_formats.supports_current_client());
         assert_eq!(
             std::fs::read_to_string(output.join("assets/minecraft/lang/en_us.json")).unwrap(),
             r#"{"hello":"world"}"#
@@ -711,9 +740,9 @@ mod tests {
             ServerPackArchiveLimits::default(),
         )
         .unwrap_err();
-        assert!(invalid
-            .to_string()
-            .contains("newer pack_format requires min_format and max_format"));
+        assert!(
+            format!("{invalid:#}").contains("newer pack_format requires min_format and max_format")
+        );
         assert!(!invalid_output.exists());
         std::fs::remove_dir_all(root).unwrap();
     }

@@ -132,6 +132,7 @@ fn apply_native_resource_reload(
 ) -> Result<ResourceReloadSimulationCommit> {
     let mut prepared = prepare_native_resource_reload(
         base_roots,
+        reload.generation,
         reload.server_packs,
         audio_runtime.is_some(),
         client_locale,
@@ -224,12 +225,13 @@ fn apply_native_resource_reload(
 
 fn prepare_native_resource_reload(
     base_roots: &Option<PackRoots>,
+    generation: u64,
     server_packs: Vec<SelectedClientPack>,
     has_audio_runtime: bool,
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
 ) -> Result<PreparedNativeResourceReload> {
-    let roots = compose_server_resource_pack_roots(base_roots, server_packs)?;
+    let roots = compose_server_resource_pack_roots(base_roots, generation, server_packs)?;
     let audio = if has_audio_runtime {
         PreparedAudioReload::Existing(NativeAudioRuntime::prepare_reload(&roots)?)
     } else {
@@ -261,6 +263,7 @@ fn prepare_native_resource_reload(
 
 fn compose_server_resource_pack_roots(
     base_roots: &Option<PackRoots>,
+    generation: u64,
     server_packs: Vec<SelectedClientPack>,
 ) -> Result<PackRoots> {
     let base_roots = base_roots
@@ -269,7 +272,9 @@ fn compose_server_resource_pack_roots(
     let selected = base_roots
         .selected_client_packs_or_unmanaged()
         .with_server_packs(server_packs)?;
-    base_roots.clone().with_selected_client_packs(selected)
+    base_roots
+        .clone()
+        .with_client_resource_generation(generation, selected)
 }
 
 fn upload_reload_atlases(
@@ -582,20 +587,15 @@ mod tests {
         write_resource(&server_second, b"second");
         let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"), None)
             .with_resource_pack_dirs([startup_base.clone(), startup_top.clone()]);
-        let current = bbb_pack::ServerPackFormat {
-            major: 84,
-            minor: 0,
-        };
-        let formats = bbb_pack::ServerPackFormatRange {
-            min: current,
-            max: current,
-        };
+        let first_metadata = bbb_pack::read_client_resource_pack_metadata(&server_first).unwrap();
+        let second_metadata = bbb_pack::read_client_resource_pack_metadata(&server_second).unwrap();
 
         let composed = compose_server_resource_pack_roots(
             &Some(base),
+            7,
             vec![
-                SelectedClientPack::server("first", 1, &server_first, formats).unwrap(),
-                SelectedClientPack::server("second", 2, &server_second, formats).unwrap(),
+                SelectedClientPack::server("first", 1, &server_first, first_metadata).unwrap(),
+                SelectedClientPack::server("second", 2, &server_second, second_metadata).unwrap(),
             ],
         )
         .unwrap();
@@ -613,12 +613,16 @@ mod tests {
         let resolved = composed.resource_stack().get_resource(&location).unwrap();
         assert_eq!(std::fs::read(&resolved.path).unwrap(), b"second");
         assert_eq!(resolved.pack_id, "server/00000000000000000002/second");
+        assert_eq!(
+            composed.client_resource_generation().unwrap().generation(),
+            7
+        );
         std::fs::remove_dir_all(temp).unwrap();
     }
 
     #[test]
     fn server_resource_pack_reload_requires_vanilla_base_roots() {
-        let error = compose_server_resource_pack_roots(&None, Vec::new()).unwrap_err();
+        let error = compose_server_resource_pack_roots(&None, 1, Vec::new()).unwrap_err();
 
         assert!(error
             .to_string()
@@ -626,6 +630,11 @@ mod tests {
     }
 
     fn write_resource(root: &std::path::Path, payload: &[u8]) {
+        std::fs::write(
+            root.join("pack.mcmeta"),
+            r#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
+        )
+        .unwrap();
         let path = root.join("assets/minecraft/test/value.txt");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, payload).unwrap();

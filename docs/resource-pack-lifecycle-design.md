@@ -134,6 +134,26 @@ Resource priority is represented low-to-high because the existing
 order and resolve the last surviving resource. Server pack response order is a
 separate protocol fact and must not be inferred from resource priority.
 
+## Implemented Selection and Preparation Boundary
+
+The selected-owner milestone now gives every admitted pack an exact source,
+selection policy, compatibility range and low-to-high priority. Startup pack
+metadata is read before native subsystems start; downloaded-pack
+materialization retains the same parsed metadata document that later enters
+selection. `PackRoots` keeps an `Arc<ClientResourceGeneration>` containing the
+selected stack and one precompiled `PackResourceStack`. Resource queries clone
+that owner rather than rereading `pack.mcmeta`, recompiling filter regexes or
+recomputing client/data overlay roots per consumer.
+
+Startup uses generation zero. Each server reload request prepares its stack
+with the request generation before any audio, item, particle, terrain, HUD,
+entity or sky consumer runs. Malformed filters/overlays therefore fail at the
+preparation boundary, while an explicitly admitted incompatible format remains
+visible in the selected-pack compatibility record. Resource lookup results
+carry the exact selected pack id. The renderer/audio apply side is still the
+next phase: it currently mutates subsystem owners sequentially and relies on
+recovery uploads after failure.
+
 ## Vanilla 26.1 Evidence
 
 - `ClientPackSource` creates mandatory `vanilla` at `BOTTOM`; optional built-in

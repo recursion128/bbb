@@ -156,6 +156,12 @@ contract is [`resource-pack-lifecycle-design.md`](resource-pack-lifecycle-design
 Paths are resource locations only after a validated selected pack gives them a
 source identity and priority; renderer/audio handles remain derived owners and
 become visible only at the matching reload commit.
+`PackRoots` carries an `Arc<ClientResourceGeneration>` for admitted runtime
+packs. That generation owns the exact selected stack plus one precompiled
+`PackResourceStack`: pack metadata bytes, overlay roots and resource-filter
+regexes are admitted once, then every language/model/atlas/sound consumer gets
+a cheap clone of the same immutable lookup owner. The directory list retained
+for serde compatibility is a projection, not the runtime selection authority.
 
 ### `bbb-renderer`
 

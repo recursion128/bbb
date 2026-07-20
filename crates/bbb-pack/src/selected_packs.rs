@@ -1,8 +1,14 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::{bail, Context, Result};
 
-use crate::{read_client_resource_pack_format_range, PackRoots, ServerPackFormatRange};
+use crate::{
+    read_client_resource_pack_metadata, ClientPackMetadata, PackResourceStack, PackRoots,
+    ServerPackFormatRange,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClientPackCompatibility {
@@ -52,6 +58,7 @@ pub struct SelectedClientPack {
     pub supported_formats: ServerPackFormatRange,
     pub compatibility: ClientPackCompatibility,
     pub selection: ClientPackSelection,
+    pub metadata: Option<ClientPackMetadata>,
 }
 
 impl SelectedClientPack {
@@ -71,13 +78,15 @@ impl SelectedClientPack {
                 default_position: ClientPackPosition::Bottom,
                 fixed_position: false,
             },
+            metadata: None,
         }
     }
 
     pub fn startup(argument_index: usize, root: impl Into<PathBuf>) -> Result<Self> {
         let root = root.into();
         validate_pack_root(&root)?;
-        let supported_formats = read_client_resource_pack_format_range(&root)?;
+        let metadata = read_client_resource_pack_metadata(&root)?;
+        let supported_formats = metadata.supported_formats;
         Ok(Self {
             id: format!("startup/{argument_index}"),
             source: ClientPackSource::Startup { argument_index },
@@ -89,6 +98,7 @@ impl SelectedClientPack {
                 default_position: ClientPackPosition::Top,
                 fixed_position: false,
             },
+            metadata: Some(metadata),
         })
     }
 
@@ -96,13 +106,14 @@ impl SelectedClientPack {
         pack_id: impl Into<String>,
         push_sequence: u64,
         root: impl Into<PathBuf>,
-        supported_formats: ServerPackFormatRange,
+        metadata: ClientPackMetadata,
     ) -> Result<Self> {
         let pack_id = pack_id.into();
         let root = root.into();
         if pack_id.is_empty() {
             bail!("server client pack id cannot be empty");
         }
+        let supported_formats = metadata.supported_formats;
         Ok(Self {
             id: format!("server/{push_sequence:020}/{pack_id}"),
             source: ClientPackSource::Server {
@@ -117,6 +128,7 @@ impl SelectedClientPack {
                 default_position: ClientPackPosition::Top,
                 fixed_position: true,
             },
+            metadata: Some(metadata),
         })
     }
 
@@ -136,6 +148,7 @@ impl SelectedClientPack {
                 default_position: ClientPackPosition::Top,
                 fixed_position: false,
             },
+            metadata: None,
         }
     }
 }
@@ -143,6 +156,36 @@ impl SelectedClientPack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectedClientPackStack {
     packs: Vec<SelectedClientPack>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientResourceGeneration {
+    generation: u64,
+    selected_packs: Arc<SelectedClientPackStack>,
+    resources: PackResourceStack,
+}
+
+impl ClientResourceGeneration {
+    pub fn prepare(generation: u64, selected_packs: SelectedClientPackStack) -> Result<Self> {
+        let resources = PackResourceStack::prepare_selected_client_packs(selected_packs.packs())?;
+        Ok(Self {
+            generation,
+            selected_packs: Arc::new(selected_packs),
+            resources,
+        })
+    }
+
+    pub fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    pub fn selected_packs(&self) -> &SelectedClientPackStack {
+        &self.selected_packs
+    }
+
+    pub fn resources(&self) -> &PackResourceStack {
+        &self.resources
+    }
 }
 
 impl SelectedClientPackStack {
@@ -186,6 +229,9 @@ impl SelectedClientPackStack {
             if !server_ids.insert(pack_id.clone()) {
                 bail!("duplicate active server client pack id {pack_id}");
             }
+            if pack.metadata.is_none() {
+                bail!("active server client pack {pack_id} is missing metadata");
+            }
             previous_push_sequence = Some(push_sequence);
             packs.push(pack);
         }
@@ -222,6 +268,17 @@ impl SelectedClientPackStack {
             if !ids.insert(pack.id.as_str()) {
                 bail!("duplicate selected client pack id {}", pack.id);
             }
+            if matches!(
+                pack.source,
+                ClientPackSource::Startup { .. } | ClientPackSource::Server { .. }
+            ) {
+                let metadata = pack.metadata.as_ref().with_context(|| {
+                    format!("selected client pack {} is missing metadata", pack.id)
+                })?;
+                if metadata.supported_formats != pack.supported_formats {
+                    bail!("selected client pack {} metadata format mismatch", pack.id);
+                }
+            }
         }
         Ok(Self { packs })
     }
@@ -238,6 +295,12 @@ fn validate_pack_root(root: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn prepared_resource_generation_is_send_and_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<ClientResourceGeneration>();
+    }
 
     #[test]
     fn startup_stack_records_identity_policy_and_compatibility() {
@@ -312,16 +375,12 @@ mod tests {
         std::fs::create_dir_all(&second_root).unwrap();
         let roots = PackRoots::from_root(&root).unwrap();
         let base = SelectedClientPackStack::from_startup_dirs(&roots, []).unwrap();
-        let current = crate::server_pack::client_resource_pack_format();
-        let formats = ServerPackFormatRange {
-            min: current,
-            max: current,
-        };
+        let metadata = current_metadata();
 
         let stack = base
             .with_server_packs([
-                SelectedClientPack::server("first", 4, &first_root, formats).unwrap(),
-                SelectedClientPack::server("second", 9, &second_root, formats).unwrap(),
+                SelectedClientPack::server("first", 4, &first_root, metadata.clone()).unwrap(),
+                SelectedClientPack::server("second", 9, &second_root, metadata).unwrap(),
             ])
             .unwrap();
 
@@ -350,15 +409,11 @@ mod tests {
         std::fs::create_dir_all(&second_root).unwrap();
         let roots = PackRoots::from_root(&root).unwrap();
         let base = SelectedClientPackStack::from_startup_dirs(&roots, []).unwrap();
-        let current = crate::server_pack::client_resource_pack_format();
-        let formats = ServerPackFormatRange {
-            min: current,
-            max: current,
-        };
+        let metadata = current_metadata();
 
         let non_monotonic = base.with_server_packs([
-            SelectedClientPack::server("first", 2, &first_root, formats).unwrap(),
-            SelectedClientPack::server("second", 1, &second_root, formats).unwrap(),
+            SelectedClientPack::server("first", 2, &first_root, metadata.clone()).unwrap(),
+            SelectedClientPack::server("second", 1, &second_root, metadata.clone()).unwrap(),
         ]);
         assert!(non_monotonic
             .unwrap_err()
@@ -366,13 +421,86 @@ mod tests {
             .contains("strict push order"));
 
         let reused = base.with_server_packs([
-            SelectedClientPack::server("same", 1, &first_root, formats).unwrap(),
-            SelectedClientPack::server("same", 2, &second_root, formats).unwrap(),
+            SelectedClientPack::server("same", 1, &first_root, metadata.clone()).unwrap(),
+            SelectedClientPack::server("same", 2, &second_root, metadata).unwrap(),
         ]);
         assert!(reused
             .unwrap_err()
             .to_string()
             .contains("duplicate active server client pack id"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn prepared_generation_reuses_compiled_filter_and_overlay_metadata() {
+        let root = unique_temp_dir("prepared-metadata");
+        let sources = root.join("sources/26.1");
+        let pack = root.join("pack");
+        write_file(
+            &sources.join("assets/minecraft/test/blocked.txt"),
+            b"vanilla",
+        );
+        write_file(
+            &pack.join("overlay/assets/minecraft/test/value.txt"),
+            b"overlay",
+        );
+        std::fs::write(
+            pack.join("pack.mcmeta"),
+            r#"{
+              "pack":{"description":"test","min_format":[84,0],"max_format":[84,0]},
+              "filter":{"block":[{"namespace":"minecraft","path":"test/blocked\\.txt"}]},
+              "overlays":{"entries":[{"directory":"overlay","min_format":[84,0],"max_format":[84,0]}]}
+            }"#,
+        )
+        .unwrap();
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&roots, [pack.clone()]).unwrap();
+        let roots = roots.with_client_resource_generation(12, selected).unwrap();
+        std::fs::remove_file(pack.join("pack.mcmeta")).unwrap();
+
+        let resources = roots.resource_stack();
+        let blocked = crate::ResourceLocation::parse("minecraft:test/blocked.txt").unwrap();
+        let value = crate::ResourceLocation::parse("minecraft:test/value.txt").unwrap();
+        assert!(resources.get_resource(&blocked).is_none());
+        let resolved = resources.get_resource(&value).unwrap();
+        assert_eq!(std::fs::read(resolved.path).unwrap(), b"overlay");
+        assert_eq!(resolved.pack_id, "startup/0");
+        assert_eq!(roots.client_resource_generation().unwrap().generation(), 12);
+
+        write_metadata(&pack, 84);
+        let next_roots = PackRoots::from_root(&root).unwrap();
+        let next_selected =
+            SelectedClientPackStack::from_startup_dirs(&next_roots, [pack.clone()]).unwrap();
+        let next_roots = next_roots
+            .with_client_resource_generation(13, next_selected)
+            .unwrap();
+        assert!(next_roots.resource_stack().get_resource(&blocked).is_some());
+        assert!(next_roots.resource_stack().get_resource(&value).is_none());
+        assert!(roots.resource_stack().get_resource(&blocked).is_none());
+        assert!(roots.resource_stack().get_resource(&value).is_some());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn prepared_generation_rejects_invalid_filter_before_consumers_run() {
+        let root = unique_temp_dir("prepared-invalid-filter");
+        std::fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
+        let pack = root.join("pack");
+        std::fs::create_dir_all(&pack).unwrap();
+        std::fs::write(
+            pack.join("pack.mcmeta"),
+            r#"{
+              "pack":{"description":"test","min_format":[84,0],"max_format":[84,0]},
+              "filter":{"block":[{"path":"["}]}
+            }"#,
+        )
+        .unwrap();
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&roots, [pack]).unwrap();
+
+        let error = roots.with_selected_client_packs(selected).unwrap_err();
+
+        assert!(format!("{error:#}").contains("compile client pack resource filter"));
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -386,6 +514,18 @@ mod tests {
             format!(r#"{{"pack":{{"description":"test","pack_format":{pack_format}}}}}"#)
         };
         std::fs::write(root.join("pack.mcmeta"), metadata).unwrap();
+    }
+
+    fn current_metadata() -> ClientPackMetadata {
+        ClientPackMetadata::parse(
+            br#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
+        )
+        .unwrap()
+    }
+
+    fn write_file(path: &Path, payload: &[u8]) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, payload).unwrap();
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {

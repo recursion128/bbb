@@ -251,7 +251,7 @@ impl ServerResourcePackRuntime {
                             key.id.to_string(),
                             key.push_sequence,
                             materialization.root.clone(),
-                            materialization.supported_formats,
+                            materialization.metadata.clone(),
                         )
                         .map_err(|error| format!("{error:#}"))
                     })
@@ -1419,20 +1419,16 @@ mod tests {
     }
 
     fn ready_materialization(root: PathBuf) -> ServerPackMaterialization {
-        let current = bbb_pack::ServerPackFormat {
-            major: 84,
-            minor: 0,
-        };
         ServerPackMaterialization {
             root,
             archive_bytes: 0,
             entries: 0,
             files: 0,
             uncompressed_bytes: 0,
-            supported_formats: bbb_pack::ServerPackFormatRange {
-                min: current,
-                max: current,
-            },
+            metadata: bbb_pack::ClientPackMetadata::parse(
+                br#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
+            )
+            .unwrap(),
         }
     }
 
