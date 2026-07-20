@@ -4,6 +4,8 @@ pub(crate) mod resolver;
 
 pub(crate) use effects::AudioEffect;
 
+use std::collections::BTreeSet;
+
 use anyhow::{Context, Result};
 use bbb_audio::{AudioCommand, KiraAudioRuntime, TickEntitySoundPositionsCommand};
 use bbb_control::AudioCounters;
@@ -48,6 +50,10 @@ pub(crate) struct NativeAudioRuntime {
     jukebox_registry: JukeboxSongRegistry,
     playback: KiraAudioRuntime,
     counters: AudioCounters,
+    // Backend-only playback identity. Canonical ownership remains in the
+    // immutable world generation; this set only prevents duplicate starts and
+    // notices bee event-id switches or resource reload recovery.
+    active_tickable_sounds: BTreeSet<(i32, String)>,
 }
 
 pub(crate) struct NativeAudioReload {
@@ -74,6 +80,7 @@ impl NativeAudioRuntime {
             jukebox_registry,
             playback,
             counters,
+            active_tickable_sounds: BTreeSet::new(),
         })
     }
 
@@ -106,31 +113,35 @@ impl NativeAudioRuntime {
             .reset_resource_generation(reload.catalog.resource_generation());
         self.counters.catalog_events = reload.catalog.len();
         self.catalog = reload.catalog;
+        self.active_tickable_sounds.clear();
     }
 
     fn handle_resolved_command(
         &mut self,
         command: std::result::Result<AudioCommand, AudioResolveError>,
-    ) {
+    ) -> bool {
         match command {
             Ok(command) => self.submit_command(command),
             Err(err) => {
                 self.counters.resolve_failures += 1;
                 self.counters.last_resolve_error = Some(err.to_string());
                 tracing::warn!(?err, "failed to resolve audio command");
+                false
             }
         }
     }
 
-    fn submit_command(&mut self, command: AudioCommand) {
+    fn submit_command(&mut self, command: AudioCommand) -> bool {
         match self.playback.handle_command(&command) {
             Ok(()) => {
                 self.counters.commands_submitted += 1;
+                true
             }
             Err(err) => {
                 self.counters.submit_failures += 1;
                 self.counters.last_submit_error = Some(err.to_string());
                 tracing::warn!(?err, "failed to submit audio command");
+                false
             }
         }
     }
@@ -193,7 +204,12 @@ impl AudioEventSink for NativeAudioRuntime {
             );
             resolver.play_entity_sound_at(state, position)
         };
-        self.handle_resolved_command(command);
+        let tickable_key = command.as_ref().ok().and_then(tickable_play_command_key);
+        if self.handle_resolved_command(command) {
+            if let Some(key) = tickable_key {
+                self.active_tickable_sounds.insert(key);
+            }
+        }
     }
 
     fn play_jukebox_song(&mut self, state: &JukeboxLevelEventState) {
@@ -252,17 +268,54 @@ impl AudioEventSink for NativeAudioRuntime {
                 .map(|state| resolver.tickable_entity_sound_update(state))
                 .collect::<Vec<_>>()
         };
-        for update in updates {
+        let mut next_active = BTreeSet::new();
+        for (state, update) in tickable_sounds.iter().zip(updates) {
             match update {
-                Ok(update) => command.tickable_sounds.push(update),
+                Ok(update) => {
+                    let key = (update.entity_id, update.event_id.clone());
+                    if !tickable_sound_needs_start(&self.active_tickable_sounds, &key) {
+                        next_active.insert(key);
+                    } else {
+                        let start_command = {
+                            let resolver = AudioCommandResolver::with_jukebox_registry(
+                                &self.catalog,
+                                &self.registry,
+                                &self.jukebox_registry,
+                                bbb_audio::AudioVolumeSettings::default(),
+                            );
+                            resolver.play_entity_sound_at(
+                                &state.event,
+                                Some([state.position.x, state.position.y, state.position.z]),
+                            )
+                        };
+                        if self.handle_resolved_command(start_command) {
+                            next_active.insert(key);
+                        }
+                    }
+                    command.tickable_sounds.push(update);
+                }
                 Err(err) => {
                     self.counters.resolve_failures += 1;
                     self.counters.last_resolve_error = Some(err.to_string());
                 }
             }
         }
-        self.submit_command(AudioCommand::TickEntitySoundPositions(command));
+        let _ = self.submit_command(AudioCommand::TickEntitySoundPositions(command));
+        self.active_tickable_sounds = next_active;
     }
+}
+
+fn tickable_play_command_key(command: &AudioCommand) -> Option<(i32, String)> {
+    let AudioCommand::PlayEntitySound(command) = command else {
+        return None;
+    };
+    command
+        .tickable
+        .then(|| (command.entity_id, command.sound.event_id.clone()))
+}
+
+fn tickable_sound_needs_start(active: &BTreeSet<(i32, String)>, key: &(i32, String)) -> bool {
+    !active.contains(key)
 }
 
 #[cfg(test)]
@@ -273,6 +326,17 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn tickable_sound_owner_requires_start_after_event_switch_or_reload() {
+        let normal = (7, "minecraft:entity.bee.loop".to_string());
+        let aggressive = (7, "minecraft:entity.bee.loop_aggressive".to_string());
+        let active = BTreeSet::from([normal.clone()]);
+
+        assert!(!tickable_sound_needs_start(&active, &normal));
+        assert!(tickable_sound_needs_start(&active, &aggressive));
+        assert!(tickable_sound_needs_start(&BTreeSet::new(), &normal));
+    }
 
     #[test]
     fn native_audio_catalog_loader_errors_before_kira_when_catalog_is_empty() {

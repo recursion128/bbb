@@ -60,11 +60,11 @@ use bbb_world::{
     ChunkPos, DolphinHappyParticleState, EntityTamingParticleState,
     FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
     HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
-    OminousItemSpawnerParticleState, RavagerRoarParticleState, RegistryPacketEntry,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
-    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile,
-    WorldStore,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LlamaSpitRecreationParticleState, LocalPlayerPoseState, OminousItemSpawnerParticleState,
+    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -644,6 +644,7 @@ struct RecordingParticleSink {
     firework_explosion_states: Vec<FireworkRocketExplosionParticleState>,
     firework_explosion_camera_positions: Vec<Option<[f64; 3]>>,
     firework_rocket_trail_states: Vec<FireworkRocketTrailParticleState>,
+    llama_spit_recreation_states: Vec<LlamaSpitRecreationParticleState>,
     ominous_item_spawner_states: Vec<OminousItemSpawnerParticleState>,
     tracking_emitter_states: Vec<crate::particle_runtime::TrackingEmitterParticleState>,
     take_item_entity_pickup_states: Vec<TakeItemEntityPickupParticleState>,
@@ -759,6 +760,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: FireworkRocketTrailParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.firework_rocket_trail_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_llama_spit_recreation_particles(
+        &mut self,
+        state: LlamaSpitRecreationParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.llama_spit_recreation_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch
@@ -991,6 +1002,15 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.sniffer.digging": {
                 "sounds": ["mob/sniffer/digging"]
+            },
+            "entity.minecart.riding": {
+                "sounds": ["minecart/base"]
+            },
+            "entity.bee.loop": {
+                "sounds": ["mob/bee/loop"]
+            },
+            "entity.bee.loop_aggressive": {
+                "sounds": ["mob/bee/loop_aggressive"]
             },
             "entity.ravager.attack": {
                 "sounds": ["mob/ravager/attack1"]

@@ -73,6 +73,41 @@ fn firework_rocket_trail_batch_matches_vanilla_client_tick_particle() {
 }
 
 #[test]
+fn llama_spit_recreation_batch_matches_vanilla_horizontal_velocity_scales() {
+    let mut resolver = test_resolver(0);
+    let batch = resolver.llama_spit_recreation_particle_batch(
+        bbb_world::LlamaSpitRecreationParticleState {
+            entity_id: 7,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            delta_movement: bbb_world::EntityVec3 {
+                x: 0.5,
+                y: -0.25,
+                z: -0.75,
+            },
+        },
+    );
+
+    assert_eq!(batch.missing_definition_count, 0);
+    assert_eq!(batch.missing_sprite_count, 0);
+    assert_eq!(batch.commands.len(), 7);
+    for (index, command) in batch.commands.iter().enumerate() {
+        let horizontal_scale = 0.4 + index as f64 * 0.1;
+        assert_particle_command(
+            command,
+            VANILLA_PARTICLE_TYPE_SPIT_ID,
+            "minecraft:spit",
+            [10.0, 64.0, -3.0],
+            [0.5 * horizontal_scale, -0.25, -0.75 * horizontal_scale],
+            true,
+        );
+    }
+}
+
+#[test]
 fn ominous_item_spawner_batch_matches_vanilla_client_tick_particles() {
     let mut resolver = test_resolver(0);
     let state = OminousItemSpawnerParticleState {
@@ -8384,6 +8419,7 @@ fn test_resolver_with_particle_status(
             "explosion_0",
             "firework_0",
             "firework_1",
+            "spit_0",
             "gust_0",
             "ominous_spawning_0",
             "smoke_0",
@@ -8539,6 +8575,14 @@ fn test_resolver_with_cloud_textures(
           "textures": [
             "minecraft:firework_0",
             "minecraft:firework_1"
+          ]
+        }"#,
+    );
+    write_json(
+        &particle_dir(&root).join("spit.json"),
+        r#"{
+          "textures": [
+            "minecraft:spit_0"
           ]
         }"#,
     );

@@ -288,6 +288,12 @@ pub(crate) struct EntityStore {
     publication_snapshot_observation: EntityPublicationSnapshotObservation,
 }
 
+pub(crate) struct BeeSoundState {
+    pub(crate) transform: EntityTransformState,
+    pub(crate) is_baby: bool,
+    pub(crate) angry: bool,
+}
+
 /// Logical work performed by one batched entity client-tick advance.
 ///
 /// Counts are query rows across all ticks in the batch. Every row in the main
@@ -949,6 +955,38 @@ impl EntityStore {
                 })
                 .unwrap_or(default),
         )
+    }
+
+    fn metadata_long(&self, id: i32, data_id: u8, default: i64) -> Option<i64> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::Long(value) => Some(*value),
+                    _ => None,
+                })
+                .unwrap_or(default),
+        )
+    }
+
+    pub(crate) fn bee_sound_state(&self, id: i32, game_time: i64) -> Option<BeeSoundState> {
+        let transform = self.transform_state(id)?;
+        let accessors =
+            vanilla_entity_metadata_bee_accessors_for_entity_type(transform.entity_type_id)?;
+        let anger_end_time = self.metadata_long(
+            id,
+            accessors.anger_end_time_data_id,
+            accessors.anger_end_time_default,
+        )?;
+        Some(BeeSoundState {
+            transform,
+            is_baby: self.is_baby(id)?,
+            angry: anger_end_time > 0 && anger_end_time.wrapping_sub(game_time) > 0,
+        })
     }
 
     fn metadata_float(&self, id: i32, data_id: u8, default: f32) -> Option<f32> {

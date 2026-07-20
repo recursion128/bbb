@@ -1,6 +1,38 @@
 use super::*;
 
 impl ParticleCommandResolver {
+    pub(super) fn llama_spit_recreation_particle_batch(
+        &mut self,
+        state: LlamaSpitRecreationParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_SPIT_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        for index in 0..7 {
+            let horizontal_scale = 0.4 + f64::from(index) * 0.1;
+            batch.commands.push(self.command_from_template(
+                &template,
+                Vec3d {
+                    x: state.position.x,
+                    y: state.position.y,
+                    z: state.position.z,
+                },
+                Vec3d {
+                    x: state.delta_movement.x * horizontal_scale,
+                    y: state.delta_movement.y,
+                    z: state.delta_movement.z * horizontal_scale,
+                },
+                false,
+            ));
+        }
+        batch
+    }
+
     pub(super) fn tracking_emitter_particle_batch(
         &mut self,
         state: TrackingEmitterParticleState,

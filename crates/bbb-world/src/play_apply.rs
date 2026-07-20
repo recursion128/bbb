@@ -23,9 +23,10 @@ use crate::{
     DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
     FoxEatParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalSoundEventState,
-    RavagerRoarParticleState, RemovedPlayerVehicleTeleportRecovery, SnowballHitParticleState,
-    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LlamaSpitRecreationParticleState, LocalSoundEventState, RavagerRoarParticleState,
+    RemovedPlayerVehicleTeleportRecovery, SnowballHitParticleState, SoundEntityEventState,
+    SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
     ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
     WitchMagicParticleState, WorldStore,
 };
@@ -113,6 +114,12 @@ pub trait PlayApplyEffects {
     ) {
     }
     fn firework_empty_explosion_particles(&mut self, _world: &WorldStore, _position: [f64; 3]) {}
+    fn llama_spit_recreation_particles(
+        &mut self,
+        _world: &WorldStore,
+        _state: LlamaSpitRecreationParticleState,
+    ) {
+    }
     fn firework_explosion_particles(
         &mut self,
         _world: &WorldStore,
@@ -245,7 +252,27 @@ impl WorldStore {
         match packet {
             PlayClientbound::BundleDelimiter => {}
             PlayClientbound::AddEntity(entity) => {
-                let _ = self.apply_add_entity_packet(entity);
+                if let Some(applied) = self.apply_add_entity_packet(entity) {
+                    let position =
+                        self.probe_entity_transform(applied.entity_id)
+                            .map(|transform| {
+                                [
+                                    transform.position.x,
+                                    transform.position.y,
+                                    transform.position.z,
+                                ]
+                            });
+                    if let Some(sound) = self
+                        .post_add_entity_sound_for_entity(applied.entity_id, applied.entity_type_id)
+                    {
+                        effects.entity_sound(&sound, position);
+                    }
+                    if let Some(state) =
+                        self.llama_spit_recreation_particle_state(applied.entity_id)
+                    {
+                        effects.llama_spit_recreation_particles(self, state);
+                    }
+                }
             }
             PlayClientbound::EntityAnimation(update) => {
                 let tracking_emitter = tracking_emitter_for_entity_animation(update.action);
@@ -702,7 +729,6 @@ impl WorldStore {
                 self.apply_hurt_animation(update);
             }
             PlayClientbound::RemoveEntities(update) => {
-                self.remove_tickable_entity_sounds(&update.entity_ids);
                 self.apply_remove_entities(update);
             }
             PlayClientbound::RotateHead(update) => {
@@ -1632,20 +1658,20 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
-        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_COW_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
     use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
 
@@ -1717,6 +1743,8 @@ mod tests {
     struct RecordingEffects {
         positioned_sounds: Vec<SoundEventState>,
         entity_sounds: Vec<(SoundEntityEventState, Option<[f64; 3]>)>,
+        llama_spit_recreation_particles: Vec<LlamaSpitRecreationParticleState>,
+        llama_spit_world_entity_visible: Vec<bool>,
         elder_guardian_effect_particles: Vec<Vec3d>,
         ravager_roar_particles: Vec<RavagerRoarParticleState>,
         witch_magic_particles: Vec<WitchMagicParticleState>,
@@ -1746,6 +1774,17 @@ mod tests {
 
         fn entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>) {
             self.entity_sounds.push((state.clone(), position));
+        }
+
+        fn llama_spit_recreation_particles(
+            &mut self,
+            world: &WorldStore,
+            state: LlamaSpitRecreationParticleState,
+        ) {
+            self.llama_spit_recreation_particles.push(state);
+            self.llama_spit_world_entity_visible.push(
+                world.entity_type_id(state.entity_id) == Some(VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID),
+            );
         }
 
         fn removed_player_vehicle_teleport(
@@ -1892,6 +1931,114 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    #[test]
+    fn add_entity_emits_post_add_sounds_and_llama_spit_recreation_effects() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let position = Vec3d {
+            x: 1.25,
+            y: 64.5,
+            z: -2.75,
+        };
+        let mut spit = add_entity(301, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, position);
+        spit.delta_movement = Vec3d {
+            x: 0.5,
+            y: -0.25,
+            z: 0.75,
+        };
+
+        for packet in [
+            PlayClientbound::AddEntity(spit),
+            PlayClientbound::AddEntity(add_entity(
+                302,
+                VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+                position,
+            )),
+            PlayClientbound::AddEntity(add_entity(303, VANILLA_ENTITY_TYPE_BEE_ID, position)),
+        ] {
+            assert!(store
+                .apply_play_packet(packet, &mut random, &mut effects)
+                .is_none());
+        }
+
+        assert_eq!(
+            effects.llama_spit_recreation_particles,
+            vec![LlamaSpitRecreationParticleState {
+                entity_id: 301,
+                position: crate::EntityVec3 {
+                    x: position.x,
+                    y: position.y,
+                    z: position.z,
+                },
+                delta_movement: crate::EntityVec3 {
+                    x: 0.5,
+                    y: -0.25,
+                    z: 0.75,
+                },
+            }]
+        );
+        assert_eq!(effects.llama_spit_world_entity_visible, vec![true]);
+        assert_eq!(effects.entity_sounds.len(), 2);
+        assert_eq!(
+            effects.entity_sounds[0].0.sound.location.as_deref(),
+            Some("minecraft:entity.minecart.riding")
+        );
+        assert_eq!(
+            effects.entity_sounds[1].0.sound.location.as_deref(),
+            Some("minecraft:entity.bee.loop")
+        );
+        for (sound, sound_position) in &effects.entity_sounds {
+            assert_eq!(sound.source, "neutral");
+            assert_eq!(sound.volume, 0.0);
+            assert_eq!(sound.pitch, 0.0);
+            assert!(sound.looping);
+            assert!(sound.linear_attenuation);
+            assert!(sound.tickable);
+            assert_eq!(*sound_position, Some([position.x, position.y, position.z]));
+        }
+        assert_eq!(store.tickable_entity_sounds().len(), 2);
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::AddEntity(add_entity(
+                    304,
+                    VANILLA_ENTITY_TYPE_PLAYER_ID,
+                    position,
+                )),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert!(store.probe_entity(304).is_none());
+        assert_eq!(effects.entity_sounds.len(), 2);
+        assert_eq!(effects.llama_spit_recreation_particles.len(), 1);
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::RemoveEntities(RemoveEntities {
+                    entity_ids: vec![302],
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert_eq!(store.tickable_entity_sounds().len(), 1);
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::AddEntity(add_entity(
+                    303,
+                    VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                    position,
+                )),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert!(store.tickable_entity_sounds().is_empty());
+        assert_eq!(effects.entity_sounds.len(), 2);
     }
 
     fn record_packet_player_info(store: &mut WorldStore, entity_id: i32) {

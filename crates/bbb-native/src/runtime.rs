@@ -2257,6 +2257,7 @@ pub(crate) fn advance_simulation(
     // the interpolated border bounds.
     world.advance_world_border(running_ticks);
     world.advance_client_time(running_ticks);
+    world.advance_tickable_entity_sounds(advanced_ticks, running_ticks);
     // Vanilla `Minecraft.tick` calls `Gui.tick` once per client tick (Gui.java:
     // 1145-1166), outside the tick-rate manager's freeze gate, so the action
     // bar / title countdowns advance on raw client ticks, not running ticks.

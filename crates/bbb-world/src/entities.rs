@@ -661,6 +661,13 @@ pub struct FireworkRocketTrailParticleState {
     pub delta_movement: EntityVec3,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LlamaSpitRecreationParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub delta_movement: EntityVec3,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OminousItemSpawnerItemState {
     pub entity_id: i32,
@@ -2693,6 +2700,7 @@ impl WorldStore {
     }
 
     fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
+        self.remove_tickable_entity_sounds(removed_ids);
         let removed_uuids = removed_ids
             .iter()
             .filter_map(|id| self.entities.uuid_for_protocol_id(*id))
@@ -2776,6 +2784,20 @@ impl WorldStore {
 
     pub fn probe_entity_transform(&self, id: i32) -> Option<EntityTransformState> {
         self.entities.transform_state(id)
+    }
+
+    pub fn llama_spit_recreation_particle_state(
+        &self,
+        id: i32,
+    ) -> Option<LlamaSpitRecreationParticleState> {
+        let transform = self.probe_entity_transform(id)?;
+        (transform.entity_type_id == VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID).then_some(
+            LlamaSpitRecreationParticleState {
+                entity_id: id,
+                position: transform.position,
+                delta_movement: transform.delta_movement,
+            },
+        )
     }
 
     pub fn take_item_entity_pickup_particle_state(

@@ -92,6 +92,9 @@ impl WorldStore {
         if self.removed_player_vehicle_id == Some(packet.id) {
             self.removed_player_vehicle_id = None;
         }
+        // A successful same-id replacement must retire client-owned sound
+        // state from the old entity before the new canonical owner is visible.
+        self.remove_tickable_entity_sounds(&[packet.id]);
         let packet_position = entity_vec3(packet.position);
         let identity = EntityIdentity {
             id: packet.id,

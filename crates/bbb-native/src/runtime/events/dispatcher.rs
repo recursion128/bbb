@@ -17,9 +17,9 @@ use bbb_world::{
     FireworkRocketExplosionParticleState, FoxEatParticleState, HoneyBlockParticleState,
     LevelEventGrowthRandomMode, LevelEventSoundRandomState, LivingEntityDrownParticleState,
     LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    PlayApplyEffects, RavagerRoarParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TerrainFluidKind, ThrownEggHitParticleState,
-    VillagerParticleState, WitchMagicParticleState, WorldStore,
+    LlamaSpitRecreationParticleState, PlayApplyEffects, RavagerRoarParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
+    ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -468,6 +468,14 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         );
     }
 
+    fn llama_spit_recreation_particles(
+        &mut self,
+        _world: &WorldStore,
+        state: LlamaSpitRecreationParticleState,
+    ) {
+        emit_llama_spit_recreation_particles(self.particle_events, self.particle_target, state);
+    }
+
     fn elder_guardian_effect_particles(&mut self, world: &WorldStore, position: ProtocolVec3d) {
         emit_elder_guardian_effect_particles(
             self.particle_events,
@@ -835,6 +843,19 @@ fn emit_firework_explosion_particles(
 ) {
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch = particle_events.spawn_firework_explosion_particles(state, camera_position);
+        if let Some(renderer) = particle_target.as_deref_mut() {
+            renderer.submit_particle_batch(batch);
+        }
+    }
+}
+
+fn emit_llama_spit_recreation_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
+    state: LlamaSpitRecreationParticleState,
+) {
+    if let Some(particle_events) = particle_events.as_deref_mut() {
+        let batch = particle_events.spawn_llama_spit_recreation_particles(state);
         if let Some(renderer) = particle_target.as_deref_mut() {
             renderer.submit_particle_batch(batch);
         }

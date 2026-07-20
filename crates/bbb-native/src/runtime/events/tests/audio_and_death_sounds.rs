@@ -1,6 +1,48 @@
 use super::*;
 
 #[test]
+fn add_entity_starts_minecart_and_bee_tickable_sound_instances() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(190, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(191, VANILLA_ENTITY_TYPE_BEE_ID),
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    for (command, entity_id, event_id) in [
+        (&audio.commands[0], 190, "minecraft:entity.minecart.riding"),
+        (&audio.commands[1], 191, "minecraft:entity.bee.loop"),
+    ] {
+        let AudioCommand::PlayEntitySound(command) = command else {
+            panic!("expected post-add entity sound, got {command:?}");
+        };
+        assert_eq!(command.entity_id, entity_id);
+        assert_eq!(command.position, Some([1.0, 64.0, -2.0]));
+        assert_eq!(command.packet_volume, 0.0);
+        assert_eq!(command.packet_pitch, 0.0);
+        assert_eq!(command.sound.event_id, event_id);
+        assert_eq!(command.category, AudioCategory::Neutral);
+        assert!(command.looping);
+        assert!(command.linear_attenuation);
+        assert!(command.tickable);
+    }
+    assert_eq!(world.tickable_entity_sounds().len(), 2);
+}
+
+#[test]
 fn respawn_stops_music_only_when_the_dimension_changes() {
     let (tx, mut rx) = mpsc::channel(2);
     let login = protocol_play_login(9);

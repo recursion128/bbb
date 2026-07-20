@@ -1,6 +1,64 @@
 use super::*;
 
 #[test]
+fn llama_spit_add_entity_routes_recreation_particles_after_world_insert() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let mut packet = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID);
+    packet.position = ProtocolVec3d {
+        x: 1.25,
+        y: 64.5,
+        z: -2.75,
+    };
+    packet.delta_movement = ProtocolVec3d {
+        x: 0.5,
+        y: -0.25,
+        z: 0.75,
+    };
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(packet)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut random,
+        ),
+        1
+    );
+
+    assert_eq!(
+        world.entity_type_id(99),
+        Some(VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID)
+    );
+    assert_eq!(
+        particles.llama_spit_recreation_states,
+        vec![LlamaSpitRecreationParticleState {
+            entity_id: 99,
+            position: bbb_world::EntityVec3 {
+                x: 1.25,
+                y: 64.5,
+                z: -2.75,
+            },
+            delta_movement: bbb_world::EntityVec3 {
+                x: 0.5,
+                y: -0.25,
+                z: 0.75,
+            },
+        }]
+    );
+}
+
+#[test]
 fn entity_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(19);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(

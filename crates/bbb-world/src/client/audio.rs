@@ -20,7 +20,7 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{
-    vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
+    is_vanilla_minecart_type, vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, LivingEntityItemBreakState,
@@ -31,7 +31,7 @@ use crate::registries::{
     CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, DAMAGE_TYPE_REGISTRY,
     PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
 };
-use crate::{block_name_is_air, WorldStore};
+use crate::{block_name_is_air, block_name_is_rail, BlockPos, WorldStore};
 
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
 const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
@@ -47,6 +47,9 @@ const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.
 const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
 const GUARDIAN_ATTACK_SOUND_EVENT: &str = "minecraft:entity.guardian.attack";
 const SNIFFER_DIGGING_SOUND_EVENT: &str = "minecraft:entity.sniffer.digging";
+const MINECART_RIDING_SOUND_EVENT: &str = "minecraft:entity.minecart.riding";
+const BEE_LOOP_SOUND_EVENT: &str = "minecraft:entity.bee.loop";
+const BEE_AGGRESSIVE_LOOP_SOUND_EVENT: &str = "minecraft:entity.bee.loop_aggressive";
 const RAVAGER_ATTACK_SOUND_EVENT: &str = "minecraft:entity.ravager.attack";
 const IRON_GOLEM_ATTACK_SOUND_EVENT: &str = "minecraft:entity.iron_golem.attack";
 const EVOKER_FANGS_ATTACK_SOUND_EVENT: &str = "minecraft:entity.evoker_fangs.attack";
@@ -278,10 +281,12 @@ pub struct TickableEntitySoundState {
     pub position: ProtocolVec3d,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub(crate) enum ActiveTickableEntitySound {
     GuardianAttack { seed: i64 },
     SnifferDigging { seed: i64 },
+    Minecart { seed: i64, volume: f32, pitch: f32 },
+    Bee { seed: i64 },
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -447,67 +452,246 @@ impl WorldStore {
         Some(state)
     }
 
+    /// Vanilla `ClientLevel.postAddEntitySoundInstance`: minecarts and bees
+    /// immediately acquire a client-owned looping sound instance after their
+    /// canonical entity has been added to the level.
+    pub(crate) fn post_add_entity_sound_for_entity(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+    ) -> Option<SoundEntityEventState> {
+        let active = if is_vanilla_minecart_type(entity_type_id) {
+            ActiveTickableEntitySound::Minecart {
+                seed: self.next_sound_seed(),
+                volume: 0.0,
+                pitch: 0.0,
+            }
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_BEE_ID {
+            ActiveTickableEntitySound::Bee {
+                seed: self.next_sound_seed(),
+            }
+        } else {
+            return None;
+        };
+        self.client_audio
+            .active_tickable_entity_sounds
+            .insert(entity_id, active);
+        let state = SoundEntityEventState {
+            sound: direct_sound_holder(if is_vanilla_minecart_type(entity_type_id) {
+                MINECART_RIDING_SOUND_EVENT
+            } else {
+                BEE_LOOP_SOUND_EVENT
+            }),
+            source: SoundSource::Neutral.as_str().to_string(),
+            entity_id,
+            volume: 0.0,
+            pitch: 0.0,
+            seed: match active {
+                ActiveTickableEntitySound::Minecart { seed, .. }
+                | ActiveTickableEntitySound::Bee { seed } => seed,
+                ActiveTickableEntitySound::GuardianAttack { .. }
+                | ActiveTickableEntitySound::SnifferDigging { .. } => unreachable!(),
+            },
+            looping: true,
+            linear_attenuation: true,
+            tickable: true,
+        };
+        self.client_audio.last_sound_entity = Some(state.clone());
+        Some(state)
+    }
+
+    /// Advances retained state whose vanilla sound instance mutates once per
+    /// client tick. World time is advanced before callers project bee anger;
+    /// minecart pitch itself advances only while the tick-rate manager runs.
+    pub fn advance_tickable_entity_sounds(&mut self, client_ticks: u32, running_ticks: u32) {
+        if client_ticks == 0 {
+            return;
+        }
+        let minecart_updates = self
+            .client_audio
+            .active_tickable_entity_sounds
+            .iter()
+            .filter_map(|(&entity_id, active)| {
+                let ActiveTickableEntitySound::Minecart { pitch, .. } = *active else {
+                    return None;
+                };
+                let speed = self
+                    .entities
+                    .transform_state(entity_id)
+                    .map(|transform| horizontal_speed(transform.delta_movement));
+                let (next_volume, next_pitch) = match speed {
+                    Some(speed)
+                        if running_ticks > 0
+                            && !self.minecart_sound_off_rail(entity_id)
+                            && speed >= 0.01 =>
+                    {
+                        (
+                            sound_lerp(speed.clamp(0.0, 0.5), 0.0, 0.7),
+                            (pitch + 0.0025 * running_ticks as f32).clamp(0.0, 1.0),
+                        )
+                    }
+                    _ => (0.0, 0.0),
+                };
+                Some((entity_id, next_volume, next_pitch))
+            })
+            .collect::<Vec<_>>();
+        for (entity_id, volume, pitch) in minecart_updates {
+            if let Some(ActiveTickableEntitySound::Minecart {
+                volume: active_volume,
+                pitch: active_pitch,
+                ..
+            }) = self
+                .client_audio
+                .active_tickable_entity_sounds
+                .get_mut(&entity_id)
+            {
+                *active_volume = volume;
+                *active_pitch = pitch;
+            }
+        }
+    }
+
     pub fn tickable_entity_sounds(&self) -> Vec<TickableEntitySoundState> {
         self.client_audio
             .active_tickable_entity_sounds
             .iter()
-            .filter_map(|(&entity_id, active)| {
+            .filter_map(|(&entity_id, active)| self.tickable_entity_sound_for(entity_id, *active))
+            .collect()
+    }
+
+    fn tickable_entity_sound_for(
+        &self,
+        entity_id: i32,
+        active: ActiveTickableEntitySound,
+    ) -> Option<TickableEntitySoundState> {
+        let (position, sound, source, volume, pitch, seed, looping, attenuation) = match active {
+            ActiveTickableEntitySound::GuardianAttack { seed } => {
                 if self.entities.is_silent(entity_id)? {
                     return None;
                 }
-                let (position, sound, source, volume, pitch, seed, looping, attenuation) =
-                    match *active {
-                        ActiveTickableEntitySound::GuardianAttack { seed } => {
-                            let (position, attack_scale) =
-                                self.entities.guardian_attack_sound_state(entity_id)?;
-                            (
-                                position,
-                                GUARDIAN_ATTACK_SOUND_EVENT,
-                                SoundSource::Hostile,
-                                attack_scale * attack_scale,
-                                0.7 + 0.5 * attack_scale,
-                                seed,
-                                true,
-                                false,
-                            )
-                        }
-                        ActiveTickableEntitySound::SnifferDigging { seed } => {
-                            if !self.entities.sniffer_can_play_digging_sound(entity_id)? {
-                                return None;
-                            }
-                            let transform = self.entities.transform_state(entity_id)?;
-                            (
-                                transform.position,
-                                SNIFFER_DIGGING_SOUND_EVENT,
-                                SoundSource::Neutral,
-                                1.0,
-                                1.0,
-                                seed,
-                                false,
-                                true,
-                            )
-                        }
-                    };
-                Some(TickableEntitySoundState {
-                    event: SoundEntityEventState {
-                        sound: direct_sound_holder(sound),
-                        source: source.as_str().to_string(),
-                        entity_id,
-                        volume,
-                        pitch,
-                        seed,
-                        looping,
-                        linear_attenuation: attenuation,
-                        tickable: true,
+                let (position, attack_scale) =
+                    self.entities.guardian_attack_sound_state(entity_id)?;
+                (
+                    position,
+                    GUARDIAN_ATTACK_SOUND_EVENT,
+                    SoundSource::Hostile,
+                    attack_scale * attack_scale,
+                    0.7 + 0.5 * attack_scale,
+                    seed,
+                    true,
+                    false,
+                )
+            }
+            ActiveTickableEntitySound::SnifferDigging { seed } => {
+                if self.entities.is_silent(entity_id)? {
+                    return None;
+                }
+                if !self.entities.sniffer_can_play_digging_sound(entity_id)? {
+                    return None;
+                }
+                let transform = self.entities.transform_state(entity_id)?;
+                (
+                    transform.position,
+                    SNIFFER_DIGGING_SOUND_EVENT,
+                    SoundSource::Neutral,
+                    1.0,
+                    1.0,
+                    seed,
+                    false,
+                    true,
+                )
+            }
+            ActiveTickableEntitySound::Minecart {
+                seed,
+                volume,
+                pitch,
+            } => {
+                let transform = self.entities.transform_state(entity_id)?;
+                if !is_vanilla_minecart_type(transform.entity_type_id) {
+                    return None;
+                }
+                (
+                    transform.position,
+                    MINECART_RIDING_SOUND_EVENT,
+                    SoundSource::Neutral,
+                    volume,
+                    pitch,
+                    seed,
+                    true,
+                    true,
+                )
+            }
+            ActiveTickableEntitySound::Bee { seed } => {
+                let game_time = self.world_time().map(|time| time.game_time).unwrap_or(0);
+                let bee = self.entities.bee_sound_state(entity_id, game_time)?;
+                let speed = horizontal_speed(bee.transform.delta_movement);
+                let (pitch, volume) = if speed >= 0.01 {
+                    let (min_pitch, max_pitch) = if bee.is_baby { (1.1, 1.5) } else { (0.7, 1.1) };
+                    (
+                        sound_lerp(speed.clamp(min_pitch, max_pitch), min_pitch, max_pitch),
+                        sound_lerp(speed.clamp(0.0, 0.5), 0.0, 1.2),
+                    )
+                } else {
+                    (0.0, 0.0)
+                };
+                (
+                    bee.transform.position,
+                    if bee.angry {
+                        BEE_AGGRESSIVE_LOOP_SOUND_EVENT
+                    } else {
+                        BEE_LOOP_SOUND_EVENT
                     },
-                    position: ProtocolVec3d {
-                        x: position.x,
-                        y: position.y,
-                        z: position.z,
-                    },
-                })
-            })
-            .collect()
+                    SoundSource::Neutral,
+                    volume,
+                    pitch,
+                    seed,
+                    true,
+                    true,
+                )
+            }
+        };
+        Some(TickableEntitySoundState {
+            event: SoundEntityEventState {
+                sound: direct_sound_holder(sound),
+                source: source.as_str().to_string(),
+                entity_id,
+                volume,
+                pitch,
+                seed,
+                looping,
+                linear_attenuation: attenuation,
+                tickable: true,
+            },
+            position: ProtocolVec3d {
+                x: position.x,
+                y: position.y,
+                z: position.z,
+            },
+        })
+    }
+
+    fn minecart_sound_off_rail(&self, entity_id: i32) -> bool {
+        if !self.is_feature_enabled("minecraft:minecart_improvements") {
+            return false;
+        }
+        let Some(transform) = self.entities.transform_state(entity_id) else {
+            return true;
+        };
+        let rail_below = BlockPos {
+            x: transform.position.x.floor() as i32,
+            y: (transform.position.y - 0.1 - 1.0e-5).floor() as i32,
+            z: transform.position.z.floor() as i32,
+        };
+        let current_block = BlockPos {
+            y: transform.position.y.floor() as i32,
+            ..rail_below
+        };
+        ![rail_below, current_block].into_iter().any(|pos| {
+            self.probe_block(pos)
+                .and_then(|block| block.block_name)
+                .as_deref()
+                .is_some_and(block_name_is_rail)
+        })
     }
 
     pub(crate) fn clear_tickable_entity_sounds(&mut self) {
@@ -1873,6 +2057,14 @@ fn triangle_pitch(mean: f32, spread: f32, next_float: &mut impl FnMut() -> f32) 
     mean + (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * spread
 }
 
+fn horizontal_speed(delta: crate::EntityVec3) -> f32 {
+    delta.x.hypot(delta.z) as f32
+}
+
+fn sound_lerp(delta: f32, start: f32, end: f32) -> f32 {
+    start + delta * (end - start)
+}
+
 fn ranged_pitch(min: f32, range: f32, next_float: &mut impl FnMut() -> f32) -> f32 {
     next_float().clamp(0.0, 1.0) * range + min
 }
@@ -2044,13 +2236,15 @@ mod tests {
         VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityDataValue, EntityDataValueKind,
-        EquipmentSlotUpdate, ItemStackSummary, LevelEvent, RegistryTags, SetEntityData,
-        SetEquipment, SoundSource, StopSound, TagNetworkPayload, UpdateTags,
+        EquipmentSlotUpdate, ItemStackSummary, LevelEvent, PlayTime, RegistryTags, RemoveEntities,
+        SetEntityData, SetEquipment, SoundSource, StopSound, TagNetworkPayload,
+        UpdateEnabledFeatures, UpdateTags,
     };
     use std::collections::BTreeMap;
     use uuid::Uuid;
@@ -2092,6 +2286,121 @@ mod tests {
         let first = world_one.next_sound_seed();
         let second = world_one.next_sound_seed();
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn minecart_and_bee_tickable_sounds_match_client_instance_math_and_generation_isolation() {
+        let mut store = WorldStore::new();
+        let mut minecart = protocol_add_entity_of_type(70, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID);
+        minecart.delta_movement = ProtocolVec3d {
+            x: 0.3,
+            y: 0.0,
+            z: 0.4,
+        };
+        store.apply_add_entity(minecart);
+        let initial = store
+            .post_add_entity_sound_for_entity(70, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID)
+            .unwrap();
+        assert_eq!(
+            initial.sound.location.as_deref(),
+            Some(MINECART_RIDING_SOUND_EVENT)
+        );
+        assert_close(initial.volume, 0.0);
+        assert_close(initial.pitch, 0.0);
+
+        let generation_a = store.publication_snapshot();
+        store.advance_tickable_entity_sounds(4, 4);
+        let minecart = store.tickable_entity_sounds();
+        assert_eq!(minecart.len(), 1);
+        assert_close(minecart[0].event.volume, 0.35);
+        assert_close(minecart[0].event.pitch, 0.01);
+        assert_close(generation_a.tickable_entity_sounds()[0].event.pitch, 0.0);
+        store.apply_update_enabled_features(UpdateEnabledFeatures {
+            features: vec![
+                "minecraft:vanilla".to_string(),
+                "minecraft:minecart_improvements".to_string(),
+            ],
+        });
+        store.advance_tickable_entity_sounds(1, 1);
+        assert_close(store.tickable_entity_sounds()[0].event.volume, 0.0);
+        assert_close(store.tickable_entity_sounds()[0].event.pitch, 0.0);
+        store.apply_update_enabled_features(UpdateEnabledFeatures {
+            features: vec!["minecraft:vanilla".to_string()],
+        });
+        store.advance_tickable_entity_sounds(1, 1);
+        assert_close(store.tickable_entity_sounds()[0].event.volume, 0.35);
+        assert_close(store.tickable_entity_sounds()[0].event.pitch, 0.0025);
+        store.advance_tickable_entity_sounds(1, 0);
+        assert_close(store.tickable_entity_sounds()[0].event.volume, 0.0);
+        assert_close(store.tickable_entity_sounds()[0].event.pitch, 0.0);
+
+        let mut bee = protocol_add_entity_of_type(71, VANILLA_ENTITY_TYPE_BEE_ID);
+        bee.delta_movement = ProtocolVec3d {
+            x: 0.8,
+            y: 0.0,
+            z: 0.0,
+        };
+        store.apply_add_entity(bee);
+        let bee_accessors = crate::entities::vanilla_entity_metadata_bee_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_BEE_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 71,
+            values: vec![
+                EntityDataValue {
+                    data_id: bee_accessors.anger_end_time_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+                    value: EntityDataValueKind::Long(20),
+                },
+                baby_entity_data(VANILLA_ENTITY_TYPE_BEE_ID),
+            ],
+        }));
+        store.apply_world_time(PlayTime {
+            game_time: 10,
+            clock_updates: Vec::new(),
+        });
+        store
+            .post_add_entity_sound_for_entity(71, VANILLA_ENTITY_TYPE_BEE_ID)
+            .unwrap();
+        let bee = store
+            .tickable_entity_sounds()
+            .into_iter()
+            .find(|state| state.event.entity_id == 71)
+            .unwrap();
+        assert_eq!(
+            bee.event.sound.location.as_deref(),
+            Some(BEE_AGGRESSIVE_LOOP_SOUND_EVENT)
+        );
+        assert_close(bee.event.volume, 0.6);
+        assert_close(bee.event.pitch, 1.54);
+
+        store.advance_client_time(10);
+        let bee = store
+            .tickable_entity_sounds()
+            .into_iter()
+            .find(|state| state.event.entity_id == 71)
+            .unwrap();
+        assert_eq!(
+            bee.event.sound.location.as_deref(),
+            Some(BEE_LOOP_SOUND_EVENT)
+        );
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            71,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        ));
+        assert!(store
+            .tickable_entity_sounds()
+            .iter()
+            .all(|state| state.event.entity_id != 71));
+        assert_eq!(
+            store.apply_remove_entities(RemoveEntities {
+                entity_ids: vec![70],
+            }),
+            1
+        );
+        assert!(store.tickable_entity_sounds().is_empty());
     }
 
     #[test]

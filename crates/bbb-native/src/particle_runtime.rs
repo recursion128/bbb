@@ -30,10 +30,11 @@ use bbb_world::{
     FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
     HoneyBlockParticleState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
     LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    OminousItemSpawnerParticleState, RavagerRoarParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TakeItemEntityPickupProjectileModel, TerrainLight,
-    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
-    VillagerParticleState, WitchMagicParticleState,
+    LlamaSpitRecreationParticleState, OminousItemSpawnerParticleState, RavagerRoarParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
+    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState,
 };
 
 use crate::terrain_runtime::{
@@ -82,6 +83,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_firework_rocket_trail_particles(
         &mut self,
         state: FireworkRocketTrailParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_llama_spit_recreation_particles(
+        &mut self,
+        state: LlamaSpitRecreationParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_ominous_item_spawner_particles(
         &mut self,
@@ -394,6 +399,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: FireworkRocketTrailParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.firework_rocket_trail_particle_batch(state)
+    }
+
+    fn spawn_llama_spit_recreation_particles(
+        &mut self,
+        state: LlamaSpitRecreationParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.llama_spit_recreation_particle_batch(state)
     }
 
     fn spawn_ominous_item_spawner_particles(
