@@ -9,8 +9,8 @@ use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
 use super::{
-    EntityClientAnimationState, EntityInterpolationState, EntityState, EntityVec3,
-    HurtingProjectileState, ProjectileLifecycleState,
+    EntityClientAnimationState, EntityInterpolationState, EntityPickBoundsState, EntityState,
+    EntityVec3, HurtingProjectileState, ProjectileLifecycleState,
 };
 use crate::{BlockPos, PaintingVariantClientProjection, PublicationShared};
 
@@ -29,13 +29,26 @@ pub(crate) struct EntityIdentity {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityTransform {
     pub(crate) position: EntityVec3,
+    pub(crate) old_position: EntityVec3,
     pub(crate) position_base: EntityVec3,
     pub(crate) delta_movement: EntityVec3,
     pub(crate) y_rot: f32,
+    pub(crate) old_y_rot: f32,
     pub(crate) x_rot: f32,
+    pub(crate) old_x_rot: f32,
     pub(crate) y_head_rot: f32,
+    pub(crate) old_y_head_rot: f32,
     pub(crate) on_ground: Option<bool>,
     pub(crate) interpolation: Option<EntityInterpolationState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityInterpolationCollisionInput {
+    pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
+    pub(crate) current_position: EntityVec3,
+    pub(crate) target_position: EntityVec3,
+    pub(crate) bounds: EntityPickBoundsState,
 }
 
 /// Client-side `Entity.mainSupportingBlockPos` plus the private
@@ -133,11 +146,15 @@ impl From<&EntityState> for EntityTransform {
     fn from(state: &EntityState) -> Self {
         Self {
             position: state.position,
+            old_position: state.position,
             position_base: state.position_base,
             delta_movement: state.delta_movement,
             y_rot: state.y_rot,
+            old_y_rot: state.y_rot,
             x_rot: state.x_rot,
+            old_x_rot: state.x_rot,
             y_head_rot: state.y_head_rot,
+            old_y_head_rot: state.y_head_rot,
             on_ground: state.on_ground,
             interpolation: state.interpolation.clone(),
         }
@@ -431,6 +448,50 @@ impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
 }
 
 impl EntityTransform {
+    pub(crate) fn set_y_rot(&mut self, y_rot: f32) {
+        if y_rot.is_finite() {
+            self.y_rot = y_rot;
+        }
+    }
+
+    pub(crate) fn set_x_rot(&mut self, x_rot: f32) {
+        if x_rot.is_finite() {
+            self.x_rot = (x_rot % 360.0).clamp(-90.0, 90.0);
+        }
+    }
+
+    pub(crate) fn set_old_pos_and_rot(&mut self) {
+        self.set_old_pos_and_rot_to(self.position, self.y_rot, self.x_rot);
+    }
+
+    pub(crate) fn set_old_pos_and_rot_to(&mut self, position: EntityVec3, y_rot: f32, x_rot: f32) {
+        self.old_position = position;
+        self.old_y_rot = y_rot;
+        self.old_x_rot = x_rot;
+    }
+
+    pub(crate) fn snap_to(&mut self, position: EntityVec3, y_rot: f32, x_rot: f32) {
+        self.position = position;
+        self.set_y_rot(y_rot);
+        self.set_x_rot(x_rot);
+        self.set_old_pos_and_rot();
+    }
+
+    pub(crate) fn begin_client_tick(&mut self) {
+        self.set_old_pos_and_rot();
+        self.old_y_head_rot = self.y_head_rot;
+    }
+
+    pub(crate) fn interpolation_target(&self) -> Option<(EntityVec3, f32, f32)> {
+        self.interpolation.as_ref().map(|state| {
+            (
+                state.target_position,
+                state.target_y_rot,
+                state.target_x_rot,
+            )
+        })
+    }
+
     pub(crate) fn move_or_interpolate_to(
         &mut self,
         interpolation_steps: Option<u8>,
@@ -444,10 +505,10 @@ impl EntityTransform {
                 self.position = position;
             }
             if let Some(y_rot) = y_rot {
-                self.y_rot = y_rot % 360.0;
+                self.set_y_rot(y_rot % 360.0);
             }
             if let Some(x_rot) = x_rot {
-                self.x_rot = x_rot % 360.0;
+                self.set_x_rot(x_rot % 360.0);
             }
             return;
         };
@@ -469,9 +530,7 @@ impl EntityTransform {
         let target_x_rot = x_rot.unwrap_or(current_target_x_rot);
 
         if interpolation_steps == 0 {
-            self.position = target_position;
-            self.y_rot = target_y_rot;
-            self.x_rot = target_x_rot;
+            self.snap_to(target_position, target_y_rot, target_x_rot);
             self.cancel_interpolation();
             return;
         }
@@ -493,23 +552,32 @@ impl EntityTransform {
         });
     }
 
-    pub(crate) fn advance_interpolation_tick(&mut self, has_interpolation_handler: bool) {
+    pub(crate) fn advance_interpolation_tick(
+        &mut self,
+        has_interpolation_handler: bool,
+        is_ticking: bool,
+        can_carry_position_delta: bool,
+    ) {
         let Some(mut state) = self.interpolation.take() else {
             return;
         };
         if !has_interpolation_handler || state.remaining_steps == 0 {
             return;
         }
+        if !is_ticking {
+            self.interpolation = Some(state);
+            return;
+        }
 
-        // Vanilla carries independent client-side movement into the target when
-        // the shifted target bounding box remains collision-free. BBB does not
-        // yet simulate remote entity physics independently of these packet
-        // targets, so every current producer reaches this with a zero delta;
-        // retaining the algebra here keeps packet retargeting/state restoration
-        // exact and leaves the collision predicate as the remaining world slice.
-        state.target_position.x += self.position.x - state.previous_position.x;
-        state.target_position.y += self.position.y - state.previous_position.y;
-        state.target_position.z += self.position.z - state.previous_position.z;
+        // Vanilla carries independent client-side movement into the target only
+        // when the shifted target bounding box remains collision-free. WorldStore
+        // owns the block/entity/border query and passes that decision into this
+        // narrow mutable component step.
+        if can_carry_position_delta {
+            state.target_position.x += self.position.x - state.previous_position.x;
+            state.target_position.y += self.position.y - state.previous_position.y;
+            state.target_position.z += self.position.z - state.previous_position.z;
+        }
         state.target_y_rot += self.y_rot - state.previous_y_rot;
         state.target_x_rot += self.x_rot - state.previous_x_rot;
 
@@ -517,8 +585,8 @@ impl EntityTransform {
         self.position.x += (state.target_position.x - self.position.x) * alpha;
         self.position.y += (state.target_position.y - self.position.y) * alpha;
         self.position.z += (state.target_position.z - self.position.z) * alpha;
-        self.y_rot = rot_lerp(alpha as f32, self.y_rot, state.target_y_rot);
-        self.x_rot += (state.target_x_rot - self.x_rot) * alpha as f32;
+        self.set_y_rot(rot_lerp(alpha as f32, self.y_rot, state.target_y_rot) % 360.0);
+        self.set_x_rot(self.x_rot + (state.target_x_rot - self.x_rot) * alpha as f32);
         state.remaining_steps -= 1;
         state.previous_position = self.position;
         state.previous_y_rot = self.y_rot;

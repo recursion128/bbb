@@ -189,7 +189,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     )
 }
 
-fn vanilla_bounds_for_entity_data(
+pub(crate) fn vanilla_bounds_for_entity_data(
     entity_type_id: i32,
     add_entity_data: i32,
     data_values: &[EntityDataValue],

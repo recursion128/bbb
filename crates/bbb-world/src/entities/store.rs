@@ -66,11 +66,11 @@ use super::{
     vanilla_entity_type_is_squid, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
     EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
     EntityClientAnimationState, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
-    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
-    EntityVec3, EvokerFangsCritParticleState, FallingBlockModelState,
-    FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
+    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
+    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
+    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FireworkRocketTrailParticleState, FoxEatParticleState, HappyGhastHarnessColor,
     ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
@@ -97,8 +97,9 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_age_scale, vanilla_body_anchor_y_offset_for_entity_data,
-    vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data, vanilla_is_baby,
-    vanilla_is_cat, vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_bounds_for_entity_data, vanilla_client_position_for_entity_data,
+    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat,
+    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_position_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale,
@@ -3842,11 +3843,15 @@ impl EntityStore {
             };
             *transform = EntityTransform {
                 position: EntityVec3::default(),
+                old_position: EntityVec3::default(),
                 position_base: EntityVec3::default(),
                 delta_movement,
                 y_rot,
+                old_y_rot: y_rot,
                 x_rot,
+                old_x_rot: x_rot,
                 y_head_rot: 0.0,
+                old_y_head_rot: 0.0,
                 on_ground: None,
                 interpolation: None,
             };
@@ -4110,6 +4115,49 @@ impl EntityStore {
         Some(())
     }
 
+    pub(crate) fn interpolation_collision_inputs(&self) -> Vec<EntityInterpolationCollisionInput> {
+        let mut inputs = Vec::new();
+        let mut query = self.ecs.query::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+        )>();
+        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
+            let Some(interpolation) = transform.interpolation else {
+                continue;
+            };
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            let delta = EntityVec3 {
+                x: transform.position.x - interpolation.previous_position.x,
+                y: transform.position.y - interpolation.previous_position.y,
+                z: transform.position.z - interpolation.previous_position.z,
+            };
+            inputs.push(EntityInterpolationCollisionInput {
+                entity_id: identity.id,
+                entity_type_id: identity.entity_type_id,
+                current_position: transform.position,
+                target_position: EntityVec3 {
+                    x: interpolation.target_position.x + delta.x,
+                    y: interpolation.target_position.y + delta.y,
+                    z: interpolation.target_position.z + delta.z,
+                },
+                bounds,
+            });
+        }
+        inputs
+    }
+
     /// Gathers the world AABBs the per-entity `in_water` map is built from, for the
     /// entity types whose client-tick animation reads `isInWater()`
     /// ([`entity_animation_uses_in_water`]). Each tuple is `(entity_id, aabb_min,
@@ -4150,14 +4198,20 @@ impl EntityStore {
         inputs
     }
 
-    pub(crate) fn advance_client_animations(
+    pub(crate) fn advance_client_animations<F, G>(
         &mut self,
         ticks: u32,
         in_water_by_id: &HashMap<i32, bool>,
         minecart_improvements_enabled: bool,
         death_tick_player_chunk: Option<(i32, i32)>,
         death_tick_simulation_distance: Option<i32>,
-    ) -> EntityClientTickWork {
+        is_ticking_entity: &F,
+        can_carry_interpolation_target: &G,
+    ) -> EntityClientTickWork
+    where
+        F: Fn(i32, i32, EntityVec3) -> bool,
+        G: Fn(i32) -> bool,
+    {
         let mut work = EntityClientTickWork::default();
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
@@ -4165,17 +4219,32 @@ impl EntityStore {
                 .ecs
                 .query_mut::<(&EntityIdentity, &mut EntityTransform)>()
             {
+                let is_ticking =
+                    is_ticking_entity(identity.id, identity.entity_type_id, transform.position);
+                if !is_ticking {
+                    transform.advance_interpolation_tick(true, false, false);
+                    continue;
+                }
+                transform.begin_client_tick();
                 let has_interpolation_handler = vanilla_entity_metadata_type_interpolation_steps(
                     identity.entity_type_id,
                     minecart_improvements_enabled,
                 )
                 .is_some();
-                transform.advance_interpolation_tick(has_interpolation_handler);
+                transform.advance_interpolation_tick(
+                    has_interpolation_handler,
+                    true,
+                    can_carry_interpolation_target(identity.id),
+                );
             }
-            for (_, (transform, animations)) in self
-                .ecs
-                .query_mut::<(&mut EntityTransform, &mut EntityClientAnimations)>()
-            {
+            for (_, (identity, transform, animations)) in self.ecs.query_mut::<(
+                &EntityIdentity,
+                &mut EntityTransform,
+                &mut EntityClientAnimations,
+            )>() {
+                if !is_ticking_entity(identity.id, identity.entity_type_id, transform.position) {
+                    continue;
+                }
                 animations
                     .animations
                     .advance_head_rotation_lerp(&mut transform.y_head_rot);
@@ -4192,6 +4261,9 @@ impl EntityStore {
                 )>()
             {
                 work.scanned_entities = work.scanned_entities.saturating_add(1);
+                if !is_ticking_entity(identity.id, identity.entity_type_id, transform.position) {
+                    continue;
+                }
                 // Vanilla `LivingEntity.calculateEntityAnimation` gates the limb
                 // swing on `!isPassenger()` and scales the position by `3` for a
                 // baby (`updateWalkAnimation`).
@@ -4308,10 +4380,15 @@ impl EntityStore {
                 work.mutated_entities = work.mutated_entities.saturating_add(1);
             }
             if minecart_improvements_enabled {
-                for (_, (transform, minecart_lerp)) in self
-                    .ecs
-                    .query_mut::<(&mut EntityTransform, &mut EntityMinecartLerp)>()
-                {
+                for (_, (identity, transform, minecart_lerp)) in self.ecs.query_mut::<(
+                    &EntityIdentity,
+                    &mut EntityTransform,
+                    &mut EntityMinecartLerp,
+                )>() {
+                    if !is_ticking_entity(identity.id, identity.entity_type_id, transform.position)
+                    {
+                        continue;
+                    }
                     minecart_lerp.advance_client_tick(transform);
                 }
             }

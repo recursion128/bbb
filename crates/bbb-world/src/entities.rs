@@ -41,9 +41,9 @@ pub(crate) use bbb_protocol::entity_types::*;
 pub(crate) use bbb_protocol::item_types::{VANILLA_ITEM_EGG_ID, VANILLA_ITEM_SNOWBALL_ID};
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityMount, EntityProjectileLifecycle, EntitySupportingBlock,
-    EntityTransform, EntityTransientEvents,
+    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
+    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount, EntityProjectileLifecycle,
+    EntitySupportingBlock, EntityTransform, EntityTransientEvents,
 };
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{

@@ -1,3 +1,4 @@
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
 use bbb_protocol::packets::{
     EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
     MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
@@ -7,7 +8,7 @@ use bbb_protocol::packets::{
     PLAYER_RELATIVE_Z,
 };
 
-use crate::WorldStore;
+use crate::{ChunkPos, WorldStore};
 
 use super::schema::vanilla_entity_metadata_type_interpolation_steps;
 use super::{is_vanilla_minecart_type, EntityVec3};
@@ -16,16 +17,24 @@ impl WorldStore {
     pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
         self.counters.entity_position_syncs_received += 1;
         let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
+        let ticking = self.entity_is_ticking(packet.id);
+        let interpolation_steps = self.entity_interpolation_steps(packet.id);
+        let position = entity_vec3(packet.position);
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
-            transform.position_base = entity_vec3(packet.position);
+            transform.position_base = position;
             if locally_authoritative {
                 return;
             }
-            transform.cancel_interpolation();
-            transform.position = entity_vec3(packet.position);
-            transform.delta_movement = entity_vec3(packet.delta_movement);
-            transform.y_rot = packet.y_rot;
-            transform.x_rot = packet.x_rot;
+            if ticking && entity_distance_squared(transform.position, position) <= 4096.0 {
+                transform.move_or_interpolate_to(
+                    interpolation_steps,
+                    Some(position),
+                    Some(packet.y_rot),
+                    Some(packet.x_rot),
+                );
+            } else {
+                transform.snap_to(position, packet.y_rot, packet.x_rot);
+            }
             transform.on_ground = Some(packet.on_ground);
         }) else {
             self.counters.entity_position_syncs_ignored += 1;
@@ -41,17 +50,7 @@ impl WorldStore {
     pub fn apply_entity_move(&mut self, packet: ProtocolEntityMove) -> bool {
         self.counters.entity_moves_received += 1;
         let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
-        let minecart_improvements_enabled =
-            self.is_feature_enabled("minecraft:minecart_improvements");
-        let interpolation_steps =
-            self.entities
-                .entity_type_id(packet.id)
-                .and_then(|entity_type_id| {
-                    vanilla_entity_metadata_type_interpolation_steps(
-                        entity_type_id,
-                        minecart_improvements_enabled,
-                    )
-                });
+        let interpolation_steps = self.entity_interpolation_steps(packet.id);
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             let position = if packet.has_position {
                 let position = decode_entity_delta_position(
@@ -173,31 +172,101 @@ impl WorldStore {
                 }),
             );
         }
-        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
+        let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
+        let ticking = self.entity_is_ticking(packet.id);
+        let interpolation_steps = self.entity_interpolation_steps(packet.id);
+        let has_relative_position = packet.relatives_mask
+            & (PLAYER_RELATIVE_X | PLAYER_RELATIVE_Y | PLAYER_RELATIVE_Z)
+            != 0;
+        let Some(was_interpolated) = self.entities.with_transform_mut(packet.id, |transform| {
+            let (source_position, source_y_rot, source_x_rot) = transform
+                .interpolation_target()
+                .unwrap_or((transform.position, transform.y_rot, transform.x_rot));
             let absolute = entity_absolute_move_rotation(
-                transform.position,
+                source_position,
                 transform.delta_movement,
-                transform.y_rot,
-                transform.x_rot,
+                source_y_rot,
+                source_x_rot,
                 packet.position,
                 packet.delta_movement,
                 packet.y_rot,
                 packet.x_rot,
                 packet.relatives_mask,
             );
-            transform.cancel_interpolation();
-            transform.position = absolute.position;
-            transform.delta_movement = absolute.delta_movement;
-            transform.y_rot = absolute.y_rot;
-            transform.x_rot = absolute.x_rot;
+            let interpolate = ticking || !locally_authoritative || has_relative_position;
+            let too_big_to_interpolate =
+                entity_distance_squared(source_position, absolute.position) > 4096.0;
+            let was_interpolated = interpolate && !too_big_to_interpolate;
+            if was_interpolated {
+                transform.move_or_interpolate_to(
+                    interpolation_steps,
+                    Some(absolute.position),
+                    Some(absolute.y_rot),
+                    Some(absolute.x_rot),
+                );
+                transform.delta_movement = absolute.delta_movement;
+            } else {
+                transform.position = absolute.position;
+                transform.delta_movement = absolute.delta_movement;
+                transform.set_y_rot(absolute.y_rot);
+                transform.set_x_rot(absolute.x_rot);
+                let old_absolute = entity_absolute_move_rotation(
+                    transform.old_position,
+                    EntityVec3::default(),
+                    transform.old_y_rot,
+                    transform.old_x_rot,
+                    packet.position,
+                    packet.delta_movement,
+                    packet.y_rot,
+                    packet.x_rot,
+                    packet.relatives_mask,
+                );
+                transform.set_old_pos_and_rot_to(
+                    old_absolute.position,
+                    old_absolute.y_rot,
+                    old_absolute.x_rot,
+                );
+            }
             transform.on_ground = Some(packet.on_ground);
+            was_interpolated
         }) else {
             self.counters.entity_teleports_ignored += 1;
             return (false, None);
         };
         self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_teleports_applied += 1;
+        let _ = was_interpolated;
         (true, None)
+    }
+
+    fn entity_interpolation_steps(&self, entity_id: i32) -> Option<u8> {
+        let minecart_improvements_enabled =
+            self.is_feature_enabled("minecraft:minecart_improvements");
+        self.entities
+            .entity_type_id(entity_id)
+            .and_then(|entity_type_id| {
+                vanilla_entity_metadata_type_interpolation_steps(
+                    entity_type_id,
+                    minecart_improvements_enabled,
+                )
+            })
+    }
+
+    fn entity_is_ticking(&self, entity_id: i32) -> bool {
+        let Some(identity) = self.entities.identity(entity_id) else {
+            return false;
+        };
+        if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return true;
+        }
+        let Some(transform) = self.entities.transform(entity_id) else {
+            return false;
+        };
+        self.probe_chunk(ChunkPos {
+            x: (transform.position.x.floor() as i32).div_euclid(16),
+            z: (transform.position.z.floor() as i32).div_euclid(16),
+        })
+        .is_some()
     }
 
     fn entity_is_locally_authoritative(&self, entity_id: i32) -> bool {

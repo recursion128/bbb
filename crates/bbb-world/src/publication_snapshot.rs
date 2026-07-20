@@ -422,7 +422,10 @@ mod tests {
                 value: EntityDataValueKind::Byte(0x20),
             }],
         }));
+        world.advance_entity_client_animations(1);
         let generation_b = world.publication_snapshot();
+        world.advance_entity_client_animations(1);
+        let generation_c = world.publication_snapshot();
 
         let entity_a = generation_a.probe_entity(7).unwrap();
         let entity_b = generation_b.probe_entity(7).unwrap();
@@ -434,6 +437,17 @@ mod tests {
             entity_b.data_values[0].value,
             EntityDataValueKind::Byte(0x20)
         );
+        let transform_a = generation_a.entities.transform(7).unwrap();
+        let transform_b = generation_b.entities.transform(7).unwrap();
+        let transform_c = generation_c.entities.transform(7).unwrap();
+        assert_eq!(transform_a.old_position.x, 1.0);
+        assert_eq!(transform_a.position.x, 1.0);
+        assert_eq!(transform_b.old_position.x, 1.0);
+        assert!((transform_b.position.x - 4.0 / 3.0).abs() < 1.0e-12);
+        assert_eq!(transform_b.interpolation.unwrap().remaining_steps, 2);
+        assert_eq!(transform_c.old_position, transform_b.position);
+        assert!((transform_c.position.x - 5.0 / 3.0).abs() < 1.0e-12);
+        assert_eq!(transform_c.interpolation.unwrap().remaining_steps, 1);
     }
 
     #[test]

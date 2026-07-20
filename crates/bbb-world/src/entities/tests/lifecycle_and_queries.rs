@@ -139,7 +139,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(entity.interpolation.as_ref().unwrap().remaining_steps, 3);
     store.advance_entity_client_animations(3);
     let entity = store.probe_entity(123).unwrap();
-    assert_eq!(entity.y_rot, 390.0);
+    assert_eq!(entity.y_rot, 30.0);
     assert_eq!(entity.x_rot, -15.0);
     assert_eq!(entity.interpolation, None);
 
@@ -162,6 +162,29 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     }));
     let entity = store.probe_entity(123).unwrap();
     assert_eq!(
+        entity
+            .interpolation
+            .as_ref()
+            .map(|state| state.target_position),
+        Some(EntityVec3 {
+            x: 3.5,
+            y: 70.0,
+            z: -4.0,
+        })
+    );
+    assert_eq!(entity.position, entity.position_base);
+    assert_eq!(
+        entity.delta_movement,
+        EntityVec3 {
+            x: 0.0,
+            y: 0.2,
+            z: 0.0,
+        }
+    );
+    assert_eq!(entity.on_ground, Some(true));
+    store.advance_entity_client_animations(3);
+    let entity = store.probe_entity(123).unwrap();
+    assert_eq!(
         entity.position,
         EntityVec3 {
             x: 3.5,
@@ -179,7 +202,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     );
     assert_eq!(entity.y_rot, 10.0);
     assert_eq!(entity.x_rot, -90.0);
-    assert_eq!(entity.on_ground, Some(true));
+    assert_eq!(entity.interpolation, None);
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
@@ -460,7 +483,7 @@ fn relative_move_handler_overrides_snap_non_interpolating_entities() {
     }
     let display = store.probe_entity(203).unwrap();
     assert_eq!(display.y_rot, 450.0);
-    assert_eq!(display.x_rot, -450.0);
+    assert_eq!(display.x_rot, -90.0);
 }
 
 #[test]
@@ -502,6 +525,353 @@ fn rotation_only_retarget_keeps_the_active_position_target() {
     assert_eq!(finished.y_rot, 90.0);
     assert_eq!(finished.x_rot, 0.0);
     assert_eq!(finished.interpolation, None);
+}
+
+#[test]
+fn position_sync_uses_loaded_chunk_ticking_distance_and_keeps_packet_velocity_unchanged() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(205));
+
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 205,
+            position: ProtocolVec3d {
+                x: 2.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 4.0,
+                y: 5.0,
+                z: 6.0,
+            },
+            y_rot: 40.0,
+            x_rot: 10.0,
+            on_ground: true,
+        })
+    );
+    let snapped = store.entities.transform(205).unwrap();
+    assert_eq!(snapped.position.x, 2.0);
+    assert_eq!(snapped.old_position, snapped.position);
+    assert_eq!(snapped.delta_movement, EntityVec3::default());
+    assert_eq!(snapped.interpolation, None);
+
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 205,
+            position: ProtocolVec3d {
+                x: 5.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 7.0,
+                y: 8.0,
+                z: 9.0,
+            },
+            y_rot: 80.0,
+            x_rot: 20.0,
+            on_ground: false,
+        })
+    );
+    let interpolating = store.entities.transform(205).unwrap();
+    assert_eq!(interpolating.position.x, 2.0);
+    assert_eq!(interpolating.position_base.x, 5.0);
+    assert_eq!(interpolating.delta_movement, EntityVec3::default());
+    assert_eq!(
+        interpolating
+            .interpolation
+            .map(|state| state.target_position.x),
+        Some(5.0)
+    );
+
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 205,
+            position: ProtocolVec3d {
+                x: 66.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 100.0,
+            x_rot: 25.0,
+            on_ground: true,
+        })
+    );
+    let boundary = store.entities.transform(205).unwrap();
+    assert_eq!(boundary.position.x, 2.0);
+    assert_eq!(
+        boundary.interpolation.map(|state| state.target_position.x),
+        Some(66.0),
+        "a squared displacement of exactly 4096 still interpolates"
+    );
+
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 205,
+            position: ProtocolVec3d {
+                x: 67.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 120.0,
+            x_rot: 30.0,
+            on_ground: true,
+        })
+    );
+    let threshold = store.entities.transform(205).unwrap();
+    assert_eq!(threshold.position.x, 67.0);
+    assert_eq!(threshold.old_position.x, 67.0);
+    assert!(
+        threshold.interpolation.is_some(),
+        "snapTo does not cancel a handler target"
+    );
+}
+
+#[test]
+fn teleport_resolves_relative_values_from_active_target_and_snap_old_endpoints() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(206));
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 206,
+        has_position: true,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: Some(40.0),
+        x_rot: Some(10.0),
+        on_ground: false,
+    }));
+    assert!(store.apply_teleport_entity(ProtocolTeleportEntity {
+        id: 206,
+        position: ProtocolVec3d {
+            x: 0.5,
+            y: 70.0,
+            z: -4.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        y_rot: 5.0,
+        x_rot: 15.0,
+        relatives_mask: PLAYER_RELATIVE_X | PLAYER_RELATIVE_Y_ROT,
+        on_ground: true,
+    }));
+    let active = store.entities.transform(206).unwrap();
+    let active_target = active.interpolation.unwrap();
+    assert_eq!(active_target.target_position.x, 2.5);
+    assert_eq!(active_target.target_position.y, 70.0);
+    assert_eq!(active_target.target_y_rot, 45.0);
+    assert_eq!(active_target.target_x_rot, 15.0);
+
+    store
+        .entities
+        .with_transform_mut(206, |transform| {
+            transform.cancel_interpolation();
+            transform.position = EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            };
+            transform.y_rot = 20.0;
+            transform.x_rot = 5.0;
+            transform.set_old_pos_and_rot_to(
+                EntityVec3 {
+                    x: 0.0,
+                    y: 63.0,
+                    z: -3.0,
+                },
+                5.0,
+                -5.0,
+            );
+        })
+        .unwrap();
+    assert!(store.apply_teleport_entity(ProtocolTeleportEntity {
+        id: 206,
+        position: ProtocolVec3d {
+            x: 100.0,
+            y: 80.0,
+            z: 9.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        y_rot: 10.0,
+        x_rot: 20.0,
+        relatives_mask: PLAYER_RELATIVE_X | PLAYER_RELATIVE_Y_ROT,
+        on_ground: false,
+    }));
+    let snapped = store.entities.transform(206).unwrap();
+    assert_eq!(snapped.position.x, 101.0);
+    assert_eq!(snapped.old_position.x, 100.0);
+    assert_eq!(snapped.old_position.y, 80.0);
+    assert_eq!(snapped.y_rot, 30.0);
+    assert_eq!(snapped.old_y_rot, 15.0);
+    assert_eq!(snapped.x_rot, 20.0);
+    assert_eq!(snapped.old_x_rot, 20.0);
+}
+
+#[test]
+fn client_tick_captures_transform_and_head_render_endpoints_before_lerp() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(207));
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 207,
+        has_position: true,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: Some(80.0),
+        x_rot: Some(20.0),
+        on_ground: false,
+    }));
+    assert!(store.apply_rotate_head(ProtocolRotateHead {
+        id: 207,
+        y_head_rot: 90.0,
+    }));
+
+    store.advance_entity_client_animations(1);
+    let advanced = store.entities.transform(207).unwrap();
+    assert_eq!(advanced.old_position.x, 1.0);
+    assert!((advanced.position.x - 4.0 / 3.0).abs() < 1.0e-12);
+    assert_eq!(advanced.old_y_rot, 20.0);
+    assert_eq!(advanced.y_rot, 40.0);
+    assert_eq!(advanced.old_x_rot, -10.0);
+    assert_eq!(advanced.x_rot, 0.0);
+    assert_eq!(advanced.old_y_head_rot, 30.0);
+    assert_eq!(advanced.y_head_rot, 50.0);
+}
+
+#[test]
+fn interpolation_and_head_lerp_pause_outside_ticking_client_sections() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(999));
+    store.apply_add_entity(protocol_add_entity(208));
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 208,
+        has_position: true,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: Some(80.0),
+        x_rot: Some(20.0),
+        on_ground: false,
+    }));
+    assert!(store.apply_rotate_head(ProtocolRotateHead {
+        id: 208,
+        y_head_rot: 90.0,
+    }));
+
+    store.advance_entity_client_animations(1);
+    let paused = store.entities.transform(208).unwrap();
+    assert_eq!(paused.position.x, 1.0);
+    assert_eq!(paused.y_head_rot, 30.0);
+    assert_eq!(paused.interpolation.unwrap().remaining_steps, 3);
+
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.advance_entity_client_animations(1);
+    let ticking = store.entities.transform(208).unwrap();
+    assert!((ticking.position.x - 4.0 / 3.0).abs() < 1.0e-12);
+    assert_eq!(ticking.y_head_rot, 50.0);
+    assert_eq!(ticking.interpolation.unwrap().remaining_steps, 2);
+}
+
+#[test]
+fn interpolation_carries_independent_motion_only_into_collision_free_target_bounds() {
+    let make_store = || {
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        store.insert_decoded_chunk(empty_test_chunk());
+        store.apply_add_entity(ProtocolAddEntity {
+            id: 209,
+            uuid: default_entity_uuid(),
+            entity_type_id: VANILLA_ENTITY_TYPE_COW_ID,
+            position: ProtocolVec3d {
+                x: 1.5,
+                y: 1.0,
+                z: 0.5,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 20.0,
+            x_rot: 0.0,
+            y_head_rot: 20.0,
+            data: 0,
+        });
+        assert!(store.apply_entity_move(ProtocolEntityMove {
+            id: 209,
+            has_position: true,
+            delta_x: 4096,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: Some(40.0),
+            x_rot: Some(0.0),
+            on_ground: false,
+        }));
+        store
+            .entities
+            .with_transform_mut(209, |transform| {
+                transform.position.x += 1.0;
+                transform.y_rot += 30.0;
+            })
+            .unwrap();
+        store
+    };
+
+    let mut clear = make_store();
+    clear.advance_entity_client_animations(1);
+    let carried = clear.entities.transform(209).unwrap();
+    assert_eq!(
+        carried.interpolation.unwrap().target_position.x,
+        3.5,
+        "collision-free client motion carries into the packet target"
+    );
+    assert!((carried.position.x - (2.5 + 1.0 / 3.0)).abs() < 1.0e-12);
+    assert_eq!(carried.interpolation.unwrap().target_y_rot, 70.0);
+
+    let mut blocked = make_store();
+    let stone = vanilla_block_state_id("minecraft:stone", []);
+    assert!(blocked.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 3, y: 1, z: 0 },
+        block_state_id: stone,
+    }));
+    blocked.advance_entity_client_animations(1);
+    let rejected = blocked.entities.transform(209).unwrap();
+    assert_eq!(rejected.interpolation.unwrap().target_position.x, 2.5);
+    assert_eq!(rejected.position.x, 2.5);
+    assert_eq!(
+        rejected.interpolation.unwrap().target_y_rot,
+        70.0,
+        "rotation carry is independent of the position collision result"
+    );
+
+    let mut entity_blocked = make_store();
+    entity_blocked.apply_add_entity(ProtocolAddEntity {
+        id: 210,
+        uuid: Uuid::from_u128(0x210),
+        entity_type_id: VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        position: ProtocolVec3d {
+            x: 3.5,
+            y: 1.0,
+            z: 0.5,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        y_rot: 0.0,
+        x_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    entity_blocked.advance_entity_client_animations(1);
+    let entity_rejected = entity_blocked.entities.transform(209).unwrap();
+    assert_eq!(
+        entity_rejected.interpolation.unwrap().target_position.x,
+        2.5,
+        "another collidable entity rejects target carry without a second target scan"
+    );
 }
 
 #[test]

@@ -35,6 +35,7 @@ use bbb_protocol::packets::{
     TeamVisibility as ProtocolTeamVisibility, TeleportEntity as ProtocolTeleportEntity,
     TrimMaterialSummary, TrimPatternSummary, UpdateAttributes as ProtocolUpdateAttributes,
     UpdateMobEffect, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    PLAYER_RELATIVE_Y_ROT,
 };
 
 mod aquatic_and_beam_creature_animation;

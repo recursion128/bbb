@@ -6220,12 +6220,40 @@ impl WorldStore {
         &mut self,
         ticks: u32,
     ) -> crate::EntityClientTickWork {
-        // Vanilla `Guardian.aiStep` recomputes `isInWater()` each client tick, but
-        // within one `advance` batch the entity transforms and the chunk fluid state
-        // are static (only the animation accumulators mutate), so the per-entity
-        // `in_water` result is identical across all `ticks` iterations. Compute it
-        // once here — where the chunk/fluid data lives — and thread it into the tick
-        // loop. The immutable reads (build the map) MUST precede the mutable advance.
+        if ticks != 1 {
+            let mut work = crate::EntityClientTickWork::default();
+            for _ in 0..ticks {
+                let tick_work = self.advance_entity_client_animations_with_observation(1);
+                work.scanned_entities = work
+                    .scanned_entities
+                    .saturating_add(tick_work.scanned_entities);
+                work.mutated_entities = work
+                    .mutated_entities
+                    .saturating_add(tick_work.mutated_entities);
+            }
+            return work;
+        }
+        let interpolation_collision_inputs = self.entities.interpolation_collision_inputs();
+        let entity_collision_targets = if interpolation_collision_inputs.is_empty() {
+            Vec::new()
+        } else {
+            self.entity_pick_targets()
+        };
+        let collision_free_interpolation_targets: std::collections::HashSet<i32> =
+            interpolation_collision_inputs
+                .into_iter()
+                .filter(|input| {
+                    self.entity_interpolation_target_is_collision_free(
+                        *input,
+                        &entity_collision_targets,
+                    )
+                })
+                .map(|input| input.entity_id)
+                .collect();
+        // Vanilla `Guardian.aiStep` recomputes `isInWater()` each client tick. This
+        // entry point normalizes batched callers to one pass per tick above, so the
+        // AABBs and interpolation collision targets are sampled again after every
+        // transform mutation. The immutable reads MUST precede the mutable advance.
         let in_water_inputs = self.entities.in_water_aabb_inputs();
         let in_water_by_id: std::collections::HashMap<i32, bool> = in_water_inputs
             .into_iter()
@@ -6253,12 +6281,29 @@ impl WorldStore {
         let death_tick_simulation_distance = self.local_player.simulation_distance;
         let minecart_improvements_enabled =
             self.is_feature_enabled("minecraft:minecart_improvements");
+        let has_client_level = self.level.is_some();
+        let chunks = &self.chunks;
+        let is_ticking_entity = |_: i32, entity_type_id: i32, position: EntityVec3| {
+            !has_client_level
+                || entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                || chunks.iter().any(|chunk| {
+                    chunk.pos
+                        == crate::ChunkPos {
+                            x: entity_chunk_coordinate(position.x),
+                            z: entity_chunk_coordinate(position.z),
+                        }
+                })
+        };
+        let can_carry_interpolation_target =
+            |entity_id: i32| collision_free_interpolation_targets.contains(&entity_id);
         let work = self.entities.advance_client_animations(
             ticks,
             &in_water_by_id,
             minecart_improvements_enabled,
             death_tick_player_chunk,
             death_tick_simulation_distance,
+            &is_ticking_entity,
+            &can_carry_interpolation_target,
         );
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
         work

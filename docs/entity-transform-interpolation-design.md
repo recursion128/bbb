@@ -214,7 +214,8 @@ The phase-1 baseline records all 157 ledger rows as `partial`, one shared
 - generic interpolation target carry is not collision-gated;
 - model candidate extraction ignores its partial-tick argument;
 - generic `EntityTransform` has no old position/body-rotation endpoints;
-- head rotation has no independent three-step lerp owner.
+- head rotation already has a three-step target in `EntityClientAnimations`, but
+  has no previous/current render endpoint integration.
 
 Focused tests must cover, at minimum:
 

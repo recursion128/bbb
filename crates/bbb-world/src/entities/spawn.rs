@@ -102,20 +102,25 @@ impl WorldStore {
             entity_type_id: packet.entity_type_id,
             data: packet.data,
         };
+        let client_position = vanilla_client_position_for_entity_data(
+            packet.entity_type_id,
+            packet_position,
+            packet.data,
+            &[],
+            None,
+        )
+        .unwrap_or(packet_position);
         let transform = EntityTransform {
-            position: vanilla_client_position_for_entity_data(
-                packet.entity_type_id,
-                packet_position,
-                packet.data,
-                &[],
-                None,
-            )
-            .unwrap_or(packet_position),
+            position: client_position,
+            old_position: client_position,
             position_base: packet_position,
             delta_movement: entity_vec3(packet.delta_movement),
             y_rot: packet.y_rot,
+            old_y_rot: packet.y_rot,
             x_rot: packet.x_rot,
+            old_x_rot: packet.x_rot,
             y_head_rot: packet.y_head_rot,
+            old_y_head_rot: packet.y_head_rot,
             on_ground: None,
             interpolation: None,
         };

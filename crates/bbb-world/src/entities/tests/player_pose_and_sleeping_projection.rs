@@ -193,21 +193,16 @@ fn entity_model_sources_project_player_cape_cloak_state() {
     const EPSILON: f32 = 1.0e-5;
 
     let sync_position = |store: &mut WorldStore, x: f64, y: f64, z: f64| {
-        assert!(
-            store.apply_entity_position_sync(ProtocolEntityPositionSync {
-                id: 78,
-                position: ProtocolVec3d { x, y, z },
-                delta_movement: ProtocolVec3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
+        assert!(store
+            .entities
+            .with_transform_mut(78, |transform| {
+                transform.position = EntityVec3 { x, y, z };
+                transform.position_base = transform.position;
                 // Facing vanilla north: forwardX = 0, forwardZ = -1.
-                y_rot: 0.0,
-                x_rot: 0.0,
-                on_ground: true,
+                transform.y_rot = 0.0;
+                transform.x_rot = 0.0;
             })
-        );
+            .is_some());
     };
     let cape = |store: &WorldStore, partial: f32| {
         let source = store

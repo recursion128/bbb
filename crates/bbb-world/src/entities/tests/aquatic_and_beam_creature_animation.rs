@@ -773,20 +773,13 @@ fn frog_swim_idle_activates_only_in_water_and_idle() {
         (source.walk_animation_position, source.walk_animation_speed)
     };
     let sync_position = |store: &mut WorldStore, x: f64, z: f64| {
-        assert!(
-            store.apply_entity_position_sync(ProtocolEntityPositionSync {
-                id: 81,
-                position: ProtocolVec3d { x, y: 2.0, z },
-                delta_movement: ProtocolVec3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-                y_rot: 0.0,
-                x_rot: 0.0,
-                on_ground: true,
+        assert!(store
+            .entities
+            .with_transform_mut(81, |transform| {
+                transform.position = EntityVec3 { x, y: 2.0, z };
+                transform.position_base = transform.position;
             })
-        );
+            .is_some());
     };
 
     // A frog standing in a tall water column (submerged) or out of water.

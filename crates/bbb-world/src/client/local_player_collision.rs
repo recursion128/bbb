@@ -13,8 +13,8 @@ use crate::entities::{
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
-    vanilla_living_entity_type, EntitySupportingBlock, VanillaEntityCollidabilityKind,
-    VanillaEntityPushabilityKind,
+    vanilla_living_entity_type, EntityInterpolationCollisionInput, EntitySupportingBlock,
+    VanillaEntityCollidabilityKind, VanillaEntityPushabilityKind,
 };
 use crate::terrain::{
     block_name_has_empty_collision_shape, block_name_is_air, block_name_is_amethyst_cluster,
@@ -214,6 +214,104 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 }
 
 impl WorldStore {
+    pub(crate) fn entity_interpolation_target_is_collision_free(
+        &self,
+        input: EntityInterpolationCollisionInput,
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> bool {
+        let target_bounds = LocalPlayerBounds::from_min_max(
+            [
+                input.target_position.x + f64::from(input.bounds.min[0]),
+                input.target_position.y + f64::from(input.bounds.min[1]),
+                input.target_position.z + f64::from(input.bounds.min[2]),
+            ],
+            [
+                input.target_position.x + f64::from(input.bounds.max[0]),
+                input.target_position.y + f64::from(input.bounds.max[1]),
+                input.target_position.z + f64::from(input.bounds.max[2]),
+            ],
+        );
+        let context = LocalPlayerCollisionContext::for_remote_entity(
+            target_bounds.min_y,
+            self.entities
+                .is_descending(input.entity_id)
+                .unwrap_or(false),
+            self.remote_entity_can_walk_on_powder_snow(input.entity_id),
+            input.entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        );
+        if local_player_collides_with_context(self, target_bounds, context) {
+            return false;
+        }
+
+        let query = DebugCameraCollisionQuery {
+            source_entity_id: Some(input.entity_id),
+            source_entity_type_id: input.entity_type_id,
+            source_position: [
+                input.target_position.x,
+                input.target_position.y,
+                input.target_position.z,
+            ],
+            bounds: target_bounds,
+            block_context: context,
+        };
+        let collides_with_entity = entity_collision_targets.iter().any(|target| {
+            if target.entity_id == input.entity_id
+                || self.debug_entities_share_root_vehicle(Some(input.entity_id), target.entity_id)
+            {
+                return false;
+            }
+            let Some(target_type) = self.entity_type_id(target.entity_id) else {
+                return false;
+            };
+            let target_box = WorldCollisionBox {
+                min: [
+                    target.position.x + f64::from(target.bounds.min[0]),
+                    target.position.y + f64::from(target.bounds.min[1]),
+                    target.position.z + f64::from(target.bounds.min[2]),
+                ],
+                max: [
+                    target.position.x + f64::from(target.bounds.max[0]),
+                    target.position.y + f64::from(target.bounds.max[1]),
+                    target.position.z + f64::from(target.bounds.max[2]),
+                ],
+            };
+            self.debug_entities_can_collide(
+                query,
+                target.entity_id,
+                target_type,
+                [target.position.x, target.position.y, target.position.z],
+                target_box,
+            ) && world_collision_box_intersects_bounds(target_box, target_bounds)
+        });
+        if collides_with_entity {
+            return false;
+        }
+
+        let width = (target_bounds.max_x - target_bounds.min_x)
+            .abs()
+            .max((target_bounds.max_z - target_bounds.min_z).abs())
+            .max(1.0);
+        let border = self.world_border();
+        let source_is_close = border
+            .distance_to_border(input.current_position.x, input.current_position.z)
+            < width * 2.0
+            && input.current_position.x >= border.min_x_at(0.0) - width
+            && input.current_position.x < border.max_x_at(0.0) + width
+            && input.current_position.z >= border.min_z_at(0.0) - width
+            && input.current_position.z < border.max_z_at(0.0) + width;
+        if !source_is_close {
+            return true;
+        }
+        let collision_min_x = border.min_x_at(0.0).floor();
+        let collision_min_z = border.min_z_at(0.0).floor();
+        let collision_max_x = border.max_x_at(0.0).ceil();
+        let collision_max_z = border.max_z_at(0.0).ceil();
+        target_bounds.min_x >= collision_min_x
+            && target_bounds.max_x <= collision_max_x
+            && target_bounds.min_z >= collision_min_z
+            && target_bounds.max_z <= collision_max_z
+    }
+
     /// Exact empty-hand `ScaffoldingBlock.getShape(...).toAabbs()` projection,
     /// derived from the same shape constants and voxel-union merge used by
     /// collision queries. `None` means the probe is not valid scaffolding.
@@ -4785,7 +4883,8 @@ mod tests {
                 .unwrap()
                 .delta_movement
                 .y,
-            -4.0
+            0.0,
+            "ClientPacketListener position sync does not apply packet movement"
         );
         assert_eq!(
             world.entity_main_supporting_block_pos(velocity_entity_id),

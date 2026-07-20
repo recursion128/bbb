@@ -618,6 +618,9 @@ fn local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown() {
         ItemEquipmentSlot::Saddle,
     )]));
     store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
         VANILLA_ENTITY_TYPE_HORSE_ID,

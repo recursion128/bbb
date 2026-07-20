@@ -181,6 +181,15 @@ fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
         },
         ..crate::LocalPlayerPoseState::default()
     });
+    for pos in [
+        crate::ChunkPos { x: 2, z: -1 },
+        crate::ChunkPos { x: 3, z: 0 },
+        crate::ChunkPos { x: -1, z: -2 },
+    ] {
+        let mut chunk = empty_test_chunk();
+        chunk.pos = pos;
+        store.insert_decoded_chunk(chunk);
+    }
     for (id, position) in [
         (62, [47.9, 64.0, -16.0]),
         (63, [48.0, 64.0, 0.0]),
