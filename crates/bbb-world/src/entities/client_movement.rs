@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TRIDENT_ID;
 use bbb_protocol::item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID;
 use bbb_protocol::packets::EntityDataValueKind;
@@ -13,16 +14,31 @@ use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_type_client_movement_policy, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     VanillaEntityClientMovementPolicy,
 };
 use super::{
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
-    EntityClientMovementSimpleParticleState, EntityStore, EntityVec3, EyeOfEnderTrailParticleState,
-    FireworkRocketTrailParticleState, ShulkerBulletTrailParticleState,
-    VANILLA_ENTITY_TYPE_PLAYER_ID,
+    EntityClientMovementSimpleParticleState, EntityPickBoundsState, EntityStore, EntityVec3,
+    EyeOfEnderTrailParticleState, FireworkRocketTrailParticleState,
+    ShulkerBulletTrailParticleState, VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityClientMovementCollisionInput {
+    pub(crate) entity_id: i32,
+    pub(crate) position: EntityVec3,
+    pub(crate) requested_movement: EntityVec3,
+    pub(crate) bounds: EntityPickBoundsState,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityClientMovementCollisionResult {
+    pub(crate) requested_movement: EntityVec3,
+    pub(crate) clipped_movement: EntityVec3,
+}
 
 pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
     matches!(
@@ -42,15 +58,73 @@ pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
 }
 
 impl EntityStore {
-    /// Advances client-owned projectile free flight in the frozen entity
-    /// schedule. Server-authoritative hit consequences and removals are never
-    /// manufactured here; incoming packets remain their canonical owner.
-    /// Vehicle, item, orb, falling-block, TNT, and fishing-hook movement stay
-    /// with their dedicated collision/authority owners.
+    pub(crate) fn client_movement_collision_inputs(
+        &self,
+    ) -> Vec<EntityClientMovementCollisionInput> {
+        let mut inputs = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            let entity_type_id = identity.entity_type_id;
+            let Some(policy) = vanilla_entity_metadata_type_client_movement_policy(entity_type_id)
+            else {
+                continue;
+            };
+            if !matches!(
+                policy,
+                VanillaEntityClientMovementPolicy::FallingBlock
+                    | VanillaEntityClientMovementPolicy::PrimedTnt
+            ) {
+                continue;
+            }
+            drop(identity);
+            let Ok(mut query) = self
+                .ecs
+                .query_one::<(&EntityMetadata, &EntityTransform)>(entity)
+            else {
+                continue;
+            };
+            let Some((metadata, transform)) = query.get() else {
+                continue;
+            };
+            let position = transform.position;
+            let requested_movement =
+                nonliving_gravity_movement(metadata, transform.delta_movement, 0.04);
+            drop(query);
+            let Some(bounds) = self.pick_bounds(*id) else {
+                continue;
+            };
+            debug_assert!(matches!(
+                vanilla_entity_metadata_type_client_movement_policy(entity_type_id),
+                Some(
+                    VanillaEntityClientMovementPolicy::FallingBlock
+                        | VanillaEntityClientMovementPolicy::PrimedTnt
+                )
+            ));
+            inputs.push(EntityClientMovementCollisionInput {
+                entity_id: *id,
+                position,
+                requested_movement,
+                bounds,
+            });
+        }
+        inputs
+    }
+
+    /// Advances client-owned projectile and nonliving movement in the frozen
+    /// entity schedule. Server-authoritative hit consequences and removals are
+    /// never manufactured here; incoming packets remain their canonical owner.
+    /// Vehicle, item, orb, and fishing-hook movement stay with their dedicated
+    /// collision/authority owners.
     pub(super) fn advance_direct_client_movement(
         &mut self,
         scheduled: &[Entity],
         in_water_by_id: &HashMap<i32, bool>,
+        collisions_by_id: &HashMap<i32, EntityClientMovementCollisionResult>,
     ) {
         let mut particles = Vec::new();
         for &entity in scheduled {
@@ -185,6 +259,41 @@ impl EntityStore {
                         accessors,
                         in_water_by_id.get(&entity_id).copied().unwrap_or(false),
                         &mut particles,
+                    );
+                }
+                VanillaEntityClientMovementPolicy::FallingBlock => {
+                    let Ok((metadata, transform)) = self
+                        .ecs
+                        .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
+                    else {
+                        continue;
+                    };
+                    advance_falling_block(
+                        metadata,
+                        transform,
+                        collisions_by_id.get(&entity_id).copied(),
+                    );
+                }
+                VanillaEntityClientMovementPolicy::PrimedTnt => {
+                    let Some(accessors) =
+                        vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+                            entity_type_id,
+                        )
+                    else {
+                        continue;
+                    };
+                    let Ok((metadata, transform)) = self
+                        .ecs
+                        .query_one_mut::<(&mut EntityMetadata, &mut EntityTransform)>(entity)
+                    else {
+                        continue;
+                    };
+                    advance_primed_tnt(
+                        metadata,
+                        transform,
+                        accessors.fuse_data_id,
+                        accessors.fuse_default,
+                        collisions_by_id.get(&entity_id).copied(),
                     );
                 }
                 VanillaEntityClientMovementPolicy::FireworkRocket => {
@@ -507,6 +616,63 @@ fn advance_abstract_arrow(
     }
 }
 
+fn advance_falling_block(
+    metadata: &EntityMetadata,
+    transform: &mut EntityTransform,
+    collision: Option<EntityClientMovementCollisionResult>,
+) {
+    let requested = nonliving_gravity_movement(metadata, transform.delta_movement, 0.04);
+    let clipped = collision
+        .filter(|collision| collision.requested_movement == requested)
+        .map_or(requested, |collision| collision.clipped_movement);
+    transform.position = add(transform.position, clipped);
+    transform.on_ground = Some(requested.y < 0.0 && clipped.y != requested.y);
+    transform.delta_movement = scale(requested, f64::from(0.98_f32));
+}
+
+fn advance_primed_tnt(
+    metadata: &mut EntityMetadata,
+    transform: &mut EntityTransform,
+    fuse_data_id: u8,
+    fuse_default: i32,
+    collision: Option<EntityClientMovementCollisionResult>,
+) {
+    let requested = nonliving_gravity_movement(metadata, transform.delta_movement, 0.04);
+    let clipped = collision
+        .filter(|collision| collision.requested_movement == requested)
+        .map_or(requested, |collision| collision.clipped_movement);
+    transform.position = add(transform.position, clipped);
+    let on_ground = requested.y < 0.0 && clipped.y != requested.y;
+    transform.on_ground = Some(on_ground);
+    transform.delta_movement = scale(requested, f64::from(0.98_f32));
+    if on_ground {
+        transform.delta_movement.x *= 0.7;
+        transform.delta_movement.y *= -0.5;
+        transform.delta_movement.z *= 0.7;
+    }
+
+    let fuse = entity_data_int(&metadata.data_values, fuse_data_id, fuse_default);
+    set_entity_data_int(metadata, fuse_data_id, fuse.wrapping_sub(1));
+}
+
+fn nonliving_gravity_movement(
+    metadata: &EntityMetadata,
+    mut movement: EntityVec3,
+    gravity: f64,
+) -> EntityVec3 {
+    let no_gravity = vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+        entity_data_bool(
+            &metadata.data_values,
+            accessors.no_gravity_data_id,
+            accessors.no_gravity_default,
+        )
+    });
+    if !no_gravity {
+        movement.y -= gravity;
+    }
+    movement
+}
+
 fn append_arrow_crit_particles(
     entity_id: i32,
     position: EntityVec3,
@@ -627,6 +793,39 @@ fn entity_data_byte(
             _ => None,
         })
         .unwrap_or(default)
+}
+
+fn entity_data_int(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: i32,
+) -> i32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match value.value {
+            EntityDataValueKind::Int(value) => Some(value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+fn set_entity_data_int(metadata: &mut EntityMetadata, data_id: u8, value: i32) {
+    let value = bbb_protocol::packets::EntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(value),
+    };
+    if let Some(existing) = metadata
+        .data_values
+        .iter_mut()
+        .find(|existing| existing.data_id == data_id)
+    {
+        *existing = value;
+    } else {
+        metadata.data_values.push(value);
+        metadata.data_values.sort_by_key(|value| value.data_id);
+    }
 }
 
 fn entity_data_optional_unsigned_int(
@@ -751,10 +950,11 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
-        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
-        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
@@ -764,7 +964,10 @@ mod tests {
     };
     use uuid::Uuid;
 
-    use crate::WorldStore;
+    use crate::{
+        BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain,
+        PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
+    };
 
     use super::*;
 
@@ -1250,6 +1453,181 @@ mod tests {
     }
 
     #[test]
+    fn falling_block_and_tnt_apply_gravity_drag_and_client_fuse_tick() {
+        let mut store = WorldStore::new();
+        for (id, entity_type_id) in [
+            (59, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID),
+            (60, VANILLA_ENTITY_TYPE_TNT_ID),
+        ] {
+            store.apply_add_entity(projectile(
+                id,
+                entity_type_id,
+                ProtocolVec3d {
+                    x: 0.5,
+                    y: 0.2,
+                    z: -0.25,
+                },
+            ));
+        }
+        let generation_a = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+
+        let requested = EntityVec3 {
+            x: 0.5,
+            y: 0.16,
+            z: -0.25,
+        };
+        for id in [59, 60] {
+            let transform = store.probe_entity_transform(id).unwrap();
+            assert_vec3_near(
+                transform.position,
+                EntityVec3 {
+                    x: 1.5,
+                    y: 64.16,
+                    z: -2.25,
+                },
+            );
+            assert_vec3_near(
+                transform.delta_movement,
+                scale(requested, f64::from(0.98_f32)),
+            );
+            assert_eq!(transform.on_ground, Some(false));
+        }
+        assert_eq!(
+            store.primed_tnt_fuse_remaining_in_ticks(60, 1.0),
+            Some(79.0)
+        );
+        assert_eq!(
+            store.primed_tnt_smoke_particle_states(),
+            vec![super::super::PrimedTntSmokeParticleState {
+                entity_id: 60,
+                position: EntityVec3 {
+                    x: 1.5,
+                    y: 64.16,
+                    z: -2.25,
+                },
+            }]
+        );
+        assert_eq!(
+            generation_a.primed_tnt_fuse_remaining_in_ticks(60, 1.0),
+            Some(80.0),
+            "retained publication keeps the pre-tick fuse"
+        );
+    }
+
+    #[test]
+    fn nonliving_collision_response_matches_falling_and_tnt_ground_branches() {
+        let metadata = EntityMetadata::default();
+        let requested = EntityVec3 {
+            x: 0.5,
+            y: -0.04,
+            z: -0.25,
+        };
+        let collision = Some(EntityClientMovementCollisionResult {
+            requested_movement: requested,
+            clipped_movement: EntityVec3 {
+                x: 0.5,
+                y: 0.0,
+                z: -0.25,
+            },
+        });
+
+        let mut falling = test_transform(EntityVec3 {
+            x: 0.5,
+            y: 0.0,
+            z: -0.25,
+        });
+        advance_falling_block(&metadata, &mut falling, collision);
+        assert_eq!(falling.on_ground, Some(true));
+        assert_vec3_near(
+            falling.position,
+            EntityVec3 {
+                x: 1.5,
+                y: 64.0,
+                z: -2.25,
+            },
+        );
+        assert_vec3_near(
+            falling.delta_movement,
+            scale(requested, f64::from(0.98_f32)),
+        );
+
+        let mut tnt_metadata = EntityMetadata::default();
+        let mut tnt = test_transform(EntityVec3 {
+            x: 0.5,
+            y: 0.0,
+            z: -0.25,
+        });
+        let accessors = vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TNT_ID,
+        )
+        .unwrap();
+        advance_primed_tnt(
+            &mut tnt_metadata,
+            &mut tnt,
+            accessors.fuse_data_id,
+            accessors.fuse_default,
+            collision,
+        );
+        let drag = f64::from(0.98_f32);
+        assert_eq!(tnt.on_ground, Some(true));
+        assert_vec3_near(
+            tnt.delta_movement,
+            EntityVec3 {
+                x: requested.x * drag * 0.7,
+                y: requested.y * drag * -0.5,
+                z: requested.z * drag * 0.7,
+            },
+        );
+        assert_eq!(
+            entity_data_int(
+                &tnt_metadata.data_values,
+                accessors.fuse_data_id,
+                accessors.fuse_default,
+            ),
+            79
+        );
+    }
+
+    #[test]
+    fn nonliving_world_collision_inputs_clip_the_canonical_tick() {
+        let mut store = nonliving_collision_world();
+        for (id, entity_type_id) in [
+            (61, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID),
+            (62, VANILLA_ENTITY_TYPE_TNT_ID),
+        ] {
+            let mut entity = projectile(
+                id,
+                entity_type_id,
+                ProtocolVec3d {
+                    x: 0.0,
+                    y: -0.1,
+                    z: 0.0,
+                },
+            );
+            entity.position = ProtocolVec3d {
+                x: 0.5,
+                y: 1.05,
+                z: 0.5,
+            };
+            store.apply_add_entity(entity);
+        }
+
+        store.advance_entity_client_animations(1);
+
+        let requested_y = -0.14;
+        let falling = store.probe_entity_transform(61).unwrap();
+        assert_eq!(falling.on_ground, Some(true));
+        assert!((falling.position.y - 1.0).abs() <= 1.0e-9);
+        assert!((falling.delta_movement.y - requested_y * f64::from(0.98_f32)).abs() <= 1.0e-12);
+        let tnt = store.probe_entity_transform(62).unwrap();
+        assert_eq!(tnt.on_ground, Some(true));
+        assert!((tnt.position.y - 1.0).abs() <= 1.0e-9);
+        assert!((tnt.delta_movement.y - requested_y * f64::from(0.98_f32) * -0.5).abs() <= 1.0e-12);
+    }
+
+    #[test]
     fn llama_spit_and_unattached_firework_apply_subclass_free_flight() {
         let mut store = WorldStore::new();
         store.apply_add_entity(projectile(
@@ -1496,5 +1874,56 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn nonliving_collision_world() -> WorldStore {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: PalettedContainerData {
+                    domain: PaletteDomain::BlockStates,
+                    bits_per_entry: 0,
+                    palette_kind: PaletteKind::SingleValue,
+                    palette_global_ids: vec![0],
+                    packed_data: Vec::new(),
+                    entry_count: 4096,
+                },
+                biomes: PalettedContainerData {
+                    domain: PaletteDomain::Biomes,
+                    bits_per_entry: 0,
+                    palette_kind: PaletteKind::SingleValue,
+                    palette_global_ids: vec![0],
+                    packed_data: Vec::new(),
+                    entry_count: 64,
+                },
+            }],
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+        let grass = crate::registries::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties(
+                "minecraft:grass_block",
+                &[("snowy".to_owned(), "false".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
+            .expect("vanilla grass block state")
+            .id;
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: bbb_protocol::packets::BlockPos { x: 0, y: 0, z: 0 },
+                block_state_id: grass,
+            })
+        );
+        assert!(world.probe_block(BlockPos { x: 0, y: 0, z: 0 }).is_some());
+        world
     }
 }

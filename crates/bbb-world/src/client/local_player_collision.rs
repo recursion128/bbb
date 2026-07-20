@@ -1029,8 +1029,45 @@ impl WorldStore {
         if !particle_collision_input_is_finite(position, movement) {
             return movement;
         }
+        self.clip_collision_bounds_movement(
+            particle_collision_bounds(position, half_width, height),
+            movement,
+        )
+    }
 
-        let bounds = particle_collision_bounds(position, half_width, height);
+    pub(crate) fn clip_entity_collision_movement(
+        &self,
+        position: [f64; 3],
+        movement: [f64; 3],
+        relative_min: [f64; 3],
+        relative_max: [f64; 3],
+    ) -> [f64; 3] {
+        // The generated entity bounds are relative to the canonical feet/origin
+        // position, matching `Entity.getBoundingBox()` before `Entity.move`.
+        if !particle_collision_input_is_finite(position, movement) {
+            return movement;
+        }
+
+        let bounds = LocalPlayerBounds::from_min_max(
+            [
+                position[0] + relative_min[0],
+                position[1] + relative_min[1],
+                position[2] + relative_min[2],
+            ],
+            [
+                position[0] + relative_max[0],
+                position[1] + relative_max[1],
+                position[2] + relative_max[2],
+            ],
+        );
+        self.clip_collision_bounds_movement(bounds, movement)
+    }
+
+    fn clip_collision_bounds_movement(
+        &self,
+        bounds: LocalPlayerBounds,
+        movement: [f64; 3],
+    ) -> [f64; 3] {
         let mut clipped = [0.0; 3];
         for axis in particle_collision_axis_order(movement) {
             let requested = particle_movement_component(movement, axis);
@@ -4219,6 +4256,24 @@ mod tests {
         );
 
         assert_f64_near(clipped, -0.05);
+    }
+
+    #[test]
+    fn entity_collision_clip_accepts_catalog_relative_bounds() {
+        let mut world = empty_world();
+        let grass = vanilla_block_state_id("minecraft:grass_block", [("snowy", "false")]);
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, grass);
+
+        let clipped = world.clip_entity_collision_movement(
+            [0.5, 1.1, 0.5],
+            [0.0, -0.2, 0.0],
+            [-0.49, 0.0, -0.49],
+            [0.49, 0.98, 0.49],
+        );
+
+        assert_f64_near(clipped[0], 0.0);
+        assert_f64_near(clipped[1], -0.1);
+        assert_f64_near(clipped[2], 0.0);
     }
 
     #[test]

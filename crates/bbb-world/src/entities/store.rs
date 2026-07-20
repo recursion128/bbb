@@ -4510,6 +4510,10 @@ impl EntityStore {
         runs_normally: bool,
         spectator_player_uuids: &HashSet<Uuid>,
         in_water_by_id: &HashMap<i32, bool>,
+        client_movement_collisions_by_id: &HashMap<
+            i32,
+            super::client_movement::EntityClientMovementCollisionResult,
+        >,
         minecart_improvements_enabled: bool,
         death_tick_player_chunk: Option<(i32, i32)>,
         death_tick_simulation_distance: Option<i32>,
@@ -4558,7 +4562,11 @@ impl EntityStore {
             }
             work.interpolation_duration += interpolation_started_at.elapsed();
             let movement_started_at = Instant::now();
-            self.advance_direct_client_movement(&tick_scratch.scheduled_entities, in_water_by_id);
+            self.advance_direct_client_movement(
+                &tick_scratch.scheduled_entities,
+                in_water_by_id,
+                client_movement_collisions_by_id,
+            );
             work.projectile_duration += movement_started_at.elapsed();
             let animation_started_at = Instant::now();
             work.scanned_entities = work

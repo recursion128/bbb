@@ -6364,6 +6364,34 @@ impl WorldStore {
                 )
             })
             .collect();
+        let client_movement_collisions_by_id = self
+            .entities
+            .client_movement_collision_inputs()
+            .into_iter()
+            .map(|input| {
+                let clipped = self.clip_entity_collision_movement(
+                    [input.position.x, input.position.y, input.position.z],
+                    [
+                        input.requested_movement.x,
+                        input.requested_movement.y,
+                        input.requested_movement.z,
+                    ],
+                    input.bounds.min.map(f64::from),
+                    input.bounds.max.map(f64::from),
+                );
+                (
+                    input.entity_id,
+                    super::client_movement::EntityClientMovementCollisionResult {
+                        requested_movement: input.requested_movement,
+                        clipped_movement: EntityVec3 {
+                            x: clipped[0],
+                            y: clipped[1],
+                            z: clipped[2],
+                        },
+                    },
+                )
+            })
+            .collect::<std::collections::HashMap<_, _>>();
         let spectator_player_uuids: std::collections::HashSet<_> = self
             .player_info()
             .entries
@@ -6400,6 +6428,7 @@ impl WorldStore {
             runs_normally,
             &spectator_player_uuids,
             &in_water_by_id,
+            &client_movement_collisions_by_id,
             minecart_improvements_enabled,
             death_tick_player_chunk,
             death_tick_simulation_distance,
