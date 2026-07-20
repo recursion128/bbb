@@ -13054,10 +13054,36 @@ fn record_entity_client_tick_observation(
     duration: Duration,
     work: EntityClientTickWork,
 ) {
-    let nanos = duration.as_nanos().min(u128::from(u64::MAX)) as u64;
+    let duration_nanos = |duration: Duration| duration.as_nanos().min(u128::from(u64::MAX)) as u64;
+    let nanos = duration_nanos(duration);
     counters.simulation_entity_client_tick_nanos = nanos;
     counters.simulation_entity_client_tick_peak_nanos =
         counters.simulation_entity_client_tick_peak_nanos.max(nanos);
+    let preparation_nanos = duration_nanos(work.preparation_duration);
+    counters.simulation_entity_client_tick_preparation_nanos = preparation_nanos;
+    counters.simulation_entity_client_tick_preparation_peak_nanos = counters
+        .simulation_entity_client_tick_preparation_peak_nanos
+        .max(preparation_nanos);
+    let schedule_nanos = duration_nanos(work.schedule_duration);
+    counters.simulation_entity_client_tick_schedule_nanos = schedule_nanos;
+    counters.simulation_entity_client_tick_schedule_peak_nanos = counters
+        .simulation_entity_client_tick_schedule_peak_nanos
+        .max(schedule_nanos);
+    let projectile_nanos = duration_nanos(work.projectile_duration);
+    counters.simulation_entity_client_tick_projectile_nanos = projectile_nanos;
+    counters.simulation_entity_client_tick_projectile_peak_nanos = counters
+        .simulation_entity_client_tick_projectile_peak_nanos
+        .max(projectile_nanos);
+    let interpolation_nanos = duration_nanos(work.interpolation_duration);
+    counters.simulation_entity_client_tick_interpolation_nanos = interpolation_nanos;
+    counters.simulation_entity_client_tick_interpolation_peak_nanos = counters
+        .simulation_entity_client_tick_interpolation_peak_nanos
+        .max(interpolation_nanos);
+    let animation_nanos = duration_nanos(work.animation_duration);
+    counters.simulation_entity_client_tick_animation_nanos = animation_nanos;
+    counters.simulation_entity_client_tick_animation_peak_nanos = counters
+        .simulation_entity_client_tick_animation_peak_nanos
+        .max(animation_nanos);
     counters.simulation_entity_client_tick_scanned_entities = work.scanned_entities;
     counters.simulation_entity_client_tick_mutated_entities = work.mutated_entities;
 }

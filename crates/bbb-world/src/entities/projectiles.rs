@@ -151,8 +151,18 @@ impl EntityStore {
         &mut self,
         ticks: u32,
         spectator_player_uuids: &HashSet<Uuid>,
+        scheduled: &HashSet<i32>,
     ) {
         if ticks == 0 {
+            return;
+        }
+        let has_projectiles = self
+            .ecs
+            .query::<&EntityProjectileLifecycle>()
+            .iter()
+            .next()
+            .is_some();
+        if !has_projectiles {
             return;
         }
         let outside_owner_by_id =
@@ -162,6 +172,9 @@ impl EntityStore {
             .ecs
             .query_mut::<(&EntityIdentity, &mut EntityProjectileLifecycle)>()
         {
+            if !scheduled.contains(&identity.id) {
+                continue;
+            }
             projectile.has_been_shot = true;
             if !projectile.left_owner {
                 projectile.left_owner = outside_owner_by_id

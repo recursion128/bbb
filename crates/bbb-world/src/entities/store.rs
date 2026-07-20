@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt,
     time::{Duration, Instant},
 };
@@ -61,14 +61,14 @@ use super::schema::{
 };
 
 use super::{
-    is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
-    is_vanilla_minecart_type, is_vanilla_vehicle_entity_type, vanilla_entity_event_kind,
-    vanilla_entity_type_is_squid, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
-    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
-    EntityClientAnimationState, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
-    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_can_wear_horse_armor_type,
+    is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
+    vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
+    EntityAttachmentFace, EntityAttributes, EntityBlockModelState, EntityCameraHurtState,
+    EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations, EntityDamage,
+    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FireworkRocketTrailParticleState, FoxEatParticleState, HappyGhastHarnessColor,
@@ -283,7 +283,21 @@ pub(crate) struct EntityStore {
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
     pending_firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState>,
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
+    client_tick_scratch: EntityClientTickScratch,
     publication_snapshot_observation: EntityPublicationSnapshotObservation,
+}
+
+#[derive(Default)]
+struct EntityClientTickScratch {
+    scheduled_set: HashSet<i32>,
+    scheduled_entities: Vec<Entity>,
+}
+
+impl EntityClientTickScratch {
+    fn clear(&mut self) {
+        self.scheduled_set.clear();
+        self.scheduled_entities.clear();
+    }
 }
 
 pub(crate) struct BeeSoundState {
@@ -294,13 +308,30 @@ pub(crate) struct BeeSoundState {
 
 /// Logical work performed by one batched entity client-tick advance.
 ///
-/// Counts are query rows across all ticks in the batch. Every row in the main
-/// animation query changes `age_ticks`, so `mutated_entities` is an exact
-/// mutation count without comparing the large animation component afterward.
+/// `scanned_entities` counts tracked rows considered across all ticks in the
+/// batch. `mutated_entities` counts the ordered root/passenger schedule whose
+/// animation state advances, without comparing the large component afterward.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct EntityClientTickWork {
     pub scanned_entities: usize,
     pub mutated_entities: usize,
+    pub preparation_duration: Duration,
+    pub schedule_duration: Duration,
+    pub projectile_duration: Duration,
+    pub interpolation_duration: Duration,
+    pub animation_duration: Duration,
+}
+
+impl EntityClientTickWork {
+    pub(crate) fn accumulate(&mut self, other: Self) {
+        self.scanned_entities = self.scanned_entities.saturating_add(other.scanned_entities);
+        self.mutated_entities = self.mutated_entities.saturating_add(other.mutated_entities);
+        self.preparation_duration += other.preparation_duration;
+        self.schedule_duration += other.schedule_duration;
+        self.projectile_duration += other.projectile_duration;
+        self.interpolation_duration += other.interpolation_duration;
+        self.animation_duration += other.animation_duration;
+    }
 }
 
 /// Cost and logical work of rebuilding the entity shell for one immutable
@@ -4432,20 +4463,25 @@ impl EntityStore {
     /// chunk/fluid data) turns each AABB into a `bool`.
     pub(crate) fn in_water_aabb_inputs(&self) -> Vec<(i32, [f64; 3], [f64; 3])> {
         let mut inputs = Vec::new();
-        for id in &self.order {
-            let Some(entity) = self.by_protocol_id.get(id).copied() else {
-                continue;
-            };
-            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
-                continue;
-            };
+        let mut query = self.ecs.query::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+        )>();
+        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
             if !entity_animation_uses_in_water(identity.entity_type_id) {
                 continue;
             }
-            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
-                continue;
-            };
-            let Some(bounds) = self.pick_bounds(identity.id) else {
+            let Some(bounds) = vanilla_pick_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
                 continue;
             };
             let aabb_min = [
@@ -4466,6 +4502,7 @@ impl EntityStore {
     pub(crate) fn advance_client_animations<F, G>(
         &mut self,
         ticks: u32,
+        spectator_player_uuids: &HashSet<Uuid>,
         in_water_by_id: &HashMap<i32, bool>,
         minecart_improvements_enabled: bool,
         death_tick_player_chunk: Option<(i32, i32)>,
@@ -4478,14 +4515,24 @@ impl EntityStore {
         G: Fn(i32) -> bool,
     {
         let mut work = EntityClientTickWork::default();
+        let preparation_started_at = Instant::now();
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
+        work.preparation_duration += preparation_started_at.elapsed();
         for _ in 0..ticks {
+            let mut tick_scratch = std::mem::take(&mut self.client_tick_scratch);
+            let schedule_started_at = Instant::now();
+            self.fill_client_tick_schedule(&mut tick_scratch, is_ticking_entity);
+            work.schedule_duration += schedule_started_at.elapsed();
+            let scheduled = &tick_scratch.scheduled_set;
+            let projectile_started_at = Instant::now();
+            self.advance_projectile_lifecycles(1, spectator_player_uuids, scheduled);
+            work.projectile_duration += projectile_started_at.elapsed();
+            let interpolation_started_at = Instant::now();
             for (_, (identity, transform)) in self
                 .ecs
                 .query_mut::<(&EntityIdentity, &mut EntityTransform)>()
             {
-                let is_ticking =
-                    is_ticking_entity(identity.id, identity.entity_type_id, transform.position);
+                let is_ticking = scheduled.contains(&identity.id);
                 if !is_ticking {
                     transform.advance_interpolation_tick(true, false, false);
                     continue;
@@ -4502,33 +4549,37 @@ impl EntityStore {
                     can_carry_interpolation_target(identity.id),
                 );
             }
-            for (_, (identity, transform, animations)) in self.ecs.query_mut::<(
-                &EntityIdentity,
-                &mut EntityTransform,
-                &mut EntityClientAnimations,
-            )>() {
-                if !is_ticking_entity(identity.id, identity.entity_type_id, transform.position) {
-                    continue;
-                }
-                animations
-                    .animations
-                    .advance_head_rotation_lerp(&mut transform.y_head_rot);
-            }
-            for (_, (identity, transform, mount, metadata, attributes, equipment, animations)) in
-                self.ecs.query_mut::<(
+            work.interpolation_duration += interpolation_started_at.elapsed();
+            let animation_started_at = Instant::now();
+            work.scanned_entities = work
+                .scanned_entities
+                .saturating_add(self.by_protocol_id.len());
+            for &entity in &tick_scratch.scheduled_entities {
+                let Ok((
+                    identity,
+                    transform,
+                    mount,
+                    metadata,
+                    attributes,
+                    equipment,
+                    animations,
+                    minecart_lerp,
+                )) = self.ecs.query_one_mut::<(
                     &EntityIdentity,
-                    &EntityTransform,
+                    &mut EntityTransform,
                     &EntityMount,
                     &EntityMetadata,
                     &EntityAttributes,
                     Option<&EntityEquipment>,
                     &mut EntityClientAnimations,
-                )>()
-            {
-                work.scanned_entities = work.scanned_entities.saturating_add(1);
-                if !is_ticking_entity(identity.id, identity.entity_type_id, transform.position) {
+                    Option<&mut EntityMinecartLerp>,
+                )>(entity)
+                else {
                     continue;
-                }
+                };
+                animations
+                    .animations
+                    .advance_head_rotation_lerp(&mut transform.y_head_rot);
                 // Vanilla `LivingEntity.calculateEntityAnimation` gates the limb
                 // swing on `!isPassenger()` and scales the position by `3` for a
                 // baby (`updateWalkAnimation`).
@@ -4538,60 +4589,92 @@ impl EntityStore {
                     death_tick_player_chunk,
                     death_tick_simulation_distance,
                 );
-                let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
-                let is_fall_flying = entity_is_fall_flying(&metadata.data_values);
-                let is_crouching =
-                    entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
-                let bat_is_resting = bat_is_resting(identity.entity_type_id, &metadata.data_values);
-                let is_swimming =
-                    entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_SWIMMING_ID;
+                let entity_type_id = identity.entity_type_id;
+                let is_living = vanilla_entity_metadata_type_is_living(entity_type_id);
+                let is_baby = is_living && vanilla_is_baby(entity_type_id, &metadata.data_values);
+                let pose = is_living.then(|| entity_data_pose(&metadata.data_values));
+                let is_fall_flying = is_living && entity_is_fall_flying(&metadata.data_values);
+                let is_crouching = pose == Some(VANILLA_ENTITY_POSE_CROUCHING_ID);
+                let bat_is_resting = entity_type_id == VANILLA_ENTITY_TYPE_BAT_ID
+                    && bat_is_resting(entity_type_id, &metadata.data_values);
+                let is_swimming = entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                    && pose == Some(VANILLA_ENTITY_POSE_SWIMMING_ID);
                 // The per-tick world fact (`isInWater()`) the world resolved before
                 // this mutable pass, defaulting to `false` for non-consumers, and the
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
-                let in_water = in_water_by_id.get(&identity.id).copied().unwrap_or(false);
-                let is_moving = guardian_is_moving(identity.entity_type_id, &metadata.data_values);
-                let warden_heartbeat_delay =
-                    warden_heartbeat_delay(identity.entity_type_id, &metadata.data_values);
-                let guardian_attack_target_id =
-                    guardian_attack_target_id(identity.entity_type_id, &metadata.data_values);
-                let wither_head_targets = wither_head_targets_by_id.get(&identity.id).copied();
-                let camel_is_standing =
-                    entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_STANDING_ID;
+                let in_water = entity_animation_uses_in_water(entity_type_id)
+                    && in_water_by_id.get(&identity.id).copied().unwrap_or(false);
+                let is_guardian = vanilla_entity_metadata_type_is_guardian(entity_type_id);
+                let is_moving =
+                    is_guardian && guardian_is_moving(entity_type_id, &metadata.data_values);
+                let warden_heartbeat_delay = if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID {
+                    warden_heartbeat_delay(entity_type_id, &metadata.data_values)
+                } else {
+                    0
+                };
+                let guardian_attack_target_id = if is_guardian {
+                    guardian_attack_target_id(entity_type_id, &metadata.data_values)
+                } else {
+                    0
+                };
+                let wither_head_targets = (entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID)
+                    .then(|| wither_head_targets_by_id.get(&identity.id).copied())
+                    .flatten();
+                let is_camel = vanilla_entity_metadata_type_is_camel(entity_type_id);
+                let camel_is_standing = is_camel && pose == Some(VANILLA_ENTITY_POSE_STANDING_ID);
                 let camel_is_dashing =
-                    camel_is_dashing(identity.entity_type_id, &metadata.data_values);
+                    is_camel && camel_is_dashing(entity_type_id, &metadata.data_values);
                 let copper_golem_animation =
-                    copper_golem_animation_flags(identity.entity_type_id, &metadata.data_values);
-                let allay_is_dancing =
-                    allay_is_dancing(identity.entity_type_id, &metadata.data_values);
-                let allay_has_item_in_hand = equipment.is_some_and(|equipment| {
-                    equipment.equipment.iter().any(|update| {
-                        update.slot == ProtocolEquipmentSlot::MainHand
-                            && update.item.item_id.is_some()
-                    })
-                });
-                let axolotl_is_playing_dead =
-                    axolotl_is_playing_dead(identity.entity_type_id, &metadata.data_values);
-                let creaking_is_tearing_down =
-                    creaking_is_tearing_down(identity.entity_type_id, &metadata.data_values);
-                let pillager_is_charging_crossbow =
-                    pillager_is_charging_crossbow(identity.entity_type_id, &metadata.data_values);
-                let piglin_is_charging_crossbow =
-                    piglin_is_charging_crossbow(identity.entity_type_id, &metadata.data_values);
-                let player_is_using_item =
-                    player_is_using_item(identity.entity_type_id, &metadata.data_values);
-                let wolf_is_interested =
-                    wolf_is_interested(identity.entity_type_id, &metadata.data_values);
-                let cat_is_lying = cat_is_lying(identity.entity_type_id, &metadata.data_values);
-                let cat_relax_state_one =
-                    cat_relax_state_one(identity.entity_type_id, &metadata.data_values);
-                let boat_paddles = boat_paddle_states(
-                    identity.entity_type_id,
-                    &metadata.data_values,
-                    !mount.passengers.is_empty(),
-                );
-                let boat_bubble_time_value =
-                    boat_bubble_time(identity.entity_type_id, &metadata.data_values);
-                let client_animations_before_tick = animations.animations;
+                    if entity_type_id == VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID {
+                        copper_golem_animation_flags(entity_type_id, &metadata.data_values)
+                    } else {
+                        Default::default()
+                    };
+                let allay_is_dancing = entity_type_id == VANILLA_ENTITY_TYPE_ALLAY_ID
+                    && allay_is_dancing(entity_type_id, &metadata.data_values);
+                let allay_has_item_in_hand = entity_type_id == VANILLA_ENTITY_TYPE_ALLAY_ID
+                    && equipment.is_some_and(|equipment| {
+                        equipment.equipment.iter().any(|update| {
+                            update.slot == ProtocolEquipmentSlot::MainHand
+                                && update.item.item_id.is_some()
+                        })
+                    });
+                let axolotl_is_playing_dead = entity_type_id == VANILLA_ENTITY_TYPE_AXOLOTL_ID
+                    && axolotl_is_playing_dead(entity_type_id, &metadata.data_values);
+                let creaking_is_tearing_down = entity_type_id == VANILLA_ENTITY_TYPE_CREAKING_ID
+                    && creaking_is_tearing_down(entity_type_id, &metadata.data_values);
+                let pillager_is_charging_crossbow = entity_type_id
+                    == VANILLA_ENTITY_TYPE_PILLAGER_ID
+                    && pillager_is_charging_crossbow(entity_type_id, &metadata.data_values);
+                let piglin_is_charging_crossbow = entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
+                    && piglin_is_charging_crossbow(entity_type_id, &metadata.data_values);
+                let player_is_using_item = entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                    && player_is_using_item(entity_type_id, &metadata.data_values);
+                let wolf_is_interested = entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
+                    && wolf_is_interested(entity_type_id, &metadata.data_values);
+                let cat_is_lying = entity_type_id == VANILLA_ENTITY_TYPE_CAT_ID
+                    && cat_is_lying(entity_type_id, &metadata.data_values);
+                let cat_relax_state_one = entity_type_id == VANILLA_ENTITY_TYPE_CAT_ID
+                    && cat_relax_state_one(entity_type_id, &metadata.data_values);
+                let is_boat = is_vanilla_boat_type(entity_type_id);
+                let boat_paddles = if is_boat {
+                    boat_paddle_states(
+                        entity_type_id,
+                        &metadata.data_values,
+                        !mount.passengers.is_empty(),
+                    )
+                } else {
+                    [false; 2]
+                };
+                let boat_bubble_time_value = if is_boat {
+                    boat_bubble_time(entity_type_id, &metadata.data_values)
+                } else {
+                    0
+                };
+                let client_animations_before_tick = animations
+                    .animations
+                    .needs_particle_trigger_bounds_snapshot()
+                    .then_some(animations.animations);
                 let particle_triggers = animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -4643,22 +4726,84 @@ impl EntityStore {
                 // `advance_client_tick` always advances `age_ticks`, including
                 // entities without a specialized animation family.
                 work.mutated_entities = work.mutated_entities.saturating_add(1);
-            }
-            if minecart_improvements_enabled {
-                for (_, (identity, transform, minecart_lerp)) in self.ecs.query_mut::<(
-                    &EntityIdentity,
-                    &mut EntityTransform,
-                    &mut EntityMinecartLerp,
-                )>() {
-                    if !is_ticking_entity(identity.id, identity.entity_type_id, transform.position)
-                    {
-                        continue;
+                if minecart_improvements_enabled {
+                    if let Some(minecart_lerp) = minecart_lerp {
+                        minecart_lerp.advance_client_tick(transform);
                     }
-                    minecart_lerp.advance_client_tick(transform);
                 }
             }
+            work.animation_duration += animation_started_at.elapsed();
+            self.client_tick_scratch = tick_scratch;
         }
         work
+    }
+
+    fn fill_client_tick_schedule<F>(
+        &self,
+        scratch: &mut EntityClientTickScratch,
+        is_ticking_entity: &F,
+    ) where
+        F: Fn(i32, i32, EntityVec3) -> bool,
+    {
+        scratch.clear();
+        for &id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+                continue;
+            };
+            let (Ok(identity), Ok(transform), Ok(mount)) = (
+                self.ecs.get::<&EntityIdentity>(entity),
+                self.ecs.get::<&EntityTransform>(entity),
+                self.ecs.get::<&EntityMount>(entity),
+            ) else {
+                continue;
+            };
+            if mount.vehicle_id.is_some()
+                || !is_ticking_entity(identity.id, identity.entity_type_id, transform.position)
+            {
+                continue;
+            }
+            self.append_client_tick_passenger_tree(id, scratch, is_ticking_entity);
+        }
+    }
+
+    fn append_client_tick_passenger_tree<F>(
+        &self,
+        id: i32,
+        scratch: &mut EntityClientTickScratch,
+        is_ticking_entity: &F,
+    ) where
+        F: Fn(i32, i32, EntityVec3) -> bool,
+    {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return;
+        };
+        if !scratch.scheduled_set.insert(id) {
+            return;
+        }
+        scratch.scheduled_entities.push(entity);
+        let Ok(mount) = self.ecs.get::<&EntityMount>(entity) else {
+            return;
+        };
+
+        for &passenger_id in mount.passengers.iter() {
+            let Some(passenger) = self.by_protocol_id.get(&passenger_id).copied() else {
+                continue;
+            };
+            let (Ok(identity), Ok(transform), Ok(mount)) = (
+                self.ecs.get::<&EntityIdentity>(passenger),
+                self.ecs.get::<&EntityTransform>(passenger),
+                self.ecs.get::<&EntityMount>(passenger),
+            ) else {
+                continue;
+            };
+            if mount.vehicle_id != Some(id)
+                || (identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
+                    && !is_ticking_entity(identity.id, identity.entity_type_id, transform.position))
+            {
+                continue;
+            }
+            self.append_client_tick_passenger_tree(passenger_id, scratch, is_ticking_entity);
+        }
     }
 
     pub(crate) fn publication_snapshot_observation(&self) -> EntityPublicationSnapshotObservation {
@@ -4924,6 +5069,7 @@ impl Default for EntityStore {
             pending_evoker_fangs_crit_particles: Vec::new(),
             pending_firework_rocket_trail_particles: Vec::new(),
             pending_ominous_item_spawner_particles: Vec::new(),
+            client_tick_scratch: EntityClientTickScratch::default(),
             publication_snapshot_observation: EntityPublicationSnapshotObservation::default(),
         }
     }
@@ -5180,7 +5326,7 @@ fn append_client_tick_particle_triggers(
     transform: &EntityTransform,
     data_values: &[bbb_protocol::packets::EntityDataValue],
     attributes: &[ProtocolAttributeSnapshot],
-    client_animations: EntityClientAnimationState,
+    client_animations: Option<EntityClientAnimationState>,
     triggers: EntityClientTickParticleTriggers,
 ) {
     if vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(identity.entity_type_id)
@@ -5196,6 +5342,10 @@ fn append_client_tick_particle_triggers(
     if triggers.ravager_stun.is_none() && triggers.evoker_fangs_crit.is_none() {
         return;
     }
+    let Some(client_animations) = client_animations else {
+        debug_assert!(false, "particle bounds trigger lacked its pre-tick state");
+        return;
+    };
     let Some(bounds) = vanilla_model_source_bounds_for_entity_data(
         identity.entity_type_id,
         identity.data,

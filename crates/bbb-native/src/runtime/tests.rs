@@ -877,6 +877,11 @@ fn entity_client_tick_observation_reports_recent_work_and_running_peak() {
         EntityClientTickWork {
             scanned_entities: 500,
             mutated_entities: 498,
+            preparation_duration: Duration::from_micros(5),
+            schedule_duration: Duration::from_micros(4),
+            projectile_duration: Duration::from_micros(3),
+            interpolation_duration: Duration::from_micros(2),
+            animation_duration: Duration::from_micros(1),
         },
     );
     record_entity_client_tick_observation(
@@ -885,11 +890,50 @@ fn entity_client_tick_observation_reports_recent_work_and_running_peak() {
         EntityClientTickWork {
             scanned_entities: 100,
             mutated_entities: 100,
+            preparation_duration: Duration::from_micros(4),
+            schedule_duration: Duration::from_micros(3),
+            projectile_duration: Duration::from_micros(2),
+            interpolation_duration: Duration::from_micros(1),
+            animation_duration: Duration::from_nanos(500),
         },
     );
 
     assert_eq!(counters.simulation_entity_client_tick_nanos, 10_000);
     assert_eq!(counters.simulation_entity_client_tick_peak_nanos, 20_000);
+    assert_eq!(
+        counters.simulation_entity_client_tick_preparation_nanos,
+        4_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_preparation_peak_nanos,
+        5_000
+    );
+    assert_eq!(counters.simulation_entity_client_tick_schedule_nanos, 3_000);
+    assert_eq!(
+        counters.simulation_entity_client_tick_schedule_peak_nanos,
+        4_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_projectile_nanos,
+        2_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_projectile_peak_nanos,
+        3_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_interpolation_nanos,
+        1_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_interpolation_peak_nanos,
+        2_000
+    );
+    assert_eq!(counters.simulation_entity_client_tick_animation_nanos, 500);
+    assert_eq!(
+        counters.simulation_entity_client_tick_animation_peak_nanos,
+        1_000
+    );
     assert_eq!(counters.simulation_entity_client_tick_scanned_entities, 100);
     assert_eq!(counters.simulation_entity_client_tick_mutated_entities, 100);
 }

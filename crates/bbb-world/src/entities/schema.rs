@@ -719,6 +719,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub base_tick_owner: Option<&'static str>,
     pub ai_step_owner: Option<&'static str>,
     pub ride_tick_owner: Option<&'static str>,
+    /// Generated runtime-class policy for client movement interpolation.
+    /// Keeping this fact on the fixed EntityType row avoids walking the Java
+    /// class graph for every entity on every client tick.
+    pub interpolation_policy: VanillaEntityInterpolationPolicy,
     /// Source-derived nearest `LivingEntity.isBaby()` behavior for this runtime class.
     pub baby_behavior: VanillaEntityBabyBehavior,
     /// Baby branch of the nearest `LivingEntity.getAgeScale()` implementation, as exact f32 bits.
@@ -733,6 +737,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_projectile: bool,
     pub is_hurting_projectile: bool,
     pub is_wind_charge: bool,
+    pub is_vehicle: bool,
     pub is_boat: bool,
     pub boat_ride_height_multiplier_bits: Option<u32>,
     pub can_use_every_equipment_slot: bool,
@@ -4338,6 +4343,13 @@ pub fn vanilla_entity_metadata_type_is_wind_charge(entity_type_id: i32) -> bool 
         .unwrap_or(false)
 }
 
+pub(crate) fn vanilla_entity_metadata_type_is_vehicle(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_vehicle)
+        .unwrap_or(false)
+}
+
 pub fn vanilla_entity_metadata_type_is_boat(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
@@ -4378,7 +4390,7 @@ pub fn vanilla_entity_metadata_type_is_minecart(entity_type_id: i32) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum VanillaEntityInterpolationPolicy {
+pub enum VanillaEntityInterpolationPolicy {
     DirectSetPos,
     GenericThreeStep,
     DisplayImmediate,
@@ -4389,34 +4401,8 @@ pub(crate) enum VanillaEntityInterpolationPolicy {
 pub(crate) fn vanilla_entity_metadata_type_interpolation_policy(
     entity_type_id: i32,
 ) -> Option<VanillaEntityInterpolationPolicy> {
-    const ABSTRACT_BOAT: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
-    const ABSTRACT_MINECART: &str = "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart";
-    const DISPLAY: &str = "net.minecraft.world.entity.Display";
-    const EXPERIENCE_ORB: &str = "net.minecraft.world.entity.ExperienceOrb";
-    const FISHING_HOOK: &str = "net.minecraft.world.entity.projectile.FishingHook";
-    const LIVING_ENTITY: &str = "net.minecraft.world.entity.LivingEntity";
-    const SHULKER: &str = "net.minecraft.world.entity.monster.Shulker";
-
-    let runtime_class = VANILLA_ENTITY_TYPE_METADATA_26_1
-        .get(usize::try_from(entity_type_id).ok()?)?
-        .runtime_class?;
-    Some(
-        if vanilla_class_is_or_implements(runtime_class, SHULKER, 0) {
-            VanillaEntityInterpolationPolicy::ShulkerAttachPosition
-        } else if vanilla_class_is_or_implements(runtime_class, DISPLAY, 0) {
-            VanillaEntityInterpolationPolicy::DisplayImmediate
-        } else if vanilla_class_is_or_implements(runtime_class, ABSTRACT_MINECART, 0) {
-            VanillaEntityInterpolationPolicy::MinecartFeatureGated
-        } else if vanilla_class_is_or_implements(runtime_class, LIVING_ENTITY, 0)
-            || vanilla_class_is_or_implements(runtime_class, EXPERIENCE_ORB, 0)
-            || vanilla_class_is_or_implements(runtime_class, FISHING_HOOK, 0)
-            || vanilla_class_is_or_implements(runtime_class, ABSTRACT_BOAT, 0)
-        {
-            VanillaEntityInterpolationPolicy::GenericThreeStep
-        } else {
-            VanillaEntityInterpolationPolicy::DirectSetPos
-        },
-    )
+    let entry = VANILLA_ENTITY_TYPE_METADATA_26_1.get(usize::try_from(entity_type_id).ok()?)?;
+    Some(entry.interpolation_policy)
 }
 
 /// Returns the vanilla client interpolation-handler length for an entity type.

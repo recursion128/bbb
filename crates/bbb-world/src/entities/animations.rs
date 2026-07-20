@@ -3825,6 +3825,10 @@ impl FoxAnimationState {
 }
 
 impl EntityClientAnimationState {
+    pub(crate) fn needs_particle_trigger_bounds_snapshot(&self) -> bool {
+        self.ravager.is_some() || self.evoker_fangs.is_some()
+    }
+
     pub(crate) fn initialize_spawn_defaults(&mut self, entity_type_id: i32, uuid: Uuid) {
         self.item_bob_offset = (entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID)
             .then(|| spawn_random_unit_float(uuid, 0x6974_656d) * std::f32::consts::TAU);
@@ -6301,19 +6305,17 @@ impl WorldStore {
         &mut self,
         ticks: u32,
     ) -> crate::EntityClientTickWork {
+        if ticks == 0 || self.entity_count() == 0 {
+            return crate::EntityClientTickWork::default();
+        }
         if ticks != 1 {
             let mut work = crate::EntityClientTickWork::default();
             for _ in 0..ticks {
-                let tick_work = self.advance_entity_client_animations_with_observation(1);
-                work.scanned_entities = work
-                    .scanned_entities
-                    .saturating_add(tick_work.scanned_entities);
-                work.mutated_entities = work
-                    .mutated_entities
-                    .saturating_add(tick_work.mutated_entities);
+                work.accumulate(self.advance_entity_client_animations_with_observation(1));
             }
             return work;
         }
+        let preparation_started_at = std::time::Instant::now();
         let interpolation_collision_inputs = self.entities.interpolation_collision_inputs();
         let entity_collision_targets = if interpolation_collision_inputs.is_empty() {
             Vec::new()
@@ -6351,8 +6353,6 @@ impl WorldStore {
             .iter()
             .filter_map(|(uuid, info)| info.is_spectator().then_some(*uuid))
             .collect();
-        self.entities
-            .advance_projectile_lifecycles(ticks, &spectator_player_uuids);
         let death_tick_player_chunk = self.local_player.pose.map(|pose| {
             (
                 entity_chunk_coordinate(pose.position.x),
@@ -6377,8 +6377,10 @@ impl WorldStore {
         };
         let can_carry_interpolation_target =
             |entity_id: i32| collision_free_interpolation_targets.contains(&entity_id);
-        let work = self.entities.advance_client_animations(
+        let preparation_duration = preparation_started_at.elapsed();
+        let mut work = self.entities.advance_client_animations(
             ticks,
+            &spectator_player_uuids,
             &in_water_by_id,
             minecart_improvements_enabled,
             death_tick_player_chunk,
@@ -6386,6 +6388,7 @@ impl WorldStore {
             &is_ticking_entity,
             &can_carry_interpolation_target,
         );
+        work.preparation_duration += preparation_duration;
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
         work
     }

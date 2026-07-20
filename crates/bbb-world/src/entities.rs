@@ -204,9 +204,10 @@ pub use schema::{
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,
     vanilla_entity_type_has_attribute, VanillaAbstractArrowMetadataAccessors,
-    VanillaArmorStandMetadataAccessors, VanillaEntityMetadataAccessorCatalogEntry,
-    VanillaEntityMetadataAccessors, VanillaEntityMetadataClassCatalogEntry,
-    VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
+    VanillaArmorStandMetadataAccessors, VanillaEntityInterpolationPolicy,
+    VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataAccessors,
+    VanillaEntityMetadataClassCatalogEntry, VanillaEntityMetadataDefault,
+    VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
     VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagCatalogEntry,
     VanillaEntityMetadataFlagSchema, VanillaEntityMetadataFlagStatus,
     VanillaEntityMetadataResolverEvidence, VanillaEntityTypeMetadataCatalogEntry,
@@ -580,7 +581,7 @@ pub fn vanilla_entity_type_is_hurting_projectile(entity_type_id: i32) -> bool {
 }
 
 pub(crate) fn is_vanilla_vehicle_entity_type(entity_type_id: i32) -> bool {
-    schema::vanilla_entity_metadata_vehicle_accessors_for_entity_type(entity_type_id).is_some()
+    schema::vanilla_entity_metadata_type_is_vehicle(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_abstract_horse_type(entity_type_id: i32) -> bool {

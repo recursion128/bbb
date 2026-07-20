@@ -197,11 +197,36 @@ pub struct NetCounters {
     /// nanoseconds.
     #[serde(default)]
     pub simulation_entity_client_tick_peak_nanos: u64,
-    /// Entity rows visited by the main animation query in the most recent
-    /// non-empty client-tick batch.
+    /// Immutable world/ECS inputs prepared for the most recent entity tick.
+    #[serde(default)]
+    pub simulation_entity_client_tick_preparation_nanos: u64,
+    #[serde(default)]
+    pub simulation_entity_client_tick_preparation_peak_nanos: u64,
+    /// Root/passenger schedule construction for the most recent entity tick.
+    #[serde(default)]
+    pub simulation_entity_client_tick_schedule_nanos: u64,
+    #[serde(default)]
+    pub simulation_entity_client_tick_schedule_peak_nanos: u64,
+    /// Projectile parent-lifecycle work for the most recent entity tick.
+    #[serde(default)]
+    pub simulation_entity_client_tick_projectile_nanos: u64,
+    #[serde(default)]
+    pub simulation_entity_client_tick_projectile_peak_nanos: u64,
+    /// Transform/interpolation work for the most recent entity tick.
+    #[serde(default)]
+    pub simulation_entity_client_tick_interpolation_nanos: u64,
+    #[serde(default)]
+    pub simulation_entity_client_tick_interpolation_peak_nanos: u64,
+    /// Common and family animation work for the most recent entity tick.
+    #[serde(default)]
+    pub simulation_entity_client_tick_animation_nanos: u64,
+    #[serde(default)]
+    pub simulation_entity_client_tick_animation_peak_nanos: u64,
+    /// Tracked entity rows considered for the most recent client-tick batch.
     #[serde(default)]
     pub simulation_entity_client_tick_scanned_entities: usize,
-    /// Entity rows whose animation component changed in that batch.
+    /// Ordered root/passenger entities whose animation component changed in
+    /// that batch.
     #[serde(default)]
     pub simulation_entity_client_tick_mutated_entities: usize,
     /// Wall-clock cost of rebuilding the entity ECS shell for the most recent
@@ -322,6 +347,16 @@ mod tests {
         object.remove("simulation_publication_build_peak_nanos");
         object.remove("simulation_entity_client_tick_nanos");
         object.remove("simulation_entity_client_tick_peak_nanos");
+        object.remove("simulation_entity_client_tick_preparation_nanos");
+        object.remove("simulation_entity_client_tick_preparation_peak_nanos");
+        object.remove("simulation_entity_client_tick_schedule_nanos");
+        object.remove("simulation_entity_client_tick_schedule_peak_nanos");
+        object.remove("simulation_entity_client_tick_projectile_nanos");
+        object.remove("simulation_entity_client_tick_projectile_peak_nanos");
+        object.remove("simulation_entity_client_tick_interpolation_nanos");
+        object.remove("simulation_entity_client_tick_interpolation_peak_nanos");
+        object.remove("simulation_entity_client_tick_animation_nanos");
+        object.remove("simulation_entity_client_tick_animation_peak_nanos");
         object.remove("simulation_entity_client_tick_scanned_entities");
         object.remove("simulation_entity_client_tick_mutated_entities");
         object.remove("simulation_entity_snapshot_build_nanos");
@@ -349,6 +384,34 @@ mod tests {
         assert_eq!(counters.simulation_publication_build_peak_nanos, 0);
         assert_eq!(counters.simulation_entity_client_tick_nanos, 0);
         assert_eq!(counters.simulation_entity_client_tick_peak_nanos, 0);
+        assert_eq!(counters.simulation_entity_client_tick_preparation_nanos, 0);
+        assert_eq!(
+            counters.simulation_entity_client_tick_preparation_peak_nanos,
+            0
+        );
+        assert_eq!(counters.simulation_entity_client_tick_schedule_nanos, 0);
+        assert_eq!(
+            counters.simulation_entity_client_tick_schedule_peak_nanos,
+            0
+        );
+        assert_eq!(counters.simulation_entity_client_tick_projectile_nanos, 0);
+        assert_eq!(
+            counters.simulation_entity_client_tick_projectile_peak_nanos,
+            0
+        );
+        assert_eq!(
+            counters.simulation_entity_client_tick_interpolation_nanos,
+            0
+        );
+        assert_eq!(
+            counters.simulation_entity_client_tick_interpolation_peak_nanos,
+            0
+        );
+        assert_eq!(counters.simulation_entity_client_tick_animation_nanos, 0);
+        assert_eq!(
+            counters.simulation_entity_client_tick_animation_peak_nanos,
+            0
+        );
         assert_eq!(counters.simulation_entity_client_tick_scanned_entities, 0);
         assert_eq!(counters.simulation_entity_client_tick_mutated_entities, 0);
         assert_eq!(counters.simulation_entity_snapshot_build_nanos, 0);

@@ -344,6 +344,50 @@ fn bench_entity_tick_only(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_entity_tick_phase_observation(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_tick/phase_observation");
+    for (name, mut world) in [
+        ("zombies/2000", build_entity_world(ENTITY_COUNT)),
+        (
+            "heterogeneous/2000",
+            build_heterogeneous_entity_world(ENTITY_COUNT),
+        ),
+    ] {
+        let mut calls = 0_u128;
+        let mut aggregate = bbb_world::EntityClientTickWork::default();
+        group.bench_function(name, |b| {
+            b.iter(|| {
+                let work = world.advance_entity_client_animations_with_observation(black_box(1));
+                calls = calls.saturating_add(1);
+                aggregate.preparation_duration += work.preparation_duration;
+                aggregate.schedule_duration += work.schedule_duration;
+                aggregate.projectile_duration += work.projectile_duration;
+                aggregate.interpolation_duration += work.interpolation_duration;
+                aggregate.animation_duration += work.animation_duration;
+                black_box(work);
+            });
+        });
+        let average_nanos = |duration: Duration| {
+            if calls == 0 {
+                0
+            } else {
+                duration.as_nanos() / calls
+            }
+        };
+        if calls > 0 {
+            eprintln!(
+                "entity tick phase average {name}: preparation={}ns schedule={}ns projectile={}ns interpolation={}ns animation={}ns samples={calls}",
+                average_nanos(aggregate.preparation_duration),
+                average_nanos(aggregate.schedule_duration),
+                average_nanos(aggregate.projectile_duration),
+                average_nanos(aggregate.interpolation_duration),
+                average_nanos(aggregate.animation_duration),
+            );
+        }
+    }
+    group.finish();
+}
+
 fn bench_entity_tick_schema_lookups(c: &mut Criterion) {
     const CLIENT_TICK_ACCESSOR_NAMES: [&str; 17] = [
         "DATA_BABY_ID",
@@ -699,6 +743,7 @@ criterion_group! {
         bench_unchanged_publication,
         bench_reused_world_arc,
         bench_entity_tick_only,
+        bench_entity_tick_phase_observation,
         bench_entity_tick_schema_lookups,
         bench_entity_tick_and_publication,
         bench_entity_retained_snapshot,

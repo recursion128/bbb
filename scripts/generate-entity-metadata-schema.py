@@ -3650,6 +3650,29 @@ def render(result: ExtractionResult) -> str:
     ride_tick_owner_cache: dict[str, str] = {}
     baby_behavior_cache: dict[str, str] = {}
     baby_age_scale_cache: dict[str, str] = {}
+
+    def interpolation_policy(runtime_class: str | None) -> str:
+        if extends_class(runtime_class, "net.minecraft.world.entity.monster.Shulker"):
+            return "ShulkerAttachPosition"
+        if extends_class(runtime_class, "net.minecraft.world.entity.Display"):
+            return "DisplayImmediate"
+        if extends_class(
+            runtime_class,
+            "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart",
+        ):
+            return "MinecartFeatureGated"
+        if any(
+            extends_class(runtime_class, owner)
+            for owner in (
+                "net.minecraft.world.entity.LivingEntity",
+                "net.minecraft.world.entity.ExperienceOrb",
+                "net.minecraft.world.entity.projectile.FishingHook",
+                "net.minecraft.world.entity.vehicle.boat.AbstractBoat",
+            )
+        ):
+            return "GenericThreeStep"
+        return "DirectSetPos"
+
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -4045,6 +4068,7 @@ def render(result: ExtractionResult) -> str:
                 f"        base_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'baseTick', 0, base_tick_owner_cache) if item.runtime_class is not None else None)},",
                 f"        ai_step_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'aiStep', 0, ai_step_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
                 f"        ride_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'rideTick', 0, ride_tick_owner_cache) if item.runtime_class is not None else None)},",
+                f"        interpolation_policy: VanillaEntityInterpolationPolicy::{interpolation_policy(item.runtime_class)},",
                 f"        baby_behavior: VanillaEntityBabyBehavior::{class_baby_behavior(result, class_map, item.runtime_class, baby_behavior_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'Never'},",
                 f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
@@ -4057,6 +4081,7 @@ def render(result: ExtractionResult) -> str:
                 f"        is_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.Projectile')).lower()},",
                 f"        is_hurting_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile')).lower()},",
                 f"        is_wind_charge: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge')).lower()},",
+                f"        is_vehicle: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.VehicleEntity')).lower()},",
                 f"        is_boat: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractBoat')).lower()},",
                 f"        boat_ride_height_multiplier_bits: {'Some(' + class_boat_ride_height_multiplier(result, class_map, item.runtime_class, boat_ride_height_cache) + ')' if extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractBoat') else 'None'},",
                 f"        can_use_every_equipment_slot: {str(class_can_use_every_equipment_slot(result, class_map, item.runtime_class, can_use_every_slot_cache)).lower()},",
@@ -4211,6 +4236,7 @@ def render(result: ExtractionResult) -> str:
             "            assert!(entry.base_tick_owner.is_some(), \"{} lacks baseTick owner\", entry.resource_id);",
             "            assert!(entry.ride_tick_owner.is_some(), \"{} lacks rideTick owner\", entry.resource_id);",
             "            assert_eq!(entry.is_living, entry.ai_step_owner.is_some(), \"{} aiStep/living mismatch\", entry.resource_id);",
+            "            assert_eq!(entry.is_vehicle, entry.is_boat || entry.is_minecart, \"{} vehicle-family mismatch\", entry.resource_id);",
             "        }",
             "        let owner = |resource_id: &str| {",
             "            super::VANILLA_ENTITY_TYPE_METADATA_26_1",
@@ -6706,8 +6732,8 @@ def render(result: ExtractionResult) -> str:
             '        for source in [animations, world_tests] {',
             '            assert!(source.contains("vanilla_entity_metadata_guardian_accessors_for_entity_type"));',
             "        }",
-            '        assert!(store.contains("guardian_is_moving(identity.entity_type_id"));',
-            '        assert!(store.contains("guardian_attack_target_id(identity.entity_type_id"));',
+            '        assert!(store.contains("guardian_is_moving(entity_type_id"));',
+            '        assert!(store.contains("guardian_attack_target_id(entity_type_id"));',
             '        for removed in [',
             '            "GUARDIAN_MOVING_DATA_ID",',
             '            "GUARDIAN_DEFAULT_MOVING",',
@@ -7209,7 +7235,7 @@ def render(result: ExtractionResult) -> str:
             '        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");',
             '        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");',
             '        assert!(animations.contains("vanilla_entity_metadata_allay_dancing_accessor_for_entity_type"));',
-            '        assert!(store.contains("allay_is_dancing(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("allay_is_dancing(entity_type_id, &metadata.data_values)"));',
             '        for source in [world_tests, native_scene_tests, native_input_tests] {',
             '            assert!(source.contains("vanilla_entity_metadata_allay_dancing_accessor_for_entity_type"));',
             "        }",
@@ -7228,7 +7254,7 @@ def render(result: ExtractionResult) -> str:
             '        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");',
             '        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");',
             '        assert!(animations.contains("vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type"));',
-            '        assert!(store.contains("axolotl_is_playing_dead(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("axolotl_is_playing_dead(entity_type_id, &metadata.data_values)"));',
             '        for source in [world_tests, native_scene_tests] {',
             '            assert!(source.contains("vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type"));',
             "        }",
@@ -7264,7 +7290,7 @@ def render(result: ExtractionResult) -> str:
             '            .and_then(|source| source.split("fn debug_push_llama_additional_save_data").next())',
             '            .expect("Camel debug projection source");',
             '        assert!(animations.contains("vanilla_entity_metadata_camel_dash_accessor_for_entity_type"));',
-            '        assert!(store.contains("camel_is_dashing(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("camel_is_dashing(entity_type_id, &metadata.data_values)"));',
             '        for source in [walk_tests, transient_tests, passenger_tests, native_scene_tests] {',
             '            assert!(source.contains("vanilla_entity_metadata_camel_dash_accessor_for_entity_type"));',
             "        }",
@@ -7341,7 +7367,7 @@ def render(result: ExtractionResult) -> str:
             '            .and_then(|source| source.split("fn debug_push_zombie_nautilus_additional_save_data").next())',
             '            .expect("Wolf debug projection source");',
             '        assert!(animations.contains("vanilla_entity_metadata_wolf_interested_accessor_for_entity_type"));',
-            '        assert!(store.contains("wolf_is_interested(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("wolf_is_interested(entity_type_id, &metadata.data_values)"));',
             '        for source in [wolf_model, wolf_debug, world_tests, native_scene_tests, input_tests] {',
             '            assert!(source.contains("vanilla_entity_metadata_wolf_accessors_for_entity_type"));',
             "        }",
@@ -7390,8 +7416,8 @@ def render(result: ExtractionResult) -> str:
             '        assert!(!sleeping_player_body.contains("vanilla_is_cat"));',
             '        assert!(animations.contains("cat_is_lying(entity_type_id, data_values)"));',
             '        assert!(animations.contains("cat_relax_state_one(entity_type_id, data_values)"));',
-            '        assert!(store.contains("cat_is_lying(identity.entity_type_id, &metadata.data_values)"));',
-            '        assert!(store.contains("cat_relax_state_one(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("cat_is_lying(entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("cat_relax_state_one(entity_type_id, &metadata.data_values)"));',
             '        for source in [feline_model, cat_debug, world_tests, native_scene_tests, input_tests] {',
             '            assert!(source.contains("vanilla_entity_metadata_cat_accessors_for_entity_type"));',
             "        }",
@@ -7423,7 +7449,7 @@ def render(result: ExtractionResult) -> str:
             '        assert!(animations.contains("vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type"));',
             '        assert!(animations.contains("vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type"));',
             '        assert!(store.contains("creaking_can_move(identity.entity_type_id, &metadata.data_values)"));',
-            '        assert!(store.contains("creaking_is_tearing_down(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("creaking_is_tearing_down(entity_type_id, &metadata.data_values)"));',
             '        assert!(!store.contains("identity.entity_type_id != VANILLA_ENTITY_TYPE_CREAKING_ID"));',
             '        assert!(collision.contains("vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type"));',
             '        assert!(native_kind.contains("vanilla_entity_metadata_creaking_active_accessor_for_entity_type"));',
@@ -7456,8 +7482,8 @@ def render(result: ExtractionResult) -> str:
             '        let baby_tests = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");',
             '        assert!(animations.contains("vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"));',
             '        assert!(animations.contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));',
-            '        assert!(store.contains("pillager_is_charging_crossbow(identity.entity_type_id, &metadata.data_values)"));',
-            '        assert!(store.contains("piglin_is_charging_crossbow(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("pillager_is_charging_crossbow(entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("piglin_is_charging_crossbow(entity_type_id, &metadata.data_values)"));',
             '        assert!(native_hands.contains("vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"));',
             '        assert!(native_hands.contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));',
             '        assert!(world_tests.contains("vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"));',
@@ -7548,7 +7574,7 @@ def render(result: ExtractionResult) -> str:
             '        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");',
             '        assert!(animations.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type"));',
             '        assert!(animations.contains("fn copper_golem_animation_flags"));',
-            '        assert!(store.contains("copper_golem_animation_flags(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("copper_golem_animation_flags(entity_type_id, &metadata.data_values)"));',
             '        assert!(native_data.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type"));',
             '        assert!(native_kind.contains("copper_golem_weathering(entity_type_id, data_values)"));',
             '        assert!(native_input.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type"));',
@@ -7665,7 +7691,7 @@ def render(result: ExtractionResult) -> str:
             '        let animations = include_str!("../animations.rs");',
             '        let store = include_str!("../store.rs");',
             '        assert!(animations.contains("vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type"));',
-            '        assert!(store.contains("warden_heartbeat_delay(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(store.contains("warden_heartbeat_delay(entity_type_id, &metadata.data_values)"));',
             '        assert!(!animations.contains("first own synced accessor"));',
             '        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");',
             '        let heartbeat_fixture = world_tests',

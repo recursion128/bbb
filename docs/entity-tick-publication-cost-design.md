@@ -324,9 +324,15 @@ owners that matter operationally:
   non-empty due client-tick batch (one to ten catch-up ticks), excluding
   publication;
 - `simulation_entity_client_tick_scanned_entities` and
-  `simulation_entity_client_tick_mutated_entities` count rows in the main
-  animation query across that batch. Every row advances `age_ticks`, so the
-  mutation count is exact without comparing the large animation component;
+  `simulation_entity_client_tick_mutated_entities` count tracked candidates
+  and ordered root/passenger mutations across that batch. Every scheduled row
+  advances `age_ticks`, so the mutation count is exact without comparing the
+  large animation component;
+- `simulation_entity_client_tick_{preparation,schedule,projectile,interpolation,animation}_nanos`
+  and their process peaks split that batch into the world-input, ordering,
+  projectile, transform, and family-animation owners. These low-frequency
+  counters exposed the former per-entity Java class-graph interpolation lookup
+  and verify its generated-catalog replacement;
 - `simulation_entity_snapshot_build_nanos` and its process peak measure only
   the `EntityStore::clone` hecs-shell rebuild, while
   `simulation_entity_snapshot_rebuilt_entities` counts successfully rebuilt

@@ -71,6 +71,119 @@ fn tracks_entity_passenger_updates() {
 }
 
 #[test]
+fn client_tick_schedule_follows_loaded_roots_and_recursive_player_exception() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(999));
+
+    let root_id = 10;
+    let unloaded_passenger_id = 20;
+    let player_passenger_id = 21;
+    let nested_player_id = 22;
+    store.apply_add_entity(protocol_add_entity_with_type(
+        root_id,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    for (id, entity_type_id) in [
+        (unloaded_passenger_id, VANILLA_ENTITY_TYPE_COW_ID),
+        (player_passenger_id, VANILLA_ENTITY_TYPE_PLAYER_ID),
+        (nested_player_id, VANILLA_ENTITY_TYPE_PLAYER_ID),
+    ] {
+        let mut packet = protocol_add_entity_with_type(id, entity_type_id);
+        packet.position.x = 160.0;
+        store.apply_add_entity(packet);
+    }
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: root_id,
+        passenger_ids: vec![unloaded_passenger_id, player_passenger_id],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: unloaded_passenger_id,
+        passenger_ids: vec![nested_player_id],
+    }));
+
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    let generation_a = store.publication_snapshot();
+    let work = store.advance_entity_client_animations_with_observation(1);
+    assert_eq!(work.scanned_entities, 4);
+    assert_eq!(work.mutated_entities, 2);
+    assert_eq!(
+        store
+            .probe_entity(root_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        1
+    );
+    assert_eq!(
+        store
+            .probe_entity(player_passenger_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        1,
+        "a direct Player passenger uses ClientLevel.tickPassenger's exception"
+    );
+    assert_eq!(
+        store
+            .probe_entity(unloaded_passenger_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        0
+    );
+    assert_eq!(
+        store
+            .probe_entity(nested_player_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        0,
+        "an unticked parent prevents recursion even when the nested passenger is a Player"
+    );
+    let generation_b = store.publication_snapshot();
+    assert_eq!(
+        generation_a
+            .probe_entity(root_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        0,
+        "the retained pre-tick generation remains immutable"
+    );
+    assert_eq!(
+        generation_b
+            .probe_entity(root_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        1
+    );
+
+    assert!(store.forget_chunk(crate::ChunkPos { x: 0, z: -1 }));
+    let paused = store.advance_entity_client_animations_with_observation(1);
+    assert_eq!(paused.mutated_entities, 0);
+    assert_eq!(
+        store
+            .probe_entity(root_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        1
+    );
+    assert_eq!(
+        store
+            .probe_entity(player_passenger_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        1,
+        "the Player exception is reached only through a ticking root"
+    );
+}
+
+#[test]
 fn living_passenger_body_rotation_follows_interpolated_living_vehicle() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

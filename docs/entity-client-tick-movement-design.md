@@ -247,6 +247,45 @@ measure query/borrow, cross-entity preparation, common mutation, family
 mutation, effects, and publication separately. Wall-clock values are recorded
 for comparison, not asserted in CI.
 
+## Phase 2 Cost Attribution and Ordered Schedule
+
+The first runtime stage added retained scratch for the root/passenger schedule
+and recent/peak observations for preparation, schedule, projectile,
+interpolation, and animation phases. A repo-native Criterion phase observation
+reports the average internal phase durations alongside the external total; the
+same values are published in `NetCounters` without per-tick logging.
+
+The initial phase measurement showed that the all-entity transform pass, not
+hecs borrow or metadata accessor lookup, owned about 5.7-6.0 ms of a 2,000
+entity tick. `vanilla_entity_metadata_type_interpolation_steps` was walking the
+generated Java class graph several times for every entity on every tick. The
+fixed 157-entry catalog now stores the source-derived interpolation and vehicle
+policies directly. The client tick decides those narrow policies before large
+metadata/equipment payload access and calls family projections only for the
+families that consume them.
+
+The same-machine result after that change and the recursive root/passenger
+schedule is:
+
+| case | before | phase 2 | improvement |
+| --- | ---: | ---: | ---: |
+| 2,000 Zombie tick only | 9.9706 ms | 2.9391 ms | 3.39x |
+| 2,000 heterogeneous tick only | 10.093 ms | 2.6542 ms | 3.80x |
+| 2,000 Zombie tick + publication | 10.766 ms | 4.0052 ms | 2.69x |
+| 2,000 heterogeneous tick + publication | 11.147 ms | 3.8887 ms | 2.87x |
+| 1,000 vehicles + 1,000 passengers + publication | 10.315 ms | 3.6628 ms | 2.82x |
+| 2,000 firework trail effects | 9.0444 ms | 1.5060 ms | 6.01x |
+
+For the after run, the representative internal averages were 5.4 us
+preparation, 158 us schedule, less than 0.1 us projectile probing, 14 us
+interpolation, and 2.77 ms animation for homogeneous Zombies. The heterogeneous
+case measured 55 us, 183 us, 162 us, 16 us, and 2.19 ms respectively. Snapshot
+construction remains about 1 ms for 2,000 entity shells and is therefore the
+largest remaining publication-side boundary; it was not moved into a later
+mutation. The retained schedule stores hecs handles only in simulation-owned
+scratch, clears semantic contents every tick, and is excluded from immutable
+publication clones.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:
