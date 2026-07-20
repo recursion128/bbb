@@ -3690,9 +3690,30 @@ def render(result: ExtractionResult) -> str:
             return "AbstractArrow"
         if extends_class(
             runtime_class,
+            "net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge",
+        ):
+            return "WindCharge"
+        exact_hurting_projectile_owners = {
+            "net.minecraft.world.entity.projectile.hurtingprojectile.DragonFireball": "DragonFireball",
+            "net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull": "WitherSkull",
+        }
+        if runtime_class in exact_hurting_projectile_owners:
+            return exact_hurting_projectile_owners[runtime_class]
+        if extends_class(
+            runtime_class,
             "net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile",
         ):
             return "HurtingProjectile"
+        if extends_class(
+            runtime_class,
+            "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownExperienceBottle",
+        ):
+            return "ThrownExperienceBottle"
+        if extends_class(
+            runtime_class,
+            "net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion",
+        ):
+            return "ThrownPotion"
         if extends_class(
             runtime_class, "net.minecraft.world.entity.projectile.ThrowableProjectile"
         ):
@@ -4285,7 +4306,11 @@ def render(result: ExtractionResult) -> str:
             "        assert!(owner(\"minecraft:armor_stand\").ai_step_owner.unwrap().ends_with(\".LivingEntity\"));",
             "        assert_eq!(owner(\"minecraft:item\").client_movement_policy, super::VanillaEntityClientMovementPolicy::Item);",
             "        assert_eq!(owner(\"minecraft:trident\").client_movement_policy, super::VanillaEntityClientMovementPolicy::AbstractArrow);",
-            "        assert_eq!(owner(\"minecraft:wind_charge\").client_movement_policy, super::VanillaEntityClientMovementPolicy::HurtingProjectile);",
+            "        assert_eq!(owner(\"minecraft:experience_bottle\").client_movement_policy, super::VanillaEntityClientMovementPolicy::ThrownExperienceBottle);",
+            "        assert_eq!(owner(\"minecraft:splash_potion\").client_movement_policy, super::VanillaEntityClientMovementPolicy::ThrownPotion);",
+            "        assert_eq!(owner(\"minecraft:wind_charge\").client_movement_policy, super::VanillaEntityClientMovementPolicy::WindCharge);",
+            "        assert_eq!(owner(\"minecraft:dragon_fireball\").client_movement_policy, super::VanillaEntityClientMovementPolicy::DragonFireball);",
+            "        assert_eq!(owner(\"minecraft:wither_skull\").client_movement_policy, super::VanillaEntityClientMovementPolicy::WitherSkull);",
             "        assert_eq!(owner(\"minecraft:zombie\").client_movement_policy, super::VanillaEntityClientMovementPolicy::ServerSynchronized);",
             "    }",
             "",

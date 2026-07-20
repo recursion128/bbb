@@ -14694,7 +14694,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         base_tick_owner: Some("net.minecraft.world.entity.Entity"),
         ai_step_owner: None,
         ride_tick_owner: Some("net.minecraft.world.entity.Entity"),
-        client_movement_policy: VanillaEntityClientMovementPolicy::HurtingProjectile,
+        client_movement_policy: VanillaEntityClientMovementPolicy::WindCharge,
         interpolation_policy: VanillaEntityInterpolationPolicy::DirectSetPos,
         baby_behavior: VanillaEntityBabyBehavior::Never,
         baby_age_scale_bits: 1.0_f32.to_bits(),
@@ -15925,7 +15925,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         base_tick_owner: Some("net.minecraft.world.entity.Entity"),
         ai_step_owner: None,
         ride_tick_owner: Some("net.minecraft.world.entity.Entity"),
-        client_movement_policy: VanillaEntityClientMovementPolicy::HurtingProjectile,
+        client_movement_policy: VanillaEntityClientMovementPolicy::DragonFireball,
         interpolation_policy: VanillaEntityInterpolationPolicy::DirectSetPos,
         baby_behavior: VanillaEntityBabyBehavior::Never,
         baby_age_scale_bits: 1.0_f32.to_bits(),
@@ -16624,7 +16624,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         base_tick_owner: Some("net.minecraft.world.entity.Entity"),
         ai_step_owner: None,
         ride_tick_owner: Some("net.minecraft.world.entity.Entity"),
-        client_movement_policy: VanillaEntityClientMovementPolicy::ThrowableProjectile,
+        client_movement_policy: VanillaEntityClientMovementPolicy::ThrownExperienceBottle,
         interpolation_policy: VanillaEntityInterpolationPolicy::DirectSetPos,
         baby_behavior: VanillaEntityBabyBehavior::Never,
         baby_age_scale_bits: 1.0_f32.to_bits(),
@@ -20149,7 +20149,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         base_tick_owner: Some("net.minecraft.world.entity.Entity"),
         ai_step_owner: None,
         ride_tick_owner: Some("net.minecraft.world.entity.Entity"),
-        client_movement_policy: VanillaEntityClientMovementPolicy::ThrowableProjectile,
+        client_movement_policy: VanillaEntityClientMovementPolicy::ThrownPotion,
         interpolation_policy: VanillaEntityInterpolationPolicy::DirectSetPos,
         baby_behavior: VanillaEntityBabyBehavior::Never,
         baby_age_scale_bits: 1.0_f32.to_bits(),
@@ -20202,7 +20202,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         base_tick_owner: Some("net.minecraft.world.entity.Entity"),
         ai_step_owner: None,
         ride_tick_owner: Some("net.minecraft.world.entity.Entity"),
-        client_movement_policy: VanillaEntityClientMovementPolicy::ThrowableProjectile,
+        client_movement_policy: VanillaEntityClientMovementPolicy::ThrownPotion,
         interpolation_policy: VanillaEntityInterpolationPolicy::DirectSetPos,
         baby_behavior: VanillaEntityBabyBehavior::Never,
         baby_age_scale_bits: 1.0_f32.to_bits(),
@@ -22636,7 +22636,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         base_tick_owner: Some("net.minecraft.world.entity.Entity"),
         ai_step_owner: None,
         ride_tick_owner: Some("net.minecraft.world.entity.Entity"),
-        client_movement_policy: VanillaEntityClientMovementPolicy::HurtingProjectile,
+        client_movement_policy: VanillaEntityClientMovementPolicy::WindCharge,
         interpolation_policy: VanillaEntityInterpolationPolicy::DirectSetPos,
         baby_behavior: VanillaEntityBabyBehavior::Never,
         baby_age_scale_bits: 1.0_f32.to_bits(),
@@ -22907,7 +22907,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         base_tick_owner: Some("net.minecraft.world.entity.Entity"),
         ai_step_owner: None,
         ride_tick_owner: Some("net.minecraft.world.entity.Entity"),
-        client_movement_policy: VanillaEntityClientMovementPolicy::HurtingProjectile,
+        client_movement_policy: VanillaEntityClientMovementPolicy::WitherSkull,
         interpolation_policy: VanillaEntityInterpolationPolicy::DirectSetPos,
         baby_behavior: VanillaEntityBabyBehavior::Never,
         baby_age_scale_bits: 1.0_f32.to_bits(),
@@ -26130,8 +26130,24 @@ mod generated_catalog_guards {
             super::VanillaEntityClientMovementPolicy::AbstractArrow
         );
         assert_eq!(
+            owner("minecraft:experience_bottle").client_movement_policy,
+            super::VanillaEntityClientMovementPolicy::ThrownExperienceBottle
+        );
+        assert_eq!(
+            owner("minecraft:splash_potion").client_movement_policy,
+            super::VanillaEntityClientMovementPolicy::ThrownPotion
+        );
+        assert_eq!(
             owner("minecraft:wind_charge").client_movement_policy,
-            super::VanillaEntityClientMovementPolicy::HurtingProjectile
+            super::VanillaEntityClientMovementPolicy::WindCharge
+        );
+        assert_eq!(
+            owner("minecraft:dragon_fireball").client_movement_policy,
+            super::VanillaEntityClientMovementPolicy::DragonFireball
+        );
+        assert_eq!(
+            owner("minecraft:wither_skull").client_movement_policy,
+            super::VanillaEntityClientMovementPolicy::WitherSkull
         );
         assert_eq!(
             owner("minecraft:zombie").client_movement_policy,

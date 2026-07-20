@@ -4411,8 +4411,13 @@ pub enum VanillaEntityClientMovementPolicy {
     FallingBlock,
     PrimedTnt,
     ThrowableProjectile,
+    ThrownExperienceBottle,
+    ThrownPotion,
     AbstractArrow,
     HurtingProjectile,
+    WindCharge,
+    DragonFireball,
+    WitherSkull,
     LlamaSpit,
     EyeOfEnder,
     FireworkRocket,
@@ -5190,7 +5195,7 @@ mod tests {
 
     #[test]
     fn generated_client_movement_policy_partitions_all_fixed_entity_types_once() {
-        let mut counts = [0usize; 14];
+        let mut counts = [0usize; 19];
         for entry in VANILLA_ENTITY_TYPES {
             let policy = vanilla_entity_metadata_type_client_movement_policy(entry.id)
                 .unwrap_or_else(|| {
@@ -5204,20 +5209,25 @@ mod tests {
                 VanillaEntityClientMovementPolicy::FallingBlock => 4,
                 VanillaEntityClientMovementPolicy::PrimedTnt => 5,
                 VanillaEntityClientMovementPolicy::ThrowableProjectile => 6,
-                VanillaEntityClientMovementPolicy::AbstractArrow => 7,
-                VanillaEntityClientMovementPolicy::HurtingProjectile => 8,
-                VanillaEntityClientMovementPolicy::LlamaSpit => 9,
-                VanillaEntityClientMovementPolicy::EyeOfEnder => 10,
-                VanillaEntityClientMovementPolicy::FireworkRocket => 11,
-                VanillaEntityClientMovementPolicy::FishingHook => 12,
-                VanillaEntityClientMovementPolicy::ShulkerBullet => 13,
+                VanillaEntityClientMovementPolicy::ThrownExperienceBottle => 7,
+                VanillaEntityClientMovementPolicy::ThrownPotion => 8,
+                VanillaEntityClientMovementPolicy::AbstractArrow => 9,
+                VanillaEntityClientMovementPolicy::HurtingProjectile => 10,
+                VanillaEntityClientMovementPolicy::WindCharge => 11,
+                VanillaEntityClientMovementPolicy::DragonFireball => 12,
+                VanillaEntityClientMovementPolicy::WitherSkull => 13,
+                VanillaEntityClientMovementPolicy::LlamaSpit => 14,
+                VanillaEntityClientMovementPolicy::EyeOfEnder => 15,
+                VanillaEntityClientMovementPolicy::FireworkRocket => 16,
+                VanillaEntityClientMovementPolicy::FishingHook => 17,
+                VanillaEntityClientMovementPolicy::ShulkerBullet => 18,
             };
             counts[index] += 1;
         }
 
         assert_eq!(
             counts,
-            [106, 27, 1, 1, 1, 1, 6, 3, 6, 1, 1, 1, 1, 1],
+            [106, 27, 1, 1, 1, 1, 3, 1, 2, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1],
             "the source-derived 26.1 movement-owner partition drifted"
         );
         assert_eq!(counts.iter().sum::<usize>(), VANILLA_ENTITY_TYPES.len());
