@@ -1,9 +1,17 @@
+use std::io::Cursor;
+
 use anyhow::{bail, ensure, Context, Result};
+use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader};
 
 const SKIN_WIDTH: u32 = 64;
 const SKIN_HEIGHT: u32 = 64;
 const LEGACY_SKIN_HEIGHT: u32 = 32;
 const PIXEL_BYTES: usize = 4;
+pub const MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES: usize = 1024 * 1024;
+pub const MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES: usize = 16 * 1024 * 1024;
+const MAX_DYNAMIC_PLAYER_TEXTURE_DIMENSION: u32 = 8_192;
+const MAX_DYNAMIC_PLAYER_TEXTURE_PIXELS: u64 = 16 * 1024 * 1024;
+const MAX_DYNAMIC_PLAYER_TEXTURE_DECODE_BYTES: u64 = 128 * 1024 * 1024;
 
 /// A downloaded player skin after vanilla-compatible size validation and legacy-layout repair.
 ///
@@ -38,14 +46,23 @@ pub type DynamicPlayerTextureImage = DynamicEntityTextureImage;
 /// accepted, 64x32 skins are expanded to the current 64x64 layout, and vanilla's opaque-base /
 /// legacy-overlay alpha rules are applied.
 pub fn decode_dynamic_player_skin_png(handle: u64, png: &[u8]) -> Result<DynamicPlayerSkinImage> {
-    let format = image::guess_format(png).context("guess player skin image format")?;
-    ensure!(
-        format == image::ImageFormat::Png,
-        "player skin texture is not a PNG"
-    );
-    let image = image::load_from_memory_with_format(png, image::ImageFormat::Png)
-        .context("decode player skin png")?
-        .to_rgba8();
+    let (width, height) = png_ihdr_dimensions(
+        png,
+        MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
+        "player skin texture",
+        "guess player skin image format",
+    )?;
+    if width != SKIN_WIDTH || (height != SKIN_HEIGHT && height != LEGACY_SKIN_HEIGHT) {
+        bail!("discarding incorrectly sized player skin texture {width}x{height}");
+    }
+    let image = decode_dynamic_png_rgba(
+        png,
+        (width, height),
+        [SKIN_WIDTH, SKIN_HEIGHT],
+        u64::from(SKIN_WIDTH) * u64::from(SKIN_HEIGHT),
+        "player skin texture",
+    )
+    .context("decode player skin png")?;
     process_dynamic_player_skin_rgba(handle, image.width(), image.height(), image.into_raw())
 }
 
@@ -57,14 +74,23 @@ pub fn decode_dynamic_player_texture_png(
     handle: u64,
     png: &[u8],
 ) -> Result<DynamicPlayerTextureImage> {
-    let format = image::guess_format(png).context("guess player profile texture image format")?;
-    ensure!(
-        format == image::ImageFormat::Png,
-        "player profile texture is not a PNG"
-    );
-    let image = image::load_from_memory_with_format(png, image::ImageFormat::Png)
-        .context("decode player profile texture png")?
-        .to_rgba8();
+    let dimensions = png_ihdr_dimensions(
+        png,
+        MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
+        "player profile texture",
+        "guess player profile texture image format",
+    )?;
+    let image = decode_dynamic_png_rgba(
+        png,
+        dimensions,
+        [
+            MAX_DYNAMIC_PLAYER_TEXTURE_DIMENSION,
+            MAX_DYNAMIC_PLAYER_TEXTURE_DIMENSION,
+        ],
+        MAX_DYNAMIC_PLAYER_TEXTURE_PIXELS,
+        "player profile texture",
+    )
+    .context("decode player profile texture png")?;
     let width = image.width();
     let height = image.height();
     let rgba = image.into_raw();
@@ -83,6 +109,82 @@ pub fn decode_dynamic_player_texture_png(
         size: [width, height],
         rgba,
     })
+}
+
+fn png_ihdr_dimensions(
+    png: &[u8],
+    max_png_bytes: usize,
+    label: &str,
+    format_context: &str,
+) -> Result<(u32, u32)> {
+    if png.len() > max_png_bytes {
+        bail!(
+            "{label} PNG is {} bytes, exceeding the {max_png_bytes} byte limit",
+            png.len()
+        );
+    }
+    let format = image::guess_format(png).context(format_context.to_string())?;
+    ensure!(format == ImageFormat::Png, "{label} is not a PNG");
+    let header = png
+        .get(..24)
+        .ok_or_else(|| anyhow::anyhow!("{label} has a truncated PNG IHDR"))?;
+    ensure!(
+        header[8..12] == 13_u32.to_be_bytes() && header[12..16] == *b"IHDR",
+        "{label} has an invalid PNG IHDR"
+    );
+    Ok((
+        u32::from_be_bytes(header[16..20].try_into().expect("fixed PNG width slice")),
+        u32::from_be_bytes(header[20..24].try_into().expect("fixed PNG height slice")),
+    ))
+}
+
+fn decode_dynamic_png_rgba(
+    png: &[u8],
+    header_dimensions: (u32, u32),
+    max_dimensions: [u32; 2],
+    max_pixels: u64,
+    label: &str,
+) -> Result<image::RgbaImage> {
+    let (header_width, header_height) = header_dimensions;
+    if header_width == 0 || header_height == 0 {
+        bail!("{label} must not be empty");
+    }
+    if header_width > max_dimensions[0] || header_height > max_dimensions[1] {
+        bail!(
+            "{label} is {header_width}x{header_height}, exceeding the {}x{} dimension limit",
+            max_dimensions[0],
+            max_dimensions[1]
+        );
+    }
+    let pixels = u64::from(header_width)
+        .checked_mul(u64::from(header_height))
+        .ok_or_else(|| anyhow::anyhow!("{label} pixel count overflow"))?;
+    if pixels > max_pixels {
+        bail!("{label} has {pixels} pixels, exceeding the {max_pixels} pixel limit");
+    }
+
+    let mut reader = ImageReader::with_format(Cursor::new(png), ImageFormat::Png);
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(max_dimensions[0]);
+    limits.max_image_height = Some(max_dimensions[1]);
+    limits.max_alloc = Some(MAX_DYNAMIC_PLAYER_TEXTURE_DECODE_BYTES);
+    reader.limits(limits);
+    let decoder = reader
+        .into_decoder()
+        .with_context(|| format!("read {label} PNG header"))?;
+    if decoder.dimensions() != (header_width, header_height) {
+        bail!("{label} PNG dimensions changed while being read");
+    }
+    let decoded_bytes = decoder.total_bytes();
+    if decoded_bytes > MAX_DYNAMIC_PLAYER_TEXTURE_DECODE_BYTES {
+        bail!(
+            "{label} requires {decoded_bytes} decoded bytes, exceeding the {} byte limit",
+            MAX_DYNAMIC_PLAYER_TEXTURE_DECODE_BYTES
+        );
+    }
+    DynamicImage::from_decoder(decoder)
+        .map(DynamicImage::into_rgba8)
+        .map_err(Into::into)
 }
 
 fn process_dynamic_player_skin_rgba(
@@ -406,6 +508,40 @@ mod tests {
         assert!(err
             .to_string()
             .contains("guess player profile texture image format"));
+    }
+
+    #[test]
+    fn rejects_dynamic_png_byte_budget_before_format_or_decode() {
+        let oversized_skin = vec![0_u8; MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES + 1];
+        let skin_err = decode_dynamic_player_skin_png(7, &oversized_skin)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            skin_err.contains("exceeding the 1048576 byte limit"),
+            "{skin_err}"
+        );
+
+        let oversized_texture = vec![0_u8; MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES + 1];
+        let texture_err = decode_dynamic_player_texture_png(7, &oversized_texture)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            texture_err.contains("exceeding the 16777216 byte limit"),
+            "{texture_err}"
+        );
+    }
+
+    #[test]
+    fn rejects_profile_texture_pixel_budget_from_ihdr_before_decode() {
+        let mut png = rgba_png(1, 1, |_, _| [1, 2, 3, 255]);
+        png[16..20].copy_from_slice(&4_096_u32.to_be_bytes());
+        png[20..24].copy_from_slice(&4_097_u32.to_be_bytes());
+
+        let err = format!(
+            "{:#}",
+            decode_dynamic_player_texture_png(7, &png).unwrap_err()
+        );
+        assert!(err.contains("exceeding the 16777216 pixel limit"), "{err}");
     }
 
     fn patterned_rgba(width: u32, height: u32) -> Vec<u8> {

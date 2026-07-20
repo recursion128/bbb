@@ -1,20 +1,22 @@
 use std::{
     collections::HashMap,
     fs,
+    io::Read,
     path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, SyncSender, TrySendError},
     thread,
     time::Duration,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use bbb_render_types::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,
-    DynamicPlayerTextureImage,
+    DynamicPlayerTextureImage, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
+    MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
 };
 
 pub(crate) trait SkinPngFetcher {
-    fn fetch_skin_png(&mut self, url: &str) -> Result<Vec<u8>>;
+    fn fetch_skin_png(&mut self, url: &str, max_bytes: usize) -> Result<Vec<u8>>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -50,7 +52,7 @@ impl HttpSkinPngFetcher {
 }
 
 impl SkinPngFetcher for HttpSkinPngFetcher {
-    fn fetch_skin_png(&mut self, url: &str) -> Result<Vec<u8>> {
+    fn fetch_skin_png(&mut self, url: &str, max_bytes: usize) -> Result<Vec<u8>> {
         let response = self
             .client
             .get(url)
@@ -58,10 +60,13 @@ impl SkinPngFetcher for HttpSkinPngFetcher {
             .with_context(|| format!("request HTTP player skin {url}"))?
             .error_for_status()
             .with_context(|| format!("fetch HTTP player skin {url}"))?;
-        Ok(response
-            .bytes()
-            .with_context(|| format!("read HTTP player skin {url}"))?
-            .to_vec())
+        let content_length = response.content_length();
+        read_bounded_png_body(
+            response,
+            content_length,
+            max_bytes,
+            &format!("HTTP player texture {url}"),
+        )
     }
 }
 
@@ -86,9 +91,19 @@ impl DynamicPlayerSkinRuntime {
         fetcher: &mut impl SkinPngFetcher,
     ) -> Result<&DynamicPlayerSkinImage> {
         if !self.skins.contains_key(url) {
-            let bytes = self.cached_or_fetched_bytes(handle, url, fetcher)?;
+            let (bytes, fetched) = self.cached_or_fetched_bytes(handle, url, fetcher)?;
             let skin = decode_dynamic_player_skin_png(handle, &bytes)
                 .with_context(|| format!("process player skin texture from {url}"))?;
+            if fetched {
+                let path = self.player_skin_path(handle);
+                if let Err(err) = write_player_skin_cache(&path, &bytes) {
+                    tracing::warn!(
+                        ?err,
+                        path = %path.display(),
+                        "failed to cache player skin texture"
+                    );
+                }
+            }
             self.skins.insert(url.to_string(), skin);
         }
         Ok(self
@@ -107,24 +122,26 @@ impl DynamicPlayerSkinRuntime {
         handle: u64,
         url: &str,
         fetcher: &mut impl SkinPngFetcher,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<(Vec<u8>, bool)> {
         let path = self.player_skin_path(handle);
         if path.is_file() {
-            return fs::read(&path)
-                .with_context(|| format!("read cached player skin {}", path.display()));
+            return read_bounded_png_file(
+                &path,
+                MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
+                "cached player skin",
+            )
+            .map(|bytes| (bytes, false));
         }
 
         let bytes = fetcher
-            .fetch_skin_png(url)
+            .fetch_skin_png(url, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES)
             .with_context(|| format!("fetch player skin texture from {url}"))?;
-        if let Err(err) = write_player_skin_cache(&path, &bytes) {
-            tracing::warn!(
-                ?err,
-                path = %path.display(),
-                "failed to cache player skin texture"
-            );
-        }
-        Ok(bytes)
+        validate_png_body_len(
+            bytes.len(),
+            MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
+            "fetched player skin",
+        )?;
+        Ok((bytes, true))
     }
 
     fn player_skin_path(&self, handle: u64) -> PathBuf {
@@ -155,9 +172,20 @@ impl DynamicPlayerTextureRuntime {
     ) -> Result<&DynamicPlayerTextureImage> {
         let key = (kind, url.to_string());
         if !self.textures.contains_key(&key) {
-            let bytes = self.cached_or_fetched_bytes(kind, handle, url, fetcher)?;
+            let (bytes, fetched) = self.cached_or_fetched_bytes(kind, handle, url, fetcher)?;
             let texture = decode_dynamic_player_texture_png(handle, &bytes)
                 .with_context(|| format!("process player {kind:?} texture from {url}"))?;
+            if fetched {
+                let path = self.player_texture_path(kind, handle);
+                if let Err(err) = write_player_skin_cache(&path, &bytes) {
+                    tracing::warn!(
+                        ?err,
+                        path = %path.display(),
+                        kind = ?kind,
+                        "failed to cache player profile texture"
+                    );
+                }
+            }
             self.textures.insert(key.clone(), texture);
         }
         Ok(self
@@ -177,25 +205,26 @@ impl DynamicPlayerTextureRuntime {
         handle: u64,
         url: &str,
         fetcher: &mut impl SkinPngFetcher,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<(Vec<u8>, bool)> {
         let path = self.player_texture_path(kind, handle);
         if path.is_file() {
-            return fs::read(&path)
-                .with_context(|| format!("read cached player {kind:?} {}", path.display()));
+            return read_bounded_png_file(
+                &path,
+                MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
+                &format!("cached player {kind:?} texture"),
+            )
+            .map(|bytes| (bytes, false));
         }
 
         let bytes = fetcher
-            .fetch_skin_png(url)
+            .fetch_skin_png(url, MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES)
             .with_context(|| format!("fetch player {kind:?} texture from {url}"))?;
-        if let Err(err) = write_player_skin_cache(&path, &bytes) {
-            tracing::warn!(
-                ?err,
-                path = %path.display(),
-                kind = ?kind,
-                "failed to cache player profile texture"
-            );
-        }
-        Ok(bytes)
+        validate_png_body_len(
+            bytes.len(),
+            MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
+            &format!("fetched player {kind:?} texture"),
+        )?;
+        Ok((bytes, true))
     }
 
     fn player_texture_path(&self, kind: DynamicPlayerTextureKind, handle: u64) -> PathBuf {
@@ -354,7 +383,7 @@ impl AsyncDynamicTextureRuntime {
                             .map(DownloadedDynamicTexture::Profile)
                     }
                 }
-                .map_err(|error| error.to_string());
+                .map_err(|error| format!("{error:#}"));
                 // The bounded outer owner holds every Ready image. Keep the
                 // worker's legacy synchronous caches transient so eviction
                 // from that owner also releases decoded CPU pixels; the disk
@@ -710,6 +739,51 @@ pub(crate) fn player_texture_cache_path(
         .join(format!("{handle:016x}.png"))
 }
 
+fn read_bounded_png_file(path: &Path, max_bytes: usize, label: &str) -> Result<Vec<u8>> {
+    let file = fs::File::open(path).with_context(|| format!("open {label} {}", path.display()))?;
+    let declared_bytes = file
+        .metadata()
+        .with_context(|| format!("read {label} metadata {}", path.display()))?
+        .len();
+    read_bounded_png_body(file, Some(declared_bytes), max_bytes, label)
+        .with_context(|| format!("read {label} {}", path.display()))
+}
+
+fn read_bounded_png_body(
+    reader: impl Read,
+    declared_bytes: Option<u64>,
+    max_bytes: usize,
+    label: &str,
+) -> Result<Vec<u8>> {
+    let max_bytes_u64 = u64::try_from(max_bytes).context("dynamic texture byte limit overflow")?;
+    if let Some(declared_bytes) = declared_bytes {
+        if declared_bytes > max_bytes_u64 {
+            bail!("{label} declares {declared_bytes} bytes, exceeding the {max_bytes} byte limit");
+        }
+    }
+    let read_limit = max_bytes_u64
+        .checked_add(1)
+        .context("dynamic texture read limit overflow")?;
+    let capacity = declared_bytes
+        .and_then(|bytes| usize::try_from(bytes).ok())
+        .unwrap_or(0)
+        .min(max_bytes);
+    let mut bytes = Vec::with_capacity(capacity);
+    reader
+        .take(read_limit)
+        .read_to_end(&mut bytes)
+        .with_context(|| format!("read {label} body"))?;
+    validate_png_body_len(bytes.len(), max_bytes, label)?;
+    Ok(bytes)
+}
+
+fn validate_png_body_len(actual_bytes: usize, max_bytes: usize, label: &str) -> Result<()> {
+    if actual_bytes > max_bytes {
+        bail!("{label} is {actual_bytes} bytes, exceeding the {max_bytes} byte limit");
+    }
+    Ok(())
+}
+
 fn write_player_skin_cache(path: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -810,6 +884,7 @@ mod tests {
         assert!(err.to_string().contains("process player skin texture"));
         assert_eq!(fetcher.calls, 1);
         assert_eq!(runtime.cached_skin_count(), 0);
+        assert!(!player_skin_cache_path(&root, 7).exists());
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -1112,7 +1187,12 @@ mod tests {
         let url = spawn_http_response(200, "OK", body.clone());
         let mut fetcher = HttpSkinPngFetcher::new().unwrap();
 
-        assert_eq!(fetcher.fetch_skin_png(&url).unwrap(), body);
+        assert_eq!(
+            fetcher
+                .fetch_skin_png(&url, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES)
+                .unwrap(),
+            body
+        );
     }
 
     #[test]
@@ -1120,9 +1200,78 @@ mod tests {
         let url = spawn_http_response(404, "Not Found", b"missing".to_vec());
         let mut fetcher = HttpSkinPngFetcher::new().unwrap();
 
-        let err = fetcher.fetch_skin_png(&url).unwrap_err();
+        let err = fetcher
+            .fetch_skin_png(&url, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES)
+            .unwrap_err();
 
         assert!(err.to_string().contains("fetch HTTP player skin"));
+    }
+
+    #[test]
+    fn bounded_dynamic_texture_body_rejects_declared_and_streamed_overflow() {
+        let declared = read_bounded_png_body(Cursor::new(b"ok"), Some(5), 4, "declared fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(declared.contains("declares 5 bytes"), "{declared}");
+
+        let streamed = read_bounded_png_body(Cursor::new(b"12345"), None, 4, "streamed fixture")
+            .unwrap_err()
+            .to_string();
+        assert!(streamed.contains("is 5 bytes"), "{streamed}");
+    }
+
+    #[test]
+    fn oversized_cached_skin_is_rejected_before_body_allocation_or_fetch() {
+        let root = unique_temp_dir("dynamic-skin-runtime-oversized-cache");
+        let handle = 0xdead;
+        let path = player_skin_cache_path(&root, handle);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let file = fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        file.set_len(MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES as u64 + 1)
+            .unwrap();
+        let mut runtime = DynamicPlayerSkinRuntime::new(&root);
+        let mut fetcher = StaticSkinFetcher::new(Vec::new());
+
+        let err = format!(
+            "{:#}",
+            runtime
+                .get_or_fetch_player_skin(
+                    handle,
+                    "https://textures.minecraft.net/texture/oversized-cache",
+                    &mut fetcher,
+                )
+                .unwrap_err()
+        );
+
+        assert!(err.contains("declares 1048577 bytes"), "{err}");
+        assert_eq!(fetcher.calls, 0);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn oversized_fetched_skin_is_not_written_to_cache() {
+        let root = unique_temp_dir("dynamic-skin-runtime-oversized-fetch");
+        let handle = 0xbeef;
+        let mut runtime = DynamicPlayerSkinRuntime::new(&root);
+        let mut fetcher = StaticSkinFetcher::new(vec![0_u8; MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES + 1]);
+
+        let err = runtime
+            .get_or_fetch_player_skin(
+                handle,
+                "https://textures.minecraft.net/texture/oversized-fetch",
+                &mut fetcher,
+            )
+            .unwrap_err()
+            .to_string();
+
+        assert!(err.contains("exceeding the 1048576 byte limit"), "{err}");
+        assert_eq!(fetcher.calls, 1);
+        assert!(!player_skin_cache_path(&root, handle).exists());
+        fs::remove_dir_all(root).unwrap();
     }
 
     struct StaticSkinFetcher {
@@ -1137,7 +1286,7 @@ mod tests {
     }
 
     impl SkinPngFetcher for StaticSkinFetcher {
-        fn fetch_skin_png(&mut self, _url: &str) -> Result<Vec<u8>> {
+        fn fetch_skin_png(&mut self, _url: &str, _max_bytes: usize) -> Result<Vec<u8>> {
             self.calls += 1;
             Ok(self.bytes.clone())
         }
@@ -1165,7 +1314,7 @@ mod tests {
     }
 
     impl SkinPngFetcher for BlockingSkinFetcher {
-        fn fetch_skin_png(&mut self, _url: &str) -> Result<Vec<u8>> {
+        fn fetch_skin_png(&mut self, _url: &str, _max_bytes: usize) -> Result<Vec<u8>> {
             self.calls.fetch_add(1, Ordering::Relaxed);
             self.release_rx.recv().context("release test skin fetch")?;
             Ok(self.bytes.clone())
@@ -1179,7 +1328,7 @@ mod tests {
     }
 
     impl SkinPngFetcher for AsyncStaticSkinFetcher {
-        fn fetch_skin_png(&mut self, _url: &str) -> Result<Vec<u8>> {
+        fn fetch_skin_png(&mut self, _url: &str, _max_bytes: usize) -> Result<Vec<u8>> {
             self.calls.fetch_add(1, Ordering::Relaxed);
             Ok(self.bytes.clone())
         }

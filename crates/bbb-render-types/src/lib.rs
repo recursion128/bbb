@@ -30,7 +30,8 @@ pub use map_decorations::{
 };
 pub use player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
-    DynamicPlayerSkinImage, DynamicPlayerTextureImage,
+    DynamicPlayerSkinImage, DynamicPlayerTextureImage, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
+    MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
 };
 pub use sprites::{ItemSpriteRect, SpriteAlphaMask};
 pub use villager_model_types::VillagerModelType;

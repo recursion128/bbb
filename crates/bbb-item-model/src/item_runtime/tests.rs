@@ -17170,7 +17170,7 @@ struct TestSkinPngFetcher {
 }
 
 impl SkinPngFetcher for TestSkinPngFetcher {
-    fn fetch_skin_png(&mut self, _url: &str) -> Result<Vec<u8>> {
+    fn fetch_skin_png(&mut self, _url: &str, _max_bytes: usize) -> Result<Vec<u8>> {
         self.calls.fetch_add(1, Ordering::Relaxed);
         Ok(self.bytes.clone())
     }
