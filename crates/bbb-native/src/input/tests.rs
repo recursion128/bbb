@@ -11231,6 +11231,7 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
     .expect("generated ThrownTrident inherited metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    insert_empty_chunk_for_block(&mut world, BlockPos { x: 0, y: 1, z: 2 });
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 60,
