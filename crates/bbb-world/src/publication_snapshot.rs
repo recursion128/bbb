@@ -118,17 +118,29 @@ impl WorldStore {
 mod tests {
     use bbb_protocol::{
         attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
-        entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-        entity_types::{VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_COW_ID},
+        data_component_types::{
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+            VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+            VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+        },
+        entity_data_serializers::{
+            VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        },
+        entity_types::{
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_COW_ID,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+        },
         mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
         packets::{
             AddEntity, AttributeSnapshot, BlockPos as ProtocolBlockPos, BlockUpdate,
-            DebugBlockValue, DebugEntityBlockIntersection, DebugEvent, DebugSubscriptionEvent,
-            DebugSubscriptionUpdate, DebugSubscriptionValue, EntityDataValue, EntityDataValueKind,
-            EntityEvent, EntityMove, EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary,
-            LightUpdate, LightUpdateData, MobEffectFlags, RemoveEntities, SetEntityData,
-            SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory, UpdateAttributes,
-            UpdateMobEffect, Vec3d,
+            DataComponentPatchSummary, DebugBlockValue, DebugEntityBlockIntersection, DebugEvent,
+            DebugSubscriptionEvent, DebugSubscriptionUpdate, DebugSubscriptionValue,
+            EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove, EquipmentSlot,
+            EquipmentSlotUpdate, ItemStackSummary, ItemStackTemplateSummary, LightUpdate,
+            LightUpdateData, MobEffectFlags, NbtSummaryEntry, NbtSummaryValue, RemoveEntities,
+            SetEntityData, SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory,
+            UpdateAttributes, UpdateMobEffect, Vec3d,
         },
     };
 
@@ -226,6 +238,63 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn nested_item_stack(owner: &str, flag: i8, remainder_item_id: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(42),
+            count: 2,
+            component_patch: DataComponentPatchSummary {
+                added: 4,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+                ],
+                custom_data: Some(nested_item_data(owner, flag)),
+                item_model: Some("minecraft:diamond_sword".to_string()),
+                enchantment_glint_override: Some(true),
+                use_remainder: Some(Box::new(ItemStackTemplateSummary {
+                    item_id: remainder_item_id,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added: 1,
+                        added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+                        custom_data: Some(nested_item_data("remainder", flag + 1)),
+                        ..DataComponentPatchSummary::default()
+                    },
+                })),
+                ..DataComponentPatchSummary::default()
+            },
+        }
+    }
+
+    fn nested_item_data(owner: &str, flag: i8) -> NbtSummaryValue {
+        NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "owner".to_string(),
+                value: NbtSummaryValue::String(owner.to_string()),
+            },
+            NbtSummaryEntry {
+                name: "nested".to_string(),
+                value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "flag".to_string(),
+                    value: NbtSummaryValue::Byte(flag),
+                }]),
+            },
+        ])
+    }
+
+    fn item_stack_metadata_value(stack: ItemStackSummary) -> EntityDataValue {
+        EntityDataValue {
+            data_id: crate::vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+            )
+            .expect("generated ItemEntity item accessor"),
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(stack),
         }
     }
 
@@ -364,6 +433,70 @@ mod tests {
         assert_eq!(
             entity_b.data_values[0].value,
             EntityDataValueKind::Byte(0x20)
+        );
+    }
+
+    #[test]
+    fn retained_generation_isolated_from_nested_metadata_item_stack_mutation() {
+        let mut world = WorldStore::new();
+        add_test_entity_with_type(&mut world, 7, VANILLA_ENTITY_TYPE_ITEM_ID);
+        let stack_a = nested_item_stack("generation-a", 1, 43);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 7,
+            values: vec![item_stack_metadata_value(stack_a.clone())],
+        }));
+        let generation_a = world.publication_snapshot();
+
+        let stack_b = nested_item_stack("generation-b", 9, 44);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 7,
+            values: vec![item_stack_metadata_value(stack_b.clone())],
+        }));
+        assert!(
+            !world
+                .entities
+                .publication_payload_sharing(&generation_a.entities, 7)
+                .unwrap()
+                .data_values
+        );
+        let generation_b = world.publication_snapshot();
+
+        let read_stack = |world: &WorldStore| {
+            world
+                .probe_entity(7)
+                .unwrap()
+                .data_values
+                .into_iter()
+                .find_map(|value| match value.value {
+                    EntityDataValueKind::ItemStack(stack) => Some(stack),
+                    _ => None,
+                })
+                .expect("ItemEntity metadata stack")
+        };
+        assert_eq!(read_stack(&generation_a), stack_a);
+        assert_eq!(read_stack(&generation_b), stack_b);
+        assert_eq!(generation_a.item_entity_stacks()[0].stack, stack_a);
+        assert_eq!(generation_b.item_entity_stacks()[0].stack, stack_b);
+
+        assert_eq!(
+            read_stack(&generation_a)
+                .component_patch
+                .use_remainder
+                .as_deref()
+                .unwrap()
+                .component_patch
+                .custom_data,
+            Some(nested_item_data("remainder", 2))
+        );
+        assert_eq!(
+            read_stack(&generation_b)
+                .component_patch
+                .use_remainder
+                .as_deref()
+                .unwrap()
+                .component_patch
+                .custom_data,
+            Some(nested_item_data("remainder", 10))
         );
     }
 

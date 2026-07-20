@@ -1,6 +1,12 @@
 use super::*;
 use crate::{
     codec::Encoder,
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+    },
     ids,
     packets::{
         decode_play_clientbound, DataComponentPatchSummary, ParticlePayload, PlayClientbound,
@@ -413,6 +419,81 @@ fn decodes_entity_lifecycle_packets() {
             .to_string()
             .contains("trailing bytes after set entity data packet")
     );
+}
+
+#[test]
+fn metadata_item_stack_uses_the_shared_nested_component_decoder() {
+    let payload = nested_item_stack_payload();
+
+    let mut shared_decoder = Decoder::new(&payload);
+    let shared = inventory::decode_item_stack_summary(&mut shared_decoder).unwrap();
+    assert!(shared_decoder.is_empty());
+
+    let mut metadata_decoder = Decoder::new(&payload);
+    assert_eq!(
+        decode_entity_data_value(
+            &mut metadata_decoder,
+            crate::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        )
+        .unwrap(),
+        EntityDataValueKind::ItemStack(shared.clone())
+    );
+    assert!(metadata_decoder.is_empty());
+
+    assert_eq!(shared.item_id, Some(42));
+    assert_eq!(shared.count, 2);
+    assert_eq!(
+        shared.component_patch.added_type_ids,
+        vec![
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+            VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+        ]
+    );
+    assert_eq!(
+        shared.component_patch.removed_type_ids,
+        vec![VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID]
+    );
+    assert_eq!(
+        shared.component_patch.item_model.as_deref(),
+        Some("minecraft:diamond_sword")
+    );
+    assert_eq!(
+        shared.component_patch.enchantment_glint_override,
+        Some(true)
+    );
+    assert_eq!(
+        shared.component_patch.custom_data,
+        Some(nested_custom_data("outer", 1))
+    );
+    let remainder = shared.component_patch.use_remainder.as_deref().unwrap();
+    assert_eq!(remainder.item_id, 43);
+    assert_eq!(remainder.count, 1);
+    assert_eq!(
+        remainder.component_patch.custom_data,
+        Some(nested_custom_data("inner", 2))
+    );
+    assert_eq!(
+        remainder.component_patch.custom_name.as_deref(),
+        Some("Remainder")
+    );
+}
+
+#[test]
+fn metadata_item_stack_branch_has_no_private_component_decoder() {
+    let source = include_str!("../entities.rs");
+    let branch = source
+        .split("VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID =>")
+        .nth(1)
+        .expect("metadata ItemStack serializer branch")
+        .split("VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID =>")
+        .next()
+        .expect("next serializer branch");
+    assert!(branch.contains("inventory::decode_item_stack_summary(decoder)?"));
+    assert!(!branch.contains("decode_data_component_patch_summary"));
+    assert!(!source.contains("decode_metadata_item_stack"));
 }
 
 #[test]
@@ -1281,6 +1362,69 @@ fn nbt_string_root(text: &str) -> Vec<u8> {
     payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
     payload.extend_from_slice(text.as_bytes());
     payload
+}
+
+fn nested_item_stack_payload() -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(2);
+    payload.write_var_i32(42);
+    payload.write_var_i32(5);
+    payload.write_var_i32(1);
+
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID);
+    payload.write_bytes(&nested_custom_data_root("outer", 1));
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID);
+    payload.write_bytes(&styled_component_root("Outer"));
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID);
+    payload.write_string("minecraft:diamond_sword");
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID);
+    payload.write_bool(true);
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID);
+    payload.write_var_i32(43);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_var_i32(0);
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID);
+    payload.write_bytes(&nested_custom_data_root("inner", 2));
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID);
+    payload.write_bytes(&nbt_string_root("Remainder"));
+
+    payload.write_var_i32(VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID);
+    payload.into_inner()
+}
+
+fn nested_custom_data_root(owner: &str, flag: i8) -> Vec<u8> {
+    let mut payload = vec![10];
+    write_named_nbt_string(&mut payload, "owner", owner);
+    payload.push(10);
+    write_nbt_name(&mut payload, "nested");
+    payload.push(1);
+    write_nbt_name(&mut payload, "flag");
+    payload.push(flag as u8);
+    payload.push(0);
+    payload.push(0);
+    payload
+}
+
+fn nested_custom_data(owner: &str, flag: i8) -> crate::NbtSummaryValue {
+    crate::NbtSummaryValue::Compound(vec![
+        crate::NbtSummaryEntry {
+            name: "owner".to_string(),
+            value: crate::NbtSummaryValue::String(owner.to_string()),
+        },
+        crate::NbtSummaryEntry {
+            name: "nested".to_string(),
+            value: crate::NbtSummaryValue::Compound(vec![crate::NbtSummaryEntry {
+                name: "flag".to_string(),
+                value: crate::NbtSummaryValue::Byte(flag),
+            }]),
+        },
+    ])
+}
+
+fn write_nbt_name(payload: &mut Vec<u8>, name: &str) {
+    payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+    payload.extend_from_slice(name.as_bytes());
 }
 
 fn styled_component_root(text: &str) -> Vec<u8> {

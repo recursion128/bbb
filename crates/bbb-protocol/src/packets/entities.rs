@@ -833,6 +833,10 @@ fn decode_entity_data_value(
             })
         }
         VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID => {
+            // Vanilla's EntityDataSerializers.ITEM_STACK is exactly
+            // ItemStack.OPTIONAL_STREAM_CODEC. Keep metadata on the same bounded
+            // decoder as inventory and equipment so nested component patches do
+            // not acquire a second, lossy wire path.
             EntityDataValueKind::ItemStack(inventory::decode_item_stack_summary(decoder)?)
         }
         VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID => {

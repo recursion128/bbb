@@ -116,6 +116,37 @@ per-component immutable publication owner. A metadata mutation disconnects only
 the affected entity payload; it never mutates a retained generation and does
 not introduce whole-`EntityStore` COW.
 
+## ItemStack Decoder Audit
+
+Vanilla's metadata `ITEM_STACK` serializer does not define a distinct stack
+shape: its `codec()` returns `ItemStack.OPTIONAL_STREAM_CODEC`. The bbb packet
+path now has executable evidence that metadata calls the same
+`inventory::decode_item_stack_summary` used by inventory and equipment. A
+source guard rejects a metadata-only component decoder, while a nested wire
+fixture feeds the same bytes through both entry points and compares custom NBT,
+a rich name, model identity, foil state, removals, and a recursively patched
+`use_remainder` stack.
+
+The generated accessor schema identifies the current metadata owners: dropped
+items, item displays, item/glow frames, firework rockets, ominous item
+spawners, eyes of ender, and throwable/hurting item projectiles. Implemented
+world consumers clone the complete `ItemStackSummary`; specialized map and
+firework projections then read from that same value. The shared component
+catalog retains every field those consumers currently inspect, including
+model/custom-model selection, profile/trim/variant data, map id, foil and
+enchantments, firework explosions, and recursively decoded remainder,
+projectile, bundle, and container stacks. The audit found no consumed payload
+routed through a skip or text/count-only metadata projection.
+
+This is intentionally a consumer-scoped claim, not a claim that the summary is
+Mojang's complete mutable `PatchedDataComponentMap`. Nonconsumer-only wire
+values may remain represented by presence/type evidence until a concrete
+native consumer exists. They still use the one shared decoder, so metadata
+cannot silently diverge from inventory or equipment. A retained-generation
+test mutates outer and nested component NBT and proves both the canonical item
+query and raw metadata in generation A stay unchanged while generation B sees
+the new stack.
+
 ## Serial Phases and Gates
 
 1. **Contract and Component value.** Add exact Component NBT/styled/plain
@@ -167,3 +198,8 @@ commit.
   renderer/debug/audio reject cross-revision ordinal reuse. The generated
   visual identity catalogs moved to `bbb-render-types` so the frozen fallback
   and renderer share one owner.
+- Phase 3 audits every generated metadata ItemStack owner against Vanilla's
+  optional stack codec and bbb's shared component catalog. Metadata,
+  inventory, and equipment have one bounded decoder; nested patch and retained
+  publication tests cover the full-value path, and no concrete current
+  metadata consumer payload was found on a lossy branch.
