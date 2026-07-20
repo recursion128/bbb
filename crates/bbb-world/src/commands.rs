@@ -154,15 +154,16 @@ impl WorldStore {
     }
 
     pub fn command_requires_signed_arguments(&self, command: &str) -> bool {
-        self.commands.command_requires_signed_arguments(command)
+        !self.parse_command(command).signable_arguments.is_empty()
     }
 
     pub fn signable_command_arguments(&self, command: &str) -> Vec<SignableCommandArgument> {
-        self.commands.signable_arguments(command)
+        self.parse_command(command).signable_arguments
     }
 
     pub fn parse_command(&self, command: &str) -> CommandParseResult {
-        self.commands.parse_command(command)
+        self.commands
+            .parse_command_with_registry(command, Some(self.frozen_registry_access()))
     }
 
     pub(crate) fn reset_command_tree_for_new_listener(&mut self) {
@@ -210,10 +211,15 @@ impl WorldStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RegistryPacketEntry;
+    use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
-        CommandArgumentParser, CommandNode, CommandNodeType, Commands,
-        VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+        CommandArgumentParser, CommandNode, CommandNodeType, Commands, RegistryTags,
+        TagNetworkPayload, UpdateTags, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_SELECTOR_ID,
     };
 
     #[test]
@@ -354,6 +360,89 @@ mod tests {
         assert!(store.signable_command_arguments("time set day").is_empty());
     }
 
+    #[test]
+    fn registry_aware_dispatch_uses_exact_world_generation_membership() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            "example:things",
+            0,
+            vec![
+                RegistryPacketEntry::stub("example:first"),
+                RegistryPacketEntry::stub("example:second"),
+            ],
+        );
+
+        store.apply_commands(registry_command_tree(
+            VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID,
+            "minecraft:resource",
+            "example:things",
+        ));
+        assert!(store
+            .parse_command("choose example:first")
+            .is_valid_command());
+        assert!(!store
+            .parse_command("choose example:missing")
+            .is_valid_command());
+
+        store.apply_commands(registry_command_tree(
+            VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
+            "minecraft:resource_key",
+            "example:things",
+        ));
+        assert!(store
+            .parse_command("choose example:future")
+            .is_valid_command());
+
+        store.apply_commands(registry_command_tree(
+            VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_SELECTOR_ID,
+            "minecraft:resource_selector",
+            "example:things",
+        ));
+        assert!(store.parse_command("choose example:f*").is_valid_command());
+        assert!(!store.parse_command("choose other:*").is_valid_command());
+    }
+
+    #[test]
+    fn registry_tag_replacement_and_retained_store_clone_do_not_cross_generations() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            "example:things",
+            0,
+            vec![RegistryPacketEntry::stub("example:first")],
+        );
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "example:things".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:selected".to_string(),
+                    entries: vec![0],
+                }],
+            }],
+        });
+        store.apply_commands(registry_command_tree(
+            VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_ID,
+            "minecraft:resource_or_tag",
+            "example:things",
+        ));
+        let generation_a = store.clone();
+        assert!(generation_a
+            .parse_command("choose #example:selected")
+            .is_valid_command());
+
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "example:things".to_string(),
+                tags: Vec::new(),
+            }],
+        });
+        assert!(!store
+            .parse_command("choose #example:selected")
+            .is_valid_command());
+        assert!(generation_a
+            .parse_command("choose #example:selected")
+            .is_valid_command());
+    }
+
     fn command_tree(literal: &str, parser_name: &str) -> Commands {
         Commands {
             root_index: 0,
@@ -403,6 +492,21 @@ mod tests {
                 },
             ],
         }
+    }
+
+    fn registry_command_tree(type_id: i32, parser_name: &str, registry: &str) -> Commands {
+        let mut properties = Encoder::new();
+        properties.write_string(registry);
+        let mut tree = command_tree("choose", "brigadier:string");
+        let argument = tree.nodes[2]
+            .parser
+            .as_mut()
+            .expect("fixture argument parser");
+        argument.type_id = type_id;
+        argument.name = parser_name.to_string();
+        argument.properties = properties.into_inner();
+        tree.nodes[2].name = Some("value".to_string());
+        tree
     }
 
     fn nested_message_command_tree() -> Commands {

@@ -15,8 +15,10 @@ use serde::{Deserialize, Serialize};
 use super::{
     CommandArgumentParserState, CommandNodeKindState, CommandTreeState, SignableCommandArgument,
 };
+use crate::FrozenRegistryAccess;
 
 mod context_free;
+mod registry_aware;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandParseResult {
@@ -121,6 +123,14 @@ pub(super) struct ParsedValue {
 
 impl CommandTreeState {
     pub fn parse_command(&self, source: &str) -> CommandParseResult {
+        self.parse_command_with_registry(source, None)
+    }
+
+    pub(crate) fn parse_command_with_registry(
+        &self,
+        source: &str,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
+    ) -> CommandParseResult {
         let (command, source_offset) = normalized_command(source);
         let mut active = HashSet::new();
         let candidate = self.parse_nodes(
@@ -128,6 +138,7 @@ impl CommandTreeState {
             command,
             ParseCandidate::root(self.root_index),
             &mut active,
+            registry_access,
         );
 
         let fully_consumed = candidate.cursor == command.len();
@@ -188,6 +199,7 @@ impl CommandTreeState {
         command: &str,
         context: ParseCandidate,
         active: &mut HashSet<(i32, usize)>,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> ParseCandidate {
         if !active.insert((node_index, context.cursor)) {
             return ParseCandidate {
@@ -211,7 +223,7 @@ impl CommandTreeState {
             let mut candidate = context.clone();
             candidate.error = None;
 
-            match self.parse_child(child_index, command, &mut candidate) {
+            match self.parse_child(child_index, command, &mut candidate, registry_access) {
                 Ok(()) => {}
                 Err(error) => {
                     errors.push(error);
@@ -243,11 +255,13 @@ impl CommandTreeState {
                 candidate.cursor += 1;
                 if let Some(redirect) = child.redirect {
                     candidate.current_node = redirect;
-                    let result = self.parse_nodes(redirect, command, candidate, active);
+                    let result =
+                        self.parse_nodes(redirect, command, candidate, active, registry_access);
                     active.remove(&(node_index, context.cursor));
                     return result;
                 }
-                let next = self.parse_nodes(child_index, command, candidate, active);
+                let next =
+                    self.parse_nodes(child_index, command, candidate, active, registry_access);
                 potentials.push(next);
             } else {
                 potentials.push(candidate);
@@ -329,6 +343,7 @@ impl CommandTreeState {
         child_index: i32,
         command: &str,
         candidate: &mut ParseCandidate,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> Result<(), CommandSyntaxErrorState> {
         let child = self.node(child_index).ok_or_else(|| {
             syntax_error(
@@ -363,7 +378,7 @@ impl CommandTreeState {
                     )
                 })?;
                 let start = candidate.cursor;
-                let parsed = parse_argument(command, start, parser)?;
+                let parsed = parse_argument(command, start, parser, registry_access)?;
                 let signable = parser.type_id == VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID;
                 candidate.arguments.push(ParsedCommandArgument {
                     name: child.name.clone().unwrap_or_default(),
@@ -405,6 +420,7 @@ fn parse_argument(
     command: &str,
     start: usize,
     parser: &CommandArgumentParserState,
+    registry_access: Option<FrozenRegistryAccess<'_>>,
 ) -> Result<ParsedValue, CommandSyntaxErrorState> {
     let template =
         command_argument_template(parser.type_id, &parser.properties).map_err(|error| {
@@ -443,6 +459,7 @@ fn parse_argument(
             parse_message(command, start)
         }
         (type_id, template) => context_free::parse(type_id, command, start, &template)
+            .or_else(|| registry_aware::parse(type_id, command, start, &template, registry_access))
             .unwrap_or_else(|| parse_unimplemented_family(command, start, &parser.name)),
     }
 }

@@ -196,6 +196,13 @@ pub struct FrozenRegistryAccess<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrozenRegistryMembership {
+    Present,
+    Absent,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrozenRegistryEntry<'a> {
     pub holder_id: i32,
     pub resource_id: &'a str,
@@ -515,6 +522,90 @@ impl<'a> FrozenRegistryAccess<'a> {
         self.registries.contents.contains_key(registry)
     }
 
+    pub fn resource_membership(
+        self,
+        registry: &str,
+        resource_id: &str,
+    ) -> FrozenRegistryMembership {
+        if let Some(contents) = self.registries.contents.get(registry) {
+            return if contents.holder_id_by_resource_id(resource_id).is_some() {
+                FrozenRegistryMembership::Present
+            } else {
+                FrozenRegistryMembership::Absent
+            };
+        }
+        let mut packets = self
+            .registries
+            .registries
+            .iter()
+            .filter(|packet| packet.name == registry)
+            .peekable();
+        if packets.peek().is_some() {
+            return if packets
+                .any(|packet| packet.entries.iter().any(|entry| entry.id == resource_id))
+            {
+                FrozenRegistryMembership::Present
+            } else {
+                FrozenRegistryMembership::Absent
+            };
+        }
+        if self
+            .registries
+            .vanilla_fallback_holder_id(registry, resource_id)
+            .is_some()
+        {
+            FrozenRegistryMembership::Present
+        } else if registry_has_exact_vanilla_fallback(registry) {
+            FrozenRegistryMembership::Absent
+        } else {
+            FrozenRegistryMembership::Unavailable
+        }
+    }
+
+    pub fn tag_membership(self, registry: &str, tag: &str) -> FrozenRegistryMembership {
+        match self.registries.tags.get(registry) {
+            Some(tags) if tags.tags.contains_key(tag) => FrozenRegistryMembership::Present,
+            Some(_) => FrozenRegistryMembership::Absent,
+            None => FrozenRegistryMembership::Unavailable,
+        }
+    }
+
+    pub fn resource_ids_in_holder_order(self, registry: &str) -> Option<Vec<&'a str>> {
+        if let Some(contents) = self.registries.contents.get(registry) {
+            return Some(
+                contents
+                    .entries
+                    .iter()
+                    .map(|entry| entry.id.as_str())
+                    .collect(),
+            );
+        }
+        let mut packets = self
+            .registries
+            .registries
+            .iter()
+            .filter(|packet| packet.name == registry)
+            .peekable();
+        if packets.peek().is_some() {
+            return Some(
+                packets
+                    .flat_map(|packet| packet.entries.iter().map(|entry| entry.id.as_str()))
+                    .collect(),
+            );
+        }
+        if !registry_has_exact_vanilla_fallback(registry) {
+            return None;
+        }
+        Some(
+            (0..)
+                .map_while(|holder_id| {
+                    self.registries
+                        .vanilla_fallback_resource_id(registry, holder_id)
+                })
+                .collect(),
+        )
+    }
+
     pub fn entry_by_holder_id(
         self,
         registry: &str,
@@ -656,6 +747,24 @@ impl<'a> FrozenRegistryAccess<'a> {
     pub fn unresolved_holder_ids_for_tag(self, registry: &str, tag: &str) -> Option<&'a [i32]> {
         self.registries.unresolved_holder_ids_for_tag(registry, tag)
     }
+}
+
+fn registry_has_exact_vanilla_fallback(registry: &str) -> bool {
+    matches!(
+        registry,
+        "minecraft:attribute"
+            | "minecraft:chat_type"
+            | "minecraft:item"
+            | "minecraft:block"
+            | "minecraft:entity_type"
+            | "minecraft:damage_type"
+            | "minecraft:mob_effect"
+            | "minecraft:potion"
+            | "minecraft:sound_event"
+            | "minecraft:world_clock"
+            | "minecraft:stat_type"
+            | "minecraft:custom_stat"
+    )
 }
 
 impl fmt::Display for RegistryResolutionError {
