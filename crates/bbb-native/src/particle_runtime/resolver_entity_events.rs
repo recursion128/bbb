@@ -1,6 +1,77 @@
 use super::*;
 
 impl ParticleCommandResolver {
+    pub(super) fn eye_of_ender_trail_particle_batch(
+        &mut self,
+        state: EyeOfEnderTrailParticleState,
+    ) -> ParticleSpawnBatch {
+        let particle_type_id = if state.in_water {
+            VANILLA_PARTICLE_TYPE_BUBBLE_ID
+        } else {
+            VANILLA_PARTICLE_TYPE_PORTAL_ID
+        };
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let particle_count = if state.in_water { 4 } else { 1 };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            commands: Vec::with_capacity(particle_count),
+            ..ParticleSpawnBatch::default()
+        };
+        for _ in 0..particle_count {
+            let position = if state.in_water {
+                Vec3d {
+                    x: state.origin.x,
+                    y: state.origin.y,
+                    z: state.origin.z,
+                }
+            } else {
+                Vec3d {
+                    x: state.origin.x + self.random.next_f64() * 0.6 - 0.3,
+                    y: state.origin.y - 0.5,
+                    z: state.origin.z + self.random.next_f64() * 0.6 - 0.3,
+                }
+            };
+            batch.commands.push(self.command_from_template(
+                &template,
+                position,
+                Vec3d {
+                    x: state.delta_movement.x,
+                    y: state.delta_movement.y,
+                    z: state.delta_movement.z,
+                },
+                false,
+            ));
+        }
+        batch
+    }
+
+    pub(super) fn shulker_bullet_trail_particle_batch(
+        &mut self,
+        state: ShulkerBulletTrailParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_END_ROD_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            commands: vec![self.command_from_template(
+                &template,
+                Vec3d {
+                    x: state.position.x,
+                    y: state.position.y,
+                    z: state.position.z,
+                },
+                Vec3d::default(),
+                false,
+            )],
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
     pub(super) fn llama_spit_recreation_particle_batch(
         &mut self,
         state: LlamaSpitRecreationParticleState,

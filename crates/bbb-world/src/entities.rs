@@ -17,6 +17,7 @@ use crate::terrain::{block_name_is_bed, block_name_is_rail};
 use crate::{ArmorTrimSprite, BlockPos, PaintingVariantClientProjection, TerrainLight, WorldStore};
 
 mod animations;
+mod client_movement;
 mod components;
 mod dimensions;
 mod dragon;
@@ -664,6 +665,21 @@ pub struct FireworkRocketTrailParticleState {
     pub entity_id: i32,
     pub position: EntityVec3,
     pub delta_movement: EntityVec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EyeOfEnderTrailParticleState {
+    pub entity_id: i32,
+    pub origin: EntityVec3,
+    pub delta_movement: EntityVec3,
+    #[serde(default)]
+    pub in_water: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ShulkerBulletTrailParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -3766,6 +3782,16 @@ impl WorldStore {
         &mut self,
     ) -> Vec<FireworkRocketTrailParticleState> {
         self.entities.take_firework_rocket_trail_particle_states()
+    }
+
+    pub fn take_eye_of_ender_trail_particle_states(&mut self) -> Vec<EyeOfEnderTrailParticleState> {
+        self.entities.take_eye_of_ender_trail_particle_states()
+    }
+
+    pub fn take_shulker_bullet_trail_particle_states(
+        &mut self,
+    ) -> Vec<ShulkerBulletTrailParticleState> {
+        self.entities.take_shulker_bullet_trail_particle_states()
     }
 
     pub fn take_ominous_item_spawner_particle_states(

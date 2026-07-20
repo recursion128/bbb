@@ -70,18 +70,19 @@ use super::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
     EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
-    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FireworkRocketTrailParticleState, FoxEatParticleState, HappyGhastHarnessColor,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
-    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
-    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
+    EyeOfEnderTrailParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
+    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
+    ShulkerBulletTrailParticleState, WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -282,6 +283,8 @@ pub(crate) struct EntityStore {
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
     pending_firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState>,
+    pub(super) pending_eye_of_ender_trail_particles: Vec<EyeOfEnderTrailParticleState>,
+    pub(super) pending_shulker_bullet_trail_particles: Vec<ShulkerBulletTrailParticleState>,
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
     client_tick_scratch: EntityClientTickScratch,
     publication_snapshot_observation: EntityPublicationSnapshotObservation,
@@ -1297,6 +1300,18 @@ impl EntityStore {
         &mut self,
     ) -> Vec<FireworkRocketTrailParticleState> {
         std::mem::take(&mut self.pending_firework_rocket_trail_particles)
+    }
+
+    pub(crate) fn take_eye_of_ender_trail_particle_states(
+        &mut self,
+    ) -> Vec<EyeOfEnderTrailParticleState> {
+        std::mem::take(&mut self.pending_eye_of_ender_trail_particles)
+    }
+
+    pub(crate) fn take_shulker_bullet_trail_particle_states(
+        &mut self,
+    ) -> Vec<ShulkerBulletTrailParticleState> {
+        std::mem::take(&mut self.pending_shulker_bullet_trail_particles)
     }
 
     pub(crate) fn take_ominous_item_spawner_particle_states(
@@ -4473,7 +4488,9 @@ impl EntityStore {
             &EntityClientAnimations,
         )>();
         for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
-            if !entity_animation_uses_in_water(identity.entity_type_id) {
+            if !entity_animation_uses_in_water(identity.entity_type_id)
+                && !super::client_movement::client_movement_uses_in_water(identity.entity_type_id)
+            {
                 continue;
             }
             let Some(bounds) = vanilla_pick_bounds_for_entity_data(
@@ -4553,6 +4570,7 @@ impl EntityStore {
                     can_carry_interpolation_target(identity.id),
                 );
             }
+            self.advance_direct_client_movement(&tick_scratch.scheduled_entities, in_water_by_id);
             work.interpolation_duration += interpolation_started_at.elapsed();
             let animation_started_at = Instant::now();
             work.scanned_entities = work
@@ -5127,6 +5145,8 @@ impl Default for EntityStore {
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
             pending_firework_rocket_trail_particles: Vec::new(),
+            pending_eye_of_ender_trail_particles: Vec::new(),
+            pending_shulker_bullet_trail_particles: Vec::new(),
             pending_ominous_item_spawner_particles: Vec::new(),
             client_tick_scratch: EntityClientTickScratch::default(),
             publication_snapshot_observation: EntityPublicationSnapshotObservation::default(),
@@ -5205,6 +5225,10 @@ impl Clone for EntityStore {
             self.pending_evoker_fangs_crit_particles.clone();
         store.pending_firework_rocket_trail_particles =
             self.pending_firework_rocket_trail_particles.clone();
+        store.pending_eye_of_ender_trail_particles =
+            self.pending_eye_of_ender_trail_particles.clone();
+        store.pending_shulker_bullet_trail_particles =
+            self.pending_shulker_bullet_trail_particles.clone();
         store.pending_ominous_item_spawner_particles =
             self.pending_ominous_item_spawner_particles.clone();
         store.publication_snapshot_observation = EntityPublicationSnapshotObservation {

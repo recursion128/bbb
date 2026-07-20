@@ -73,6 +73,80 @@ fn firework_rocket_trail_batch_matches_vanilla_client_tick_particle() {
 }
 
 #[test]
+fn eye_of_ender_trail_batch_matches_vanilla_water_and_portal_paths() {
+    let state = EyeOfEnderTrailParticleState {
+        entity_id: 8,
+        origin: bbb_world::EntityVec3 {
+            x: 10.0,
+            y: 64.0,
+            z: -3.0,
+        },
+        delta_movement: bbb_world::EntityVec3 {
+            x: 0.2,
+            y: -0.1,
+            z: 0.4,
+        },
+        in_water: false,
+    };
+    let mut resolver = test_resolver(0);
+    let batch = resolver.eye_of_ender_trail_particle_batch(state);
+    let mut expected_random = LegacyRandom::new(0);
+    assert_eq!(batch.commands.len(), 1);
+    assert_particle_command(
+        &batch.commands[0],
+        VANILLA_PARTICLE_TYPE_PORTAL_ID,
+        "minecraft:portal",
+        [
+            10.0 + expected_random.next_f64() * 0.6 - 0.3,
+            63.5,
+            -3.0 + expected_random.next_f64() * 0.6 - 0.3,
+        ],
+        [0.2, -0.1, 0.4],
+        false,
+    );
+
+    let mut resolver = test_resolver(0);
+    let batch = resolver.eye_of_ender_trail_particle_batch(EyeOfEnderTrailParticleState {
+        in_water: true,
+        ..state
+    });
+    assert_eq!(batch.commands.len(), 4);
+    for command in &batch.commands {
+        assert_particle_command(
+            command,
+            VANILLA_PARTICLE_TYPE_BUBBLE_ID,
+            "minecraft:bubble",
+            [10.0, 64.0, -3.0],
+            [0.2, -0.1, 0.4],
+            false,
+        );
+    }
+}
+
+#[test]
+fn shulker_bullet_trail_batch_matches_vanilla_client_tick_particle() {
+    let mut resolver = test_resolver(0);
+    let batch = resolver.shulker_bullet_trail_particle_batch(ShulkerBulletTrailParticleState {
+        entity_id: 9,
+        position: bbb_world::EntityVec3 {
+            x: 10.0,
+            y: 64.15,
+            z: -3.0,
+        },
+    });
+
+    assert_eq!(batch.commands.len(), 1);
+    assert_particle_command(
+        &batch.commands[0],
+        VANILLA_PARTICLE_TYPE_END_ROD_ID,
+        "minecraft:end_rod",
+        [10.0, 64.15, -3.0],
+        [0.0, 0.0, 0.0],
+        false,
+    );
+}
+
+#[test]
 fn llama_spit_recreation_batch_matches_vanilla_horizontal_velocity_scales() {
     let mut resolver = test_resolver(0);
     let batch = resolver.llama_spit_recreation_particle_batch(
@@ -8433,6 +8507,7 @@ fn test_resolver_with_particle_status(
             "dripping_dripstone_lava",
             "dripping_dripstone_water",
             "bubble_0",
+            "end_rod_0",
             "poof_0",
             "angry_villager_0",
             "happy_villager_0",
@@ -8708,6 +8783,14 @@ fn test_resolver_with_cloud_textures(
         r#"{
           "textures": [
             "minecraft:bubble_0"
+          ]
+        }"#,
+    );
+    write_json(
+        &particle_dir(&root).join("end_rod.json"),
+        r#"{
+          "textures": [
+            "minecraft:end_rod_0"
           ]
         }"#,
     );
