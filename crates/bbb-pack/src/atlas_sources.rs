@@ -4,19 +4,21 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use image::ImageReader;
 use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
+    image::{decode_png_file_rgba_with_budget, PngDecodeBudget},
     resources::{validate_resource_path, PackResource, PackResourceStack, ResourceLocation},
+    rgba_len,
     roots::PackRoots,
     sprites::{SpriteImage, SpriteSource},
 };
 
-pub(crate) fn load_atlas_texture_entries(
+pub(crate) fn load_atlas_texture_entries_with_budget(
     roots: &PackRoots,
     atlas_name: &str,
+    budget: &mut PngDecodeBudget,
 ) -> Result<Vec<AtlasTextureEntry>> {
     let atlas_location = atlas_definition_location(atlas_name)?;
     let stack = roots.resource_stack();
@@ -24,7 +26,7 @@ pub(crate) fn load_atlas_texture_entries(
     if atlas_resources.is_empty() {
         bail!("missing atlas {atlas_name}");
     }
-    let loader = AtlasTextureLoader::new(roots);
+    let mut loader = AtlasTextureLoader::new(roots, budget);
     let mut entries = Vec::new();
 
     for resource in atlas_resources {
@@ -93,6 +95,15 @@ pub(crate) fn load_atlas_texture_entries(
     Ok(entries)
 }
 
+#[cfg(test)]
+fn load_atlas_texture_entries(
+    roots: &PackRoots,
+    atlas_name: &str,
+) -> Result<Vec<AtlasTextureEntry>> {
+    let mut budget = PngDecodeBudget::atlas();
+    load_atlas_texture_entries_with_budget(roots, atlas_name, &mut budget)
+}
+
 const MISSING_TEXTURE_ID: &str = "minecraft:missingno";
 const MISSING_TEXTURE_SIZE: u32 = 16;
 
@@ -124,14 +135,16 @@ fn atlas_definition_location(atlas_name: &str) -> Result<ResourceLocation> {
     )
 }
 
-struct AtlasTextureLoader {
+struct AtlasTextureLoader<'a> {
     stack: PackResourceStack,
+    budget: &'a mut PngDecodeBudget,
 }
 
-impl AtlasTextureLoader {
-    fn new(roots: &PackRoots) -> Self {
+impl<'a> AtlasTextureLoader<'a> {
+    fn new(roots: &PackRoots, budget: &'a mut PngDecodeBudget) -> Self {
         Self {
             stack: roots.resource_stack(),
+            budget,
         }
     }
 
@@ -176,7 +189,7 @@ impl AtlasTextureLoader {
     }
 
     fn append_paletted_permutation_entries(
-        &self,
+        &mut self,
         entries: &mut Vec<AtlasTextureEntry>,
         textures: &[ResourceLocation],
         palette_key: &ResourceLocation,
@@ -200,6 +213,7 @@ impl AtlasTextureLoader {
                         &base,
                         &key,
                         palette,
+                        self.budget,
                     )?),
                 );
             }
@@ -208,7 +222,7 @@ impl AtlasTextureLoader {
     }
 
     fn append_unstitch_entries(
-        &self,
+        &mut self,
         entries: &mut Vec<AtlasTextureEntry>,
         resource: &ResourceLocation,
         regions: &[UnstitchRegion],
@@ -216,7 +230,7 @@ impl AtlasTextureLoader {
         divisor_y: f64,
     ) -> Result<()> {
         let (source_width, source_height, rgba) =
-            read_raw_png(self.required_texture_path(resource)?)?;
+            read_raw_png(self.required_texture_path(resource)?, self.budget)?;
         for region in regions {
             append_or_replace_entry(
                 entries,
@@ -227,6 +241,7 @@ impl AtlasTextureLoader {
                     region,
                     divisor_x,
                     divisor_y,
+                    self.budget,
                 )?),
             );
         }
@@ -247,9 +262,9 @@ impl AtlasTextureLoader {
         Ok(self.stack.get_resource(&resource))
     }
 
-    fn required_raw_texture_image(&self, location: &ResourceLocation) -> Result<SpriteImage> {
+    fn required_raw_texture_image(&mut self, location: &ResourceLocation) -> Result<SpriteImage> {
         let resource = self.required_texture_resource(location)?;
-        let (width, height, rgba) = read_raw_png(resource.path)?;
+        let (width, height, rgba) = read_raw_png(resource.path, self.budget)?;
         SpriteImage::new(location.id(), width, height, rgba)
     }
 }
@@ -484,24 +499,52 @@ impl AtlasTextureEntry {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn into_source(self) -> Result<SpriteSource> {
+        let mut budget = PngDecodeBudget::single_image();
+        self.into_source_with_budget(&mut budget)
+    }
+
+    pub(crate) fn into_source_with_budget(
+        self,
+        budget: &mut PngDecodeBudget,
+    ) -> Result<SpriteSource> {
         match self {
             AtlasTextureEntry::File {
                 id,
                 path,
                 metadata_path,
-            } => SpriteSource::from_png_file_with_metadata_path(id, path, metadata_path.as_deref()),
+            } => SpriteSource::from_png_file_with_metadata_path_and_budget(
+                id,
+                path,
+                metadata_path.as_deref(),
+                budget,
+            ),
             AtlasTextureEntry::Image(image) => Ok(image.source()),
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn into_image(self) -> Result<SpriteImage> {
+        let mut budget = PngDecodeBudget::single_image();
+        self.into_image_with_budget(&mut budget)
+    }
+
+    pub(crate) fn into_image_with_budget(
+        self,
+        budget: &mut PngDecodeBudget,
+    ) -> Result<SpriteImage> {
         match self {
             AtlasTextureEntry::File {
                 id,
                 path,
                 metadata_path,
-            } => SpriteImage::from_png_file_with_metadata_path(id, path, metadata_path.as_deref()),
+            } => SpriteImage::from_png_file_with_metadata_path_and_budget(
+                id,
+                path,
+                metadata_path.as_deref(),
+                budget,
+            ),
             AtlasTextureEntry::Image(image) => Ok(image),
         }
     }
@@ -531,19 +574,12 @@ fn remove_matching_entries(
     Ok(())
 }
 
-fn read_raw_png(path: impl AsRef<Path>) -> Result<(u32, u32, Vec<u8>)> {
+fn read_raw_png(
+    path: impl AsRef<Path>,
+    budget: &mut PngDecodeBudget,
+) -> Result<(u32, u32, Vec<u8>)> {
     let path = path.as_ref();
-    let reader = ImageReader::open(path).with_context(|| format!("open png {}", path.display()))?;
-    let reader = reader
-        .with_guessed_format()
-        .with_context(|| format!("guess image format {}", path.display()))?;
-    if reader.format() != Some(image::ImageFormat::Png) {
-        bail!("unstitch source {} is not a PNG", path.display());
-    }
-    let rgba = reader
-        .decode()
-        .with_context(|| format!("decode png {}", path.display()))?
-        .into_rgba8();
+    let rgba = decode_png_file_rgba_with_budget(path, "atlas source", budget)?;
     let (width, height) = rgba.dimensions();
     Ok((width, height, rgba.into_raw()))
 }
@@ -555,6 +591,7 @@ fn unstitch_region(
     region: &UnstitchRegion,
     divisor_x: f64,
     divisor_y: f64,
+    budget: &mut PngDecodeBudget,
 ) -> Result<SpriteImage> {
     let divisor_x = positive_finite_number(divisor_x, "unstitch divisor_x")?;
     let divisor_y = positive_finite_number(divisor_y, "unstitch divisor_y")?;
@@ -585,7 +622,8 @@ fn unstitch_region(
         );
     }
 
-    let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+    budget.reserve_rgba(width, height, "unstitch output")?;
+    let mut rgba = Vec::with_capacity(rgba_len(width, height)?);
     let source_stride = source_width as usize * 4;
     let row_len = width as usize * 4;
     for local_y in 0..height {
@@ -626,7 +664,9 @@ fn apply_palette_permutation(
     base: &SpriteImage,
     key: &SpriteImage,
     values: &SpriteImage,
+    budget: &mut PngDecodeBudget,
 ) -> Result<SpriteImage> {
+    budget.reserve_rgba(base.width, base.height, "palette permutation output")?;
     let palette = create_palette_mapping(key, values)?;
     let mut rgba = base.rgba.clone();
     for pixel in rgba.chunks_exact_mut(4) {
@@ -674,6 +714,7 @@ fn create_palette_mapping(
 #[cfg(test)]
 mod tests {
     use super::{apply_palette_permutation, load_atlas_texture_entries, AtlasTextureEntry};
+    use crate::image::PngDecodeBudget;
     use regex::Regex;
     use std::collections::BTreeSet;
     use std::path::{Path, PathBuf};
@@ -825,12 +866,14 @@ mod tests {
             vec![100, 0, 0, 255, 0, 100, 0, 255],
         )
         .unwrap();
+        let mut budget = PngDecodeBudget::atlas();
 
         let image = apply_palette_permutation(
             "minecraft:pattern/base_value".to_string(),
             &base,
             &key,
             &same_pixel_count_different_shape,
+            &mut budget,
         )
         .unwrap();
         assert_eq!(image.rgba, vec![0, 100, 0, 255]);
@@ -843,6 +886,7 @@ mod tests {
             &base,
             &key,
             &wrong_pixel_count,
+            &mut budget,
         )
         .unwrap_err();
         assert!(err.to_string().contains("different sizes"));

@@ -7,12 +7,13 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry},
+    atlas_sources::load_atlas_texture_entries_with_budget,
     block_destroy_profiles::BlockDestroyProfileCatalog,
     block_models::BlockModelCatalog,
     block_sound_profiles::BlockSoundProfileCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
     equipment_assets::EquipmentAssetCatalog,
+    image::PngDecodeBudget,
     item_cuboid_models::ItemCuboidModelCatalog,
     item_models::ItemModelCatalog,
     item_registry::ItemRegistryCatalog,
@@ -276,16 +277,18 @@ impl PackRoots {
     }
 
     pub fn load_atlas_texture_sources(&self, atlas_name: &str) -> Result<Vec<SpriteSource>> {
-        load_atlas_texture_entries(self, atlas_name)?
+        let mut budget = PngDecodeBudget::atlas();
+        load_atlas_texture_entries_with_budget(self, atlas_name, &mut budget)?
             .into_iter()
-            .map(AtlasTextureEntry::into_source)
+            .map(|entry| entry.into_source_with_budget(&mut budget))
             .collect()
     }
 
     pub fn load_atlas_texture_images(&self, atlas_name: &str) -> Result<Vec<SpriteImage>> {
-        load_atlas_texture_entries(self, atlas_name)?
+        let mut budget = PngDecodeBudget::atlas();
+        load_atlas_texture_entries_with_budget(self, atlas_name, &mut budget)?
             .into_iter()
-            .map(AtlasTextureEntry::into_image)
+            .map(|entry| entry.into_image_with_budget(&mut budget))
             .collect()
     }
 

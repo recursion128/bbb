@@ -4,10 +4,14 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use image::ImageReader;
 use serde::{Deserialize, Serialize};
 
-use crate::rgba_len;
+use crate::{
+    image::{
+        decode_png_file_rgba_with_budget, read_png_file_dimensions_with_budget, PngDecodeBudget,
+    },
+    rgba_len,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SpriteSource {
@@ -45,8 +49,19 @@ impl SpriteSource {
         path: impl AsRef<Path>,
         metadata_path: Option<&Path>,
     ) -> Result<Self> {
+        let mut budget = PngDecodeBudget::single_image();
+        Self::from_png_file_with_metadata_path_and_budget(id, path, metadata_path, &mut budget)
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path_and_budget(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+        budget: &mut PngDecodeBudget,
+    ) -> Result<Self> {
         let path = path.as_ref();
-        let (image_width, image_height) = png_dimensions(path, "sprite source")?;
+        let (image_width, image_height) =
+            read_png_file_dimensions_with_budget(path, "sprite source", budget)?;
         let metadata = read_sprite_metadata(metadata_path)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
         let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
@@ -295,13 +310,19 @@ impl SpriteImage {
         path: impl AsRef<Path>,
         metadata_path: Option<&Path>,
     ) -> Result<Self> {
+        let mut budget = PngDecodeBudget::single_image();
+        Self::from_png_file_with_metadata_path_and_budget(id, path, metadata_path, &mut budget)
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path_and_budget(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+        budget: &mut PngDecodeBudget,
+    ) -> Result<Self> {
         let path = path.as_ref();
-        let reader = png_reader(path, "sprite image")
+        let rgba = decode_png_file_rgba_with_budget(path, "sprite image", budget)
             .with_context(|| format!("open sprite {}", path.display()))?;
-        let rgba = reader
-            .decode()
-            .with_context(|| format!("decode png {}", path.display()))?
-            .into_rgba8();
         let (image_width, image_height) = rgba.dimensions();
         let metadata = read_sprite_metadata(metadata_path)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
@@ -404,27 +425,6 @@ fn interpolate_rgba(current: &[u8], next: &[u8], progress: f32) -> Result<Vec<u8
             (current + (next - current) * progress).round() as u8
         })
         .collect())
-}
-
-fn png_dimensions(path: &Path, label: &str) -> Result<(u32, u32)> {
-    let reader = png_reader(path, label)?;
-    reader
-        .into_dimensions()
-        .with_context(|| format!("read png dimensions {}", path.display()))
-}
-
-fn png_reader(path: &Path, label: &str) -> Result<ImageReader<std::io::BufReader<std::fs::File>>> {
-    let reader = ImageReader::open(path).with_context(|| format!("open png {}", path.display()))?;
-    let reader = reader
-        .with_guessed_format()
-        .with_context(|| format!("guess image format {}", path.display()))?;
-    let format = reader
-        .format()
-        .ok_or_else(|| anyhow::anyhow!("missing image format for {}", path.display()))?;
-    if format != image::ImageFormat::Png {
-        bail!("{label} {} is not a PNG", path.display());
-    }
-    Ok(reader)
 }
 
 fn sprite_frame_metadata(

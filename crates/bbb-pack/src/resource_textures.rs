@@ -1,7 +1,6 @@
-use anyhow::{bail, Context, Result};
-use image::ImageReader;
+use anyhow::{Context, Result};
 
-use crate::{PackRoots, ResourceLocation};
+use crate::{image::decode_png_file_rgba, PackRoots, ResourceLocation};
 
 /// One pack-backed `ClientAsset.ResourceTexture`, decoded at its original PNG dimensions.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,18 +26,7 @@ impl PackRoots {
             .get_resource(&texture)
             .with_context(|| format!("missing resource texture {}", texture.id()))?;
         let path = resource.path;
-        let reader = ImageReader::open(&path)
-            .with_context(|| format!("open resource texture {}", path.display()))?;
-        let reader = reader
-            .with_guessed_format()
-            .with_context(|| format!("guess resource texture format {}", path.display()))?;
-        if reader.format() != Some(image::ImageFormat::Png) {
-            bail!("resource texture {} is not a PNG", path.display());
-        }
-        let image = reader
-            .decode()
-            .with_context(|| format!("decode resource texture png {}", path.display()))?
-            .into_rgba8();
+        let image = decode_png_file_rgba(&path, "resource texture")?;
         let size = [image.width(), image.height()];
 
         Ok(ResourceTextureImage {

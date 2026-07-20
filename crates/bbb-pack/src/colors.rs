@@ -1,14 +1,15 @@
 use std::{collections::BTreeMap, path::Path};
 
 use anyhow::{bail, Context, Result};
-use image::ImageReader;
 use serde::{Deserialize, Serialize};
 
 mod generated_26_1;
 
 pub(crate) use generated_26_1::VANILLA_BIOME_ORDER;
 
-use crate::{resources::ResourceLocation, rgba_len, rgba_offset, PackRoots};
+use crate::{
+    image::decode_png_file_rgba, resources::ResourceLocation, rgba_len, rgba_offset, PackRoots,
+};
 
 fn parse_hex_rgb(color: &str) -> Result<[u8; 3]> {
     let color = color
@@ -138,21 +139,7 @@ impl ColorMapImage {
 
     pub fn from_png_file(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
-        let reader =
-            ImageReader::open(path).with_context(|| format!("open png {}", path.display()))?;
-        let reader = reader
-            .with_guessed_format()
-            .with_context(|| format!("guess image format {}", path.display()))?;
-        let format = reader
-            .format()
-            .ok_or_else(|| anyhow::anyhow!("missing image format for {}", path.display()))?;
-        if format != image::ImageFormat::Png {
-            bail!("colormap image {} is not a PNG", path.display());
-        }
-        let rgba = reader
-            .decode()
-            .with_context(|| format!("decode png {}", path.display()))?
-            .into_rgba8();
+        let rgba = decode_png_file_rgba(path, "colormap image")?;
         let (width, height) = rgba.dimensions();
         Self::new(width, height, rgba.into_raw())
     }
