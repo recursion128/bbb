@@ -17,6 +17,7 @@ use super::{
 };
 use crate::FrozenRegistryAccess;
 
+mod blocks;
 mod context_free;
 mod registry_aware;
 
@@ -459,6 +460,7 @@ fn parse_argument(
             parse_message(command, start)
         }
         (type_id, template) => context_free::parse(type_id, command, start, &template)
+            .or_else(|| blocks::parse(type_id, command, start, registry_access))
             .or_else(|| registry_aware::parse(type_id, command, start, &template, registry_access))
             .unwrap_or_else(|| parse_unimplemented_family(command, start, &parser.name)),
     }
@@ -641,11 +643,41 @@ fn parse_string(
     })
 }
 
-fn parse_read_string(command: &str, start: usize) -> Result<usize, CommandSyntaxErrorState> {
+pub(super) fn parse_read_string(
+    command: &str,
+    start: usize,
+) -> Result<usize, CommandSyntaxErrorState> {
     match command.as_bytes().get(start).copied() {
         Some(quote @ (b'\'' | b'\"')) => parse_quoted_string(command, start, quote),
         _ => Ok(parse_unquoted_string(command, start)),
     }
+}
+
+pub(super) fn read_string_value(
+    command: &str,
+    start: usize,
+) -> Result<(usize, String), CommandSyntaxErrorState> {
+    let end = parse_read_string(command, start)?;
+    let raw = &command[start..end];
+    if !matches!(raw.as_bytes().first(), Some(b'\'' | b'\"')) {
+        return Ok((end, raw.to_string()));
+    }
+    let terminator = raw.as_bytes()[0];
+    let mut value = String::with_capacity(raw.len().saturating_sub(2));
+    let mut escaped = false;
+    for character in raw[1..raw.len() - 1].chars() {
+        if escaped {
+            value.push(character);
+            escaped = false;
+        } else if character == '\\' {
+            escaped = true;
+        } else {
+            value.push(character);
+        }
+    }
+    debug_assert!(!escaped);
+    debug_assert_eq!(raw.as_bytes().last(), Some(&terminator));
+    Ok((end, value))
 }
 
 pub(super) fn parse_unquoted_string(command: &str, start: usize) -> usize {

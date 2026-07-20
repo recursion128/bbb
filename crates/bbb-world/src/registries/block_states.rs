@@ -84,6 +84,22 @@ impl BlockStateRegistry {
             .any(|state| state.name == name && state.properties.contains_key(property))
     }
 
+    pub fn block_matches_properties(
+        &self,
+        name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> bool {
+        self.states.iter().flatten().any(|state| {
+            state.name == name
+                && properties.iter().all(|(property, value)| {
+                    state
+                        .properties
+                        .get(property)
+                        .is_some_and(|actual| actual == value)
+                })
+        })
+    }
+
     pub fn block_registry_len(&self) -> usize {
         self.block_registry_names.len()
     }

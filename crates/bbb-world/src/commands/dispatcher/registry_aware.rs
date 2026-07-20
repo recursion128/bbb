@@ -138,7 +138,7 @@ fn parse_resource_selector(
         })
 }
 
-fn parse_identifier(
+pub(super) fn parse_identifier(
     command: &str,
     start: usize,
 ) -> Result<(usize, String), CommandSyntaxErrorState> {

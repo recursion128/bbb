@@ -570,6 +570,34 @@ impl<'a> FrozenRegistryAccess<'a> {
         }
     }
 
+    pub fn block_properties_membership(
+        self,
+        resource_id: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> FrozenRegistryMembership {
+        match self.resource_membership("minecraft:block", resource_id) {
+            FrozenRegistryMembership::Present => {}
+            membership => return membership,
+        }
+        if self
+            .registries
+            .block_states
+            .block_registry_id_by_name(resource_id)
+            .is_none()
+        {
+            return FrozenRegistryMembership::Unavailable;
+        }
+        if self
+            .registries
+            .block_states
+            .block_matches_properties(resource_id, properties)
+        {
+            FrozenRegistryMembership::Present
+        } else {
+            FrozenRegistryMembership::Absent
+        }
+    }
+
     pub fn resource_ids_in_holder_order(self, registry: &str) -> Option<Vec<&'a str>> {
         if let Some(contents) = self.registries.contents.get(registry) {
             return Some(
