@@ -10,7 +10,8 @@ use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
     FurnaceFuelSourceRule, PackRoots, RegistryDependentItemComponentInitializer,
-    SelectedClientPack, MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+    SelectedClientPack, MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
+    MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES, MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
     MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
@@ -172,6 +173,14 @@ fn apply_native_resource_reload(
     prepared
         .items
         .enable_http_player_skin_downloads(player_skin_cache_dir.to_path_buf());
+    prepared
+        .roots
+        .ensure_resource_data_admitted()
+        .context("admit prepared resource data generation")
+        .map_err(|error| NativeResourceReloadFailure {
+            stage: "prepare",
+            error,
+        })?;
 
     let next_terrain_textures = renderer
         .transactional_resource_reload(|renderer| {
@@ -253,6 +262,7 @@ pub(crate) fn client_resource_pack_diagnostics(
         return ClientResourceDiagnostics::default();
     };
     let image_memory = roots.resource_image_memory_observation();
+    let data_memory = roots.resource_data_memory_observation();
     ClientResourceDiagnostics {
         generation: generation.generation(),
         selected_packs: generation
@@ -287,6 +297,16 @@ pub(crate) fn client_resource_pack_diagnostics(
         image_rgba_limit_bytes: image_memory.max_rgba_bytes,
         image_rgba_charged_bytes: image_memory.charged_rgba_bytes,
         image_rgba_peak_charged_bytes: image_memory.peak_charged_rgba_bytes,
+        data_logical_limit_bytes: data_memory.max_logical_bytes,
+        data_logical_charged_bytes: data_memory.charged_logical_bytes,
+        data_logical_peak_charged_bytes: data_memory.peak_charged_logical_bytes,
+        data_json_source_bytes: data_memory.json_source_bytes,
+        data_json_documents: data_memory.json_documents,
+        data_json_nodes: data_memory.json_nodes,
+        data_json_string_bytes: data_memory.json_string_bytes,
+        data_listing_entries: data_memory.listing_entries,
+        data_derived_logical_bytes: data_memory.derived_logical_bytes,
+        data_rejections: data_memory.rejections,
         last_reload_generation: None,
         last_reload_failure_stage: None,
         last_reload_error: None,
@@ -368,9 +388,25 @@ fn compose_server_resource_pack_roots(
         MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
         MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
     )?;
-    base_roots
-        .clone()
-        .with_client_resource_generation_image_limit(generation, selected, staged_image_limit)
+    let accepted_data_logical_bytes = active_roots
+        .as_ref()
+        .map(|roots| {
+            roots
+                .resource_data_memory_observation()
+                .charged_logical_bytes
+        })
+        .unwrap_or(0);
+    let staged_data_limit = resource_data_reload_allowance(
+        accepted_data_logical_bytes,
+        MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
+        MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES,
+    )?;
+    base_roots.clone().with_client_resource_generation_limits(
+        generation,
+        selected,
+        staged_image_limit,
+        staged_data_limit,
+    )
 }
 
 fn resource_image_reload_allowance(
@@ -383,6 +419,21 @@ fn resource_image_reload_allowance(
         .with_context(|| {
             format!(
                 "accepted resource image generation already charges {accepted_rgba_bytes} RGBA bytes, exceeding the {process_limit_bytes} byte process limit"
+            )
+        })?;
+    Ok(generation_limit_bytes.min(process_allowance))
+}
+
+fn resource_data_reload_allowance(
+    accepted_logical_bytes: u64,
+    generation_limit_bytes: u64,
+    process_limit_bytes: u64,
+) -> Result<u64> {
+    let process_allowance = process_limit_bytes
+        .checked_sub(accepted_logical_bytes)
+        .with_context(|| {
+            format!(
+                "accepted resource data generation already charges {accepted_logical_bytes} logical bytes, exceeding the {process_limit_bytes} byte process limit"
             )
         })?;
     Ok(generation_limit_bytes.min(process_allowance))
@@ -747,6 +798,28 @@ mod tests {
                 image_rgba_limit_bytes: MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
                 image_rgba_charged_bytes: 0,
                 image_rgba_peak_charged_bytes: 0,
+                data_logical_limit_bytes: composed
+                    .resource_data_memory_observation()
+                    .max_logical_bytes,
+                data_logical_charged_bytes: composed
+                    .resource_data_memory_observation()
+                    .charged_logical_bytes,
+                data_logical_peak_charged_bytes: composed
+                    .resource_data_memory_observation()
+                    .peak_charged_logical_bytes,
+                data_json_source_bytes: composed
+                    .resource_data_memory_observation()
+                    .json_source_bytes,
+                data_json_documents: composed.resource_data_memory_observation().json_documents,
+                data_json_nodes: composed.resource_data_memory_observation().json_nodes,
+                data_json_string_bytes: composed
+                    .resource_data_memory_observation()
+                    .json_string_bytes,
+                data_listing_entries: composed.resource_data_memory_observation().listing_entries,
+                data_derived_logical_bytes: composed
+                    .resource_data_memory_observation()
+                    .derived_logical_bytes,
+                data_rejections: 0,
                 last_reload_generation: None,
                 last_reload_failure_stage: None,
                 last_reload_error: None,
@@ -795,6 +868,22 @@ mod tests {
             .to_string();
         assert!(
             error.contains("accepted resource image generation"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn staged_resource_data_allowance_respects_generation_and_process_limits() {
+        assert_eq!(resource_data_reload_allowance(0, 512, 1_024).unwrap(), 512);
+        assert_eq!(
+            resource_data_reload_allowance(700, 512, 1_024).unwrap(),
+            324
+        );
+        let error = resource_data_reload_allowance(1_025, 512, 1_024)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("accepted resource data generation"),
             "{error}"
         );
     }
@@ -857,6 +946,57 @@ mod tests {
             retry.resource_image_memory_observation().max_rgba_bytes,
             MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES
         );
+
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn staged_resource_generation_has_independent_data_charge_and_diagnostics() {
+        let temp = unique_temp_dir("staged-data-budget");
+        let sources = temp.join("sources");
+        let json_path = sources.join("assets/minecraft/test/value.json");
+        std::fs::create_dir_all(json_path.parent().unwrap()).unwrap();
+        std::fs::write(&json_path, br#"{"value":"accepted"}"#).unwrap();
+        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"), None);
+        let selected = base.selected_client_packs_or_unmanaged();
+        let accepted = base
+            .clone()
+            .with_client_resource_generation_limits(4, selected, 64, 4_096)
+            .unwrap();
+        let _: serde_json::Value = accepted
+            .resource_stack()
+            .read_json_file(&json_path, "accepted fixture")
+            .unwrap();
+        let accepted_charge = accepted
+            .resource_data_memory_observation()
+            .charged_logical_bytes;
+        assert!(accepted_charge > 0);
+
+        let staged =
+            compose_server_resource_pack_roots(&Some(base), &Some(accepted.clone()), 5, Vec::new())
+                .unwrap();
+        let _: serde_json::Value = staged
+            .resource_stack()
+            .read_json_file(&json_path, "staged fixture")
+            .unwrap();
+        let staged_memory = staged.resource_data_memory_observation();
+        assert_eq!(
+            staged_memory.max_logical_bytes,
+            MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES
+        );
+        assert_eq!(
+            accepted
+                .resource_data_memory_observation()
+                .charged_logical_bytes,
+            accepted_charge
+        );
+        let diagnostics = client_resource_pack_diagnostics(Some(&staged));
+        assert_eq!(
+            diagnostics.data_logical_charged_bytes,
+            staged_memory.charged_logical_bytes
+        );
+        assert_eq!(diagnostics.data_json_documents, 1);
+        assert_eq!(diagnostics.data_rejections, 0);
 
         std::fs::remove_dir_all(temp).unwrap();
     }

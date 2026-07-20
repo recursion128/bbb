@@ -24,6 +24,10 @@ use crate::{
     metadata::PackMetadataCatalog,
     particle_definitions::ParticleDefinitionCatalog,
     particle_sprites::ParticleSpriteCatalog,
+    resource_budget::{
+        ResourceDataGenerationBudget, ResourceDataMemoryObservation,
+        MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
+    },
     resources::{PackResourceStack, ResourceLocation},
     selected_packs::{ClientResourceGeneration, SelectedClientPackStack},
     sounds::SoundCatalog,
@@ -49,6 +53,8 @@ pub struct PackRoots {
     client_resource_generation: Option<Arc<ClientResourceGeneration>>,
     #[serde(skip, default = "default_resource_image_generation_budget")]
     resource_image_budget: Arc<ResourceImageGenerationBudget>,
+    #[serde(skip, default = "default_resource_data_generation_budget")]
+    resource_data_budget: Arc<ResourceDataGenerationBudget>,
 }
 
 impl PackRoots {
@@ -89,6 +95,7 @@ impl PackRoots {
             resource_pack_dirs: Vec::new(),
             client_resource_generation: None,
             resource_image_budget: default_resource_image_generation_budget(),
+            resource_data_budget: default_resource_data_generation_budget(),
         }
     }
 
@@ -104,6 +111,7 @@ impl PackRoots {
         self.resource_pack_dirs = dirs.into_iter().map(Into::into).collect();
         self.client_resource_generation = None;
         self.resource_image_budget = default_resource_image_generation_budget();
+        self.resource_data_budget = default_resource_data_generation_budget();
         self
     }
 
@@ -117,19 +125,35 @@ impl PackRoots {
         generation: u64,
         packs: SelectedClientPackStack,
     ) -> Result<Self> {
-        self = self.with_client_resource_generation_image_limit(
+        self = self.with_client_resource_generation_limits(
             generation,
             packs,
             MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+            MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
         )?;
         Ok(self)
     }
 
     pub fn with_client_resource_generation_image_limit(
+        self,
+        generation: u64,
+        packs: SelectedClientPackStack,
+        max_resource_image_rgba_bytes: u64,
+    ) -> Result<Self> {
+        self.with_client_resource_generation_limits(
+            generation,
+            packs,
+            max_resource_image_rgba_bytes,
+            MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
+        )
+    }
+
+    pub fn with_client_resource_generation_limits(
         mut self,
         generation: u64,
         packs: SelectedClientPackStack,
         max_resource_image_rgba_bytes: u64,
+        max_resource_data_logical_bytes: u64,
     ) -> Result<Self> {
         let vanilla = packs
             .packs()
@@ -148,19 +172,25 @@ impl PackRoots {
             .skip(1)
             .map(|pack| pack.root.clone())
             .collect();
-        self.client_resource_generation = Some(Arc::new(
-            ClientResourceGeneration::prepare_with_image_limit(
+        self.client_resource_generation =
+            Some(Arc::new(ClientResourceGeneration::prepare_with_limits(
                 generation,
                 packs,
                 max_resource_image_rgba_bytes,
-            )?,
-        ));
+                max_resource_data_logical_bytes,
+            )?));
         self.resource_image_budget = self
             .client_resource_generation
             .as_ref()
             .expect("client resource generation was just installed")
             .resources()
             .image_budget();
+        self.resource_data_budget = self
+            .client_resource_generation
+            .as_ref()
+            .expect("client resource generation was just installed")
+            .resources()
+            .data_budget();
         Ok(self)
     }
 
@@ -190,9 +220,10 @@ impl PackRoots {
         let mut roots = Vec::with_capacity(1 + self.resource_pack_dirs.len());
         roots.push(self.sources_dir.clone());
         roots.extend(self.resource_pack_dirs.iter().cloned());
-        PackResourceStack::from_roots_with_image_budget(
+        PackResourceStack::from_roots_with_budgets(
             roots,
             Arc::clone(&self.resource_image_budget),
+            Arc::clone(&self.resource_data_budget),
         )
     }
 
@@ -200,14 +231,27 @@ impl PackRoots {
         if let Some(generation) = self.client_resource_generation() {
             return generation.resources().without_first();
         }
-        PackResourceStack::from_roots_with_image_budget(
+        PackResourceStack::from_roots_with_budgets(
             self.resource_pack_dirs.iter().cloned(),
             Arc::clone(&self.resource_image_budget),
+            Arc::clone(&self.resource_data_budget),
         )
     }
 
     pub fn resource_image_memory_observation(&self) -> ResourceImageMemoryObservation {
         self.resource_image_budget.observation()
+    }
+
+    pub fn resource_data_memory_observation(&self) -> ResourceDataMemoryObservation {
+        self.resource_data_budget.observation()
+    }
+
+    pub(crate) fn resource_data_budget(&self) -> Arc<ResourceDataGenerationBudget> {
+        Arc::clone(&self.resource_data_budget)
+    }
+
+    pub fn ensure_resource_data_admitted(&self) -> Result<()> {
+        self.resource_data_budget.ensure_admitted()
     }
 
     pub fn vanilla_source(&self, relative: impl AsRef<Path>) -> PathBuf {
@@ -318,18 +362,20 @@ impl PackRoots {
     }
 
     pub fn load_atlas_texture_sources(&self, atlas_name: &str) -> Result<Vec<SpriteSource>> {
-        let mut budget = self.resource_stack().atlas_png_decode_budget();
+        let stack = self.resource_stack();
+        let mut budget = stack.atlas_png_decode_budget();
         load_atlas_texture_entries_with_budget(self, atlas_name, &mut budget)?
             .into_iter()
-            .map(|entry| entry.into_source_with_budget(&mut budget))
+            .map(|entry| entry.into_source_with_budget(&mut budget, &stack))
             .collect()
     }
 
     pub fn load_atlas_texture_images(&self, atlas_name: &str) -> Result<Vec<SpriteImage>> {
-        let mut budget = self.resource_stack().atlas_png_decode_budget();
+        let stack = self.resource_stack();
+        let mut budget = stack.atlas_png_decode_budget();
         load_atlas_texture_entries_with_budget(self, atlas_name, &mut budget)?
             .into_iter()
-            .map(|entry| entry.into_image_with_budget(&mut budget))
+            .map(|entry| entry.into_image_with_budget(&mut budget, &stack))
             .collect()
     }
 
@@ -478,13 +524,13 @@ impl PackRoots {
             .into_iter()
             .map(|code| code.as_ref().to_string())
             .collect::<Vec<_>>();
-        let mut catalog =
-            LanguageCatalog::load_resource_stack(&self.resource_stack(), &language_codes)?;
+        let stack = self.resource_stack();
+        let mut catalog = LanguageCatalog::load_resource_stack(&stack, &language_codes)?;
         let deprecated_path = self.assets_dir.join("lang").join("deprecated.json");
         if deprecated_path.is_file() {
             // Vanilla loads deprecated translations from the default resource, not overlays.
-            if let Ok(bytes) = std::fs::read(&deprecated_path) {
-                let _ = catalog.apply_deprecated_json_bytes(&bytes);
+            if let Ok(info) = stack.read_json_file(&deprecated_path, "deprecated translations") {
+                let _ = catalog.apply_deprecated_info(info);
             }
         }
         Ok(catalog)
@@ -512,6 +558,10 @@ fn discover_generated_assets_dir() -> Option<PathBuf> {
 
 fn default_resource_image_generation_budget() -> Arc<ResourceImageGenerationBudget> {
     ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES)
+}
+
+fn default_resource_data_generation_budget() -> Arc<ResourceDataGenerationBudget> {
+    ResourceDataGenerationBudget::new(MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES)
 }
 
 fn load_terrain_colormap(stack: &PackResourceStack, name: &str) -> Result<ColorMapImage> {
@@ -1370,6 +1420,38 @@ mod tests {
 
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
+    fn loads_local_vanilla_resource_data_within_generation_budget() {
+        let roots = PackRoots::discover().unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&roots, []).unwrap();
+        let roots = roots.with_client_resource_generation(1, selected).unwrap();
+
+        let _ = crate::KnownPacksManager::load(&roots).unwrap();
+        let _ = roots.load_block_model_catalog().unwrap();
+        let _ = roots.load_item_model_catalog().unwrap();
+        let _ = roots.load_item_cuboid_model_catalog().unwrap();
+        let _ = roots.load_item_registry_catalog().unwrap();
+        let _ = roots.load_equipment_asset_catalog().unwrap();
+        let _ = roots.load_waypoint_style_catalog().unwrap();
+        let _ = roots.load_particle_definition_catalog().unwrap();
+        let _ = roots.load_biome_color_catalog().unwrap();
+        let _ = roots.load_sound_catalog().unwrap();
+        let _ = roots
+            .load_client_language_catalog(DEFAULT_LANGUAGE_CODE)
+            .unwrap();
+        let _ = roots.load_pack_metadata_catalog();
+        let _ = roots.load_tag_catalog("block").unwrap();
+        let _ = roots.load_tag_catalog("item").unwrap();
+        roots.ensure_resource_data_admitted().unwrap();
+
+        let observation = roots.resource_data_memory_observation();
+        eprintln!("vanilla resource data logical charge: {observation:?}");
+        assert!(observation.charged_logical_bytes > 0);
+        assert!(observation.charged_logical_bytes < observation.max_logical_bytes);
+        assert_eq!(observation.rejections, 0);
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_all_local_vanilla_atlases() {
         let roots = PackRoots::discover().unwrap();
         let expected = [
@@ -1537,7 +1619,7 @@ mod tests {
     fn stitches_local_vanilla_block_texture_mip_atlas() {
         let roots = PackRoots::discover().unwrap();
         let images = roots.load_block_texture_images().unwrap();
-        assert_eq!(images.len(), 1_121);
+        assert_eq!(images.len(), 1_122);
 
         let packer = AtlasPacker::new(4096, 1).unwrap();
         let atlas = packer.stitch_mips_with_max_level(&images, 4).unwrap();

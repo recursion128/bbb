@@ -6,7 +6,7 @@ use bbb_protocol::{
 };
 use serde::Deserialize;
 
-use crate::{PackResourceStack, PackRoots, MC_VERSION};
+use crate::{resource_budget::ResourceListingAdmission, PackResourceStack, PackRoots, MC_VERSION};
 
 const VANILLA_NAMESPACE: &str = "minecraft";
 const CORE_PACK_ID: &str = "core";
@@ -66,7 +66,8 @@ impl KnownPacksManager {
     pub fn load(roots: &PackRoots) -> Result<Self> {
         validate_source_version(&roots.sources_dir)?;
 
-        let core_elements = load_registry_elements(&roots.sources_dir)?;
+        let data_budget = roots.resource_data_budget();
+        let core_elements = load_registry_elements(&roots.sources_dir, data_budget.clone())?;
         for registry in VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
             if !core_elements
                 .keys()
@@ -90,12 +91,14 @@ impl KnownPacksManager {
             .join(VANILLA_NAMESPACE)
             .join("datapacks");
         if built_in_root.is_dir() {
+            let mut admission = ResourceListingAdmission::new(data_budget.clone());
             let mut entries = std::fs::read_dir(&built_in_root)
                 .with_context(|| format!("read built-in datapacks {}", built_in_root.display()))?
                 .collect::<std::io::Result<Vec<_>>>()?;
             entries.sort_by_key(std::fs::DirEntry::file_name);
             for entry in entries {
                 let path = entry.path();
+                admission.admit(&path.to_string_lossy(), "built-in known packs")?;
                 if !entry
                     .file_type()
                     .with_context(|| format!("read file type {}", path.display()))?
@@ -110,10 +113,10 @@ impl KnownPacksManager {
                     .map_err(|name| anyhow::anyhow!("non-utf8 built-in known-pack id {name:?}"))?;
                 crate::resources::validate_resource_path(&id)
                     .with_context(|| format!("invalid built-in known-pack id {id:?}"))?;
-                validate_pack_metadata(&path)?;
+                validate_pack_metadata(&path, &data_budget)?;
                 available.push(KnownPackResources {
                     info: vanilla_known_pack(&id),
-                    registry_elements: load_registry_elements(&path)?,
+                    registry_elements: load_registry_elements(&path, data_budget.clone())?,
                 });
             }
         }
@@ -194,8 +197,11 @@ fn vanilla_known_pack(id: &str) -> KnownPack {
     }
 }
 
-fn load_registry_elements(root: &Path) -> Result<BTreeMap<(String, String), Arc<[u8]>>> {
-    let resources = PackResourceStack::from_roots([root]);
+fn load_registry_elements(
+    root: &Path,
+    data_budget: Arc<crate::resource_budget::ResourceDataGenerationBudget>,
+) -> Result<BTreeMap<(String, String), Arc<[u8]>>> {
+    let resources = PackResourceStack::from_roots_with_data_budget([root], data_budget);
     let mut elements = BTreeMap::new();
     for registry in VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
         let (_, registry_path) = registry
@@ -212,9 +218,8 @@ fn load_registry_elements(root: &Path) -> Result<BTreeMap<(String, String), Arc<
                 continue;
             };
             let resource_id = format!("{}:{element_path}", resource.location.namespace());
-            let bytes = std::fs::read(&resource.path)
-                .with_context(|| format!("read registry element {}", resource.path.display()))?;
-            serde_json::from_slice::<serde_json::Value>(&bytes)
+            let (bytes, _) = resources
+                .read_json_bytes_and_value(&resource.path, "registry element")
                 .with_context(|| format!("parse registry element {}", resource.path.display()))?;
             elements.insert(
                 (registry.resource_id.to_string(), resource_id),
@@ -233,10 +238,9 @@ struct SourceVersion {
 
 fn validate_source_version(sources_dir: &Path) -> Result<()> {
     let path = sources_dir.join("version.json");
-    let bytes = std::fs::read(&path)
-        .with_context(|| format!("read vanilla version metadata {}", path.display()))?;
-    let version: SourceVersion = serde_json::from_slice(&bytes)
-        .with_context(|| format!("parse vanilla version metadata {}", path.display()))?;
+    let version: SourceVersion =
+        crate::resource_budget::read_standalone_json(&path, "vanilla version metadata")
+            .with_context(|| format!("parse vanilla version metadata {}", path.display()))?;
     if version.id != MC_VERSION || version.protocol_version != bbb_protocol::PROTOCOL_VERSION {
         bail!(
             "vanilla source version mismatch: expected {} protocol {}, found {} protocol {}",
@@ -249,11 +253,13 @@ fn validate_source_version(sources_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn validate_pack_metadata(root: &Path) -> Result<()> {
+fn validate_pack_metadata(
+    root: &Path,
+    data_budget: &crate::resource_budget::ResourceDataGenerationBudget,
+) -> Result<()> {
     let path = root.join("pack.mcmeta");
-    let bytes = std::fs::read(&path)
-        .with_context(|| format!("read built-in pack metadata {}", path.display()))?;
-    serde_json::from_slice::<serde_json::Value>(&bytes)
+    data_budget
+        .read_json::<serde_json::Value>(&path, "built-in pack metadata")
         .with_context(|| format!("parse built-in pack metadata {}", path.display()))?;
     Ok(())
 }

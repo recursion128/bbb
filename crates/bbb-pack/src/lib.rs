@@ -21,6 +21,7 @@ mod metadata;
 mod mipmap;
 mod particle_definitions;
 mod particle_sprites;
+mod resource_budget;
 mod resource_textures;
 mod resources;
 mod roots;

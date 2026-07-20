@@ -23,9 +23,10 @@ impl ItemModelCatalog {
         let mut definitions = BTreeMap::new();
         for resource in stack.list_resources("items", ".json")? {
             let item_id = item_id_from_resource(&resource.location)?;
-            let bytes = std::fs::read(&resource.path)
-                .with_context(|| format!("read item model {}", resource.path.display()))?;
-            let definition = ClientItemDefinition::from_json_bytes(&bytes)
+            let raw: Value = stack
+                .read_json_resource(&resource, "item model")
+                .with_context(|| format!("parse item model {}", resource.path.display()))?;
+            let definition = ClientItemDefinition::from_value(raw)
                 .with_context(|| format!("parse item model {}", resource.path.display()))?;
             definitions.insert(item_id, definition);
         }

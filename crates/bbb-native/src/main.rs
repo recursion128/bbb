@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use bbb_control::{AudioCounters, ControlState, NetCounters};
 use bbb_world::WorldStore;
 use std::time::Instant;
@@ -559,6 +559,11 @@ fn main() -> Result<()> {
                 tracing::warn!(?err, "continuing without native item entity atlas");
             }
         }
+    }
+    if let Some(roots) = pack_roots.as_ref() {
+        roots
+            .ensure_resource_data_admitted()
+            .context("admit startup resource data generation")?;
     }
     net_counters.client_resources =
         std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref()));

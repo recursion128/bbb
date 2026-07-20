@@ -27,7 +27,7 @@ impl LanguageCatalog {
                 let location = ResourceLocation::new(namespace.clone(), language_path.clone())?;
                 // Vanilla skips the namespace/language entry if one resource in that stack fails.
                 if catalog
-                    .append_resource_stack(&stack.get_resource_stack(&location))
+                    .append_resource_stack(stack, &stack.get_resource_stack(&location))
                     .is_err()
                 {
                     continue;
@@ -45,6 +45,10 @@ impl LanguageCatalog {
 
     pub fn apply_deprecated_json_bytes(&mut self, bytes: &[u8]) -> Result<()> {
         let info: DeprecatedTranslationsInfo = serde_json::from_slice(bytes)?;
+        self.apply_deprecated_info(info)
+    }
+
+    pub(crate) fn apply_deprecated_info(&mut self, info: DeprecatedTranslationsInfo) -> Result<()> {
         for key in info.removed {
             self.translations.remove(&key);
         }
@@ -63,13 +67,16 @@ impl LanguageCatalog {
 
     fn append_resource_stack(
         &mut self,
+        stack: &PackResourceStack,
         resources: &[crate::resources::PackResource],
     ) -> Result<()> {
         for resource in resources {
-            let Ok(bytes) = std::fs::read(&resource.path) else {
+            let Ok(raw): Result<BTreeMap<String, serde_json::Value>> =
+                stack.read_json_resource(resource, "language file")
+            else {
                 continue;
             };
-            self.merge_json_bytes(&bytes)
+            self.merge_raw(raw)
                 .with_context(|| format!("parse language file {}", resource.path.display()))?;
         }
         Ok(())
@@ -77,6 +84,10 @@ impl LanguageCatalog {
 
     fn merge_json_bytes(&mut self, bytes: &[u8]) -> Result<()> {
         let raw: BTreeMap<String, serde_json::Value> = serde_json::from_slice(bytes)?;
+        self.merge_raw(raw)
+    }
+
+    fn merge_raw(&mut self, raw: BTreeMap<String, serde_json::Value>) -> Result<()> {
         let unsupported_format = unsupported_format_regex()?;
         for (key, value) in raw {
             let value = translation_value_as_string(&key, value)?;
@@ -110,7 +121,7 @@ impl LanguageCatalog {
 }
 
 #[derive(Debug, Deserialize)]
-struct DeprecatedTranslationsInfo {
+pub(crate) struct DeprecatedTranslationsInfo {
     removed: Vec<String>,
     renamed: BTreeMap<String, String>,
 }

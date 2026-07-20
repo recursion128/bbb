@@ -208,9 +208,8 @@ impl BiomeColorCatalog {
             let Some(resource) = stack.get_data_resource(&location) else {
                 continue;
             };
-            let raw = std::fs::read_to_string(&resource.path)
-                .with_context(|| format!("read biome json {}", resource.path.display()))?;
-            let raw: RawBiomeColorProfile = serde_json::from_str(&raw)
+            let raw: RawBiomeColorProfile = stack
+                .read_json_resource(&resource, "biome color profile")
                 .with_context(|| format!("parse biome json {}", resource.path.display()))?;
             profiles.push(BiomeColorProfile::from_raw(
                 id as i32,

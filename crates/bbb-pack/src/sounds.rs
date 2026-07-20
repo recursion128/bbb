@@ -6,7 +6,10 @@ use std::{
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::resources::{PackResourceStack, ResourceLocation};
+use crate::{
+    resource_budget::read_standalone_json,
+    resources::{PackResourceStack, ResourceLocation},
+};
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SoundCatalog {
@@ -32,10 +35,12 @@ impl SoundCatalog {
         ResourceLocation::parse(&format!("{namespace}:_"))?;
         let namespace_assets_dir = namespace_assets_dir.as_ref();
         let path = namespace_assets_dir.join("sounds.json");
-        let bytes =
-            std::fs::read(&path).with_context(|| format!("read sounds {}", path.display()))?;
-        Self::from_json_bytes(namespace, namespace_assets_dir, &bytes)
+        let raw = read_standalone_json(&path, "sound catalog")?;
+        let mut catalog = Self::default();
+        catalog
+            .merge_raw(namespace, namespace_assets_dir, raw, None, None)
             .with_context(|| format!("parse sounds {}", path.display()))
+            .map(|()| catalog)
     }
 
     fn load_namespace_assets_dir_with_resource_stack_fallback(
@@ -46,14 +51,13 @@ impl SoundCatalog {
         ResourceLocation::parse(&format!("{namespace}:_"))?;
         let namespace_assets_dir = namespace_assets_dir.as_ref();
         let path = namespace_assets_dir.join("sounds.json");
-        let bytes =
-            std::fs::read(&path).with_context(|| format!("read sounds {}", path.display()))?;
+        let raw = stack.read_json_file(&path, "sound catalog")?;
         let mut catalog = Self::default();
         catalog
-            .merge_json_bytes(
+            .merge_raw(
                 namespace,
                 namespace_assets_dir,
-                &bytes,
+                raw,
                 Some(stack),
                 Some((namespace, namespace_assets_dir)),
             )
@@ -79,7 +83,9 @@ impl SoundCatalog {
         for namespace in stack.namespaces()? {
             let sounds_location = ResourceLocation::new(namespace.clone(), "sounds.json")?;
             for resource in stack.get_resource_stack(&sounds_location) {
-                let Ok(bytes) = std::fs::read(&resource.path) else {
+                let Ok(raw): Result<BTreeMap<String, RawSoundEventDefinition>> =
+                    stack.read_json_resource(&resource, "sound catalog")
+                else {
                     continue;
                 };
                 let namespace_assets_dir = resource
@@ -87,13 +93,7 @@ impl SoundCatalog {
                     .parent()
                     .ok_or_else(|| anyhow::anyhow!("sounds path has no parent"))?;
                 if self
-                    .merge_json_bytes(
-                        &namespace,
-                        namespace_assets_dir,
-                        &bytes,
-                        Some(stack),
-                        fallback,
-                    )
+                    .merge_raw(&namespace, namespace_assets_dir, raw, Some(stack), fallback)
                     .is_err()
                 {
                     continue;
@@ -140,6 +140,18 @@ impl SoundCatalog {
     ) -> Result<()> {
         ResourceLocation::parse(&format!("{namespace}:_"))?;
         let raw: BTreeMap<String, RawSoundEventDefinition> = serde_json::from_slice(bytes)?;
+        self.merge_raw(namespace, namespace_assets_dir, raw, stack, fallback)
+    }
+
+    fn merge_raw(
+        &mut self,
+        namespace: &str,
+        namespace_assets_dir: &Path,
+        raw: BTreeMap<String, RawSoundEventDefinition>,
+        stack: Option<&PackResourceStack>,
+        fallback: Option<(&str, &Path)>,
+    ) -> Result<()> {
+        ResourceLocation::parse(&format!("{namespace}:_"))?;
         for (event_path, event) in raw {
             let location = ResourceLocation::new(namespace.to_string(), event_path.clone())?;
             let id = location.id();

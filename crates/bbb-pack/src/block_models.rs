@@ -44,9 +44,8 @@ impl BlockModelCatalog {
             let id = blockstate_id_from_resource(&location)?;
             let mut blockstate_stack = Vec::with_capacity(resources.len());
             for resource in resources {
-                let bytes = std::fs::read(&resource.path)
-                    .with_context(|| format!("read blockstate {}", resource.path.display()))?;
-                let blockstate = serde_json::from_slice(&bytes)
+                let blockstate = stack
+                    .read_json_resource(&resource, "blockstate")
                     .with_context(|| format!("parse blockstate {}", resource.path.display()))?;
                 blockstate_stack.push(blockstate);
             }
@@ -175,9 +174,8 @@ pub(crate) fn load_cuboid_model_resources(
     let mut models = HashMap::new();
     for resource in stack.list_resources(path_prefix, ".json")? {
         let id = cuboid_model_id_from_resource(&resource.location)?;
-        let bytes = std::fs::read(&resource.path)
-            .with_context(|| format!("read {label} {}", resource.path.display()))?;
-        let model = serde_json::from_slice(&bytes)
+        let model = stack
+            .read_json_resource(&resource, label)
             .with_context(|| format!("parse {label} {}", resource.path.display()))?;
         models.insert(id, model);
     }

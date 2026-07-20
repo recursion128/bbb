@@ -21,10 +21,12 @@ impl TagCatalog {
         for (location, resources) in resource_stacks {
             let tag_id = tag_id_from_resource_location(&location, &directory)?;
             for resource in resources {
-                let Ok(bytes) = std::fs::read(&resource.path) else {
+                let Ok(raw): Result<RawTagFile> =
+                    stack.read_json_resource(&resource, "tag definition")
+                else {
                     continue;
                 };
-                let Ok(tag_file) = RawTagFile::from_json_bytes(&bytes).with_context(|| {
+                let Ok(tag_file) = raw.into_tag_file().with_context(|| {
                     format!("parse tag {} from {}", tag_id.id(), resource.path.display())
                 }) else {
                     continue;
@@ -87,15 +89,14 @@ struct RawTagFile {
 }
 
 impl RawTagFile {
-    fn from_json_bytes(bytes: &[u8]) -> Result<TagFile> {
-        let raw: Self = serde_json::from_slice(bytes)?;
-        let values = raw
+    fn into_tag_file(self) -> Result<TagFile> {
+        let values = self
             .values
             .into_iter()
             .map(RawTagEntry::into_entry)
             .collect::<Result<Vec<_>>>()?;
         Ok(TagFile {
-            replace: raw.replace,
+            replace: self.replace,
             values,
         })
     }

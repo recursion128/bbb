@@ -22,9 +22,12 @@ impl ParticleDefinitionCatalog {
         let mut definitions = BTreeMap::new();
         for resource in stack.list_resources("particles", ".json")? {
             let particle_id = particle_id_from_resource(&resource.location)?;
-            let bytes = std::fs::read(&resource.path)
-                .with_context(|| format!("read particle definition {}", resource.path.display()))?;
-            let definition = ParticleDefinition::from_json_bytes(&bytes).with_context(|| {
+            let raw: RawParticleDefinition = stack
+                .read_json_resource(&resource, "particle definition")
+                .with_context(|| {
+                    format!("parse particle definition {}", resource.path.display())
+                })?;
+            let definition = raw.into_definition().with_context(|| {
                 format!("parse particle definition {}", resource.path.display())
             })?;
             definitions.insert(particle_id, definition);

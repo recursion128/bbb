@@ -51,7 +51,13 @@ impl SpriteSource {
         metadata_path: Option<&Path>,
     ) -> Result<Self> {
         let mut budget = PngDecodeBudget::single_image();
-        Self::from_png_file_with_metadata_path_and_budget(id, path, metadata_path, &mut budget)
+        Self::from_png_file_with_metadata_path_and_budget(
+            id,
+            path,
+            metadata_path,
+            &mut budget,
+            None,
+        )
     }
 
     pub(crate) fn from_png_file_with_metadata_path_and_budget(
@@ -59,11 +65,12 @@ impl SpriteSource {
         path: impl AsRef<Path>,
         metadata_path: Option<&Path>,
         budget: &mut PngDecodeBudget,
+        resources: Option<&PackResourceStack>,
     ) -> Result<Self> {
         let path = path.as_ref();
         let (image_width, image_height) =
             read_png_file_dimensions_with_budget(path, "sprite source", budget)?;
-        let metadata = read_sprite_metadata(metadata_path)?;
+        let metadata = read_sprite_metadata(metadata_path, resources)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
         let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
         let (width, height, animation) =
@@ -319,6 +326,7 @@ impl SpriteImage {
             path,
             Some(&metadata_path),
             &mut budget,
+            Some(resources),
         )
     }
 
@@ -328,7 +336,13 @@ impl SpriteImage {
         metadata_path: Option<&Path>,
     ) -> Result<Self> {
         let mut budget = PngDecodeBudget::single_image();
-        Self::from_png_file_with_metadata_path_and_budget(id, path, metadata_path, &mut budget)
+        Self::from_png_file_with_metadata_path_and_budget(
+            id,
+            path,
+            metadata_path,
+            &mut budget,
+            None,
+        )
     }
 
     pub(crate) fn from_png_file_with_metadata_path_and_budget(
@@ -336,12 +350,13 @@ impl SpriteImage {
         path: impl AsRef<Path>,
         metadata_path: Option<&Path>,
         budget: &mut PngDecodeBudget,
+        resources: Option<&PackResourceStack>,
     ) -> Result<Self> {
         let path = path.as_ref();
         let rgba = decode_png_file_rgba_with_budget(path, "sprite image", budget)
             .with_context(|| format!("open sprite {}", path.display()))?;
         let (image_width, image_height) = rgba.dimensions();
-        let metadata = read_sprite_metadata(metadata_path)?;
+        let metadata = read_sprite_metadata(metadata_path, resources)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
         let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
         let (width, height, animation) =
@@ -485,17 +500,21 @@ fn sprite_frame_metadata(
     Ok((width, height, Some(animation)))
 }
 
-fn read_sprite_metadata(path: Option<&Path>) -> Result<RawSpriteMetadata> {
+fn read_sprite_metadata(
+    path: Option<&Path>,
+    resources: Option<&PackResourceStack>,
+) -> Result<RawSpriteMetadata> {
     let Some(path) = path else {
         return Ok(RawSpriteMetadata::default());
     };
     if !path.is_file() {
         return Ok(RawSpriteMetadata::default());
     }
-    let bytes = std::fs::read(path).with_context(|| format!("read mcmeta {}", path.display()))?;
-    let metadata: RawSpriteMetadata = serde_json::from_slice(&bytes)
-        .with_context(|| format!("parse mcmeta {}", path.display()))?;
-    Ok(metadata)
+    match resources {
+        Some(resources) => resources.read_json_file(path, "sprite metadata"),
+        None => crate::resource_budget::read_standalone_json(path, "sprite metadata"),
+    }
+    .with_context(|| format!("parse mcmeta {}", path.display()))
 }
 
 fn mcmeta_path(path: &Path) -> PathBuf {

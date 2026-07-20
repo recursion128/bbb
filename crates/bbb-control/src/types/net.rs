@@ -22,6 +22,26 @@ pub struct ClientResourceDiagnostics {
     pub image_rgba_charged_bytes: u64,
     #[serde(default)]
     pub image_rgba_peak_charged_bytes: u64,
+    #[serde(default)]
+    pub data_logical_limit_bytes: u64,
+    #[serde(default)]
+    pub data_logical_charged_bytes: u64,
+    #[serde(default)]
+    pub data_logical_peak_charged_bytes: u64,
+    #[serde(default)]
+    pub data_json_source_bytes: u64,
+    #[serde(default)]
+    pub data_json_documents: u64,
+    #[serde(default)]
+    pub data_json_nodes: u64,
+    #[serde(default)]
+    pub data_json_string_bytes: u64,
+    #[serde(default)]
+    pub data_listing_entries: u64,
+    #[serde(default)]
+    pub data_derived_logical_bytes: u64,
+    #[serde(default)]
+    pub data_rejections: u64,
     pub last_reload_generation: Option<u64>,
     pub last_reload_failure_stage: Option<String>,
     pub last_reload_error: Option<String>,
@@ -256,7 +276,7 @@ mod tests {
     }
 
     #[test]
-    fn resource_image_diagnostics_default_for_older_payloads() {
+    fn resource_memory_diagnostics_default_for_older_payloads() {
         let diagnostics: ClientResourceDiagnostics = serde_json::from_value(serde_json::json!({
             "generation": 3,
             "selected_packs": [],
@@ -269,6 +289,16 @@ mod tests {
         assert_eq!(diagnostics.image_rgba_limit_bytes, 0);
         assert_eq!(diagnostics.image_rgba_charged_bytes, 0);
         assert_eq!(diagnostics.image_rgba_peak_charged_bytes, 0);
+        assert_eq!(diagnostics.data_logical_limit_bytes, 0);
+        assert_eq!(diagnostics.data_logical_charged_bytes, 0);
+        assert_eq!(diagnostics.data_logical_peak_charged_bytes, 0);
+        assert_eq!(diagnostics.data_json_source_bytes, 0);
+        assert_eq!(diagnostics.data_json_documents, 0);
+        assert_eq!(diagnostics.data_json_nodes, 0);
+        assert_eq!(diagnostics.data_json_string_bytes, 0);
+        assert_eq!(diagnostics.data_listing_entries, 0);
+        assert_eq!(diagnostics.data_derived_logical_bytes, 0);
+        assert_eq!(diagnostics.data_rejections, 0);
     }
 
     #[test]

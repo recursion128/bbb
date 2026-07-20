@@ -60,12 +60,18 @@ pub struct ServerPackFormatRange {
 pub struct ClientPackMetadata {
     pub supported_formats: ServerPackFormatRange,
     document: Arc<serde_json::Value>,
+    source_bytes: u64,
 }
 
 impl ClientPackMetadata {
     pub fn parse(bytes: &[u8]) -> Result<Self> {
         let document: serde_json::Value =
             serde_json::from_slice(bytes).context("parse client resource pack metadata JSON")?;
+        let source_bytes = u64::try_from(bytes.len()).context("pack metadata size overflow")?;
+        Self::from_document(document, source_bytes)
+    }
+
+    fn from_document(document: serde_json::Value, source_bytes: u64) -> Result<Self> {
         let metadata: RawMetadata = serde_json::from_value(document.clone())
             .context("decode client resource pack metadata")?;
         if metadata.pack.description.is_null() {
@@ -74,11 +80,16 @@ impl ClientPackMetadata {
         Ok(Self {
             supported_formats: metadata.pack.supported_format_range()?,
             document: Arc::new(document),
+            source_bytes,
         })
     }
 
     pub(crate) fn document(&self) -> &serde_json::Value {
         &self.document
+    }
+
+    pub(crate) fn source_bytes(&self) -> u64 {
+        self.source_bytes
     }
 }
 
@@ -402,9 +413,13 @@ pub fn read_client_resource_pack_format_range(root: &Path) -> Result<ServerPackF
 
 pub fn read_client_resource_pack_metadata(root: &Path) -> Result<ClientPackMetadata> {
     let path = root.join("pack.mcmeta");
-    let bytes = std::fs::read(&path)
-        .with_context(|| format!("read client resource pack metadata {}", path.display()))?;
-    ClientPackMetadata::parse(&bytes)
+    let (bytes, document) = crate::resource_budget::read_standalone_json_bytes_and_value(
+        &path,
+        "client resource pack metadata",
+    )
+    .with_context(|| format!("read client resource pack metadata {}", path.display()))?;
+    let source_bytes = u64::try_from(bytes.len()).context("pack metadata size overflow")?;
+    ClientPackMetadata::from_document(document, source_bytes)
         .with_context(|| format!("parse client resource pack metadata {}", path.display()))
 }
 

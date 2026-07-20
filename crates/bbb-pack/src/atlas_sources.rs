@@ -30,11 +30,7 @@ pub(crate) fn load_atlas_texture_entries_with_budget(
     let mut entries = Vec::new();
 
     for resource in atlas_resources {
-        let bytes = match std::fs::read(&resource.path) {
-            Ok(bytes) => bytes,
-            Err(_) => continue,
-        };
-        let atlas: RawAtlas = match serde_json::from_slice(&bytes) {
+        let atlas: RawAtlas = match stack.read_json_resource(&resource, "atlas definition") {
             Ok(atlas) => atlas,
             Err(_) => continue,
         };
@@ -502,12 +498,13 @@ impl AtlasTextureEntry {
     #[cfg(test)]
     pub(crate) fn into_source(self) -> Result<SpriteSource> {
         let mut budget = PngDecodeBudget::single_image();
-        self.into_source_with_budget(&mut budget)
+        self.into_source_with_budget(&mut budget, &PackResourceStack::default())
     }
 
     pub(crate) fn into_source_with_budget(
         self,
         budget: &mut PngDecodeBudget,
+        resources: &PackResourceStack,
     ) -> Result<SpriteSource> {
         match self {
             AtlasTextureEntry::File {
@@ -519,6 +516,7 @@ impl AtlasTextureEntry {
                 path,
                 metadata_path.as_deref(),
                 budget,
+                Some(resources),
             ),
             AtlasTextureEntry::Image(image) => Ok(image.source()),
         }
@@ -527,12 +525,13 @@ impl AtlasTextureEntry {
     #[cfg(test)]
     pub(crate) fn into_image(self) -> Result<SpriteImage> {
         let mut budget = PngDecodeBudget::single_image();
-        self.into_image_with_budget(&mut budget)
+        self.into_image_with_budget(&mut budget, &PackResourceStack::default())
     }
 
     pub(crate) fn into_image_with_budget(
         self,
         budget: &mut PngDecodeBudget,
+        resources: &PackResourceStack,
     ) -> Result<SpriteImage> {
         match self {
             AtlasTextureEntry::File {
@@ -544,6 +543,7 @@ impl AtlasTextureEntry {
                 path,
                 metadata_path.as_deref(),
                 budget,
+                Some(resources),
             ),
             AtlasTextureEntry::Image(image) => Ok(image),
         }

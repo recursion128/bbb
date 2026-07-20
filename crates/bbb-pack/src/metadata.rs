@@ -23,10 +23,12 @@ impl PackMetadataCatalog {
             if !metadata_path.is_file() {
                 continue;
             }
-            let Ok(bytes) = std::fs::read(&metadata_path) else {
+            let Ok(raw): Result<RawPackMetadata> =
+                stack.read_json_file(&metadata_path, "pack metadata")
+            else {
                 continue;
             };
-            let Ok(metadata) = RawPackMetadata::from_json_bytes(&bytes) else {
+            let Ok(metadata) = raw.into_metadata() else {
                 continue;
             };
             for (code, info) in metadata.languages {
@@ -91,10 +93,9 @@ struct RawPackMetadata {
 }
 
 impl RawPackMetadata {
-    fn from_json_bytes(bytes: &[u8]) -> Result<ParsedPackMetadata> {
-        let raw: Self = serde_json::from_slice(bytes)?;
+    fn into_metadata(self) -> Result<ParsedPackMetadata> {
         let mut languages = BTreeMap::new();
-        for (code, info) in raw.language {
+        for (code, info) in self.language {
             validate_language_code(&code)?;
             languages.insert(code, info.into_language_info()?);
         }

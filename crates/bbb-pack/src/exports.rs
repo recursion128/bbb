@@ -43,6 +43,10 @@ pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};
 pub use crate::particle_definitions::{ParticleDefinition, ParticleDefinitionCatalog};
 pub use crate::particle_sprites::ParticleSpriteCatalog;
+pub use crate::resource_budget::{
+    ResourceDataMemoryObservation, MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
+    MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES,
+};
 pub use crate::resource_textures::ResourceTextureImage;
 pub use crate::resources::{PackResource, PackResourceStack, ResourceLocation};
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};

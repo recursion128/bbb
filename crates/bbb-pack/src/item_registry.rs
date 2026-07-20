@@ -287,18 +287,15 @@ impl ItemRegistryCatalog {
     pub fn load(roots: &PackRoots) -> Result<Self> {
         let override_path = roots.sources_dir.join(ITEM_REGISTRY_CATALOG_OVERRIDE_PATH);
         if override_path.is_file() {
-            let bytes = std::fs::read(&override_path).with_context(|| {
-                format!(
-                    "read item registry catalog override {}",
-                    override_path.display()
-                )
-            })?;
-            return serde_json::from_slice(&bytes).with_context(|| {
-                format!(
-                    "parse item registry catalog override {}",
-                    override_path.display()
-                )
-            });
+            return roots
+                .resource_stack()
+                .read_json_file(&override_path, "item registry catalog override")
+                .with_context(|| {
+                    format!(
+                        "parse item registry catalog override {}",
+                        override_path.display()
+                    )
+                });
         }
         let block_tags = roots.load_tag_catalog("block").ok();
         Self::from_generated_source_catalog(block_tags.as_ref())

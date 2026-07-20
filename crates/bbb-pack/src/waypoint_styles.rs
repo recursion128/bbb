@@ -27,9 +27,11 @@ impl WaypointStyleCatalog {
         let mut styles = BTreeMap::new();
         for resource in stack.list_resources("waypoint_style", ".json")? {
             let style_id = style_id_from_resource(&resource.location)?;
-            let bytes = std::fs::read(&resource.path)
-                .with_context(|| format!("read waypoint style {}", resource.path.display()))?;
-            let style = WaypointStyle::from_json_bytes(&bytes)
+            let raw: RawWaypointStyle = stack
+                .read_json_resource(&resource, "waypoint style")
+                .with_context(|| format!("parse waypoint style {}", resource.path.display()))?;
+            let style = raw
+                .into_style()
                 .with_context(|| format!("parse waypoint style {}", resource.path.display()))?;
             styles.insert(style_id, style);
         }

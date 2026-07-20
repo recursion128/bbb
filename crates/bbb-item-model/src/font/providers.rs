@@ -64,8 +64,11 @@ pub fn load_font_providers(
         let resource = stack
             .get_resource(&location)
             .with_context(|| format!("missing font definition {}", location.id()))?;
-        std::fs::read_to_string(&resource.path)
-            .with_context(|| format!("read font definition {}", resource.path.display()))
+        let value: Value = stack
+            .read_json_resource(&resource, "font definition")
+            .with_context(|| format!("read font definition {}", resource.path.display()))?;
+        serde_json::to_string(&value)
+            .with_context(|| format!("retain font definition {}", resource.path.display()))
     };
     flatten_font_providers(font_id, &mut load_definition)
 }

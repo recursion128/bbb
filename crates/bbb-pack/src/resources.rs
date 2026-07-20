@@ -6,12 +6,16 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use regex::Regex;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::{
     image::{
         PngDecodeBudget, ResourceImageGenerationBudget, ResourceImageMemoryObservation,
         MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+    },
+    resource_budget::{
+        ResourceDataGenerationBudget, ResourceDataMemoryObservation, ResourceListingAdmission,
+        MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
     },
     ClientPackSource, SelectedClientPack,
 };
@@ -68,11 +72,16 @@ pub struct PackResourceStack {
     entries: Arc<Vec<PackEntry>>,
     start: usize,
     image_budget: Arc<ResourceImageGenerationBudget>,
+    data_budget: Arc<ResourceDataGenerationBudget>,
 }
 
 impl PackResourceStack {
     pub fn from_roots(roots: impl IntoIterator<Item = impl Into<PathBuf>>) -> Self {
         let roots = roots.into_iter().map(Into::into).collect::<Vec<_>>();
+        let image_budget =
+            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES);
+        let data_budget =
+            ResourceDataGenerationBudget::new(MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES);
         let pack_ids = (0..roots.len())
             .map(|index| format!("unmanaged/{index}"))
             .collect::<Vec<_>>();
@@ -80,18 +89,17 @@ impl PackResourceStack {
             .iter()
             .cloned()
             .zip(pack_ids)
-            .map(|(root, pack_id)| PackEntry::new_unmanaged(pack_id, root))
+            .map(|(root, pack_id)| {
+                PackEntry::new_unmanaged(pack_id, root, Arc::clone(&data_budget))
+            })
             .collect();
-        Self::from_parts(
-            roots,
-            entries,
-            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
-        )
+        Self::from_parts(roots, entries, image_budget, data_budget)
     }
 
-    pub(crate) fn from_roots_with_image_budget(
+    pub(crate) fn from_roots_with_budgets(
         roots: impl IntoIterator<Item = impl Into<PathBuf>>,
         image_budget: Arc<ResourceImageGenerationBudget>,
+        data_budget: Arc<ResourceDataGenerationBudget>,
     ) -> Self {
         let roots = roots.into_iter().map(Into::into).collect::<Vec<_>>();
         let pack_ids = (0..roots.len())
@@ -101,34 +109,51 @@ impl PackResourceStack {
             .iter()
             .cloned()
             .zip(pack_ids)
-            .map(|(root, pack_id)| PackEntry::new_unmanaged(pack_id, root))
+            .map(|(root, pack_id)| {
+                PackEntry::new_unmanaged(pack_id, root, Arc::clone(&data_budget))
+            })
             .collect();
-        Self::from_parts(roots, entries, image_budget)
+        Self::from_parts(roots, entries, image_budget, data_budget)
+    }
+
+    pub(crate) fn from_roots_with_data_budget(
+        roots: impl IntoIterator<Item = impl Into<PathBuf>>,
+        data_budget: Arc<ResourceDataGenerationBudget>,
+    ) -> Self {
+        Self::from_roots_with_budgets(
+            roots,
+            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
+            data_budget,
+        )
     }
 
     fn from_parts(
         roots: Vec<PathBuf>,
         entries: Vec<PackEntry>,
         image_budget: Arc<ResourceImageGenerationBudget>,
+        data_budget: Arc<ResourceDataGenerationBudget>,
     ) -> Self {
         Self {
             roots: Arc::new(roots),
             entries: Arc::new(entries),
             start: 0,
             image_budget,
+            data_budget,
         }
     }
 
     pub fn prepare_selected_client_packs(packs: &[SelectedClientPack]) -> Result<Self> {
-        Self::prepare_selected_client_packs_with_image_budget(
+        Self::prepare_selected_client_packs_with_budgets(
             packs,
             ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
+            ResourceDataGenerationBudget::new(MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES),
         )
     }
 
-    pub(crate) fn prepare_selected_client_packs_with_image_budget(
+    pub(crate) fn prepare_selected_client_packs_with_budgets(
         packs: &[SelectedClientPack],
         image_budget: Arc<ResourceImageGenerationBudget>,
+        data_budget: Arc<ResourceDataGenerationBudget>,
     ) -> Result<Self> {
         let roots = packs
             .iter()
@@ -149,7 +174,7 @@ impl PackResourceStack {
                 .with_context(|| format!("prepare selected client pack {}", pack.id))
             })
             .collect::<Result<Vec<_>>>()?;
-        Ok(Self::from_parts(roots, entries, image_budget))
+        Ok(Self::from_parts(roots, entries, image_budget, data_budget))
     }
 
     pub fn roots(&self) -> &[PathBuf] {
@@ -162,6 +187,7 @@ impl PackResourceStack {
             entries: Arc::clone(&self.entries),
             start: (self.start + 1).min(self.entries.len()),
             image_budget: Arc::clone(&self.image_budget),
+            data_budget: Arc::clone(&self.data_budget),
         }
     }
 
@@ -177,8 +203,48 @@ impl PackResourceStack {
         Arc::clone(&self.image_budget)
     }
 
+    pub(crate) fn data_budget(&self) -> Arc<ResourceDataGenerationBudget> {
+        Arc::clone(&self.data_budget)
+    }
+
     pub fn resource_image_memory_observation(&self) -> ResourceImageMemoryObservation {
         self.image_budget.observation()
+    }
+
+    pub fn resource_data_memory_observation(&self) -> ResourceDataMemoryObservation {
+        self.data_budget.observation()
+    }
+
+    pub fn read_json_resource<T: DeserializeOwned>(
+        &self,
+        resource: &PackResource,
+        label: &str,
+    ) -> Result<T> {
+        self.read_json_file(&resource.path, label)
+    }
+
+    pub fn read_json_file<T: DeserializeOwned>(&self, path: &Path, label: &str) -> Result<T> {
+        self.data_budget.read_json(path, label)
+    }
+
+    pub fn read_json_value_file(&self, path: &Path, label: &str) -> Result<serde_json::Value> {
+        self.data_budget.read_json_value(path, label)
+    }
+
+    pub(crate) fn read_json_bytes_and_value(
+        &self,
+        path: &Path,
+        label: &str,
+    ) -> Result<(Vec<u8>, serde_json::Value)> {
+        self.data_budget.read_json_bytes_and_value(path, label)
+    }
+
+    pub fn reserve_derived_resource_bytes(&self, logical_bytes: u64, label: &str) -> Result<()> {
+        self.data_budget.reserve_derived(logical_bytes, label)
+    }
+
+    pub fn ensure_resource_data_admitted(&self) -> Result<()> {
+        self.data_budget.ensure_admitted()
     }
 
     pub fn namespaces(&self) -> Result<Vec<String>> {
@@ -191,6 +257,7 @@ impl PackResourceStack {
 
     fn namespaces_in(&self, domain: &str) -> Result<Vec<String>> {
         let mut namespaces = BTreeMap::new();
+        let mut admission = ResourceListingAdmission::new(Arc::clone(&self.data_budget));
         for pack in self.pack_entries() {
             for content_root in pack.content_roots(domain) {
                 let domain_root = content_root.join(domain);
@@ -217,6 +284,9 @@ impl PackResourceStack {
                         .map_err(|name| anyhow::anyhow!("non-utf8 {domain} namespace {name:?}"))?;
                     if validate_resource_namespace(&namespace).is_err() {
                         continue;
+                    }
+                    if !namespaces.contains_key(&namespace) {
+                        admission.admit(&namespace, &format!("{domain} namespaces"))?;
                     }
                     namespaces.insert(namespace.clone(), namespace);
                 }
@@ -331,11 +401,14 @@ impl PackResourceStack {
         validate_resource_path_prefix(path_prefix)?;
         let pack_entries = self.pack_entries();
         let mut resources: BTreeMap<ResourceLocation, (usize, PackResource)> = BTreeMap::new();
+        let mut admission = ResourceListingAdmission::new(Arc::clone(&self.data_budget));
         for (pack_index, pack) in pack_entries.iter().enumerate() {
             if let Some(filter) = &pack.filter {
                 resources.retain(|location, _| !filter.is_filtered(location));
             }
-            for (location, resource) in pack.list_resources(domain, path_prefix, extension)? {
+            for (location, resource) in
+                pack.list_resources(domain, path_prefix, extension, &mut admission)?
+            {
                 resources.insert(location, (pack_index, resource));
             }
         }
@@ -365,6 +438,7 @@ impl PackResourceStack {
     ) -> Result<BTreeMap<ResourceLocation, Vec<PackResource>>> {
         validate_resource_path_prefix(path_prefix)?;
         let mut resources: BTreeMap<ResourceLocation, Vec<PackResource>> = BTreeMap::new();
+        let mut admission = ResourceListingAdmission::new(Arc::clone(&self.data_budget));
         for pack in self.pack_entries() {
             if let Some(filter) = &pack.filter {
                 resources.retain(|location, stack| {
@@ -383,7 +457,9 @@ impl PackResourceStack {
                     true
                 });
             }
-            for (location, mut resource) in pack.list_resources(domain, path_prefix, extension)? {
+            for (location, mut resource) in
+                pack.list_resources(domain, path_prefix, extension, &mut admission)?
+            {
                 resource.metadata_path = metadata_location(&location)
                     .ok()
                     .and_then(|metadata_location| pack.resource_path(domain, &metadata_location));
@@ -411,7 +487,10 @@ fn collect_resources(
     namespace: &str,
     extension: &str,
     resources: &mut BTreeMap<ResourceLocation, PackResource>,
+    admission: &mut ResourceListingAdmission,
+    depth: u32,
 ) -> Result<()> {
+    admission.validate_depth(depth, &format!("{namespace}:{extension}"))?;
     for entry in std::fs::read_dir(dir)
         .with_context(|| format!("read resource directory {}", dir.display()))?
     {
@@ -428,6 +507,8 @@ fn collect_resources(
                 namespace,
                 extension,
                 resources,
+                admission,
+                depth + 1,
             )?;
             continue;
         }
@@ -438,6 +519,7 @@ fn collect_resources(
         let Ok(location) = ResourceLocation::new(namespace, resource_path) else {
             continue;
         };
+        admission.admit(&location.id(), &format!("{namespace}:{extension}"))?;
         resources.insert(
             location.clone(),
             PackResource {
@@ -483,8 +565,14 @@ struct PackEntry {
 }
 
 impl PackEntry {
-    fn new_unmanaged(pack_id: String, root: PathBuf) -> Self {
-        let metadata = read_pack_resource_metadata(&root).ok().flatten();
+    fn new_unmanaged(
+        pack_id: String,
+        root: PathBuf,
+        data_budget: Arc<ResourceDataGenerationBudget>,
+    ) -> Self {
+        let metadata = read_pack_resource_metadata(&root, &data_budget)
+            .ok()
+            .flatten();
         Self::from_metadata(pack_id, root, metadata, false)
             .expect("lenient unmanaged pack metadata cannot fail")
     }
@@ -571,6 +659,7 @@ impl PackEntry {
         domain: &str,
         path_prefix: &str,
         extension: &str,
+        admission: &mut ResourceListingAdmission,
     ) -> Result<BTreeMap<ResourceLocation, PackResource>> {
         let mut resources = BTreeMap::new();
         for root in self.content_roots(domain) {
@@ -609,6 +698,8 @@ impl PackEntry {
                     &namespace,
                     extension,
                     &mut resources,
+                    admission,
+                    1,
                 )?;
             }
         }
@@ -834,17 +925,16 @@ impl RawResourceFilterPattern {
     }
 }
 
-fn read_pack_resource_metadata(root: &Path) -> Result<Option<RawPackMetadata>> {
+fn read_pack_resource_metadata(
+    root: &Path,
+    data_budget: &ResourceDataGenerationBudget,
+) -> Result<Option<RawPackMetadata>> {
     let metadata_path = root.join("pack.mcmeta");
-    let bytes = match std::fs::read(&metadata_path) {
-        Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => {
-            return Err(error)
-                .with_context(|| format!("read client pack metadata {}", metadata_path.display()));
-        }
-    };
-    serde_json::from_slice(&bytes)
+    if !metadata_path.is_file() {
+        return Ok(None);
+    }
+    data_budget
+        .read_json(&metadata_path, "client pack metadata")
         .with_context(|| format!("parse client pack metadata {}", metadata_path.display()))
         .map(Some)
 }
@@ -915,6 +1005,7 @@ fn validate_resource_path_prefix(path: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resource_budget::MAX_RESOURCE_DIRECTORY_DEPTH;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -931,6 +1022,31 @@ mod tests {
         assert!(ResourceLocation::parse("minecraft:../block").is_err());
         assert!(ResourceLocation::parse("minecraft:textures/../block/stone.png").is_err());
         assert!(ResourceLocation::parse("minecraft:textures//block/stone.png").is_err());
+    }
+
+    #[test]
+    fn recursive_resource_listing_rejects_more_than_sixty_four_levels() {
+        let root = unique_temp_dir("resource-list-depth");
+        let mut dir = root.join("assets/minecraft/test");
+        for _ in 0..MAX_RESOURCE_DIRECTORY_DEPTH {
+            dir.push("a");
+        }
+        write_file(&dir.join("value.json"), b"{}");
+        let data_budget =
+            ResourceDataGenerationBudget::new(MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES);
+        let stack = PackResourceStack::from_roots_with_budgets(
+            [root.clone()],
+            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
+            Arc::clone(&data_budget),
+        );
+
+        let error = stack
+            .list_resources("test", ".json")
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("64 directory level limit"), "{error}");
+        assert!(stack.ensure_resource_data_admitted().is_err());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

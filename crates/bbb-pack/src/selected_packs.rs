@@ -167,21 +167,36 @@ pub struct ClientResourceGeneration {
 
 impl ClientResourceGeneration {
     pub fn prepare(generation: u64, selected_packs: SelectedClientPackStack) -> Result<Self> {
-        Self::prepare_with_image_limit(
+        Self::prepare_with_limits(
             generation,
             selected_packs,
             crate::image::MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+            crate::resource_budget::MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
         )
     }
 
-    pub(crate) fn prepare_with_image_limit(
+    pub(crate) fn prepare_with_limits(
         generation: u64,
         selected_packs: SelectedClientPackStack,
         max_resource_image_rgba_bytes: u64,
+        max_resource_data_logical_bytes: u64,
     ) -> Result<Self> {
-        let resources = PackResourceStack::prepare_selected_client_packs_with_image_budget(
+        let data_budget = crate::resource_budget::ResourceDataGenerationBudget::new(
+            max_resource_data_logical_bytes,
+        );
+        for pack in selected_packs.packs() {
+            if let Some(metadata) = &pack.metadata {
+                data_budget.admit_preparsed_json(
+                    metadata.source_bytes(),
+                    metadata.document(),
+                    &format!("selected pack metadata {}", pack.id),
+                )?;
+            }
+        }
+        let resources = PackResourceStack::prepare_selected_client_packs_with_budgets(
             selected_packs.packs(),
             crate::image::ResourceImageGenerationBudget::new(max_resource_image_rgba_bytes),
+            data_budget,
         )?;
         Ok(Self {
             generation,
@@ -309,6 +324,7 @@ fn validate_pack_root(root: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ResourceLocation;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -366,6 +382,43 @@ mod tests {
         assert!(next
             .load_resource_texture_image("minecraft:item/widget")
             .is_ok());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn generation_data_budget_charges_selected_metadata_and_is_shared_by_clones() {
+        let root = unique_temp_dir("generation-data-budget");
+        let sources = root.join("sources/26.1");
+        std::fs::create_dir_all(&sources).unwrap();
+        let pack = root.join("pack");
+        write_metadata(&pack, 84);
+        write_file(
+            &pack.join("assets/minecraft/test/value.json"),
+            br#"{"value":"shared"}"#,
+        );
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&roots, [pack]).unwrap();
+        let roots = roots
+            .with_client_resource_generation_limits(7, selected, 4, 4_096)
+            .unwrap();
+        let metadata_charge = roots.resource_data_memory_observation();
+        assert_eq!(metadata_charge.json_documents, 1);
+        assert!(metadata_charge.json_source_bytes > 0);
+
+        let clone = roots.clone();
+        let resource = roots
+            .resource_stack()
+            .get_resource(&ResourceLocation::parse("minecraft:test/value.json").unwrap())
+            .unwrap();
+        let _: serde_json::Value = clone
+            .resource_stack()
+            .read_json_resource(&resource, "shared fixture")
+            .unwrap();
+        let after = roots.resource_data_memory_observation();
+        assert_eq!(after.json_documents, 2);
+        assert!(after.charged_logical_bytes > metadata_charge.charged_logical_bytes);
+        assert_eq!(after, clone.resource_data_memory_observation());
 
         std::fs::remove_dir_all(root).unwrap();
     }

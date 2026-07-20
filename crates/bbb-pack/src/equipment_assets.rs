@@ -22,9 +22,11 @@ impl EquipmentAssetCatalog {
         let mut assets = BTreeMap::new();
         for resource in stack.list_resources("equipment", ".json")? {
             let asset_id = equipment_asset_id_from_resource(&resource.location)?;
-            let bytes = std::fs::read(&resource.path)
-                .with_context(|| format!("read equipment asset {}", resource.path.display()))?;
-            let asset = EquipmentAsset::from_json_bytes(&bytes)
+            let raw: RawEquipmentAsset = stack
+                .read_json_resource(&resource, "equipment asset")
+                .with_context(|| format!("parse equipment asset {}", resource.path.display()))?;
+            let asset = raw
+                .into_asset()
                 .with_context(|| format!("parse equipment asset {}", resource.path.display()))?;
             assets.insert(asset_id, asset);
         }
