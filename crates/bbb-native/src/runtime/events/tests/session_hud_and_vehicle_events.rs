@@ -835,7 +835,10 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
     let commands = Some(command_tx);
     let mut world = WorldStore::new();
     world.apply_login(&protocol_play_login(99));
-    world.apply_add_entity(protocol_add_entity(10));
+    world.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id: 10,
         passenger_ids: vec![99],
