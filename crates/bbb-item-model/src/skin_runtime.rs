@@ -1274,6 +1274,17 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn dynamic_texture_transport_does_not_restore_unbounded_body_reads() {
+        let production = include_str!("skin_runtime.rs")
+            .split("#[cfg(test)]\nmod tests")
+            .next()
+            .expect("dynamic texture production source");
+        assert!(!production.contains(".bytes()"));
+        assert!(!production.contains("fs::read("));
+        assert!(production.contains(".take(read_limit)"));
+    }
+
     struct StaticSkinFetcher {
         bytes: Vec<u8>,
         calls: usize,

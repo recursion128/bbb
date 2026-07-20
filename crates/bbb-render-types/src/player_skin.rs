@@ -544,6 +544,17 @@ mod tests {
         assert!(err.contains("exceeding the 16777216 pixel limit"), "{err}");
     }
 
+    #[test]
+    fn dynamic_texture_decoders_do_not_restore_unbounded_image_helpers() {
+        let production = include_str!("player_skin.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .expect("player skin production source");
+        assert!(!production.contains("load_from_memory"));
+        assert!(!production.contains("image::open"));
+        assert!(production.contains("reader.limits(limits)"));
+    }
+
     fn patterned_rgba(width: u32, height: u32) -> Vec<u8> {
         let mut rgba = vec![0; usize::try_from(width * height * 4).unwrap()];
         for y in 0..height {

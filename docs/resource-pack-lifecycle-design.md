@@ -199,6 +199,15 @@ generation. They are bounded by the CPU owner, but incremental atlas placement
 and per-image GPU replacement remain a measured follow-up if profile churn
 makes those joins a frame-time hotspot.
 
+Every pack-backed and downloaded PNG now also crosses the bounded input owner
+defined in [`resource-input-safety-design.md`](resource-input-safety-design.md).
+Pack consumers share one file decoder and one per-atlas logical RGBA budget;
+skin/cape/elytra transfer, cache read and memory decode use their semantic byte
+and pixel limits. A failed fetch is decoded before it can enter the disk cache,
+and all failures preserve this lifecycle's accepted-generation/fallback rules.
+The remaining process-wide multi-atlas and dynamic-residency peak is tracked as
+a separate robustness boundary rather than weakening atomic reload.
+
 ## Implemented Composition and Diagnostics Boundary
 
 Every pack-backed consumer now enters reload through the immutable

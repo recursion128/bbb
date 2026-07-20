@@ -19808,3 +19808,22 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   atlas mip animation、完整 item tint/equipment layers、per-resource fallback diagnostics 和
   deterministic screenshot/audio live evidence。它们必须复用本轮 lifecycle，不得重建平行
   pack stack、async cache 或 selectable old/new path。
+
+## 2026-07-20：不可信 resource/profile PNG 输入预算
+
+- [x] `c10f7ba28` 将 atlas directory/single/paletted/unstitch、colormap 与
+  `ClientAsset.ResourceTexture` 收敛到 `bbb-pack::image` 单一文件解码 owner。每张图在 payload
+  分配前检查 64 MiB 文件、8192 单轴、16,777,216 像素和 128 MiB decoder bytes；每次 atlas
+  source/image load 共用 256 MiB RGBA 逻辑预算，source-only dimensions 也不能绕过累计 admission。
+- [x] `f31211628` 为 remote skin 使用 1 MiB 传输上限并在 IHDR 阶段固定 64x32/64x64，cape/
+  elytra 使用 16 MiB、8192 单轴、16,777,216 像素上限。HTTP 同时检查 Content-Length 与
+  `take(max+1)` 实际 body，磁盘 cache 先查 opened-file metadata 再有界读取；fetch 成功但 decode
+  失败不再先写入持久 cache。
+- [x] 本地官方 26.1 的 3,665 张 PNG 最大像素为 1024x256/512x512、最大文件 124,488 bytes；
+  全 atlas source smoke 与 pack/render-types/item-model focused tests 通过。source guard 禁止 migrated
+  consumer 恢复 `ImageReader`、`image::open`、`load_from_memory*`、reqwest `.bytes()` 或 `fs::read`
+  全量入口。
+- [x] 本片只关闭单 PNG 的无界分配路径，不冒充进程级资源内存完全有界：多 atlas、atomic reload
+  相邻 generation、以及 2,048-entry dynamic owner 的 individually-valid 大纹理仍可能形成很高的
+  有限峰值；generation-wide/dynamic resident-byte admission 与 JSON/model/font/audio budget 已留在
+  unsupported robustness ledger。

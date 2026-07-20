@@ -143,6 +143,9 @@ observe their result through the same immutable publication generation.
 Owns vanilla 26.1 resource-pack and asset loading.
 
 - Registries and tag data needed by client behavior.
+- The sole file-backed PNG decoder and per-atlas logical RGBA admission budget;
+  hostile image policy and residual generation-wide peak risk are specified in
+  [`resource-input-safety-design.md`](resource-input-safety-design.md).
 - `sounds.json`, sound event lookup, subtitles, and resolved `.ogg` resource
   paths.
 - Blockstates, models, item model definitions, particle definitions, waypoint

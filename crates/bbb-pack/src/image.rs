@@ -264,6 +264,26 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
 
+    #[test]
+    fn pack_png_consumers_do_not_bypass_the_bounded_decoder_owner() {
+        for (path, source) in [
+            ("atlas_sources.rs", include_str!("atlas_sources.rs")),
+            ("colors.rs", include_str!("colors.rs")),
+            ("resource_textures.rs", include_str!("resource_textures.rs")),
+            ("sprites.rs", include_str!("sprites.rs")),
+        ] {
+            assert!(!source.contains("ImageReader"), "{path} bypasses image.rs");
+            assert!(
+                !source.contains("load_from_memory"),
+                "{path} restored an unbounded memory decoder"
+            );
+            assert!(
+                !source.contains("image::open"),
+                "{path} restored an unbounded file decoder"
+            );
+        }
+    }
+
     fn png_with_ihdr_dimensions(width: u32, height: u32) -> Vec<u8> {
         let mut png = Vec::new();
         png.extend_from_slice(b"\x89PNG\r\n\x1a\n");

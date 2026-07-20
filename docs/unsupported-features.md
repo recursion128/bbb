@@ -57,6 +57,21 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   and chunk-update comparison captures; report any losing scene by measured
   owner instead of reducing visible work.
 
+## Untrusted resource aggregate budgets
+
+Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-audio`
+
+- Add one process-aware decoded-image admission budget across all atlases in a
+  prepared resource generation and the adjacent accepted/staged generations
+  retained by atomic reload. Preserve all-or-nothing reload rather than freeing
+  the accepted fallback early.
+- Add a logical resident-byte admission/eviction limit to the unified dynamic
+  texture owner in addition to its entry/request counts. Account for one
+  worker result and renderer upload staging without reviving stale generations.
+- Bound remaining untrusted resource JSON/model/font collections and audio
+  decode duration/output, with malformed-input and aggregate-count tests. Do
+  not treat per-PNG limits as proof that these independent parsers are bounded.
+
 ## Protocol coverage for remaining required 26.1 packet families
 
 Owner: `bbb-protocol`
