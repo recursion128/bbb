@@ -7,7 +7,7 @@ use std::{
 };
 
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
-use bbb_renderer::HudFontGlyphMap;
+use bbb_renderer::{HudChatHitTarget, HudFontGlyphMap};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton, MouseScrollDelta},
@@ -28,6 +28,7 @@ pub(crate) enum SimulationCommand {
     MouseButton {
         button: MouseButton,
         state: ElementState,
+        chat_target: Option<HudChatHitTarget>,
     },
     MouseMotion {
         delta: (f64, f64),
@@ -38,6 +39,7 @@ pub(crate) enum SimulationCommand {
     CursorMoved {
         position: PhysicalPosition<f64>,
     },
+    CursorLeft,
     ImePreedit {
         text: String,
         cursor_range: Option<(usize, usize)>,
@@ -428,6 +430,7 @@ mod tests {
         mailbox.enqueue(SimulationCommand::MouseButton {
             button: MouseButton::Left,
             state: ElementState::Released,
+            chat_target: None,
         });
         ControlRequestSink::submit(
             &mailbox,

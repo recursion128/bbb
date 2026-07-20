@@ -51,6 +51,15 @@ pub struct ComponentStyle {
     /// renderer projections may retain it without making the text interactive.
     #[serde(default)]
     pub click_event: Option<ComponentClickEvent>,
+    /// Hover payload carried by the resolved run. The enum retains all three
+    /// server-valid Vanilla actions; presentation owners may render the
+    /// lightweight show-text case while keeping item/entity payloads exact.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hover_event: Option<ComponentHoverEvent>,
+    /// Exact resolved font identifier. Unsupported font providers may fall
+    /// back visually, but trust evaluation and cache identity must not lose it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font: Option<String>,
 }
 
 /// Supported vanilla `ClickEvent` payloads in the same externally tagged shape
@@ -82,6 +91,26 @@ pub enum ComponentClickEvent {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum ComponentHoverEvent {
+    ShowText {
+        value: Vec<StyledTextRun>,
+    },
+    ShowItem {
+        id: String,
+        count: i32,
+        #[serde(default)]
+        components: Option<NbtSummaryValue>,
+    },
+    ShowEntity {
+        id: String,
+        uuid: NbtSummaryValue,
+        #[serde(default)]
+        name: Option<Vec<StyledTextRun>>,
+    },
+}
+
 impl ComponentStyle {
     /// Vanilla `Style.applyTo(other)`: keys set on `self` win, unset keys
     /// inherit from `parent`.
@@ -97,6 +126,11 @@ impl ComponentStyle {
                 .click_event
                 .clone()
                 .or_else(|| parent.click_event.clone()),
+            hover_event: self
+                .hover_event
+                .clone()
+                .or_else(|| parent.hover_event.clone()),
+            font: self.font.clone().or_else(|| parent.font.clone()),
         }
     }
 }
@@ -568,11 +602,60 @@ fn component_style_from_entries(entries: &[NbtSummaryEntry]) -> ComponentStyle {
             _ => None,
         },
         click_event: style_click_event(entries),
+        hover_event: style_hover_event(entries),
+        font: match find_entry(entries, "font") {
+            Some(NbtSummaryValue::String(font)) => Some(font.clone()),
+            _ => None,
+        },
     }
 }
 
 fn style_click_event(entries: &[NbtSummaryEntry]) -> Option<ComponentClickEvent> {
     codec::decode_component_click_event(find_entry(entries, "click_event")?, "click event").ok()
+}
+
+fn style_hover_event(entries: &[NbtSummaryEntry]) -> Option<ComponentHoverEvent> {
+    let NbtSummaryValue::Compound(hover) = find_entry(entries, "hover_event")? else {
+        return None;
+    };
+    let action = match find_entry(hover, "action")? {
+        NbtSummaryValue::String(action) => action.as_str(),
+        _ => return None,
+    };
+    match action {
+        "show_text" => {
+            let value = find_entry(hover, "value")?;
+            let mut runs = RunCollector::default();
+            append_component_runs(value, &ComponentStyle::default(), &mut runs);
+            Some(ComponentHoverEvent::ShowText { value: runs.runs })
+        }
+        "show_item" => Some(ComponentHoverEvent::ShowItem {
+            id: match find_entry(hover, "id")? {
+                NbtSummaryValue::String(id) => id.clone(),
+                _ => return None,
+            },
+            count: find_entry(hover, "count")
+                .and_then(codec::component_i32)
+                .unwrap_or(1),
+            components: find_entry(hover, "components").cloned(),
+        }),
+        "show_entity" => {
+            let name = find_entry(hover, "name").map(|name| {
+                let mut runs = RunCollector::default();
+                append_component_runs(name, &ComponentStyle::default(), &mut runs);
+                runs.runs
+            });
+            Some(ComponentHoverEvent::ShowEntity {
+                id: match find_entry(hover, "id")? {
+                    NbtSummaryValue::String(id) => id.clone(),
+                    _ => return None,
+                },
+                uuid: find_entry(hover, "uuid")?.clone(),
+                name,
+            })
+        }
+        _ => None,
+    }
 }
 
 fn style_flag(entries: &[NbtSummaryEntry], key: &str) -> Option<bool> {
@@ -694,6 +777,8 @@ mod tests {
                     obfuscated: Some(true),
                     color: Some(0xAA_00_AA),
                     click_event: None,
+                    hover_event: None,
+                    font: None,
                 },
             }]
         );
@@ -747,6 +832,37 @@ mod tests {
                     ..ComponentStyle::default()
                 },
             }]
+        );
+    }
+
+    #[test]
+    fn styled_runs_retain_hover_text_and_custom_font() {
+        let mut payload = vec![10];
+        write_named_string(&mut payload, "text", "hover me");
+        write_named_string(&mut payload, "font", "example:compact");
+        write_named_compound_start(&mut payload, "hover_event");
+        write_named_string(&mut payload, "action", "show_text");
+        write_named_compound_start(&mut payload, "value");
+        write_named_string(&mut payload, "text", "details");
+        write_named_byte(&mut payload, "italic", 1);
+        payload.push(0);
+        payload.push(0);
+        payload.push(0);
+
+        let runs = decode_styled_component_summary(&payload).unwrap();
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].style.font.as_deref(), Some("example:compact"));
+        assert_eq!(
+            runs[0].style.hover_event,
+            Some(ComponentHoverEvent::ShowText {
+                value: vec![StyledTextRun {
+                    text: "details".to_string(),
+                    style: ComponentStyle {
+                        italic: Some(true),
+                        ..ComponentStyle::default()
+                    },
+                }],
+            })
         );
     }
 
@@ -864,12 +980,20 @@ mod tests {
         let child = ComponentStyle {
             bold: Some(false),
             color: Some(0x12_34_56),
+            font: Some("example:child".to_string()),
             ..ComponentStyle::default()
         };
         let parent = ComponentStyle {
             bold: Some(true),
             italic: Some(true),
             color: Some(0xFF_FF_FF),
+            hover_event: Some(ComponentHoverEvent::ShowText {
+                value: vec![StyledTextRun {
+                    text: "parent hover".to_string(),
+                    style: ComponentStyle::default(),
+                }],
+            }),
+            font: Some("example:parent".to_string()),
             ..ComponentStyle::default()
         };
         assert_eq!(
@@ -878,6 +1002,8 @@ mod tests {
                 bold: Some(false),
                 italic: Some(true),
                 color: Some(0x12_34_56),
+                hover_event: parent.hover_event,
+                font: Some("example:child".to_string()),
                 ..ComponentStyle::default()
             }
         );

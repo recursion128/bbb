@@ -11,13 +11,14 @@ use bbb_renderer::{
     BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     EntityModelInstance, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HudActionBarText, HudAirSupply, HudBlockItemModel, HudBossBar,
-    HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatMessage, HudCommandSuggestions,
-    HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar,
-    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen,
-    HudStatsScreen, HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
-    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatInteraction, HudChatMessage,
+    HudCommandSuggestions, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect,
+    HudInventoryScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
+    HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen, HudStyledTextRun, HudSystemToast,
+    HudTextStyle, HudTitleText, HudVehicleHealth, ItemEntityBillboard,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
+    SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use super::*;
@@ -898,19 +899,57 @@ pub(crate) fn hud_chat_messages_from_world(
         .client_chat()
         .messages
         .iter()
-        .map(|message| HudChatMessage {
-            display_sequence: message.display_sequence,
-            added_tick: message.added_tick,
-            runs: hud_chat_message_runs(message, item_runtime),
-            tag: message.tag.as_ref().map(hud_chat_tag),
-        })
+        .map(|message| hud_chat_message(message, item_runtime))
         .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ProjectedChatRun {
+    visual: HudStyledTextRun,
+    click_event: Option<bbb_protocol::ComponentClickEvent>,
+    hover_event: Option<bbb_protocol::ComponentHoverEvent>,
+    font: Option<String>,
+}
+
+fn hud_chat_message(
+    message: &bbb_world::ChatMessageState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> HudChatMessage {
+    let projected = hud_chat_message_runs(message, item_runtime);
+    let mut char_offset = 0usize;
+    let mut interactions = Vec::new();
+    let mut runs = Vec::with_capacity(projected.len());
+    for (target_index, run) in projected.into_iter().enumerate() {
+        let start_char = char_offset;
+        char_offset = char_offset.saturating_add(run.visual.text.chars().count());
+        if run.click_event.is_some() || run.hover_event.is_some() {
+            if let Ok(target_index) = u16::try_from(target_index) {
+                interactions.push(HudChatInteraction {
+                    start_char,
+                    end_char: char_offset,
+                    target_index,
+                    tooltip_runs: hud_chat_hover_runs(run.hover_event.as_ref()),
+                });
+            }
+        }
+        runs.push(run.visual);
+    }
+    HudChatMessage {
+        display_sequence: message.display_sequence,
+        added_tick: message.added_tick,
+        runs,
+        interactions,
+        tag: message
+            .tag
+            .as_ref()
+            .map(|tag| hud_chat_tag(tag, item_runtime)),
+    }
 }
 
 fn hud_chat_message_runs(
     message: &bbb_world::ChatMessageState,
     item_runtime: Option<&NativeItemRuntime>,
-) -> Vec<HudStyledTextRun> {
+) -> Vec<ProjectedChatRun> {
     if let Some(decoration) = &message.decoration {
         let template = localized_chat_text(
             item_runtime,
@@ -924,20 +963,20 @@ fn hud_chat_message_runs(
             .iter()
             .map(|argument| {
                 if argument.styled.is_empty() {
-                    vec![hud_chat_run(&argument.summary, parent)]
+                    vec![projected_chat_run(&argument.summary, parent)]
                 } else {
                     argument
                         .styled
                         .iter()
                         .map(|run| {
                             let style = run.style.apply_to(parent);
-                            hud_chat_run(&run.text, &style)
+                            projected_chat_run(&run.text, &style)
                         })
                         .collect()
                 }
             })
             .collect::<Vec<_>>();
-        return format_localized_chat_runs(template, parent, &arguments);
+        return format_localized_projected_chat_runs(template, parent, &arguments);
     }
 
     if let Some(key) = message.content_translation_key.as_deref() {
@@ -951,16 +990,199 @@ fn hud_chat_message_runs(
             .first()
             .map(|run| run.style.clone())
             .unwrap_or_default();
-        return vec![hud_chat_run(text, &style)];
+        return vec![projected_chat_run(text, &style)];
     }
     if message.styled_content.is_empty() {
-        vec![HudStyledTextRun::plain(message.content.clone())]
+        vec![ProjectedChatRun {
+            visual: HudStyledTextRun::plain(message.content.clone()),
+            click_event: None,
+            hover_event: None,
+            font: None,
+        }]
     } else {
         message
             .styled_content
             .iter()
-            .map(|run| hud_chat_run(&run.text, &run.style))
+            .map(|run| projected_chat_run(&run.text, &run.style))
             .collect()
+    }
+}
+
+fn projected_chat_run(text: &str, style: &bbb_protocol::ComponentStyle) -> ProjectedChatRun {
+    let mut visual = hud_chat_run(text, style);
+    visual.text.retain(|ch| ch == '\n' || !ch.is_control());
+    ProjectedChatRun {
+        visual,
+        click_event: style.click_event.clone(),
+        hover_event: style.hover_event.clone(),
+        font: style.font.clone(),
+    }
+}
+
+fn hud_chat_hover_runs(hover: Option<&bbb_protocol::ComponentHoverEvent>) -> Vec<HudStyledTextRun> {
+    use bbb_protocol::ComponentHoverEvent;
+    match hover {
+        Some(ComponentHoverEvent::ShowText { value }) => value
+            .iter()
+            .map(|run| hud_chat_run(&run.text, &run.style))
+            .collect(),
+        Some(ComponentHoverEvent::ShowItem { id, count, .. }) => {
+            vec![HudStyledTextRun::plain(if *count == 1 {
+                id.clone()
+            } else {
+                format!("{id} x{count}")
+            })]
+        }
+        Some(ComponentHoverEvent::ShowEntity { id, name, .. }) => name
+            .as_ref()
+            .filter(|name| !name.is_empty())
+            .map(|name| {
+                name.iter()
+                    .map(|run| hud_chat_run(&run.text, &run.style))
+                    .collect()
+            })
+            .unwrap_or_else(|| vec![HudStyledTextRun::plain(id)]),
+        None => Vec::new(),
+    }
+}
+
+pub(crate) fn hud_chat_component_click_event(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    display_sequence: u64,
+    target_index: u16,
+) -> Option<bbb_protocol::ComponentClickEvent> {
+    let message = world
+        .client_chat()
+        .messages
+        .iter()
+        .find(|message| message.display_sequence == display_sequence)?;
+    hud_chat_message_runs(message, item_runtime)
+        .get(usize::from(target_index))?
+        .click_event
+        .clone()
+}
+
+pub(crate) fn chat_narration_text(
+    narration: &bbb_world::ChatNarrationRequest,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> String {
+    if let Some(key) = narration.translation_key.as_deref() {
+        let template = localized_chat_text(
+            item_runtime,
+            key,
+            chat_translation_fallback(key).unwrap_or(key),
+        );
+        let arguments = narration
+            .arguments
+            .iter()
+            .map(|argument| {
+                if argument.styled.is_empty() {
+                    vec![projected_chat_run(
+                        &argument.summary,
+                        &bbb_protocol::ComponentStyle::default(),
+                    )]
+                } else {
+                    argument
+                        .styled
+                        .iter()
+                        .map(|run| projected_chat_run(&run.text, &run.style))
+                        .collect()
+                }
+            })
+            .collect::<Vec<_>>();
+        return format_localized_projected_chat_runs(
+            template,
+            &bbb_protocol::ComponentStyle::default(),
+            &arguments,
+        )
+        .into_iter()
+        .map(|run| run.visual.text)
+        .collect();
+    }
+    if narration.styled_content.is_empty() {
+        narration.content.clone()
+    } else {
+        narration
+            .styled_content
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect()
+    }
+}
+
+fn format_localized_projected_chat_runs(
+    template: &str,
+    style: &bbb_protocol::ComponentStyle,
+    arguments: &[Vec<ProjectedChatRun>],
+) -> Vec<ProjectedChatRun> {
+    let bytes = template.as_bytes();
+    let mut runs = Vec::new();
+    let mut offset = 0;
+    let mut sequential = 0usize;
+    while offset < bytes.len() {
+        let Some(relative_percent) = bytes[offset..].iter().position(|byte| *byte == b'%') else {
+            push_projected_chat_literal(&mut runs, &template[offset..], style);
+            break;
+        };
+        let percent = offset + relative_percent;
+        push_projected_chat_literal(&mut runs, &template[offset..percent], style);
+        if bytes.get(percent + 1) == Some(&b'%') {
+            push_projected_chat_literal(&mut runs, "%", style);
+            offset = percent + 2;
+            continue;
+        }
+        let (argument_index, next) = if bytes.get(percent + 1) == Some(&b's') {
+            let index = sequential;
+            sequential += 1;
+            (Some(index), percent + 2)
+        } else {
+            let mut cursor = percent + 1;
+            while bytes.get(cursor).is_some_and(u8::is_ascii_digit) {
+                cursor += 1;
+            }
+            let index = (cursor > percent + 1
+                && bytes.get(cursor) == Some(&b'$')
+                && bytes.get(cursor + 1) == Some(&b's'))
+            .then(|| template[percent + 1..cursor].parse::<usize>().ok())
+            .flatten()
+            .and_then(|index| index.checked_sub(1));
+            (index, cursor.saturating_add(2))
+        };
+        if let Some(argument) = argument_index.and_then(|index| arguments.get(index)) {
+            runs.extend(argument.iter().cloned());
+            offset = next;
+        } else {
+            push_projected_chat_literal(&mut runs, "%", style);
+            offset = percent + 1;
+        }
+    }
+    if runs.is_empty() {
+        vec![projected_chat_run(template, style)]
+    } else {
+        runs
+    }
+}
+
+fn push_projected_chat_literal(
+    runs: &mut Vec<ProjectedChatRun>,
+    text: &str,
+    style: &bbb_protocol::ComponentStyle,
+) {
+    if text.is_empty() {
+        return;
+    }
+    let run = projected_chat_run(text, style);
+    if let Some(previous) = runs.last_mut().filter(|previous| {
+        previous.visual.style == run.visual.style
+            && previous.visual.color == run.visual.color
+            && previous.click_event == run.click_event
+            && previous.hover_event == run.hover_event
+            && previous.font == run.font
+    }) {
+        previous.visual.text.push_str(text);
+    } else {
+        runs.push(run);
     }
 }
 
@@ -978,7 +1200,10 @@ fn hud_chat_run(text: &str, style: &bbb_protocol::ComponentStyle) -> HudStyledTe
     }
 }
 
-fn hud_chat_tag(tag: &bbb_world::ChatMessageTagState) -> HudChatTag {
+fn hud_chat_tag(
+    tag: &bbb_world::ChatMessageTagState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> HudChatTag {
     use bbb_world::ChatMessageTagState;
     let (kind, indicator_color) = match tag {
         ChatMessageTagState::System => (HudChatTagKind::System, 13_684_944),
@@ -987,9 +1212,37 @@ fn hud_chat_tag(tag: &bbb_world::ChatMessageTagState) -> HudChatTag {
         ChatMessageTagState::Modified { .. } => (HudChatTagKind::Modified, 6_316_128),
         ChatMessageTagState::Error => (HudChatTagKind::Error, 16_733_525),
     };
+    let (translation_key, fallback) = match tag {
+        ChatMessageTagState::System => ("chat.tag.system", "Server message. Cannot be reported."),
+        ChatMessageTagState::SystemSinglePlayer => {
+            ("chat.tag.system_single_player", "Server message.")
+        }
+        ChatMessageTagState::NotSecure => (
+            "chat.tag.not_secure",
+            "Unverified message. Cannot be reported.",
+        ),
+        ChatMessageTagState::Modified { .. } => (
+            "chat.tag.modified",
+            "Message modified by the server. Original:",
+        ),
+        ChatMessageTagState::Error => ("chat.tag.error", "Server sent invalid message."),
+    };
+    let mut tooltip_runs = vec![HudStyledTextRun::plain(localized_chat_text(
+        item_runtime,
+        translation_key,
+        fallback,
+    ))];
+    if let ChatMessageTagState::Modified { original_content } = tag {
+        tooltip_runs.push(HudStyledTextRun {
+            text: format!("\n{original_content}"),
+            style: HudTextStyle::default(),
+            color: Some(0xAA_AA_AA),
+        });
+    }
     HudChatTag {
         kind,
         indicator_color,
+        tooltip_runs,
     }
 }
 
@@ -1015,6 +1268,7 @@ fn chat_translation_fallback(key: &str) -> Option<&'static str> {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn format_localized_chat_runs(
     template: &str,
     style: &bbb_protocol::ComponentStyle,
@@ -1068,6 +1322,7 @@ pub(crate) fn format_localized_chat_runs(
     }
 }
 
+#[cfg(test)]
 fn push_hud_chat_literal(
     runs: &mut Vec<HudStyledTextRun>,
     text: &str,

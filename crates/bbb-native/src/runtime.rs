@@ -207,6 +207,7 @@ pub(crate) use render_extract::*;
 mod events;
 #[cfg(test)]
 pub(crate) use events::minimal_non_empty_synchronized_registry_data;
+pub(crate) use events::queue_chat_acknowledgement;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 pub(crate) use dialog_screen::{
@@ -2391,6 +2392,16 @@ pub(crate) fn advance_simulation(
     // particle execution consumes the owned batches on the render side and
     // must not delay the connection command.
     queue_client_tick_end_commands(world, net_commands, advanced_ticks);
+    for narration in world.take_pending_chat_narrations() {
+        let text = chat_narration_text(&narration, item_runtime.as_ref());
+        if text.is_empty() {
+            continue;
+        }
+        platform_effects.submit(crate::simulation::effects::PlatformEffect::ChatNarration {
+            kind: narration.kind,
+            text,
+        });
+    }
     let pump_client_ticked_at = Instant::now();
     SimulationFrameState {
         pump_started_at,
@@ -2598,9 +2609,20 @@ pub(crate) fn update_renderer_from_publication(
         )
     });
     let hud_chat_context = HudChatContext {
+        level_generation: world.client_level_generation(),
+        delivery_revision: world.client_chat().delivery_revision,
+        resource_generation: item_runtime.map_or(0, NativeItemRuntime::resource_generation),
+        resources_loaded: item_runtime.is_some(),
         gui_ticks: world.client_chat().gui_ticks,
         focused: input.chat_entry_is_active(),
-        scroll_lines: 0,
+        scroll_lines: input.chat_scroll_lines(),
+        cursor_position: publication
+            .input_runtime
+            .cursor_position
+            .and_then(|position| {
+                (position.x.is_finite() && position.y.is_finite())
+                    .then(|| (position.x.floor() as i32, position.y.floor() as i32))
+            }),
         queued_messages: queued_chat_messages,
         queue_text: queued_chat_messages_text,
     };
@@ -13838,7 +13860,7 @@ fn wall_clock_millis_i64() -> i64 {
     i64::try_from(wall_clock_millis()).unwrap_or(i64::MAX)
 }
 
-fn monotonic_millis() -> u64 {
+pub(crate) fn monotonic_millis() -> u64 {
     static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
     (START.get_or_init(Instant::now).elapsed().as_millis() as u64).saturating_add(1)
 }

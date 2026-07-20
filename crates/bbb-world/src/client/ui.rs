@@ -524,6 +524,20 @@ impl WorldStore {
         if self.client_ui.dialog_chat_links_disabled || self.current_dialog().is_none() {
             return false;
         }
+        self.open_url_with_after_action(url, after_action)
+    }
+
+    /// Applies `Screen.clickUrlAction` from a non-dialog screen such as
+    /// ChatScreen. The same startup chat-link options and confirmation owner
+    /// are reused, but no active custom dialog is required.
+    pub fn open_chat_url(&mut self, url: String) -> bool {
+        if self.client_ui.dialog_chat_links_disabled {
+            return false;
+        }
+        self.open_url_with_after_action(url, "none".to_string())
+    }
+
+    fn open_url_with_after_action(&mut self, url: String, after_action: String) -> bool {
         if self.client_ui.dialog_chat_links_prompt_disabled {
             self.client_ui.dialog_open_url_requests.push(url);
             return true;
@@ -1712,6 +1726,29 @@ mod tests {
         assert!(store.current_dialog().is_some());
         assert_eq!(store.dialog_link_confirmation(), None);
         assert!(store.take_dialog_open_url_requests().is_empty());
+    }
+
+    #[test]
+    fn chat_open_url_uses_link_options_without_active_dialog() {
+        let mut store = WorldStore::new();
+        assert!(store.open_chat_url("https://example.invalid/chat".to_string()));
+        assert_eq!(
+            store.dialog_link_confirmation(),
+            Some(&DialogLinkConfirmationState {
+                url: "https://example.invalid/chat".to_string(),
+                after_action: "none".to_string(),
+            })
+        );
+        assert!(store.resolve_dialog_link_confirmation(true));
+        assert_eq!(
+            store.take_dialog_open_url_requests(),
+            ["https://example.invalid/chat"]
+        );
+
+        let mut disabled = WorldStore::new();
+        disabled.set_dialog_link_options(false, true);
+        assert!(!disabled.open_chat_url("https://example.invalid/blocked".to_string()));
+        assert!(disabled.dialog_link_confirmation().is_none());
     }
 
     #[test]

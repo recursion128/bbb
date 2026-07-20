@@ -108,6 +108,111 @@ fn localized_chat_format_preserves_outer_and_argument_styles() {
 }
 
 #[test]
+fn rich_chat_projection_retains_click_hover_and_revalidates_canonical_target() {
+    use bbb_protocol::{
+        ComponentClickEvent, ComponentHoverEvent, NbtSummaryEntry, NbtSummaryValue,
+    };
+
+    let component =
+        bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("click me".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "font".to_string(),
+                value: NbtSummaryValue::String("example:compact".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "click_event".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: NbtSummaryValue::String("suggest_command".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "command".to_string(),
+                        value: NbtSummaryValue::String("/seed".to_string()),
+                    },
+                ]),
+            },
+            NbtSummaryEntry {
+                name: "hover_event".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: NbtSummaryValue::String("show_text".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "value".to_string(),
+                        value: NbtSummaryValue::String("details".to_string()),
+                    },
+                ]),
+            },
+        ]))
+        .unwrap();
+    let mut world = WorldStore::new();
+    world.apply_system_chat(bbb_protocol::packets::SystemChat {
+        content: Box::new(component),
+        overlay: false,
+    });
+
+    let messages = hud_chat_messages_from_world(&world, None);
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].interactions.len(), 1);
+    assert_eq!(messages[0].interactions[0].tooltip_runs[0].text, "details");
+    assert_eq!(
+        hud_chat_component_click_event(
+            &world,
+            None,
+            messages[0].display_sequence,
+            messages[0].interactions[0].target_index,
+        ),
+        Some(ComponentClickEvent::SuggestCommand {
+            command: "/seed".to_string(),
+        })
+    );
+    assert!(matches!(
+        world.client_chat().messages[0].styled_content[0]
+            .style
+            .hover_event,
+        Some(ComponentHoverEvent::ShowText { .. })
+    ));
+    assert_eq!(
+        world.client_chat().messages[0].styled_content[0]
+            .style
+            .font
+            .as_deref(),
+        Some("example:compact")
+    );
+}
+
+#[test]
+fn chat_narration_text_uses_styled_content_without_duplicate_projection() {
+    let narration = bbb_world::ChatNarrationRequest {
+        sequence: 1,
+        kind: bbb_world::ChatNarrationKind::SystemChat,
+        translation_key: None,
+        arguments: Vec::new(),
+        styled_content: vec![
+            bbb_protocol::StyledTextRun {
+                text: "hello ".to_string(),
+                style: bbb_protocol::ComponentStyle::default(),
+            },
+            bbb_protocol::StyledTextRun {
+                text: "world".to_string(),
+                style: bbb_protocol::ComponentStyle {
+                    bold: Some(true),
+                    ..bbb_protocol::ComponentStyle::default()
+                },
+            },
+        ],
+        content: "fallback".to_string(),
+    };
+    assert_eq!(chat_narration_text(&narration, None), "hello world");
+}
+
+#[test]
 fn chat_render_cache_rebuilds_only_for_display_revision_or_level() {
     let mut world = WorldStore::default();
     let mut runtime = HudRenderRuntime::default();
@@ -8561,6 +8666,18 @@ fn command_suggestion_narration_speaks_once_per_state_change_and_resets() {
 
     impl SystemNarrator for RecordingNarrator {
         fn say_system_now(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+
+        fn say_chat_queued(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+
+        fn say_system_chat_queued(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+
+        fn say_system_queued(&mut self, message: &str) {
             self.0.push(message.to_string());
         }
     }

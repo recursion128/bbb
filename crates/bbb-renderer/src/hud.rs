@@ -120,12 +120,14 @@ mod chat_layout_tests {
             display_sequence: 1,
             added_tick: 0,
             runs: vec![HudStyledTextRun::plain(&text)],
+            interactions: Vec::new(),
             tag: None,
         };
         let modified = HudChatMessage {
             tag: Some(HudChatTag {
                 kind: HudChatTagKind::Modified,
                 indicator_color: 6_316_128,
+                tooltip_runs: Vec::new(),
             }),
             ..plain.clone()
         };
@@ -136,9 +138,11 @@ mod chat_layout_tests {
     #[test]
     fn chat_alpha_matches_vanilla_focus_and_two_hundred_tick_fade() {
         let line = HudChatLine {
+            display_sequence: 1,
             added_tick: 10,
             runs: vec![HudStyledTextRun::plain("hello")],
             tag: None,
+            interactions: Vec::new(),
             end_of_entry: true,
         };
         let mut context = HudChatContext {
@@ -150,6 +154,74 @@ mod chat_layout_tests {
         assert_eq!(hud_chat_line_alpha(&context, &line), 0.0);
         context.focused = true;
         assert_eq!(hud_chat_line_alpha(&context, &line), 1.0);
+    }
+
+    #[test]
+    fn chat_interaction_follows_wrapped_glyph_spans() {
+        let text = format!("{} beta", "a".repeat(52));
+        let glyphs = glyphs_for(&text);
+        let message = HudChatMessage {
+            display_sequence: 7,
+            added_tick: 0,
+            runs: vec![HudStyledTextRun::plain(&text)],
+            interactions: vec![HudChatInteraction {
+                start_char: 53,
+                end_char: 57,
+                target_index: 3,
+                tooltip_runs: Vec::new(),
+            }],
+            tag: None,
+        };
+        let lines = hud_wrap_chat_messages(&[message], &glyphs);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[1].interactions.len(), 1);
+        assert_eq!(lines[1].interactions[0].start_x, 0);
+        assert_eq!(lines[1].interactions[0].end_x, 24);
+
+        let context = HudChatContext {
+            level_generation: 11,
+            delivery_revision: 13,
+            resource_generation: 17,
+            resources_loaded: true,
+            focused: true,
+            ..HudChatContext::default()
+        };
+        let hit =
+            hud_chat_hit_target_at(&lines, &context, PhysicalSize::new(800, 600), (5.0, 552.0));
+        assert_eq!(
+            hit,
+            Some(HudChatHitTarget {
+                level_generation: 11,
+                delivery_revision: 13,
+                resource_generation: 17,
+                resources_loaded: true,
+                kind: HudChatHitTargetKind::Message {
+                    display_sequence: 7,
+                    target_index: 3,
+                },
+            })
+        );
+    }
+
+    #[test]
+    fn queue_hit_is_focused_and_revision_bound() {
+        let context = HudChatContext {
+            level_generation: 2,
+            delivery_revision: 5,
+            focused: true,
+            queued_messages: 1,
+            ..HudChatContext::default()
+        };
+        let hit = hud_chat_hit_target_at(&[], &context, PhysicalSize::new(800, 600), (4.0, 561.0));
+        assert_eq!(hit.map(|hit| hit.kind), Some(HudChatHitTargetKind::Queue));
+        let unfocused = HudChatContext {
+            focused: false,
+            ..context
+        };
+        assert!(
+            hud_chat_hit_target_at(&[], &unfocused, PhysicalSize::new(800, 600), (4.0, 561.0),)
+                .is_none()
+        );
     }
 }
 
@@ -213,15 +285,25 @@ pub struct HudChatMessage {
     pub display_sequence: u64,
     pub added_tick: u64,
     pub runs: Vec<HudStyledTextRun>,
+    pub interactions: Vec<HudChatInteraction>,
     pub tag: Option<HudChatTag>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudChatInteraction {
+    pub start_char: usize,
+    pub end_char: usize,
+    pub target_index: u16,
+    pub tooltip_runs: Vec<HudStyledTextRun>,
 }
 
 /// Renderer vocabulary for Vanilla `GuiMessageTag`. The color is the exact
 /// two-pixel indicator color; only Modified carries the 9x9 sprite.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudChatTag {
     pub kind: HudChatTagKind,
     pub indicator_color: u32,
+    pub tooltip_runs: Vec<HudStyledTextRun>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -236,19 +318,52 @@ pub enum HudChatTagKind {
 /// Per-frame values which do not invalidate stable rich-message wrapping.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HudChatContext {
+    pub level_generation: u64,
+    pub delivery_revision: u64,
+    pub resource_generation: u64,
+    pub resources_loaded: bool,
     pub gui_ticks: u64,
     pub focused: bool,
     pub scroll_lines: usize,
+    pub cursor_position: Option<(i32, i32)>,
     pub queued_messages: usize,
     pub queue_text: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct HudChatLine {
+    display_sequence: u64,
     added_tick: u64,
     runs: Vec<HudStyledTextRun>,
     tag: Option<HudChatTag>,
+    interactions: Vec<HudChatLineInteraction>,
     end_of_entry: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HudChatLineInteraction {
+    start_x: u32,
+    end_x: u32,
+    target_index: u16,
+    tooltip_runs: Vec<HudStyledTextRun>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudChatHitTarget {
+    pub level_generation: u64,
+    pub delivery_revision: u64,
+    pub resource_generation: u64,
+    pub resources_loaded: bool,
+    pub kind: HudChatHitTargetKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudChatHitTargetKind {
+    Queue,
+    Message {
+        display_sequence: u64,
+        target_index: u16,
+    },
 }
 
 /// One frame of the unbordered ChatScreen edit box and its Brigadier
@@ -4106,6 +4221,19 @@ impl Renderer {
         self.hud_chat_context = context;
     }
 
+    /// Resolves a focused-chat pointer against the exact cached line wrapping
+    /// used for drawing. The returned revision token is intentionally narrow:
+    /// simulation must still revalidate the target against canonical chat
+    /// state before executing a component action.
+    pub fn hud_chat_hit_target_at(&self, position: (f64, f64)) -> Option<HudChatHitTarget> {
+        hud_chat_hit_target_at(
+            &self.hud_chat_lines,
+            &self.hud_chat_context,
+            self.surface_size(),
+            position,
+        )
+    }
+
     pub fn set_hud_command_suggestions(&mut self, suggestions: Option<HudCommandSuggestions>) {
         self.hud_command_suggestions = suggestions.map(sanitize_hud_command_suggestions);
     }
@@ -4827,6 +4955,8 @@ impl Renderer {
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
                 self.hud_chat_modified_icon.as_ref(),
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
                 self.counters.frame_index,
                 surface_size,
                 &self.hud_chat_lines,
@@ -9931,16 +10061,59 @@ fn push_hud_command_suggestion_tooltip<'a>(
     surface_size: PhysicalSize<u32>,
     tooltip: &HudCommandSuggestionTooltip,
 ) {
-    let Some(text_width) = hud_font_runs_width(&tooltip.runs, glyphs) else {
+    push_hud_rich_tooltip(
+        vertices,
+        commands,
+        white_pixel,
+        tooltip_background,
+        tooltip_frame,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        surface_size,
+        &tooltip.runs,
+        tooltip.x,
+        tooltip.y,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_rich_tooltip<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    runs: &[HudStyledTextRun],
+    x: i32,
+    y: i32,
+) {
+    let tooltip_lines = hud_wrap_chat_runs_with_interactions(runs, &[], 210, glyphs)
+        .into_iter()
+        .map(|line| line.runs)
+        .collect::<Vec<_>>();
+    let Some(text_width) = tooltip_lines
+        .iter()
+        .filter_map(|line| hud_font_runs_width(line, glyphs))
+        .max()
+    else {
         return;
     };
-    let text_height = hud_inventory_tooltip_text_height(1).expect("one tooltip line has height");
+    let Some(text_height) = hud_inventory_tooltip_text_height(tooltip_lines.len()) else {
+        return;
+    };
     let background_rect = hud_inventory_tooltip_background_hud_rect(
         surface_size,
         surface_size.width,
         surface_size.height,
-        tooltip.x,
-        tooltip.y,
+        x,
+        y,
         text_width,
         text_height,
     );
@@ -9979,37 +10152,39 @@ fn push_hud_command_suggestion_tooltip<'a>(
             HUD_TOOLTIP_BACKGROUND_TINT,
         ),
     }
-    let origin = hud_inventory_tooltip_line_origin(
-        surface_size,
-        surface_size.width,
-        surface_size.height,
-        tooltip.x,
-        tooltip.y,
-        text_width,
-        text_height,
-        0,
-    );
     for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
-        let geometry = hud_styled_text_pass_geometry(
-            &tooltip.runs,
-            glyphs,
-            obfuscated_pool,
-            obfuscated_seed,
-            origin,
-            shadow_offset,
-            is_shadow,
-            HUD_TINT_WHITE,
-            None,
-            1.0,
-        );
-        push_hud_styled_text_pass(
-            vertices,
-            commands,
-            white_pixel,
-            font_atlas,
-            surface_size,
-            &geometry,
-        );
+        for (line_index, line) in tooltip_lines.iter().enumerate() {
+            let origin = hud_inventory_tooltip_line_origin(
+                surface_size,
+                surface_size.width,
+                surface_size.height,
+                x,
+                y,
+                text_width,
+                text_height,
+                line_index,
+            );
+            let geometry = hud_styled_text_pass_geometry(
+                line,
+                glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
+                origin,
+                shadow_offset,
+                is_shadow,
+                HUD_TINT_WHITE,
+                None,
+                1.0,
+            );
+            push_hud_styled_text_pass(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                surface_size,
+                &geometry,
+            );
+        }
     }
 }
 
@@ -10101,6 +10276,8 @@ fn push_hud_chat<'a>(
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
     modified_icon: Option<&'a HudSpriteGpu>,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     lines: &[HudChatLine],
@@ -10156,7 +10333,7 @@ fn push_hud_chat<'a>(
 
     for (line_index, line, alpha) in visible_lines() {
         let bottom = chat_bottom.saturating_sub(line_index as i32 * MESSAGE_HEIGHT);
-        if let Some(tag) = line.tag {
+        if let Some(tag) = line.tag.as_ref() {
             let color = tag.indicator_color;
             push_hud_debug_tinted_rect(
                 vertices,
@@ -10194,6 +10371,7 @@ fn push_hud_chat<'a>(
         if line.end_of_entry
             && line
                 .tag
+                .as_ref()
                 .is_some_and(|tag| tag.kind == HudChatTagKind::Modified)
         {
             if let Some(icon) = modified_icon {
@@ -10236,6 +10414,56 @@ fn push_hud_chat<'a>(
                     scale: 1.0,
                     tint: [1.0, 1.0, 1.0, 0.5 * TEXT_OPACITY],
                 },
+            );
+        }
+    }
+    if let Some((cursor_x, cursor_y)) = context.cursor_position {
+        if let Some(interaction) = hud_chat_line_interaction_at(
+            lines,
+            context,
+            surface_size,
+            (f64::from(cursor_x), f64::from(cursor_y)),
+        )
+        .filter(|interaction| !interaction.tooltip_runs.is_empty())
+        {
+            push_hud_rich_tooltip(
+                vertices,
+                commands,
+                white_pixel,
+                tooltip_background,
+                tooltip_frame,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                &interaction.tooltip_runs,
+                cursor_x,
+                cursor_y,
+            );
+        } else if let Some(tag) = hud_chat_tag_at(
+            lines,
+            context,
+            surface_size,
+            (f64::from(cursor_x), f64::from(cursor_y)),
+            glyphs,
+        )
+        .filter(|tag| !tag.tooltip_runs.is_empty())
+        {
+            push_hud_rich_tooltip(
+                vertices,
+                commands,
+                white_pixel,
+                tooltip_background,
+                tooltip_frame,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                &tag.tooltip_runs,
+                cursor_x,
+                cursor_y,
             );
         }
     }
@@ -13404,6 +13632,7 @@ struct HudChatStyledChar {
     ch: char,
     style: HudTextStyle,
     color: Option<u32>,
+    target_index: Option<u16>,
 }
 
 fn hud_wrap_chat_messages(
@@ -13415,17 +13644,25 @@ fn hud_wrap_chat_messages(
         let width = HUD_CHAT_MAX_WIDTH.saturating_sub(
             (message
                 .tag
+                .as_ref()
                 .is_some_and(|tag| tag.kind == HudChatTagKind::Modified))
             .then_some(HUD_CHAT_MODIFIED_ICON_WIDTH_WITH_GAP)
             .unwrap_or(0),
         );
-        let wrapped = hud_wrap_chat_runs(&message.runs, width.max(1), glyphs);
+        let wrapped = hud_wrap_chat_runs_with_interactions(
+            &message.runs,
+            &message.interactions,
+            width.max(1),
+            glyphs,
+        );
         let wrapped_len = wrapped.len();
-        for (index, runs) in wrapped.into_iter().enumerate() {
+        for (index, wrapped) in wrapped.into_iter().enumerate() {
             lines.push(HudChatLine {
+                display_sequence: message.display_sequence,
                 added_tick: message.added_tick,
-                runs,
-                tag: message.tag,
+                runs: wrapped.runs,
+                tag: message.tag.clone(),
+                interactions: wrapped.interactions,
                 end_of_entry: index + 1 == wrapped_len,
             });
         }
@@ -13437,19 +13674,48 @@ fn hud_wrap_chat_messages(
     lines
 }
 
+#[cfg(test)]
 fn hud_wrap_chat_runs(
     runs: &[HudStyledTextRun],
     max_width: u32,
     glyphs: &HudFontGlyphMap,
 ) -> Vec<Vec<HudStyledTextRun>> {
+    hud_wrap_chat_runs_with_interactions(runs, &[], max_width, glyphs)
+        .into_iter()
+        .map(|line| line.runs)
+        .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HudWrappedChatLine {
+    runs: Vec<HudStyledTextRun>,
+    interactions: Vec<HudChatLineInteraction>,
+}
+
+fn hud_wrap_chat_runs_with_interactions(
+    runs: &[HudStyledTextRun],
+    interactions: &[HudChatInteraction],
+    max_width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Vec<HudWrappedChatLine> {
+    let mut char_index = 0usize;
     let chars = runs
         .iter()
-        .flat_map(|run| {
-            run.text.chars().map(|ch| HudChatStyledChar {
+        .flat_map(|run| run.text.chars().map(move |ch| (ch, run.style, run.color)))
+        .map(|(ch, style, color)| {
+            let target_index = interactions
+                .iter()
+                .find(|interaction| {
+                    interaction.start_char <= char_index && char_index < interaction.end_char
+                })
+                .map(|interaction| interaction.target_index);
+            char_index = char_index.saturating_add(1);
+            HudChatStyledChar {
                 ch,
-                style: run.style,
-                color: run.color,
-            })
+                style,
+                color,
+                target_index,
+            }
         })
         .collect::<Vec<_>>();
     let mut result = Vec::new();
@@ -13460,7 +13726,7 @@ fn hud_wrap_chat_runs(
     for styled in chars {
         if styled.ch == '\n' {
             trim_chat_line_end(&mut line);
-            result.push(hud_chat_chars_to_runs(&line));
+            result.push(hud_chat_chars_to_line(&line, interactions, glyphs));
             line.clear();
             width = 0;
             last_break = None;
@@ -13471,11 +13737,11 @@ fn hud_wrap_chat_runs(
             if let Some(break_index) = last_break {
                 let mut carry = line.split_off(break_index);
                 trim_chat_line_end(&mut line);
-                result.push(hud_chat_chars_to_runs(&line));
+                result.push(hud_chat_chars_to_line(&line, interactions, glyphs));
                 trim_chat_line_start(&mut carry);
                 line = carry;
             } else {
-                result.push(hud_chat_chars_to_runs(&line));
+                result.push(hud_chat_chars_to_line(&line, interactions, glyphs));
                 line.clear();
             }
             width = hud_chat_chars_width(&line, glyphs);
@@ -13495,7 +13761,7 @@ fn hud_wrap_chat_runs(
     }
     trim_chat_line_end(&mut line);
     if !line.is_empty() || result.is_empty() {
-        result.push(hud_chat_chars_to_runs(&line));
+        result.push(hud_chat_chars_to_line(&line, interactions, glyphs));
     }
     result
 }
@@ -13520,8 +13786,14 @@ fn trim_chat_line_end(chars: &mut Vec<HudChatStyledChar>) {
     }
 }
 
-fn hud_chat_chars_to_runs(chars: &[HudChatStyledChar]) -> Vec<HudStyledTextRun> {
+fn hud_chat_chars_to_line(
+    chars: &[HudChatStyledChar],
+    source_interactions: &[HudChatInteraction],
+    glyphs: &HudFontGlyphMap,
+) -> HudWrappedChatLine {
     let mut runs = Vec::<HudStyledTextRun>::new();
+    let mut interactions = Vec::<HudChatLineInteraction>::new();
+    let mut x = 0u32;
     for styled in chars {
         if let Some(run) = runs
             .last_mut()
@@ -13535,8 +13807,162 @@ fn hud_chat_chars_to_runs(chars: &[HudChatStyledChar]) -> Vec<HudStyledTextRun> 
                 color: styled.color,
             });
         }
+        let end_x =
+            x.saturating_add(hud_font_glyph(styled.ch, glyphs).styled_advance(styled.style));
+        if let Some(target_index) = styled.target_index {
+            if let Some(previous) = interactions
+                .last_mut()
+                .filter(|previous| previous.target_index == target_index && previous.end_x == x)
+            {
+                previous.end_x = end_x;
+            } else {
+                interactions.push(HudChatLineInteraction {
+                    start_x: x,
+                    end_x,
+                    target_index,
+                    tooltip_runs: source_interactions
+                        .iter()
+                        .find(|interaction| interaction.target_index == target_index)
+                        .map(|interaction| interaction.tooltip_runs.clone())
+                        .unwrap_or_default(),
+                });
+            }
+        }
+        x = end_x;
     }
-    runs
+    HudWrappedChatLine { runs, interactions }
+}
+
+fn hud_chat_hit_target_at(
+    lines: &[HudChatLine],
+    context: &HudChatContext,
+    surface_size: PhysicalSize<u32>,
+    position: (f64, f64),
+) -> Option<HudChatHitTarget> {
+    const MESSAGE_HEIGHT: i32 = 9;
+    const BOTTOM_MARGIN: i32 = 40;
+    if !context.focused || !position.0.is_finite() || !position.1.is_finite() {
+        return None;
+    }
+    let x = position.0.floor() as i32;
+    let y = position.1.floor() as i32;
+    let chat_bottom = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(BOTTOM_MARGIN);
+    if context.queued_messages > 0
+        && (2..2 + HUD_CHAT_MAX_WIDTH as i32 + 6).contains(&x)
+        && (chat_bottom..chat_bottom.saturating_add(MESSAGE_HEIGHT)).contains(&y)
+    {
+        return Some(HudChatHitTarget {
+            level_generation: context.level_generation,
+            delivery_revision: context.delivery_revision,
+            resource_generation: context.resource_generation,
+            resources_loaded: context.resources_loaded,
+            kind: HudChatHitTargetKind::Queue,
+        });
+    }
+    let (line, interaction) =
+        hud_chat_line_and_interaction_at(lines, context, surface_size, position)?;
+    Some(HudChatHitTarget {
+        level_generation: context.level_generation,
+        delivery_revision: context.delivery_revision,
+        resource_generation: context.resource_generation,
+        resources_loaded: context.resources_loaded,
+        kind: HudChatHitTargetKind::Message {
+            display_sequence: line.display_sequence,
+            target_index: interaction.target_index,
+        },
+    })
+}
+
+fn hud_chat_line_interaction_at<'a>(
+    lines: &'a [HudChatLine],
+    context: &HudChatContext,
+    surface_size: PhysicalSize<u32>,
+    position: (f64, f64),
+) -> Option<&'a HudChatLineInteraction> {
+    hud_chat_line_and_interaction_at(lines, context, surface_size, position)
+        .map(|(_, interaction)| interaction)
+}
+
+fn hud_chat_line_and_interaction_at<'a>(
+    lines: &'a [HudChatLine],
+    context: &HudChatContext,
+    surface_size: PhysicalSize<u32>,
+    position: (f64, f64),
+) -> Option<(&'a HudChatLine, &'a HudChatLineInteraction)> {
+    const MESSAGE_HEIGHT: i32 = 9;
+    const BOTTOM_MARGIN: i32 = 40;
+    if !context.focused || !position.0.is_finite() || !position.1.is_finite() {
+        return None;
+    }
+    let x = position.0.floor() as i32;
+    let y = position.1.floor() as i32;
+    let chat_bottom = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(BOTTOM_MARGIN);
+    if x < 4 || y >= chat_bottom {
+        return None;
+    }
+    let row = chat_bottom.saturating_sub(1).saturating_sub(y) / MESSAGE_HEIGHT;
+    if !(0..20).contains(&row) {
+        return None;
+    }
+    let line = lines
+        .iter()
+        .rev()
+        .skip(context.scroll_lines)
+        .nth(row as usize)?;
+    let local_x = u32::try_from(x.saturating_sub(4)).ok()?;
+    let interaction = line
+        .interactions
+        .iter()
+        .find(|interaction| (interaction.start_x..interaction.end_x).contains(&local_x))?;
+    Some((line, interaction))
+}
+
+fn hud_chat_tag_at<'a>(
+    lines: &'a [HudChatLine],
+    context: &HudChatContext,
+    surface_size: PhysicalSize<u32>,
+    position: (f64, f64),
+    glyphs: &HudFontGlyphMap,
+) -> Option<&'a HudChatTag> {
+    const MESSAGE_HEIGHT: i32 = 9;
+    const BOTTOM_MARGIN: i32 = 40;
+    if !context.focused || !position.0.is_finite() || !position.1.is_finite() {
+        return None;
+    }
+    let x = position.0.floor() as i32;
+    let y = position.1.floor() as i32;
+    let chat_bottom = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(BOTTOM_MARGIN);
+    if y >= chat_bottom {
+        return None;
+    }
+    let row = chat_bottom.saturating_sub(1).saturating_sub(y) / MESSAGE_HEIGHT;
+    if !(0..20).contains(&row) {
+        return None;
+    }
+    let line = lines
+        .iter()
+        .rev()
+        .skip(context.scroll_lines)
+        .nth(row as usize)?;
+    let tag = line.tag.as_ref()?;
+    if (0..2).contains(&x) {
+        return Some(tag);
+    }
+    if line.end_of_entry && tag.kind == HudChatTagKind::Modified {
+        let icon_x = i32::try_from(hud_font_runs_width(&line.runs, glyphs).unwrap_or_default())
+            .unwrap_or(i32::MAX)
+            .saturating_add(8);
+        if (icon_x..icon_x.saturating_add(9)).contains(&x) {
+            return Some(tag);
+        }
+    }
+    None
 }
 
 /// Vanilla `FontSet.computeGlyphInfo` walks the flattened provider chain; the
@@ -14523,6 +14949,33 @@ fn sanitize_hud_chat_message(mut message: HudChatMessage) -> HudChatMessage {
         .collect::<String>();
     let fallback = sanitize_hud_multiline_text(fallback, 16_384);
     message.runs = sanitize_hud_chat_runs(message.runs, &fallback);
+    let char_count = message
+        .runs
+        .iter()
+        .map(|run| run.text.chars().count())
+        .sum();
+    message.interactions.retain_mut(|interaction| {
+        interaction.start_char = interaction.start_char.min(char_count);
+        interaction.end_char = interaction.end_char.min(char_count);
+        let fallback = interaction
+            .tooltip_runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>();
+        let fallback = sanitize_hud_multiline_text(fallback, 4_096);
+        interaction.tooltip_runs =
+            sanitize_hud_chat_runs(std::mem::take(&mut interaction.tooltip_runs), &fallback);
+        interaction.start_char < interaction.end_char
+    });
+    if let Some(tag) = message.tag.as_mut() {
+        let fallback = tag
+            .tooltip_runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>();
+        let fallback = sanitize_hud_multiline_text(fallback, 4_096);
+        tag.tooltip_runs = sanitize_hud_chat_runs(std::mem::take(&mut tag.tooltip_runs), &fallback);
+    }
     message
 }
 

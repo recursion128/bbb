@@ -751,7 +751,7 @@ fn emit_jukebox_level_event(
     }
 }
 
-pub(in crate::runtime) fn queue_chat_acknowledgement(
+pub(crate) fn queue_chat_acknowledgement(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     counters: &mut NetCounters,
     command: bbb_protocol::packets::ChatAcknowledgement,

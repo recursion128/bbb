@@ -39,6 +39,10 @@ pub(crate) enum PlatformEffect {
         digits: Vec<u8>,
     },
     StatsScreenInput(StatsScreenInput),
+    ChatNarration {
+        kind: bbb_world::ChatNarrationKind,
+        text: String,
+    },
     Exit,
 }
 

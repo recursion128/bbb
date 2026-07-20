@@ -322,6 +322,34 @@ mod tests {
     }
 
     #[test]
+    fn chat_narration_enters_the_lossless_effect_gate_before_publication() {
+        let runtime = include_str!("runtime.rs");
+        let advance = runtime
+            .split_once("pub(crate) fn advance_simulation(")
+            .expect("advance_simulation")
+            .1
+            .split_once("pub(crate) fn update_renderer_from_publication(")
+            .expect("advance_simulation end")
+            .0;
+        let narration = advance
+            .find("world.take_pending_chat_narrations()")
+            .expect("chat narration drain");
+        assert!(advance[narration..].contains("SimulationFrameState {"));
+        assert!(advance[narration..].contains("PlatformEffect::ChatNarration"));
+
+        let step = include_str!("simulation.rs")
+            .split_once("pub(crate) fn step(")
+            .expect("step")
+            .1
+            .split_once("pub(crate) fn next_tick_deadline")
+            .expect("step end")
+            .0;
+        assert!(
+            step.find("effects.finish(").unwrap() < step.find("self.publisher.publish(").unwrap()
+        );
+    }
+
+    #[test]
     fn main_spawns_one_named_simulation_owner_and_only_consumes_its_outputs() {
         let main = include_str!("main.rs");
         let thread = include_str!("simulation/thread.rs");

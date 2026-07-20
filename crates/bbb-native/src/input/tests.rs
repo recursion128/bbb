@@ -17818,6 +17818,12 @@ fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
     assert!(scrolled.has_next);
     assert_eq!(scrolled.entries[0].text, "cmd01");
 
+    assert!(!input.handle_command_suggestion_mouse_input(
+        &world,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(500.0, 500.0)),
+    ));
     assert!(input.handle_command_suggestion_mouse_input(
         &world,
         MouseButton::Left,
@@ -17826,6 +17832,10 @@ fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
     ));
     assert_eq!(input.chat_entry.as_ref().unwrap().text, "/cmd05");
     assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 6);
+    assert!(input.replace_chat_entry_text("/seed".to_string()));
+    assert_eq!(input.chat_entry.as_ref().unwrap().text, "/seed");
+    assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 5);
+    assert!(input.chat_entry.as_ref().unwrap().suggestion_list.is_none());
 }
 
 #[test]
@@ -17921,6 +17931,19 @@ fn command_suggestion_escape_hides_list_before_closing_command_entry() {
         ElementState::Pressed,
     );
     assert!(!input.command_entry_is_active());
+}
+
+#[test]
+fn chat_scroll_lines_clamp_and_return_to_latest() {
+    let mut input = ClientInputState::new(true);
+    input.scroll_chat_lines(7);
+    assert_eq!(input.chat_scroll_lines(), 7);
+    input.scroll_chat_lines(i32::MAX);
+    assert_eq!(input.chat_scroll_lines(), 100);
+    input.scroll_chat_lines(-19);
+    assert_eq!(input.chat_scroll_lines(), 81);
+    input.scroll_chat_lines(i32::MIN);
+    assert_eq!(input.chat_scroll_lines(), 0);
 }
 
 #[test]

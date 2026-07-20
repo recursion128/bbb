@@ -196,6 +196,7 @@ struct NativeRenderEffectSink<'a> {
     terrain_upload: &'a mut TerrainUploadState,
     debug_profiler: &'a mut DebugProfiler,
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
+    narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
     control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
     exit_requested: &'a mut bool,
 }
@@ -290,6 +291,18 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                 };
                 self.stats_screen_narration
                     .after_input(input, Instant::now());
+            }
+            PlatformEffect::ChatNarration { kind, text } => {
+                let Some(narrator) = self.narrator.as_deref_mut() else {
+                    return;
+                };
+                match kind {
+                    bbb_world::ChatNarrationKind::Chat => narrator.say_chat_queued(&text),
+                    bbb_world::ChatNarrationKind::SystemChat => {
+                        narrator.say_system_chat_queued(&text)
+                    }
+                    bbb_world::ChatNarrationKind::System => narrator.say_system_queued(&text),
+                }
             }
             PlatformEffect::Exit => *self.exit_requested = true,
         }
@@ -679,6 +692,7 @@ fn main() -> Result<()> {
         let _ = simulation_event_proxy.send_event(());
     })?;
     let mut render_publication = shared_publication.load_full();
+    let mut event_cursor_position = None;
 
     event_loop.run(move |event, target| {
         if matches!(&event, Event::LoopExiting) {
@@ -711,6 +725,9 @@ fn main() -> Result<()> {
                     terrain_upload: &mut terrain_upload,
                     debug_profiler: &mut debug_profiler,
                     stats_screen_narration: &mut stats_screen_narration,
+                    narrator: narrator_runtime
+                        .as_mut()
+                        .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                     control_screenshots: &mut pending_control_screenshots,
                     exit_requested: &mut platform_exit_requested,
                 };
@@ -797,6 +814,8 @@ fn main() -> Result<()> {
                         &event,
                         &simulation_mailbox,
                         &mut debug_clipboard,
+                        &renderer,
+                        &mut event_cursor_position,
                     ) => {}
                 WindowEvent::RedrawRequested => {
                     let profiler_frame_started_at = Instant::now();
@@ -1082,12 +1101,21 @@ fn enqueue_simulation_window_event(
     event: &WindowEvent,
     mailbox: &SimulationMailbox,
     clipboard: &mut NativeDebugClipboard,
+    renderer: &bbb_renderer::Renderer,
+    cursor_position: &mut Option<winit::dpi::PhysicalPosition<f64>>,
 ) -> bool {
     let command = match event {
         WindowEvent::CloseRequested => SimulationCommand::Shutdown,
-        WindowEvent::CursorMoved { position, .. } => SimulationCommand::CursorMoved {
-            position: *position,
-        },
+        WindowEvent::CursorMoved { position, .. } => {
+            *cursor_position = Some(*position);
+            SimulationCommand::CursorMoved {
+                position: *position,
+            }
+        }
+        WindowEvent::CursorLeft { .. } => {
+            *cursor_position = None;
+            SimulationCommand::CursorLeft
+        }
         WindowEvent::Focused(focused) => SimulationCommand::FocusChanged(*focused),
         WindowEvent::KeyboardInput { event, .. } => {
             let clipboard_text = (matches!(event.state, ElementState::Pressed)
@@ -1109,6 +1137,15 @@ fn enqueue_simulation_window_event(
         WindowEvent::MouseInput { state, button, .. } => SimulationCommand::MouseButton {
             button: *button,
             state: *state,
+            chat_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position)
+                    .and_then(|position| renderer.hud_chat_hit_target_at((position.x, position.y)))
+            })
+            .flatten(),
         },
         WindowEvent::MouseWheel { delta, .. } => SimulationCommand::MouseWheel { delta: *delta },
         _ => return false,

@@ -22,15 +22,26 @@ pub(crate) enum NarratorStatus {
 }
 
 impl NarratorStatus {
+    fn should_narrate_chat(self) -> bool {
+        matches!(self, Self::All | Self::Chat)
+    }
+
     fn should_narrate_system(self) -> bool {
         matches!(self, Self::All | Self::System)
     }
+
+    fn should_narrate_system_or_chat(self) -> bool {
+        !matches!(self, Self::Off)
+    }
 }
 
-/// Narrow runtime boundary used by UI and session consumers that match vanilla
-/// `GameNarrator.saySystemNow` behavior.
+/// Narrow runtime boundary matching Vanilla's interrupting system narration
+/// and its three non-interrupting chat/system queue entry points.
 pub(crate) trait SystemNarrator {
     fn say_system_now(&mut self, message: &str);
+    fn say_chat_queued(&mut self, message: &str);
+    fn say_system_chat_queued(&mut self, message: &str);
+    fn say_system_queued(&mut self, message: &str);
 }
 
 /// Vanilla orders collected screen narration first by element kind and then by
@@ -335,6 +346,24 @@ impl SystemNarrator for NativeNarratorRuntime {
             self.speech.say(message, true);
         }
     }
+
+    fn say_chat_queued(&mut self, message: &str) {
+        if self.status.should_narrate_chat() {
+            self.speech.say(message, false);
+        }
+    }
+
+    fn say_system_chat_queued(&mut self, message: &str) {
+        if self.status.should_narrate_system_or_chat() {
+            self.speech.say(message, false);
+        }
+    }
+
+    fn say_system_queued(&mut self, message: &str) {
+        if self.status.should_narrate_system() {
+            self.speech.say(message, false);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -346,6 +375,18 @@ mod tests {
 
     impl SystemNarrator for RecordingNarrator {
         fn say_system_now(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+
+        fn say_chat_queued(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+
+        fn say_system_chat_queued(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+
+        fn say_system_queued(&mut self, message: &str) {
             self.0.push(message.to_string());
         }
     }
@@ -385,6 +426,35 @@ mod tests {
         system.say_system_now("spoken");
         assert!(system.speech.pending.is_empty());
         assert!(system.speech.child.is_some());
+    }
+
+    #[test]
+    fn chat_narration_modes_queue_without_interrupting_current_speech() {
+        let executable = PathBuf::from("/bin/sh");
+        let arguments = vec![
+            "-c".to_string(),
+            "sleep 1".to_string(),
+            "--".to_string(),
+            "{text}".to_string(),
+        ];
+        let mut chat =
+            NativeNarratorRuntime::new(NarratorStatus::Chat, executable.clone(), arguments.clone());
+        chat.say_chat_queued("chat one");
+        chat.say_system_chat_queued("system chat two");
+        assert!(chat.speech.child.is_some());
+        assert_eq!(chat.speech.pending, ["system chat two"]);
+        chat.say_system_queued("ignored system");
+        assert_eq!(chat.speech.pending, ["system chat two"]);
+        chat.speech.clear();
+
+        let mut system = NativeNarratorRuntime::new(NarratorStatus::System, executable, arguments);
+        system.say_chat_queued("ignored chat");
+        assert!(system.speech.child.is_none());
+        system.say_system_chat_queued("system chat");
+        system.say_system_queued("system queued");
+        assert!(system.speech.child.is_some());
+        assert_eq!(system.speech.pending, ["system queued"]);
+        system.speech.clear();
     }
 
     #[test]

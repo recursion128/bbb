@@ -652,6 +652,7 @@ pub(crate) struct ClientInputState {
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
+    chat_scroll_lines: usize,
     #[cfg(test)]
     last_step: Option<Instant>,
     #[cfg(test)]
@@ -1026,6 +1027,7 @@ impl ClientInputState {
             dismissed_sign_editor: self.dismissed_sign_editor.clone(),
             merchant_trade_scrolling: self.merchant_trade_scrolling,
             chat_entry: self.chat_entry.clone(),
+            chat_scroll_lines: self.chat_scroll_lines,
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
             ..Self::default()
         })
@@ -1335,6 +1337,37 @@ impl ClientInputState {
         self.chat_entry.is_some()
     }
 
+    pub(crate) fn chat_scroll_lines(&self) -> usize {
+        self.chat_scroll_lines
+    }
+
+    pub(crate) fn scroll_chat_lines(&mut self, delta: i32) {
+        if delta >= 0 {
+            self.chat_scroll_lines = self
+                .chat_scroll_lines
+                .saturating_add(delta as usize)
+                .min(100);
+        } else {
+            self.chat_scroll_lines = self
+                .chat_scroll_lines
+                .saturating_sub(delta.unsigned_abs() as usize);
+        }
+    }
+
+    pub(crate) fn replace_chat_entry_text(&mut self, text: String) -> bool {
+        let Some(entry) = self.chat_entry.as_mut() else {
+            return false;
+        };
+        entry.text = text;
+        entry.cursor = text_edit::char_len(&entry.text);
+        entry.selection = entry.cursor;
+        entry.suggestion_list = None;
+        entry.suggestion_narration = None;
+        entry.hidden_suggestion_id = None;
+        entry.last_suggestion_request_text = None;
+        true
+    }
+
     pub(crate) fn handle_command_suggestion_cursor_moved(
         &mut self,
         world: &WorldStore,
@@ -1379,22 +1412,22 @@ impl ClientInputState {
         sync_chat_suggestion_list(entry, world);
         entry.mouse_position = cursor_position.and_then(physical_position_floor_i32);
         if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
-            return true;
+            return false;
         }
         let Some((mouse_x, mouse_y)) = entry.mouse_position else {
-            return true;
+            return false;
         };
         let Some(list) = entry.suggestion_list.as_ref() else {
-            return true;
+            return false;
         };
         let Some(rect) = list.rect.filter(|rect| rect.contains(mouse_x, mouse_y)) else {
-            return true;
+            return false;
         };
         let line = usize::try_from((mouse_y - rect.y) / COMMAND_SUGGESTION_LINE_HEIGHT)
             .unwrap_or_default();
         let selected = list.offset.saturating_add(line);
         if selected >= list.sorted_indices.len() {
-            return true;
+            return false;
         }
         select_chat_suggestion(entry, selected, true);
         use_selected_chat_suggestion(entry);
@@ -1409,13 +1442,13 @@ impl ClientInputState {
             return false;
         };
         let Some((mouse_x, mouse_y)) = entry.mouse_position else {
-            return true;
+            return false;
         };
         let Some(list) = entry.suggestion_list.as_mut() else {
-            return true;
+            return false;
         };
         let Some(_rect) = list.rect.filter(|rect| rect.contains(mouse_x, mouse_y)) else {
-            return true;
+            return false;
         };
         let scroll = match delta {
             MouseScrollDelta::LineDelta(_, y) => f64::from(y),
@@ -9705,6 +9738,7 @@ fn open_chat_entry(
         mouse_position: None,
         suppress_open_key_commit,
     });
+    input.chat_scroll_lines = 0;
 }
 
 fn handle_chat_entry_key(
@@ -9736,7 +9770,14 @@ fn handle_chat_entry_key(
             });
             if hidden.is_none() {
                 input.chat_entry = None;
+                input.chat_scroll_lines = 0;
             }
+        }
+        KeyCode::PageUp => {
+            input.chat_scroll_lines = input.chat_scroll_lines.saturating_add(19).min(100);
+        }
+        KeyCode::PageDown => {
+            input.chat_scroll_lines = input.chat_scroll_lines.saturating_sub(19);
         }
         KeyCode::Tab => {
             let shift_down = input.shift_down();

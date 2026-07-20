@@ -7,7 +7,8 @@ use bbb_control::{
 };
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
-use bbb_renderer::HudFontGlyphMap;
+use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
+use bbb_renderer::{HudChatHitTarget, HudChatHitTargetKind, HudFontGlyphMap};
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::{
@@ -30,7 +31,7 @@ use crate::{
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
         handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick,
         handle_mouse_motion, handle_mouse_wheel, handle_text_input_with_item_runtime,
-        queue_debug_recreate_server_query_request, release_active_input,
+        queue_chat_command, queue_debug_recreate_server_query_request, release_active_input,
         CommandSuggestionTextMeasurer, DebugClipboard, DebugFeatureCountRequest,
         DebugFrustumRequest, DebugOptionsSearchTextMeasurer, DebugProfilingToggleRequest,
         PauseScreenLinkRequest, TerrainReloadRequestSink,
@@ -175,13 +176,23 @@ impl SimulationInputRuntime {
                 state,
                 clipboard_text,
             } => self.apply_key(physical_key, state, clipboard_text, context),
-            SimulationCommand::MouseButton { button, state } => {
-                self.apply_mouse_button(button, state, context);
+            SimulationCommand::MouseButton {
+                button,
+                state,
+                chat_target,
+            } => {
+                self.apply_mouse_button(button, state, chat_target, context);
             }
             SimulationCommand::MouseMotion { delta } => self.apply_mouse_motion(delta, context),
             SimulationCommand::MouseWheel { delta } => self.apply_mouse_wheel(delta, context),
             SimulationCommand::CursorMoved { position } => {
                 self.apply_cursor_moved(position, context);
+            }
+            SimulationCommand::CursorLeft => {
+                self.cursor_position = None;
+                context
+                    .input
+                    .handle_command_suggestion_cursor_moved(context.world, None);
             }
             SimulationCommand::ImePreedit { text, cursor_range } => {
                 self.apply_ime_preedit(&text, cursor_range, context);
@@ -682,6 +693,7 @@ impl SimulationInputRuntime {
         &mut self,
         button: MouseButton,
         state: ElementState,
+        chat_target: Option<HudChatHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
@@ -800,12 +812,17 @@ impl SimulationInputRuntime {
         }
         if context.input.command_entry_is_active() {
             self.request_cursor_capture(false, context.platform);
-            context.input.handle_command_suggestion_mouse_input(
+            if context.input.handle_command_suggestion_mouse_input(
                 context.world,
                 button,
                 state,
                 self.cursor_position,
-            );
+            ) {
+                return;
+            }
+            if matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+                self.apply_chat_hit_target(chat_target, context);
+            }
             return;
         }
         if context
@@ -877,6 +894,58 @@ impl SimulationInputRuntime {
         );
     }
 
+    fn apply_chat_hit_target(
+        &mut self,
+        target: Option<HudChatHitTarget>,
+        context: &mut SimulationInputContext<'_, '_>,
+    ) -> bool {
+        let Some(target) = target else {
+            return false;
+        };
+        if !chat_hit_target_is_current(context.world, context.item_runtime.as_ref(), target) {
+            return false;
+        }
+        match target.kind {
+            HudChatHitTargetKind::Queue => {
+                if context.world.client_chat().delayed_messages.is_empty() {
+                    return false;
+                }
+                if let Some(acknowledgement) = context
+                    .world
+                    .accept_next_delayed_chat_message(crate::runtime::monotonic_millis())
+                {
+                    crate::runtime::queue_chat_acknowledgement(
+                        context.net_commands,
+                        context.net_counters,
+                        acknowledgement,
+                    );
+                }
+                true
+            }
+            HudChatHitTargetKind::Message {
+                display_sequence,
+                target_index,
+            } => {
+                let Some(event) = crate::runtime::hud_chat_component_click_event(
+                    context.world,
+                    context.item_runtime.as_ref(),
+                    display_sequence,
+                    target_index,
+                ) else {
+                    return false;
+                };
+                run_chat_component_click_event(
+                    event,
+                    context.input,
+                    context.world,
+                    context.net_counters,
+                    context.net_commands,
+                    context.platform,
+                )
+            }
+        }
+    }
+
     fn apply_mouse_wheel(
         &mut self,
         delta: MouseScrollDelta,
@@ -905,7 +974,20 @@ impl SimulationInputRuntime {
         }
         if context.input.command_entry_is_active() {
             self.request_cursor_capture(false, context.platform);
-            context.input.handle_command_suggestion_mouse_wheel(delta);
+            if context.input.handle_command_suggestion_mouse_wheel(delta) {
+                return;
+            }
+            let scroll = match delta {
+                MouseScrollDelta::LineDelta(_, y) => f64::from(y),
+                MouseScrollDelta::PixelDelta(position) => position.y,
+            }
+            .clamp(-1.0, 1.0);
+            let scroll = if context.input.shift_down() {
+                scroll
+            } else {
+                scroll * 7.0
+            } as i32;
+            context.input.scroll_chat_lines(scroll);
             return;
         }
         if context
@@ -1133,6 +1215,72 @@ fn simulation_wants_cursor(input: &crate::input::ClientInputState, world: &World
         || input.debug_game_mode_switcher_is_open()
 }
 
+fn chat_hit_target_is_current(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    target: HudChatHitTarget,
+) -> bool {
+    target.level_generation == world.client_level_generation()
+        && target.delivery_revision == world.client_chat().delivery_revision
+        && target.resource_generation
+            == item_runtime.map_or(0, NativeItemRuntime::resource_generation)
+        && target.resources_loaded == item_runtime.is_some()
+}
+
+fn run_chat_component_click_event(
+    event: ComponentClickEvent,
+    input: &mut crate::input::ClientInputState,
+    world: &mut WorldStore,
+    net_counters: &mut bbb_control::NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    platform: &mut PlatformEffectCollector<'_>,
+) -> bool {
+    match event {
+        ComponentClickEvent::OpenFile { .. } | ComponentClickEvent::ChangePage { .. } => false,
+        ComponentClickEvent::OpenUrl { url } => {
+            let handled = world.open_chat_url(url);
+            let queued_effects = RefCell::new(Vec::new());
+            collect_dialog_open_uri_effects(world, &queued_effects);
+            flush_platform_effects(&queued_effects, platform);
+            handled
+        }
+        ComponentClickEvent::RunCommand { command } => {
+            queue_chat_command(
+                net_counters,
+                world,
+                net_commands,
+                command.strip_prefix('/').unwrap_or(&command),
+            );
+            true
+        }
+        ComponentClickEvent::SuggestCommand { command } => input.replace_chat_entry_text(command),
+        ComponentClickEvent::ShowDialog { dialog } => {
+            world.show_dialog_from_component_click(&dialog)
+        }
+        ComponentClickEvent::CopyToClipboard { value } => {
+            if value.is_empty() {
+                return true;
+            }
+            platform.submit(PlatformEffect::ClipboardWrite(value));
+            true
+        }
+        ComponentClickEvent::Custom { id, payload } => {
+            if let Some(tx) = net_commands {
+                if tx
+                    .try_send(NetCommand::CustomClickAction(CustomClickAction {
+                        id,
+                        payload,
+                    }))
+                    .is_ok()
+                {
+                    net_counters.custom_click_action_commands_queued += 1;
+                }
+            }
+            true
+        }
+    }
+}
+
 fn collect_dialog_open_uri_effects(world: &mut WorldStore, effects: &RefCell<Vec<PlatformEffect>>) {
     effects.borrow_mut().extend(
         world
@@ -1249,6 +1397,19 @@ impl DialogTextMeasurer for HudFontGlyphMap {
 mod tests {
     use super::*;
 
+    #[derive(Default)]
+    struct RecordingRenderSink(Vec<PlatformEffect>);
+
+    impl crate::simulation::effects::ParticleBatchSink for RecordingRenderSink {
+        fn submit_particle_batch(&mut self, _batch: bbb_renderer::ParticleSpawnBatch) {}
+    }
+
+    impl crate::simulation::effects::PlatformEffectSink for RecordingRenderSink {
+        fn apply_platform_effect(&mut self, effect: PlatformEffect) {
+            self.0.push(effect);
+        }
+    }
+
     #[test]
     fn terrain_readiness_is_scoped_to_the_published_level_generation() {
         let mut runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
@@ -1279,5 +1440,107 @@ mod tests {
         assert!(rx.try_recv().is_err());
         drop(platform);
         let _batch = effects.finish(None);
+    }
+
+    #[test]
+    fn chat_hit_target_revision_rejects_new_delivery() {
+        let mut world = WorldStore::new();
+        let target = HudChatHitTarget {
+            level_generation: world.client_level_generation(),
+            delivery_revision: world.client_chat().delivery_revision,
+            resource_generation: 0,
+            resources_loaded: false,
+            kind: HudChatHitTargetKind::Queue,
+        };
+        assert!(chat_hit_target_is_current(&world, None, target));
+        let stale_resource_target = HudChatHitTarget {
+            resources_loaded: true,
+            ..target
+        };
+        assert!(!chat_hit_target_is_current(
+            &world,
+            None,
+            stale_resource_target
+        ));
+
+        world.push_server_system_chat_message("new delivery");
+        assert!(!chat_hit_target_is_current(&world, None, target));
+    }
+
+    #[test]
+    fn chat_component_actions_preserve_safe_platform_and_network_boundaries() {
+        let mut input = crate::input::ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let mut counters = bbb_control::NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let effects = crate::simulation::effects::RenderEffectCollector::new(
+            1,
+            bbb_control::AudioCounters::default(),
+        );
+        let mut platform = effects.platform();
+
+        assert!(run_chat_component_click_event(
+            ComponentClickEvent::RunCommand {
+                command: "/seed".to_string(),
+            },
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            &mut platform,
+        ));
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::ChatCommand(command)) if command.command == "seed"
+        ));
+        assert!(run_chat_component_click_event(
+            ComponentClickEvent::Custom {
+                id: "example:chat".to_string(),
+                payload: None,
+            },
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            &mut platform,
+        ));
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::CustomClickAction(CustomClickAction { id, .. }))
+                if id == "example:chat"
+        ));
+        assert!(run_chat_component_click_event(
+            ComponentClickEvent::CopyToClipboard {
+                value: "copy me".to_string(),
+            },
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            &mut platform,
+        ));
+        assert!(!run_chat_component_click_event(
+            ComponentClickEvent::OpenFile {
+                path: "/tmp/server-controlled".to_string(),
+            },
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            &mut platform,
+        ));
+        drop(platform);
+
+        let batch = effects.finish(None).expect("clipboard effect batch");
+        let mut consumer = crate::simulation::effects::RenderEffectConsumer::default();
+        let mut sink = RecordingRenderSink::default();
+        consumer.consume(batch, None, &mut sink).unwrap();
+        assert_eq!(
+            sink.0,
+            [PlatformEffect::ClipboardWrite("copy me".to_string())]
+        );
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert_eq!(counters.custom_click_action_commands_queued, 1);
     }
 }
