@@ -182,6 +182,23 @@ water/movement tick dynamics advance from that phase. Exhaustive membership,
 same-id reset, entity-type reuse, serde and retained-publication tests prove the
 owner cannot leak to other hostile or replacement entities.
 
+### Player constructor audit
+
+Player is the final, separately admitted family. Vanilla does not call the
+`EntityType.PLAYER` placeholder factory: `ClientPacketListener` first resolves
+the packet UUID to current `PlayerInfo`, constructs `RemotePlayer`, then applies
+the normal recreation packet. The existing ordered AddEntity lifecycle gate
+already rejects a player packet before PlayerInfo and preserves the old entity
+on rejection.
+
+The accepted remote player uses the generated 31-entry `Player.createAttributes`
+profile and sparse generated metadata defaults. Recreation seeds the generic
+living body-yaw endpoints from packet head yaw. The remote cloak/walk accumulator
+remains absent at construction and is created by the first exact client tick;
+same-id re-add and type reuse clear it. Exhaustive one-member family, virtual
+attribute, fresh-tick/reset and retained-publication tests cover this boundary
+without modeling local-player startup as an AddEntity default.
+
 ## Serial Phases, Tests, and Gates
 
 1. **Contract and baseline.** Record this contract, the 156-partial baseline,

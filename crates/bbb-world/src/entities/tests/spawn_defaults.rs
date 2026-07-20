@@ -698,3 +698,113 @@ fn guardian_constructor_phase_resets_and_is_generation_isolated() {
         Some(initial)
     );
 }
+
+#[test]
+fn player_defaults_use_generated_profile_and_sparse_spawn_owners() {
+    let player_entry = VANILLA_ENTITY_TYPES
+        .iter()
+        .filter(|entry| spawn_default_family(entry.id) == SpawnDefaultFamily::Player)
+        .copied()
+        .collect::<Vec<_>>();
+    assert_eq!(player_entry.len(), 1);
+    let player_entry = player_entry[0];
+    assert_eq!(player_entry.id, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    assert_eq!(player_entry.resource_id, "minecraft:player");
+
+    let player_id = 10_001;
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_entity_with_uuid(
+        player_id,
+        player_entry.id,
+        uuid::Uuid::from_u128(0x6000_0000_0000_0000_0000_0000_0000_0001),
+    ));
+    let metadata = &VANILLA_ENTITY_TYPE_METADATA_26_1[player_entry.id as usize];
+    let player = store.probe_entity(player_id).unwrap();
+
+    assert!(metadata.is_living);
+    assert_eq!(metadata.default_attributes.len(), 31);
+    assert!(player.attributes.is_empty());
+    assert!(player.data_values.is_empty());
+    assert!(player.equipment.is_empty());
+    assert!(player.passengers.is_empty());
+    assert!(player.mob_effects.is_empty());
+    assert_eq!(player.client_animations.spawn_body_y_rot, Some(30.0));
+    assert_eq!(player.client_animations.age_ticks, 0);
+    assert!(player.client_animations.player_cloak.is_none());
+    assert!(player.client_animations.item_bob_offset.is_none());
+    assert!(player.client_animations.end_crystal_time_offset.is_none());
+    assert!(player.client_animations.guardian_tail.is_none());
+    assert_eq!(
+        store.entities.attribute_base_value(
+            player_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        ),
+        Some(20.0)
+    );
+    assert_eq!(
+        store.entities.attribute_base_value(
+            player_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        ),
+        Some(f64::from(0.1_f32))
+    );
+    assert_eq!(
+        store.entities.attribute_base_value(
+            player_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+        ),
+        Some(1.0)
+    );
+}
+
+#[test]
+fn player_tick_owner_resets_without_touching_retained_generation() {
+    let player_id = 10_002;
+    let player_uuid = uuid::Uuid::from_u128(0x6000_0000_0000_0000_0000_0000_0000_0002);
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_entity_with_uuid(
+        player_id,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        player_uuid,
+    ));
+    let generation_a = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+    let ticked = store.probe_entity(player_id).unwrap().client_animations;
+    assert_eq!(ticked.age_ticks, 1);
+    assert!(ticked.spawn_body_y_rot.is_none());
+    assert!(ticked.player_cloak.is_some_and(|cloak| cloak.initialized));
+    assert_eq!(
+        generation_a
+            .probe_entity(player_id)
+            .unwrap()
+            .client_animations
+            .player_cloak,
+        None
+    );
+
+    store.apply_add_entity(add_entity_with_uuid(
+        player_id,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        player_uuid,
+    ));
+    let reset = store.probe_entity(player_id).unwrap().client_animations;
+    assert_eq!(reset.age_ticks, 0);
+    assert_eq!(reset.spawn_body_y_rot, Some(30.0));
+    assert!(reset.player_cloak.is_none());
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        player_id,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store
+        .probe_entity(player_id)
+        .unwrap()
+        .client_animations
+        .player_cloak
+        .is_none());
+    assert_eq!(
+        generation_a.probe_entity(player_id).unwrap().entity_type_id,
+        VANILLA_ENTITY_TYPE_PLAYER_ID
+    );
+}
