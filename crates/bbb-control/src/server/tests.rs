@@ -35,7 +35,8 @@ use bbb_protocol::packets::{
     ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
     ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
     SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
-    SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetObjective, SetObjectiveMethod,
+    SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective,
+    SetEntityMotion as ProtocolSetEntityMotion, SetObjective, SetObjectiveMethod,
     SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance,
     SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SlotDisplaySummary, SoundEvent,
     SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
@@ -4034,16 +4035,20 @@ fn probes_entity_transforms_from_world_store_components() {
                     y: 70.0,
                     z: -8.0,
                 },
-                delta_movement: ProtocolVec3d {
-                    x: 0.1,
-                    y: 0.2,
-                    z: 0.3,
-                },
+                delta_movement: ProtocolVec3d::default(),
                 y_rot: 45.0,
                 x_rot: -15.0,
                 on_ground: true,
             })
         );
+        assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+            id: 9,
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: 0.2,
+                z: 0.3,
+            },
+        }));
 
         publish_test_world(&state, store);
     }
