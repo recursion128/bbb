@@ -151,6 +151,11 @@ Owns vanilla 26.1 resource-pack and asset loading.
 
 The asset pipeline should follow official 26.1 resource-pack semantics. Avoid
 hard-coded resource paths except in tests or explicit bootstrap constants.
+The selected-stack, reload-generation, staging and dynamic-texture migration
+contract is [`resource-pack-lifecycle-design.md`](resource-pack-lifecycle-design.md).
+Paths are resource locations only after a validated selected pack gives them a
+source identity and priority; renderer/audio handles remain derived owners and
+become visible only at the matching reload commit.
 
 ### `bbb-renderer`
 

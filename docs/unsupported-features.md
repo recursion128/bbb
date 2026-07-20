@@ -1092,6 +1092,10 @@ long-session coverage.
 
 Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
 
+- Give vanilla, startup and server packs one validated selected-stack identity,
+  compatibility record, required/fixed policy and deterministic priority; stage
+  every reload consumer and atomically commit one resource generation instead
+  of reconstructing old GPU owners after a partial apply.
 - Implement broader non-profile dynamic texture loading.
 - Resolve player-head block-entity `profile` owner skins through that pipeline.
   Profileless player heads use the vanilla default player skin fallback.

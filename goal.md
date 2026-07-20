@@ -609,6 +609,8 @@ ledger 中归属本队列的 HUD/screen 条目全部完成或有窄 deferred/not
 资源包、服务器 resource-pack push/pop、datapack registry asset 与运行时下载纹理能按
 统一优先级和状态机组合；不能只让首次启动路径正确，reload 后继续引用 stale atlas/
 model/font/sound/texture handle。
+高风险工程切片的冻结 owner、Vanilla 依据、串行阶段、focused validation 与安全停止点见
+`docs/resource-pack-lifecycle-design.md`。
 
 1. **pack stack 与来源**：冻结 vanilla/client built-in、启动参数 pack、server pack 的
    优先级、namespace/path 解析、metadata/pack-format 校验与 selected/required/prompt
