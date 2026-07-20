@@ -19845,3 +19845,26 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   zombie/player membership 差异、session reset、entity-id remove/reuse 和 retained publication；
   生成的 reverse guard 禁止 protocol 恢复 built-in ordinal 解释或 world 绕过 registry/supplier
   resolution。context-free `ItemAttributeModifiers` 仍保留独立的 built-in holder 校验。
+
+## 2026-07-20：resource generation 与 dynamic profile decoded-image 聚合预算
+
+- [x] `da8fa5871` 冻结高风险 owner 合同；`bc5876b8e` 将 atlas、standalone texture、
+  colormap、font、entity、HUD、sky 和 profile-resource 的生产 PNG decode 收敛到共享
+  `ResourceImageGenerationBudget`。单 generation 逻辑 RGBA 上限 512 MiB，clone 共享 exact
+  counter，新 generation 独立；失败 decode 保守 charge 到 owner drop，source guard 禁止恢复
+  绕过。该阶段 workspace milestone full gate 通过。
+- [x] `96cd5e01f` 在 staged reload preparation 前以 accepted exact charge 计算 allowance，
+  accepted + staged 上限 1 GiB；失败/rollback 不提前释放 accepted generation，成功仍保持
+  renderer transaction、audio commit 与 simulation acknowledgement 原顺序。控制面以
+  serde-defaulted immutable diagnostics 报告 generation limit/current/peak logical bytes。
+- [x] `7bcac4ad7` 为 unified skin/cape/elytra owner 增加 256 MiB ready-byte LRU admission；
+  delivery-pending owner 不可淘汰，oversized/unadmittable 结果保持既有 failed/fallback。worker
+  result 改为 rendezvous handoff，render pump 每次至多取一个 profile result，并观测
+  eviction/rejection、worker/delivery current/peak bytes；reset、stale、entry reuse 和 fallback
+  测试固定旧 generation 不可复活。该阶段 workspace milestone full gate 通过。
+- [x] 同机官方全 atlas runtime logical charge 为 12,901,824 bytes（12.30 MiB，512 MiB
+  ceiling 的 2.40%）。dynamic decoded-pixel 结构上界从 2,048 × 64 MiB = 128 GiB ready owner
+  加 unbounded handoff/drain，降为约 384 MiB（256 MiB ready + 一个 64 MiB worker result +
+  一个 64 MiB delivery value，另加至多一个小 skin value）。这些是逻辑 owner 证据，不冒充
+  allocator RSS；compressed input、decoder scratch、renderer atlas/GPU/driver-deferred peak 与
+  JSON/model/font/audio aggregate budget 继续留在 unsupported ledger。

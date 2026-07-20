@@ -85,6 +85,42 @@ machine and the remaining renderer/GPU-derived peak separately.
 - `bbb-control` exposes serde-defaulted logical observations only. It never
   retains pixels, changes admission, or wakes simulation per frame.
 
+## Implemented outcome and measured evidence
+
+`bbb-pack::image` now admits every production pack PNG through one shared
+`ResourceImageGenerationBudget`. One generation is limited to 512 MiB of
+logical RGBA, and native computes a staged reload allowance from the accepted
+generation's exact charge so the two adjacent generations cannot exceed 1 GiB.
+Cloned stacks share the same counter; a new resource generation receives a new
+counter. A failed decode keeps its conservative pre-allocation charge until that
+generation is dropped, so malformed input cannot repeatedly reclaim and reuse
+the same allowance.
+
+On this machine, the ignored all-official-atlas coverage test charged
+12,901,824 bytes (12.30 MiB), or 2.40% of the 512 MiB generation ceiling. The
+earlier filesystem inventory estimate was 35.2 MiB for every official PNG;
+these values differ because the runtime test measures selected atlas consumers,
+not every PNG stored under `assets/**`. They are logical owner measurements,
+not allocator RSS.
+
+The unified downloaded profile-texture runtime now admits at most 256 MiB of
+ready decoded pixels and evicts the least-recently-used ready owner that is not
+awaiting delivery. Its zero-capacity rendezvous result channel retains at most
+one worker result outside that owner, and each render pump takes at most one
+profile result. With the 64 MiB per-image ceiling, the structural decoded-pixel
+bound is therefore approximately 384 MiB: 256 MiB ready residency, one 64 MiB
+worker result and one 64 MiB renderer-delivery value, plus at most one small
+skin delivery. Before this slice, the 2,048-entry owner alone admitted a
+theoretical 128 GiB and the unbounded result/drain path could retain additional
+copies.
+
+Runtime diagnostics report the generation limit/current/peak charge and the
+dynamic resident limit/current/peak, eviction, rejection, worker-result and
+delivery bytes. They do not include compressed input, decoder scratch,
+renderer CPU-atlas rebuild scratch, GPU allocations or driver-deferred release.
+Those exclusions remain explicit peak-memory risks rather than being inferred
+from the logical counters.
+
 ## Non-goals
 
 - No protocol, tick, input, visibility, animation, texture priority, resource

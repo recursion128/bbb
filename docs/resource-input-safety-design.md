@@ -42,9 +42,9 @@ before `DynamicImage` allocates its output.
 
 | Input owner | Compressed bytes | Per axis | Pixels | Decoder bytes | Aggregate retained charge |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| pack-backed PNG | 64 MiB | 8,192 | 16,777,216 | 128 MiB | 256 MiB per atlas load |
+| pack-backed PNG | 64 MiB | 8,192 | 16,777,216 | 128 MiB | 256 MiB per atlas, 512 MiB per resource generation, 1 GiB accepted plus staged |
 | player skin | 1 MiB | exact 64x32 or 64x64 | 4,096 | 128 MiB hard decoder ceiling; dimensions make the real bound much smaller | one request |
-| cape/elytra profile texture | 16 MiB | 8,192 | 16,777,216 | 128 MiB | one request plus the existing bounded dynamic owner |
+| cape/elytra profile texture | 16 MiB | 8,192 | 16,777,216 | 128 MiB | one result, 256 MiB ready dynamic owner |
 
 The dimension and pixel limits are separate: a profile texture may be long and
 narrow up to 8,192 on one axis, but cannot use an 8,192x8,192 pixel payload.
@@ -77,10 +77,13 @@ decode-before-cache-write. Source guards reject reintroduced direct decoders in
 the migrated consumers. Local ignored coverage loads every official 26.1 atlas
 source under the new budget.
 
-The limits close an individual untrusted PNG's unbounded allocation path, but
-they are not a process-wide residency budget. Multiple atlases prepared in one
-resource generation, the adjacent old/new owners retained by atomic reload, or
-many individually valid large dynamic textures can still produce a high finite
-peak. The generation-wide and dynamic-owner closure is specified in
+The generation-wide and dynamic-owner closure is specified, implemented and
+measured in
 [`resource-image-memory-budget-design.md`](resource-image-memory-budget-design.md).
-JSON/model/font and audio decode budgets remain separate open input-safety work.
+Every production pack decoder shares a 512 MiB generation charge, adjacent
+accepted/staged generations share a 1 GiB ceiling, and the remote dynamic owner
+retains at most 256 MiB of ready decoded pixels with bounded worker/delivery
+handoff. These are logical decoded-pixel bounds, not whole-process RSS: decoder
+scratch, derived renderer/GPU owners and driver-deferred release remain outside
+the counters. JSON/model/font collections and audio decode budgets remain
+separate open input-safety work.

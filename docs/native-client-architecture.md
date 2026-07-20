@@ -143,8 +143,9 @@ observe their result through the same immutable publication generation.
 Owns vanilla 26.1 resource-pack and asset loading.
 
 - Registries and tag data needed by client behavior.
-- The sole file-backed PNG decoder and per-atlas logical RGBA admission budget;
-  hostile image policy and residual generation-wide peak risk are specified in
+- The sole file-backed PNG decoder and nested per-image, per-atlas and shared
+  resource-generation logical RGBA admission budgets; hostile image policy is
+  specified in
   [`resource-input-safety-design.md`](resource-input-safety-design.md).
 - `sounds.json`, sound event lookup, subtitles, and resolved `.ogg` resource
   paths.
@@ -165,6 +166,15 @@ packs. That generation owns the exact selected stack plus one precompiled
 regexes are admitted once, then every language/model/atlas/sound consumer gets
 a cheap clone of the same immutable lookup owner. The directory list retained
 for serde compatibility is a projection, not the runtime selection authority.
+The same generation owns one 512 MiB logical decoded-RGBA counter shared by
+atlas, standalone texture, colormap, font, entity, HUD, sky and profile-resource
+consumers. Native derives the staged generation allowance from the accepted
+generation's exact charge before preparation, enforcing a 1 GiB adjacent-owner
+ceiling without releasing the rollback source. Failed decodes retain their
+conservative charge until the staged generation is dropped. Exact current/peak
+logical bytes are immutable diagnostics, not allocator or GPU-memory estimates;
+the detailed contract and measurements are in
+[`resource-image-memory-budget-design.md`](resource-image-memory-budget-design.md).
 Renderer reload is a synchronous owner transaction: accepted GPU handles are
 retained in a private checkpoint while the next particle/item, terrain,
 HUD/font, entity and sky owners are built. Failure restores those exact handles
@@ -176,6 +186,10 @@ owner keyed by exact resource and connection-session generation. Renderer
 dynamic entity images/atlases and pack-backed entity variants cross the same
 generation edge before accepting new uploads; disconnect, reconnect and reload
 therefore discard late results instead of reviving a prior handle.
+That runtime admits at most 256 MiB of ready decoded pixels with LRU eviction of
+non-pending owners. A rendezvous result handoff and one-result-per-render-pump
+delivery bound prevent an unbounded decoded-result queue or drain clone; stale
+or unadmittable values keep the established failed/fallback semantics.
 Control receives only immutable observations: the selected pack list and last
 reload result use one session-static `Arc` so publication cloning does not copy
 pack ids/strings, while dynamic texture state/bytes are sampled into latest-value
