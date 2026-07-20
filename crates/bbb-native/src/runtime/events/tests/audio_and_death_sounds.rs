@@ -39,10 +39,10 @@ fn respawn_stops_music_only_when_the_dimension_changes() {
 #[test]
 fn damage_type_holder_drives_runtime_player_hurt_audio() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
-        protocol_add_entity_with_type(166, VANILLA_ENTITY_TYPE_PLAYER_ID),
-    )))
-    .unwrap();
+    let player = protocol_add_entity_with_type(166, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    let player_uuid = player.uuid;
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(player)))
+        .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::DamageEvent(
         bbb_protocol::packets::DamageEvent {
             entity_id: 166,
@@ -60,6 +60,7 @@ fn damage_type_holder_drives_runtime_player_hurt_audio() {
         0,
         vec![RegistryPacketEntry::stub("minecraft:freeze")],
     );
+    record_test_player_info(&mut world, player_uuid);
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
 

@@ -189,6 +189,30 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
     }
 }
 
+fn record_test_player_info(world: &mut WorldStore, profile_id: Uuid) {
+    assert_eq!(
+        world.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+            actions: vec![bbb_protocol::packets::PlayerInfoAction::AddPlayer],
+            entries: vec![bbb_protocol::packets::PlayerInfoEntry {
+                profile_id,
+                profile: Some(bbb_protocol::packets::GameProfile {
+                    uuid: profile_id,
+                    name: "runtime-test-player".to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: false,
+                latency: 0,
+                game_mode: bbb_protocol::game_types::GameType::default(),
+                display_name: None,
+                show_hat: false,
+                list_order: 0,
+                chat_session: None,
+            }],
+        }),
+        1
+    );
+}
+
 fn firework_item_data_id() -> u8 {
     let accessors = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,

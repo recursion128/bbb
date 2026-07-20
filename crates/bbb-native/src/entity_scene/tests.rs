@@ -1414,6 +1414,9 @@ fn entity_model_instances_project_head_look_from_world() {
         5.0,
         200.0,
     ));
+    // After the spawn frame, the existing movement-owned body-yaw path uses
+    // packet y_rot; the spawn-only LivingEntity head-yaw seed is cleared.
+    world.advance_entity_client_animations(1);
 
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
     let find = |id: i32| {
@@ -5357,6 +5360,7 @@ fn entity_model_instances_project_upside_down_dinnerbone() {
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
         [3.0, 64.0, -2.0],
     ));
+    world.advance_entity_client_animations(1);
 
     let render_state = |world: &WorldStore, id: i32| {
         entity_model_instances_from_world_at_partial_tick(world, None, 1.0)

@@ -884,6 +884,7 @@ fn vault_activation_level_event_threads_connection_particle_context() {
     tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
         .unwrap();
     let mut world = WorldStore::new();
+    record_test_player_info(&mut world, player_uuid);
     let mut counters = NetCounters::default();
     let mut particles = RecordingParticleSink::default();
     let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);

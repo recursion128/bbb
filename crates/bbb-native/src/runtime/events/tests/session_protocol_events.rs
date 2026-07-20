@@ -902,6 +902,7 @@ fn take_item_entity_event_emits_pickup_particle_state_before_removal() {
         z: -0.3,
     };
     let mut target = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    let target_uuid = target.uuid;
     target.position = ProtocolVec3d {
         x: 4.0,
         y: 70.0,
@@ -929,6 +930,7 @@ fn take_item_entity_event_emits_pickup_particle_state_before_removal() {
     drop(tx);
 
     let mut world = WorldStore::new();
+    record_test_player_info(&mut world, target_uuid);
     let mut counters = NetCounters::default();
     let mut particles = RecordingParticleSink::default();
     let mut random = LevelEventSoundRandomState::with_seed(0);
