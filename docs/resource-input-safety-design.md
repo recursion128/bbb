@@ -81,7 +81,6 @@ The limits close an individual untrusted PNG's unbounded allocation path, but
 they are not a process-wide residency budget. Multiple atlases prepared in one
 resource generation, the adjacent old/new owners retained by atomic reload, or
 many individually valid large dynamic textures can still produce a high finite
-peak. A future resource-memory slice must add generation-wide and dynamic-owner
-byte admission/eviction without weakening atomic reload, exact generation keys
-or fallback behavior. JSON/model/font and audio decode budgets are separate
-open input-safety work.
+peak. The generation-wide and dynamic-owner closure is specified in
+[`resource-image-memory-budget-design.md`](resource-image-memory-budget-design.md).
+JSON/model/font and audio decode budgets remain separate open input-safety work.
