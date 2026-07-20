@@ -77,6 +77,68 @@ const BAMBOO_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID: i32 = 6612;
 const TEST_LIGHT_ARRAY_BYTES: usize = 2048;
 
 #[test]
+fn localized_chat_format_preserves_outer_and_argument_styles() {
+    let outer = bbb_protocol::ComponentStyle {
+        color: Some(0xaaaaaa),
+        ..bbb_protocol::ComponentStyle::default()
+    };
+    let argument = HudStyledTextRun {
+        text: "Alice".to_string(),
+        style: HudTextStyle {
+            bold: true,
+            ..HudTextStyle::default()
+        },
+        color: Some(0x55ffff),
+    };
+    let runs = format_localized_chat_runs(
+        "<%1$s> %2$s %%",
+        &outer,
+        &[
+            vec![argument.clone()],
+            vec![HudStyledTextRun::plain("hello")],
+        ],
+    );
+    assert_eq!(runs[0].text, "<");
+    assert_eq!(runs[0].color, Some(0xaaaaaa));
+    assert_eq!(runs[1], argument);
+    assert_eq!(
+        runs.iter().map(|run| run.text.as_str()).collect::<String>(),
+        "<Alice> hello %"
+    );
+}
+
+#[test]
+fn chat_render_cache_rebuilds_only_for_display_revision_or_level() {
+    let mut world = WorldStore::default();
+    let mut runtime = HudRenderRuntime::default();
+    assert!(matches!(
+        runtime.chat_messages_update(&world, None),
+        RendererFrameUpdate::Replace(messages) if messages.is_empty()
+    ));
+    assert!(matches!(
+        runtime.chat_messages_update(&world, None),
+        RendererFrameUpdate::Unchanged
+    ));
+
+    world.push_client_system_chat_message("hello");
+    assert!(matches!(
+        runtime.chat_messages_update(&world, None),
+        RendererFrameUpdate::Replace(messages)
+            if messages.len() == 1 && messages[0].runs.iter().any(|run| run.text == "hello")
+    ));
+    assert!(matches!(
+        runtime.chat_messages_update(&world, None),
+        RendererFrameUpdate::Unchanged
+    ));
+
+    world.clear_client_chat_display_messages();
+    assert!(matches!(
+        runtime.chat_messages_update(&world, None),
+        RendererFrameUpdate::Replace(messages) if messages.is_empty()
+    ));
+}
+
+#[test]
 fn non_entity_render_observation_keeps_recent_and_peak_phase_costs() {
     let mut scratch = NonEntityRenderExtractionScratch::default();
     scratch.record_frame(

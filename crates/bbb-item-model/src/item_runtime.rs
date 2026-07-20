@@ -503,6 +503,13 @@ fn item_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ItemAtlasUvRect {
 }
 
 impl NativeItemRuntime {
+    /// Monotonic identity of the accepted client resource stack. Render-side
+    /// derived caches include this before touching localized/model payloads so
+    /// a reload cannot reuse values resolved from the previous pack stack.
+    pub fn resource_generation(&self) -> u64 {
+        self.resource_generation
+    }
+
     /// Resolves a client language key from the same selected pack stack used by item tooltips.
     /// GUI consumers keep their own semantic formatting and use this only for final labels.
     pub fn localized_text<'a>(&'a self, key: &'a str) -> &'a str {

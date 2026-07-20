@@ -11,10 +11,10 @@ use bbb_renderer::{
     BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     EntityModelInstance, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HudActionBarText, HudAirSupply, HudBlockItemModel, HudBossBar,
-    HudBossBarColor, HudBossBarOverlay, HudCommandSuggestions, HudDebugOptionsScreen,
-    HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar, HudPauseScreen,
-    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen,
-    HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
+    HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatMessage, HudCommandSuggestions,
+    HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar,
+    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen,
+    HudStatsScreen, HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
     ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
@@ -890,6 +890,203 @@ pub(crate) fn hud_title_text_from_world(
     })
 }
 
+pub(crate) fn hud_chat_messages_from_world(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudChatMessage> {
+    world
+        .client_chat()
+        .messages
+        .iter()
+        .map(|message| HudChatMessage {
+            display_sequence: message.display_sequence,
+            added_tick: message.added_tick,
+            runs: hud_chat_message_runs(message, item_runtime),
+            tag: message.tag.as_ref().map(hud_chat_tag),
+        })
+        .collect()
+}
+
+fn hud_chat_message_runs(
+    message: &bbb_world::ChatMessageState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudStyledTextRun> {
+    if let Some(decoration) = &message.decoration {
+        let template = localized_chat_text(
+            item_runtime,
+            &decoration.translation_key,
+            chat_translation_fallback(&decoration.translation_key)
+                .unwrap_or(&decoration.translation_key),
+        );
+        let parent = &decoration.style;
+        let arguments = decoration
+            .arguments
+            .iter()
+            .map(|argument| {
+                if argument.styled.is_empty() {
+                    vec![hud_chat_run(&argument.summary, parent)]
+                } else {
+                    argument
+                        .styled
+                        .iter()
+                        .map(|run| {
+                            let style = run.style.apply_to(parent);
+                            hud_chat_run(&run.text, &style)
+                        })
+                        .collect()
+                }
+            })
+            .collect::<Vec<_>>();
+        return format_localized_chat_runs(template, parent, &arguments);
+    }
+
+    if let Some(key) = message.content_translation_key.as_deref() {
+        let text = localized_chat_text(
+            item_runtime,
+            key,
+            chat_translation_fallback(key).unwrap_or(key),
+        );
+        let style = message
+            .styled_content
+            .first()
+            .map(|run| run.style.clone())
+            .unwrap_or_default();
+        return vec![hud_chat_run(text, &style)];
+    }
+    if message.styled_content.is_empty() {
+        vec![HudStyledTextRun::plain(message.content.clone())]
+    } else {
+        message
+            .styled_content
+            .iter()
+            .map(|run| hud_chat_run(&run.text, &run.style))
+            .collect()
+    }
+}
+
+fn hud_chat_run(text: &str, style: &bbb_protocol::ComponentStyle) -> HudStyledTextRun {
+    HudStyledTextRun {
+        text: text.to_string(),
+        style: HudTextStyle {
+            bold: style.bold == Some(true),
+            italic: style.italic == Some(true),
+            underlined: style.underlined == Some(true),
+            strikethrough: style.strikethrough == Some(true),
+            obfuscated: style.obfuscated == Some(true),
+        },
+        color: style.color,
+    }
+}
+
+fn hud_chat_tag(tag: &bbb_world::ChatMessageTagState) -> HudChatTag {
+    use bbb_world::ChatMessageTagState;
+    let (kind, indicator_color) = match tag {
+        ChatMessageTagState::System => (HudChatTagKind::System, 13_684_944),
+        ChatMessageTagState::SystemSinglePlayer => (HudChatTagKind::SystemSinglePlayer, 13_684_944),
+        ChatMessageTagState::NotSecure => (HudChatTagKind::NotSecure, 13_684_944),
+        ChatMessageTagState::Modified { .. } => (HudChatTagKind::Modified, 6_316_128),
+        ChatMessageTagState::Error => (HudChatTagKind::Error, 16_733_525),
+    };
+    HudChatTag {
+        kind,
+        indicator_color,
+    }
+}
+
+fn localized_chat_text<'a>(
+    item_runtime: Option<&'a NativeItemRuntime>,
+    key: &'a str,
+    fallback: &'a str,
+) -> &'a str {
+    item_runtime
+        .map(|runtime| runtime.localized_text(key))
+        .filter(|text| *text != key)
+        .unwrap_or(fallback)
+}
+
+fn chat_translation_fallback(key: &str) -> Option<&'static str> {
+    match key {
+        "chat.type.text" => Some("<%s> %s"),
+        "chat.type.announcement" => Some("[%s] %s"),
+        "chat.type.emote" => Some("* %s %s"),
+        "chat.deleted_marker" => Some("This chat message has been deleted by the server."),
+        "chat.queue" => Some("%s messages waiting"),
+        _ => None,
+    }
+}
+
+pub(crate) fn format_localized_chat_runs(
+    template: &str,
+    style: &bbb_protocol::ComponentStyle,
+    arguments: &[Vec<HudStyledTextRun>],
+) -> Vec<HudStyledTextRun> {
+    let bytes = template.as_bytes();
+    let mut runs = Vec::new();
+    let mut offset = 0;
+    let mut sequential = 0usize;
+    while offset < bytes.len() {
+        let Some(relative_percent) = bytes[offset..].iter().position(|byte| *byte == b'%') else {
+            push_hud_chat_literal(&mut runs, &template[offset..], style);
+            break;
+        };
+        let percent = offset + relative_percent;
+        push_hud_chat_literal(&mut runs, &template[offset..percent], style);
+        if bytes.get(percent + 1) == Some(&b'%') {
+            push_hud_chat_literal(&mut runs, "%", style);
+            offset = percent + 2;
+            continue;
+        }
+        let (argument_index, next) = if bytes.get(percent + 1) == Some(&b's') {
+            let index = sequential;
+            sequential += 1;
+            (Some(index), percent + 2)
+        } else {
+            let mut cursor = percent + 1;
+            while bytes.get(cursor).is_some_and(u8::is_ascii_digit) {
+                cursor += 1;
+            }
+            let index = (cursor > percent + 1
+                && bytes.get(cursor) == Some(&b'$')
+                && bytes.get(cursor + 1) == Some(&b's'))
+            .then(|| template[percent + 1..cursor].parse::<usize>().ok())
+            .flatten()
+            .and_then(|index| index.checked_sub(1));
+            (index, cursor.saturating_add(2))
+        };
+        if let Some(argument) = argument_index.and_then(|index| arguments.get(index)) {
+            runs.extend(argument.iter().cloned());
+            offset = next;
+        } else {
+            push_hud_chat_literal(&mut runs, "%", style);
+            offset = percent + 1;
+        }
+    }
+    if runs.is_empty() {
+        vec![hud_chat_run(template, style)]
+    } else {
+        runs
+    }
+}
+
+fn push_hud_chat_literal(
+    runs: &mut Vec<HudStyledTextRun>,
+    text: &str,
+    style: &bbb_protocol::ComponentStyle,
+) {
+    if text.is_empty() {
+        return;
+    }
+    let run = hud_chat_run(text, style);
+    if let Some(previous) = runs
+        .last_mut()
+        .filter(|previous| previous.style == run.style && previous.color == run.color)
+    {
+        previous.text.push_str(text);
+    } else {
+        runs.push(run);
+    }
+}
+
 /// Projects the world's tracked boss bars into the renderer's ordered frame
 /// list, mirroring `BossHealthOverlay.extractRenderState`'s walk over its
 /// event map (BossHealthOverlay.java:57-82). Vanilla iterates a
@@ -1032,6 +1229,8 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
     pub(crate) hud_player_list: Option<HudPlayerList>,
+    pub(crate) hud_chat_messages: RendererFrameUpdate<Vec<HudChatMessage>>,
+    pub(crate) hud_chat_context: HudChatContext,
     pub(crate) hud_command_suggestions: Option<HudCommandSuggestions>,
     pub(crate) hud_debug_overlay: Option<HudDebugOverlay>,
     pub(crate) hud_boss_bars: RendererFrameUpdate<Vec<HudBossBar>>,
@@ -1275,6 +1474,10 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);
+    if let RendererFrameUpdate::Replace(messages) = frame.hud_chat_messages {
+        renderer.set_hud_chat_messages(messages);
+    }
+    renderer.set_hud_chat_context(frame.hud_chat_context);
     renderer.set_hud_command_suggestions(frame.hud_command_suggestions);
     renderer.set_hud_player_list(frame.hud_player_list);
     renderer.set_hud_debug_overlay(frame.hud_debug_overlay);

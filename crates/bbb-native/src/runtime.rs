@@ -37,7 +37,8 @@ use bbb_renderer::{
     CloudFrame, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementBackgroundTexture,
     HudAdvancementHoverBoxSprite, HudAdvancementLineTexture, HudAdvancementTabSprite,
-    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudCommandSuggestionEntry,
+    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudChatContext,
+    HudChatMessage, HudChatTag, HudChatTagKind, HudCommandSuggestionEntry,
     HudCommandSuggestionTooltip, HudCommandSuggestions, HudDebugCrosshair, HudDebugFrameTimeChart,
     HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
     HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOptionsTooltip,
@@ -638,6 +639,15 @@ pub(crate) struct HudRenderRuntime {
     insecure_chat_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
     stats_screen_narration: Option<ScreenNarrationFrame>,
+    chat_cache_key: Option<HudChatCacheKey>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudChatCacheKey {
+    level_generation: u64,
+    delivery_revision: u64,
+    resource_generation: u64,
+    resources_loaded: bool,
 }
 
 impl ClientAnimationTickState {
@@ -649,6 +659,24 @@ impl ClientAnimationTickState {
 impl HudRenderRuntime {
     pub(crate) fn stats_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.stats_screen_narration.as_ref()
+    }
+
+    fn chat_messages_update(
+        &mut self,
+        world: &WorldStore,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> RendererFrameUpdate<Vec<HudChatMessage>> {
+        let key = HudChatCacheKey {
+            level_generation: world.client_level_generation(),
+            delivery_revision: world.client_chat().delivery_revision,
+            resource_generation: item_runtime.map_or(0, NativeItemRuntime::resource_generation),
+            resources_loaded: item_runtime.is_some(),
+        };
+        if self.chat_cache_key == Some(key) {
+            return RendererFrameUpdate::Unchanged;
+        }
+        self.chat_cache_key = Some(key);
+        RendererFrameUpdate::Replace(hud_chat_messages_from_world(world, item_runtime))
     }
 }
 
@@ -2559,6 +2587,23 @@ pub(crate) fn update_renderer_from_publication(
     let hud_action_bar_text = hud_action_bar_text_from_world(world, entity_partial_tick);
     let hud_title_text = hud_title_text_from_world(world, entity_partial_tick);
     let hud_player_list = hud_player_list_from_world(input, world);
+    let hud_chat_messages = hud_render_runtime.chat_messages_update(world, item_runtime);
+    let queued_chat_messages = world.client_chat().delayed_messages.len();
+    let queued_chat_messages_text = (queued_chat_messages > 0).then(|| {
+        localized_gui_text_with_args(
+            item_runtime,
+            "chat.queue",
+            "%s messages waiting",
+            &[&queued_chat_messages.to_string()],
+        )
+    });
+    let hud_chat_context = HudChatContext {
+        gui_ticks: world.client_chat().gui_ticks,
+        focused: input.chat_entry_is_active(),
+        scroll_lines: 0,
+        queued_messages: queued_chat_messages,
+        queue_text: queued_chat_messages_text,
+    };
     // Vanilla `Gui.extractBossOverlay` re-walks the tracked boss events every
     // frame with no countdown state, so the projection is pure world state.
     let hud_boss_bars = if stable_world_unchanged {
@@ -3096,6 +3141,8 @@ pub(crate) fn update_renderer_from_publication(
             hud_action_bar_text,
             hud_title_text,
             hud_player_list,
+            hud_chat_messages,
+            hud_chat_context,
             hud_command_suggestions,
             hud_debug_overlay,
             hud_boss_bars,

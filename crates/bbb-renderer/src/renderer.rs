@@ -62,9 +62,10 @@ use crate::{
     hud::{
         create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
         create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
-        HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudDigitGlyph, HudFontGlyphMap,
-        HudInventoryScreen, HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu,
-        HudStatsScrollbarSprite, HudStatsSprite, HUD_HOTBAR_SLOTS,
+        HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudChatContext, HudChatLine,
+        HudChatMessage, HudDigitGlyph, HudFontGlyphMap, HudInventoryScreen, HudItemIcon,
+        HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu, HudStatsScrollbarSprite,
+        HudStatsSprite, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -514,6 +515,7 @@ pub struct Renderer {
     /// Advance-grouped glyph pool for obfuscated (`§k`) text, rebuilt once when
     /// `hud_font_glyphs` is uploaded so per-frame draws never rescan the table.
     pub(super) hud_obfuscated_glyph_pool: HudObfuscatedGlyphPool,
+    pub(super) hud_chat_modified_icon: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(super) hud_inworld_menu_background: Option<HudSpriteGpu>,
     pub(super) hud_inventory_background: Option<HudSpriteGpu>,
@@ -729,6 +731,9 @@ pub struct Renderer {
     pub(super) hud_action_bar_text: Option<crate::hud::HudActionBarText>,
     pub(super) hud_title_text: Option<crate::hud::HudTitleText>,
     pub(super) hud_player_list: Option<crate::hud::HudPlayerList>,
+    pub(super) hud_chat_messages: Vec<HudChatMessage>,
+    pub(super) hud_chat_lines: Vec<HudChatLine>,
+    pub(super) hud_chat_context: HudChatContext,
     pub(super) hud_command_suggestions: Option<crate::hud::HudCommandSuggestions>,
     pub(super) hud_debug_overlay: Option<crate::hud::HudDebugOverlay>,
     /// This frame's projected boss bars plus the 182x5 sprite sheets (one
@@ -1740,6 +1745,7 @@ impl Renderer {
             hud_font_atlas: None,
             hud_font_glyphs: HudFontGlyphMap::default(),
             hud_obfuscated_glyph_pool: HudObfuscatedGlyphPool::default(),
+            hud_chat_modified_icon: None,
             hud_hotbar_item_icons: std::array::from_fn(|_| None),
             hud_inworld_menu_background: None,
             hud_inventory_background: None,
@@ -1945,6 +1951,9 @@ impl Renderer {
             hud_action_bar_text: None,
             hud_title_text: None,
             hud_player_list: None,
+            hud_chat_messages: Vec::new(),
+            hud_chat_lines: Vec::new(),
+            hud_chat_context: HudChatContext::default(),
             hud_command_suggestions: None,
             hud_debug_overlay: None,
             hud_boss_bars: Vec::new(),

@@ -40,6 +40,12 @@ pub(crate) fn try_load_hud_textures(
         hotbar_selection.height,
         &hotbar_selection.rgba,
     )?;
+    let chat_modified = hud_sprite(&sprites, "icon/chat_modified")?;
+    renderer.upload_hud_chat_modified_icon(
+        chat_modified.width,
+        chat_modified.height,
+        &chat_modified.rgba,
+    )?;
     let inventory = gui_texture(
         roots,
         "textures/gui/container/inventory.png",
@@ -1473,6 +1479,13 @@ mod tests {
             hud_sprite(&sprites, "toast/system").unwrap().id,
             "minecraft:toast/system"
         );
+
+        let chat_modified =
+            SpriteImage::new("minecraft:icon/chat_modified", 9, 9, vec![255; 9 * 9 * 4]).unwrap();
+        sprites.insert(chat_modified.id.clone(), chat_modified);
+        let chat_modified = hud_sprite(&sprites, "icon/chat_modified").unwrap();
+        assert_eq!(chat_modified.id, "minecraft:icon/chat_modified");
+        assert_eq!((chat_modified.width, chat_modified.height), (9, 9));
 
         for id in [
             "dialog/warning_button",

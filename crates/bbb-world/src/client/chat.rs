@@ -335,6 +335,10 @@ impl WorldStore {
     }
 
     pub fn clear_client_chat_display_messages(&mut self) {
+        if !self.client_chat.messages.is_empty() || !self.client_chat.deleted_messages.is_empty() {
+            self.client_chat.delivery_revision =
+                self.client_chat.delivery_revision.saturating_add(1);
+        }
         self.client_chat.messages.clear();
         self.client_chat.deleted_messages.clear();
         refresh_chat_counters(self);
@@ -1127,6 +1131,10 @@ impl WorldStore {
                 self.client_chat.gui_ticks,
             )
         };
+        if visible_replaced {
+            self.client_chat.delivery_revision =
+                self.client_chat.delivery_revision.saturating_add(1);
+        }
         self.client_chat.deleted_messages.push(DeletedChatState {
             signature: Some(signature),
             cache_id: packet.message_signature.cache_id,
@@ -1169,6 +1177,10 @@ impl WorldStore {
             let deletion = &mut self.client_chat.deleted_messages[index];
             deletion.visible_replaced |= replaced;
             deletion.deletable_after_tick = next_deadline;
+            if replaced {
+                self.client_chat.delivery_revision =
+                    self.client_chat.delivery_revision.saturating_add(1);
+            }
         }
         refresh_chat_counters(self);
     }
@@ -1444,11 +1456,12 @@ fn replace_visible_chat_message_or_delay(
         return (false, Some(deletable_after));
     }
     let added_tick = message.added_tick;
-    *message = deleted_chat_marker(added_tick);
+    let display_sequence = message.display_sequence;
+    *message = deleted_chat_marker(added_tick, display_sequence);
     (true, None)
 }
 
-fn deleted_chat_marker(added_tick: u64) -> ChatMessageState {
+fn deleted_chat_marker(added_tick: u64, display_sequence: u64) -> ChatMessageState {
     ChatMessageState {
         kind: ChatMessageKind::System,
         source: ChatMessageSourceState::SystemServer,
@@ -1484,7 +1497,7 @@ fn deleted_chat_marker(added_tick: u64) -> ChatMessageState {
         trust_level: ChatTrustLevelState::NotSecure,
         tag: Some(ChatMessageTagState::System),
         received_epoch_millis: 0,
-        display_sequence: 0,
+        display_sequence,
         filter_mask_words: Vec::new(),
         unsigned_content_has_custom_font: false,
         added_tick,
@@ -2484,6 +2497,7 @@ mod tests {
             .iter()
             .any(Option::is_some));
         assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+        let display_revision = store.client_chat().delivery_revision;
 
         store.clear_client_chat_display_messages();
 
@@ -2511,6 +2525,10 @@ mod tests {
         assert_eq!(
             store.counters().player_chat_acknowledgement_pending_offset,
             1
+        );
+        assert_eq!(
+            store.client_chat().delivery_revision,
+            display_revision.saturating_add(1)
         );
     }
 
@@ -2725,6 +2743,8 @@ mod tests {
         let packet = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "delete me");
         let signature = packet.signature.clone().unwrap();
         let _ = store.apply_player_chat_at(packet, 1);
+        let display_sequence = store.client_chat().messages[0].display_sequence;
+        let display_revision = store.client_chat().delivery_revision;
 
         assert_eq!(
             store.apply_delete_chat(ProtocolDeleteChat {
@@ -2741,6 +2761,7 @@ mod tests {
         );
         store.advance_chat_gui_ticks(59);
         assert_eq!(store.client_chat().messages[0].content, "delete me");
+        assert_eq!(store.client_chat().delivery_revision, display_revision);
         store.advance_chat_gui_ticks(1);
         assert_eq!(
             store.client_chat().messages[0]
@@ -2749,6 +2770,14 @@ mod tests {
             Some("chat.deleted_marker")
         );
         assert!(store.client_chat().deleted_messages[0].visible_replaced);
+        assert_eq!(
+            store.client_chat().messages[0].display_sequence,
+            display_sequence
+        );
+        assert_eq!(
+            store.client_chat().delivery_revision,
+            display_revision.saturating_add(1)
+        );
         assert_eq!(
             store.client_chat().deleted_messages[0].deletable_after_tick,
             None
