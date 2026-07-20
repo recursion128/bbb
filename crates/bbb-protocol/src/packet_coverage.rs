@@ -2216,24 +2216,32 @@ mod tests {
     }
 
     #[test]
-    fn play_add_entity_keeps_registry_factory_and_runtime_parity_open() {
+    fn play_add_entity_lifecycle_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_ADD_ENTITY")
             .expect("play add entity coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(
+            entry.coverage["canonical_apply"]
+                .evidence
+                .iter()
+                .any(|evidence| evidence
+                    .contains("packet_entity_type_uses_session_resource_identity"))
         );
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("llama_spit_recreation_batch")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("minecart_and_bee_tickable_sounds")));
     }
 
     #[test]
