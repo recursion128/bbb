@@ -184,6 +184,170 @@ fn client_tick_schedule_follows_loaded_roots_and_recursive_player_exception() {
 }
 
 #[test]
+fn frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(999));
+    let frozen_root_id = 10;
+    let player_root_id = 11;
+    let player_vehicle_id = 20;
+    let intermediate_passenger_id = 21;
+    let nested_player_id = 22;
+    for (id, entity_type_id) in [
+        (frozen_root_id, VANILLA_ENTITY_TYPE_COW_ID),
+        (player_root_id, VANILLA_ENTITY_TYPE_PLAYER_ID),
+        (player_vehicle_id, VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
+        (intermediate_passenger_id, VANILLA_ENTITY_TYPE_COW_ID),
+        (nested_player_id, VANILLA_ENTITY_TYPE_PLAYER_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+    }
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: player_vehicle_id,
+        passenger_ids: vec![intermediate_passenger_id],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: intermediate_passenger_id,
+        passenger_ids: vec![nested_player_id],
+    }));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 20.0,
+        frozen: true,
+    });
+
+    let work = store.advance_entity_client_animations_with_observation(1);
+    assert_eq!(work.mutated_entities, 4);
+    assert_eq!(
+        store
+            .probe_entity(frozen_root_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        0,
+        "an ordinary non-Player root is frozen"
+    );
+    for id in [
+        player_root_id,
+        player_vehicle_id,
+        intermediate_passenger_id,
+        nested_player_id,
+    ] {
+        assert_eq!(
+            store.probe_entity(id).unwrap().client_animations.age_ticks,
+            1,
+            "Player roots and the loaded chain to an indirect Player passenger stay running"
+        );
+    }
+}
+
+#[test]
+fn frozen_step_batch_only_runs_ordinary_entities_for_available_step_ticks() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(999));
+    let ordinary_id = 10;
+    let player_id = 11;
+    store.apply_add_entity(protocol_add_entity_with_type(
+        ordinary_id,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        player_id,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 20.0,
+        frozen: true,
+    });
+    store.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 1 });
+
+    let work = store.advance_entity_client_animations_with_observation(3);
+    assert_eq!(work.scanned_entities, 6);
+    assert_eq!(work.mutated_entities, 4);
+    assert_eq!(
+        store
+            .probe_entity(ordinary_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        1
+    );
+    assert_eq!(
+        store
+            .probe_entity(player_id)
+            .unwrap()
+            .client_animations
+            .age_ticks,
+        3
+    );
+    assert_eq!(
+        store.ticking().frozen_ticks_to_run,
+        1,
+        "the runtime clock owner consumes the shared frozen-step budget after entity ticks"
+    );
+    assert_eq!(store.consume_running_render_ticks(3), 1);
+    assert_eq!(store.ticking().frozen_ticks_to_run, 0);
+}
+
+#[test]
+fn passenger_ride_tick_clears_motion_before_client_entity_tick() {
+    let mut store = WorldStore::new();
+    let vehicle_id = 10;
+    let passenger_id = 20;
+    store.apply_add_entity(protocol_add_entity_with_type(
+        vehicle_id,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        passenger_id,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: vehicle_id,
+        delta_movement: ProtocolVec3d {
+            x: 0.25,
+            y: 0.5,
+            z: -0.75,
+        },
+    }));
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: passenger_id,
+        delta_movement: ProtocolVec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id,
+        passenger_ids: vec![passenger_id],
+    }));
+
+    store.advance_entity_client_animations(1);
+
+    assert_eq!(
+        store
+            .entities
+            .transform(passenger_id)
+            .unwrap()
+            .delta_movement,
+        EntityVec3::default()
+    );
+    assert_eq!(
+        store.entities.transform(vehicle_id).unwrap().delta_movement,
+        EntityVec3 {
+            x: 0.25,
+            y: 0.5,
+            z: -0.75,
+        }
+    );
+}
+
+#[test]
 fn living_passenger_body_rotation_follows_interpolated_living_vehicle() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

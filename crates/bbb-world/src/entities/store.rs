@@ -291,12 +291,14 @@ pub(crate) struct EntityStore {
 struct EntityClientTickScratch {
     scheduled_set: HashSet<i32>,
     scheduled_entities: Vec<Entity>,
+    player_passenger_ancestors: HashSet<i32>,
 }
 
 impl EntityClientTickScratch {
     fn clear(&mut self) {
         self.scheduled_set.clear();
         self.scheduled_entities.clear();
+        self.player_passenger_ancestors.clear();
     }
 }
 
@@ -4502,6 +4504,7 @@ impl EntityStore {
     pub(crate) fn advance_client_animations<F, G>(
         &mut self,
         ticks: u32,
+        runs_normally: bool,
         spectator_player_uuids: &HashSet<Uuid>,
         in_water_by_id: &HashMap<i32, bool>,
         minecart_improvements_enabled: bool,
@@ -4521,7 +4524,8 @@ impl EntityStore {
         for _ in 0..ticks {
             let mut tick_scratch = std::mem::take(&mut self.client_tick_scratch);
             let schedule_started_at = Instant::now();
-            self.fill_client_tick_schedule(&mut tick_scratch, is_ticking_entity);
+            self.fill_client_tick_schedule(&mut tick_scratch, runs_normally, is_ticking_entity);
+            self.prepare_scheduled_passengers_for_ride_tick(&tick_scratch.scheduled_entities);
             work.schedule_duration += schedule_started_at.elapsed();
             let scheduled = &tick_scratch.scheduled_set;
             let projectile_started_at = Instant::now();
@@ -4741,11 +4745,15 @@ impl EntityStore {
     fn fill_client_tick_schedule<F>(
         &self,
         scratch: &mut EntityClientTickScratch,
+        runs_normally: bool,
         is_ticking_entity: &F,
     ) where
         F: Fn(i32, i32, EntityVec3) -> bool,
     {
         scratch.clear();
+        if !runs_normally {
+            self.fill_player_passenger_ancestors(scratch);
+        }
         for &id in &self.order {
             let Some(entity) = self.by_protocol_id.get(&id).copied() else {
                 continue;
@@ -4759,10 +4767,61 @@ impl EntityStore {
             };
             if mount.vehicle_id.is_some()
                 || !is_ticking_entity(identity.id, identity.entity_type_id, transform.position)
+                || (!runs_normally
+                    && identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
+                    && !scratch.player_passenger_ancestors.contains(&identity.id))
             {
                 continue;
             }
             self.append_client_tick_passenger_tree(id, scratch, is_ticking_entity);
+        }
+    }
+
+    fn prepare_scheduled_passengers_for_ride_tick(&mut self, scheduled_entities: &[Entity]) {
+        for &entity in scheduled_entities {
+            let Ok((mount, transform)) = self
+                .ecs
+                .query_one_mut::<(&EntityMount, &mut EntityTransform)>(entity)
+            else {
+                continue;
+            };
+            if mount.vehicle_id.is_some() {
+                // Vanilla `Entity.rideTick` clears motion immediately before
+                // calling the entity's ordinary `tick`. Specialized client
+                // movement therefore starts from zero rather than retaining a
+                // stale packet velocity. Root entities keep their velocity.
+                transform.delta_movement = EntityVec3::default();
+            }
+        }
+    }
+
+    fn fill_player_passenger_ancestors(&self, scratch: &mut EntityClientTickScratch) {
+        let max_depth = self.by_protocol_id.len();
+        for &id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+                continue;
+            }
+
+            let mut passenger_id = identity.id;
+            for _ in 0..max_depth {
+                let Some(passenger) = self.by_protocol_id.get(&passenger_id).copied() else {
+                    break;
+                };
+                let Ok(mount) = self.ecs.get::<&EntityMount>(passenger) else {
+                    break;
+                };
+                let Some(vehicle_id) = mount.vehicle_id else {
+                    break;
+                };
+                scratch.player_passenger_ancestors.insert(vehicle_id);
+                passenger_id = vehicle_id;
+            }
         }
     }
 

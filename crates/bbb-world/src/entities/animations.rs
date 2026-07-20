@@ -6308,13 +6308,30 @@ impl WorldStore {
         if ticks == 0 || self.entity_count() == 0 {
             return crate::EntityClientTickWork::default();
         }
-        if ticks != 1 {
-            let mut work = crate::EntityClientTickWork::default();
-            for _ in 0..ticks {
-                work.accumulate(self.advance_entity_client_animations_with_observation(1));
-            }
-            return work;
+
+        // `TickRateManager.tick` consumes frozen step ticks before
+        // `ClientLevel.tickEntities`. The runtime consumes the same count after
+        // this call for the clock/border owners, so derive the per-tick gate
+        // without mutating `WorldTickingState` here. Player roots and roots with
+        // indirect Player passengers still tick while `runs_normally` is false;
+        // `EntityStore` applies that entity-specific exception.
+        let ticking = self.ticking();
+        let running_ticks = if ticking.frozen {
+            (ticking.frozen_ticks_to_run.max(0) as u32).min(ticks)
+        } else {
+            ticks
+        };
+        let mut work = crate::EntityClientTickWork::default();
+        for tick_index in 0..ticks {
+            work.accumulate(self.advance_entity_client_animation_tick(tick_index < running_ticks));
         }
+        work
+    }
+
+    fn advance_entity_client_animation_tick(
+        &mut self,
+        runs_normally: bool,
+    ) -> crate::EntityClientTickWork {
         let preparation_started_at = std::time::Instant::now();
         let interpolation_collision_inputs = self.entities.interpolation_collision_inputs();
         let entity_collision_targets = if interpolation_collision_inputs.is_empty() {
@@ -6379,7 +6396,8 @@ impl WorldStore {
             |entity_id: i32| collision_free_interpolation_targets.contains(&entity_id);
         let preparation_duration = preparation_started_at.elapsed();
         let mut work = self.entities.advance_client_animations(
-            ticks,
+            1,
+            runs_normally,
             &spectator_player_uuids,
             &in_water_by_id,
             minecart_improvements_enabled,

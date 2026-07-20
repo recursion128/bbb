@@ -18215,6 +18215,37 @@ fn entity_client_tick_cadence_preserves_residual_across_rate_changes_and_freeze(
 }
 
 #[test]
+fn entity_client_tick_batch_shares_the_frozen_step_budget_with_world_time() {
+    let start = Instant::now();
+    let mut ticks = ClientAnimationTickState::default();
+    let mut world = WorldStore::new();
+    world.apply_add_entity(test_add_entity(123, 104));
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 20.0,
+        frozen: true,
+    });
+    world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 1 });
+
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, start),
+        0
+    );
+    let advanced_ticks = advance_entity_client_animations(
+        &mut world,
+        &mut ticks,
+        start + Duration::from_millis(151),
+    );
+    assert_eq!(advanced_ticks, 3);
+    assert_eq!(
+        world.probe_entity(123).unwrap().client_animations.age_ticks,
+        1
+    );
+    assert_eq!(world.ticking().frozen_ticks_to_run, 1);
+    assert_eq!(world.consume_running_render_ticks(advanced_ticks), 1);
+    assert_eq!(world.ticking().frozen_ticks_to_run, 0);
+}
+
+#[test]
 fn entity_client_tick_catch_up_is_capped_at_ten_per_step() {
     let start = Instant::now();
     let mut ticks = ClientAnimationTickState::default();
