@@ -17585,7 +17585,7 @@ fn command_entry_multi_character_commit_requests_suggestions_once() {
 }
 
 #[test]
-fn command_entry_tab_applies_local_literal_without_server_request() {
+fn command_entry_tab_applies_latest_suggestion_range() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
