@@ -23,8 +23,9 @@ use crate::entities::{
     is_vanilla_minecart_type, vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
-    ChickenSoundVariantIdentity, CowSoundVariantIdentity, LivingEntityItemBreakState,
-    PigSoundVariantIdentity, VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
+    ChickenSoundVariantIdentity, CowSoundVariantIdentity, EntityClientMovementSoundKind,
+    EntityClientMovementSoundState, LivingEntityItemBreakState, PigSoundVariantIdentity,
+    VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
 };
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, RegistrySoundKind, CAT_SOUND_VARIANT_REGISTRY,
@@ -75,6 +76,8 @@ const PLAYER_HURT_FREEZE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_freez
 const WOLF_ARMOR_DAMAGE_SOUND_EVENT: &str = "minecraft:entity.wolf_armor.damage";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
+const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
+const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
@@ -1368,6 +1371,37 @@ impl WorldStore {
     /// seed instead of a wall-clock one.
     pub fn next_sound_seed(&mut self) -> i64 {
         self.client_audio.sound_seed_random.next_long()
+    }
+
+    /// Resolves a narrow entity-movement sound into the same positioned sound
+    /// state used by packet and client-local audio, consuming the canonical
+    /// client sound seed at the movement effect's ordered position.
+    pub fn record_entity_client_movement_sound(
+        &mut self,
+        state: EntityClientMovementSoundState,
+    ) -> SoundEventState {
+        let (sound, source, volume) = match state.kind {
+            EntityClientMovementSoundKind::FireworkRocketLaunch => {
+                (FIREWORK_ROCKET_LAUNCH_SOUND_EVENT, "ambient", 3.0)
+            }
+            EntityClientMovementSoundKind::TridentReturn => {
+                (TRIDENT_RETURN_SOUND_EVENT, "neutral", 10.0)
+            }
+        };
+        let event = SoundEventState {
+            sound: direct_sound_holder(sound),
+            source: source.to_string(),
+            position: ProtocolVec3d {
+                x: state.position.x,
+                y: state.position.y,
+                z: state.position.z,
+            },
+            volume,
+            pitch: 1.0,
+            seed: self.next_sound_seed(),
+            distance_delay: false,
+        };
+        self.record_positioned_sound(event)
     }
 
     pub fn last_sound(&self) -> Option<&SoundEventState> {
@@ -3543,6 +3577,45 @@ mod tests {
         let recorded = store.record_positioned_sound(sound);
 
         assert_eq!(store.last_sound(), Some(&recorded));
+        assert_eq!(store.counters().sound_packets, 0);
+    }
+
+    #[test]
+    fn entity_client_movement_sounds_use_canonical_seed_and_vanilla_categories() {
+        let mut store = WorldStore::new();
+        let firework = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+            entity_id: 7,
+            kind: EntityClientMovementSoundKind::FireworkRocketLaunch,
+            position: crate::EntityVec3 {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+        });
+        let trident = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+            entity_id: 8,
+            kind: EntityClientMovementSoundKind::TridentReturn,
+            position: crate::EntityVec3 {
+                x: -1.0,
+                y: 4.0,
+                z: 0.5,
+            },
+        });
+
+        assert_eq!(
+            firework.sound.location.as_deref(),
+            Some("minecraft:entity.firework_rocket.launch")
+        );
+        assert_eq!(firework.source, "ambient");
+        assert_eq!(firework.volume, 3.0);
+        assert_eq!(
+            trident.sound.location.as_deref(),
+            Some("minecraft:item.trident.return")
+        );
+        assert_eq!(trident.source, "neutral");
+        assert_eq!(trident.volume, 10.0);
+        assert_ne!(firework.seed, trident.seed);
+        assert_eq!(store.last_sound(), Some(&trident));
         assert_eq!(store.counters().sound_packets, 0);
     }
 

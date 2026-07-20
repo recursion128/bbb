@@ -66,12 +66,12 @@ use bbb_renderer::{
 };
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
-    ContainerState, EntityClientTickWork, EvokerFangsCritParticleState, ItemEquipmentSlot,
-    LocalSoundEventState, MerchantOfferState, MerchantOffersState, MobEffectState,
-    MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
-    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
-    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
+    ContainerState, EntityClientMovementEffectState, EntityClientTickWork,
+    EvokerFangsCritParticleState, ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState,
+    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
+    OminousItemSpawnerParticleState, PrimedTntSmokeParticleState, RavagerStunParticleState,
+    SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState,
+    TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -2384,7 +2384,12 @@ pub(crate) fn advance_simulation(
     let mut particle_events = particle_runtime
         .as_mut()
         .map(|runtime| runtime as &mut dyn ParticleEventSink);
-    submit_entity_client_tick_particles(particle_batches, world, &mut particle_events);
+    submit_entity_client_tick_effects(
+        particle_batches,
+        world,
+        &mut particle_events,
+        &mut audio_events,
+    );
     submit_ominous_item_spawner_particles(particle_batches, world, &mut particle_events);
     if let Some(audio_events) = audio_events.as_deref_mut() {
         audio_events.tick_entity_sound_positions(
@@ -3354,10 +3359,11 @@ fn primed_tnt_smoke_particle_batch(
     }
 }
 
-fn submit_entity_client_tick_particles(
+fn submit_entity_client_tick_effects(
     batches: &mut dyn ParticleBatchSink,
     world: &mut WorldStore,
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) {
     let batch = entity_client_tick_particle_batch(
         world.take_ravager_stun_particle_states(),
@@ -3365,15 +3371,23 @@ fn submit_entity_client_tick_particles(
     );
     batches.submit_particle_batch(batch);
 
-    let Some(particle_events) = particle_events.as_deref_mut() else {
-        world
-            .drain_entity_client_movement_particle_states()
-            .for_each(drop);
-        return;
-    };
-    for state in world.drain_entity_client_movement_particle_states() {
-        batches
-            .submit_particle_batch(particle_events.spawn_entity_client_movement_particles(state));
+    while let Some(effect) = world.pop_entity_client_movement_effect_state() {
+        match effect {
+            EntityClientMovementEffectState::Particle(state) => {
+                let Some(particle_events) = particle_events.as_deref_mut() else {
+                    continue;
+                };
+                batches.submit_particle_batch(
+                    particle_events.spawn_entity_client_movement_particles(state),
+                );
+            }
+            EntityClientMovementEffectState::Sound(state) => {
+                let sound = world.record_entity_client_movement_sound(state);
+                if let Some(audio_events) = audio_events.as_deref_mut() {
+                    audio_events.play_positioned_sound(&sound);
+                }
+            }
+        }
     }
 }
 

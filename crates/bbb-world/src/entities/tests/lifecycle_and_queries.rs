@@ -1951,13 +1951,26 @@ fn firework_rocket_trail_particles_queue_once_per_client_tick() {
     store.advance_entity_client_animations(2);
 
     let states = store
-        .drain_entity_client_movement_particle_states()
+        .drain_entity_client_movement_effect_states()
         .collect::<Vec<_>>();
-    assert_eq!(states.len(), 2);
+    assert_eq!(states.len(), 3);
+    assert!(matches!(
+        states.first(),
+        Some(EntityClientMovementEffectState::Sound(
+            EntityClientMovementSoundState {
+                entity_id: 210,
+                kind: EntityClientMovementSoundKind::FireworkRocketLaunch,
+                ..
+            }
+        ))
+    ));
     let trails = states
         .into_iter()
-        .map(|state| match state {
-            EntityClientMovementParticleState::FireworkRocket(state) => state,
+        .filter_map(|state| match state {
+            EntityClientMovementEffectState::Particle(
+                EntityClientMovementParticleState::FireworkRocket(state),
+            ) => Some(state),
+            EntityClientMovementEffectState::Sound(_) => None,
             other => panic!("unexpected movement particle: {other:?}"),
         })
         .collect::<Vec<_>>();
@@ -1992,7 +2005,7 @@ fn firework_rocket_trail_particles_queue_once_per_client_tick() {
     );
     assert_eq!(trails[1].delta_movement, second_delta);
     assert!(store
-        .drain_entity_client_movement_particle_states()
+        .drain_entity_client_movement_effect_states()
         .next()
         .is_none());
 }

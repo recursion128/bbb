@@ -5323,9 +5323,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let primed_tnt_smoke = source
         .find("submit_primed_tnt_smoke_particles(particle_batches, world, advanced_ticks);")
         .expect("pump should emit PrimedTnt client smoke before particle tick");
-    let entity_client_tick_particles = source
-        .find("submit_entity_client_tick_particles(particle_batches, world, &mut particle_events);")
-        .expect("pump should emit entity client tick particles before particle tick");
+    let entity_client_tick_effects = source
+        .find("submit_entity_client_tick_effects(")
+        .expect("pump should emit ordered entity client tick effects before particle tick");
     let ominous_item_spawner_particles = source
         .find(
             "submit_ominous_item_spawner_particles(particle_batches, world, &mut particle_events);",
@@ -5385,11 +5385,11 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         "vanilla `PrimedTnt.tick` emits smoke before ParticleEngine.tick advances particles"
     );
     assert!(
-        primed_tnt_smoke < entity_client_tick_particles && entity_client_tick_particles < particle_tick,
-        "entity client-tick particles should be submitted before ParticleEngine.tick advances particles"
+        primed_tnt_smoke < entity_client_tick_effects && entity_client_tick_effects < particle_tick,
+        "entity client-tick effects should be submitted before ParticleEngine.tick advances particles"
     );
     assert!(
-        entity_client_tick_particles < ominous_item_spawner_particles
+        entity_client_tick_effects < ominous_item_spawner_particles
             && ominous_item_spawner_particles < particle_tick,
         "OminousItemSpawner client particles should be submitted before ParticleEngine.tick advances particles"
     );

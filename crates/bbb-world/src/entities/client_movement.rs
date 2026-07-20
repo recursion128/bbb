@@ -8,7 +8,8 @@ use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use hecs::Entity;
 
 use super::components::{
-    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityMetadata, EntityTransform,
+    EntityClientAnimations, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityMetadata, EntityTransform,
 };
 use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
@@ -20,9 +21,10 @@ use super::schema::{
     VanillaEntityClientMovementPolicy,
 };
 use super::{
-    EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
-    EntityClientMovementSimpleParticleState, EntityPickBoundsState, EntityStore, EntityVec3,
-    EyeOfEnderTrailParticleState, FireworkRocketTrailParticleState,
+    EntityClientMovementEffectState, EntityClientMovementParticleState,
+    EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState,
+    EntityClientMovementSoundKind, EntityClientMovementSoundState, EntityPickBoundsState,
+    EntityStore, EntityVec3, EyeOfEnderTrailParticleState, FireworkRocketTrailParticleState,
     ShulkerBulletTrailParticleState, VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
 
@@ -126,7 +128,7 @@ impl EntityStore {
         in_water_by_id: &HashMap<i32, bool>,
         collisions_by_id: &HashMap<i32, EntityClientMovementCollisionResult>,
     ) {
-        let mut particles = Vec::new();
+        let mut effects = Vec::new();
         for &entity in scheduled {
             let (entity_id, entity_type_id) = {
                 let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
@@ -154,7 +156,7 @@ impl EntityStore {
                         transform,
                         policy,
                         in_water_by_id.get(&entity_id).copied().unwrap_or(false),
-                        &mut particles,
+                        &mut effects,
                     );
                 }
                 VanillaEntityClientMovementPolicy::HurtingProjectile
@@ -178,7 +180,7 @@ impl EntityStore {
                         transform,
                         policy,
                         in_water_by_id.get(&entity_id).copied().unwrap_or(false),
-                        &mut particles,
+                        &mut effects,
                     );
                 }
                 VanillaEntityClientMovementPolicy::EyeOfEnder
@@ -192,20 +194,25 @@ impl EntityStore {
                             // the projectile lifecycle pass, then the client keeps the
                             // server-provided velocity and advances one position step.
                             advance_position(&mut transform);
-                            particles.push(EntityClientMovementParticleState::EyeOfEnder(
-                                EyeOfEnderTrailParticleState {
-                                    entity_id,
-                                    origin: EntityVec3 {
-                                        x: transform.position.x - transform.delta_movement.x * 0.25,
-                                        y: transform.position.y - transform.delta_movement.y * 0.25,
-                                        z: transform.position.z - transform.delta_movement.z * 0.25,
+                            effects.push(EntityClientMovementEffectState::Particle(
+                                EntityClientMovementParticleState::EyeOfEnder(
+                                    EyeOfEnderTrailParticleState {
+                                        entity_id,
+                                        origin: EntityVec3 {
+                                            x: transform.position.x
+                                                - transform.delta_movement.x * 0.25,
+                                            y: transform.position.y
+                                                - transform.delta_movement.y * 0.25,
+                                            z: transform.position.z
+                                                - transform.delta_movement.z * 0.25,
+                                        },
+                                        delta_movement: transform.delta_movement,
+                                        in_water: in_water_by_id
+                                            .get(&entity_id)
+                                            .copied()
+                                            .unwrap_or(false),
                                     },
-                                    delta_movement: transform.delta_movement,
-                                    in_water: in_water_by_id
-                                        .get(&entity_id)
-                                        .copied()
-                                        .unwrap_or(false),
-                                },
+                                ),
                             ));
                         }
                         VanillaEntityClientMovementPolicy::ShulkerBullet => {
@@ -214,15 +221,18 @@ impl EntityStore {
                             // vector and eases rotation toward it by one half.
                             advance_position(&mut transform);
                             rotate_towards_movement(&mut transform, 0.5);
-                            particles.push(EntityClientMovementParticleState::ShulkerBullet(
-                                ShulkerBulletTrailParticleState {
-                                    entity_id,
-                                    position: EntityVec3 {
-                                        x: transform.position.x - transform.delta_movement.x,
-                                        y: transform.position.y - transform.delta_movement.y + 0.15,
-                                        z: transform.position.z - transform.delta_movement.z,
+                            effects.push(EntityClientMovementEffectState::Particle(
+                                EntityClientMovementParticleState::ShulkerBullet(
+                                    ShulkerBulletTrailParticleState {
+                                        entity_id,
+                                        position: EntityVec3 {
+                                            x: transform.position.x - transform.delta_movement.x,
+                                            y: transform.position.y - transform.delta_movement.y
+                                                + 0.15,
+                                            z: transform.position.z - transform.delta_movement.z,
+                                        },
                                     },
-                                },
+                                ),
                             ));
                         }
                         _ => unreachable!("narrow direct movement policy match"),
@@ -258,7 +268,7 @@ impl EntityStore {
                         transform,
                         accessors,
                         in_water_by_id.get(&entity_id).copied().unwrap_or(false),
-                        &mut particles,
+                        &mut effects,
                     );
                 }
                 VanillaEntityClientMovementPolicy::FallingBlock => {
@@ -297,13 +307,12 @@ impl EntityStore {
                     );
                 }
                 VanillaEntityClientMovementPolicy::FireworkRocket => {
-                    self.advance_firework_rocket(entity, entity_id, entity_type_id, &mut particles);
+                    self.advance_firework_rocket(entity, entity_id, entity_type_id, &mut effects);
                 }
                 _ => {}
             }
         }
-        self.pending_entity_client_movement_particles
-            .extend(particles);
+        self.pending_entity_client_movement_effects.extend(effects);
     }
 
     fn advance_firework_rocket(
@@ -311,17 +320,27 @@ impl EntityStore {
         entity: Entity,
         entity_id: i32,
         entity_type_id: i32,
-        particles: &mut Vec<EntityClientMovementParticleState>,
+        effects: &mut Vec<EntityClientMovementEffectState>,
     ) {
         let Some(accessors) =
             vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(entity_type_id)
         else {
             return;
         };
-        let (attached_to_target, shot_at_angle) = {
-            let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
+        let (attached_to_target, shot_at_angle, play_launch_sound) = {
+            let Ok((metadata, animations)) = self
+                .ecs
+                .query_one_mut::<(&EntityMetadata, &EntityClientAnimations)>(entity)
+            else {
                 return;
             };
+            let silent = vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+                entity_data_bool(
+                    &metadata.data_values,
+                    accessors.silent_data_id,
+                    accessors.silent_default,
+                )
+            });
             (
                 entity_data_optional_unsigned_int(
                     &metadata.data_values,
@@ -333,6 +352,7 @@ impl EntityStore {
                     accessors.shot_at_angle_data_id,
                     accessors.shot_at_angle_default,
                 ),
+                animations.animations.age_ticks == 0 && !silent,
             )
         };
 
@@ -356,12 +376,21 @@ impl EntityStore {
             advance_position(&mut transform);
         }
         update_projectile_rotation(&mut transform);
-        particles.push(EntityClientMovementParticleState::FireworkRocket(
-            FireworkRocketTrailParticleState {
+        if play_launch_sound {
+            effects.push(EntityClientMovementEffectState::Sound(
+                EntityClientMovementSoundState {
+                    entity_id,
+                    kind: EntityClientMovementSoundKind::FireworkRocketLaunch,
+                    position: transform.position,
+                },
+            ));
+        }
+        effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::FireworkRocket(FireworkRocketTrailParticleState {
                 entity_id,
                 position: transform.position,
                 delta_movement: transform.delta_movement,
-            },
+            }),
         ));
     }
 
@@ -454,7 +483,7 @@ fn advance_throwable_projectile(
     transform: &mut EntityTransform,
     policy: VanillaEntityClientMovementPolicy,
     in_water: bool,
-    particles: &mut Vec<EntityClientMovementParticleState>,
+    effects: &mut Vec<EntityClientMovementEffectState>,
 ) {
     let no_gravity = vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
         entity_data_bool(
@@ -473,7 +502,7 @@ fn advance_throwable_projectile(
             entity_id,
             transform.position,
             movement_before_inertia,
-            particles,
+            effects,
         );
     }
     let inertia = f64::from(if in_water { 0.8_f32 } else { 0.99_f32 });
@@ -490,7 +519,7 @@ fn advance_hurting_projectile(
     transform: &mut EntityTransform,
     policy: VanillaEntityClientMovementPolicy,
     in_water: bool,
-    particles: &mut Vec<EntityClientMovementParticleState>,
+    effects: &mut Vec<EntityClientMovementEffectState>,
 ) {
     let movement_before_inertia = transform.delta_movement;
     if in_water {
@@ -498,7 +527,7 @@ fn advance_hurting_projectile(
             entity_id,
             transform.position,
             movement_before_inertia,
-            particles,
+            effects,
         );
     }
     let acceleration_power = hurting_projectile
@@ -524,8 +553,8 @@ fn advance_hurting_projectile(
         _ => Some(EntityClientMovementSimpleParticleKind::Smoke),
     };
     if let Some(kind) = trail {
-        particles.push(EntityClientMovementParticleState::Simple(
-            EntityClientMovementSimpleParticleState {
+        effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
                 entity_id,
                 kind,
                 position: EntityVec3 {
@@ -533,7 +562,7 @@ fn advance_hurting_projectile(
                     ..transform.position
                 },
                 velocity: EntityVec3::default(),
-            },
+            }),
         ));
     }
 }
@@ -562,7 +591,7 @@ fn advance_abstract_arrow(
     transform: &mut EntityTransform,
     accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
     in_water: bool,
-    particles: &mut Vec<EntityClientMovementParticleState>,
+    effects: &mut Vec<EntityClientMovementEffectState>,
 ) {
     let flags = entity_data_byte(
         &metadata.data_values,
@@ -592,11 +621,11 @@ fn advance_abstract_arrow(
             entity_id,
             original_position,
             transform.delta_movement,
-            particles,
+            effects,
         );
     }
     if flags & accessors.crit_mask != 0 {
-        append_arrow_crit_particles(entity_id, original_position, movement, particles);
+        append_arrow_crit_particles(entity_id, original_position, movement, effects);
     }
 
     update_arrow_rotation(transform, movement, physics_enabled);
@@ -677,24 +706,26 @@ fn append_arrow_crit_particles(
     entity_id: i32,
     position: EntityVec3,
     movement: EntityVec3,
-    particles: &mut Vec<EntityClientMovementParticleState>,
+    effects: &mut Vec<EntityClientMovementEffectState>,
 ) {
-    particles.extend((0..4).map(|index| {
+    effects.extend((0..4).map(|index| {
         let fraction = f64::from(index) / 4.0;
-        EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
-            entity_id,
-            kind: EntityClientMovementSimpleParticleKind::Crit,
-            position: EntityVec3 {
-                x: position.x + movement.x * fraction,
-                y: position.y + movement.y * fraction,
-                z: position.z + movement.z * fraction,
+        EntityClientMovementEffectState::Particle(EntityClientMovementParticleState::Simple(
+            EntityClientMovementSimpleParticleState {
+                entity_id,
+                kind: EntityClientMovementSimpleParticleKind::Crit,
+                position: EntityVec3 {
+                    x: position.x + movement.x * fraction,
+                    y: position.y + movement.y * fraction,
+                    z: position.z + movement.z * fraction,
+                },
+                velocity: EntityVec3 {
+                    x: -movement.x,
+                    y: -movement.y + 0.2,
+                    z: -movement.z,
+                },
             },
-            velocity: EntityVec3 {
-                x: -movement.x,
-                y: -movement.y + 0.2,
-                z: -movement.z,
-            },
-        })
+        ))
     }));
 }
 
@@ -748,20 +779,22 @@ fn append_bubbles(
     entity_id: i32,
     position: EntityVec3,
     movement: EntityVec3,
-    particles: &mut Vec<EntityClientMovementParticleState>,
+    effects: &mut Vec<EntityClientMovementEffectState>,
 ) {
     let position = EntityVec3 {
         x: position.x - movement.x * 0.25,
         y: position.y - movement.y * 0.25,
         z: position.z - movement.z * 0.25,
     };
-    particles.extend((0..4).map(|_| {
-        EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
-            entity_id,
-            kind: EntityClientMovementSimpleParticleKind::Bubble,
-            position,
-            velocity: movement,
-        })
+    effects.extend((0..4).map(|_| {
+        EntityClientMovementEffectState::Particle(EntityClientMovementParticleState::Simple(
+            EntityClientMovementSimpleParticleState {
+                entity_id,
+                kind: EntityClientMovementSimpleParticleKind::Bubble,
+                position,
+                velocity: movement,
+            },
+        ))
     }));
 }
 
@@ -998,31 +1031,35 @@ mod tests {
 
         assert_eq!(
             store
-                .drain_entity_client_movement_particle_states()
+                .drain_entity_client_movement_effect_states()
                 .collect::<Vec<_>>(),
             vec![
-                EntityClientMovementParticleState::EyeOfEnder(EyeOfEnderTrailParticleState {
-                    entity_id: 10,
-                    origin: EntityVec3 {
-                        x: 1.1875,
-                        y: 63.625,
-                        z: -1.25,
+                particle_effect(EntityClientMovementParticleState::EyeOfEnder(
+                    EyeOfEnderTrailParticleState {
+                        entity_id: 10,
+                        origin: EntityVec3 {
+                            x: 1.1875,
+                            y: 63.625,
+                            z: -1.25,
+                        },
+                        delta_movement: EntityVec3 {
+                            x: 0.25,
+                            y: -0.5,
+                            z: 1.0,
+                        },
+                        in_water: false,
                     },
-                    delta_movement: EntityVec3 {
-                        x: 0.25,
-                        y: -0.5,
-                        z: 1.0,
+                )),
+                particle_effect(EntityClientMovementParticleState::ShulkerBullet(
+                    ShulkerBulletTrailParticleState {
+                        entity_id: 20,
+                        position: EntityVec3 {
+                            x: 1.0,
+                            y: 64.15,
+                            z: -2.0,
+                        },
                     },
-                    in_water: false,
-                }),
-                EntityClientMovementParticleState::ShulkerBullet(ShulkerBulletTrailParticleState {
-                    entity_id: 20,
-                    position: EntityVec3 {
-                        x: 1.0,
-                        y: 64.15,
-                        z: -2.0,
-                    },
-                },),
+                )),
             ]
         );
 
@@ -1182,7 +1219,7 @@ mod tests {
         );
         assert_eq!(
             store
-                .drain_entity_client_movement_particle_states()
+                .drain_entity_client_movement_effect_states()
                 .collect::<Vec<_>>(),
             vec![
                 simple_particle(
@@ -1220,7 +1257,7 @@ mod tests {
             y: -0.2,
             z: 0.6,
         });
-        let mut particles = Vec::new();
+        let mut effects = Vec::new();
 
         advance_throwable_projectile(
             50,
@@ -1228,7 +1265,7 @@ mod tests {
             &mut transform,
             VanillaEntityClientMovementPolicy::ThrowableProjectile,
             true,
-            &mut particles,
+            &mut effects,
         );
 
         let gravity_movement = EntityVec3 {
@@ -1241,16 +1278,16 @@ mod tests {
             y: 64.0 - gravity_movement.y * 0.25,
             z: -2.0 - gravity_movement.z * 0.25,
         };
-        assert_eq!(particles.len(), 4);
-        assert!(particles.iter().all(|state| *state
-            == EntityClientMovementParticleState::Simple(
+        assert_eq!(effects.len(), 4);
+        assert!(effects.iter().all(|state| *state
+            == particle_effect(EntityClientMovementParticleState::Simple(
                 EntityClientMovementSimpleParticleState {
                     entity_id: 50,
                     kind: EntityClientMovementSimpleParticleKind::Bubble,
                     position: bubble_position,
                     velocity: gravity_movement,
                 }
-            )));
+            ))));
         assert_vec3_near(
             transform.delta_movement,
             scale(gravity_movement, f64::from(0.8_f32)),
@@ -1347,14 +1384,14 @@ mod tests {
         );
         assert_eq!(no_physics.y_rot, -18.0);
 
-        let particles = store
-            .drain_entity_client_movement_particle_states()
+        let effects = store
+            .drain_entity_client_movement_effect_states()
             .collect::<Vec<_>>();
-        assert_eq!(particles.len(), 4);
-        for (index, particle) in particles.into_iter().enumerate() {
+        assert_eq!(effects.len(), 4);
+        for (index, effect) in effects.into_iter().enumerate() {
             assert_eq!(
-                particle,
-                EntityClientMovementParticleState::Simple(
+                effect,
+                particle_effect(EntityClientMovementParticleState::Simple(
                     EntityClientMovementSimpleParticleState {
                         entity_id: 54,
                         kind: EntityClientMovementSimpleParticleKind::Crit,
@@ -1368,8 +1405,8 @@ mod tests {
                             y: -0.3,
                             z: 0.0,
                         },
-                    }
-                )
+                    },
+                ))
             );
         }
         assert_eq!(
@@ -1395,7 +1432,7 @@ mod tests {
                 y: -0.25,
                 z: 1.0,
             });
-            let mut particles = Vec::new();
+            let mut effects = Vec::new();
             let accessors =
                 vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
                     .unwrap();
@@ -1407,7 +1444,7 @@ mod tests {
                 &mut transform,
                 accessors,
                 true,
-                &mut particles,
+                &mut effects,
             );
 
             let water_movement = scale(
@@ -1433,10 +1470,10 @@ mod tests {
                     ..water_movement
                 },
             );
-            assert_eq!(particles.len(), 4);
-            assert!(particles.iter().all(|particle| {
-                *particle
-                    == EntityClientMovementParticleState::Simple(
+            assert_eq!(effects.len(), 4);
+            assert!(effects.iter().all(|effect| {
+                *effect
+                    == particle_effect(EntityClientMovementParticleState::Simple(
                         EntityClientMovementSimpleParticleState {
                             entity_id,
                             kind: EntityClientMovementSimpleParticleKind::Bubble,
@@ -1447,7 +1484,7 @@ mod tests {
                             },
                             velocity: water_movement,
                         },
-                    )
+                    ))
             }));
         }
     }
@@ -1705,16 +1742,43 @@ mod tests {
                 z: -2.4,
             },
         );
-        assert_eq!(
-            store
-                .drain_entity_client_movement_particle_states()
-                .map(|state| match state {
-                    EntityClientMovementParticleState::FireworkRocket(state) => state.entity_id,
-                    _ => -1,
-                })
-                .collect::<Vec<_>>(),
-            vec![61, 62]
-        );
+        let effects = store
+            .drain_entity_client_movement_effect_states()
+            .collect::<Vec<_>>();
+        assert!(matches!(
+            effects.as_slice(),
+            [
+                EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+                    entity_id: 61,
+                    kind: EntityClientMovementSoundKind::FireworkRocketLaunch,
+                    ..
+                }),
+                EntityClientMovementEffectState::Particle(
+                    EntityClientMovementParticleState::FireworkRocket(
+                        FireworkRocketTrailParticleState { entity_id: 61, .. }
+                    )
+                ),
+                EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+                    entity_id: 62,
+                    kind: EntityClientMovementSoundKind::FireworkRocketLaunch,
+                    ..
+                }),
+                EntityClientMovementEffectState::Particle(
+                    EntityClientMovementParticleState::FireworkRocket(
+                        FireworkRocketTrailParticleState { entity_id: 62, .. }
+                    )
+                )
+            ]
+        ));
+
+        store.advance_entity_client_animations(1);
+        let second_tick_effects = store
+            .drain_entity_client_movement_effect_states()
+            .collect::<Vec<_>>();
+        assert_eq!(second_tick_effects.len(), 2);
+        assert!(second_tick_effects
+            .iter()
+            .all(|effect| matches!(effect, EntityClientMovementEffectState::Particle(_))));
     }
 
     #[test]
@@ -1792,10 +1856,12 @@ mod tests {
         );
         assert_eq!(
             store
-                .drain_entity_client_movement_particle_states()
-                .map(|state| match state {
-                    EntityClientMovementParticleState::FireworkRocket(state) => state.entity_id,
-                    _ => -1,
+                .drain_entity_client_movement_effect_states()
+                .filter_map(|state| match state {
+                    EntityClientMovementEffectState::Particle(
+                        EntityClientMovementParticleState::FireworkRocket(state),
+                    ) => Some(state.entity_id),
+                    _ => None,
                 })
                 .collect::<Vec<_>>(),
             vec![71]
@@ -1806,17 +1872,25 @@ mod tests {
         entity_id: i32,
         kind: EntityClientMovementSimpleParticleKind,
         moved_x: f64,
-    ) -> EntityClientMovementParticleState {
-        EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
-            entity_id,
-            kind,
-            position: EntityVec3 {
-                x: 1.0 + moved_x,
-                y: 64.5,
-                z: -2.0,
+    ) -> EntityClientMovementEffectState {
+        particle_effect(EntityClientMovementParticleState::Simple(
+            EntityClientMovementSimpleParticleState {
+                entity_id,
+                kind,
+                position: EntityVec3 {
+                    x: 1.0 + moved_x,
+                    y: 64.5,
+                    z: -2.0,
+                },
+                velocity: EntityVec3::default(),
             },
-            velocity: EntityVec3::default(),
-        })
+        ))
+    }
+
+    fn particle_effect(
+        state: EntityClientMovementParticleState,
+    ) -> EntityClientMovementEffectState {
+        EntityClientMovementEffectState::Particle(state)
     }
 
     fn assert_vec3_near(actual: EntityVec3, expected: EntityVec3) {

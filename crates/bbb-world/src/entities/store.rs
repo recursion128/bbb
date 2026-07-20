@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fmt,
     time::{Duration, Instant},
 };
@@ -66,7 +66,7 @@ use super::{
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
     EntityAttachmentFace, EntityAttributes, EntityBlockModelState, EntityCameraHurtState,
     EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations,
-    EntityClientMovementParticleState, EntityDamage, EntityEquipment, EntityHurtingProjectile,
+    EntityClientMovementEffectState, EntityDamage, EntityEquipment, EntityHurtingProjectile,
     EntityIdentity, EntityInterpolationCollisionInput, EntityLeash, EntityMetadata,
     EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
     EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
@@ -282,7 +282,7 @@ pub(crate) struct EntityStore {
     pub(super) order: Vec<i32>,
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
-    pub(super) pending_entity_client_movement_particles: Vec<EntityClientMovementParticleState>,
+    pub(super) pending_entity_client_movement_effects: VecDeque<EntityClientMovementEffectState>,
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
     client_tick_scratch: EntityClientTickScratch,
     publication_snapshot_observation: EntityPublicationSnapshotObservation,
@@ -1294,10 +1294,16 @@ impl EntityStore {
         std::mem::take(&mut self.pending_evoker_fangs_crit_particles)
     }
 
-    pub(crate) fn drain_entity_client_movement_particle_states(
+    pub(crate) fn drain_entity_client_movement_effect_states(
         &mut self,
-    ) -> std::vec::Drain<'_, EntityClientMovementParticleState> {
-        self.pending_entity_client_movement_particles.drain(..)
+    ) -> std::collections::vec_deque::Drain<'_, EntityClientMovementEffectState> {
+        self.pending_entity_client_movement_effects.drain(..)
+    }
+
+    pub(crate) fn pop_entity_client_movement_effect_state(
+        &mut self,
+    ) -> Option<EntityClientMovementEffectState> {
+        self.pending_entity_client_movement_effects.pop_front()
     }
 
     pub(crate) fn take_ominous_item_spawner_particle_states(
@@ -5139,7 +5145,7 @@ impl Default for EntityStore {
             order: Vec::new(),
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
-            pending_entity_client_movement_particles: Vec::new(),
+            pending_entity_client_movement_effects: VecDeque::new(),
             pending_ominous_item_spawner_particles: Vec::new(),
             client_tick_scratch: EntityClientTickScratch::default(),
             publication_snapshot_observation: EntityPublicationSnapshotObservation::default(),
@@ -5216,8 +5222,8 @@ impl Clone for EntityStore {
         store.pending_ravager_stun_particles = self.pending_ravager_stun_particles.clone();
         store.pending_evoker_fangs_crit_particles =
             self.pending_evoker_fangs_crit_particles.clone();
-        store.pending_entity_client_movement_particles =
-            self.pending_entity_client_movement_particles.clone();
+        store.pending_entity_client_movement_effects =
+            self.pending_entity_client_movement_effects.clone();
         store.pending_ominous_item_spawner_particles =
             self.pending_ominous_item_spawner_particles.clone();
         store.publication_snapshot_observation = EntityPublicationSnapshotObservation {

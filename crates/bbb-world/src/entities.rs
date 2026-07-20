@@ -706,6 +706,28 @@ pub enum EntityClientMovementParticleState {
     Simple(EntityClientMovementSimpleParticleState),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EntityClientMovementSoundKind {
+    FireworkRocketLaunch,
+    TridentReturn,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityClientMovementSoundState {
+    pub entity_id: i32,
+    pub kind: EntityClientMovementSoundKind,
+    pub position: EntityVec3,
+}
+
+/// Client-owned particle and sound effects emitted by entity movement in exact
+/// vanilla tick order. The queue is drained into the lossless simulation effect
+/// batch before the corresponding immutable publication becomes visible.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum EntityClientMovementEffectState {
+    Particle(EntityClientMovementParticleState),
+    Sound(EntityClientMovementSoundState),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct LlamaSpitRecreationParticleState {
     pub entity_id: i32,
@@ -3802,10 +3824,16 @@ impl WorldStore {
         self.entities.take_evoker_fangs_crit_particle_states()
     }
 
-    pub fn drain_entity_client_movement_particle_states(
+    pub fn drain_entity_client_movement_effect_states(
         &mut self,
-    ) -> std::vec::Drain<'_, EntityClientMovementParticleState> {
-        self.entities.drain_entity_client_movement_particle_states()
+    ) -> std::collections::vec_deque::Drain<'_, EntityClientMovementEffectState> {
+        self.entities.drain_entity_client_movement_effect_states()
+    }
+
+    pub fn pop_entity_client_movement_effect_state(
+        &mut self,
+    ) -> Option<EntityClientMovementEffectState> {
+        self.entities.pop_entity_client_movement_effect_state()
     }
 
     pub fn take_ominous_item_spawner_particle_states(
