@@ -146,20 +146,28 @@ fn try_load_world_border_texture(
 
 fn load_end_sky_image(roots: &PackRoots) -> Result<SpriteImage> {
     let location = ResourceLocation::parse(END_SKY_TEXTURE)?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing End sky texture minecraft:{END_SKY_TEXTURE}"))?;
-    SpriteImage::from_png_file("minecraft:textures/environment/end_sky", resource.path)
+    SpriteImage::from_png_file_with_resource_stack(
+        "minecraft:textures/environment/end_sky",
+        resource.path,
+        &resources,
+    )
 }
 
 fn load_cloud_image(roots: &PackRoots) -> Result<CloudTextureImage> {
     let location = ResourceLocation::parse(CLOUD_TEXTURE)?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing cloud texture minecraft:{CLOUD_TEXTURE}"))?;
-    let image = SpriteImage::from_png_file("minecraft:textures/environment/clouds", resource.path)?;
+    let image = SpriteImage::from_png_file_with_resource_stack(
+        "minecraft:textures/environment/clouds",
+        resource.path,
+        &resources,
+    )?;
     Ok(CloudTextureImage {
         width: image.width,
         height: image.height,
@@ -191,11 +199,11 @@ fn load_weather_image(
     id: &str,
 ) -> Result<WeatherTextureImage> {
     let location = ResourceLocation::parse(path)?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing weather texture minecraft:{path}"))?;
-    let image = SpriteImage::from_png_file(id, resource.path)?;
+    let image = SpriteImage::from_png_file_with_resource_stack(id, resource.path, &resources)?;
     Ok(WeatherTextureImage {
         kind,
         width: image.width,
@@ -210,13 +218,15 @@ fn load_weather_image(
 /// `bbb-renderer` stays free of `bbb-pack`.
 fn load_world_border_image(roots: &PackRoots) -> Result<SpriteImage> {
     let location = ResourceLocation::parse(WORLD_BORDER_FORCEFIELD_TEXTURE_PATH)?;
-    let resource = roots
-        .resource_stack()
-        .get_resource(&location)
-        .with_context(|| {
-            format!("missing world border texture minecraft:{WORLD_BORDER_FORCEFIELD_TEXTURE_PATH}")
-        })?;
-    SpriteImage::from_png_file("minecraft:textures/misc/forcefield", resource.path)
+    let resources = roots.resource_stack();
+    let resource = resources.get_resource(&location).with_context(|| {
+        format!("missing world border texture minecraft:{WORLD_BORDER_FORCEFIELD_TEXTURE_PATH}")
+    })?;
+    SpriteImage::from_png_file_with_resource_stack(
+        "minecraft:textures/misc/forcefield",
+        resource.path,
+        &resources,
+    )
 }
 
 fn load_celestial_images(roots: &PackRoots) -> Result<Vec<CelestialTextureImage>> {
@@ -233,11 +243,11 @@ fn load_celestial_image(
     id: &str,
 ) -> Result<CelestialTextureImage> {
     let location = ResourceLocation::parse(path)?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing celestial texture minecraft:{path}"))?;
-    let image = SpriteImage::from_png_file(id, resource.path)?;
+    let image = SpriteImage::from_png_file_with_resource_stack(id, resource.path, &resources)?;
     Ok(CelestialTextureImage {
         kind,
         width: image.width,

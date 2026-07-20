@@ -17,6 +17,10 @@ pub use crate::equipment_assets::{
 };
 pub use crate::freeze_immune_wearables::FreezeImmuneWearableCatalog;
 pub use crate::furnace_fuels::{FurnaceFuelCatalog, FurnaceFuelSourceRule};
+pub use crate::image::{
+    ResourceImageMemoryObservation, MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+    MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
+};
 pub use crate::item_cuboid_models::{
     ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTexture,
     ItemCuboidTextureImageCatalog, ItemCuboidTextureImageSet, ITEM_CUBOID_TEXTURE_ATLASES,

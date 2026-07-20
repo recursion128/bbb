@@ -13,7 +13,10 @@ use crate::{
     block_sound_profiles::BlockSoundProfileCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
     equipment_assets::EquipmentAssetCatalog,
-    image::PngDecodeBudget,
+    image::{
+        ResourceImageGenerationBudget, ResourceImageMemoryObservation,
+        MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+    },
     item_cuboid_models::ItemCuboidModelCatalog,
     item_models::ItemModelCatalog,
     item_registry::ItemRegistryCatalog,
@@ -44,6 +47,8 @@ pub struct PackRoots {
     resource_pack_dirs: Vec<PathBuf>,
     #[serde(skip)]
     client_resource_generation: Option<Arc<ClientResourceGeneration>>,
+    #[serde(skip, default = "default_resource_image_generation_budget")]
+    resource_image_budget: Arc<ResourceImageGenerationBudget>,
 }
 
 impl PackRoots {
@@ -83,6 +88,7 @@ impl PackRoots {
             generated_assets_dir,
             resource_pack_dirs: Vec::new(),
             client_resource_generation: None,
+            resource_image_budget: default_resource_image_generation_budget(),
         }
     }
 
@@ -97,6 +103,7 @@ impl PackRoots {
     ) -> Self {
         self.resource_pack_dirs = dirs.into_iter().map(Into::into).collect();
         self.client_resource_generation = None;
+        self.resource_image_budget = default_resource_image_generation_budget();
         self
     }
 
@@ -109,6 +116,20 @@ impl PackRoots {
         mut self,
         generation: u64,
         packs: SelectedClientPackStack,
+    ) -> Result<Self> {
+        self = self.with_client_resource_generation_image_limit(
+            generation,
+            packs,
+            MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+        )?;
+        Ok(self)
+    }
+
+    pub fn with_client_resource_generation_image_limit(
+        mut self,
+        generation: u64,
+        packs: SelectedClientPackStack,
+        max_resource_image_rgba_bytes: u64,
     ) -> Result<Self> {
         let vanilla = packs
             .packs()
@@ -127,9 +148,19 @@ impl PackRoots {
             .skip(1)
             .map(|pack| pack.root.clone())
             .collect();
-        self.client_resource_generation = Some(Arc::new(ClientResourceGeneration::prepare(
-            generation, packs,
-        )?));
+        self.client_resource_generation = Some(Arc::new(
+            ClientResourceGeneration::prepare_with_image_limit(
+                generation,
+                packs,
+                max_resource_image_rgba_bytes,
+            )?,
+        ));
+        self.resource_image_budget = self
+            .client_resource_generation
+            .as_ref()
+            .expect("client resource generation was just installed")
+            .resources()
+            .image_budget();
         Ok(self)
     }
 
@@ -159,14 +190,24 @@ impl PackRoots {
         let mut roots = Vec::with_capacity(1 + self.resource_pack_dirs.len());
         roots.push(self.sources_dir.clone());
         roots.extend(self.resource_pack_dirs.iter().cloned());
-        PackResourceStack::from_roots(roots)
+        PackResourceStack::from_roots_with_image_budget(
+            roots,
+            Arc::clone(&self.resource_image_budget),
+        )
     }
 
     fn resource_pack_stack(&self) -> PackResourceStack {
         if let Some(generation) = self.client_resource_generation() {
             return generation.resources().without_first();
         }
-        PackResourceStack::from_roots(self.resource_pack_dirs.iter().cloned())
+        PackResourceStack::from_roots_with_image_budget(
+            self.resource_pack_dirs.iter().cloned(),
+            Arc::clone(&self.resource_image_budget),
+        )
+    }
+
+    pub fn resource_image_memory_observation(&self) -> ResourceImageMemoryObservation {
+        self.resource_image_budget.observation()
     }
 
     pub fn vanilla_source(&self, relative: impl AsRef<Path>) -> PathBuf {
@@ -277,7 +318,7 @@ impl PackRoots {
     }
 
     pub fn load_atlas_texture_sources(&self, atlas_name: &str) -> Result<Vec<SpriteSource>> {
-        let mut budget = PngDecodeBudget::atlas();
+        let mut budget = self.resource_stack().atlas_png_decode_budget();
         load_atlas_texture_entries_with_budget(self, atlas_name, &mut budget)?
             .into_iter()
             .map(|entry| entry.into_source_with_budget(&mut budget))
@@ -285,7 +326,7 @@ impl PackRoots {
     }
 
     pub fn load_atlas_texture_images(&self, atlas_name: &str) -> Result<Vec<SpriteImage>> {
-        let mut budget = PngDecodeBudget::atlas();
+        let mut budget = self.resource_stack().atlas_png_decode_budget();
         load_atlas_texture_entries_with_budget(self, atlas_name, &mut budget)?
             .into_iter()
             .map(|entry| entry.into_image_with_budget(&mut budget))
@@ -469,12 +510,16 @@ fn discover_generated_assets_dir() -> Option<PathBuf> {
         .filter(|dir| dir.join("sounds.json").is_file())
 }
 
+fn default_resource_image_generation_budget() -> Arc<ResourceImageGenerationBudget> {
+    ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES)
+}
+
 fn load_terrain_colormap(stack: &PackResourceStack, name: &str) -> Result<ColorMapImage> {
     let location = ResourceLocation::parse(&format!("textures/colormap/{name}.png"))?;
     let resource = stack
         .get_resource(&location)
         .ok_or_else(|| anyhow::anyhow!("missing terrain colormap {}", location.id()))?;
-    ColorMapImage::from_png_file(resource.path)
+    ColorMapImage::from_png_file_with_resource_stack(resource.path, stack)
 }
 
 #[cfg(test)]
@@ -630,6 +675,40 @@ mod tests {
                 SpriteSource::new("example:block/sub/ore", 8, 8),
                 SpriteSource::new("minecraft:block/stone", 16, 16),
             ]
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn separate_atlases_share_one_generation_image_budget() {
+        let root = unique_temp_dir("generation-atlas-budget");
+        let sources_dir = root.join("sources").join(MC_VERSION);
+        let assets_dir = sources_dir.join("assets/minecraft");
+        for name in ["first", "second"] {
+            write_test_png(&assets_dir.join(format!("textures/test/{name}.png")), 1, 1);
+            write_json(
+                &assets_dir.join(format!("atlases/{name}.json")),
+                &format!(
+                    r#"{{"sources":[{{"type":"minecraft:single","resource":"minecraft:test/{name}"}}]}}"#
+                ),
+            );
+        }
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&roots, []).unwrap();
+        let roots = roots
+            .with_client_resource_generation_image_limit(3, selected, 4)
+            .unwrap();
+
+        assert_eq!(roots.load_atlas_texture_sources("first").unwrap().len(), 2);
+        let err = roots
+            .load_atlas_texture_sources("second")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("currently charged 4, requested 4"), "{err}");
+        assert_eq!(
+            roots.resource_image_memory_observation().charged_rgba_bytes,
+            4
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -1325,6 +1404,10 @@ mod tests {
                 "atlas {atlas_name} contains an empty sprite"
             );
         }
+        let observation = roots.resource_image_memory_observation();
+        eprintln!("vanilla atlas logical RGBA charge: {observation:?}");
+        assert!(observation.charged_rgba_bytes > 0);
+        assert!(observation.charged_rgba_bytes < observation.max_rgba_bytes);
     }
 
     #[test]

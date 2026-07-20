@@ -8,7 +8,9 @@ mod generated_26_1;
 pub(crate) use generated_26_1::VANILLA_BIOME_ORDER;
 
 use crate::{
-    image::decode_png_file_rgba, resources::ResourceLocation, rgba_len, rgba_offset, PackRoots,
+    image::{decode_png_file_rgba, decode_png_file_rgba_with_budget},
+    resources::{PackResourceStack, ResourceLocation},
+    rgba_len, rgba_offset, PackRoots,
 };
 
 fn parse_hex_rgb(color: &str) -> Result<[u8; 3]> {
@@ -140,6 +142,17 @@ impl ColorMapImage {
     pub fn from_png_file(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         let rgba = decode_png_file_rgba(path, "colormap image")?;
+        let (width, height) = rgba.dimensions();
+        Self::new(width, height, rgba.into_raw())
+    }
+
+    pub(crate) fn from_png_file_with_resource_stack(
+        path: impl AsRef<Path>,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let path = path.as_ref();
+        let mut budget = resources.single_image_png_decode_budget();
+        let rgba = decode_png_file_rgba_with_budget(path, "colormap image", &mut budget)?;
         let (width, height) = rgba.dimensions();
         Self::new(width, height, rgba.into_raw())
     }

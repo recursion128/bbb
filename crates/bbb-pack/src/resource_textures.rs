@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 
-use crate::{image::decode_png_file_rgba, PackRoots, ResourceLocation};
+use crate::{image::decode_png_file_rgba_with_budget, PackRoots, ResourceLocation};
 
 /// One pack-backed `ClientAsset.ResourceTexture`, decoded at its original PNG dimensions.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,12 +21,16 @@ impl PackRoots {
             .with_context(|| format!("invalid resource texture asset id {asset_id:?}"))?;
         let texture =
             ResourceLocation::new(asset.namespace(), format!("textures/{}.png", asset.path()))?;
-        let resource = self
-            .resource_stack()
+        let resources = self.resource_stack();
+        let resource = resources
             .get_resource(&texture)
             .with_context(|| format!("missing resource texture {}", texture.id()))?;
         let path = resource.path;
-        let image = decode_png_file_rgba(&path, "resource texture")?;
+        let image = decode_png_file_rgba_with_budget(
+            &path,
+            "resource texture",
+            &mut resources.single_image_png_decode_budget(),
+        )?;
         let size = [image.width(), image.height()];
 
         Ok(ResourceTextureImage {

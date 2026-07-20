@@ -2,6 +2,10 @@ use std::{
     fs::File,
     io::{BufReader, Read, Seek, SeekFrom},
     path::Path,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use anyhow::{bail, Context, Result};
@@ -12,26 +16,97 @@ pub(crate) const MAX_RESOURCE_PNG_DIMENSION: u32 = 8_192;
 pub(crate) const MAX_RESOURCE_PNG_PIXELS: u64 = 16 * 1024 * 1024;
 pub(crate) const MAX_RESOURCE_PNG_DECODE_BYTES: u64 = 128 * 1024 * 1024;
 pub(crate) const MAX_ATLAS_RGBA_BYTES: u64 = 256 * 1024 * 1024;
+pub const MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES: u64 = 512 * 1024 * 1024;
+pub const MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES: u64 = 1024 * 1024 * 1024;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ResourceImageMemoryObservation {
+    pub max_rgba_bytes: u64,
+    pub charged_rgba_bytes: u64,
+    pub peak_charged_rgba_bytes: u64,
+}
+
+#[derive(Debug)]
+pub(crate) struct ResourceImageGenerationBudget {
+    max_rgba_bytes: u64,
+    charged_rgba_bytes: AtomicU64,
+    peak_charged_rgba_bytes: AtomicU64,
+}
+
+impl ResourceImageGenerationBudget {
+    pub(crate) fn new(max_rgba_bytes: u64) -> Arc<Self> {
+        Arc::new(Self {
+            max_rgba_bytes,
+            charged_rgba_bytes: AtomicU64::new(0),
+            peak_charged_rgba_bytes: AtomicU64::new(0),
+        })
+    }
+
+    fn reserve(&self, rgba_bytes: u64, label: &str) -> Result<()> {
+        let next = self
+            .charged_rgba_bytes
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |charged| {
+                charged
+                    .checked_add(rgba_bytes)
+                    .filter(|next| *next <= self.max_rgba_bytes)
+            })
+            .map(|previous| previous + rgba_bytes)
+            .map_err(|charged| {
+                anyhow::anyhow!(
+                    "resource image generation would use more than {} RGBA bytes while loading {label} (currently charged {charged}, requested {rgba_bytes})",
+                    self.max_rgba_bytes
+                )
+            })?;
+        self.peak_charged_rgba_bytes
+            .fetch_max(next, Ordering::Relaxed);
+        Ok(())
+    }
+
+    pub(crate) fn observation(&self) -> ResourceImageMemoryObservation {
+        ResourceImageMemoryObservation {
+            max_rgba_bytes: self.max_rgba_bytes,
+            charged_rgba_bytes: self.charged_rgba_bytes.load(Ordering::Acquire),
+            peak_charged_rgba_bytes: self.peak_charged_rgba_bytes.load(Ordering::Relaxed),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct PngDecodeBudget {
     max_rgba_bytes: u64,
     used_rgba_bytes: u64,
+    generation: Arc<ResourceImageGenerationBudget>,
 }
 
 impl PngDecodeBudget {
     pub(crate) fn single_image() -> Self {
-        Self::new(MAX_RESOURCE_PNG_PIXELS * 4)
+        Self::new(
+            MAX_RESOURCE_PNG_PIXELS * 4,
+            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
+        )
     }
 
+    #[cfg(test)]
     pub(crate) fn atlas() -> Self {
-        Self::new(MAX_ATLAS_RGBA_BYTES)
+        Self::new(
+            MAX_ATLAS_RGBA_BYTES,
+            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
+        )
     }
 
-    fn new(max_rgba_bytes: u64) -> Self {
+    pub(crate) fn single_image_in(generation: Arc<ResourceImageGenerationBudget>) -> Self {
+        Self::new(MAX_RESOURCE_PNG_PIXELS * 4, generation)
+    }
+
+    pub(crate) fn atlas_in(generation: Arc<ResourceImageGenerationBudget>) -> Self {
+        Self::new(MAX_ATLAS_RGBA_BYTES, generation)
+    }
+
+    fn new(max_rgba_bytes: u64, generation: Arc<ResourceImageGenerationBudget>) -> Self {
         Self {
             max_rgba_bytes,
             used_rgba_bytes: 0,
+            generation,
         }
     }
 
@@ -51,6 +126,7 @@ impl PngDecodeBudget {
                 self.max_rgba_bytes
             );
         }
+        self.generation.reserve(rgba_bytes, label)?;
         self.used_rgba_bytes = next;
         Ok(())
     }
@@ -252,7 +328,8 @@ mod tests {
         let path = temp_path("aggregate.png");
         let image = RgbaImage::from_pixel(2, 2, image::Rgba([1, 2, 3, 255]));
         image.save(&path).unwrap();
-        let mut budget = PngDecodeBudget::new(16);
+        let generation = ResourceImageGenerationBudget::new(16);
+        let mut budget = PngDecodeBudget::new(16, Arc::clone(&generation));
 
         let first = decode_png_file_rgba_with_budget(&path, "first", &mut budget).unwrap();
         assert_eq!(first.dimensions(), (2, 2));
@@ -260,6 +337,60 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("aggregate would use 32 RGBA bytes"), "{err}");
+        assert_eq!(generation.observation().charged_rgba_bytes, 16);
+
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn generation_budget_is_shared_across_independent_decode_scopes() {
+        let path = temp_path("generation-aggregate.png");
+        let image = RgbaImage::from_pixel(2, 2, image::Rgba([1, 2, 3, 255]));
+        image.save(&path).unwrap();
+        let generation = ResourceImageGenerationBudget::new(24);
+
+        let first = decode_png_file_rgba_with_budget(
+            &path,
+            "first scope",
+            &mut PngDecodeBudget::single_image_in(Arc::clone(&generation)),
+        )
+        .unwrap();
+        assert_eq!(first.dimensions(), (2, 2));
+        let err = decode_png_file_rgba_with_budget(
+            &path,
+            "second scope",
+            &mut PngDecodeBudget::single_image_in(Arc::clone(&generation)),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("currently charged 16, requested 16"), "{err}");
+        assert_eq!(
+            generation.observation(),
+            ResourceImageMemoryObservation {
+                max_rgba_bytes: 24,
+                charged_rgba_bytes: 16,
+                peak_charged_rgba_bytes: 16,
+            }
+        );
+
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn failed_decode_keeps_its_generation_admission_charge() {
+        let path = temp_path("failed-generation-decode.png");
+        std::fs::write(&path, png_with_ihdr_dimensions(1, 1)).unwrap();
+        let generation = ResourceImageGenerationBudget::new(4);
+
+        let err = decode_png_file_rgba_with_budget(
+            &path,
+            "malformed payload",
+            &mut PngDecodeBudget::single_image_in(Arc::clone(&generation)),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("malformed payload"), "{err}");
+        assert_eq!(generation.observation().charged_rgba_bytes, 4);
 
         std::fs::remove_file(path).unwrap();
     }
@@ -282,6 +413,45 @@ mod tests {
                 "{path} restored an unbounded file decoder"
             );
         }
+    }
+
+    #[test]
+    fn production_pack_consumers_use_the_generation_scoped_sprite_decoder() {
+        for (path, source) in [
+            (
+                "bbb-item-model/item_runtime.rs",
+                include_str!("../../bbb-item-model/src/item_runtime.rs"),
+            ),
+            (
+                "bbb-item-model/item_runtime/profiles.rs",
+                include_str!("../../bbb-item-model/src/item_runtime/profiles.rs"),
+            ),
+            (
+                "bbb-item-model/font.rs",
+                include_str!("../../bbb-item-model/src/font.rs"),
+            ),
+            (
+                "bbb-native/hud_assets.rs",
+                include_str!("../../bbb-native/src/hud_assets.rs"),
+            ),
+            (
+                "bbb-native/sky_assets.rs",
+                include_str!("../../bbb-native/src/sky_assets.rs"),
+            ),
+            (
+                "bbb-native/entity_assets.rs",
+                include_str!("../../bbb-native/src/entity_assets.rs"),
+            ),
+        ] {
+            assert!(
+                !source.contains("SpriteImage::from_png_file("),
+                "{path} bypasses the resource-generation image budget"
+            );
+        }
+        assert!(
+            !include_str!("resource_textures.rs").contains("decode_png_file_rgba("),
+            "standalone resource textures bypass the resource-generation image budget"
+        );
     }
 
     fn png_with_ihdr_dimensions(width: u32, height: u32) -> Vec<u8> {

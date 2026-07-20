@@ -167,7 +167,22 @@ pub struct ClientResourceGeneration {
 
 impl ClientResourceGeneration {
     pub fn prepare(generation: u64, selected_packs: SelectedClientPackStack) -> Result<Self> {
-        let resources = PackResourceStack::prepare_selected_client_packs(selected_packs.packs())?;
+        Self::prepare_with_image_limit(
+            generation,
+            selected_packs,
+            crate::image::MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+        )
+    }
+
+    pub(crate) fn prepare_with_image_limit(
+        generation: u64,
+        selected_packs: SelectedClientPackStack,
+        max_resource_image_rgba_bytes: u64,
+    ) -> Result<Self> {
+        let resources = PackResourceStack::prepare_selected_client_packs_with_image_budget(
+            selected_packs.packs(),
+            crate::image::ResourceImageGenerationBudget::new(max_resource_image_rgba_bytes),
+        )?;
         Ok(Self {
             generation,
             selected_packs: Arc::new(selected_packs),
@@ -300,6 +315,59 @@ mod tests {
     fn prepared_resource_generation_is_send_and_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<ClientResourceGeneration>();
+    }
+
+    #[test]
+    fn generation_image_budget_is_shared_by_root_clones_and_decode_scopes() {
+        let root = unique_temp_dir("generation-image-budget");
+        let sources = root.join("sources/26.1");
+        write_png(
+            &sources.join("assets/minecraft/textures/item/widget.png"),
+            [1, 2, 3, 255],
+        );
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&roots, []).unwrap();
+        let roots = roots
+            .with_client_resource_generation_image_limit(7, selected, 4)
+            .unwrap();
+        let clone = roots.clone();
+
+        let image = roots
+            .load_resource_texture_image("minecraft:item/widget")
+            .unwrap();
+        assert_eq!(image.size, [1, 1]);
+        assert_eq!(
+            roots.resource_image_memory_observation(),
+            crate::ResourceImageMemoryObservation {
+                max_rgba_bytes: 4,
+                charged_rgba_bytes: 4,
+                peak_charged_rgba_bytes: 4,
+            }
+        );
+        let err = clone
+            .load_resource_texture_image("minecraft:item/widget")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("currently charged 4, requested 4"), "{err}");
+        assert_eq!(
+            clone.resource_image_memory_observation(),
+            roots.resource_image_memory_observation()
+        );
+
+        let next = PackRoots::from_root(&root).unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&next, []).unwrap();
+        let next = next
+            .with_client_resource_generation_image_limit(8, selected, 4)
+            .unwrap();
+        assert_eq!(
+            next.resource_image_memory_observation().charged_rgba_bytes,
+            0
+        );
+        assert!(next
+            .load_resource_texture_image("minecraft:item/widget")
+            .is_ok());
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

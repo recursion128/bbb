@@ -1400,11 +1400,11 @@ fn hud_nine_slice_scaling(sprite: &SpriteImage) -> Result<HudNineSliceScaling> {
 
 fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {
     let location = ResourceLocation::parse(path)?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing GUI texture minecraft:{path}"))?;
-    SpriteImage::from_png_file(id, resource.path)
+    SpriteImage::from_png_file_with_resource_stack(id, resource.path, &resources)
 }
 
 fn missing_texture_rgba(width: u32, height: u32) -> Vec<u8> {

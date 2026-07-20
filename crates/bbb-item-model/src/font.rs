@@ -73,11 +73,15 @@ pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
 
 pub fn load_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> {
     let location = ResourceLocation::parse("textures/font/ascii.png")?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .context("missing ASCII font texture minecraft:textures/font/ascii.png")?;
-    SpriteImage::from_png_file("minecraft:textures/font/ascii", resource.path)
+    SpriteImage::from_png_file_with_resource_stack(
+        "minecraft:textures/font/ascii",
+        resource.path,
+        &resources,
+    )
 }
 
 /// Vanilla `BitmapProvider.Definition.load`: the provider `file` gains a
@@ -88,11 +92,11 @@ fn load_font_bitmap_texture(roots: &PackRoots, file: &str) -> Result<SpriteImage
         location.namespace(),
         format!("textures/{}", location.path()),
     )?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing font bitmap texture {}", location.id()))?;
-    SpriteImage::from_png_file(location.id(), resource.path)
+    SpriteImage::from_png_file_with_resource_stack(location.id(), resource.path, &resources)
 }
 
 fn build_hud_font_atlas(entries: &[FontAtlasEntry]) -> Result<HudFontAtlasImage> {

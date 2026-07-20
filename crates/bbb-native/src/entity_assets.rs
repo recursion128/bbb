@@ -53,11 +53,15 @@ fn load_entity_model_texture_image(
     texture: EntityModelTextureRef,
 ) -> Result<EntityModelTextureImage> {
     let location = ResourceLocation::parse(texture.path)?;
-    let resource = roots
-        .resource_stack()
+    let resources = roots.resource_stack();
+    let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing entity texture minecraft:{}", texture.path))?;
-    let image = SpriteImage::from_png_file(entity_texture_id(texture.path), resource.path)?;
+    let image = SpriteImage::from_png_file_with_resource_stack(
+        entity_texture_id(texture.path),
+        resource.path,
+        &resources,
+    )?;
     if image.width == 0 || image.height == 0 {
         bail!("entity texture {} has zero-sized dimensions", texture.path);
     }

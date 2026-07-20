@@ -129,6 +129,7 @@ fn load_map_decoration_textures(roots: &PackRoots) -> Result<Vec<ItemFrameMapDec
 }
 
 fn load_map_background_textures(roots: &PackRoots) -> Result<Vec<FirstPersonMapBackgroundTexture>> {
+    let resources = roots.resource_stack();
     [
         FirstPersonMapBackgroundKind::Plain,
         FirstPersonMapBackgroundKind::Checkerboard,
@@ -136,11 +137,14 @@ fn load_map_background_textures(roots: &PackRoots) -> Result<Vec<FirstPersonMapB
     .into_iter()
     .map(|kind| {
         let location = ResourceLocation::parse(kind.vanilla_path())?;
-        let resource = roots
-            .resource_stack()
+        let resource = resources
             .get_resource(&location)
             .with_context(|| format!("missing map background texture {}", kind.vanilla_path()))?;
-        let image = SpriteImage::from_png_file(kind.vanilla_path(), resource.path)?;
+        let image = SpriteImage::from_png_file_with_resource_stack(
+            kind.vanilla_path(),
+            resource.path,
+            &resources,
+        )?;
         Ok(FirstPersonMapBackgroundTexture {
             kind,
             width: image.width,
@@ -267,8 +271,12 @@ fn load_local_dynamic_player_texture(
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing player profile resource texture {texture_path}"))?;
-    let image = SpriteImage::from_png_file(source_id.to_string(), resource.path)
-        .with_context(|| format!("load player profile resource texture {texture_path}"))?;
+    let image = SpriteImage::from_png_file_with_resource_stack(
+        source_id.to_string(),
+        resource.path,
+        resources,
+    )
+    .with_context(|| format!("load player profile resource texture {texture_path}"))?;
     let handle = profile_texture_handle(source_id);
     Ok((
         EntityDynamicPlayerTexture { handle, kind },

@@ -10,6 +10,7 @@ use crate::{
     image::{
         decode_png_file_rgba_with_budget, read_png_file_dimensions_with_budget, PngDecodeBudget,
     },
+    resources::PackResourceStack,
     rgba_len,
 };
 
@@ -303,6 +304,22 @@ impl SpriteImage {
         let path = path.as_ref();
         let metadata_path = mcmeta_path(path);
         Self::from_png_file_with_metadata_path(id, path, Some(&metadata_path))
+    }
+
+    pub fn from_png_file_with_resource_stack(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let path = path.as_ref();
+        let metadata_path = mcmeta_path(path);
+        let mut budget = resources.single_image_png_decode_budget();
+        Self::from_png_file_with_metadata_path_and_budget(
+            id,
+            path,
+            Some(&metadata_path),
+            &mut budget,
+        )
     }
 
     pub(crate) fn from_png_file_with_metadata_path(

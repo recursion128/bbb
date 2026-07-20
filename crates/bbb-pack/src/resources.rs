@@ -8,7 +8,13 @@ use anyhow::{bail, Context, Result};
 use regex::Regex;
 use serde::Deserialize;
 
-use crate::{ClientPackSource, SelectedClientPack};
+use crate::{
+    image::{
+        PngDecodeBudget, ResourceImageGenerationBudget, ResourceImageMemoryObservation,
+        MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+    },
+    ClientPackSource, SelectedClientPack,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceLocation {
@@ -61,6 +67,7 @@ pub struct PackResourceStack {
     roots: Arc<Vec<PathBuf>>,
     entries: Arc<Vec<PackEntry>>,
     start: usize,
+    image_budget: Arc<ResourceImageGenerationBudget>,
 }
 
 impl PackResourceStack {
@@ -75,14 +82,54 @@ impl PackResourceStack {
             .zip(pack_ids)
             .map(|(root, pack_id)| PackEntry::new_unmanaged(pack_id, root))
             .collect();
+        Self::from_parts(
+            roots,
+            entries,
+            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
+        )
+    }
+
+    pub(crate) fn from_roots_with_image_budget(
+        roots: impl IntoIterator<Item = impl Into<PathBuf>>,
+        image_budget: Arc<ResourceImageGenerationBudget>,
+    ) -> Self {
+        let roots = roots.into_iter().map(Into::into).collect::<Vec<_>>();
+        let pack_ids = (0..roots.len())
+            .map(|index| format!("unmanaged/{index}"))
+            .collect::<Vec<_>>();
+        let entries = roots
+            .iter()
+            .cloned()
+            .zip(pack_ids)
+            .map(|(root, pack_id)| PackEntry::new_unmanaged(pack_id, root))
+            .collect();
+        Self::from_parts(roots, entries, image_budget)
+    }
+
+    fn from_parts(
+        roots: Vec<PathBuf>,
+        entries: Vec<PackEntry>,
+        image_budget: Arc<ResourceImageGenerationBudget>,
+    ) -> Self {
         Self {
             roots: Arc::new(roots),
             entries: Arc::new(entries),
             start: 0,
+            image_budget,
         }
     }
 
     pub fn prepare_selected_client_packs(packs: &[SelectedClientPack]) -> Result<Self> {
+        Self::prepare_selected_client_packs_with_image_budget(
+            packs,
+            ResourceImageGenerationBudget::new(MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES),
+        )
+    }
+
+    pub(crate) fn prepare_selected_client_packs_with_image_budget(
+        packs: &[SelectedClientPack],
+        image_budget: Arc<ResourceImageGenerationBudget>,
+    ) -> Result<Self> {
         let roots = packs
             .iter()
             .map(|pack| pack.root.clone())
@@ -102,11 +149,7 @@ impl PackResourceStack {
                 .with_context(|| format!("prepare selected client pack {}", pack.id))
             })
             .collect::<Result<Vec<_>>>()?;
-        Ok(Self {
-            roots: Arc::new(roots),
-            entries: Arc::new(entries),
-            start: 0,
-        })
+        Ok(Self::from_parts(roots, entries, image_budget))
     }
 
     pub fn roots(&self) -> &[PathBuf] {
@@ -118,7 +161,24 @@ impl PackResourceStack {
             roots: Arc::clone(&self.roots),
             entries: Arc::clone(&self.entries),
             start: (self.start + 1).min(self.entries.len()),
+            image_budget: Arc::clone(&self.image_budget),
         }
+    }
+
+    pub(crate) fn single_image_png_decode_budget(&self) -> PngDecodeBudget {
+        PngDecodeBudget::single_image_in(Arc::clone(&self.image_budget))
+    }
+
+    pub(crate) fn atlas_png_decode_budget(&self) -> PngDecodeBudget {
+        PngDecodeBudget::atlas_in(Arc::clone(&self.image_budget))
+    }
+
+    pub(crate) fn image_budget(&self) -> Arc<ResourceImageGenerationBudget> {
+        Arc::clone(&self.image_budget)
+    }
+
+    pub fn resource_image_memory_observation(&self) -> ResourceImageMemoryObservation {
+        self.image_budget.observation()
     }
 
     pub fn namespaces(&self) -> Result<Vec<String>> {
