@@ -10070,7 +10070,7 @@
         },
         "decode": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_and_spawn_distance",
             "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerAbilitiesPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -10095,7 +10095,7 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_and_spawn_distance",
             "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
             "crates/bbb-world/src/client/local_player_movement/tests.rs#player_abilities_walking_speed_scales_fov_without_mutating_movement_attribute",
             "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
@@ -11891,7 +11891,7 @@
         },
         "decode": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_and_spawn_distance",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSetDefaultSpawnPositionPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -11914,7 +11914,7 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_and_spawn_distance",
             "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
             "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
             "crates/bbb-native/src/runtime/tests.rs#hotbar_item_icons_project_spawn_compass_range_dispatch"
@@ -12650,7 +12650,7 @@
         },
         "decode": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_and_spawn_distance",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSetSimulationDistancePacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -12675,7 +12675,7 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_and_spawn_distance",
             "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
             "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance",
             "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
@@ -13204,7 +13204,7 @@
         },
         "decode": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_rich_system_chat_component",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -13228,7 +13228,7 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_rich_system_chat_component",
             "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_hud_text_packets_to_world",
             "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
