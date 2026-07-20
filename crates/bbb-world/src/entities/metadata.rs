@@ -1,3 +1,4 @@
+use bbb_protocol::attribute_types::vanilla_attribute_type_for_resource_id;
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::packets::{
     EntityDataValueKind, EquipmentSlot as ProtocolEquipmentSlot,
@@ -13,8 +14,10 @@ use super::dimensions::vanilla_living_entity_type;
 use super::schema::{
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type,
-    vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_living, vanilla_entity_type_has_attribute,
 };
+
+const ATTRIBUTE_REGISTRY: &str = "minecraft:attribute";
 
 impl WorldStore {
     pub fn apply_set_entity_data(&mut self, packet: ProtocolSetEntityData) -> bool {
@@ -230,10 +233,28 @@ impl WorldStore {
             self.counters.entity_attribute_updates_ignored += 1;
             return false;
         }
+        let mut ignored_snapshot = false;
+        let mut resolved_attributes = Vec::with_capacity(packet.attributes.len());
+        for mut attribute in packet.attributes {
+            let canonical_attribute = self
+                .frozen_registry_access()
+                .entry_by_holder_id(ATTRIBUTE_REGISTRY, attribute.attribute_id)
+                .and_then(|entry| vanilla_attribute_type_for_resource_id(entry.resource_id));
+            let Some(canonical_attribute) = canonical_attribute else {
+                ignored_snapshot = true;
+                continue;
+            };
+            if !vanilla_entity_type_has_attribute(entity_type_id, canonical_attribute.id) {
+                ignored_snapshot = true;
+                continue;
+            }
+            attribute.attribute_id = canonical_attribute.id;
+            resolved_attributes.push(attribute);
+        }
         let Some(()) = self
             .entities
             .with_attributes_mut(packet.entity_id, |attributes| {
-                for attribute in packet.attributes {
+                for attribute in resolved_attributes {
                     if let Some(existing) = attributes
                         .attributes
                         .iter_mut()
@@ -252,6 +273,9 @@ impl WorldStore {
             self.counters.entity_attribute_updates_ignored += 1;
             return false;
         };
+        if ignored_snapshot {
+            self.counters.entity_attribute_updates_ignored += 1;
+        }
         self.counters.entity_attribute_updates_applied += 1;
         true
     }

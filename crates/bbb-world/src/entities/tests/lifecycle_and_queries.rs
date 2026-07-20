@@ -1024,6 +1024,138 @@ fn update_attributes_ignores_non_living_entities() {
 }
 
 #[test]
+fn update_attributes_resolves_session_holders_and_validates_entity_supplier() {
+    use bbb_protocol::attribute_types::{
+        VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID, VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+    };
+    use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        124,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    let attribute_keys = [
+        "minecraft:block_interaction_range",
+        "minecraft:movement_speed",
+        "minecraft:max_health",
+        "example:custom_attribute",
+    ];
+    let session_holder_id = |resource_id: &str| {
+        attribute_keys
+            .iter()
+            .position(|candidate| *candidate == resource_id)
+            .unwrap() as i32
+    };
+    store.record_registry_entries(
+        "minecraft:attribute",
+        0,
+        attribute_keys
+            .iter()
+            .map(|resource_id| crate::RegistryPacketEntry::stub(*resource_id))
+            .collect(),
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 124,
+        attributes: vec![
+            ProtocolAttributeSnapshot {
+                attribute_id: session_holder_id("minecraft:block_interaction_range"),
+                base: 64.0,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: session_holder_id("minecraft:movement_speed"),
+                base: 0.31,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: session_holder_id("minecraft:max_health"),
+                base: 40.0,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: session_holder_id("example:custom_attribute"),
+                base: 99.0,
+                modifiers: Vec::new(),
+            },
+        ],
+    }));
+    assert_eq!(
+        store.probe_entity(124).unwrap().attributes,
+        vec![
+            ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+                base: 40.0,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                base: 0.31,
+                modifiers: Vec::new(),
+            },
+        ]
+    );
+    assert_eq!(store.counters().entity_attribute_updates_applied, 1);
+    assert_eq!(store.counters().entity_attribute_updates_ignored, 1);
+
+    let retained = store.publication_snapshot();
+    store.reset_registry_session();
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 124,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID,
+            base: 32.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(store.probe_entity(124).unwrap().attributes.len(), 2);
+    assert_eq!(retained.probe_entity(124).unwrap().attributes.len(), 2);
+    assert_eq!(
+        retained.registry_resource_id_by_holder_id("minecraft:attribute", 0),
+        Some("minecraft:block_interaction_range")
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:attribute", 0),
+        Some("minecraft:armor")
+    );
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![124],
+        }),
+        1
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        124,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 124,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID,
+            base: 7.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity(124).unwrap().attributes,
+        vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID,
+            base: 7.0,
+            modifiers: Vec::new(),
+        }]
+    );
+    assert_eq!(
+        retained.probe_entity(124).unwrap().entity_type_id,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID
+    );
+}
+
+#[test]
 fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(10, 7));

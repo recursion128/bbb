@@ -1077,21 +1077,30 @@ fn decodes_update_attributes_packet() {
 }
 
 #[test]
-fn update_attributes_rejects_holders_outside_the_builtin_registry() {
+fn update_attributes_preserves_holder_ids_for_session_registry_resolution() {
     let invalid_attribute_id = crate::attribute_types::VANILLA_ATTRIBUTE_TYPES.len() as i32;
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
     payload.write_var_i32(1);
     payload.write_var_i32(invalid_attribute_id);
+    payload.write_f64(2.0);
+    payload.write_var_i32(0);
 
-    let error = decode_play_clientbound(
-        ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES,
-        &payload.into_inner(),
-    )
-    .unwrap_err();
-    assert!(error.to_string().contains(&format!(
-        "invalid vanilla attribute holder id {invalid_attribute_id}"
-    )));
+    assert_eq!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES,
+            &payload.into_inner(),
+        )
+        .unwrap(),
+        PlayClientbound::UpdateAttributes(UpdateAttributes {
+            entity_id: 123,
+            attributes: vec![AttributeSnapshot {
+                attribute_id: invalid_attribute_id,
+                base: 2.0,
+                modifiers: Vec::new(),
+            }],
+        })
+    );
 }
 
 #[test]

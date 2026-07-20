@@ -966,7 +966,11 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
     }
     let mut attributes = Vec::with_capacity(attribute_count);
     for _ in 0..attribute_count {
-        let attribute_id = decode_attribute_holder_id(decoder)?;
+        // RegistryFriendlyByteBuf resolves this holder through the connection's
+        // RegistryAccess in Vanilla. The protocol crate deliberately has no
+        // session owner, so retain the wire id for the world boundary instead
+        // of interpreting it as a built-in ordinal here.
+        let attribute_id = decoder.read_var_i32()?;
         let base = decoder.read_f64()?;
         let modifier_count = decoder.read_len()?;
         if modifier_count > MAX_ATTRIBUTE_MODIFIERS {

@@ -532,6 +532,31 @@ mod tests {
     }
 
     #[test]
+    fn update_attributes_keeps_session_resolution_at_the_world_boundary() {
+        let protocol = include_str!("packets/entities.rs");
+        let decode = protocol
+            .split("pub(super) fn decode_update_attributes")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("pub(super) fn decode_attribute_holder_id")
+                    .next()
+            })
+            .expect("UpdateAttributes decoder");
+        assert!(decode.contains("decoder.read_var_i32()?"));
+        assert!(!decode.contains("decode_attribute_holder_id"));
+        let world = include_str!("../../bbb-world/src/entities/metadata.rs");
+        let apply = world
+            .split("pub fn apply_update_attributes")
+            .nth(1)
+            .and_then(|source| source.split("\n    }").next())
+            .expect("UpdateAttributes world apply");
+        assert!(apply.contains("frozen_registry_access()"));
+        assert!(apply.contains("vanilla_attribute_type_for_resource_id"));
+        assert!(apply.contains("vanilla_entity_type_has_attribute"));
+    }
+
+    #[test]
     fn builtin_attribute_component_sources_use_generated_catalog_ids() {
         fn visit(path: &Path, violations: &mut Vec<String>) {
             if path.is_dir() {
