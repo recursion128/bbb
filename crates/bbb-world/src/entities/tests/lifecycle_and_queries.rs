@@ -1,5 +1,8 @@
 use super::*;
-use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
+use bbb_protocol::entity_types::{
+    VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+    VANILLA_ENTITY_TYPE_VILLAGER_ID,
+};
 
 #[test]
 fn tracks_entity_lifecycle_and_absolute_state_updates() {
@@ -949,6 +952,239 @@ fn set_entity_data_preserves_rich_component_and_rejects_invalid_owner_payload_at
             }),
         Some("Bob")
     );
+}
+
+#[test]
+fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity() {
+    let cow_accessors =
+        crate::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_COW_ID,
+        )
+        .unwrap();
+    let painting_data_id =
+        crate::vanilla_entity_metadata_painting_variant_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PAINTING_ID,
+        )
+        .unwrap();
+    let villager_data_id = crate::vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    )
+    .unwrap();
+
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:cow_variant",
+        0,
+        vec![
+            crate::RegistryPacketEntry::stub("example:first"),
+            crate::RegistryPacketEntry::stub("example:second"),
+        ],
+    );
+    store.record_registry_entries(
+        "minecraft:painting_variant",
+        0,
+        vec![crate::RegistryPacketEntry::stub("example:wide")],
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        500,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        501,
+        VANILLA_ENTITY_TYPE_PAINTING_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        502,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 500,
+        values: vec![ProtocolEntityDataValue {
+            data_id: cow_accessors.variant_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::CowVariant,
+                value: EntityDataRegistryReference::unresolved(0),
+            },
+        }],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 501,
+        values: vec![ProtocolEntityDataValue {
+            data_id: painting_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+            value: EntityDataValueKind::PaintingVariant(
+                bbb_protocol::packets::PaintingVariantData {
+                    registry: Some(EntityDataRegistryReference::unresolved(0)),
+                    direct: None,
+                },
+            ),
+        }],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 502,
+        values: vec![ProtocolEntityDataValue {
+            data_id: villager_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_VILLAGER_DATA_ID,
+            value: EntityDataValueKind::VillagerData {
+                villager_type: EntityDataRegistryReference::unresolved(0),
+                profession: EntityDataRegistryReference::unresolved(0),
+                level: 3,
+            },
+        }],
+    }));
+
+    let cow = entity_registry_reference(&store, 500, cow_accessors.variant_data_id);
+    let cow_identity = cow.identity().unwrap();
+    assert_eq!(cow_identity.registry(), "minecraft:cow_variant");
+    assert_eq!(cow_identity.resource_id(), "example:first");
+    assert_eq!(cow_identity.source(), EntityDataRegistrySource::Server);
+    let first_revision = cow_identity.revision();
+
+    let painting = store
+        .probe_entity(501)
+        .unwrap()
+        .data_values
+        .into_iter()
+        .find_map(|value| match value.value {
+            EntityDataValueKind::PaintingVariant(variant) => variant.registry,
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(painting.identity().unwrap().resource_id(), "example:wide");
+
+    let (villager_type, profession) = store
+        .probe_entity(502)
+        .unwrap()
+        .data_values
+        .into_iter()
+        .find_map(|value| match value.value {
+            EntityDataValueKind::VillagerData {
+                villager_type,
+                profession,
+                ..
+            } => Some((villager_type, profession)),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(
+        villager_type.identity().unwrap().registry(),
+        "minecraft:villager_type"
+    );
+    assert_eq!(
+        profession.identity().unwrap().registry(),
+        "minecraft:villager_profession"
+    );
+    assert_eq!(
+        villager_type.identity().unwrap().source(),
+        EntityDataRegistrySource::VanillaFallback
+    );
+
+    let before_missing = store.probe_entity(500).unwrap().data_values;
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 500,
+        values: vec![
+            entity_invisible_data(),
+            ProtocolEntityDataValue {
+                data_id: cow_accessors.variant_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
+                value: EntityDataValueKind::RegistryId {
+                    serializer: EntityDataRegistryHolder::CowVariant,
+                    value: EntityDataRegistryReference::unresolved(99),
+                },
+            },
+        ],
+    }));
+    assert_eq!(store.probe_entity(500).unwrap().data_values, before_missing);
+    assert!(store
+        .apply_diagnostics()
+        .last_apply_error
+        .as_ref()
+        .is_some_and(|error| error.source == "entity_data_registry"
+            && error.message.contains("cow_variant holder id 99")));
+
+    let generation_a = store.publication_snapshot();
+    store.reset_registry_session();
+    store.record_registry_entries(
+        "minecraft:cow_variant",
+        0,
+        vec![
+            crate::RegistryPacketEntry::stub("example:second"),
+            crate::RegistryPacketEntry::stub("example:first"),
+        ],
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 500,
+        values: vec![ProtocolEntityDataValue {
+            data_id: cow_accessors.variant_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::CowVariant,
+                value: EntityDataRegistryReference::unresolved(0),
+            },
+        }],
+    }));
+    let generation_b = store.publication_snapshot();
+    let old = entity_registry_reference(&generation_a, 500, cow_accessors.variant_data_id);
+    let new = entity_registry_reference(&generation_b, 500, cow_accessors.variant_data_id);
+    assert_eq!(old.identity().unwrap().resource_id(), "example:first");
+    assert_eq!(new.identity().unwrap().resource_id(), "example:second");
+    assert_eq!(old.identity().unwrap().revision(), first_revision);
+    assert_ne!(
+        old.identity().unwrap().revision().session,
+        new.identity().unwrap().revision().session
+    );
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![500],
+        }),
+        1
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        500,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 500,
+        values: vec![ProtocolEntityDataValue {
+            data_id: cow_accessors.variant_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::CowVariant,
+                value: EntityDataRegistryReference::unresolved(1),
+            },
+        }],
+    }));
+    assert_eq!(
+        entity_registry_reference(&store, 500, cow_accessors.variant_data_id)
+            .identity()
+            .unwrap()
+            .resource_id(),
+        "example:first"
+    );
+}
+
+fn entity_registry_reference(
+    store: &WorldStore,
+    entity_id: i32,
+    data_id: u8,
+) -> EntityDataRegistryReference {
+    store
+        .probe_entity(entity_id)
+        .unwrap()
+        .data_values
+        .into_iter()
+        .find_map(|value| {
+            (value.data_id == data_id)
+                .then_some(value.value)
+                .and_then(|value| match value {
+                    EntityDataValueKind::RegistryId { value, .. } => Some(value),
+                    _ => None,
+                })
+        })
+        .unwrap()
 }
 
 #[test]

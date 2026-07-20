@@ -7,6 +7,8 @@ use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
+#[cfg(test)]
+use bbb_protocol::packets::{EntityDataRegistryIdentity, EntityDataRegistrySource};
 use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
@@ -15,9 +17,10 @@ use bbb_protocol::{
     item_types,
     packets::{
         decode_profile_textures_from_properties, EntityDataEnumSerializer,
-        EntityDataRegistryHolder, EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary,
-        ItemStackSummary, PlayerSkinPatchSummary, ResolvableProfileKindSummary,
-        ResolvableProfileSummary, SwingAnimationTypeSummary,
+        EntityDataRegistryHolder, EntityDataRegistryReference, EntityDataRegistryRevision,
+        EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary, ItemStackSummary,
+        PlayerSkinPatchSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+        SwingAnimationTypeSummary,
     },
 };
 use bbb_renderer::{
@@ -125,7 +128,7 @@ use bbb_world::{
     VANILLA_HORSE_MARKINGS_SHIFT as HORSE_MARKINGS_SHIFT,
 };
 trait EntityVariantRegistryLookup {
-    fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str>;
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision;
 
     fn farm_animal_variant_presentation(
         &self,
@@ -164,8 +167,13 @@ trait EntityVariantRegistryLookup {
 }
 
 impl EntityVariantRegistryLookup for WorldStore {
-    fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
-        self.registry_resource_id_by_holder_id(registry, holder_id)
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision {
+        let revision = self.registry_access_revision();
+        EntityDataRegistryRevision {
+            session: revision.session,
+            contents: revision.contents,
+            tags: revision.tags,
+        }
     }
 }
 
@@ -175,9 +183,13 @@ struct EntityVariantRenderContext<'a> {
 }
 
 impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
-    fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
-        self.world
-            .registry_resource_id_by_holder_id(registry, holder_id)
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision {
+        let revision = self.world.registry_access_revision();
+        EntityDataRegistryRevision {
+            session: revision.session,
+            contents: revision.contents,
+            tags: revision.tags,
+        }
     }
 
     fn farm_animal_variant_presentation(

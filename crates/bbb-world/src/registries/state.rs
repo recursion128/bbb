@@ -27,9 +27,25 @@ use bbb_protocol::world_clock_types::{
     vanilla_world_clock_type_by_id, vanilla_world_clock_type_by_resource_id,
 };
 use bbb_protocol::{entity_types::vanilla_entity_type, item_types::vanilla_item_type};
+use bbb_render_types::{
+    cat_variants::CatModelVariant,
+    temperature_animal_variants::{
+        ChickenModelVariant, CowModelVariant, FrogModelVariant, PigModelVariant,
+    },
+    wolf_variants::WolfModelVariant,
+    zombie_nautilus_variants::ZombieNautilusModelVariant,
+    VillagerModelProfession, VillagerModelType,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::chunks::{decode_nbt_payload_summary, NbtPayloadSummary};
+use crate::painting_variants::{
+    vanilla_painting_variant, vanilla_painting_variant_for_resource_id,
+};
+use crate::{
+    CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
+    PigSoundVariantIdentity, WolfSoundVariantIdentity,
+};
 
 use super::biomes::decode_biome_client_projection;
 use super::dimension_types::{
@@ -486,6 +502,49 @@ impl RegistrySet {
             "minecraft:data_component_predicate_type" => {
                 Some(vanilla_data_component_predicate_type(holder_id)?.resource_id)
             }
+            "minecraft:cat_variant" => {
+                Some(CatModelVariant::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:cat_sound_variant" => {
+                Some(CatSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:cow_variant" => {
+                Some(CowModelVariant::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:cow_sound_variant" => {
+                Some(CowSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:wolf_variant" => {
+                Some(WolfModelVariant::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:wolf_sound_variant" => {
+                Some(WolfSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:frog_variant" => {
+                Some(FrogModelVariant::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:pig_variant" => {
+                Some(PigModelVariant::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:pig_sound_variant" => {
+                Some(PigSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:chicken_variant" => {
+                Some(ChickenModelVariant::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:chicken_sound_variant" => {
+                Some(ChickenSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:zombie_nautilus_variant" => {
+                Some(ZombieNautilusModelVariant::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:painting_variant" => Some(vanilla_painting_variant(holder_id)?.resource_id),
+            "minecraft:villager_type" => {
+                Some(VillagerModelType::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
+            "minecraft:villager_profession" => {
+                Some(VillagerModelProfession::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
             _ => None,
         }
     }
@@ -523,6 +582,46 @@ impl RegistrySet {
                 .iter()
                 .find(|entry| entry.resource_id == resource_id)
                 .map(|entry| entry.type_id),
+            "minecraft:cat_variant" => Some(CatModelVariant::for_resource_id(resource_id)? as i32),
+            "minecraft:cat_sound_variant" => {
+                Some(CatSoundVariantIdentity::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:cow_variant" => Some(CowModelVariant::for_resource_id(resource_id)? as i32),
+            "minecraft:cow_sound_variant" => {
+                Some(CowSoundVariantIdentity::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:wolf_variant" => {
+                Some(WolfModelVariant::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:wolf_sound_variant" => {
+                Some(WolfSoundVariantIdentity::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:frog_variant" => {
+                Some(FrogModelVariant::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:pig_variant" => Some(PigModelVariant::for_resource_id(resource_id)? as i32),
+            "minecraft:pig_sound_variant" => {
+                Some(PigSoundVariantIdentity::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:chicken_variant" => {
+                Some(ChickenModelVariant::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:chicken_sound_variant" => {
+                Some(ChickenSoundVariantIdentity::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:zombie_nautilus_variant" => {
+                Some(ZombieNautilusModelVariant::for_resource_id(resource_id)? as i32)
+            }
+            "minecraft:painting_variant" => {
+                Some(vanilla_painting_variant_for_resource_id(resource_id)?.id)
+            }
+            "minecraft:villager_type" => Some(
+                VillagerModelType::for_resource_id(resource_id)?.vanilla_registry_index() as i32,
+            ),
+            "minecraft:villager_profession" => Some(
+                VillagerModelProfession::for_resource_id(resource_id)?.vanilla_registry_index()
+                    as i32,
+            ),
             _ => None,
         }
     }
@@ -829,6 +928,21 @@ fn registry_has_exact_vanilla_fallback(registry: &str) -> bool {
             | "minecraft:particle_type"
             | "minecraft:data_component_type"
             | "minecraft:data_component_predicate_type"
+            | "minecraft:cat_variant"
+            | "minecraft:cat_sound_variant"
+            | "minecraft:cow_variant"
+            | "minecraft:cow_sound_variant"
+            | "minecraft:wolf_variant"
+            | "minecraft:wolf_sound_variant"
+            | "minecraft:frog_variant"
+            | "minecraft:pig_variant"
+            | "minecraft:pig_sound_variant"
+            | "minecraft:chicken_variant"
+            | "minecraft:chicken_sound_variant"
+            | "minecraft:zombie_nautilus_variant"
+            | "minecraft:painting_variant"
+            | "minecraft:villager_type"
+            | "minecraft:villager_profession"
     )
 }
 

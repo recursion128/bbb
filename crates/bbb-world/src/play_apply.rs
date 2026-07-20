@@ -1983,7 +1983,7 @@ mod tests {
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CowSoundVariant,
-                id,
+                value: bbb_protocol::packets::EntityDataRegistryReference::unresolved(id),
             },
         }
     }

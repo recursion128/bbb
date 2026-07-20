@@ -220,7 +220,7 @@ pub enum EntityDataValueKind {
     Particles(Vec<ParticlePayload>),
     RegistryId {
         serializer: EntityDataRegistryHolder,
-        id: i32,
+        value: EntityDataRegistryReference,
     },
     PaintingVariant(PaintingVariantData),
     EnumId {
@@ -228,8 +228,8 @@ pub enum EntityDataValueKind {
         id: i32,
     },
     VillagerData {
-        villager_type: i32,
-        profession: i32,
+        villager_type: EntityDataRegistryReference,
+        profession: EntityDataRegistryReference,
         level: i32,
     },
     OptionalUnsignedInt(Option<i32>),
@@ -252,8 +252,89 @@ pub enum EntityDataValueKind {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PaintingVariantData {
-    pub registry_id: Option<i32>,
+    pub registry: Option<EntityDataRegistryReference>,
     pub direct: Option<DirectPaintingVariantData>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EntityDataRegistrySource {
+    Server,
+    VanillaFallback,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityDataRegistryRevision {
+    pub session: u64,
+    pub contents: u64,
+    pub tags: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityDataRegistryIdentity {
+    registry: String,
+    resource_id: String,
+    source: EntityDataRegistrySource,
+    revision: EntityDataRegistryRevision,
+}
+
+impl EntityDataRegistryIdentity {
+    pub fn new(
+        registry: impl Into<String>,
+        resource_id: impl Into<String>,
+        source: EntityDataRegistrySource,
+        revision: EntityDataRegistryRevision,
+    ) -> Self {
+        Self {
+            registry: registry.into(),
+            resource_id: resource_id.into(),
+            source,
+            revision,
+        }
+    }
+
+    pub fn registry(&self) -> &str {
+        &self.registry
+    }
+
+    pub fn resource_id(&self) -> &str {
+        &self.resource_id
+    }
+
+    pub fn source(&self) -> EntityDataRegistrySource {
+        self.source
+    }
+
+    pub fn revision(&self) -> EntityDataRegistryRevision {
+        self.revision
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityDataRegistryReference {
+    holder_id: i32,
+    identity: Option<EntityDataRegistryIdentity>,
+}
+
+impl EntityDataRegistryReference {
+    pub const fn unresolved(holder_id: i32) -> Self {
+        Self {
+            holder_id,
+            identity: None,
+        }
+    }
+
+    pub fn bind(&mut self, identity: EntityDataRegistryIdentity) {
+        self.identity = Some(identity);
+    }
+
+    pub fn holder_id(&self) -> i32 {
+        self.holder_id
+    }
+
+    pub fn identity(&self) -> Option<&EntityDataRegistryIdentity> {
+        self.identity.as_ref()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -328,6 +409,23 @@ impl EntityDataRegistryHolder {
             }
             _ => return None,
         })
+    }
+
+    pub const fn registry(self) -> &'static str {
+        match self {
+            Self::CatVariant => "minecraft:cat_variant",
+            Self::CatSoundVariant => "minecraft:cat_sound_variant",
+            Self::CowVariant => "minecraft:cow_variant",
+            Self::CowSoundVariant => "minecraft:cow_sound_variant",
+            Self::WolfVariant => "minecraft:wolf_variant",
+            Self::WolfSoundVariant => "minecraft:wolf_sound_variant",
+            Self::FrogVariant => "minecraft:frog_variant",
+            Self::PigVariant => "minecraft:pig_variant",
+            Self::PigSoundVariant => "minecraft:pig_sound_variant",
+            Self::ChickenVariant => "minecraft:chicken_variant",
+            Self::ChickenSoundVariant => "minecraft:chicken_sound_variant",
+            Self::ZombieNautilusVariant => "minecraft:zombie_nautilus_variant",
+        }
     }
 }
 
@@ -790,8 +888,8 @@ fn decode_entity_data_value(
             EntityDataValueKind::Particles(particles)
         }
         VANILLA_ENTITY_DATA_SERIALIZER_VILLAGER_DATA_ID => EntityDataValueKind::VillagerData {
-            villager_type: decoder.read_var_i32()?,
-            profession: decoder.read_var_i32()?,
+            villager_type: EntityDataRegistryReference::unresolved(decoder.read_var_i32()?),
+            profession: EntityDataRegistryReference::unresolved(decoder.read_var_i32()?),
             level: decoder.read_var_i32()?,
         },
         VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID => {
@@ -834,7 +932,7 @@ fn decode_entity_data_value(
         other if let Some(serializer) = EntityDataRegistryHolder::from_serializer_id(other) => {
             EntityDataValueKind::RegistryId {
                 serializer,
-                id: decoder.read_var_i32()?,
+                value: EntityDataRegistryReference::unresolved(decoder.read_var_i32()?),
             }
         }
         other if let Some(serializer) = EntityDataEnumSerializer::from_serializer_id(other) => {
@@ -858,13 +956,13 @@ fn decode_painting_variant_data(decoder: &mut Decoder<'_>) -> Result<PaintingVar
     }
     if encoded_id == 0 {
         return Ok(PaintingVariantData {
-            registry_id: None,
+            registry: None,
             direct: Some(decode_direct_painting_variant_data(decoder)?),
         });
     }
 
     Ok(PaintingVariantData {
-        registry_id: Some(encoded_id - 1),
+        registry: Some(EntityDataRegistryReference::unresolved(encoded_id - 1)),
         direct: None,
     })
 }

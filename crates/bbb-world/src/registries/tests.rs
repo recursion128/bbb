@@ -1,5 +1,6 @@
 use bbb_protocol::packets::{
-    KnownPack, RegistryData, RegistryDataEntry, RegistryTags, TagNetworkPayload, UpdateTags,
+    EntityDataRegistryHolder, KnownPack, RegistryData, RegistryDataEntry, RegistryTags,
+    TagNetworkPayload, UpdateTags,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -884,6 +885,73 @@ fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
             .payload,
         RegistryEntryPayload::VanillaFallback
     );
+}
+
+#[test]
+fn frozen_registry_access_has_exact_fallback_for_every_entity_data_holder_registry() {
+    let store = WorldStore::new();
+    let access = store.frozen_registry_access();
+    for (serializer, first_resource_id) in [
+        (EntityDataRegistryHolder::CatVariant, "minecraft:tabby"),
+        (
+            EntityDataRegistryHolder::CatSoundVariant,
+            "minecraft:classic",
+        ),
+        (EntityDataRegistryHolder::CowVariant, "minecraft:temperate"),
+        (
+            EntityDataRegistryHolder::CowSoundVariant,
+            "minecraft:classic",
+        ),
+        (EntityDataRegistryHolder::WolfVariant, "minecraft:pale"),
+        (
+            EntityDataRegistryHolder::WolfSoundVariant,
+            "minecraft:classic",
+        ),
+        (EntityDataRegistryHolder::FrogVariant, "minecraft:temperate"),
+        (EntityDataRegistryHolder::PigVariant, "minecraft:temperate"),
+        (
+            EntityDataRegistryHolder::PigSoundVariant,
+            "minecraft:classic",
+        ),
+        (
+            EntityDataRegistryHolder::ChickenVariant,
+            "minecraft:temperate",
+        ),
+        (
+            EntityDataRegistryHolder::ChickenSoundVariant,
+            "minecraft:classic",
+        ),
+        (
+            EntityDataRegistryHolder::ZombieNautilusVariant,
+            "minecraft:temperate",
+        ),
+    ] {
+        let entry = access
+            .entry_by_holder_id(serializer.registry(), 0)
+            .unwrap_or_else(|| panic!("missing fallback for {}", serializer.registry()));
+        assert_eq!(entry.resource_id, first_resource_id);
+        assert_eq!(entry.source, RegistryEntrySource::VanillaFallback);
+        assert_eq!(
+            access
+                .entry_by_resource_id(serializer.registry(), first_resource_id)
+                .map(|entry| entry.holder_id),
+            Some(0)
+        );
+        assert!(access
+            .entry_by_holder_id(serializer.registry(), i32::MAX)
+            .is_none());
+    }
+
+    let painting = access
+        .entry_by_holder_id("minecraft:painting_variant", 0)
+        .unwrap();
+    assert_eq!(
+        painting.resource_id,
+        crate::painting_variants::vanilla_painting_variant(0)
+            .unwrap()
+            .resource_id
+    );
+    assert_eq!(painting.source, RegistryEntrySource::VanillaFallback);
 }
 
 #[test]

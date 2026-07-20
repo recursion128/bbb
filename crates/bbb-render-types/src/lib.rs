@@ -3,13 +3,18 @@
 //! `bbb-renderer` re-exports everything here at its existing paths.
 
 mod banner_pattern_types;
+pub mod cat_variants;
 mod entity_textures;
 mod hud_glyphs;
 mod map_backgrounds;
 mod map_decorations;
 pub mod player_skin;
 mod sprites;
+pub mod temperature_animal_variants;
+mod villager_model_professions;
 mod villager_model_types;
+pub mod wolf_variants;
+pub mod zombie_nautilus_variants;
 
 pub use banner_pattern_types::BannerPatternKind;
 pub use entity_textures::{
@@ -34,4 +39,5 @@ pub use player_skin::{
     MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
 };
 pub use sprites::{ItemSpriteRect, SpriteAlphaMask};
+pub use villager_model_professions::VillagerModelProfession;
 pub use villager_model_types::VillagerModelType;

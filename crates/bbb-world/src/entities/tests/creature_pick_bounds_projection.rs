@@ -16,7 +16,9 @@ fn painting_variant_data(registry_id: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
         value: EntityDataValueKind::PaintingVariant(bbb_protocol::packets::PaintingVariantData {
-            registry_id: Some(registry_id),
+            registry: Some(
+                bbb_protocol::packets::EntityDataRegistryReference::unresolved(registry_id),
+            ),
             direct: None,
         }),
     }

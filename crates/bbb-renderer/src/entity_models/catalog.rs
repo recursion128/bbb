@@ -825,29 +825,36 @@ pub(in crate::entity_models) const fn villager_type_hat(
     }
 }
 
-impl VillagerModelProfession {
-    pub const fn hat(self) -> VillagerModelHat {
-        match self {
-            // Vanilla profession mcmeta declares butcher as partial and these six as full.
-            Self::Butcher => VillagerModelHat::Partial,
-            Self::Farmer | Self::Fisherman | Self::Fletcher | Self::Librarian | Self::Shepherd => {
-                VillagerModelHat::Full
-            }
-            Self::None
-            | Self::Armorer
-            | Self::Cartographer
-            | Self::Cleric
-            | Self::Leatherworker
-            | Self::Mason
-            | Self::Nitwit
-            | Self::Toolsmith
-            | Self::Weaponsmith => VillagerModelHat::None,
-        }
+pub(in crate::entity_models) const fn villager_profession_hat(
+    profession: VillagerModelProfession,
+) -> VillagerModelHat {
+    match profession {
+        // Vanilla profession mcmeta declares butcher as partial and these six as full.
+        VillagerModelProfession::Butcher => VillagerModelHat::Partial,
+        VillagerModelProfession::Farmer
+        | VillagerModelProfession::Fisherman
+        | VillagerModelProfession::Fletcher
+        | VillagerModelProfession::Librarian
+        | VillagerModelProfession::Shepherd => VillagerModelHat::Full,
+        VillagerModelProfession::None
+        | VillagerModelProfession::Armorer
+        | VillagerModelProfession::Cartographer
+        | VillagerModelProfession::Cleric
+        | VillagerModelProfession::Leatherworker
+        | VillagerModelProfession::Mason
+        | VillagerModelProfession::Nitwit
+        | VillagerModelProfession::Toolsmith
+        | VillagerModelProfession::Weaponsmith => VillagerModelHat::None,
     }
+}
 
-    pub const fn renders_level_badge(self) -> bool {
-        !matches!(self, Self::None | Self::Nitwit)
-    }
+pub(in crate::entity_models) const fn villager_profession_renders_level_badge(
+    profession: VillagerModelProfession,
+) -> bool {
+    !matches!(
+        profession,
+        VillagerModelProfession::None | VillagerModelProfession::Nitwit
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

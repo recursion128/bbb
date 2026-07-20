@@ -6765,7 +6765,7 @@ fn debug_hanging_facing_legacy_id(entity: &EntityState, direction_data_id: u8) -
 }
 
 fn debug_push_painting_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -6781,11 +6781,9 @@ fn debug_push_painting_additional_save_data(
         "facing: {}b",
         debug_painting_facing_legacy_2d_id(entity, accessor.direction_data_id)
     ));
-    if let Some(resource_id) = debug_entity_data_painting_variant_named_id(entity).and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:painting_variant", id, |id| {
-            vanilla_painting_variant_resource_id(id)
-        })
-    }) {
+    if let Some(resource_id) = debug_entity_data_painting_variant_named_reference(entity)
+        .and_then(|reference| debug_registry_resource_id(reference, "minecraft:painting_variant"))
+    {
         fields.push(format!("variant: {}", debug_snbt_string(resource_id)));
     }
 }
@@ -6800,7 +6798,9 @@ fn debug_painting_facing_legacy_2d_id(entity: &EntityState, direction_data_id: u
     }
 }
 
-fn debug_entity_data_painting_variant_named_id(entity: &EntityState) -> Option<i32> {
+fn debug_entity_data_painting_variant_named_reference(
+    entity: &EntityState,
+) -> Option<&bbb_protocol::packets::EntityDataRegistryReference> {
     let data_id =
         vanilla_entity_metadata_painting_variant_accessor_for_entity_type(entity.entity_type_id)?;
     entity
@@ -6809,7 +6809,7 @@ fn debug_entity_data_painting_variant_named_id(entity: &EntityState) -> Option<i
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::PaintingVariant(variant) if variant.direct.is_none() => {
-                variant.registry_id
+                variant.registry.as_ref()
             }
             _ => None,
         })
@@ -7124,20 +7124,17 @@ fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: 
 }
 
 fn debug_registry_resource_id<'a>(
-    world: &'a WorldStore,
+    reference: &'a bbb_protocol::packets::EntityDataRegistryReference,
     registry: &str,
-    id: i32,
-    vanilla_resource_id: impl FnOnce(i32) -> Option<&'static str>,
 ) -> Option<&'a str> {
-    if world.registry_content(registry).is_some() {
-        world.registry_resource_id_by_holder_id(registry, id)
-    } else {
-        vanilla_resource_id(id)
-    }
+    reference
+        .identity()
+        .filter(|identity| identity.registry() == registry)
+        .map(|identity| identity.resource_id())
 }
 
 fn debug_push_cat_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -7151,28 +7148,19 @@ fn debug_push_cat_additional_save_data(
     else {
         return;
     };
-    let variant = debug_entity_data_registry_id_present(
+    let variant = debug_entity_data_registry_reference_present(
         entity,
         variant_accessors.variant_data_id,
         EntityDataRegistryHolder::CatVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:cat_variant", id, |id| {
-            CatModelVariant::for_vanilla_registry_id(id).map(CatModelVariant::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:cat_variant"))
     .unwrap_or(variant_accessors.variant_default_resource_id);
-    let sound_variant = debug_entity_data_registry_id_present(
+    let sound_variant = debug_entity_data_registry_reference_present(
         entity,
         variant_accessors.sound_variant_data_id,
         EntityDataRegistryHolder::CatSoundVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:cat_sound_variant", id, |id| {
-            CatSoundVariantIdentity::for_vanilla_registry_id(id)
-                .map(CatSoundVariantIdentity::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:cat_sound_variant"))
     .unwrap_or(variant_accessors.sound_variant_default_resource_id);
     let collar_color = debug_entity_data_int_present(entity, accessors.collar_color_data_id)
         .map(debug_dye_color_legacy_save_id)
@@ -7222,7 +7210,7 @@ fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 }
 
 fn debug_push_wolf_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -7239,30 +7227,21 @@ fn debug_push_wolf_additional_save_data(
     let collar_color = debug_entity_data_int_present(entity, accessors.collar_color_data_id)
         .map(debug_dye_color_legacy_save_id)
         .unwrap_or(accessors.collar_color_default);
-    let variant = debug_entity_data_registry_id_present(
+    let variant = debug_entity_data_registry_reference_present(
         entity,
         variant_accessors.variant_data_id,
         EntityDataRegistryHolder::WolfVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:wolf_variant", id, |id| {
-            WolfModelVariant::for_vanilla_registry_id(id).map(WolfModelVariant::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:wolf_variant"))
     .unwrap_or(variant_accessors.variant_default_resource_id);
     let anger_end_time = debug_entity_data_long_present(entity, accessors.anger_end_time_data_id)
         .unwrap_or(accessors.anger_end_time_default);
-    let sound_variant = debug_entity_data_registry_id_present(
+    let sound_variant = debug_entity_data_registry_reference_present(
         entity,
         variant_accessors.sound_variant_data_id,
         EntityDataRegistryHolder::WolfSoundVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:wolf_sound_variant", id, |id| {
-            WolfSoundVariantIdentity::for_vanilla_registry_id(id)
-                .map(WolfSoundVariantIdentity::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:wolf_sound_variant"))
     .unwrap_or(variant_accessors.sound_variant_default_resource_id);
     fields.push(format!("CollarColor: {collar_color}b"));
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
@@ -7274,7 +7253,7 @@ fn debug_push_wolf_additional_save_data(
 }
 
 fn debug_push_zombie_nautilus_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -7285,16 +7264,13 @@ fn debug_push_zombie_nautilus_additional_save_data(
     else {
         return;
     };
-    let variant = debug_entity_data_registry_id_present(
+    let variant = debug_entity_data_registry_reference_present(
         entity,
         variant_data_id,
         EntityDataRegistryHolder::ZombieNautilusVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:zombie_nautilus_variant", id, |id| {
-            ZombieNautilusModelVariant::for_vanilla_registry_id(id)
-                .map(ZombieNautilusModelVariant::resource_id)
-        })
+    .and_then(|reference| {
+        debug_registry_resource_id(reference, "minecraft:zombie_nautilus_variant")
     })
     .unwrap_or(variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
@@ -7408,7 +7384,7 @@ fn debug_push_abstract_fish_additional_save_data(entity: &EntityState, fields: &
 }
 
 fn debug_push_chicken_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -7417,28 +7393,19 @@ fn debug_push_chicken_additional_save_data(
     ) else {
         return;
     };
-    let variant = debug_entity_data_registry_id_present(
+    let variant = debug_entity_data_registry_reference_present(
         entity,
         accessors.variant_data_id,
         EntityDataRegistryHolder::ChickenVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:chicken_variant", id, |id| {
-            ChickenModelVariant::for_vanilla_registry_id(id).map(ChickenModelVariant::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:chicken_variant"))
     .unwrap_or(accessors.variant_default_resource_id);
-    let sound_variant = debug_entity_data_registry_id_present(
+    let sound_variant = debug_entity_data_registry_reference_present(
         entity,
         accessors.sound_variant_data_id,
         EntityDataRegistryHolder::ChickenSoundVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:chicken_sound_variant", id, |id| {
-            ChickenSoundVariantIdentity::for_vanilla_registry_id(id)
-                .map(ChickenSoundVariantIdentity::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:chicken_sound_variant"))
     .unwrap_or(accessors.sound_variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
@@ -7448,7 +7415,7 @@ fn debug_push_chicken_additional_save_data(
 }
 
 fn debug_push_cow_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -7457,28 +7424,19 @@ fn debug_push_cow_additional_save_data(
     ) else {
         return;
     };
-    let variant = debug_entity_data_registry_id_present(
+    let variant = debug_entity_data_registry_reference_present(
         entity,
         accessors.variant_data_id,
         EntityDataRegistryHolder::CowVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:cow_variant", id, |id| {
-            CowModelVariant::for_vanilla_registry_id(id).map(CowModelVariant::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:cow_variant"))
     .unwrap_or(accessors.variant_default_resource_id);
-    let sound_variant = debug_entity_data_registry_id_present(
+    let sound_variant = debug_entity_data_registry_reference_present(
         entity,
         accessors.sound_variant_data_id,
         EntityDataRegistryHolder::CowSoundVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:cow_sound_variant", id, |id| {
-            CowSoundVariantIdentity::for_vanilla_registry_id(id)
-                .map(CowSoundVariantIdentity::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:cow_sound_variant"))
     .unwrap_or(accessors.sound_variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
@@ -7534,7 +7492,7 @@ fn debug_push_dolphin_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_frog_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -7543,16 +7501,12 @@ fn debug_push_frog_additional_save_data(
     else {
         return;
     };
-    let variant = debug_entity_data_registry_id_present(
+    let variant = debug_entity_data_registry_reference_present(
         entity,
         variant_data_id,
         EntityDataRegistryHolder::FrogVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:frog_variant", id, |id| {
-            FrogModelVariant::for_vanilla_registry_id(id).map(FrogModelVariant::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:frog_variant"))
     .unwrap_or(variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
 }
@@ -7883,7 +7837,7 @@ fn debug_push_phantom_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_pig_additional_save_data(
-    world: &WorldStore,
+    _world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -7892,28 +7846,19 @@ fn debug_push_pig_additional_save_data(
     ) else {
         return;
     };
-    let variant = debug_entity_data_registry_id_present(
+    let variant = debug_entity_data_registry_reference_present(
         entity,
         accessors.variant_data_id,
         EntityDataRegistryHolder::PigVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:pig_variant", id, |id| {
-            PigModelVariant::for_vanilla_registry_id(id).map(PigModelVariant::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:pig_variant"))
     .unwrap_or(accessors.variant_default_resource_id);
-    let sound_variant = debug_entity_data_registry_id_present(
+    let sound_variant = debug_entity_data_registry_reference_present(
         entity,
         accessors.sound_variant_data_id,
         EntityDataRegistryHolder::PigSoundVariant,
     )
-    .and_then(|id| {
-        debug_registry_resource_id(world, "minecraft:pig_sound_variant", id, |id| {
-            PigSoundVariantIdentity::for_vanilla_registry_id(id)
-                .map(PigSoundVariantIdentity::resource_id)
-        })
-    })
+    .and_then(|reference| debug_registry_resource_id(reference, "minecraft:pig_sound_variant"))
     .unwrap_or(accessors.sound_variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
@@ -8129,20 +8074,20 @@ fn debug_entity_data_direction_legacy_id_present(entity: &EntityState, data_id: 
         })
 }
 
-fn debug_entity_data_registry_id_present(
+fn debug_entity_data_registry_reference_present(
     entity: &EntityState,
     data_id: u8,
     expected_serializer: EntityDataRegistryHolder,
-) -> Option<i32> {
+) -> Option<&bbb_protocol::packets::EntityDataRegistryReference> {
     entity
         .data_values
         .iter()
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
-            EntityDataValueKind::RegistryId { serializer, id }
+            EntityDataValueKind::RegistryId { serializer, value }
                 if *serializer == expected_serializer =>
             {
-                Some(*id)
+                Some(value)
             }
             _ => None,
         })

@@ -25620,7 +25620,7 @@ mod generated_catalog_guards {
             .contains("vanilla_entity_metadata_painting_variant_accessor_for_entity_type"));
         let input = include_str!("../../../../bbb-native/src/input.rs");
         let debug_body = input
-            .split("fn debug_entity_data_painting_variant_named_id")
+            .split("fn debug_entity_data_painting_variant_named_reference")
             .nth(1)
             .and_then(|source| source.split("fn debug_vanilla_direction_legacy_id").next())
             .expect("painting variant debug source");
@@ -26245,7 +26245,11 @@ mod generated_catalog_guards {
         let native_input_early_animal_fixtures = native_input_tests
             .split("fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard")
             .nth(1)
-            .and_then(|source| source.split("fn debug_registry_resource_ids_use_vanilla_order_only_without_server_contents").next())
+            .and_then(|source| {
+                source
+                    .split("fn debug_registry_resource_ids_use_the_value_local_session_identity")
+                    .next()
+            })
             .expect("native input early-animal baby fixture source");
         assert_eq!(
             native_input_early_animal_fixtures

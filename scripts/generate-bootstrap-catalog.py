@@ -79,22 +79,22 @@ DEFAULT_BANNER_PATTERN_TYPES_OUTPUT = (
     REPO_ROOT / "crates/bbb-render-types/src/banner_pattern_types.rs"
 )
 DEFAULT_VILLAGER_PROFESSIONS_OUTPUT = (
-    REPO_ROOT / "crates/bbb-renderer/src/entity_models/villager_professions.rs"
+    REPO_ROOT / "crates/bbb-render-types/src/villager_model_professions.rs"
 )
 DEFAULT_VILLAGER_TYPES_OUTPUT = (
     REPO_ROOT / "crates/bbb-render-types/src/villager_model_types.rs"
 )
 DEFAULT_CAT_VARIANTS_OUTPUT = (
-    REPO_ROOT / "crates/bbb-renderer/src/entity_models/cat_variants.rs"
+    REPO_ROOT / "crates/bbb-render-types/src/cat_variants.rs"
 )
 DEFAULT_WOLF_VARIANTS_OUTPUT = (
-    REPO_ROOT / "crates/bbb-renderer/src/entity_models/wolf_variants.rs"
+    REPO_ROOT / "crates/bbb-render-types/src/wolf_variants.rs"
 )
 DEFAULT_TEMPERATURE_ANIMAL_VARIANTS_OUTPUT = (
-    REPO_ROOT / "crates/bbb-renderer/src/entity_models/temperature_animal_variants.rs"
+    REPO_ROOT / "crates/bbb-render-types/src/temperature_animal_variants.rs"
 )
 DEFAULT_ZOMBIE_NAUTILUS_VARIANTS_OUTPUT = (
-    REPO_ROOT / "crates/bbb-renderer/src/entity_models/zombie_nautilus_variants.rs"
+    REPO_ROOT / "crates/bbb-render-types/src/zombie_nautilus_variants.rs"
 )
 DEFAULT_ANIMAL_SOUND_VARIANTS_OUTPUT = (
     REPO_ROOT / "crates/bbb-world/src/entities/sound_variants.rs"
@@ -1842,7 +1842,11 @@ def render_villager_professions(entries: list[BootstrapEntry]) -> str:
             "        VANILLA_VILLAGER_PROFESSIONS[self as usize].resource_id",
             "    }",
             "",
-            "    pub(in crate::entity_models) fn texture_index(self) -> Option<usize> {",
+            "    pub const fn vanilla_registry_index(self) -> usize {",
+            "        self as usize",
+            "    }",
+            "",
+            "    pub fn texture_index(self) -> Option<usize> {",
             "        (self as usize).checked_sub(1)",
             "    }",
             "}",
@@ -1871,6 +1875,7 @@ def render_villager_professions(entries: list[BootstrapEntry]) -> str:
             '        assert_eq!(VillagerModelProfession::for_vanilla_registry_id(15), None);',
             '        assert_eq!(VillagerModelProfession::for_resource_id("minecraft:mason"), Some(VillagerModelProfession::Mason));',
             '        assert_eq!(VillagerModelProfession::for_resource_id("minecraft:beekeeper"), None);',
+            '        assert_eq!(VillagerModelProfession::Mason.vanilla_registry_index(), 10);',
             '        assert_eq!(VillagerModelProfession::None.texture_index(), None);',
             '        assert_eq!(VillagerModelProfession::Armorer.texture_index(), Some(0));',
             '        assert_eq!(VillagerModelProfession::Weaponsmith.texture_index(), Some(13));',
@@ -1884,7 +1889,7 @@ def render_villager_professions(entries: list[BootstrapEntry]) -> str:
             "                if path.is_dir() { visit(&path, violations); continue; }",
             "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
             "                let display = path.to_string_lossy();",
-            "                if display.ends_with(\"/villager_professions.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                if display.ends_with(\"/villager_model_professions.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
             "                if source.contains(\"enum VillagerModelProfession\") || source.contains(\"fn villager_profession_from_entry_id(\") || source.contains(\"fn villager_profession_from_vanilla_registry_id(\") || source.contains(\"fn villager_profession_texture_index(\") || source.contains(\"\\\"minecraft:armorer\\\" => Some(VillagerModelProfession::\") { violations.push(display.to_string()); }",
             "            }",
@@ -2056,7 +2061,7 @@ def render_cat_variants(
         (
             "];",
             "",
-            f"pub(in crate::entity_models) const VANILLA_CAT_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries) * 2}] = [",
+            f"pub const VANILLA_CAT_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries) * 2}] = [",
         )
     )
     for entry in entries:
@@ -2096,7 +2101,7 @@ def render_cat_variants(
             "        VANILLA_CAT_VARIANTS[self as usize].resource_id",
             "    }",
             "",
-            "    pub(in crate::entity_models) const fn builtin_texture_ref(",
+            "    pub const fn builtin_texture_ref(",
             "        self,",
             "        baby: bool,",
             "    ) -> EntityModelTextureRef {",
@@ -2143,7 +2148,7 @@ def render_cat_variants(
             "",
             "    #[test]",
             "    fn production_sources_do_not_redeclare_cat_variant_catalog_facts() {",
-            "        let native = include_str!(\"../../../bbb-native/src/entity_assets.rs\");",
+            "        let native = include_str!(\"../../bbb-native/src/entity_assets.rs\");",
             "        let fixture = native.split(\"fn loads_vanilla_entity_textures_from_resource_stack\").nth(1).and_then(|source| source.split(\"    #[test]\").next()).expect(\"native entity texture loader fixture\");",
             "        assert_eq!(fixture.matches(\"entity_model_texture_refs()\").count(), 3);",
             "        for texture in VANILLA_CAT_VARIANT_TEXTURE_REFS {",
@@ -2217,7 +2222,7 @@ def render_wolf_variants(
         (
             "];",
             "",
-            f"pub(in crate::entity_models) const VANILLA_WOLF_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries) * 6}] = [",
+            f"pub const VANILLA_WOLF_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries) * 6}] = [",
         )
     )
     for entry in entries:
@@ -2257,7 +2262,7 @@ def render_wolf_variants(
             "        VANILLA_WOLF_VARIANTS[self as usize].resource_id",
             "    }",
             "",
-            "    pub(in crate::entity_models) const fn builtin_texture_ref(",
+            "    pub const fn builtin_texture_ref(",
             "        self,",
             "        baby: bool,",
             "        tame: bool,",
@@ -2308,13 +2313,13 @@ def render_wolf_variants(
             "",
             "    #[test]",
             "    fn production_sources_do_not_redeclare_wolf_variant_catalog_facts() {",
-            "        let native = include_str!(\"../../../bbb-native/src/entity_assets.rs\");",
+            "        let native = include_str!(\"../../bbb-native/src/entity_assets.rs\");",
             "        let fixture = native.split(\"fn loads_vanilla_entity_textures_from_resource_stack\").nth(1).and_then(|source| source.split(\"    #[test]\").next()).expect(\"native entity texture loader fixture\");",
             "        assert_eq!(fixture.matches(\"entity_model_texture_refs()\").count(), 3);",
             "        for texture in VANILLA_WOLF_VARIANT_TEXTURE_REFS {",
             "            assert!(!fixture.contains(texture.path), \"native fixture restored wolf asset literal {}\", texture.path);",
             "        }",
-            "        let renderer_tests = include_str!(\"tests/wolf.rs\");",
+            "        let renderer_tests = include_str!(\"../../bbb-renderer/src/entity_models/tests/wolf.rs\");",
             "        let texture_fixture = renderer_tests.split(\"fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets\").nth(1).and_then(|source| source.split(\"\\n#[test]\").next()).expect(\"wolf texture-ref fixture\");",
             "        assert!(texture_fixture.contains(\"wolf_entity_texture_refs()\"));",
             "        assert!(!texture_fixture.contains(\"size: [\"), \"wolf texture fixture restored hand-authored PNG dimensions\");",
@@ -2471,7 +2476,7 @@ def render_temperature_animal_variants(
             (
                 "",
                 "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
-                f"pub(in crate::entity_models) enum {model_type} {{",
+                f"pub enum {model_type} {{",
                 *(f"    {rust_variant(value)}," for value in model_types),
                 "}",
                 "",
@@ -2511,7 +2516,7 @@ def render_temperature_animal_variants(
             (
                 "];",
                 "",
-                f"pub(in crate::entity_models) const VANILLA_{family.upper()}_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries) * 2}] = [",
+                f"pub const VANILLA_{family.upper()}_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries) * 2}] = [",
             )
         )
         for index in range(len(entries)):
@@ -2530,11 +2535,11 @@ def render_temperature_animal_variants(
                 f"        VANILLA_{family.upper()}_VARIANT_PRESENTATIONS[self as usize]",
                 "    }",
                 "",
-                f"    pub(in crate::entity_models) const fn builtin_model_type(self) -> {model_type} {{",
+                f"    pub const fn builtin_model_type(self) -> {model_type} {{",
                 "        self.builtin_presentation().model_type",
                 "    }",
                 "",
-                "    pub(in crate::entity_models) const fn builtin_model_key(self, baby: bool) -> &'static str {",
+                "    pub const fn builtin_model_key(self, baby: bool) -> &'static str {",
                 "        let presentation = self.builtin_presentation();",
                 "        if baby {",
                 "            presentation.baby_model_key",
@@ -2543,7 +2548,7 @@ def render_temperature_animal_variants(
                 "        }",
                 "    }",
                 "",
-                "    pub(in crate::entity_models) const fn builtin_texture_ref(",
+                "    pub const fn builtin_texture_ref(",
                 "        self,",
                 "        baby: bool,",
                 "    ) -> EntityModelTextureRef {",
@@ -2561,7 +2566,7 @@ def render_temperature_animal_variants(
     lines.extend(
         (
             "",
-            f"pub(in crate::entity_models) const VANILLA_FROG_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(frog_entries)}] = [",
+            f"pub const VANILLA_FROG_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(frog_entries)}] = [",
         )
     )
     for entry in frog_entries:
@@ -2585,7 +2590,7 @@ def render_temperature_animal_variants(
             "];",
             "",
             "impl FrogModelVariant {",
-            "    pub(in crate::entity_models) const fn builtin_texture_ref(self) -> EntityModelTextureRef {",
+            "    pub const fn builtin_texture_ref(self) -> EntityModelTextureRef {",
             "        VANILLA_FROG_VARIANT_TEXTURE_REFS[self as usize]",
             "    }",
             "}",
@@ -2655,7 +2660,7 @@ def render_temperature_animal_variants(
             "",
             "    #[test]",
             "    fn production_sources_do_not_redeclare_temperature_animal_variant_catalog_facts() {",
-            "        let native = include_str!(\"../../../bbb-native/src/entity_assets.rs\");",
+            "        let native = include_str!(\"../../bbb-native/src/entity_assets.rs\");",
             "        let loader = native.split(\"fn load_entity_model_texture_images\").nth(1).and_then(|source| source.split(\"fn load_entity_model_texture_image\").next()).expect(\"native entity texture loader\");",
             "        assert_eq!(loader.matches(\"entity_model_texture_refs()\").count(), 1);",
             "        let fixture = native.split(\"fn loads_vanilla_entity_textures_from_resource_stack\").nth(1).and_then(|source| source.split(\"    #[test]\").next()).expect(\"native entity texture loader fixture\");",
@@ -2664,9 +2669,9 @@ def render_temperature_animal_variants(
             "            assert!(!fixture.contains(texture.path), \"native fixture restored temperature-animal asset literal {}\", texture.path);",
             "        }",
             "        for (source, texture_test, atlas_test, refs_fn, asset_prefix) in [",
-            "            (include_str!(\"tests/chicken.rs\"), \"fn chicken_texture_refs_match_vanilla_variant_assets\", \"fn entity_texture_atlas_stitches_official_chicken_png_slots\", \"chicken_entity_texture_refs()\", \"textures/entity/chicken/\"),",
-            "            (include_str!(\"tests/cow.rs\"), \"fn cow_texture_refs_match_vanilla_renderers\", \"fn entity_texture_atlas_stitches_official_cow_png_slots\", \"cow_entity_texture_refs()\", \"textures/entity/cow/\"),",
-            "            (include_str!(\"tests/pig.rs\"), \"fn pig_texture_refs_match_vanilla_variant_assets\", \"fn entity_texture_atlas_stitches_official_pig_png_slots\", \"pig_entity_texture_refs()\", \"textures/entity/pig/\"),",
+            "            (include_str!(\"../../bbb-renderer/src/entity_models/tests/chicken.rs\"), \"fn chicken_texture_refs_match_vanilla_variant_assets\", \"fn entity_texture_atlas_stitches_official_chicken_png_slots\", \"chicken_entity_texture_refs()\", \"textures/entity/chicken/\"),",
+            "            (include_str!(\"../../bbb-renderer/src/entity_models/tests/cow.rs\"), \"fn cow_texture_refs_match_vanilla_renderers\", \"fn entity_texture_atlas_stitches_official_cow_png_slots\", \"cow_entity_texture_refs()\", \"textures/entity/cow/\"),",
+            "            (include_str!(\"../../bbb-renderer/src/entity_models/tests/pig.rs\"), \"fn pig_texture_refs_match_vanilla_variant_assets\", \"fn entity_texture_atlas_stitches_official_pig_png_slots\", \"pig_entity_texture_refs()\", \"textures/entity/pig/\"),",
             "        ] {",
             "            let texture_fixture = source.split(texture_test).nth(1).and_then(|source| source.split(\"\\n#[test]\").next()).expect(\"temperature-animal texture-ref fixture\");",
             "            assert!(texture_fixture.contains(refs_fn));",
@@ -2676,7 +2681,7 @@ def render_temperature_animal_variants(
             "            assert!(atlas_fixture.contains(\"texture_atlas_entry_y\"));",
             "            assert!(!atlas_fixture.contains(asset_prefix), \"{atlas_test} restored hand-authored texture paths\");",
             "        }",
-            "        let creeper_tests = include_str!(\"tests/creeper.rs\");",
+            "        let creeper_tests = include_str!(\"../../bbb-renderer/src/entity_models/tests/creeper.rs\");",
             "        let creeper_fixture = creeper_tests.split(\"fn creeper_texture_ref_matches_vanilla_renderer\").nth(1).and_then(|source| source.split(\"\\n#[test]\").next()).expect(\"creeper texture-ref fixture\");",
             "        assert!(creeper_fixture.contains(\"CHICKEN_TEMPERATE_TEXTURE_REF\"));",
             "        let chicken_assertion = creeper_fixture.split(\"EntityModelKind::Chicken\").nth(1).expect(\"creeper chicken texture assertion\");",
@@ -2746,7 +2751,7 @@ def render_zombie_nautilus_variants(
         "}",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
-        "pub(in crate::entity_models) enum ZombieNautilusVariantModelType {",
+        "pub enum ZombieNautilusVariantModelType {",
         *(f"    {rust_variant(value)}," for value in model_types),
         "}",
         "",
@@ -2781,7 +2786,7 @@ def render_zombie_nautilus_variants(
         (
             "];",
             "",
-            f"pub(in crate::entity_models) const VANILLA_ZOMBIE_NAUTILUS_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries)}] = [",
+            f"pub const VANILLA_ZOMBIE_NAUTILUS_VARIANT_TEXTURE_REFS: [EntityModelTextureRef; {len(entries)}] = [",
             *(
                 f"    VANILLA_ZOMBIE_NAUTILUS_VARIANTS[{index}].texture,"
                 for index in range(len(entries))
@@ -2806,17 +2811,17 @@ def render_zombie_nautilus_variants(
             "        VANILLA_ZOMBIE_NAUTILUS_VARIANTS[self as usize].resource_id",
             "    }",
             "",
-            "    pub(in crate::entity_models) const fn builtin_model_type(",
+            "    pub const fn builtin_model_type(",
             "        self,",
             "    ) -> ZombieNautilusVariantModelType {",
             "        VANILLA_ZOMBIE_NAUTILUS_VARIANTS[self as usize].model_type",
             "    }",
             "",
-            "    pub(in crate::entity_models) const fn builtin_model_key(self) -> &'static str {",
+            "    pub const fn builtin_model_key(self) -> &'static str {",
             "        VANILLA_ZOMBIE_NAUTILUS_VARIANTS[self as usize].model_key",
             "    }",
             "",
-            "    pub(in crate::entity_models) const fn builtin_texture_ref(",
+            "    pub const fn builtin_texture_ref(",
             "        self,",
             "    ) -> EntityModelTextureRef {",
             "        VANILLA_ZOMBIE_NAUTILUS_VARIANTS[self as usize].texture",
@@ -2864,7 +2869,7 @@ def render_zombie_nautilus_variants(
             "",
             "    #[test]",
             "    fn production_sources_do_not_redeclare_zombie_nautilus_variant_catalog_facts() {",
-            "        let native = include_str!(\"../../../bbb-native/src/entity_assets.rs\");",
+            "        let native = include_str!(\"../../bbb-native/src/entity_assets.rs\");",
             "        let fixture = native.split(\"fn loads_vanilla_entity_textures_from_resource_stack\").nth(1).and_then(|source| source.split(\"    #[test]\").next()).expect(\"native entity texture loader fixture\");",
             "        assert_eq!(fixture.matches(\"entity_model_texture_refs()\").count(), 3);",
             "        for texture in VANILLA_ZOMBIE_NAUTILUS_VARIANT_TEXTURE_REFS {",

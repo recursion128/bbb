@@ -1,14 +1,18 @@
 use bbb_protocol::attribute_types::vanilla_attribute_type_for_resource_id;
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::packets::{
-    EntityDataValueKind, EquipmentSlot as ProtocolEquipmentSlot,
-    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, InteractionHand,
-    ItemStackSummary as ProtocolItemStackSummary, SetEntityData as ProtocolSetEntityData,
-    SetEquipment as ProtocolSetEquipment, UpdateAttributes as ProtocolUpdateAttributes,
+    EntityDataRegistryIdentity, EntityDataRegistryReference, EntityDataRegistryRevision,
+    EntityDataRegistrySource, EntityDataValue, EntityDataValueKind,
+    EquipmentSlot as ProtocolEquipmentSlot, EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+    InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
+    SetEntityData as ProtocolSetEntityData, SetEquipment as ProtocolSetEquipment,
+    UpdateAttributes as ProtocolUpdateAttributes,
 };
 
-use crate::PaintingVariantClientProjection;
-use crate::WorldStore;
+use crate::{
+    FrozenRegistryAccess, PaintingVariantClientProjection, RegistryEntrySource, WorldStore,
+    PAINTING_VARIANT_REGISTRY,
+};
 
 use super::dimensions::vanilla_living_entity_type;
 use super::schema::{
@@ -19,9 +23,11 @@ use super::schema::{
 };
 
 const ATTRIBUTE_REGISTRY: &str = "minecraft:attribute";
+const VILLAGER_TYPE_REGISTRY: &str = "minecraft:villager_type";
+const VILLAGER_PROFESSION_REGISTRY: &str = "minecraft:villager_profession";
 
 impl WorldStore {
-    pub fn apply_set_entity_data(&mut self, packet: ProtocolSetEntityData) -> bool {
+    pub fn apply_set_entity_data(&mut self, mut packet: ProtocolSetEntityData) -> bool {
         self.counters.entity_data_updates_received += 1;
         self.counters.entity_data_values_received += packet.values.len();
         let id = packet.id;
@@ -80,6 +86,16 @@ impl WorldStore {
                     return false;
                 }
             }
+        }
+        if let Err(error) =
+            bind_entity_data_registry_references(&mut packet.values, self.frozen_registry_access())
+        {
+            self.record_apply_error(
+                "entity_data_registry",
+                format!("invalid registry holder for entity {id} type {entity_type_id}: {error}"),
+            );
+            self.counters.entity_data_updates_ignored += 1;
+            return false;
         }
         let is_local_player = self.local_player_id == Some(id);
         let local_living_entity_accessors = is_local_player
@@ -154,7 +170,11 @@ impl WorldStore {
                 asset_id: direct.asset_id.clone(),
             }));
         }
-        let Some(holder_id) = variant.registry_id else {
+        let Some(holder_id) = variant
+            .registry
+            .as_ref()
+            .map(EntityDataRegistryReference::holder_id)
+        else {
             return Some(None);
         };
         Some(match self.painting_variant_client_projection(holder_id) {
@@ -335,4 +355,70 @@ impl WorldStore {
         self.counters.entity_attribute_updates_applied += 1;
         true
     }
+}
+
+fn bind_entity_data_registry_references(
+    values: &mut [EntityDataValue],
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    for value in values {
+        match &mut value.value {
+            EntityDataValueKind::RegistryId { serializer, value } => {
+                bind_entity_data_registry_reference(value, serializer.registry(), registry_access)?;
+            }
+            EntityDataValueKind::VillagerData {
+                villager_type,
+                profession,
+                ..
+            } => {
+                bind_entity_data_registry_reference(
+                    villager_type,
+                    VILLAGER_TYPE_REGISTRY,
+                    registry_access,
+                )?;
+                bind_entity_data_registry_reference(
+                    profession,
+                    VILLAGER_PROFESSION_REGISTRY,
+                    registry_access,
+                )?;
+            }
+            EntityDataValueKind::PaintingVariant(variant) => {
+                if let Some(reference) = variant.registry.as_mut() {
+                    bind_entity_data_registry_reference(
+                        reference,
+                        PAINTING_VARIANT_REGISTRY,
+                        registry_access,
+                    )?;
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn bind_entity_data_registry_reference(
+    reference: &mut EntityDataRegistryReference,
+    registry: &str,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    let holder_id = reference.holder_id();
+    let entry = registry_access
+        .entry_by_holder_id(registry, holder_id)
+        .ok_or_else(|| format!("missing {registry} holder id {holder_id}"))?;
+    let revision = registry_access.revision();
+    reference.bind(EntityDataRegistryIdentity::new(
+        registry,
+        entry.resource_id,
+        match entry.source {
+            RegistryEntrySource::Server => EntityDataRegistrySource::Server,
+            RegistryEntrySource::VanillaFallback => EntityDataRegistrySource::VanillaFallback,
+        },
+        EntityDataRegistryRevision {
+            session: revision.session,
+            contents: revision.contents,
+            tags: revision.tags,
+        },
+    ));
+    Ok(())
 }

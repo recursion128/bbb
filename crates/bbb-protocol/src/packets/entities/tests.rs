@@ -695,7 +695,7 @@ fn decodes_additional_entity_data_serializers() {
                     serializer_id: 21,
                     value: EntityDataValueKind::RegistryId {
                         serializer: EntityDataRegistryHolder::CatVariant,
-                        id: 7,
+                        value: EntityDataRegistryReference::unresolved(7),
                     },
                 },
                 EntityDataValue {
@@ -746,7 +746,7 @@ fn decodes_additional_entity_data_serializers() {
                     data_id: 16,
                     serializer_id: 34,
                     value: EntityDataValueKind::PaintingVariant(PaintingVariantData {
-                        registry_id: Some(12),
+                        registry: Some(EntityDataRegistryReference::unresolved(12)),
                         direct: None,
                     }),
                 },
@@ -754,7 +754,7 @@ fn decodes_additional_entity_data_serializers() {
                     data_id: 17,
                     serializer_id: 34,
                     value: EntityDataValueKind::PaintingVariant(PaintingVariantData {
-                        registry_id: None,
+                        registry: None,
                         direct: Some(DirectPaintingVariantData {
                             width: 16,
                             height: 16,
@@ -897,11 +897,15 @@ fn decodes_registered_entity_variant_data_serializers() {
 
     for ((serializer_id, serializer), value) in registry_cases.iter().zip(packet.values.iter()) {
         assert_eq!(value.serializer_id, *serializer_id);
+        assert!(
+            crate::registry_data_types::synchronized_registry_data_type(serializer.registry())
+                .is_some()
+        );
         assert_eq!(
             value.value,
             EntityDataValueKind::RegistryId {
                 serializer: *serializer,
-                id: 100 + serializer_id,
+                value: EntityDataRegistryReference::unresolved(100 + serializer_id),
             }
         );
     }
@@ -1238,6 +1242,38 @@ fn rich_component_deserialization_rejects_mismatched_projections() {
 
     let mismatched = encoded.replacen("Exact", "Stale", 1);
     assert!(serde_json::from_str::<crate::RichTextComponent>(&mismatched).is_err());
+}
+
+#[test]
+fn entity_data_registry_reference_serde_preserves_bound_session_identity() {
+    let mut reference = EntityDataRegistryReference::unresolved(7);
+    reference.bind(EntityDataRegistryIdentity::new(
+        "minecraft:wolf_variant",
+        "example:moonlit",
+        EntityDataRegistrySource::Server,
+        EntityDataRegistryRevision {
+            session: 4,
+            contents: 9,
+            tags: 2,
+        },
+    ));
+
+    let encoded = serde_json::to_vec(&reference).unwrap();
+    let decoded: EntityDataRegistryReference = serde_json::from_slice(&encoded).unwrap();
+    assert_eq!(decoded, reference);
+    assert_eq!(decoded.holder_id(), 7);
+    let identity = decoded.identity().unwrap();
+    assert_eq!(identity.registry(), "minecraft:wolf_variant");
+    assert_eq!(identity.resource_id(), "example:moonlit");
+    assert_eq!(identity.source(), EntityDataRegistrySource::Server);
+    assert_eq!(
+        identity.revision(),
+        EntityDataRegistryRevision {
+            session: 4,
+            contents: 9,
+            tags: 2,
+        }
+    );
 }
 
 fn nbt_string_root(text: &str) -> Vec<u8> {

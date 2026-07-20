@@ -93,6 +93,24 @@ queries. They may use the stored resource identity directly, but may not resolve
 the raw id against a separately loaded registry. Control serialization remains
 a derived view of the same publication.
 
+The generated cat, wolf, temperature-animal, zombie-nautilus, villager-type,
+and villager-profession identity catalogs live in `bbb-render-types`, below both
+world and renderer. The generated animal sound identity catalogs remain in
+`bbb-world`, where both registry fallback and audio consume them. Consequently
+the frozen registry's exact Vanilla fallback for all 12 generic metadata holder
+serializers, named painting variants, villager type, and villager profession is
+backed by the same generated catalog as its consumer; there is no second ordinal
+table.
+
+The internal serde shape for a metadata holder is now `{holder_id, identity}`.
+`identity` contains registry/resource/source/revision and is absent only between
+protocol decode and world preflight. This changes repository snapshot JSON, not
+the Minecraft wire shape. World preflight always overwrites any caller-supplied
+identity from the current frozen registry before canonical insertion. Dynamic
+presentation/audio consumers additionally require the stored revision to equal
+the immutable world's current registry revision; debug/save projection reads the
+stored resource directly and never reinterprets the ordinal.
+
 Heap-heavy component trees and item component patches retain the existing
 per-component immutable publication owner. A metadata mutation disconnects only
 the affected entity payload; it never mutates a retained generation and does
@@ -138,3 +156,14 @@ Malformed rich payloads and missing holder ids fail the packet atomically. They
 do not fall back to a bootstrap ordinal, partially apply preceding values, or
 publish mixed old/new metadata. Any gate failure is fixed forward by a normal
 commit.
+
+## Phase Status
+
+- Phase 1 (`09b6402d1`) preserves exact rich Component NBT/styled/plain values;
+  its milestone full gate passed at that commit.
+- Phase 2 binds generic holders, VillagerData holders, and named painting
+  holders atomically. Missing ids reject the packet, retained generations keep
+  their original identity, protocol-id reuse binds the current session, and
+  renderer/debug/audio reject cross-revision ordinal reuse. The generated
+  visual identity catalogs moved to `bbb-render-types` so the frozen fallback
+  and renderer share one owner.

@@ -6224,7 +6224,6 @@ fn entity_model_instances_project_pig_variants_from_world_registry_order() {
 }
 
 struct ReadyFarmAnimalPresentationLookup {
-    registry_resource_id: &'static str,
     presentation: FarmAnimalVariantPresentation,
     ready_asset_id: &'static str,
     texture: EntityDynamicTexture,
@@ -6237,8 +6236,8 @@ struct ReadyArmorTrimLookup {
 }
 
 impl EntityVariantRegistryLookup for ReadyArmorTrimLookup {
-    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
-        None
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision {
+        EntityDataRegistryRevision::default()
     }
 
     fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
@@ -6290,8 +6289,8 @@ fn armor_trim_crosses_native_boundary_only_after_texture_is_ready() {
 }
 
 impl EntityVariantRegistryLookup for ReadyFarmAnimalPresentationLookup {
-    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
-        Some(self.registry_resource_id)
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision {
+        EntityDataRegistryRevision::default()
     }
 
     fn farm_animal_variant_presentation(
@@ -6311,7 +6310,6 @@ impl EntityVariantRegistryLookup for ReadyFarmAnimalPresentationLookup {
 fn ready_farm_animal_presentation_switches_model_and_age_texture_atomically() {
     let texture = EntityDynamicTexture { handle: 42_4242 };
     let mut lookup = ReadyFarmAnimalPresentationLookup {
-        registry_resource_id: "example:highland",
         presentation: FarmAnimalVariantPresentation {
             model: FarmAnimalVariantModel::Cold,
             adult_asset_id: "example:entity/cow/highland".to_string(),
@@ -6390,11 +6388,12 @@ struct ReadyCatPresentationLookup {
     presentation: CatVariantPresentation,
     ready_asset_id: &'static str,
     texture: EntityDynamicTexture,
+    revision: EntityDataRegistryRevision,
 }
 
 impl EntityVariantRegistryLookup for ReadyCatPresentationLookup {
-    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
-        Some("example:lynx")
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision {
+        self.revision
     }
 
     fn cat_variant_presentation(&self, _holder_id: i32) -> Option<CatVariantPresentation> {
@@ -6418,6 +6417,7 @@ fn ready_cat_presentation_selects_the_age_specific_network_texture() {
         },
         ready_asset_id: "example:entity/cat/lynx",
         texture,
+        revision: EntityDataRegistryRevision::default(),
     };
     let values = [protocol_cat_variant_data(0)];
     let adult_kind = EntityModelKind::Feline {
@@ -6472,6 +6472,18 @@ fn ready_cat_presentation_selects_the_age_specific_network_texture() {
         None,
         "the cat holder never changes the ocelot texture"
     );
+
+    lookup.revision.session = 1;
+    assert_eq!(
+        ready_cat_variant_texture(
+            &adult_kind,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            &values,
+            Some(&lookup),
+        ),
+        None,
+        "a new registry generation must not reinterpret an old holder ordinal"
+    );
 }
 
 struct ReadyWolfPresentationLookup {
@@ -6481,8 +6493,8 @@ struct ReadyWolfPresentationLookup {
 }
 
 impl EntityVariantRegistryLookup for ReadyWolfPresentationLookup {
-    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
-        Some("example:dire")
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision {
+        EntityDataRegistryRevision::default()
     }
 
     fn wolf_variant_presentation(&self, _holder_id: i32) -> Option<WolfVariantPresentation> {
@@ -6548,8 +6560,8 @@ struct ReadyZombieNautilusPresentationLookup {
 }
 
 impl EntityVariantRegistryLookup for ReadyZombieNautilusPresentationLookup {
-    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
-        Some("example:coral")
+    fn entity_data_registry_revision(&self) -> EntityDataRegistryRevision {
+        EntityDataRegistryRevision::default()
     }
 
     fn zombie_nautilus_variant_presentation(
@@ -9078,7 +9090,10 @@ fn entity_model_kind_maps_frog_to_real_model() {
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_FROG_ID,
-            &[protocol_frog_variant_data(0)],
+            &[bind_protocol_registry_data_to_resource(
+                protocol_frog_variant_data(0),
+                "minecraft:cold",
+            )],
             Some(&world),
         ),
         EntityModelKind::Frog {
@@ -10856,11 +10871,15 @@ fn entity_model_kind_projects_wolf_variant_from_registry_and_fallback() {
             RegistryPacketEntry::stub("minecraft:woods"),
         ],
     );
-    // Registry id 1 → the second entry the server declared (`ashen`).
+    // The world-bound metadata identity records that registry id 1 meant `ashen`; consumers do
+    // not reinterpret the ordinal through a separately supplied registry generation.
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_WOLF_ID,
-            &[protocol_wolf_variant_data(1)],
+            &[bind_protocol_registry_data_to_resource(
+                protocol_wolf_variant_data(1),
+                "minecraft:ashen",
+            )],
             Some(&world),
         ),
         EntityModelKind::Wolf {
@@ -11895,7 +11914,10 @@ fn entity_model_kind_projects_zombie_nautilus_variant_from_registry_and_fallback
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-            &[protocol_zombie_nautilus_variant_data(0)],
+            &[bind_protocol_registry_data_to_resource(
+                protocol_zombie_nautilus_variant_data(0),
+                "minecraft:warm",
+            )],
             Some(&world),
         ),
         EntityModelKind::ZombieNautilus {
@@ -12563,7 +12585,12 @@ fn protocol_chicken_variant_data(id: i32) -> EntityDataValue {
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::ChickenVariant,
-            id,
+            value: resolved_entity_data_registry_reference(
+                EntityDataRegistryHolder::ChickenVariant,
+                id,
+                ChickenModelVariant::for_vanilla_registry_id(id)
+                    .map(ChickenModelVariant::resource_id),
+            ),
         },
     }
 }
@@ -12698,8 +12725,18 @@ fn protocol_villager_data_at(
         data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_VILLAGER_DATA_ID,
         value: EntityDataValueKind::VillagerData {
-            villager_type,
-            profession,
+            villager_type: resolved_entity_data_registry_reference_for_registry(
+                "minecraft:villager_type",
+                villager_type,
+                VillagerModelType::for_vanilla_registry_id(villager_type)
+                    .map(VillagerModelType::resource_id),
+            ),
+            profession: resolved_entity_data_registry_reference_for_registry(
+                "minecraft:villager_profession",
+                profession,
+                VillagerModelProfession::for_vanilla_registry_id(profession)
+                    .map(VillagerModelProfession::resource_id),
+            ),
             level,
         },
     }
@@ -12715,7 +12752,11 @@ fn protocol_cow_variant_data(id: i32) -> EntityDataValue {
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::CowVariant,
-            id,
+            value: resolved_entity_data_registry_reference(
+                EntityDataRegistryHolder::CowVariant,
+                id,
+                CowModelVariant::for_vanilla_registry_id(id).map(CowModelVariant::resource_id),
+            ),
         },
     }
 }
@@ -12730,7 +12771,11 @@ fn protocol_pig_variant_data(id: i32) -> EntityDataValue {
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::PigVariant,
-            id,
+            value: resolved_entity_data_registry_reference(
+                EntityDataRegistryHolder::PigVariant,
+                id,
+                PigModelVariant::for_vanilla_registry_id(id).map(PigModelVariant::resource_id),
+            ),
         },
     }
 }
@@ -12756,7 +12801,12 @@ fn protocol_zombie_nautilus_variant_data(id: i32) -> EntityDataValue {
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
-            id,
+            value: resolved_entity_data_registry_reference(
+                EntityDataRegistryHolder::ZombieNautilusVariant,
+                id,
+                ZombieNautilusModelVariant::for_vanilla_registry_id(id)
+                    .map(ZombieNautilusModelVariant::resource_id),
+            ),
         },
     }
 }
@@ -12771,7 +12821,11 @@ fn protocol_frog_variant_data(id: i32) -> EntityDataValue {
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::FrogVariant,
-            id,
+            value: resolved_entity_data_registry_reference(
+                EntityDataRegistryHolder::FrogVariant,
+                id,
+                FrogModelVariant::for_vanilla_registry_id(id).map(FrogModelVariant::resource_id),
+            ),
         },
     }
 }
@@ -12787,7 +12841,11 @@ fn protocol_cat_variant_data(id: i32) -> EntityDataValue {
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::CatVariant,
-            id,
+            value: resolved_entity_data_registry_reference(
+                EntityDataRegistryHolder::CatVariant,
+                id,
+                CatModelVariant::for_vanilla_registry_id(id).map(CatModelVariant::resource_id),
+            ),
         },
     }
 }
@@ -12803,9 +12861,58 @@ fn protocol_wolf_variant_data(id: i32) -> EntityDataValue {
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::WolfVariant,
-            id,
+            value: resolved_entity_data_registry_reference(
+                EntityDataRegistryHolder::WolfVariant,
+                id,
+                WolfModelVariant::for_vanilla_registry_id(id).map(WolfModelVariant::resource_id),
+            ),
         },
     }
+}
+
+fn resolved_entity_data_registry_reference(
+    serializer: EntityDataRegistryHolder,
+    holder_id: i32,
+    resource_id: Option<&str>,
+) -> EntityDataRegistryReference {
+    resolved_entity_data_registry_reference_for_registry(
+        serializer.registry(),
+        holder_id,
+        resource_id,
+    )
+}
+
+fn resolved_entity_data_registry_reference_for_registry(
+    registry: &str,
+    holder_id: i32,
+    resource_id: Option<&str>,
+) -> EntityDataRegistryReference {
+    let mut value = EntityDataRegistryReference::unresolved(holder_id);
+    if let Some(resource_id) = resource_id {
+        value.bind(EntityDataRegistryIdentity::new(
+            registry,
+            resource_id,
+            EntityDataRegistrySource::VanillaFallback,
+            EntityDataRegistryRevision::default(),
+        ));
+    }
+    value
+}
+
+fn bind_protocol_registry_data_to_resource(
+    mut data: EntityDataValue,
+    resource_id: &str,
+) -> EntityDataValue {
+    let EntityDataValueKind::RegistryId { serializer, value } = &mut data.value else {
+        panic!("test helper requires registry-holder metadata");
+    };
+    value.bind(EntityDataRegistryIdentity::new(
+        serializer.registry(),
+        resource_id,
+        EntityDataRegistrySource::Server,
+        EntityDataRegistryRevision::default(),
+    ));
+    data
 }
 
 fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {

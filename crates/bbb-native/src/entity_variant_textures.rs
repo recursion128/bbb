@@ -842,7 +842,7 @@ mod tests {
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatVariant,
-                    id: 0,
+                    value: bbb_protocol::packets::EntityDataRegistryReference::unresolved(0),
                 },
             }],
         }));
@@ -919,7 +919,7 @@ mod tests {
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::FrogVariant,
-                    id: 0,
+                    value: bbb_protocol::packets::EntityDataRegistryReference::unresolved(0),
                 },
             }],
         }));
@@ -1020,7 +1020,7 @@ mod tests {
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfVariant,
-                    id: 0,
+                    value: bbb_protocol::packets::EntityDataRegistryReference::unresolved(0),
                 },
             }],
         }));
@@ -1093,7 +1093,7 @@ mod tests {
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
-                    id: 0,
+                    value: bbb_protocol::packets::EntityDataRegistryReference::unresolved(0),
                 },
             }],
         }));

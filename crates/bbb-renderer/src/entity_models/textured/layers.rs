@@ -10,19 +10,20 @@ use super::super::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         horse_coat_texture_ref, horse_markings_texture_ref, llama_texture_ref,
         mooshroom_texture_ref, pig_texture_ref, sheep_wool_render_color, squid_texture_ref,
-        villager_level_texture_ref, villager_profession_texture_ref, villager_type_hat,
-        villager_type_texture_ref, wolf_texture_ref, zombie_villager_level_texture_ref,
-        zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
-        ArrowModelTexture, AxolotlModelVariant, BannerPatternLayer, BannerPatternTexture,
-        BedModelPart, BoatModelFamily, CamelModelFamily, ChestModelHalf, ChestModelTexture,
-        ConduitModelPart, CopperGolemWeathering, DonkeyModelFamily, EntityArmorMaterial,
-        EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef, EntityPlayerSkin,
-        FoxModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
-        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
-        PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
-        SheepWoolColor, SignModelAttachment, SignModelWood, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
-        VillagerModelHat,
+        villager_level_texture_ref, villager_profession_hat,
+        villager_profession_renders_level_badge, villager_profession_texture_ref,
+        villager_type_hat, villager_type_texture_ref, wolf_texture_ref,
+        zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
+        zombie_villager_type_texture_ref, ArrowModelTexture, AxolotlModelVariant,
+        BannerPatternLayer, BannerPatternTexture, BedModelPart, BoatModelFamily, CamelModelFamily,
+        ChestModelHalf, ChestModelTexture, ConduitModelPart, CopperGolemWeathering,
+        DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor,
+        EntityModelTextureRef, EntityPlayerSkin, FoxModelVariant, HoglinModelFamily,
+        HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaVariant,
+        MooshroomVariant, PandaModelVariant, ParrotModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
+        SignModelAttachment, SignModelWood, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
     },
     model_layers::*,
     CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern, FrogModelVariant,
@@ -1272,7 +1273,7 @@ pub(in crate::entity_models) fn zombie_villager_data_textured_layer_passes(
         order: 2,
         submit_sequence: 2,
     });
-    if data.profession.renders_level_badge() {
+    if villager_profession_renders_level_badge(data.profession) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::ZombieVillagerLevel,
             render_type: EntityModelLayerRenderType::EntityCutout,
@@ -2445,7 +2446,7 @@ pub(in crate::entity_models) fn villager_data_textured_layer_passes(
         order: 2,
         submit_sequence: 2,
     });
-    if data.profession.renders_level_badge() {
+    if villager_profession_renders_level_badge(data.profession) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::VillagerLevel,
             render_type: EntityModelLayerRenderType::EntityCutout,
@@ -2469,7 +2470,7 @@ pub(in crate::entity_models) fn villager_type_hat_visible(
     } else {
         villager_type_hat(data.villager_type)
     };
-    let profession_hat = data.profession.hat();
+    let profession_hat = villager_profession_hat(data.profession);
     profession_hat == VillagerModelHat::None
         || profession_hat == VillagerModelHat::Partial && type_hat != VillagerModelHat::Full
 }

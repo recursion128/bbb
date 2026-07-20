@@ -30,7 +30,8 @@ use bbb_protocol::item_types::VANILLA_ITEM_DRAGON_HEAD_ID;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{
-    EntityDataRegistryHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+    EntityDataRegistryHolder, EntityDataRegistryReference,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
 };
 
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
@@ -756,12 +757,12 @@ impl EntityStore {
         self.metadata_bool(id, data_id, default)
     }
 
-    pub(crate) fn metadata_registry_id_for_entity(
+    pub(crate) fn metadata_registry_reference_for_entity(
         &self,
         id: i32,
         data_id: u8,
         serializer: EntityDataRegistryHolder,
-    ) -> Option<Option<i32>> {
+    ) -> Option<Option<EntityDataRegistryReference>> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         Some(
@@ -772,8 +773,8 @@ impl EntityStore {
                 .and_then(|value| match &value.value {
                     EntityDataValueKind::RegistryId {
                         serializer: actual,
-                        id,
-                    } if *actual == serializer => Some(*id),
+                        value,
+                    } if *actual == serializer => Some(value.clone()),
                     _ => None,
                 }),
         )

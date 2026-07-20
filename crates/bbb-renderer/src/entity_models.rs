@@ -15,13 +15,12 @@ mod model;
 mod model_layers;
 mod temperature_animal_variants;
 mod textured;
-mod villager_professions;
 mod wolf_variants;
 mod zombie_nautilus_variants;
 
 pub(in crate::entity_models) use banner_patterns::banner_pattern_texture_ref;
 pub use banner_patterns::BannerPatternKind;
-pub use bbb_render_types::VillagerModelType;
+pub use bbb_render_types::{VillagerModelProfession, VillagerModelType};
 pub use block_attachment::{
     copper_golem_antenna_block_transform, enderman_carried_block_transform,
     falling_block_transform, iron_golem_flower_block_transform, minecart_display_block_transform,
@@ -195,7 +194,6 @@ pub(crate) use textured::{
     EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
     ExperienceOrbPickupParticleRenderInstance, ProjectilePickupParticleRenderInstance,
 };
-pub use villager_professions::VillagerModelProfession;
 pub use wolf_variants::WolfModelVariant;
 pub use zombie_nautilus_variants::ZombieNautilusModelVariant;
 

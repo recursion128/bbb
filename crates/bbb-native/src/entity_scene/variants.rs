@@ -19,7 +19,7 @@ pub(super) fn villager_model_data(
                 villager_type,
                 profession,
                 level,
-            } => Some((*villager_type, *profession, *level)),
+            } => Some((villager_type, profession, *level)),
             _ => None,
         })
         .map(|(villager_type, profession, level)| {
@@ -33,17 +33,24 @@ pub(super) fn villager_model_data(
 }
 
 pub(super) fn resolve_villager_type(
-    registry_id: i32,
+    value: &EntityDataRegistryReference,
     _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelType {
-    VillagerModelType::for_vanilla_registry_id(registry_id).unwrap_or(VillagerModelType::Plains)
+    value
+        .identity()
+        .filter(|identity| identity.registry() == "minecraft:villager_type")
+        .and_then(|identity| VillagerModelType::for_resource_id(identity.resource_id()))
+        .unwrap_or(VillagerModelType::Plains)
 }
 
 pub(super) fn resolve_villager_profession(
-    registry_id: i32,
+    value: &EntityDataRegistryReference,
     _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelProfession {
-    VillagerModelProfession::for_vanilla_registry_id(registry_id)
+    value
+        .identity()
+        .filter(|identity| identity.registry() == "minecraft:villager_profession")
+        .and_then(|identity| VillagerModelProfession::for_resource_id(identity.resource_id()))
         .unwrap_or(VillagerModelProfession::None)
 }
 
@@ -177,7 +184,7 @@ pub(super) fn feline_model_kind(
 pub(super) fn cat_model_variant(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> CatModelVariant {
     let Some(accessors) =
         vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)
@@ -191,20 +198,13 @@ pub(super) fn cat_model_variant(
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CatVariant,
-                id,
-            } => Some(*id),
+                value,
+            } => entity_data_registry_resource_id(value, EntityDataRegistryHolder::CatVariant),
             _ => None,
         })
-        .map(|id| {
-            if let Some(registries) = registries {
-                cat_variant_from_registry_id(registries, id).unwrap_or_else(|| {
-                    cat_default_model_variant(accessors.variant_default_resource_id)
-                })
-            } else {
-                CatModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
-                    cat_default_model_variant(accessors.variant_default_resource_id)
-                })
-            }
+        .map(|resource_id| {
+            CatModelVariant::for_resource_id(resource_id)
+                .unwrap_or_else(|| cat_default_model_variant(accessors.variant_default_resource_id))
         })
         .unwrap_or_else(|| cat_default_model_variant(accessors.variant_default_resource_id))
 }
@@ -212,15 +212,6 @@ pub(super) fn cat_model_variant(
 fn cat_default_model_variant(default_resource_id: &str) -> CatModelVariant {
     CatModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla cat default variant must map to a model")
-}
-
-pub(super) fn cat_variant_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<CatModelVariant> {
-    registries
-        .resource_id_by_holder_id("minecraft:cat_variant", registry_id)
-        .and_then(CatModelVariant::for_resource_id)
 }
 
 /// Vanilla `FoxRenderer` (an `AgeableMobRenderer`) picks `AdultFoxModel` for an adult and `BabyFoxModel`
@@ -267,13 +258,12 @@ pub(super) fn zombie_nautilus_model_kind(
 
 /// Vanilla `ZombieNautilus.DATA_VARIANT_ID` carries a `Holder<ZombieNautilusVariant>` after the
 /// inherited TamableAnimal and AbstractNautilus accessors. Resolve its generated wire index and
-/// virtual default through the metadata schema, and resolve holder identity through the synchronized
-/// session registry when available because even a two-entry registry can be reordered. Fall back to
-/// the generated vanilla order only when there is no session registry. The registry element's
-/// `modelAndTexture` payload remains a separate RegistryAccess codec concern.
+/// virtual default through the metadata schema, then select the model from the resource identity
+/// bound by the world preflight. The raw holder ordinal is never reinterpreted here. The registry
+/// element's `modelAndTexture` payload remains a separate, revision-gated RegistryAccess concern.
 pub(super) fn zombie_nautilus_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> ZombieNautilusModelVariant {
     let (variant_data_id, variant_default_resource_id) =
         vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
@@ -287,20 +277,17 @@ pub(super) fn zombie_nautilus_model_variant(
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
-                id,
-            } => Some(*id),
+                value,
+            } => entity_data_registry_resource_id(
+                value,
+                EntityDataRegistryHolder::ZombieNautilusVariant,
+            ),
             _ => None,
         })
-        .map(|id| {
-            if let Some(registries) = registries {
-                zombie_nautilus_variant_from_registry_id(registries, id).unwrap_or_else(|| {
-                    zombie_nautilus_default_model_variant(variant_default_resource_id)
-                })
-            } else {
-                ZombieNautilusModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
-                    zombie_nautilus_default_model_variant(variant_default_resource_id)
-                })
-            }
+        .map(|resource_id| {
+            ZombieNautilusModelVariant::for_resource_id(resource_id).unwrap_or_else(|| {
+                zombie_nautilus_default_model_variant(variant_default_resource_id)
+            })
         })
         .unwrap_or_else(|| zombie_nautilus_default_model_variant(variant_default_resource_id))
 }
@@ -308,15 +295,6 @@ pub(super) fn zombie_nautilus_model_variant(
 fn zombie_nautilus_default_model_variant(default_resource_id: &str) -> ZombieNautilusModelVariant {
     ZombieNautilusModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla zombie nautilus default variant must map to a model")
-}
-
-pub(super) fn zombie_nautilus_variant_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<ZombieNautilusModelVariant> {
-    registries
-        .resource_id_by_holder_id("minecraft:zombie_nautilus_variant", registry_id)
-        .and_then(ZombieNautilusModelVariant::for_resource_id)
 }
 
 pub(super) fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
@@ -374,29 +352,32 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
         {
             (
                 CHICKEN_VARIANT_REGISTRY,
-                entity_data_registry_holder_id(
+                matching_entity_data_registry_holder_id(
                     values,
                     accessors.variant_data_id,
                     EntityDataRegistryHolder::ChickenVariant,
+                    registries,
                 )?,
                 *baby,
             )
         }
         EntityModelKind::Cow { baby, .. } if entity_type_id == VANILLA_ENTITY_TYPE_COW_ID => (
             COW_VARIANT_REGISTRY,
-            entity_data_registry_holder_id(
+            matching_entity_data_registry_holder_id(
                 values,
                 accessors.variant_data_id,
                 EntityDataRegistryHolder::CowVariant,
+                registries,
             )?,
             *baby,
         ),
         EntityModelKind::Pig { baby, .. } if entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID => (
             PIG_VARIANT_REGISTRY,
-            entity_data_registry_holder_id(
+            matching_entity_data_registry_holder_id(
                 values,
                 accessors.variant_data_id,
                 EntityDataRegistryHolder::PigVariant,
+                registries,
             )?,
             *baby,
         ),
@@ -458,12 +439,13 @@ pub(super) fn ready_cat_variant_texture(
     }
     let accessors =
         vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)?;
-    let holder_id = entity_data_registry_holder_id(
+    let registries = registries?;
+    let holder_id = matching_entity_data_registry_holder_id(
         values,
         accessors.variant_data_id,
         EntityDataRegistryHolder::CatVariant,
+        registries,
     )?;
-    let registries = registries?;
     let presentation = registries.cat_variant_presentation(holder_id)?;
     let asset_id = if *baby {
         &presentation.baby_asset_id
@@ -488,12 +470,13 @@ pub(super) fn ready_frog_variant_texture(
     }
     let (variant_data_id, _) =
         vanilla_entity_metadata_frog_variant_accessor_for_entity_type(entity_type_id)?;
-    let holder_id = entity_data_registry_holder_id(
+    let registries = registries?;
+    let holder_id = matching_entity_data_registry_holder_id(
         values,
         variant_data_id,
         EntityDataRegistryHolder::FrogVariant,
+        registries,
     )?;
-    let registries = registries?;
     let presentation = registries.frog_variant_presentation(holder_id)?;
     registries.ready_texture(&presentation.asset_id)
 }
@@ -517,12 +500,13 @@ pub(super) fn ready_wolf_variant_texture(
     }
     let accessors =
         vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)?;
-    let holder_id = entity_data_registry_holder_id(
+    let registries = registries?;
+    let holder_id = matching_entity_data_registry_holder_id(
         values,
         accessors.variant_data_id,
         EntityDataRegistryHolder::WolfVariant,
+        registries,
     )?;
-    let registries = registries?;
     let presentation = registries.wolf_variant_presentation(holder_id)?;
     let assets = if *baby {
         &presentation.baby
@@ -555,12 +539,13 @@ pub(super) fn apply_ready_zombie_nautilus_variant_presentation(
     }
     let (variant_data_id, _) =
         vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(entity_type_id)?;
-    let holder_id = entity_data_registry_holder_id(
+    let registries = registries?;
+    let holder_id = matching_entity_data_registry_holder_id(
         values,
         variant_data_id,
         EntityDataRegistryHolder::ZombieNautilusVariant,
+        registries,
     )?;
-    let registries = registries?;
     let presentation = registries.zombie_nautilus_variant_presentation(holder_id)?;
     let texture = registries.ready_texture(&presentation.asset_id)?;
     *variant = match presentation.model {
@@ -570,23 +555,48 @@ pub(super) fn apply_ready_zombie_nautilus_variant_presentation(
     Some(texture)
 }
 
-fn entity_data_registry_holder_id(
+fn entity_data_registry_reference(
     values: &[bbb_protocol::packets::EntityDataValue],
     data_id: u8,
     expected_serializer: EntityDataRegistryHolder,
-) -> Option<i32> {
+) -> Option<&EntityDataRegistryReference> {
     values
         .iter()
         .rev()
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
-            EntityDataValueKind::RegistryId { serializer, id }
-                if *serializer == expected_serializer =>
+            EntityDataValueKind::RegistryId { serializer, value }
+                if *serializer == expected_serializer
+                    && value.identity().is_some_and(|identity| {
+                        identity.registry() == expected_serializer.registry()
+                    }) =>
             {
-                Some(*id)
+                Some(value)
             }
             _ => None,
         })
+}
+
+fn matching_entity_data_registry_holder_id(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    expected_serializer: EntityDataRegistryHolder,
+    registries: &dyn EntityVariantRegistryLookup,
+) -> Option<i32> {
+    let reference = entity_data_registry_reference(values, data_id, expected_serializer)?;
+    let identity = reference.identity()?;
+    (identity.revision() == registries.entity_data_registry_revision())
+        .then_some(reference.holder_id())
+}
+
+fn entity_data_registry_resource_id(
+    value: &EntityDataRegistryReference,
+    expected_serializer: EntityDataRegistryHolder,
+) -> Option<&str> {
+    value
+        .identity()
+        .filter(|identity| identity.registry() == expected_serializer.registry())
+        .map(|identity| identity.resource_id())
 }
 
 /// Vanilla `MushroomCowRenderer` (an `AgeableMobRenderer`) renders the mooshroom with the shared
@@ -770,13 +780,13 @@ pub(super) fn wolf_model_kind(
 }
 
 /// Vanilla `WolfRenderer`: resolve the synced `Wolf.DATA_VARIANT_ID` registry holder to the renderer
-/// variant. Mirrors [`cat_model_variant`] — prefer the dynamic `wolf_variant` registry order the
-/// server sent, falling back to the static vanilla registration order, and to `Pale` (the vanilla
-/// `WolfVariants.DEFAULT`) when no holder is present.
+/// variant. Mirrors [`cat_model_variant`] by reading the resource identity already bound into the
+/// canonical metadata value, and falls back to `Pale` (the Vanilla `WolfVariants.DEFAULT`) when no
+/// valid holder identity is present.
 pub(super) fn wolf_model_variant(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> WolfModelVariant {
     let Some(accessors) =
         vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)
@@ -790,20 +800,14 @@ pub(super) fn wolf_model_variant(
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::WolfVariant,
-                id,
-            } => Some(*id),
+                value,
+            } => entity_data_registry_resource_id(value, EntityDataRegistryHolder::WolfVariant),
             _ => None,
         })
-        .map(|id| {
-            if let Some(registries) = registries {
-                wolf_variant_from_registry_id(registries, id).unwrap_or_else(|| {
-                    wolf_default_model_variant(accessors.variant_default_resource_id)
-                })
-            } else {
-                WolfModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
-                    wolf_default_model_variant(accessors.variant_default_resource_id)
-                })
-            }
+        .map(|resource_id| {
+            WolfModelVariant::for_resource_id(resource_id).unwrap_or_else(|| {
+                wolf_default_model_variant(accessors.variant_default_resource_id)
+            })
         })
         .unwrap_or_else(|| wolf_default_model_variant(accessors.variant_default_resource_id))
 }
@@ -811,15 +815,6 @@ pub(super) fn wolf_model_variant(
 fn wolf_default_model_variant(default_resource_id: &str) -> WolfModelVariant {
     WolfModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla wolf default variant must map to a model")
-}
-
-pub(super) fn wolf_variant_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<WolfModelVariant> {
-    registries
-        .resource_id_by_holder_id("minecraft:wolf_variant", registry_id)
-        .and_then(WolfModelVariant::for_resource_id)
 }
 
 pub(super) fn entity_invisible(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -1563,7 +1558,7 @@ pub(super) fn armadillo_rolled_up(
 pub(super) fn chicken_model_variant(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> ChickenModelVariant {
     let Some(accessors) =
         vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)
@@ -1577,20 +1572,14 @@ pub(super) fn chicken_model_variant(
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::ChickenVariant,
-                id,
-            } => Some(*id),
+                value,
+            } => entity_data_registry_resource_id(value, EntityDataRegistryHolder::ChickenVariant),
             _ => None,
         })
-        .map(|id| {
-            if let Some(registries) = registries {
-                chicken_variant_from_registry_id(registries, id).unwrap_or_else(|| {
-                    chicken_default_model_variant(accessors.variant_default_resource_id)
-                })
-            } else {
-                ChickenModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
-                    chicken_default_model_variant(accessors.variant_default_resource_id)
-                })
-            }
+        .map(|resource_id| {
+            ChickenModelVariant::for_resource_id(resource_id).unwrap_or_else(|| {
+                chicken_default_model_variant(accessors.variant_default_resource_id)
+            })
         })
         .unwrap_or_else(|| chicken_default_model_variant(accessors.variant_default_resource_id))
 }
@@ -1598,15 +1587,6 @@ pub(super) fn chicken_model_variant(
 fn chicken_default_model_variant(default_resource_id: &str) -> ChickenModelVariant {
     ChickenModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla chicken default variant must map to a model")
-}
-
-pub(super) fn chicken_variant_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<ChickenModelVariant> {
-    registries
-        .resource_id_by_holder_id("minecraft:chicken_variant", registry_id)
-        .and_then(ChickenModelVariant::for_resource_id)
 }
 
 pub(super) fn frog_model_kind(
@@ -1620,7 +1600,7 @@ pub(super) fn frog_model_kind(
 
 pub(super) fn frog_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> FrogModelVariant {
     let (variant_data_id, variant_default_resource_id) =
         vanilla_entity_metadata_frog_variant_accessor_for_entity_type(VANILLA_ENTITY_TYPE_FROG_ID)
@@ -1632,18 +1612,13 @@ pub(super) fn frog_model_variant(
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::FrogVariant,
-                id,
-            } => Some(*id),
+                value,
+            } => entity_data_registry_resource_id(value, EntityDataRegistryHolder::FrogVariant),
             _ => None,
         })
-        .map(|id| {
-            if let Some(registries) = registries {
-                frog_variant_from_registry_id(registries, id)
-                    .unwrap_or_else(|| frog_default_model_variant(variant_default_resource_id))
-            } else {
-                FrogModelVariant::for_vanilla_registry_id(id)
-                    .unwrap_or_else(|| frog_default_model_variant(variant_default_resource_id))
-            }
+        .map(|resource_id| {
+            FrogModelVariant::for_resource_id(resource_id)
+                .unwrap_or_else(|| frog_default_model_variant(variant_default_resource_id))
         })
         .unwrap_or_else(|| frog_default_model_variant(variant_default_resource_id))
 }
@@ -1653,19 +1628,10 @@ fn frog_default_model_variant(default_resource_id: &str) -> FrogModelVariant {
         .expect("generated vanilla frog default variant must map to a model")
 }
 
-pub(super) fn frog_variant_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<FrogModelVariant> {
-    registries
-        .resource_id_by_holder_id("minecraft:frog_variant", registry_id)
-        .and_then(FrogModelVariant::for_resource_id)
-}
-
 pub(super) fn pig_model_variant(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> PigModelVariant {
     let Some(accessors) =
         vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)
@@ -1679,20 +1645,13 @@ pub(super) fn pig_model_variant(
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::PigVariant,
-                id,
-            } => Some(*id),
+                value,
+            } => entity_data_registry_resource_id(value, EntityDataRegistryHolder::PigVariant),
             _ => None,
         })
-        .map(|id| {
-            if let Some(registries) = registries {
-                pig_variant_from_registry_id(registries, id).unwrap_or_else(|| {
-                    pig_default_model_variant(accessors.variant_default_resource_id)
-                })
-            } else {
-                PigModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
-                    pig_default_model_variant(accessors.variant_default_resource_id)
-                })
-            }
+        .map(|resource_id| {
+            PigModelVariant::for_resource_id(resource_id)
+                .unwrap_or_else(|| pig_default_model_variant(accessors.variant_default_resource_id))
         })
         .unwrap_or_else(|| pig_default_model_variant(accessors.variant_default_resource_id))
 }
@@ -1702,19 +1661,10 @@ fn pig_default_model_variant(default_resource_id: &str) -> PigModelVariant {
         .expect("generated vanilla pig default variant must map to a model")
 }
 
-pub(super) fn pig_variant_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<PigModelVariant> {
-    registries
-        .resource_id_by_holder_id("minecraft:pig_variant", registry_id)
-        .and_then(PigModelVariant::for_resource_id)
-}
-
 pub(super) fn cow_model_variant(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> CowModelVariant {
     let Some(accessors) =
         vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)
@@ -1728,20 +1678,13 @@ pub(super) fn cow_model_variant(
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CowVariant,
-                id,
-            } => Some(*id),
+                value,
+            } => entity_data_registry_resource_id(value, EntityDataRegistryHolder::CowVariant),
             _ => None,
         })
-        .map(|id| {
-            if let Some(registries) = registries {
-                cow_variant_from_registry_id(registries, id).unwrap_or_else(|| {
-                    cow_default_model_variant(accessors.variant_default_resource_id)
-                })
-            } else {
-                CowModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
-                    cow_default_model_variant(accessors.variant_default_resource_id)
-                })
-            }
+        .map(|resource_id| {
+            CowModelVariant::for_resource_id(resource_id)
+                .unwrap_or_else(|| cow_default_model_variant(accessors.variant_default_resource_id))
         })
         .unwrap_or_else(|| cow_default_model_variant(accessors.variant_default_resource_id))
 }
@@ -1749,15 +1692,6 @@ pub(super) fn cow_model_variant(
 fn cow_default_model_variant(default_resource_id: &str) -> CowModelVariant {
     CowModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla cow default variant must map to a model")
-}
-
-pub(super) fn cow_variant_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<CowModelVariant> {
-    registries
-        .resource_id_by_holder_id("minecraft:cow_variant", registry_id)
-        .and_then(CowModelVariant::for_resource_id)
 }
 
 pub(super) fn chested_horse_has_chest(

@@ -628,7 +628,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::CatSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    CatSoundVariantIdentity::for_vanilla_registry_id,
                     CatSoundVariantIdentity::for_resource_id,
                     CatSoundVariantIdentity::builtin_hurt_sound_event,
                     baby,
@@ -648,7 +647,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::ChickenSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    ChickenSoundVariantIdentity::for_vanilla_registry_id,
                     ChickenSoundVariantIdentity::for_resource_id,
                     ChickenSoundVariantIdentity::builtin_hurt_sound_event,
                     baby,
@@ -668,7 +666,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::CowSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    CowSoundVariantIdentity::for_vanilla_registry_id,
                     CowSoundVariantIdentity::for_resource_id,
                     CowSoundVariantIdentity::builtin_hurt_sound_event,
                     baby,
@@ -688,7 +685,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::PigSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    PigSoundVariantIdentity::for_vanilla_registry_id,
                     PigSoundVariantIdentity::for_resource_id,
                     PigSoundVariantIdentity::builtin_hurt_sound_event,
                     baby,
@@ -720,7 +716,6 @@ impl WorldStore {
                         accessors.sound_variant_data_id,
                         EntityDataRegistryHolder::WolfSoundVariant,
                         accessors.sound_variant_default_resource_id,
-                        WolfSoundVariantIdentity::for_vanilla_registry_id,
                         WolfSoundVariantIdentity::for_resource_id,
                         WolfSoundVariantIdentity::builtin_hurt_sound_event,
                         baby,
@@ -923,7 +918,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::CatSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    CatSoundVariantIdentity::for_vanilla_registry_id,
                     CatSoundVariantIdentity::for_resource_id,
                     CatSoundVariantIdentity::builtin_death_sound_event,
                     baby,
@@ -943,7 +937,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::ChickenSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    ChickenSoundVariantIdentity::for_vanilla_registry_id,
                     ChickenSoundVariantIdentity::for_resource_id,
                     ChickenSoundVariantIdentity::builtin_death_sound_event,
                     baby,
@@ -963,7 +956,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::CowSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    CowSoundVariantIdentity::for_vanilla_registry_id,
                     CowSoundVariantIdentity::for_resource_id,
                     CowSoundVariantIdentity::builtin_death_sound_event,
                     baby,
@@ -983,7 +975,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::PigSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    PigSoundVariantIdentity::for_vanilla_registry_id,
                     PigSoundVariantIdentity::for_resource_id,
                     PigSoundVariantIdentity::builtin_death_sound_event,
                     baby,
@@ -1003,7 +994,6 @@ impl WorldStore {
                     accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::WolfSoundVariant,
                     accessors.sound_variant_default_resource_id,
-                    WolfSoundVariantIdentity::for_vanilla_registry_id,
                     WolfSoundVariantIdentity::for_resource_id,
                     WolfSoundVariantIdentity::builtin_death_sound_event,
                     baby,
@@ -1041,19 +1031,36 @@ impl WorldStore {
         data_id: u8,
         serializer: EntityDataRegistryHolder,
         default_resource_id: &str,
-        for_vanilla_registry_id: fn(i32) -> Option<T>,
         for_resource_id: fn(&str) -> Option<T>,
         builtin_sound_event: fn(T, bool) -> &'static str,
         baby: bool,
         kind: RegistrySoundKind,
     ) -> Option<SoundHolderState> {
-        let metadata_registry_id = self
+        let metadata_reference = self
             .entities
-            .metadata_registry_id_for_entity(entity_id, data_id, serializer)?;
+            .metadata_registry_reference_for_entity(entity_id, data_id, serializer)?;
+        let metadata_identity = match metadata_reference.as_ref() {
+            Some(reference) => Some(reference.identity()?),
+            None => None,
+        };
+        if let Some(identity) = metadata_identity {
+            let revision = self.registry_access_revision();
+            let identity_revision = identity.revision();
+            if identity.registry() != registry
+                || identity_revision.session != revision.session
+                || identity_revision.contents != revision.contents
+                || identity_revision.tags != revision.tags
+            {
+                return None;
+            }
+        }
         if self.registry_content(registry).is_some() {
-            let holder_id = metadata_registry_id.or_else(|| {
-                self.registry_holder_id_by_resource_id(registry, default_resource_id)
-            })?;
+            let holder_id = metadata_reference
+                .as_ref()
+                .map(|reference| reference.holder_id())
+                .or_else(|| {
+                    self.registry_holder_id_by_resource_id(registry, default_resource_id)
+                })?;
             let entry = self.registry_entry_by_holder_id(registry, holder_id)?;
             let sound = match kind {
                 RegistrySoundKind::Hurt => {
@@ -1074,10 +1081,10 @@ impl WorldStore {
             return Some(direct_sound_holder(builtin_sound_event(identity, baby)));
         }
 
-        let identity = match metadata_registry_id {
-            Some(registry_id) => for_vanilla_registry_id(registry_id),
-            None => for_resource_id(default_resource_id),
-        }?;
+        let resource_id = metadata_identity
+            .map(|identity| identity.resource_id())
+            .unwrap_or(default_resource_id);
+        let identity = for_resource_id(resource_id)?;
         Some(direct_sound_holder(builtin_sound_event(identity, baby)))
     }
 
@@ -2361,7 +2368,9 @@ mod tests {
                             serializer_id: $serializer_id,
                             value: EntityDataValueKind::RegistryId {
                                 serializer: $serializer,
-                                id: registry_id,
+                                value: bbb_protocol::packets::EntityDataRegistryReference::unresolved(
+                                    registry_id,
+                                ),
                             },
                         }];
                         if baby {
@@ -2440,6 +2449,42 @@ mod tests {
             EntityDataRegistryHolder::WolfSoundVariant,
             0.4
         );
+    }
+
+    #[test]
+    fn animal_sound_variant_does_not_reinterpret_metadata_across_registry_sessions() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_of_type(
+            4_200,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+        ));
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 4_200,
+            values: vec![cat_sound_variant_entity_data(0)],
+        }));
+        let mut generation_a = store.clone();
+
+        let mut samples = [0.75, 0.25].into_iter();
+        assert!(generation_a
+            .living_damage_hurt_sound_for_entity(4_200, 0, DamageTypeEffects::Hurt, || samples
+                .next()
+                .unwrap())
+            .is_some());
+
+        store.reset_registry_session();
+        let mut stale_samples = [0.75, 0.25].into_iter();
+        assert!(store
+            .living_damage_hurt_sound_for_entity(4_200, 0, DamageTypeEffects::Hurt, || {
+                stale_samples.next().unwrap()
+            })
+            .is_none());
+
+        let mut retained_samples = [0.75, 0.25].into_iter();
+        assert!(generation_a
+            .living_damage_hurt_sound_for_entity(4_200, 0, DamageTypeEffects::Hurt, || {
+                retained_samples.next().unwrap()
+            })
+            .is_some());
     }
 
     #[test]
@@ -3301,7 +3346,7 @@ mod tests {
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CatSoundVariant,
-                id: registry_id,
+                value: bbb_protocol::packets::EntityDataRegistryReference::unresolved(registry_id),
             },
         }
     }

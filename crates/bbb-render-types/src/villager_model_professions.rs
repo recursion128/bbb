@@ -111,7 +111,11 @@ impl VillagerModelProfession {
         VANILLA_VILLAGER_PROFESSIONS[self as usize].resource_id
     }
 
-    pub(in crate::entity_models) fn texture_index(self) -> Option<usize> {
+    pub const fn vanilla_registry_index(self) -> usize {
+        self as usize
+    }
+
+    pub fn texture_index(self) -> Option<usize> {
         (self as usize).checked_sub(1)
     }
 }
@@ -152,6 +156,7 @@ mod tests {
             VillagerModelProfession::for_resource_id("minecraft:beekeeper"),
             None
         );
+        assert_eq!(VillagerModelProfession::Mason.vanilla_registry_index(), 10);
         assert_eq!(VillagerModelProfession::None.texture_index(), None);
         assert_eq!(VillagerModelProfession::Armorer.texture_index(), Some(0));
         assert_eq!(
@@ -173,7 +178,7 @@ mod tests {
                     continue;
                 }
                 let display = path.to_string_lossy();
-                if display.ends_with("/villager_professions.rs")
+                if display.ends_with("/villager_model_professions.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
                 {

@@ -99,11 +99,13 @@ use bbb_protocol::packets::{
     CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
     ContainerSetContent as ProtocolContainerSetContent, CustomChatCompletions,
     CustomChatCompletionsAction, DataComponentPatchSummary, DeleteChat, DialogHolder,
-    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot,
-    EquipmentSlotUpdate, FilterMask, FilterMaskKind, FireworkExplosionShapeSummary,
-    FireworkExplosionSummary, GameEvent as ProtocolGameEvent, GameProfile, HashedComponentPatch,
-    HashedItemStack, HashedStack, ItemRaritySummary, ItemStackSummary as ProtocolItemStackSummary,
+    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataRegistryIdentity,
+    EntityDataRegistryReference, EntityDataRegistryRevision, EntityDataRegistrySource,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+    EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot, EquipmentSlotUpdate,
+    FilterMask, FilterMaskKind, FireworkExplosionShapeSummary, FireworkExplosionSummary,
+    GameEvent as ProtocolGameEvent, GameProfile, HashedComponentPatch, HashedItemStack,
+    HashedStack, ItemRaritySummary, ItemStackSummary as ProtocolItemStackSummary,
     LastSeenMessagesUpdate, MessageSignature, NbtSummaryEntry, OpenBook,
     OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
     PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
@@ -460,7 +462,7 @@ fn painting_variant_data(
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
         value: EntityDataValueKind::PaintingVariant(
             bbb_protocol::packets::PaintingVariantData {
-                registry_id: Some(registry_id),
+                registry: Some(EntityDataRegistryReference::unresolved(registry_id)),
                 direct: None,
             },
         ),
@@ -5386,7 +5388,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
         ],
@@ -5591,7 +5593,7 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::FrogVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
         ],
@@ -5937,7 +5939,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::PigVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
             ProtocolEntityDataValue {
@@ -5945,7 +5947,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::PigSoundVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
         ],
@@ -5998,44 +6000,36 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
 }
 
 #[test]
-fn debug_registry_resource_ids_use_vanilla_order_only_without_server_contents() {
-    let empty_world = WorldStore::new();
+fn debug_registry_resource_ids_use_the_value_local_session_identity() {
+    let mut fallback = EntityDataRegistryReference::unresolved(1);
+    fallback.bind(EntityDataRegistryIdentity::new(
+        "minecraft:cat_sound_variant",
+        "minecraft:royal",
+        EntityDataRegistrySource::VanillaFallback,
+        EntityDataRegistryRevision::default(),
+    ));
     assert_eq!(
-        debug_registry_resource_id(&empty_world, "minecraft:cat_sound_variant", 1, |id| {
-            CatSoundVariantIdentity::for_vanilla_registry_id(id)
-                .map(CatSoundVariantIdentity::resource_id)
-        },),
+        debug_registry_resource_id(&fallback, "minecraft:cat_sound_variant"),
         Some("minecraft:royal")
     );
 
-    let mut synchronized_world = WorldStore::new();
-    synchronized_world.record_registry_entries(
+    let mut synchronized = EntityDataRegistryReference::unresolved(0);
+    synchronized.bind(EntityDataRegistryIdentity::new(
         "minecraft:cat_sound_variant",
-        0,
-        vec![RegistryPacketEntry::stub("example:custom")],
-    );
+        "example:custom",
+        EntityDataRegistrySource::Server,
+        EntityDataRegistryRevision {
+            session: 2,
+            contents: 7,
+            tags: 3,
+        },
+    ));
     assert_eq!(
-        debug_registry_resource_id(
-            &synchronized_world,
-            "minecraft:cat_sound_variant",
-            0,
-            |id| {
-                CatSoundVariantIdentity::for_vanilla_registry_id(id)
-                    .map(CatSoundVariantIdentity::resource_id)
-            },
-        ),
+        debug_registry_resource_id(&synchronized, "minecraft:cat_sound_variant"),
         Some("example:custom")
     );
     assert_eq!(
-        debug_registry_resource_id(
-            &synchronized_world,
-            "minecraft:cat_sound_variant",
-            1,
-            |id| {
-                CatSoundVariantIdentity::for_vanilla_registry_id(id)
-                    .map(CatSoundVariantIdentity::resource_id)
-            },
-        ),
+        debug_registry_resource_id(&synchronized, "minecraft:cat_variant"),
         None
     );
 }
@@ -6110,7 +6104,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ChickenVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
             ProtocolEntityDataValue {
@@ -6118,7 +6112,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ChickenSoundVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
         ],
@@ -6248,7 +6242,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CowVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
             ProtocolEntityDataValue {
@@ -6256,7 +6250,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CowSoundVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
         ],
@@ -7332,7 +7326,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
             ProtocolEntityDataValue {
@@ -7340,7 +7334,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatSoundVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
             ProtocolEntityDataValue {
@@ -7490,7 +7484,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
             ProtocolEntityDataValue {
@@ -7498,7 +7492,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfSoundVariant,
-                    id: 0,
+                    value: EntityDataRegistryReference::unresolved(0),
                 },
             },
         ],
