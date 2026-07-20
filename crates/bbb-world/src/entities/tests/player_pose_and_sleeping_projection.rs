@@ -30,7 +30,9 @@ fn entity_custom_name_data(name: Option<&str>) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id: entity_metadata_accessors().custom_name_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
-        value: EntityDataValueKind::OptionalComponent(name.map(str::to_string)),
+        value: EntityDataValueKind::OptionalComponent(
+            name.map(bbb_protocol::RichTextComponent::plain),
+        ),
     }
 }
 

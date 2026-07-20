@@ -376,7 +376,7 @@ fn decodes_entity_lifecycle_packets() {
                 EntityDataValue {
                     data_id: 3,
                     serializer_id: 5,
-                    value: EntityDataValueKind::Component("Name".to_string()),
+                    value: EntityDataValueKind::Component(crate::RichTextComponent::plain("Name",)),
                 },
                 EntityDataValue {
                     data_id: 4,
@@ -1173,11 +1173,98 @@ fn decodes_set_entity_link_packet() {
     );
 }
 
+#[test]
+fn set_entity_data_preserves_exact_styled_component_value() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(123);
+    payload.write_u8(2);
+    payload.write_var_i32(VANILLA_ENTITY_DATA_SERIALIZER_COMPONENT_ID);
+    payload.write_bytes(&styled_component_root("Styled"));
+    payload.write_u8(0xff);
+
+    let PlayClientbound::SetEntityData(packet) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_ENTITY_DATA,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected SetEntityData packet");
+    };
+    let EntityDataValueKind::Component(component) = &packet.values[0].value else {
+        panic!("expected rich component metadata value");
+    };
+    assert_eq!(component.text(), "Styled");
+    assert_eq!(component.styled().len(), 1);
+    assert_eq!(component.styled()[0].text, "Styled");
+    assert_eq!(component.styled()[0].style.bold, Some(true));
+    assert_eq!(component.styled()[0].style.color, Some(0xff5555));
+    assert_eq!(
+        component.component(),
+        &crate::NbtSummaryValue::Compound(vec![
+            crate::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: crate::NbtSummaryValue::String("Styled".to_string()),
+            },
+            crate::NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: crate::NbtSummaryValue::Byte(1),
+            },
+            crate::NbtSummaryEntry {
+                name: "color".to_string(),
+                value: crate::NbtSummaryValue::String("red".to_string()),
+            },
+        ])
+    );
+}
+
+#[test]
+fn rich_component_deserialization_rejects_mismatched_projections() {
+    let component =
+        crate::RichTextComponent::try_from_component_nbt(crate::NbtSummaryValue::Compound(vec![
+            crate::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: crate::NbtSummaryValue::String("Exact".to_string()),
+            },
+            crate::NbtSummaryEntry {
+                name: "italic".to_string(),
+                value: crate::NbtSummaryValue::Byte(1),
+            },
+        ]))
+        .unwrap();
+    let encoded = serde_json::to_string(&component).unwrap();
+    assert_eq!(
+        serde_json::from_str::<crate::RichTextComponent>(&encoded).unwrap(),
+        component
+    );
+
+    let mismatched = encoded.replacen("Exact", "Stale", 1);
+    assert!(serde_json::from_str::<crate::RichTextComponent>(&mismatched).is_err());
+}
+
 fn nbt_string_root(text: &str) -> Vec<u8> {
     let mut payload = vec![8];
     payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
     payload.extend_from_slice(text.as_bytes());
     payload
+}
+
+fn styled_component_root(text: &str) -> Vec<u8> {
+    let mut payload = vec![10];
+    write_named_nbt_string(&mut payload, "text", text);
+    payload.push(1);
+    payload.extend_from_slice(&4_u16.to_be_bytes());
+    payload.extend_from_slice(b"bold");
+    payload.push(1);
+    write_named_nbt_string(&mut payload, "color", "red");
+    payload.push(0);
+    payload
+}
+
+fn write_named_nbt_string(payload: &mut Vec<u8>, name: &str, value: &str) {
+    payload.push(8);
+    payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+    payload.extend_from_slice(name.as_bytes());
+    payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    payload.extend_from_slice(value.as_bytes());
 }
 
 fn write_skin_patch(payload: &mut Encoder) {

@@ -823,6 +823,135 @@ fn set_entity_data_rejects_unknown_or_mismatched_schema_without_partial_mutation
 }
 
 #[test]
+fn set_entity_data_preserves_rich_component_and_rejects_invalid_owner_payload_atomically() {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(123));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![entity_air_supply_data(42)],
+    }));
+    let expected = store.probe_entity(123).unwrap().data_values;
+
+    let invalid = bbb_protocol::RichTextComponent::try_from_component_nbt(
+        bbb_protocol::NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: bbb_protocol::NbtSummaryValue::String("Open".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "click_event".to_string(),
+                value: bbb_protocol::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String("show_dialog".to_string()),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "dialog".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String("example:missing".to_string()),
+                    },
+                ]),
+            },
+        ]),
+    )
+    .unwrap();
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![
+            entity_invisible_data(),
+            ProtocolEntityDataValue {
+                data_id: accessors.custom_name_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+                value: EntityDataValueKind::OptionalComponent(Some(invalid)),
+            },
+        ],
+    }));
+    assert_eq!(store.probe_entity(123).unwrap().data_values, expected);
+    assert!(store
+        .apply_diagnostics()
+        .last_apply_error
+        .as_ref()
+        .is_some_and(|error| error.source == "entity_data_component"
+            && error.message.contains("example:missing")));
+
+    let rich = bbb_protocol::RichTextComponent::try_from_component_nbt(
+        bbb_protocol::NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: bbb_protocol::NbtSummaryValue::String("Alice".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: bbb_protocol::NbtSummaryValue::Byte(1),
+            },
+        ]),
+    )
+    .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![ProtocolEntityDataValue {
+            data_id: accessors.custom_name_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+            value: EntityDataValueKind::OptionalComponent(Some(rich.clone())),
+        }],
+    }));
+    let generation_a = store.publication_snapshot();
+    assert_eq!(
+        generation_a
+            .probe_entity(123)
+            .unwrap()
+            .data_values
+            .iter()
+            .find(|value| value.data_id == accessors.custom_name_data_id)
+            .map(|value| &value.value),
+        Some(&EntityDataValueKind::OptionalComponent(Some(rich)))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![ProtocolEntityDataValue {
+            data_id: accessors.custom_name_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+            value: EntityDataValueKind::OptionalComponent(Some(
+                bbb_protocol::RichTextComponent::plain("Bob"),
+            )),
+        }],
+    }));
+    let generation_b = store.publication_snapshot();
+    assert_eq!(
+        generation_a
+            .probe_entity(123)
+            .unwrap()
+            .data_values
+            .iter()
+            .find(|value| value.data_id == accessors.custom_name_data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::OptionalComponent(Some(component)) => {
+                    Some(component.text())
+                }
+                _ => None,
+            }),
+        Some("Alice")
+    );
+    assert_eq!(
+        generation_b
+            .probe_entity(123)
+            .unwrap()
+            .data_values
+            .iter()
+            .find(|value| value.data_id == accessors.custom_name_data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::OptionalComponent(Some(component)) => {
+                    Some(component.text())
+                }
+                _ => None,
+            }),
+        Some("Bob")
+    );
+}
+
+#[test]
 fn local_player_using_item_tracks_living_entity_flags() {
     let accessors = living_entity_metadata_accessors();
     let mut store = WorldStore::new();

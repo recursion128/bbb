@@ -8234,7 +8234,7 @@ fn debug_entity_data_optional_component_present(entity: &EntityState, data_id: u
         .iter()
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
-            EntityDataValueKind::OptionalComponent(Some(value)) => Some(value.as_str()),
+            EntityDataValueKind::OptionalComponent(Some(value)) => Some(value.text()),
             _ => None,
         })
 }

@@ -803,7 +803,9 @@ impl EntityStore {
             .iter()
             .find(|value| value.data_id == data_id)
             .and_then(|value| match &value.value {
-                EntityDataValueKind::OptionalComponent(component) => component.clone(),
+                EntityDataValueKind::OptionalComponent(component) => component
+                    .as_ref()
+                    .map(|component| component.text().to_string()),
                 _ => None,
             })
     }

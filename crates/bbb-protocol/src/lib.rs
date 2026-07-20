@@ -11,7 +11,8 @@ pub use component::{
     parse_command_uuid_prefix, styled_component_runs_from_nbt_value, styled_runs_summary_text,
     validate_component_nbt, visit_component_payloads, CanonicalComponentOwnerValue,
     CommandCoordinatesKind, CommandEntitySelectorPrefix, CommandSnbtKind, ComponentClickEvent,
-    ComponentPayload, ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
+    ComponentPayload, ComponentStyle, RichTextComponent, SignBlockEntityNbt, SignTextNbt,
+    StyledTextRun,
 };
 pub use nbt_summary::{decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry, NbtSummaryValue};
 

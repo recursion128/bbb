@@ -12852,7 +12852,9 @@ fn protocol_optional_component_data(data_id: u8, value: Option<&str>) -> EntityD
     EntityDataValue {
         data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
-        value: EntityDataValueKind::OptionalComponent(value.map(str::to_string)),
+        value: EntityDataValueKind::OptionalComponent(
+            value.map(bbb_protocol::RichTextComponent::plain),
+        ),
     }
 }
 

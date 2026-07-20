@@ -685,7 +685,7 @@ fn decode_component(
     })
 }
 
-pub(crate) fn validate_command_rich_text(
+pub(crate) fn validate_rich_component_with_registry(
     value: &NbtSummaryValue,
     registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<(), String> {
@@ -695,6 +695,13 @@ pub(crate) fn validate_command_rich_text(
         DialogDecodeContext::with_registry_access(Some(registry_access), 0),
     )
     .map(|_| ())
+}
+
+pub(crate) fn validate_command_rich_text(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    validate_rich_component_with_registry(value, registry_access)
 }
 
 pub(crate) fn validate_command_style(

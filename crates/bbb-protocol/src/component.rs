@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::{
     chat_formattings::vanilla_chat_formatting_color_by_name,
@@ -110,6 +110,76 @@ pub struct StyledTextRun {
     pub style: ComponentStyle,
 }
 
+/// One trusted network `Component`, preserving the exact validated NBT value
+/// together with the two projections used by native presentation code.
+///
+/// Keeping these fields together prevents metadata consumers from treating a
+/// lossy plain string as the canonical value while independently attempting to
+/// reconstruct style or owner-sensitive payloads later.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RichTextComponent {
+    text: String,
+    styled: Vec<StyledTextRun>,
+    component: NbtSummaryValue,
+}
+
+impl RichTextComponent {
+    pub fn try_from_component_nbt(component: NbtSummaryValue) -> std::result::Result<Self, String> {
+        validate_component_nbt(&component, "rich text component")?;
+        Ok(Self::from_decoded_component(component))
+    }
+
+    fn from_decoded_component(component: NbtSummaryValue) -> Self {
+        let styled = styled_component_runs_from_nbt_value(&component);
+        let text = styled_runs_summary_text(&styled);
+        Self {
+            text,
+            styled,
+            component,
+        }
+    }
+
+    pub fn plain(text: impl Into<String>) -> Self {
+        Self::from_decoded_component(NbtSummaryValue::String(text.into()))
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn styled(&self) -> &[StyledTextRun] {
+        &self.styled
+    }
+
+    pub fn component(&self) -> &NbtSummaryValue {
+        &self.component
+    }
+}
+
+impl<'de> Deserialize<'de> for RichTextComponent {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct RichTextComponentFields {
+            text: String,
+            styled: Vec<StyledTextRun>,
+            component: NbtSummaryValue,
+        }
+
+        let fields = RichTextComponentFields::deserialize(deserializer)?;
+        let component =
+            Self::try_from_component_nbt(fields.component).map_err(de::Error::custom)?;
+        if component.text != fields.text || component.styled != fields.styled {
+            return Err(de::Error::custom(
+                "rich text component projections do not match exact component NBT",
+            ));
+        }
+        Ok(component)
+    }
+}
+
 /// Concatenated plain text of a run list; the empty-component fallback matches
 /// the legacy plain-text decoder (`"component nbt"`), keeping the old API a
 /// pure delegation of the styled one.
@@ -137,6 +207,18 @@ pub fn styled_component_runs_from_nbt_value(value: &NbtSummaryValue) -> Vec<Styl
 pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -> Result<String> {
     let runs = decode_styled_component_summary_from_decoder(decoder)?;
     Ok(styled_runs_summary_text(&runs))
+}
+
+pub(crate) fn decode_rich_text_component_from_decoder(
+    decoder: &mut Decoder<'_>,
+) -> Result<RichTextComponent> {
+    let (styled, component) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+    let component = component.expect("validated component network NBT root is present");
+    Ok(RichTextComponent {
+        text: styled_runs_summary_text(&styled),
+        styled,
+        component,
+    })
 }
 
 pub(crate) fn decode_component_style_from_decoder(

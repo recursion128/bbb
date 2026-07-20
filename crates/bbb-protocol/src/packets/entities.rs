@@ -7,7 +7,7 @@ use crate::{
     attribute_modifier_types::normalize_attribute_modifier_operation_id,
     attribute_types::vanilla_attribute_type,
     codec::{Decoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
+    component::{decode_component_summary_from_decoder, decode_rich_text_component_from_decoder},
 };
 
 use super::{
@@ -201,8 +201,8 @@ pub enum EntityDataValueKind {
     Long(i64),
     Float(f32),
     String(String),
-    Component(String),
-    OptionalComponent(Option<String>),
+    Component(crate::RichTextComponent),
+    OptionalComponent(Option<crate::RichTextComponent>),
     ItemStack(ItemStackSummary),
     Boolean(bool),
     Rotations {
@@ -725,11 +725,11 @@ fn decode_entity_data_value(
             EntityDataValueKind::String(decoder.read_string(32767)?)
         }
         VANILLA_ENTITY_DATA_SERIALIZER_COMPONENT_ID => {
-            EntityDataValueKind::Component(decode_component_summary_from_decoder(decoder)?)
+            EntityDataValueKind::Component(decode_rich_text_component_from_decoder(decoder)?)
         }
         VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID => {
             EntityDataValueKind::OptionalComponent(if decoder.read_bool()? {
-                Some(decode_component_summary_from_decoder(decoder)?)
+                Some(decode_rich_text_component_from_decoder(decoder)?)
             } else {
                 None
             })

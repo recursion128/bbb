@@ -3790,7 +3790,9 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
             ProtocolEntityDataValue {
                 data_id: entity_accessors.custom_name_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
-                value: EntityDataValueKind::OptionalComponent(Some("Bob \"Prime\"".to_string())),
+                value: EntityDataValueKind::OptionalComponent(Some(
+                    bbb_protocol::RichTextComponent::plain("Bob \"Prime\""),
+                )),
             },
             ProtocolEntityDataValue {
                 data_id: entity_accessors.custom_name_visible_data_id,

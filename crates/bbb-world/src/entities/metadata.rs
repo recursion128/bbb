@@ -59,6 +59,27 @@ impl WorldStore {
                 self.counters.entity_data_updates_ignored += 1;
                 return false;
             }
+            let component = match &value.value {
+                EntityDataValueKind::Component(component)
+                | EntityDataValueKind::OptionalComponent(Some(component)) => Some(component),
+                _ => None,
+            };
+            if let Some(component) = component {
+                if let Err(error) = crate::client::validate_rich_component_with_registry(
+                    component.component(),
+                    self.frozen_registry_access(),
+                ) {
+                    self.record_apply_error(
+                        "entity_data_component",
+                        format!(
+                            "invalid entity data component for entity {id} type {entity_type_id} field {} (id {}): {error}",
+                            accessor.java_name, value.data_id
+                        ),
+                    );
+                    self.counters.entity_data_updates_ignored += 1;
+                    return false;
+                }
+            }
         }
         let is_local_player = self.local_player_id == Some(id);
         let local_living_entity_accessors = is_local_player
