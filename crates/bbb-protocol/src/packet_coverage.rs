@@ -2070,7 +2070,7 @@ mod tests {
     }
 
     #[test]
-    fn play_system_chat_keeps_rich_component_presentation_open() {
+    fn play_system_chat_keeps_only_overlay_rich_presentation_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2084,10 +2084,7 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
     #[test]
@@ -2487,7 +2484,7 @@ mod tests {
     }
 
     #[test]
-    fn play_disguised_chat_keeps_rich_chat_listener_semantics_open() {
+    fn play_disguised_chat_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2496,17 +2493,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_DISGUISED_CHAT"
             })
             .expect("play disguised chat coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -2792,21 +2782,17 @@ mod tests {
     }
 
     #[test]
-    fn play_player_chat_keeps_secure_chat_validation_and_presentation_open() {
+    fn play_player_chat_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_PLAYER_CHAT")
             .expect("play player chat coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect", "tests"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

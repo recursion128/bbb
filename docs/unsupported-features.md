@@ -613,9 +613,19 @@ Owner: `bbb-world` + `bbb-native` + `bbb-control`
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 
-- Complete native `ChatListener` presentation: receive-ability and secure-only
-  gates, message-delay scheduling, localized rich HUD component rendering and
-  interactions, narrator delivery, and the reporting log.
+- Authenticated Services block-list synchronization and player-report
+  composition/submission remain external account/social boundaries. The native
+  `ChatListener` now owns receive-ability and secure-only gates, bounded delayed
+  delivery, trust tags, the 1,024-entry reporting log, rich HUD interaction, and
+  narrator delivery; startup hidden/blocked UUIDs are not a substitute for a
+  signed-in Services client or reporting UI.
+- Exact `show_item` / `show_entity` hover payloads and custom font ids are
+  retained in canonical Components, but chat currently renders bounded
+  name/id/count hover fallbacks and the active default font when a custom font
+  provider is unavailable. Server-supplied `open_file` remains deliberately
+  inert; completing reusable item/entity tooltip rendering or additional font
+  providers must consume those retained values rather than add a parallel
+  Component schema.
 
 ## Crosshair entity interaction parity
 
@@ -1259,9 +1269,11 @@ back into a todo. Do not delete these.
 - **UpdateAdvancements rich display/toast parity.** Reset/remove/add/known-progress
   tree semantics are covered, but title/description and icon stacks remain summary
   projections, and completion telemetry/toast presentation is not complete.
-- **SystemChat rich Component presentation.** Overlay=false now enters canonical
-  server-system chat history and overlay=true follows the action-bar path, but the
-  trusted Component is still flattened before style/click/hover rendering.
+- **SystemChat overlay rich Component presentation.** Overlay=false now retains
+  and renders inherited style/click/hover runs through canonical server-system
+  chat. Overlay=true retains the exact packet Component in `SystemChatLineState`
+  and uses the correct system narration gate, but its action-bar draw state is
+  still a plain-text projection; rich action-bar styles remain open.
 - **Advancement hover title/description boxes** and full scroll/scissor behavior.
 - **Heart damage/heal blink flash.** Needs the untracked
   `player.invulnerableTime` (no client-side sync) and the wall-clock

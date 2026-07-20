@@ -189,6 +189,16 @@ pin ordering across winit and control producers. Platform-only results return as
 new commands; a simulation handler never calls a window, renderer, clipboard,
 browser, or narrator directly.
 
+Rich chat pointer input follows the same rule. The render owner resolves the
+cursor against the exact wrapped glyph cache and enqueues only a revision-scoped
+hit token. Simulation revalidates the level, delivery, resource generation, and
+canonical Component run before executing URL/clipboard/dialog/network actions.
+Chat narration is drained from `WorldStore` into the lossless platform-effect
+batch before `SimulationPublisher::publish`; empty narration produces no effect
+batch. Render consumes queued speech before the paired publication is made
+visible, and a blocked renderer cannot mutate or make simulation reread the
+retained generation.
+
 ### Publication
 
 `SimulationPublication` is immutable and contains at least:

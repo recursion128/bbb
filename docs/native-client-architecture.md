@@ -144,6 +144,35 @@ replaces that derived session owner, unchanged publications share it, and old
 world generations cannot observe its mutation. No parser, registry-order cache,
 or command authority is independently mutable outside the simulation owner.
 
+### ChatListener Presentation Ownership
+
+`bbb-world::ClientChatState` is the only mutable chat-listener owner. Packet
+receipt validates signatures and captures one bounded delivery value; the same
+delivery function applies immediate, timed, explicit-next, and flush paths. It
+alone updates visible history, trust/source tags, the reporting ring, last-seen
+acknowledgement state, and language-neutral narration requests. Hidden/blocked,
+secure-only, filter, delay, deletion, configuration handoff, and level/session
+reset decisions therefore cannot diverge between online, probe, and fixture
+paths.
+
+`bbb-protocol` retains exact trusted Component NBT plus inherited styled runs,
+click/hover payloads, and font identity. `bbb-native` resolves resource-pack
+localization and projects one stable rich-message cache; `bbb-renderer` owns only
+bounded wrapped glyph lines, hover geometry, and revision-scoped hit tokens.
+Mouse actions return a narrow `(level, delivery, resource generation,
+resource-loaded state, message, run)` token through the simulation mailbox. The
+simulation owner revalidates it against the current canonical message before
+sending a command or platform effect, so a level reset, resource reload, delayed
+delivery, or retained old publication cannot retarget a click.
+
+Chat/system narration drains after packet/input/tick mutation into the existing
+lossless effect collector. The batch is sealed before its matching immutable
+publication, preserving effect-before-publication even when render is blocked.
+The native narrator process owns only queued speech and applies Vanilla's
+off/all/chat/system gates; it is neither canonical chat state nor an audio-mixer
+owner. Font reload transactionally rebuilds renderer-owned wrapped lines and
+restores the exact prior cache on failure.
+
 A fresh Login starts a new registry session, while Play reconfiguration carries
 the frozen registry access. Every connection edge clears connection-owned
 resource-pack tracking; level replacement clears chunk/entity/local-level

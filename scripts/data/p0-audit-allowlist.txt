@@ -80,6 +80,10 @@
 # defaults when no synchronized dimension registry exists; remote registries use
 # their typed revision and never enter the built-in fallback branch.
 ^crates/bbb-native/src/runtime/render_extract[.]rs$	uses_builtin_dimension_fallback
+# Chat localization uses the selected resource generation first, then a fixed
+# English display template/key fallback. Canonical Component/style ownership,
+# packet acceptance, and renderer submission metadata are unchanged.
+^crates/bbb-native/src/runtime/render_extract[.]rs$	chat_translation_fallback|let [(]translation_key, fallback[)]|^[[:space:]]*fallback[:,]|unwrap_or[(]fallback[)]
 # Simulation input uses the existing bounded fixed-width text fallback only
 # before the immutable renderer glyph projection has loaded; it is layout
 # compatibility, not a renderer submission or canonical gameplay fallback.

@@ -19964,3 +19964,26 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   entity family 的 subclass callback、animation/effect、render/audio/particle/save/debug
   cell，也不把共享 `ItemStackSummary` 宣称为完整 Mojang mutable component map；这些
   剩余项继续由 entity matrix 与 Inventory ledger 逐项约束。
+
+## 2026-07-20：Vanilla ChatListener presentation
+
+- [x] `4f722e1d1` 建立唯一 simulation-owned `ClientChatState`：receiveability、secure-only、
+  filter/hidden/blocked、trust tag、1,024 项 delayed FIFO/reporting ring、acceptance-time
+  last-seen acknowledgement、60-tick deletion、configuration flush 与 reset 顺序共用同一
+  delivery path；`c241de7f2` 修复 packet coverage 的稳定 evidence 名称后通过首个 milestone
+  full gate。
+- [x] `7788b64d9` 将最多 100 条 rich history 投影为 renderer-owned bounded wrapped-line
+  cache；普通 gui tick/fade frame 只更新窄 context，不再复制/重测稳定 Component payload。
+  source/trust tag、word wrapping、focus alpha、delayed-queue indicator 与 retained world Arc
+  isolation 均由 focused tests 固定。
+- [x] `d169834c6` 保留继承后的 click/hover/font identity，并以同一 wrapped glyph layout
+  产生 revision-scoped hit token。simulation 在 URL/clipboard/dialog/run/suggest/custom action
+  前重验 level/delivery/resource/message/run；chat/system narration进入既有 lossless effect
+  gate，先于同 generation publication。`01fc6265a` 进一步把 modified tag sprite 与
+  font-dependent wrapped cache 纳入 resource reload transaction，失败时精确恢复旧 cache；
+  该 tip 的 6/6 milestone full gate 通过。
+- [x] 明确保留边界：authenticated Services block list 与 abuse-report UI/提交不在本片；
+  `show_item`/`show_entity` hover 先使用 retained payload 的 name/id/count fallback，自定义
+  font provider 未加载时使用默认字体，server `open_file` 保持 inert。`SystemChat`
+  overlay=false 已走 rich chat，overlay=true 仍是 plain action-bar draw，因此 packet runtime
+  coverage 保持 partial，不能据此宣称所有富文本 HUD 或社交/举报功能完成。
