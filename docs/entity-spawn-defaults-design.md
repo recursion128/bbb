@@ -109,6 +109,30 @@ Local source root: `/home/zgy/Work/mc-code/sources/26.1`.
 Critical source facts are rechecked by the main agent before each owning phase;
 normal build/test never reads the local Vanilla source tree.
 
+### Base/non-living constructor audit
+
+The source-derived family partition contains 10 base/non-living types, 55
+projectile/vehicle/display types, 47 non-monster living types, 44
+`MobCategory.MONSTER` living types, and Player. The base group keeps the sparse
+generated metadata defaults and existing specialized packet recreation owners.
+Two constructor values required additional canonical state:
+
+- `ItemEntity.bobOffs` is initialized from `random.nextFloat() * TAU` and is
+  consumed by both the dropped-item renderer and the retained pickup-particle
+  render state.
+- `EndCrystal.time` starts at `random.nextInt(100000)` and replaces the generic
+  entity age in `EndCrystalRenderer`; the same bobbed age feeds the dragon beam.
+
+Neither RNG result is synchronized, so `EntityClientAnimationState` stores a
+stable UUID-derived client-local value with the same range and lifetime. It is
+created before the first projection, reset by successful same-id AddEntity,
+serialized with the canonical entity state, and copied into immutable
+publications. The item phase travels through the pickup particle command instead
+of being recomputed from a reused protocol id. The other base constructors have
+no uncovered client-observable fresh owner: their synchronized defaults already
+come from the generated metadata schema, while server AI/lifetime/container
+fields remain out of scope.
+
 ## Serial Phases, Tests, and Gates
 
 1. **Contract and baseline.** Record this contract, the 156-partial baseline,

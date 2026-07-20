@@ -719,10 +719,16 @@ fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
         [6.0, 65.0, 0.0],
     ));
     store.apply_add_entity(add_at(194, VANILLA_ENTITY_TYPE_BAT_ID, [3.0, 65.0, 0.0]));
+    let crystal_time_offset = store
+        .probe_entity(193)
+        .unwrap()
+        .client_animations
+        .end_crystal_time_offset
+        .unwrap() as f32;
     store.advance_entity_client_animations(10);
 
     let beam = dragon_beam(&store, 190, 0.25).expect("dragon has an in-range healing crystal");
-    let expected_y = 1.0 + vanilla_crystal_y(10.25);
+    let expected_y = 1.0 + vanilla_crystal_y(crystal_time_offset + 10.25);
     assert!(
         (beam.beam_offset[0] - 6.0).abs() < 1.0e-5,
         "{:?}",

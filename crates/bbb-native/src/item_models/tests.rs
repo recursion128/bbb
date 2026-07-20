@@ -895,8 +895,9 @@ fn block_ground_transform_seats_a_unit_block_just_above_the_entity_origin() {
     let min_offset_y = -min_y + 1.0 / 16.0;
     // A full unit block already rests on the ground under the default transform (no extra lift).
     assert!(min_offset_y.abs() < 1e-4, "block needs no lift");
-    let transform = base_transform([0.0, 64.0, 0.0], 0.0, 0, min_offset_y) * ground_matrix;
-    let bob = (bob_offset(0)).sin() * 0.1 + 0.1;
+    let phase = 0.75;
+    let transform = base_transform([0.0, 64.0, 0.0], 0.0, phase, min_offset_y) * ground_matrix;
+    let bob = phase.sin() * 0.1 + 0.1;
     let bottom = transform.transform_point3(Vec3::new(0.0, 0.0, 0.0));
     let top = transform.transform_point3(Vec3::new(1.0, 1.0, 1.0));
     assert!((bottom.y - (64.0 + bob + 0.0625)).abs() < 1e-4, "bottom y");
@@ -910,8 +911,9 @@ fn flat_ground_transform_lifts_the_slab_to_rest_on_the_ground() {
     let min_offset_y = -min_y + 1.0 / 16.0;
     // The 0.5-scaled slab's bottom sits at -0.125, so vanilla lifts it 0.1875 to rest on the ground.
     assert!((min_offset_y - 0.1875).abs() < 1e-4, "flat lift");
-    let transform = base_transform([0.0, 64.0, 0.0], 0.0, 0, min_offset_y) * ground_matrix;
-    let bob = (bob_offset(0)).sin() * 0.1 + 0.1;
+    let phase = 0.75;
+    let transform = base_transform([0.0, 64.0, 0.0], 0.0, phase, min_offset_y) * ground_matrix;
+    let bob = phase.sin() * 0.1 + 0.1;
     let bottom = transform.transform_point3(Vec3::new(0.0, 0.0, 0.5));
     assert!(
         (bottom.y - (64.0 + bob + 0.0625)).abs() < 1e-4,
@@ -3968,7 +3970,7 @@ fn cluster_count_drives_geometry_and_is_non_empty() {
         &quads,
         [0.0, 0.0, 0.0],
         0.0,
-        0,
+        0.0,
         &BLOCK_GROUND_FALLBACK,
         [4.0 / 15.0, 11.0 / 15.0],
         1,
@@ -3979,7 +3981,7 @@ fn cluster_count_drives_geometry_and_is_non_empty() {
         &quads,
         [0.0, 0.0, 0.0],
         0.0,
-        0,
+        0.0,
         &BLOCK_GROUND_FALLBACK,
         [4.0 / 15.0, 11.0 / 15.0],
         4,
@@ -4001,7 +4003,7 @@ fn foiled_cluster_mirrors_geometry_to_item_glint_buckets() {
         &quads,
         [0.0, 0.0, 0.0],
         0.0,
-        0,
+        0.0,
         &BLOCK_GROUND_FALLBACK,
         [1.0, 1.0],
         1,
@@ -4012,7 +4014,7 @@ fn foiled_cluster_mirrors_geometry_to_item_glint_buckets() {
         &quads,
         [0.0, 0.0, 0.0],
         0.0,
-        0,
+        0.0,
         &BLOCK_GROUND_FALLBACK,
         [1.0, 1.0],
         1,
@@ -4111,6 +4113,7 @@ fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
         component_patch: None,
         position: [1.25, 65.5, -3.0],
         age_ticks: 9.5,
+        bob_offset: 0.25,
         light: [6.0 / 15.0, 12.0 / 15.0],
     };
 
@@ -4190,6 +4193,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         None,
         None,
     );
+    let bob_offset = world.item_entity_stacks()[0].bob_offset;
 
     // Pickup carried bake: the same stack rebuilt from the opaque patch bytes
     // the pickup channel round-tripped through the renderer, with geometry
@@ -4205,6 +4209,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         component_patch: Some(patch_bytes),
         position: POSITION,
         age_ticks: AGE_TICKS,
+        bob_offset,
         light: [1.0, 1.0],
     };
     let pickup = item_pickup_particle_item_models(

@@ -162,6 +162,7 @@ mod tests {
                 z: -2.25,
             },
             light: TerrainLight { sky: 12, block: 5 },
+            bob_offset: 0.0,
             stack: ItemStackSummary {
                 item_id: Some(42),
                 count: 3,
@@ -242,6 +243,7 @@ mod tests {
                 z: -4.0,
             },
             light: TerrainLight { sky: 7, block: 15 },
+            bob_offset: 0.0,
             stack: ItemStackSummary {
                 item_id: Some(11),
                 count: 1,

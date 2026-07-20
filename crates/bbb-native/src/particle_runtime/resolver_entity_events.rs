@@ -120,6 +120,7 @@ impl ParticleCommandResolver {
                     .and_then(particle_item_option_state_for_stack),
                 option_item_pickup_source_entity_id: Some(state.item_entity_id),
                 option_item_pickup_age_ticks: Some(state.item_age_ticks),
+                option_item_pickup_bob_offset: Some(state.item_bob_offset),
                 option_item_pickup_light: Some(particle_shader_light(state.item_light)),
                 option_item_pickup_experience_orb_icon: state.experience_orb_icon,
                 option_item_pickup_component_patch: state

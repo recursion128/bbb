@@ -415,7 +415,7 @@ pub(crate) fn dropped_item_models(
                     let ground_matrix = display_matrix(&ground, false);
                     let (min_y, depth) = ground_model_bounds(&quads, ground_matrix);
                     let base =
-                        base_transform(position, age_ticks, state.entity_id, -min_y + 1.0 / 16.0);
+                        base_transform(position, age_ticks, state.bob_offset, -min_y + 1.0 / 16.0);
                     let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
                     let identity = ItemModelAssetIdentity::new(
                         Arc::<str>::from(resource_id),
@@ -474,7 +474,7 @@ pub(crate) fn dropped_item_models(
         let ground = ground(GENERATED_GROUND_FALLBACK);
         let ground_matrix = display_matrix(&ground, false);
         let (min_y, depth) = generated_ground_model_bounds(ground_matrix);
-        let base = base_transform(position, age_ticks, state.entity_id, -min_y + 1.0 / 16.0);
+        let base = base_transform(position, age_ticks, state.bob_offset, -min_y + 1.0 / 16.0);
         let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
         for layer in layers {
             let identity =
@@ -710,7 +710,7 @@ pub(crate) fn item_pickup_particle_item_models(
                     let base = base_transform(
                         state.position,
                         state.age_ticks,
-                        state.source_entity_id,
+                        state.bob_offset,
                         -min_y + 1.0 / 16.0,
                     );
                     let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
@@ -772,7 +772,7 @@ pub(crate) fn item_pickup_particle_item_models(
         let base = base_transform(
             state.position,
             state.age_ticks,
-            state.source_entity_id,
+            state.bob_offset,
             -min_y + 1.0 / 16.0,
         );
         let transforms = cluster_transforms(base, ground_matrix, count, seed, depth);
@@ -2046,7 +2046,7 @@ pub(super) fn stacked_item_mesh(
     quads: &[ItemModelQuad],
     position: [f32; 3],
     age_ticks: f32,
-    entity_id: i32,
+    bob_offset: f32,
     ground: &BlockModelDisplayTransform,
     light: [f32; 2],
     count: usize,
@@ -2058,7 +2058,7 @@ pub(super) fn stacked_item_mesh(
     // rendered model on the ground; `getZsize()` picks the cluster layout (3D scatter vs back-to-front).
     let (min_y, depth) = ground_model_bounds(quads, ground_matrix);
     let min_offset_y = -min_y + 1.0 / 16.0;
-    let base = base_transform(position, age_ticks, entity_id, min_offset_y);
+    let base = base_transform(position, age_ticks, bob_offset, min_offset_y);
     let mut mesh = ItemModelMeshSet::default();
     append_cluster(
         &mut mesh,
@@ -2086,13 +2086,12 @@ fn shader_light(light: TerrainLight) -> [f32; 2] {
 pub(super) fn base_transform(
     position: [f32; 3],
     age_ticks: f32,
-    entity_id: i32,
+    bob_offset: f32,
     min_offset_y: f32,
 ) -> Mat4 {
-    let phase = bob_offset(entity_id);
     // Vanilla `ItemEntityRenderer`: bob = sin(age/10 + bobOffs)·0.1 + 0.1; spin = age/20 + bobOffs.
-    let bob = (age_ticks / 10.0 + phase).sin() * 0.1 + 0.1;
-    let spin = age_ticks / 20.0 + phase;
+    let bob = (age_ticks / 10.0 + bob_offset).sin() * 0.1 + 0.1;
+    let spin = age_ticks / 20.0 + bob_offset;
     Mat4::from_translation(Vec3::new(
         position[0],
         position[1] + bob + min_offset_y,
@@ -2309,14 +2308,6 @@ fn append_cluster(
     for transform in cluster_transforms(base, ground, count, seed, depth) {
         append_quads_to_mesh_set(mesh, quads, transform, light, foil);
     }
-}
-
-/// Vanilla `ItemEntity.bobOffs` is a per-entity random in `[0, 2π)` fixed at spawn, desyncing each item's
-/// bob and spin. We derive a stable per-entity phase from the entity id; combined with the world game
-/// time as the clock, the absolute phase is indistinguishable from vanilla's spawn-age offset.
-pub(super) fn bob_offset(entity_id: i32) -> f32 {
-    let mixed = (entity_id as u32).wrapping_mul(2_654_435_761);
-    (mixed as f32 / u32::MAX as f32) * std::f32::consts::TAU
 }
 
 const RNG_MULTIPLIER: u64 = 25_214_903_917;

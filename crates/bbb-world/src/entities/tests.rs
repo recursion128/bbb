@@ -46,6 +46,7 @@ mod movement_combat_and_swing_projection;
 mod passenger_and_vehicle_movement;
 mod player_pose_and_sleeping_projection;
 mod small_mob_and_walk_animation;
+mod spawn_defaults;
 mod specialized_pick_bounds_and_render_scale;
 mod transient_events_and_animation_triggers;
 mod vehicle_and_block_entity_projection;

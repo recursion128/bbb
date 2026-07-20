@@ -325,6 +325,7 @@ fn particle_runtime_item_pickup_tracks_target_midpoint_and_expires_on_third_tick
     assert_eq!(render_states[0].item.item_id, 42);
     assert_eq!(render_states[0].item.count, 5);
     assert_eq!(render_states[0].age_ticks, 12.0);
+    assert_eq!(render_states[0].bob_offset, 1.25);
     assert_eq!(render_states[0].light, [0.4, 0.8]);
     assert_close3_f32(
         render_states[0].position,
@@ -6767,6 +6768,7 @@ fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> Partic
         option_item: None,
         option_item_pickup_source_entity_id: None,
         option_item_pickup_age_ticks: None,
+        option_item_pickup_bob_offset: None,
         option_item_pickup_light: None,
         option_item_pickup_experience_orb_icon: None,
         option_item_pickup_component_patch: None,
@@ -6809,6 +6811,7 @@ fn spawn_command(particle_id: &str, x: f64) -> ParticleSpawnCommand {
         option_item: None,
         option_item_pickup_source_entity_id: None,
         option_item_pickup_age_ticks: None,
+        option_item_pickup_bob_offset: None,
         option_item_pickup_light: None,
         option_item_pickup_experience_orb_icon: None,
         option_item_pickup_component_patch: None,
@@ -6838,6 +6841,7 @@ fn item_pickup_spawn_command() -> ParticleSpawnCommand {
     });
     command.option_item_pickup_source_entity_id = Some(10);
     command.option_item_pickup_age_ticks = Some(12.0);
+    command.option_item_pickup_bob_offset = Some(1.25);
     command.option_item_pickup_light = Some([0.4, 0.8]);
     command
 }

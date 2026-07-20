@@ -518,6 +518,7 @@ pub(super) fn item_pickup_particle_render_states<'a>(
                 age_ticks: instance
                     .option_item_pickup_age_ticks
                     .unwrap_or(instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK),
+                bob_offset: instance.option_item_pickup_bob_offset.unwrap_or(0.0),
                 light: instance
                     .option_item_pickup_light
                     .unwrap_or(DEFAULT_PARTICLE_LIGHT),

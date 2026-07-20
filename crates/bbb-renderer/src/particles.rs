@@ -95,6 +95,8 @@ pub struct ParticleSpawnCommand {
     #[serde(default)]
     pub option_item_pickup_age_ticks: Option<f32>,
     #[serde(default)]
+    pub option_item_pickup_bob_offset: Option<f32>,
+    #[serde(default)]
     pub option_item_pickup_light: Option<[f32; 2]>,
     #[serde(default)]
     pub option_item_pickup_experience_orb_icon: Option<i32>,
@@ -272,6 +274,7 @@ pub struct ItemPickupParticleRenderState {
     pub component_patch: Option<Vec<u8>>,
     pub position: [f32; 3],
     pub age_ticks: f32,
+    pub bob_offset: f32,
     pub light: [f32; 2],
 }
 
@@ -460,6 +463,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_item_pickup_source_entity_id: Option<i32>,
     #[serde(default)]
     pub(crate) option_item_pickup_age_ticks: Option<f32>,
+    #[serde(default)]
+    pub(crate) option_item_pickup_bob_offset: Option<f32>,
     #[serde(default)]
     pub(crate) option_item_pickup_light: Option<[f32; 2]>,
     #[serde(default)]

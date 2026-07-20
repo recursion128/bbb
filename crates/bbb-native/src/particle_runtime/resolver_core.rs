@@ -878,6 +878,7 @@ impl ParticleCommandResolver {
             option_item: option_state.item,
             option_item_pickup_source_entity_id: None,
             option_item_pickup_age_ticks: None,
+            option_item_pickup_bob_offset: None,
             option_item_pickup_light: None,
             option_item_pickup_experience_orb_icon: None,
             option_item_pickup_component_patch: None,

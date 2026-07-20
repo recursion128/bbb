@@ -395,15 +395,19 @@ impl EntityStore {
             self.uuid_for_protocol_id(identity.data),
         );
         let fresh_client_animations = EntityClientAnimations {
-            animations: EntityClientAnimationState {
-                spawn_body_y_rot: vanilla_living_entity_type(entity_type_id).then_some(
-                    if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
-                        0.0
-                    } else {
-                        transform.y_head_rot
-                    },
-                ),
-                ..EntityClientAnimationState::default()
+            animations: {
+                let mut animations = EntityClientAnimationState {
+                    spawn_body_y_rot: vanilla_living_entity_type(entity_type_id).then_some(
+                        if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
+                            0.0
+                        } else {
+                            transform.y_head_rot
+                        },
+                    ),
+                    ..EntityClientAnimationState::default()
+                };
+                animations.initialize_spawn_defaults(entity_type_id, identity.uuid);
+                animations
             },
         };
 
@@ -2398,7 +2402,11 @@ impl EntityStore {
             y_head_rot: transform.y_head_rot,
             arrow_shake: client_animations.animations.arrow_shake(partial_ticks),
             is_passenger,
-            age_ticks: client_animations.animations.age_ticks,
+            age_ticks: if identity.entity_type_id == VANILLA_ENTITY_TYPE_END_CRYSTAL_ID {
+                client_animations.animations.end_crystal_age_ticks()
+            } else {
+                client_animations.animations.age_ticks
+            },
             boat_rowing_time_left: boat_rowing_times[0],
             boat_rowing_time_right: boat_rowing_times[1],
             boat_hurt_time,
@@ -3001,7 +3009,8 @@ impl EntityStore {
             {
                 continue;
             }
-            let crystal_age = client_animations.animations.age_ticks as f32 + partial_ticks;
+            let crystal_age =
+                client_animations.animations.end_crystal_age_ticks() as f32 + partial_ticks;
             let crystal_y = transform.position.y + f64::from(end_crystal_renderer_y(crystal_age));
             nearest = Some((
                 distance_sqr,
@@ -3346,6 +3355,14 @@ impl EntityStore {
         Some(client_animations.animations.age_ticks)
     }
 
+    pub(crate) fn item_bob_offset(&self, id: i32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        (identity.entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID).then_some(())?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(client_animations.animations.item_bob_offset())
+    }
+
     pub(crate) fn experience_orb_icon_for_entity(&self, id: i32) -> Option<i32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -3473,6 +3490,9 @@ impl EntityStore {
             let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
                 continue;
             };
+            let Ok(client_animations) = self.ecs.get::<&EntityClientAnimations>(entity) else {
+                continue;
+            };
             let Some(data_id) = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
                 identity.entity_type_id,
             )
@@ -3494,6 +3514,7 @@ impl EntityStore {
                 entity_id: identity.id,
                 position: transform.position,
                 light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
+                bob_offset: client_animations.animations.item_bob_offset(),
                 stack: stack.clone(),
             });
         }

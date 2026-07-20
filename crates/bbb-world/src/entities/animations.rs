@@ -8,6 +8,7 @@ use bbb_protocol::entity_poses::{
 };
 use bbb_protocol::packets::{EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::WorldStore;
 
@@ -289,6 +290,17 @@ pub(crate) struct EvokerFangsCritParticleOffset {
 pub struct EntityClientAnimationState {
     #[serde(default)]
     pub age_ticks: u32,
+    /// Vanilla `ItemEntity.bobOffs`, initialized from `random.nextFloat() * TAU`
+    /// in the constructor and retained for the entity lifetime. The protocol does
+    /// not synchronize the RNG, so bbb derives an equivalent stable client-local
+    /// phase from the entity UUID at each fresh construction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub item_bob_offset: Option<f32>,
+    /// Vanilla `EndCrystal.time` constructor offset from `random.nextInt(100000)`.
+    /// `age_ticks` remains the base `Entity.tickCount`; renderer projections add
+    /// this offset only for the end-crystal `ageInTicks` override.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_crystal_time_offset: Option<u32>,
     /// Vanilla `LivingEntity.recreateFromPacket` seeds both body-yaw endpoints
     /// from the packet head yaw. `Shulker.recreateFromPacket` immediately
     /// overrides both to zero. This value is consumed only before the first
@@ -3796,6 +3808,23 @@ impl FoxAnimationState {
 }
 
 impl EntityClientAnimationState {
+    pub(crate) fn initialize_spawn_defaults(&mut self, entity_type_id: i32, uuid: Uuid) {
+        self.item_bob_offset = (entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID)
+            .then(|| spawn_random_unit_float(uuid, 0x6974_656d) * std::f32::consts::TAU);
+        self.end_crystal_time_offset = (entity_type_id == VANILLA_ENTITY_TYPE_END_CRYSTAL_ID)
+            .then(|| (spawn_random_bits(uuid, 0x6372_7973_7461_6c) % 100_000) as u32);
+    }
+
+    pub(crate) fn item_bob_offset(&self) -> f32 {
+        self.item_bob_offset.unwrap_or(0.0)
+    }
+
+    pub(crate) fn end_crystal_age_ticks(&self) -> u32 {
+        self.end_crystal_time_offset
+            .unwrap_or(0)
+            .wrapping_add(self.age_ticks)
+    }
+
     pub(crate) fn sync_events_from_metadata_update(
         &mut self,
         entity_type_id: i32,
@@ -5938,6 +5967,22 @@ impl EntityClientAnimationState {
         }
         particle_triggers
     }
+}
+
+fn spawn_random_unit_float(uuid: Uuid, salt: u64) -> f32 {
+    let bits = spawn_random_bits(uuid, salt);
+    ((bits >> 40) as u32) as f32 / (1_u32 << 24) as f32
+}
+
+fn spawn_random_bits(uuid: Uuid, salt: u64) -> u64 {
+    let value = uuid.as_u128();
+    let mut mixed = (value as u64) ^ ((value >> 64) as u64) ^ salt;
+    // SplitMix64's finalizer gives stable, well-distributed client-local values
+    // without introducing an independently mutable RNG owner.
+    mixed = mixed.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    mixed = (mixed ^ (mixed >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    mixed = (mixed ^ (mixed >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    mixed ^ (mixed >> 31)
 }
 
 /// Whether an entity type's client-tick animation reads `isInWater()` and so needs

@@ -221,6 +221,7 @@ fn take_item_entity_pickup_batch_preserves_source_and_target_context() {
         item_y_rot: 20.0,
         item_x_rot: -10.0,
         item_age_ticks: 9.5,
+        item_bob_offset: 1.25,
         item_light: TerrainLight { block: 6, sky: 12 },
         target_entity_id: 20,
         target_position: bbb_world::EntityVec3 {
@@ -262,6 +263,7 @@ fn take_item_entity_pickup_batch_preserves_source_and_target_context() {
     );
     assert_eq!(command.option_item_pickup_source_entity_id, Some(10));
     assert_eq!(command.option_item_pickup_age_ticks, Some(9.5));
+    assert_eq!(command.option_item_pickup_bob_offset, Some(1.25));
     assert_eq!(
         command.option_item_pickup_light,
         Some([6.0 / 15.0, 12.0 / 15.0])
@@ -297,6 +299,7 @@ fn take_item_entity_pickup_batch_preserves_experience_orb_icon() {
         item_y_rot: 0.0,
         item_x_rot: 0.0,
         item_age_ticks: 4.5,
+        item_bob_offset: 0.0,
         item_light: TerrainLight { block: 15, sky: 9 },
         target_entity_id: 20,
         target_position: bbb_world::EntityVec3 {
@@ -344,6 +347,7 @@ fn take_item_entity_pickup_batch_projects_projectile_models() {
         item_y_rot: 35.0,
         item_x_rot: -12.0,
         item_age_ticks: 4.5,
+        item_bob_offset: 0.0,
         item_light: TerrainLight { block: 6, sky: 12 },
         target_entity_id: 20,
         target_position: bbb_world::EntityVec3 {

@@ -629,6 +629,10 @@ pub struct ItemEntityStackState {
     pub position: EntityVec3,
     #[serde(default = "entity_model_source_full_bright_light")]
     pub light: TerrainLight,
+    /// Constructor-stable `ItemEntity.bobOffs`; zero for non-item users of the
+    /// generic ITEM_STACK projection.
+    #[serde(default)]
+    pub bob_offset: f32,
     pub stack: ProtocolItemStackSummary,
 }
 
@@ -863,6 +867,8 @@ pub struct TakeItemEntityPickupParticleState {
     pub item_x_rot: f32,
     #[serde(default)]
     pub item_age_ticks: f32,
+    #[serde(default)]
+    pub item_bob_offset: f32,
     #[serde(default = "entity_model_source_full_bright_light")]
     pub item_light: TerrainLight,
     pub target_entity_id: i32,
@@ -2835,6 +2841,7 @@ impl WorldStore {
             .entity_age_ticks(item_entity_id)
             .map(|age| age as f32 + 1.0)
             .unwrap_or(1.0);
+        let item_bob_offset = self.entities.item_bob_offset(item_entity_id).unwrap_or(0.0);
         let item_light = take_item_entity_pickup_light(
             item.entity_type_id,
             self.sample_block_light(entity_light_block_pos(item.position))
@@ -2887,6 +2894,7 @@ impl WorldStore {
             item_y_rot: item.y_rot,
             item_x_rot: item.x_rot,
             item_age_ticks,
+            item_bob_offset,
             item_light,
             target_entity_id: target.0,
             target_position: target.1,
