@@ -284,13 +284,12 @@ mod tests {
         }
 
         fn roots(&self) -> PackRoots {
-            PackRoots {
-                mc_code_root: self.0.clone(),
-                sources_dir: self.0.clone(),
-                assets_dir: self.0.join("assets/minecraft"),
-                generated_assets_dir: None,
-                resource_pack_dirs: Vec::new(),
-            }
+            PackRoots::from_paths(
+                self.0.clone(),
+                self.0.clone(),
+                self.0.join("assets/minecraft"),
+                None,
+            )
         }
     }
 

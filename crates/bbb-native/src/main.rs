@@ -307,7 +307,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let mut pack_roots = load_pack_roots(&args);
+    let mut pack_roots = load_pack_roots(&args)?;
     let base_pack_roots = pack_roots.clone();
     let known_packs_manager = load_known_packs_manager(pack_roots.as_ref());
     let control = ControlState::new(format!(

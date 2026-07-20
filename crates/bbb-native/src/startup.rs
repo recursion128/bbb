@@ -320,7 +320,7 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
     }
 
     let mut options = connection_options_from_args(args)?;
-    let roots = load_pack_roots(args);
+    let roots = load_pack_roots(args)?;
     options.known_packs_manager = load_known_packs_manager(roots.as_ref());
     options.client_information = client_information_from_args(args)?;
     options.probe_after_first_chunk_packets = args.probe_after_first_chunk_packets;
@@ -329,15 +329,15 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
     Ok(true)
 }
 
-pub(crate) fn load_pack_roots(args: &Args) -> Option<PackRoots> {
+pub(crate) fn load_pack_roots(args: &Args) -> Result<Option<PackRoots>> {
     match PackRoots::discover() {
-        Ok(roots) => Some(apply_resource_pack_dirs(
+        Ok(roots) => Ok(Some(apply_resource_pack_dirs(
             roots,
             args.resource_pack_dirs.iter().cloned(),
-        )),
+        )?)),
         Err(err) => {
             tracing::warn!(?err, "vanilla 26.1 pack roots unavailable");
-            None
+            Ok(None)
         }
     }
 }
@@ -358,8 +358,9 @@ pub(crate) fn load_known_packs_manager(
 fn apply_resource_pack_dirs(
     roots: PackRoots,
     dirs: impl IntoIterator<Item = PathBuf>,
-) -> PackRoots {
-    roots.with_resource_pack_dirs(dirs)
+) -> Result<PackRoots> {
+    let selected = bbb_pack::SelectedClientPackStack::from_startup_dirs(&roots, dirs)?;
+    roots.with_selected_client_packs(selected)
 }
 
 pub(crate) fn start_network_if_requested(
@@ -1031,26 +1032,48 @@ mod tests {
 
     #[test]
     fn apply_resource_pack_dirs_updates_pack_roots() {
-        let roots = PackRoots {
-            mc_code_root: PathBuf::from("/mc"),
-            sources_dir: PathBuf::from("/mc/sources/26.1"),
-            assets_dir: PathBuf::from("/mc/sources/26.1/assets/minecraft"),
-            generated_assets_dir: Some(PathBuf::from("/generated/assets-26.1")),
-            resource_pack_dirs: Vec::new(),
-        };
-
-        let roots = apply_resource_pack_dirs(
-            roots,
-            [PathBuf::from("packs/base"), PathBuf::from("packs/overlay")],
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let temp = std::env::temp_dir().join(format!(
+            "bbb-startup-resource-packs-{}-{nonce}",
+            std::process::id()
+        ));
+        let base = temp.join("packs/base");
+        let overlay = temp.join("packs/overlay");
+        for pack in [&base, &overlay] {
+            std::fs::create_dir_all(pack).unwrap();
+            std::fs::write(
+                pack.join("pack.mcmeta"),
+                r#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
+            )
+            .unwrap();
+        }
+        let roots = PackRoots::from_paths(
+            &temp,
+            temp.join("sources/26.1"),
+            temp.join("sources/26.1/assets/minecraft"),
+            Some(PathBuf::from("/generated/assets-26.1")),
         );
 
+        let roots = apply_resource_pack_dirs(roots, [base.clone(), overlay.clone()]).unwrap();
+
+        assert_eq!(roots.resource_pack_dirs(), vec![base, overlay]);
         assert_eq!(
-            roots.resource_pack_dirs,
-            vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
+            roots
+                .selected_client_packs()
+                .unwrap()
+                .packs()
+                .iter()
+                .map(|pack| pack.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["vanilla", "startup/0", "startup/1"]
         );
         assert_eq!(
             roots.generated_assets_dir,
             Some(PathBuf::from("/generated/assets-26.1"))
         );
+        std::fs::remove_dir_all(temp).unwrap();
     }
 }

@@ -30,7 +30,9 @@ Completion requires all of the following:
   command-line order, and active server packs use Vanilla's downloaded-pack
   ordering rather than whichever order paths happened to be appended;
 - metadata, overlay and filter parsing is performed once by the pack owner and
-  malformed or incompatible packs fail before a consumer reads their payload;
+  malformed packs fail before a consumer reads their payload; compatibility is
+  recorded exactly, while an explicitly selected incompatible pack remains
+  selected as it does after Vanilla's confirmation boundary;
 - one generation prepares language/font, atlases/textures, blockstate/model,
   item model, particles, waypoint styles, sounds, and world defaults, then
   stages GPU/audio owners without mutating the accepted generation;
@@ -90,13 +92,15 @@ fails. A recovery upload can itself fail, so that procedure is not an atomic
 generation. Dynamic profile and texture runtimes also own independent cache
 state and invalidation rules.
 
-The bare path order has a concrete Vanilla mismatch for a simultaneous server
-pack batch. `DownloadedPackSource.loadRequestedPacks` reverses the
-`ServerPackManager` push-ordered list before required fixed-top packs enter
-`PackRepository`; the earliest pack in that batch therefore has highest
-resource priority. Appending push-ordered roots and resolving the last root as
-highest instead gives the latest pack priority. The selected-stack milestone
-must lock this with two conflicting resources, not merely assert a path list.
+The bare path order cannot explain Vanilla's simultaneous server-pack behavior
+by itself. `DownloadedPackSource.loadRequestedPacks` reverses the
+`ServerPackManager` push-ordered list before assigning repository ids; the
+repository then discovers those ids in sorted order and inserts each required
+fixed-top pack before existing fixed-top packs. Those two reversals restore
+push order in the final low-to-high selected list, so the latest pushed pack has
+highest resource priority. The selected-stack milestone must lock the final
+behavior with two conflicting resources, not merely assert an intermediate
+path list.
 
 ## Frozen Ownership and Integration Contract
 

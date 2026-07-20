@@ -2550,13 +2550,12 @@ mod tests {
     #[test]
     fn ordinary_catalog_load_does_not_require_local_vanilla_sources() {
         let missing = std::path::PathBuf::from("/bbb-test/missing-vanilla-source-root");
-        let roots = PackRoots {
-            mc_code_root: missing.clone(),
-            sources_dir: missing.join("sources/26.1"),
-            assets_dir: missing.join("sources/26.1/assets/minecraft"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(
+            missing.clone(),
+            missing.join("sources/26.1"),
+            missing.join("sources/26.1/assets/minecraft"),
+            None,
+        );
 
         let catalog = ItemRegistryCatalog::load(&roots).unwrap();
 

@@ -7,6 +7,8 @@ use anyhow::{bail, Context, Result};
 use regex::Regex;
 use serde::Deserialize;
 
+use crate::SelectedClientPack;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceLocation {
     namespace: String,
@@ -47,6 +49,7 @@ impl ResourceLocation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackResource {
+    pub pack_id: String,
     pub location: ResourceLocation,
     pub path: PathBuf,
     pub metadata_path: Option<PathBuf>,
@@ -55,12 +58,22 @@ pub struct PackResource {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PackResourceStack {
     roots: Vec<PathBuf>,
+    pack_ids: Vec<String>,
 }
 
 impl PackResourceStack {
     pub fn from_roots(roots: impl IntoIterator<Item = impl Into<PathBuf>>) -> Self {
+        let roots = roots.into_iter().map(Into::into).collect::<Vec<_>>();
+        let pack_ids = (0..roots.len())
+            .map(|index| format!("unmanaged/{index}"))
+            .collect();
+        Self { roots, pack_ids }
+    }
+
+    pub fn from_selected_client_packs(packs: &[SelectedClientPack]) -> Self {
         Self {
-            roots: roots.into_iter().map(Into::into).collect(),
+            roots: packs.iter().map(|pack| pack.root.clone()).collect(),
+            pack_ids: packs.iter().map(|pack| pack.id.clone()).collect(),
         }
     }
 
@@ -284,12 +297,14 @@ impl PackResourceStack {
         self.roots
             .iter()
             .cloned()
-            .map(|root| PackEntry::new(root, domain))
+            .zip(self.pack_ids.iter().cloned())
+            .map(|(root, pack_id)| PackEntry::new(pack_id, root, domain))
             .collect()
     }
 }
 
 fn collect_resources(
+    pack_id: &str,
     namespace_dir: &Path,
     dir: &Path,
     namespace: &str,
@@ -305,7 +320,14 @@ fn collect_resources(
             .file_type()
             .with_context(|| format!("read file type {}", path.display()))?;
         if file_type.is_dir() {
-            collect_resources(namespace_dir, &path, namespace, extension, resources)?;
+            collect_resources(
+                pack_id,
+                namespace_dir,
+                &path,
+                namespace,
+                extension,
+                resources,
+            )?;
             continue;
         }
         let resource_path = relative_resource_path(namespace_dir, &path)?;
@@ -318,6 +340,7 @@ fn collect_resources(
         resources.insert(
             location.clone(),
             PackResource {
+                pack_id: pack_id.to_string(),
                 location,
                 path: path.clone(),
                 metadata_path: None,
@@ -352,12 +375,13 @@ fn resource_path_in(root: &Path, domain: &str, location: &ResourceLocation) -> P
 
 #[derive(Debug)]
 struct PackEntry {
+    pack_id: String,
     content_roots: Vec<PathBuf>,
     filter: Option<PackFilter>,
 }
 
 impl PackEntry {
-    fn new(root: PathBuf, domain: &str) -> Self {
+    fn new(pack_id: String, root: PathBuf, domain: &str) -> Self {
         let mut content_roots = vec![root.clone()];
         content_roots.extend(
             applicable_overlays(&root, pack_format_for_domain(domain))
@@ -365,6 +389,7 @@ impl PackEntry {
                 .map(|overlay| root.join(overlay)),
         );
         Self {
+            pack_id,
             filter: pack_filter(&root),
             content_roots,
         }
@@ -379,6 +404,7 @@ impl PackEntry {
     fn get_resource(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
         self.resource_path(domain, location)
             .map(|path| PackResource {
+                pack_id: self.pack_id.clone(),
                 location: location.clone(),
                 path,
                 metadata_path: None,
@@ -429,6 +455,7 @@ impl PackEntry {
                     continue;
                 }
                 collect_resources(
+                    &self.pack_id,
                     &namespace_dir,
                     &list_root,
                     &namespace,

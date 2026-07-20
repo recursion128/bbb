@@ -24,6 +24,7 @@ mod particle_sprites;
 mod resource_textures;
 mod resources;
 mod roots;
+mod selected_packs;
 mod server_pack;
 mod sound_event_registry;
 mod sounds;

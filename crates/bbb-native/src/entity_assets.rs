@@ -86,13 +86,7 @@ mod tests {
             std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
             write_png(&texture_path, texture.size[0], texture.size[1]);
         }
-        let roots = PackRoots {
-            mc_code_root: temp.clone(),
-            sources_dir: sources,
-            assets_dir: temp.join("unused-assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let images = load_entity_model_texture_images(&roots).unwrap();
 
@@ -122,13 +116,7 @@ mod tests {
             };
             write_png(&texture_path, width, height);
         }
-        let roots = PackRoots {
-            mc_code_root: temp.clone(),
-            sources_dir: sources,
-            assets_dir: temp.join("unused-assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let images = load_entity_model_texture_images(&roots).unwrap();
 

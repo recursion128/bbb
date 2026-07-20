@@ -59,6 +59,10 @@ impl ServerPackFormatRange {
     }
 }
 
+pub(crate) fn client_resource_pack_format() -> ServerPackFormat {
+    CLIENT_RESOURCE_PACK_FORMAT
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerPackMaterialization {
     pub root: PathBuf,
@@ -130,7 +134,7 @@ pub fn materialize_server_pack_archive(
     })?;
     let mut cleanup = StagingCleanup::new(staging_dir.clone());
     extract_archive_entries(&mut archive, &plans, &staging_dir, limits)?;
-    let supported_formats = validate_pack_metadata(&staging_dir)?;
+    let supported_formats = read_client_resource_pack_format_range(&staging_dir)?;
     std::fs::rename(&staging_dir, output_dir).with_context(|| {
         format!(
             "publish server pack staging directory {} as {}",
@@ -363,14 +367,14 @@ fn extract_archive_entries(
     Ok(())
 }
 
-fn validate_pack_metadata(root: &Path) -> Result<ServerPackFormatRange> {
+pub fn read_client_resource_pack_format_range(root: &Path) -> Result<ServerPackFormatRange> {
     let path = root.join("pack.mcmeta");
     let bytes = std::fs::read(&path)
-        .with_context(|| format!("read server pack metadata {}", path.display()))?;
+        .with_context(|| format!("read client resource pack metadata {}", path.display()))?;
     let metadata: RawMetadata = serde_json::from_slice(&bytes)
-        .with_context(|| format!("parse server pack metadata {}", path.display()))?;
+        .with_context(|| format!("parse client resource pack metadata {}", path.display()))?;
     if metadata.pack.description.is_null() {
-        bail!("server pack metadata description cannot be null");
+        bail!("client resource pack metadata description cannot be null");
     }
     metadata.pack.supported_format_range()
 }
@@ -392,29 +396,29 @@ struct RawPackSection {
 impl RawPackSection {
     fn supported_format_range(&self) -> Result<ServerPackFormatRange> {
         if self.min_format.is_some() != self.max_format.is_some() {
-            bail!("server pack metadata must declare both min_format and max_format");
+            bail!("client resource pack metadata must declare both min_format and max_format");
         }
         if let (Some(min), Some(max)) = (self.min_format, self.max_format) {
             let min = min.bottom();
             let max = max.top();
             if min > max {
-                bail!("server pack metadata min_format exceeds max_format");
+                bail!("client resource pack metadata min_format exceeds max_format");
             }
             if min.major > LAST_PRE_MINOR_CLIENT_RESOURCE_PACK_FORMAT {
                 if self.supported_formats.is_some() {
-                    bail!("server pack metadata supported_formats is deprecated for this range");
+                    bail!("client resource pack metadata supported_formats is deprecated for this range");
                 }
             } else {
                 let old_range = self.supported_formats.context(
-                    "server pack metadata range crossing legacy formats requires supported_formats",
+                    "client resource pack metadata range crossing legacy formats requires supported_formats",
                 )?;
                 if old_range.min() != min.major
                     || !matches!(old_range.max(), value if value == max.major || value == LAST_PRE_MINOR_CLIENT_RESOURCE_PACK_FORMAT)
                 {
-                    bail!("server pack metadata legacy and full format ranges disagree");
+                    bail!("client resource pack metadata legacy and full format ranges disagree");
                 }
                 if self.pack_format.is_none() {
-                    bail!("server pack metadata legacy range requires pack_format");
+                    bail!("client resource pack metadata legacy range requires pack_format");
                 }
             }
             validate_main_format(self.pack_format, min.major, max.major)?;
@@ -423,10 +427,12 @@ impl RawPackSection {
 
         if let Some(supported) = self.supported_formats {
             if supported.min() > supported.max() {
-                bail!("server pack metadata supported_formats minimum exceeds maximum");
+                bail!("client resource pack metadata supported_formats minimum exceeds maximum");
             }
             if supported.max() > LAST_PRE_MINOR_CLIENT_RESOURCE_PACK_FORMAT {
-                bail!("server pack metadata newer formats require min_format and max_format");
+                bail!(
+                    "client resource pack metadata newer formats require min_format and max_format"
+                );
             }
             validate_main_format(self.pack_format, supported.min(), supported.max())?;
             return Ok(ServerPackFormatRange {
@@ -443,9 +449,9 @@ impl RawPackSection {
 
         let pack_format = self
             .pack_format
-            .context("server pack metadata is missing format version information")?;
+            .context("client resource pack metadata is missing format version information")?;
         if pack_format > LAST_PRE_MINOR_CLIENT_RESOURCE_PACK_FORMAT {
-            bail!("server pack metadata newer pack_format requires min_format and max_format");
+            bail!("client resource pack metadata newer pack_format requires min_format and max_format");
         }
         Ok(ServerPackFormatRange {
             min: ServerPackFormat {
@@ -463,10 +469,10 @@ impl RawPackSection {
 fn validate_main_format(pack_format: Option<u32>, min: u32, max: u32) -> Result<()> {
     if let Some(pack_format) = pack_format {
         if pack_format < min || pack_format > max {
-            bail!("server pack metadata pack_format is outside its supported range");
+            bail!("client resource pack metadata pack_format is outside its supported range");
         }
         if min != max && min < 15 {
-            bail!("server pack metadata multi-version range starts before format 15");
+            bail!("client resource pack metadata multi-version range starts before format 15");
         }
     }
     Ok(())
@@ -684,7 +690,9 @@ mod tests {
             ServerPackArchiveLimits::default(),
         )
         .unwrap_err();
-        assert!(missing.to_string().contains("read server pack metadata"));
+        assert!(missing
+            .to_string()
+            .contains("read client resource pack metadata"));
         assert!(!missing_output.exists());
 
         let invalid_archive = root.join("invalid.zip");

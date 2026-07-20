@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -18,6 +21,7 @@ use crate::{
     particle_definitions::ParticleDefinitionCatalog,
     particle_sprites::ParticleSpriteCatalog,
     resources::{PackResourceStack, ResourceLocation},
+    selected_packs::SelectedClientPackStack,
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
     tags::TagCatalog,
@@ -36,7 +40,9 @@ pub struct PackRoots {
     #[serde(default)]
     pub generated_assets_dir: Option<PathBuf>,
     #[serde(default)]
-    pub resource_pack_dirs: Vec<PathBuf>,
+    resource_pack_dirs: Vec<PathBuf>,
+    #[serde(skip)]
+    selected_client_packs: Option<Arc<SelectedClientPackStack>>,
 }
 
 impl PackRoots {
@@ -55,13 +61,28 @@ impl PackRoots {
         if !sources_dir.is_dir() {
             bail!("missing vanilla source directory {}", sources_dir.display());
         }
-        Ok(Self {
+        Ok(Self::from_paths(
             mc_code_root,
             sources_dir,
             assets_dir,
-            generated_assets_dir: None,
+            None,
+        ))
+    }
+
+    pub fn from_paths(
+        mc_code_root: impl Into<PathBuf>,
+        sources_dir: impl Into<PathBuf>,
+        assets_dir: impl Into<PathBuf>,
+        generated_assets_dir: Option<PathBuf>,
+    ) -> Self {
+        Self {
+            mc_code_root: mc_code_root.into(),
+            sources_dir: sources_dir.into(),
+            assets_dir: assets_dir.into(),
+            generated_assets_dir,
             resource_pack_dirs: Vec::new(),
-        })
+            selected_client_packs: None,
+        }
     }
 
     pub fn with_generated_assets_dir(mut self, dir: Option<PathBuf>) -> Self {
@@ -74,10 +95,51 @@ impl PackRoots {
         dirs: impl IntoIterator<Item = impl Into<PathBuf>>,
     ) -> Self {
         self.resource_pack_dirs = dirs.into_iter().map(Into::into).collect();
+        self.selected_client_packs = None;
         self
     }
 
+    pub fn with_selected_client_packs(mut self, packs: SelectedClientPackStack) -> Result<Self> {
+        let vanilla = packs
+            .packs()
+            .first()
+            .context("selected client pack stack is missing vanilla")?;
+        if vanilla.root != self.sources_dir {
+            bail!(
+                "selected vanilla root {} does not match {}",
+                vanilla.root.display(),
+                self.sources_dir.display()
+            );
+        }
+        self.resource_pack_dirs = packs
+            .packs()
+            .iter()
+            .skip(1)
+            .map(|pack| pack.root.clone())
+            .collect();
+        self.selected_client_packs = Some(Arc::new(packs));
+        Ok(self)
+    }
+
+    pub fn resource_pack_dirs(&self) -> &[PathBuf] {
+        &self.resource_pack_dirs
+    }
+
+    pub fn selected_client_packs(&self) -> Option<&SelectedClientPackStack> {
+        self.selected_client_packs.as_deref()
+    }
+
+    pub fn selected_client_packs_or_unmanaged(&self) -> SelectedClientPackStack {
+        self.selected_client_packs
+            .as_deref()
+            .cloned()
+            .unwrap_or_else(|| SelectedClientPackStack::from_unmanaged_roots(self))
+    }
+
     pub fn resource_stack(&self) -> PackResourceStack {
+        if let Some(packs) = self.selected_client_packs() {
+            return PackResourceStack::from_selected_client_packs(packs.packs());
+        }
         let mut roots = Vec::with_capacity(1 + self.resource_pack_dirs.len());
         roots.push(self.sources_dir.clone());
         roots.extend(self.resource_pack_dirs.iter().cloned());
@@ -85,6 +147,9 @@ impl PackRoots {
     }
 
     fn resource_pack_stack(&self) -> PackResourceStack {
+        if let Some(packs) = self.selected_client_packs() {
+            return PackResourceStack::from_selected_client_packs(&packs.packs()[1..]);
+        }
         PackResourceStack::from_roots(self.resource_pack_dirs.iter().cloned())
     }
 

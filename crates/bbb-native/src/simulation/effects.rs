@@ -387,7 +387,7 @@ mod tests {
             .finish(Some(ResourceReloadEffect {
                 request: ServerResourcePackReload {
                     generation,
-                    server_pack_roots: Vec::new(),
+                    server_packs: Vec::new(),
                 },
                 sound_events: SoundEventRegistry::default(),
                 jukebox_songs: JukeboxSongRegistry::default(),

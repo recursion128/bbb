@@ -135,13 +135,13 @@ mod tests {
     }
 
     fn roots(root: &Path, sources: &Path, resource_pack_dirs: Vec<PathBuf>) -> PackRoots {
-        PackRoots {
-            mc_code_root: root.to_path_buf(),
-            sources_dir: sources.to_path_buf(),
-            assets_dir: sources.join("assets/minecraft"),
-            generated_assets_dir: None,
-            resource_pack_dirs,
-        }
+        PackRoots::from_paths(
+            root.to_path_buf(),
+            sources.to_path_buf(),
+            sources.join("assets/minecraft"),
+            None,
+        )
+        .with_resource_pack_dirs(resource_pack_dirs)
     }
 
     fn write_png(path: &Path, width: u32, height: u32, color: [u8; 4]) {

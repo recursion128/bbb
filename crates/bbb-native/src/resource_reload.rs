@@ -10,6 +10,7 @@ use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
     FurnaceFuelSourceRule, PackRoots, RegistryDependentItemComponentInitializer,
+    SelectedClientPack,
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
@@ -131,7 +132,7 @@ fn apply_native_resource_reload(
 ) -> Result<ResourceReloadSimulationCommit> {
     let mut prepared = prepare_native_resource_reload(
         base_roots,
-        reload.server_pack_roots,
+        reload.server_packs,
         audio_runtime.is_some(),
         client_locale,
         particle_status,
@@ -223,12 +224,12 @@ fn apply_native_resource_reload(
 
 fn prepare_native_resource_reload(
     base_roots: &Option<PackRoots>,
-    server_pack_roots: Vec<std::path::PathBuf>,
+    server_packs: Vec<SelectedClientPack>,
     has_audio_runtime: bool,
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
 ) -> Result<PreparedNativeResourceReload> {
-    let roots = compose_server_resource_pack_roots(base_roots, server_pack_roots)?;
+    let roots = compose_server_resource_pack_roots(base_roots, server_packs)?;
     let audio = if has_audio_runtime {
         PreparedAudioReload::Existing(NativeAudioRuntime::prepare_reload(&roots)?)
     } else {
@@ -260,16 +261,15 @@ fn prepare_native_resource_reload(
 
 fn compose_server_resource_pack_roots(
     base_roots: &Option<PackRoots>,
-    server_pack_roots: Vec<std::path::PathBuf>,
+    server_packs: Vec<SelectedClientPack>,
 ) -> Result<PackRoots> {
     let base_roots = base_roots
         .as_ref()
         .context("vanilla pack roots are unavailable")?;
-    let mut resource_pack_dirs = base_roots.resource_pack_dirs.clone();
-    resource_pack_dirs.extend(server_pack_roots);
-    Ok(base_roots
-        .clone()
-        .with_resource_pack_dirs(resource_pack_dirs))
+    let selected = base_roots
+        .selected_client_packs_or_unmanaged()
+        .with_server_packs(server_packs)?;
+    base_roots.clone().with_selected_client_packs(selected)
 }
 
 fn upload_reload_atlases(
@@ -556,45 +556,89 @@ mod tests {
         assert!(failure_return < residency_barrier);
         assert!(residency_barrier < simulation_commit);
     }
-    use std::path::PathBuf;
+    use std::{
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     #[test]
     fn server_resource_pack_roots_follow_startup_dirs_in_push_order() {
-        let base = PackRoots {
-            mc_code_root: PathBuf::from("mc-code"),
-            sources_dir: PathBuf::from("sources"),
-            assets_dir: PathBuf::from("assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: vec![PathBuf::from("startup/base"), PathBuf::from("startup/top")],
+        let temp = unique_temp_dir("pack-priority");
+        let sources = temp.join("sources");
+        let startup_base = temp.join("startup/base");
+        let startup_top = temp.join("startup/top");
+        let server_first = temp.join("server/first");
+        let server_second = temp.join("server/second");
+        for root in [
+            &sources,
+            &startup_base,
+            &startup_top,
+            &server_first,
+            &server_second,
+        ] {
+            std::fs::create_dir_all(root).unwrap();
+        }
+        write_resource(&server_first, b"first");
+        write_resource(&server_second, b"second");
+        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"), None)
+            .with_resource_pack_dirs([startup_base.clone(), startup_top.clone()]);
+        let current = bbb_pack::ServerPackFormat {
+            major: 84,
+            minor: 0,
+        };
+        let formats = bbb_pack::ServerPackFormatRange {
+            min: current,
+            max: current,
         };
 
         let composed = compose_server_resource_pack_roots(
             &Some(base),
             vec![
-                PathBuf::from("server/first"),
-                PathBuf::from("server/second"),
+                SelectedClientPack::server("first", 1, &server_first, formats).unwrap(),
+                SelectedClientPack::server("second", 2, &server_second, formats).unwrap(),
             ],
         )
         .unwrap();
 
         assert_eq!(
-            composed.resource_pack_dirs,
+            composed.resource_pack_dirs(),
             vec![
-                PathBuf::from("startup/base"),
-                PathBuf::from("startup/top"),
-                PathBuf::from("server/first"),
-                PathBuf::from("server/second"),
+                startup_base,
+                startup_top,
+                server_first,
+                server_second.clone(),
             ]
         );
+        let location = bbb_pack::ResourceLocation::parse("minecraft:test/value.txt").unwrap();
+        let resolved = composed.resource_stack().get_resource(&location).unwrap();
+        assert_eq!(std::fs::read(&resolved.path).unwrap(), b"second");
+        assert_eq!(resolved.pack_id, "server/00000000000000000002/second");
+        std::fs::remove_dir_all(temp).unwrap();
     }
 
     #[test]
     fn server_resource_pack_reload_requires_vanilla_base_roots() {
-        let error = compose_server_resource_pack_roots(&None, vec![PathBuf::from("server/only")])
-            .unwrap_err();
+        let error = compose_server_resource_pack_roots(&None, Vec::new()).unwrap_err();
 
         assert!(error
             .to_string()
             .contains("vanilla pack roots are unavailable"));
+    }
+
+    fn write_resource(root: &std::path::Path, payload: &[u8]) {
+        let path = root.join("assets/minecraft/test/value.txt");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, payload).unwrap();
+    }
+
+    fn unique_temp_dir(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "bbb-native-resource-reload-{label}-{}-{nonce}",
+            std::process::id()
+        ))
     }
 }

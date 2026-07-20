@@ -260,13 +260,7 @@ mod tests {
             .join(END_SKY_TEXTURE);
         std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
         write_png(&texture_path, 8, 8);
-        let roots = PackRoots {
-            mc_code_root: temp.clone(),
-            sources_dir: sources,
-            assets_dir: temp.join("unused-assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let image = load_end_sky_image(&roots).unwrap();
 
@@ -285,13 +279,7 @@ mod tests {
             std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
             write_png(&texture_path, 8, 8);
         }
-        let roots = PackRoots {
-            mc_code_root: temp.clone(),
-            sources_dir: sources,
-            assets_dir: temp.join("unused-assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let images = load_celestial_images(&roots).unwrap();
 
@@ -316,13 +304,7 @@ mod tests {
         let texture_path = sources.join("assets").join("minecraft").join(CLOUD_TEXTURE);
         std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
         write_png(&texture_path, 4, 2);
-        let roots = PackRoots {
-            mc_code_root: temp.clone(),
-            sources_dir: sources,
-            assets_dir: temp.join("unused-assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let image = load_cloud_image(&roots).unwrap();
 
@@ -340,13 +322,7 @@ mod tests {
             std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
             write_png(&texture_path, 4, 4);
         }
-        let roots = PackRoots {
-            mc_code_root: temp.clone(),
-            sources_dir: sources,
-            assets_dir: temp.join("unused-assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let images = load_weather_images(&roots).unwrap();
 
@@ -369,13 +345,7 @@ mod tests {
             .join(WORLD_BORDER_FORCEFIELD_TEXTURE_PATH);
         std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
         write_png(&texture_path, 32, 32);
-        let roots = PackRoots {
-            mc_code_root: temp.clone(),
-            sources_dir: sources,
-            assets_dir: temp.join("unused-assets"),
-            generated_assets_dir: None,
-            resource_pack_dirs: Vec::new(),
-        };
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let image = load_world_border_image(&roots).unwrap();
 
