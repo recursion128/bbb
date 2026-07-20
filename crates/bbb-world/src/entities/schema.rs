@@ -719,6 +719,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub base_tick_owner: Option<&'static str>,
     pub ai_step_owner: Option<&'static str>,
     pub ride_tick_owner: Option<&'static str>,
+    /// Source-derived client transform/timer owner for the runtime class.
+    /// This is a semantic dispatch policy, not permission to run server-side
+    /// collision consequences, damage, AI, spawning, or removal locally.
+    pub client_movement_policy: VanillaEntityClientMovementPolicy,
     /// Generated runtime-class policy for client movement interpolation.
     /// Keeping this fact on the fixed EntityType row avoids walking the Java
     /// class graph for every entity on every client tick.
@@ -4398,6 +4402,31 @@ pub enum VanillaEntityInterpolationPolicy {
     ShulkerAttachPosition,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityClientMovementPolicy {
+    ServerSynchronized,
+    Vehicle,
+    Item,
+    ExperienceOrb,
+    FallingBlock,
+    PrimedTnt,
+    ThrowableProjectile,
+    AbstractArrow,
+    HurtingProjectile,
+    LlamaSpit,
+    EyeOfEnder,
+    FireworkRocket,
+    FishingHook,
+    ShulkerBullet,
+}
+
+pub(crate) fn vanilla_entity_metadata_type_client_movement_policy(
+    entity_type_id: i32,
+) -> Option<VanillaEntityClientMovementPolicy> {
+    let entry = VANILLA_ENTITY_TYPE_METADATA_26_1.get(usize::try_from(entity_type_id).ok()?)?;
+    Some(entry.client_movement_policy)
+}
+
 pub(crate) fn vanilla_entity_metadata_type_interpolation_policy(
     entity_type_id: i32,
 ) -> Option<VanillaEntityInterpolationPolicy> {
@@ -5155,6 +5184,49 @@ mod tests {
             vanilla_entity_metadata_type_interpolation_policy(
                 VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32
             ),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_client_movement_policy_partitions_all_fixed_entity_types_once() {
+        let mut counts = [0usize; 14];
+        for entry in VANILLA_ENTITY_TYPES {
+            let policy = vanilla_entity_metadata_type_client_movement_policy(entry.id)
+                .unwrap_or_else(|| {
+                    panic!("missing client movement policy for {}", entry.resource_id)
+                });
+            let index = match policy {
+                VanillaEntityClientMovementPolicy::ServerSynchronized => 0,
+                VanillaEntityClientMovementPolicy::Vehicle => 1,
+                VanillaEntityClientMovementPolicy::Item => 2,
+                VanillaEntityClientMovementPolicy::ExperienceOrb => 3,
+                VanillaEntityClientMovementPolicy::FallingBlock => 4,
+                VanillaEntityClientMovementPolicy::PrimedTnt => 5,
+                VanillaEntityClientMovementPolicy::ThrowableProjectile => 6,
+                VanillaEntityClientMovementPolicy::AbstractArrow => 7,
+                VanillaEntityClientMovementPolicy::HurtingProjectile => 8,
+                VanillaEntityClientMovementPolicy::LlamaSpit => 9,
+                VanillaEntityClientMovementPolicy::EyeOfEnder => 10,
+                VanillaEntityClientMovementPolicy::FireworkRocket => 11,
+                VanillaEntityClientMovementPolicy::FishingHook => 12,
+                VanillaEntityClientMovementPolicy::ShulkerBullet => 13,
+            };
+            counts[index] += 1;
+        }
+
+        assert_eq!(
+            counts,
+            [106, 27, 1, 1, 1, 1, 6, 3, 6, 1, 1, 1, 1, 1],
+            "the source-derived 26.1 movement-owner partition drifted"
+        );
+        assert_eq!(counts.iter().sum::<usize>(), VANILLA_ENTITY_TYPES.len());
+        assert_eq!(
+            vanilla_entity_metadata_type_client_movement_policy(-1),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_client_movement_policy(VANILLA_ENTITY_TYPES.len() as i32),
             None
         );
     }

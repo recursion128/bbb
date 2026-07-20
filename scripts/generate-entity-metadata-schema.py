@@ -3673,6 +3673,39 @@ def render(result: ExtractionResult) -> str:
             return "GenericThreeStep"
         return "DirectSetPos"
 
+    def client_movement_policy(runtime_class: str | None) -> str:
+        if extends_class(runtime_class, "net.minecraft.world.entity.vehicle.VehicleEntity"):
+            return "Vehicle"
+        if extends_class(runtime_class, "net.minecraft.world.entity.item.ItemEntity"):
+            return "Item"
+        if extends_class(runtime_class, "net.minecraft.world.entity.ExperienceOrb"):
+            return "ExperienceOrb"
+        if extends_class(runtime_class, "net.minecraft.world.entity.item.FallingBlockEntity"):
+            return "FallingBlock"
+        if extends_class(runtime_class, "net.minecraft.world.entity.item.PrimedTnt"):
+            return "PrimedTnt"
+        if extends_class(
+            runtime_class, "net.minecraft.world.entity.projectile.arrow.AbstractArrow"
+        ):
+            return "AbstractArrow"
+        if extends_class(
+            runtime_class,
+            "net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile",
+        ):
+            return "HurtingProjectile"
+        if extends_class(
+            runtime_class, "net.minecraft.world.entity.projectile.ThrowableProjectile"
+        ):
+            return "ThrowableProjectile"
+        exact_owners = {
+            "net.minecraft.world.entity.projectile.LlamaSpit": "LlamaSpit",
+            "net.minecraft.world.entity.projectile.EyeOfEnder": "EyeOfEnder",
+            "net.minecraft.world.entity.projectile.FireworkRocketEntity": "FireworkRocket",
+            "net.minecraft.world.entity.projectile.FishingHook": "FishingHook",
+            "net.minecraft.world.entity.projectile.ShulkerBullet": "ShulkerBullet",
+        }
+        return exact_owners.get(runtime_class, "ServerSynchronized")
+
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -4068,6 +4101,7 @@ def render(result: ExtractionResult) -> str:
                 f"        base_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'baseTick', 0, base_tick_owner_cache) if item.runtime_class is not None else None)},",
                 f"        ai_step_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'aiStep', 0, ai_step_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
                 f"        ride_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'rideTick', 0, ride_tick_owner_cache) if item.runtime_class is not None else None)},",
+                f"        client_movement_policy: VanillaEntityClientMovementPolicy::{client_movement_policy(item.runtime_class)},",
                 f"        interpolation_policy: VanillaEntityInterpolationPolicy::{interpolation_policy(item.runtime_class)},",
                 f"        baby_behavior: VanillaEntityBabyBehavior::{class_baby_behavior(result, class_map, item.runtime_class, baby_behavior_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'Never'},",
                 f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
@@ -4249,6 +4283,10 @@ def render(result: ExtractionResult) -> str:
             "        assert!(owner(\"minecraft:cow\").tick_owner.unwrap().ends_with(\".Mob\"));",
             "        assert!(owner(\"minecraft:player\").ride_tick_owner.unwrap().ends_with(\".Player\"));",
             "        assert!(owner(\"minecraft:armor_stand\").ai_step_owner.unwrap().ends_with(\".LivingEntity\"));",
+            "        assert_eq!(owner(\"minecraft:item\").client_movement_policy, super::VanillaEntityClientMovementPolicy::Item);",
+            "        assert_eq!(owner(\"minecraft:trident\").client_movement_policy, super::VanillaEntityClientMovementPolicy::AbstractArrow);",
+            "        assert_eq!(owner(\"minecraft:wind_charge\").client_movement_policy, super::VanillaEntityClientMovementPolicy::HurtingProjectile);",
+            "        assert_eq!(owner(\"minecraft:zombie\").client_movement_policy, super::VanillaEntityClientMovementPolicy::ServerSynchronized);",
             "    }",
             "",
             "    #[test]",
