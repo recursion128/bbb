@@ -12,6 +12,8 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use bbb_protocol::{NbtSummaryValue, StyledTextRun};
+
 use crate::WorldStore;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -78,6 +80,10 @@ impl Default for DifficultyState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemChatLineState {
     pub content: String,
+    #[serde(default)]
+    pub styled_content: Vec<StyledTextRun>,
+    #[serde(default)]
+    pub content_component: Option<NbtSummaryValue>,
     pub overlay: bool,
 }
 
@@ -208,15 +214,41 @@ impl WorldStore {
     }
 
     pub fn apply_system_chat(&mut self, packet: ProtocolSystemChat) {
+        self.apply_system_chat_at(packet, 0);
+    }
+
+    pub(crate) fn apply_system_chat_at(
+        &mut self,
+        packet: ProtocolSystemChat,
+        received_epoch_millis: i64,
+    ) {
         self.counters.system_chat_packets += 1;
         let line = SystemChatLineState {
-            content: packet.content,
+            content: packet.content.text().to_string(),
+            styled_content: packet.content.styled().to_vec(),
+            content_component: Some(packet.content.component().clone()),
             overlay: packet.overlay,
         };
         if line.overlay {
             self.set_overlay_message(line.content.clone());
+            self.push_overlay_chat_narration(
+                line.content.clone(),
+                if line.styled_content.is_empty() {
+                    vec![StyledTextRun {
+                        text: line.content.clone(),
+                        style: bbb_protocol::ComponentStyle::default(),
+                    }]
+                } else {
+                    line.styled_content.clone()
+                },
+            );
         } else {
-            self.push_server_system_chat_message(line.content.clone());
+            self.push_rich_server_system_chat_message(
+                line.content.clone(),
+                line.styled_content.clone(),
+                line.content_component.clone(),
+                received_epoch_millis,
+            );
         }
         self.client_hud.system_chat = Some(line);
     }
@@ -590,14 +622,18 @@ mod tests {
     fn hud_text_packets_update_canonical_state() {
         let mut store = WorldStore::new();
 
-        store.apply_system_chat(ProtocolSystemChat {
-            content: "Server restart soon".to_string(),
-            overlay: false,
-        });
+        store.apply_system_chat(ProtocolSystemChat::plain("Server restart soon", false));
         assert_eq!(
             store.system_chat(),
             Some(&SystemChatLineState {
                 content: "Server restart soon".to_string(),
+                styled_content: vec![StyledTextRun {
+                    text: "Server restart soon".to_string(),
+                    style: bbb_protocol::ComponentStyle::default(),
+                }],
+                content_component: Some(
+                    NbtSummaryValue::String("Server restart soon".to_string(),)
+                ),
                 overlay: false,
             })
         );
@@ -612,10 +648,7 @@ mod tests {
             "Server restart soon"
         );
 
-        store.apply_system_chat(ProtocolSystemChat {
-            content: "Overlay warning".to_string(),
-            overlay: true,
-        });
+        store.apply_system_chat(ProtocolSystemChat::plain("Overlay warning", true));
         assert_eq!(
             store.action_bar(),
             Some(&ActionBarState {

@@ -3331,17 +3331,17 @@ mod tests {
         let mut probe = ProbeContext::new(client);
 
         probe
-            .handle_play_packet(PlayClientbound::SystemChat(SystemChat {
-                content: "Server restart soon".to_string(),
-                overlay: false,
-            }))
+            .handle_play_packet(PlayClientbound::SystemChat(SystemChat::plain(
+                "Server restart soon",
+                false,
+            )))
             .await
             .unwrap();
         probe
-            .handle_play_packet(PlayClientbound::SystemChat(SystemChat {
-                content: "Now entering camp".to_string(),
-                overlay: true,
-            }))
+            .handle_play_packet(PlayClientbound::SystemChat(SystemChat::plain(
+                "Now entering camp",
+                true,
+            )))
             .await
             .unwrap();
         probe

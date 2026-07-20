@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use bbb_control::{AudioCounters, ControlState, NetCounters};
-use bbb_world::WorldStore;
+use bbb_world::{ChatPresentationConfig, ChatVisibilityState, WorldStore};
 use std::time::Instant;
 use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
@@ -324,6 +324,16 @@ fn main() -> Result<()> {
         .install_sink(std::sync::Arc::new(simulation_mailbox.clone()));
     let mut world = WorldStore::new();
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
+    world.set_chat_presentation_config(ChatPresentationConfig {
+        visibility: ChatVisibilityState::from(bbb_protocol::packets::ClientChatVisibility::from(
+            args.client_chat_visibility,
+        )),
+        only_show_secure: args.client_only_show_secure_chat,
+        hide_matched_names: args.client_hide_matched_names,
+        message_delay_millis: (args.client_chat_delay_seconds * 1_000.0) as u64,
+        hidden_players: Vec::new(),
+        blocked_players: Vec::new(),
+    });
     let mut net_counters = NetCounters::default();
     net_counters.client_resources =
         std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref()));

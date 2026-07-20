@@ -85,6 +85,24 @@ pub(crate) struct Args {
     #[arg(long = "client-chat-visibility", value_enum, default_value = "full")]
     pub(crate) client_chat_visibility: ClientChatVisibilityArg,
     #[arg(
+        long = "client-only-show-secure-chat",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_only_show_secure_chat: bool,
+    #[arg(
+        long = "client-hide-matched-names",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_hide_matched_names: bool,
+    #[arg(
+        long = "client-chat-delay-seconds",
+        default_value_t = 0.0,
+        value_parser = parse_client_chat_delay
+    )]
+    pub(crate) client_chat_delay_seconds: f64,
+    #[arg(
         long = "client-chat-colors",
         default_value_t = true,
         action = ArgAction::Set
@@ -461,6 +479,16 @@ fn parse_client_gamma(value: &str) -> std::result::Result<f32, String> {
         return Err("client gamma must be between 0.0 and 1.0".to_string());
     }
     Ok(gamma)
+}
+
+fn parse_client_chat_delay(value: &str) -> std::result::Result<f64, String> {
+    let delay = value
+        .parse::<f64>()
+        .map_err(|error| format!("invalid client chat delay: {error}"))?;
+    if !delay.is_finite() || !(0.0..=6.0).contains(&delay) {
+        return Err("client chat delay must be finite and between 0.0 and 6.0 seconds".to_string());
+    }
+    Ok(delay)
 }
 
 fn parse_damage_tilt_strength(value: &str) -> std::result::Result<f32, String> {
@@ -840,6 +868,31 @@ mod tests {
         assert!(information.text_filtering_enabled);
         assert!(information.allows_listing);
         assert_eq!(information.particle_status, ClientParticleStatus::Minimal);
+    }
+
+    #[test]
+    fn args_accept_chat_listener_presentation_options() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!defaults.client_only_show_secure_chat);
+        assert!(defaults.client_hide_matched_names);
+        assert_eq!(defaults.client_chat_delay_seconds, 0.0);
+
+        let configured = Args::try_parse_from([
+            "bbb-native",
+            "--client-only-show-secure-chat",
+            "true",
+            "--client-hide-matched-names",
+            "false",
+            "--client-chat-delay-seconds",
+            "6.0",
+        ])
+        .unwrap();
+        assert!(configured.client_only_show_secure_chat);
+        assert!(!configured.client_hide_matched_names);
+        assert_eq!(configured.client_chat_delay_seconds, 6.0);
+        assert!(
+            Args::try_parse_from(["bbb-native", "--client-chat-delay-seconds", "6.1",]).is_err()
+        );
     }
 
     #[test]

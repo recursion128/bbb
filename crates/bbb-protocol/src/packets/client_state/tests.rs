@@ -790,7 +790,7 @@ fn decodes_title_camera_and_ticking_packets() {
 }
 
 #[test]
-fn decodes_player_abilities_spawn_distance_and_system_chat() {
+fn decodes_player_abilities_and_spawn_distance() {
     let mut payload = Encoder::new();
     payload.write_u8(0b0000_1101);
     payload.write_f32(0.05);
@@ -894,17 +894,29 @@ fn decodes_player_abilities_spawn_distance_and_system_chat() {
     .unwrap_err()
     .to_string()
     .contains("trailing bytes after set simulation distance packet"));
+}
 
+#[test]
+fn decodes_rich_system_chat_component() {
     let mut payload = nbt_string_root("Server restarting");
     payload.push(1);
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SYSTEM_CHAT, &payload).unwrap();
+    let PlayClientbound::SystemChat(packet) = packet else {
+        panic!("expected system chat packet");
+    };
+    assert_eq!(packet.content.text(), "Server restarting");
     assert_eq!(
-        packet,
-        PlayClientbound::SystemChat(SystemChat {
-            content: "Server restarting".to_string(),
-            overlay: true,
-        })
+        packet.content.styled(),
+        vec![crate::StyledTextRun {
+            text: "Server restarting".to_string(),
+            style: crate::ComponentStyle::default(),
+        }]
     );
+    assert_eq!(
+        packet.content.component(),
+        &crate::NbtSummaryValue::String("Server restarting".to_string())
+    );
+    assert!(packet.overlay);
     payload.push(0);
     assert!(
         decode_play_clientbound(ids::play::CLIENTBOUND_SYSTEM_CHAT, &payload)

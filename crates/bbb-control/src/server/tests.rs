@@ -2269,10 +2269,7 @@ fn client_hud_reads_canonical_world_state() {
     let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
-        store.apply_system_chat(SystemChat {
-            content: "Server restart soon".to_string(),
-            overlay: false,
-        });
+        store.apply_system_chat(SystemChat::plain("Server restart soon", false));
         store.apply_action_bar_text(SetActionBarText {
             content: "Action ready".to_string(),
         });

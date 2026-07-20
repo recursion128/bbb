@@ -221,6 +221,18 @@ pub(crate) fn decode_rich_text_component_from_decoder(
     })
 }
 
+pub(crate) fn decode_boxed_rich_text_component_from_decoder(
+    decoder: &mut Decoder<'_>,
+) -> Result<Box<RichTextComponent>> {
+    let (styled, component) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+    let component = component.expect("validated component network NBT root is present");
+    Ok(Box::new(RichTextComponent {
+        text: styled_runs_summary_text(&styled),
+        styled,
+        component,
+    }))
+}
+
 pub(crate) fn decode_component_style_from_decoder(
     decoder: &mut Decoder<'_>,
 ) -> Result<ComponentStyle> {

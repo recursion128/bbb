@@ -2233,6 +2233,11 @@ pub(crate) fn advance_simulation(
     // bar / title countdowns advance on raw client ticks, not running ticks.
     world.advance_hud_text_ticks(advanced_ticks);
     world.advance_chat_gui_ticks(advanced_ticks);
+    for _ in 0..advanced_ticks {
+        for acknowledgement in world.advance_chat_listener(monotonic_millis(), false) {
+            events::queue_chat_acknowledgement(net_commands, net_counters, acknowledgement);
+        }
+    }
     world.advance_dialog_waiting_ticks(advanced_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
@@ -13784,6 +13789,11 @@ fn wall_clock_millis() -> u64 {
 
 fn wall_clock_millis_i64() -> i64 {
     i64::try_from(wall_clock_millis()).unwrap_or(i64::MAX)
+}
+
+fn monotonic_millis() -> u64 {
+    static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    (START.get_or_init(Instant::now).elapsed().as_millis() as u64).saturating_add(1)
 }
 
 fn particle_local_player_scope_context(

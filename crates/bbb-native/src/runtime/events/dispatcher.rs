@@ -199,6 +199,11 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 let _ = world.apply_play_packet(packet, level_event_sound_random, &mut effects);
             }
             NetEvent::StartConfiguration => {
+                for acknowledgement in
+                    world.flush_delayed_chat_messages(crate::runtime::monotonic_millis())
+                {
+                    queue_chat_acknowledgement(net_commands, counters, acknowledgement);
+                }
                 let command = world.take_pending_player_chat_acknowledgement();
                 queue_connection_answer(
                     net_commands,
@@ -381,6 +386,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn chat_validation_epoch_millis(&mut self) -> i64 {
         crate::runtime::wall_clock_millis_i64()
+    }
+
+    fn chat_monotonic_millis(&mut self) -> u64 {
+        crate::runtime::monotonic_millis()
     }
 
     fn chat_disconnect(&mut self, reason: ChatDisconnectReason) {
@@ -742,7 +751,7 @@ fn emit_jukebox_level_event(
     }
 }
 
-fn queue_chat_acknowledgement(
+pub(in crate::runtime) fn queue_chat_acknowledgement(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     counters: &mut NetCounters,
     command: bbb_protocol::packets::ChatAcknowledgement,

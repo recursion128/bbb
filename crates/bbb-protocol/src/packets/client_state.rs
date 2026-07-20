@@ -7,8 +7,11 @@ pub use crate::difficulties::Difficulty;
 use crate::{
     boss_event_operation_types::BossEventOperationType,
     codec::{Decoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
+    component::{
+        decode_boxed_rich_text_component_from_decoder, decode_component_summary_from_decoder,
+    },
     mob_effect_types::vanilla_mob_effect_type,
+    RichTextComponent,
 };
 
 use super::{chunks, decode_optional_vec3d, read_resource_location, BlockPos, Vec3d};
@@ -221,8 +224,19 @@ pub struct SetCamera {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemChat {
-    pub content: String,
+    pub content: Box<RichTextComponent>,
     pub overlay: bool,
+}
+
+impl SystemChat {
+    /// Builds a semantic plain-Component fixture. Production wire decode keeps
+    /// the exact Component NBT through the fields above.
+    pub fn plain(content: impl Into<String>, overlay: bool) -> Self {
+        Self {
+            content: Box::new(RichTextComponent::plain(content)),
+            overlay,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -536,7 +550,7 @@ pub(super) fn decode_set_titles_animation(decoder: &mut Decoder<'_>) -> Result<S
 
 pub(super) fn decode_system_chat(decoder: &mut Decoder<'_>) -> Result<SystemChat> {
     let update = SystemChat {
-        content: decode_component_summary_from_decoder(decoder)?,
+        content: decode_boxed_rich_text_component_from_decoder(decoder)?,
         overlay: decoder.read_bool()?,
     };
     ensure_client_state_packet_consumed(decoder, "system chat")?;

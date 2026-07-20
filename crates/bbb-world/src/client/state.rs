@@ -8,7 +8,10 @@ pub use crate::client::audio::{
 };
 pub use crate::client::chat::{
     ChatDecorationArgumentState, ChatDecorationState, ChatDisconnectReason, ChatMessageKind,
-    ChatMessageState, ChatSignatureState, ChatTypeState, ChatValidationState, ClientChatState,
+    ChatMessageSourceState, ChatMessageState, ChatMessageTagState, ChatNarrationKind,
+    ChatNarrationRequest, ChatPresentationConfig, ChatReportEventKind, ChatReportEventState,
+    ChatReportLogState, ChatSignatureState, ChatTrustLevelState, ChatTypeState,
+    ChatValidationState, ChatVisibilityState, ClientChatState, DelayedChatMessageState,
     DeletedChatState, OutboundLastSeenMessages,
 };
 pub use crate::client::combat::{ClientCombatState, PlayerCombatEventState};

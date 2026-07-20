@@ -97,6 +97,9 @@ pub trait PlayApplyEffects {
     fn chat_validation_epoch_millis(&mut self) -> i64 {
         i64::MIN
     }
+    fn chat_monotonic_millis(&mut self) -> u64 {
+        u64::MAX
+    }
     fn chat_disconnect(&mut self, _reason: ChatDisconnectReason) {}
     fn container_close(&mut self, _container_id: i32) {}
     fn vehicle_move_report(&mut self, _report: VehicleMoveReport) {}
@@ -320,7 +323,9 @@ impl WorldStore {
                 }
             }
             PlayClientbound::DisguisedChat(update) => {
-                self.apply_disguised_chat(update);
+                let now_epoch_millis = effects.chat_validation_epoch_millis();
+                let now_monotonic_millis = effects.chat_monotonic_millis();
+                self.apply_disguised_chat_at(update, now_epoch_millis, now_monotonic_millis);
             }
             PlayClientbound::UpdateMobEffect(update) => {
                 self.apply_update_mob_effect(update);
@@ -747,7 +752,9 @@ impl WorldStore {
             }
             PlayClientbound::PlayerChat(update) => {
                 let now_epoch_millis = effects.chat_validation_epoch_millis();
-                let outcome = self.apply_player_chat_at(update, now_epoch_millis);
+                let now_monotonic_millis = effects.chat_monotonic_millis();
+                let outcome =
+                    self.apply_player_chat_at_times(update, now_epoch_millis, now_monotonic_millis);
                 if let Some(command) = outcome.acknowledgement {
                     effects.chat_acknowledgement(command);
                 }
@@ -774,7 +781,8 @@ impl WorldStore {
                 self.apply_simulation_distance(update);
             }
             PlayClientbound::SystemChat(update) => {
-                self.apply_system_chat(update);
+                let now_epoch_millis = effects.chat_validation_epoch_millis();
+                self.apply_system_chat_at(update, now_epoch_millis);
             }
             PlayClientbound::PlayerCombatEnd(update) => {
                 self.apply_player_combat_end(update);

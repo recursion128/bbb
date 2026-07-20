@@ -2950,10 +2950,7 @@ mod tests {
             NetEvent::Play(PlayClientbound::DisguisedChat(update)) if update == disguised_chat
         ));
 
-        let system_chat = packets::SystemChat {
-            content: "Welcome".to_string(),
-            overlay: false,
-        };
+        let system_chat = packets::SystemChat::plain("Welcome", false);
         stream
             .handle_play_packet(PlayClientbound::SystemChat(system_chat.clone()))
             .await

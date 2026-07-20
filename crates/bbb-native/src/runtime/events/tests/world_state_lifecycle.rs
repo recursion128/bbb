@@ -701,3 +701,52 @@ fn start_configuration_flushes_pending_chat_acknowledgement_before_clearing_leve
     );
     assert_eq!(world.counters().player_chat_acknowledgement_packets, 1);
 }
+
+#[test]
+fn start_configuration_accepts_delayed_chat_before_final_acknowledgement() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerChat(
+        player_chat_with_signature(
+            0,
+            MessageSignature {
+                bytes: vec![8; 256],
+            },
+        ),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerChat(
+        player_chat_with_signature(
+            1,
+            MessageSignature {
+                bytes: vec![9; 256],
+            },
+        ),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::StartConfiguration).unwrap();
+
+    let mut world = WorldStore::new();
+    world.set_chat_presentation_config(bbb_world::ChatPresentationConfig {
+        message_delay_millis: 6_000,
+        ..bbb_world::ChatPresentationConfig::default()
+    });
+    let (command_tx, mut command_rx) = mpsc::channel(2);
+    let net_commands = Some(command_tx);
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &net_commands),
+        3
+    );
+
+    assert_eq!(world.client_chat().messages.len(), 2);
+    assert!(world.client_chat().delayed_messages.is_empty());
+    assert_eq!(
+        command_rx.try_recv().unwrap(),
+        NetCommand::AcknowledgeConfiguration {
+            pending_chat_acknowledgement: Some(bbb_protocol::packets::ChatAcknowledgement {
+                offset: 2,
+            }),
+        }
+    );
+}

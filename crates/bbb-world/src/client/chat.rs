@@ -11,7 +11,16 @@ use bbb_protocol::{
 use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::VecDeque;
 use uuid::Uuid;
+
+mod presentation;
+
+pub use presentation::{
+    ChatMessageSourceState, ChatMessageTagState, ChatNarrationKind, ChatNarrationRequest,
+    ChatPresentationConfig, ChatReportEventKind, ChatReportEventState, ChatReportLogState,
+    ChatTrustLevelState, ChatVisibilityState, DelayedChatMessageState,
+};
 
 use crate::{
     registries::{
@@ -30,7 +39,7 @@ const CHAT_DELETION_DELAY_TICKS: u64 = 60;
 pub struct ClientChatState {
     pub messages: Vec<ChatMessageState>,
     #[serde(default)]
-    pub delayed_messages: Vec<ChatMessageState>,
+    pub delayed_messages: VecDeque<DelayedChatMessageState>,
     pub deleted_messages: Vec<DeletedChatState>,
     #[serde(default)]
     pub gui_ticks: u64,
@@ -40,19 +49,34 @@ pub struct ClientChatState {
     pub acknowledgement: ChatAcknowledgementState,
     #[serde(default)]
     pub last_seen_messages: LastSeenMessagesTrackerState,
+    #[serde(default)]
+    pub presentation: ChatPresentationConfig,
+    #[serde(default)]
+    pub report_log: ChatReportLogState,
+    #[serde(default)]
+    pub pending_narrations: Vec<ChatNarrationRequest>,
+    #[serde(default)]
+    pub last_delivery_monotonic_millis: u64,
+    #[serde(default)]
+    pub delivery_revision: u64,
 }
 
 impl Default for ClientChatState {
     fn default() -> Self {
         Self {
             messages: Vec::new(),
-            delayed_messages: Vec::new(),
+            delayed_messages: VecDeque::new(),
             deleted_messages: Vec::new(),
             gui_ticks: 0,
             expected_player_chat_global_index: 0,
             signature_cache: vec![None; SIGNATURE_CACHE_CAPACITY],
             acknowledgement: ChatAcknowledgementState::default(),
             last_seen_messages: LastSeenMessagesTrackerState::default(),
+            presentation: ChatPresentationConfig::default(),
+            report_log: ChatReportLogState::default(),
+            pending_narrations: Vec::new(),
+            last_delivery_monotonic_millis: 0,
+            delivery_revision: 0,
         }
     }
 }
@@ -60,6 +84,8 @@ impl Default for ClientChatState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChatMessageState {
     pub kind: ChatMessageKind,
+    #[serde(default)]
+    pub source: ChatMessageSourceState,
     pub content: String,
     #[serde(default)]
     pub content_translation_key: Option<String>,
@@ -81,6 +107,18 @@ pub struct ChatMessageState {
     pub unsigned_content: Option<String>,
     pub filter_mask: String,
     pub validation_state: ChatValidationState,
+    #[serde(default)]
+    pub trust_level: ChatTrustLevelState,
+    #[serde(default)]
+    pub tag: Option<ChatMessageTagState>,
+    #[serde(default)]
+    pub received_epoch_millis: i64,
+    #[serde(default)]
+    pub display_sequence: u64,
+    #[serde(default)]
+    pub filter_mask_words: Vec<i64>,
+    #[serde(default)]
+    pub unsigned_content_has_custom_font: bool,
     #[serde(default)]
     pub added_tick: u64,
     #[serde(skip)]
@@ -279,16 +317,25 @@ pub(crate) struct PlayerChatApplyOutcome {
     pub(crate) disconnect: Option<ChatDisconnectReason>,
 }
 
+#[derive(Debug, Default)]
+struct ChatDeliveryOutcome {
+    acknowledgement: Option<ProtocolChatAcknowledgement>,
+    shown: bool,
+}
+
 impl WorldStore {
     pub fn apply_reset_chat(&mut self) {
         self.counters.reset_chat_packets += 1;
-        self.client_chat = ClientChatState::default();
+        let presentation = self.client_chat.presentation.clone();
+        self.client_chat = ClientChatState {
+            presentation,
+            ..ClientChatState::default()
+        };
         refresh_chat_counters(self);
     }
 
     pub fn clear_client_chat_display_messages(&mut self) {
         self.client_chat.messages.clear();
-        self.client_chat.delayed_messages.clear();
         self.client_chat.deleted_messages.clear();
         refresh_chat_counters(self);
     }
@@ -301,6 +348,44 @@ impl WorldStore {
         refresh_chat_counters(self);
     }
 
+    pub fn set_chat_presentation_config(&mut self, mut config: ChatPresentationConfig) {
+        config.normalize_player_sets();
+        self.client_chat.presentation = config;
+        refresh_chat_counters(self);
+    }
+
+    pub fn chat_presentation_config(&self) -> &ChatPresentationConfig {
+        &self.client_chat.presentation
+    }
+
+    pub fn take_pending_chat_narrations(&mut self) -> Vec<ChatNarrationRequest> {
+        std::mem::take(&mut self.client_chat.pending_narrations)
+    }
+
+    pub(crate) fn push_overlay_chat_narration(
+        &mut self,
+        content: String,
+        styled_content: Vec<StyledTextRun>,
+    ) {
+        let sequence = self.client_chat.delivery_revision.saturating_add(1);
+        self.client_chat.delivery_revision = sequence;
+        self.client_chat
+            .pending_narrations
+            .push(ChatNarrationRequest {
+                sequence,
+                kind: ChatNarrationKind::System,
+                translation_key: None,
+                arguments: Vec::new(),
+                styled_content,
+                content,
+            });
+        if self.client_chat.pending_narrations.len() > presentation::MAX_PENDING_CHAT_NARRATIONS {
+            let excess = self.client_chat.pending_narrations.len()
+                - presentation::MAX_PENDING_CHAT_NARRATIONS;
+            self.client_chat.pending_narrations.drain(..excess);
+        }
+    }
+
     pub fn push_client_system_chat_message(&mut self, content: impl Into<String>) {
         let content = content.into();
         let styled_content = plain_chat_styled_content(&content);
@@ -309,6 +394,8 @@ impl WorldStore {
             content,
             None,
             styled_content,
+            None,
+            0,
         );
     }
 
@@ -319,6 +406,8 @@ impl WorldStore {
             content,
             None,
             styled_content,
+            None,
+            0,
         );
     }
 
@@ -328,13 +417,53 @@ impl WorldStore {
             translation_key.to_string(),
             Some(translation_key.to_string()),
             Vec::new(),
+            None,
+            0,
         );
     }
 
     pub fn push_server_system_chat_message(&mut self, content: impl Into<String>) {
         let content = content.into();
         let styled_content = plain_chat_styled_content(&content);
-        self.push_system_chat_message_state(ChatMessageKind::System, content, None, styled_content);
+        self.push_rich_server_system_chat_message(content, styled_content, None, 0);
+    }
+
+    pub(crate) fn push_rich_server_system_chat_message(
+        &mut self,
+        content: String,
+        styled_content: Vec<StyledTextRun>,
+        content_component: Option<NbtSummaryValue>,
+        received_epoch_millis: i64,
+    ) {
+        if !self.client_chat.presentation.can_receive_system_messages()
+            || self.system_chat_matches_hidden_player(&content)
+        {
+            return;
+        }
+        self.push_system_chat_message_state(
+            ChatMessageKind::System,
+            content,
+            None,
+            styled_content,
+            content_component,
+            received_epoch_millis,
+        );
+    }
+
+    fn system_chat_matches_hidden_player(&self, content: &str) -> bool {
+        if !self.client_chat.presentation.hide_matched_names {
+            return false;
+        }
+        let Some(open) = content.find('<') else {
+            return false;
+        };
+        let Some(close_offset) = content[open + 1..].find('>') else {
+            return false;
+        };
+        let name = &content[open + 1..open + 1 + close_offset];
+        self.player_info.entries.iter().any(|(uuid, entry)| {
+            entry.profile.name == name && self.client_chat.presentation.hides_player(*uuid)
+        })
     }
 
     fn push_system_chat_message_state(
@@ -343,13 +472,27 @@ impl WorldStore {
         content: String,
         content_translation_key: Option<String>,
         styled_content: Vec<StyledTextRun>,
+        content_component: Option<NbtSummaryValue>,
+        received_epoch_millis: i64,
     ) {
-        self.client_chat.messages.push(ChatMessageState {
+        let source = match kind {
+            ChatMessageKind::System => ChatMessageSourceState::SystemServer,
+            ChatMessageKind::ClientSystem => ChatMessageSourceState::SystemClient,
+            ChatMessageKind::Player | ChatMessageKind::Disguised => ChatMessageSourceState::Player,
+        };
+        let tag = Some(match kind {
+            ChatMessageKind::ClientSystem => ChatMessageTagState::SystemSinglePlayer,
+            ChatMessageKind::System | ChatMessageKind::Player | ChatMessageKind::Disguised => {
+                ChatMessageTagState::System
+            }
+        });
+        let message = ChatMessageState {
             kind,
+            source,
             content,
             content_translation_key,
             styled_content,
-            content_component: None,
+            content_component,
             decoration: None,
             narration_decoration: None,
             sender: None,
@@ -368,9 +511,19 @@ impl WorldStore {
             unsigned_content: None,
             filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
             validation_state: ChatValidationState::Unsigned,
+            trust_level: ChatTrustLevelState::NotSecure,
+            tag,
+            received_epoch_millis,
+            display_sequence: 0,
+            filter_mask_words: Vec::new(),
+            unsigned_content_has_custom_font: false,
             added_tick: self.client_chat.gui_ticks,
             full_signature: None,
-        });
+        };
+        if kind == ChatMessageKind::System {
+            self.push_chat_report_event(&message, ChatReportEventKind::System, None);
+        }
+        self.push_visible_chat_message(message, ChatNarrationKind::SystemChat);
         refresh_chat_counters(self);
     }
 
@@ -382,6 +535,15 @@ impl WorldStore {
         &mut self,
         packet: PlayerChat,
         now_epoch_millis: i64,
+    ) -> PlayerChatApplyOutcome {
+        self.apply_player_chat_at_times(packet, now_epoch_millis, u64::MAX)
+    }
+
+    pub(crate) fn apply_player_chat_at_times(
+        &mut self,
+        packet: PlayerChat,
+        now_epoch_millis: i64,
+        now_monotonic_millis: u64,
     ) -> PlayerChatApplyOutcome {
         let resolved_chat_type =
             resolve_chat_type(self.frozen_registry_access(), &packet.chat_type.chat_type);
@@ -444,19 +606,19 @@ impl WorldStore {
                 | ChatValidationState::OutOfOrder
                 | ChatValidationState::ChainBroken
         );
+        let acknowledge_signature = (validation_state != ChatValidationState::Unsigned)
+            .then(|| {
+                packet
+                    .signature
+                    .as_ref()
+                    .map(processed_chat_signature_state)
+            })
+            .flatten();
+        let message_timestamp_millis = packet.body.timestamp_millis;
 
         if packet.unsigned_content.is_some() {
             self.counters.player_chat_unsigned_content_packets += 1;
         }
-        let was_shown =
-            !validation_error && packet.filter_mask.kind != ProtocolFilterMaskKind::FullyFiltered;
-        let acknowledgement = if validation_state == ChatValidationState::Unsigned {
-            None
-        } else {
-            packet.signature.as_ref().and_then(|signature| {
-                self.record_processed_player_chat_signature(signature, was_shown)
-            })
-        };
         match packet.filter_mask.kind {
             ProtocolFilterMaskKind::FullyFiltered if !validation_error => {
                 self.counters.player_chat_fully_filtered_packets += 1;
@@ -469,8 +631,15 @@ impl WorldStore {
             | ProtocolFilterMaskKind::FullyFiltered => {}
         }
 
+        let only_show_secure = self.client_chat.presentation.only_show_secure;
+        let unsigned_content_has_custom_font = packet
+            .unsigned_content_component
+            .as_ref()
+            .is_some_and(component_has_custom_font);
         let displayed_content = if validation_error {
             "chat.validation_error"
+        } else if only_show_secure {
+            &packet.body.content
         } else {
             packet
                 .unsigned_content
@@ -488,6 +657,11 @@ impl WorldStore {
                     },
                 }],
                 Some(NbtSummaryValue::String(displayed_content.to_string())),
+            )
+        } else if only_show_secure {
+            (
+                plain_chat_styled_content(&packet.body.content),
+                Some(NbtSummaryValue::String(packet.body.content.clone())),
             )
         } else {
             packet
@@ -527,6 +701,7 @@ impl WorldStore {
             .map(|decoration| decoration.translation_key.clone());
         let message = ChatMessageState {
             kind: ChatMessageKind::Player,
+            source: ChatMessageSourceState::Player,
             styled_content,
             content_component,
             content: if validation_error {
@@ -555,13 +730,26 @@ impl WorldStore {
                 packet.filter_mask.kind.as_str().to_string()
             },
             validation_state,
+            trust_level: ChatTrustLevelState::NotSecure,
+            tag: validation_error.then_some(ChatMessageTagState::Error),
+            received_epoch_millis: now_epoch_millis,
+            display_sequence: 0,
+            filter_mask_words: packet.filter_mask.mask_words,
+            unsigned_content_has_custom_font,
             added_tick: self.client_chat.gui_ticks,
             full_signature: (!validation_error
                 && validation_state == ChatValidationState::Validated)
                 .then(|| packet.signature.map(|signature| signature.bytes))
                 .flatten(),
         };
-        self.client_chat.messages.push(message);
+        let delayed = DelayedChatMessageState {
+            message,
+            only_show_secure,
+            validation_error,
+            acknowledge_signature,
+            message_timestamp_millis,
+        };
+        let acknowledgement = self.handle_or_delay_chat_message(delayed, now_monotonic_millis);
         refresh_chat_counters(self);
         PlayerChatApplyOutcome {
             acknowledgement,
@@ -570,6 +758,15 @@ impl WorldStore {
     }
 
     pub fn apply_disguised_chat(&mut self, packet: ProtocolDisguisedChat) {
+        self.apply_disguised_chat_at(packet, 0, u64::MAX);
+    }
+
+    pub(crate) fn apply_disguised_chat_at(
+        &mut self,
+        packet: ProtocolDisguisedChat,
+        now_epoch_millis: i64,
+        now_monotonic_millis: u64,
+    ) {
         let resolved_chat_type =
             resolve_chat_type(self.frozen_registry_access(), &packet.chat_type.chat_type);
         self.counters.disguised_chat_packets += 1;
@@ -588,8 +785,9 @@ impl WorldStore {
         let content_translation_key = decoration
             .as_ref()
             .map(|decoration| decoration.translation_key.clone());
-        self.client_chat.messages.push(ChatMessageState {
+        let message = ChatMessageState {
             kind: ChatMessageKind::Disguised,
+            source: ChatMessageSourceState::SystemServer,
             styled_content,
             content_component,
             content: packet.message,
@@ -606,10 +804,296 @@ impl WorldStore {
             unsigned_content: None,
             filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
             validation_state: ChatValidationState::Unsigned,
+            trust_level: ChatTrustLevelState::NotSecure,
+            tag: Some(ChatMessageTagState::System),
+            received_epoch_millis: now_epoch_millis,
+            display_sequence: 0,
+            filter_mask_words: Vec::new(),
+            unsigned_content_has_custom_font: false,
             added_tick: self.client_chat.gui_ticks,
             full_signature: None,
-        });
+        };
+        let delayed = DelayedChatMessageState {
+            message,
+            only_show_secure: false,
+            validation_error: false,
+            acknowledge_signature: None,
+            message_timestamp_millis: now_epoch_millis,
+        };
+        let _ = self.handle_or_delay_chat_message(delayed, now_monotonic_millis);
         refresh_chat_counters(self);
+    }
+
+    fn handle_or_delay_chat_message(
+        &mut self,
+        delayed: DelayedChatMessageState,
+        now_monotonic_millis: u64,
+    ) -> Option<ProtocolChatAcknowledgement> {
+        let delay = self.client_chat.presentation.message_delay_millis;
+        let will_delay = delay > 0
+            && self.client_chat.last_delivery_monotonic_millis != 0
+            && now_monotonic_millis
+                < self
+                    .client_chat
+                    .last_delivery_monotonic_millis
+                    .saturating_add(delay);
+        if !will_delay {
+            return self
+                .accept_delayed_chat_message(delayed, now_monotonic_millis)
+                .acknowledgement;
+        }
+
+        let mut acknowledgement = None;
+        if self.client_chat.delayed_messages.len() >= presentation::MAX_DELAYED_CHAT_MESSAGES {
+            let oldest = self
+                .client_chat
+                .delayed_messages
+                .pop_front()
+                .expect("bounded delayed chat queue was non-empty");
+            acknowledgement = self
+                .accept_delayed_chat_message(oldest, now_monotonic_millis)
+                .acknowledgement;
+        }
+        self.client_chat.delayed_messages.push_back(delayed);
+        acknowledgement
+    }
+
+    fn accept_delayed_chat_message(
+        &mut self,
+        mut delayed: DelayedChatMessageState,
+        now_monotonic_millis: u64,
+    ) -> ChatDeliveryOutcome {
+        if delayed.validation_error {
+            let acknowledgement = delayed
+                .acknowledge_signature
+                .as_ref()
+                .and_then(|signature| {
+                    self.record_processed_player_chat_signature_state(signature.clone(), false)
+                });
+            let sender = delayed.message.sender;
+            if sender.is_some_and(|sender| self.client_chat.presentation.hides_player(sender))
+                || !self.client_chat.presentation.can_receive_player_messages()
+            {
+                return ChatDeliveryOutcome {
+                    acknowledgement,
+                    shown: false,
+                };
+            }
+            delayed.message.tag = Some(ChatMessageTagState::Error);
+            self.push_visible_chat_message(delayed.message, ChatNarrationKind::SystemChat);
+            self.client_chat.last_delivery_monotonic_millis = now_monotonic_millis;
+            return ChatDeliveryOutcome {
+                acknowledgement,
+                shown: true,
+            };
+        }
+
+        if delayed.message.kind == ChatMessageKind::Disguised {
+            if !self.client_chat.presentation.can_receive_player_messages() {
+                return ChatDeliveryOutcome::default();
+            }
+            delayed.message.tag = Some(ChatMessageTagState::System);
+            self.push_chat_report_event(&delayed.message, ChatReportEventKind::System, None);
+            self.push_visible_chat_message(delayed.message, ChatNarrationKind::Chat);
+            self.client_chat.last_delivery_monotonic_millis = now_monotonic_millis;
+            return ChatDeliveryOutcome {
+                acknowledgement: None,
+                shown: true,
+            };
+        }
+
+        let trust_level = evaluate_chat_trust_level(&delayed);
+        delayed.message.trust_level = trust_level;
+        let sender_hidden = delayed
+            .message
+            .sender
+            .is_some_and(|sender| self.client_chat.presentation.hides_player(sender));
+        let can_show = !(delayed.only_show_secure && trust_level == ChatTrustLevelState::NotSecure)
+            && !sender_hidden
+            && delayed.message.filter_mask != ProtocolFilterMaskKind::FullyFiltered.as_str()
+            && self.client_chat.presentation.can_receive_player_messages();
+        if can_show
+            && delayed.message.filter_mask == ProtocolFilterMaskKind::PartiallyFiltered.as_str()
+        {
+            let (styled, component) =
+                filtered_chat_content(&delayed.message.content, &delayed.message.filter_mask_words);
+            delayed.message.styled_content = styled;
+            delayed.message.content_component = component;
+            replace_chat_decoration_content(&mut delayed.message);
+        }
+        delayed.message.tag = match trust_level {
+            ChatTrustLevelState::Secure => None,
+            ChatTrustLevelState::Modified => Some(ChatMessageTagState::Modified {
+                original_content: delayed.message.content.clone(),
+            }),
+            ChatTrustLevelState::NotSecure => Some(ChatMessageTagState::NotSecure),
+        };
+
+        if can_show {
+            self.push_chat_report_event(
+                &delayed.message,
+                ChatReportEventKind::Player,
+                Some(delayed.message_timestamp_millis),
+            );
+            self.push_visible_chat_message(delayed.message, ChatNarrationKind::Chat);
+            self.client_chat.last_delivery_monotonic_millis = now_monotonic_millis;
+        }
+        let acknowledgement = delayed
+            .acknowledge_signature
+            .map(|signature| self.record_processed_player_chat_signature_state(signature, can_show))
+            .flatten();
+        ChatDeliveryOutcome {
+            acknowledgement,
+            shown: can_show,
+        }
+    }
+
+    pub fn advance_chat_listener(
+        &mut self,
+        now_monotonic_millis: u64,
+        paused: bool,
+    ) -> Vec<ProtocolChatAcknowledgement> {
+        if paused {
+            if self.client_chat.presentation.message_delay_millis > 0 {
+                self.client_chat.last_delivery_monotonic_millis = self
+                    .client_chat
+                    .last_delivery_monotonic_millis
+                    .saturating_add(50);
+            }
+            return Vec::new();
+        }
+
+        let delay = self.client_chat.presentation.message_delay_millis;
+        if delay == 0 {
+            return self.flush_delayed_chat_messages(now_monotonic_millis);
+        }
+        if self.client_chat.last_delivery_monotonic_millis != 0
+            && now_monotonic_millis
+                < self
+                    .client_chat
+                    .last_delivery_monotonic_millis
+                    .saturating_add(delay)
+        {
+            return Vec::new();
+        }
+
+        let mut acknowledgements = Vec::new();
+        while !self.client_chat.delayed_messages.is_empty() {
+            let delayed = self
+                .client_chat
+                .delayed_messages
+                .pop_front()
+                .expect("delayed chat queue was non-empty");
+            let outcome = self.accept_delayed_chat_message(delayed, now_monotonic_millis);
+            if let Some(acknowledgement) = outcome.acknowledgement {
+                acknowledgements.push(acknowledgement);
+            }
+            if outcome.shown {
+                break;
+            }
+        }
+        refresh_chat_counters(self);
+        acknowledgements
+    }
+
+    pub fn accept_next_delayed_chat_message(
+        &mut self,
+        now_monotonic_millis: u64,
+    ) -> Option<ProtocolChatAcknowledgement> {
+        if self.client_chat.delayed_messages.is_empty() {
+            return None;
+        }
+        let delayed = self
+            .client_chat
+            .delayed_messages
+            .pop_front()
+            .expect("delayed chat queue was non-empty");
+        let acknowledgement = self
+            .accept_delayed_chat_message(delayed, now_monotonic_millis)
+            .acknowledgement;
+        refresh_chat_counters(self);
+        acknowledgement
+    }
+
+    pub fn flush_delayed_chat_messages(
+        &mut self,
+        now_monotonic_millis: u64,
+    ) -> Vec<ProtocolChatAcknowledgement> {
+        let delayed = std::mem::take(&mut self.client_chat.delayed_messages);
+        let mut acknowledgements = Vec::new();
+        for message in delayed {
+            if let Some(acknowledgement) = self
+                .accept_delayed_chat_message(message, now_monotonic_millis)
+                .acknowledgement
+            {
+                acknowledgements.push(acknowledgement);
+            }
+        }
+        self.client_chat.last_delivery_monotonic_millis = 0;
+        refresh_chat_counters(self);
+        acknowledgements
+    }
+
+    fn push_visible_chat_message(
+        &mut self,
+        mut message: ChatMessageState,
+        narration_kind: ChatNarrationKind,
+    ) {
+        let sequence = self.client_chat.delivery_revision.saturating_add(1);
+        self.client_chat.delivery_revision = sequence;
+        message.display_sequence = sequence;
+        message.added_tick = self.client_chat.gui_ticks;
+        self.push_chat_narration(&message, narration_kind);
+        self.client_chat.messages.push(message);
+        if self.client_chat.messages.len() > presentation::MAX_VISIBLE_CHAT_MESSAGES {
+            let excess = self.client_chat.messages.len() - presentation::MAX_VISIBLE_CHAT_MESSAGES;
+            self.client_chat.messages.drain(..excess);
+        }
+    }
+
+    fn push_chat_narration(&mut self, message: &ChatMessageState, kind: ChatNarrationKind) {
+        let narration = message.narration_decoration.as_ref();
+        self.client_chat
+            .pending_narrations
+            .push(ChatNarrationRequest {
+                sequence: message.display_sequence,
+                kind,
+                translation_key: narration.map(|decoration| decoration.translation_key.clone()),
+                arguments: narration
+                    .map(|decoration| decoration.arguments.clone())
+                    .unwrap_or_default(),
+                styled_content: message.styled_content.clone(),
+                content: styled_chat_summary_text(&message.styled_content),
+            });
+        if self.client_chat.pending_narrations.len() > presentation::MAX_PENDING_CHAT_NARRATIONS {
+            let excess = self.client_chat.pending_narrations.len()
+                - presentation::MAX_PENDING_CHAT_NARRATIONS;
+            self.client_chat.pending_narrations.drain(..excess);
+        }
+    }
+
+    fn push_chat_report_event(
+        &mut self,
+        message: &ChatMessageState,
+        kind: ChatReportEventKind,
+        message_timestamp_millis: Option<i64>,
+    ) {
+        self.client_chat.report_log.push(ChatReportEventState {
+            id: 0,
+            kind,
+            sender: message.sender,
+            sender_name: (!message.sender_name.is_empty()).then(|| message.sender_name.clone()),
+            signed_content: (message.kind == ChatMessageKind::Player)
+                .then(|| message.content.clone()),
+            unsigned_content: message.unsigned_content.clone(),
+            displayed_content: styled_chat_summary_text(&message.styled_content),
+            received_epoch_millis: message.received_epoch_millis,
+            message_timestamp_millis,
+            trust_level: (message.kind == ChatMessageKind::Player).then_some(message.trust_level),
+            signature: message.signature.clone(),
+            filter_mask: (message.kind == ChatMessageKind::Player)
+                .then(|| message.filter_mask.clone()),
+        });
     }
 
     pub fn apply_delete_chat(
@@ -632,7 +1116,7 @@ impl WorldStore {
         let delayed_len = self.client_chat.delayed_messages.len();
         self.client_chat
             .delayed_messages
-            .retain(|message| message.full_signature.as_deref() != Some(&signature.bytes));
+            .retain(|message| message.signature_bytes() != Some(&signature.bytes));
         let removed_delayed = self.client_chat.delayed_messages.len() != delayed_len;
         let (visible_replaced, deletable_after_tick) = if removed_delayed {
             (false, None)
@@ -750,12 +1234,23 @@ impl WorldStore {
         }
     }
 
+    #[cfg(test)]
     fn record_processed_player_chat_signature(
         &mut self,
         signature: &ProtocolMessageSignature,
         was_shown: bool,
     ) -> Option<ProtocolChatAcknowledgement> {
-        let processed_signature = processed_chat_signature_state(signature);
+        self.record_processed_player_chat_signature_state(
+            processed_chat_signature_state(signature),
+            was_shown,
+        )
+    }
+
+    fn record_processed_player_chat_signature_state(
+        &mut self,
+        processed_signature: ProcessedChatSignatureState,
+        was_shown: bool,
+    ) -> Option<ProtocolChatAcknowledgement> {
         if self
             .client_chat
             .acknowledgement
@@ -956,6 +1451,7 @@ fn replace_visible_chat_message_or_delay(
 fn deleted_chat_marker(added_tick: u64) -> ChatMessageState {
     ChatMessageState {
         kind: ChatMessageKind::System,
+        source: ChatMessageSourceState::SystemServer,
         content: "chat.deleted_marker".to_string(),
         content_translation_key: Some("chat.deleted_marker".to_string()),
         styled_content: vec![StyledTextRun {
@@ -985,6 +1481,12 @@ fn deleted_chat_marker(added_tick: u64) -> ChatMessageState {
         unsigned_content: None,
         filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
         validation_state: ChatValidationState::Unsigned,
+        trust_level: ChatTrustLevelState::NotSecure,
+        tag: Some(ChatMessageTagState::System),
+        received_epoch_millis: 0,
+        display_sequence: 0,
+        filter_mask_words: Vec::new(),
+        unsigned_content_has_custom_font: false,
         added_tick,
         full_signature: None,
     }
@@ -1044,6 +1546,114 @@ fn nonempty_styled_or_plain(styled: &[StyledTextRun], plain: &str) -> Vec<Styled
         plain_chat_styled_content(plain)
     } else {
         styled.to_vec()
+    }
+}
+
+fn evaluate_chat_trust_level(delayed: &DelayedChatMessageState) -> ChatTrustLevelState {
+    let message = &delayed.message;
+    if message.signature.is_none()
+        || (message.received_epoch_millis != i64::MIN
+            && delayed.message_timestamp_millis
+                < message
+                    .received_epoch_millis
+                    .saturating_sub(presentation::CLIENT_CHAT_EXPIRY_MILLIS))
+    {
+        return ChatTrustLevelState::NotSecure;
+    }
+    if !styled_chat_summary_text(&message.styled_content).contains(&message.content)
+        || message.unsigned_content_has_custom_font
+    {
+        ChatTrustLevelState::Modified
+    } else {
+        ChatTrustLevelState::Secure
+    }
+}
+
+fn component_has_custom_font(component: &NbtSummaryValue) -> bool {
+    match component {
+        NbtSummaryValue::Compound(entries) => entries.iter().any(|entry| {
+            (entry.name == "font"
+                && !matches!(
+                    &entry.value,
+                    NbtSummaryValue::String(font)
+                        if font == "default" || font == "minecraft:default"
+                ))
+                || component_has_custom_font(&entry.value)
+        }),
+        NbtSummaryValue::List(values) => values.iter().any(component_has_custom_font),
+        NbtSummaryValue::Byte(_)
+        | NbtSummaryValue::Short(_)
+        | NbtSummaryValue::Int(_)
+        | NbtSummaryValue::Long(_)
+        | NbtSummaryValue::Float(_)
+        | NbtSummaryValue::Double(_)
+        | NbtSummaryValue::ByteArray(_)
+        | NbtSummaryValue::String(_)
+        | NbtSummaryValue::IntArray(_)
+        | NbtSummaryValue::LongArray(_) => false,
+    }
+}
+
+fn filtered_chat_content(
+    content: &str,
+    mask_words: &[i64],
+) -> (Vec<StyledTextRun>, Option<NbtSummaryValue>) {
+    let units: Vec<u16> = content.encode_utf16().collect();
+    let mut runs = Vec::new();
+    let mut start = 0;
+    while start < units.len() {
+        let filtered = filter_bit_is_set(mask_words, start);
+        let mut end = start + 1;
+        while end < units.len() && filter_bit_is_set(mask_words, end) == filtered {
+            end += 1;
+        }
+        let text = if filtered {
+            "#".repeat(end - start)
+        } else {
+            String::from_utf16_lossy(&units[start..end])
+        };
+        runs.push(StyledTextRun {
+            text,
+            style: if filtered {
+                ComponentStyle {
+                    color: Some(0x555555),
+                    ..ComponentStyle::default()
+                }
+            } else {
+                ComponentStyle::default()
+            },
+        });
+        start = end;
+    }
+    let summary = styled_chat_summary_text(&runs);
+    (runs, Some(NbtSummaryValue::String(summary)))
+}
+
+fn filter_bit_is_set(mask_words: &[i64], index: usize) -> bool {
+    let Some(word) = mask_words.get(index / i64::BITS as usize) else {
+        return false;
+    };
+    ((*word as u64) & (1_u64 << (index % i64::BITS as usize))) != 0
+}
+
+fn replace_chat_decoration_content(message: &mut ChatMessageState) {
+    let content = styled_chat_summary_text(&message.styled_content);
+    let styled = message.styled_content.clone();
+    let component = message.content_component.clone();
+    for decoration in [
+        message.decoration.as_mut(),
+        message.narration_decoration.as_mut(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        for argument in &mut decoration.arguments {
+            if argument.parameter == ChatTypeDecorationParameter::Content {
+                argument.summary = content.clone();
+                argument.styled = styled.clone();
+                argument.component = component.clone();
+            }
+        }
     }
 }
 
@@ -1229,10 +1839,19 @@ mod tests {
         assert_eq!(message.content, "hello");
         assert_eq!(
             message.styled_content,
-            vec![StyledTextRun {
-                text: "unsigned".to_string(),
-                style: ComponentStyle::default(),
-            }]
+            vec![
+                StyledTextRun {
+                    text: "#".to_string(),
+                    style: ComponentStyle {
+                        color: Some(0x555555),
+                        ..ComponentStyle::default()
+                    },
+                },
+                StyledTextRun {
+                    text: "ello".to_string(),
+                    style: ComponentStyle::default(),
+                },
+            ]
         );
         assert_eq!(
             message.content_translation_key.as_deref(),
@@ -1250,7 +1869,7 @@ mod tests {
         let decoration = message.decoration.as_ref().unwrap();
         assert_eq!(decoration.arguments.len(), 2);
         assert_eq!(decoration.arguments[0].summary, "Alice");
-        assert_eq!(decoration.arguments[1].summary, "unsigned");
+        assert_eq!(decoration.arguments[1].summary, "#ello");
         assert_eq!(message.sender, Some(sender));
         assert_eq!(message.sender_name, "Alice");
         assert_eq!(message.validation_state, ChatValidationState::Unsigned);
@@ -2152,10 +2771,22 @@ mod tests {
         let packet = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "delayed");
         let signature = packet.signature.clone().unwrap();
         let _ = store.apply_player_chat_at(packet, 1);
+        let message = store.client_chat.messages.pop().unwrap();
         store
             .client_chat
             .delayed_messages
-            .push(store.client_chat.messages.pop().unwrap());
+            .push_back(DelayedChatMessageState {
+                acknowledge_signature: message.full_signature.as_ref().map(|bytes| {
+                    ProcessedChatSignatureState {
+                        checksum: message.signature.as_ref().unwrap().checksum,
+                        bytes: bytes.clone(),
+                    }
+                }),
+                message,
+                only_show_secure: false,
+                validation_error: false,
+                message_timestamp_millis: 1,
+            });
 
         assert_eq!(
             store.apply_delete_chat(ProtocolDeleteChat {
@@ -2183,6 +2814,212 @@ mod tests {
             Some(ChatDisconnectReason::InvalidPackedSignature)
         );
         assert_eq!(store.client_chat().deleted_messages.len(), deleted_count);
+    }
+
+    #[test]
+    fn delayed_player_chat_defers_display_reporting_and_last_seen_until_acceptance() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(60);
+        let session_id = Uuid::from_u128(61);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 20_000);
+        store.set_chat_presentation_config(ChatPresentationConfig {
+            message_delay_millis: 1_000,
+            ..ChatPresentationConfig::default()
+        });
+
+        let first = signed_player_chat(&private_key, sender, session_id, 0, 0, 1_000, "first");
+        let second = signed_player_chat(&private_key, sender, session_id, 1, 1, 1_001, "second");
+        let first_outcome = store.apply_player_chat_at_times(first, 1_000, 100);
+        let second_outcome = store.apply_player_chat_at_times(second, 1_001, 200);
+
+        assert_eq!(first_outcome.disconnect, None);
+        assert_eq!(second_outcome.disconnect, None);
+        assert_eq!(store.client_chat().messages.len(), 1);
+        assert_eq!(store.client_chat().messages[0].content, "first");
+        assert_eq!(store.client_chat().delayed_messages.len(), 1);
+        assert_eq!(store.client_chat().report_log.events.len(), 1);
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+
+        assert!(store.advance_chat_listener(1_099, false).is_empty());
+        assert_eq!(store.client_chat().messages.len(), 1);
+        assert!(store.advance_chat_listener(1_100, false).is_empty());
+        assert_eq!(store.client_chat().messages.len(), 2);
+        assert_eq!(store.client_chat().messages[1].content, "second");
+        assert!(store.client_chat().delayed_messages.is_empty());
+        assert_eq!(store.client_chat().report_log.events.len(), 2);
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 2);
+    }
+
+    #[test]
+    fn secure_only_captures_receive_option_and_suppresses_unsigned_messages() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(62);
+        add_player_without_session(&mut store, sender);
+        store.set_chat_presentation_config(ChatPresentationConfig {
+            only_show_secure: true,
+            ..ChatPresentationConfig::default()
+        });
+        let mut packet = player_chat_with_signature(0, signature(22));
+        packet.sender = sender;
+        packet.unsigned_content = Some("decorated".to_string());
+        packet.unsigned_content_styled = Some(plain_chat_styled_content("decorated"));
+
+        let outcome = store.apply_player_chat_at_times(packet, 1, 100);
+
+        assert_eq!(outcome.disconnect, None);
+        assert!(store.client_chat().messages.is_empty());
+        assert!(store.client_chat().report_log.events.is_empty());
+        assert!(store.client_chat().pending_narrations.is_empty());
+    }
+
+    #[test]
+    fn player_visibility_and_blocking_suppress_display_but_process_valid_signature() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(63);
+        let session_id = Uuid::from_u128(64);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 20_000);
+        store.set_chat_presentation_config(ChatPresentationConfig {
+            blocked_players: vec![sender],
+            ..ChatPresentationConfig::default()
+        });
+        let packet = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "blocked");
+
+        let outcome = store.apply_player_chat_at_times(packet, 1, 100);
+
+        assert_eq!(outcome.disconnect, None);
+        assert!(store.client_chat().messages.is_empty());
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+        assert!(store
+            .client_chat()
+            .last_seen_messages
+            .entries
+            .iter()
+            .all(Option::is_none));
+    }
+
+    #[test]
+    fn trust_marks_expired_and_custom_font_unsigned_content() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(65);
+        let session_id = Uuid::from_u128(66);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 1_000_000);
+        let expired = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "expired");
+        let _ = store.apply_player_chat_at_times(
+            expired,
+            presentation::CLIENT_CHAT_EXPIRY_MILLIS + 2,
+            100,
+        );
+        assert_eq!(
+            store.client_chat().messages[0].trust_level,
+            ChatTrustLevelState::NotSecure
+        );
+        assert_eq!(
+            store.client_chat().messages[0].tag,
+            Some(ChatMessageTagState::NotSecure)
+        );
+
+        let mut modified =
+            signed_player_chat(&private_key, sender, session_id, 1, 1, 10, "modified");
+        modified.unsigned_content = Some("modified".to_string());
+        modified.unsigned_content_styled = Some(plain_chat_styled_content("modified"));
+        modified.unsigned_content_component = Some(NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("modified".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "font".to_string(),
+                value: NbtSummaryValue::String("minecraft:uniform".to_string()),
+            },
+        ]));
+        let _ = store.apply_player_chat_at_times(modified, 10, 200);
+        assert_eq!(
+            store.client_chat().messages[1].trust_level,
+            ChatTrustLevelState::Modified
+        );
+        assert!(matches!(
+            store.client_chat().messages[1].tag,
+            Some(ChatMessageTagState::Modified { .. })
+        ));
+    }
+
+    #[test]
+    fn system_visibility_and_matched_hidden_name_follow_chat_options() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(67);
+        add_player_without_session(&mut store, sender);
+        store.set_chat_presentation_config(ChatPresentationConfig {
+            visibility: ChatVisibilityState::System,
+            hidden_players: vec![sender],
+            ..ChatPresentationConfig::default()
+        });
+
+        store.push_rich_server_system_chat_message(
+            "<Alice> hidden".to_string(),
+            plain_chat_styled_content("<Alice> hidden"),
+            None,
+            1,
+        );
+        assert!(store.client_chat().messages.is_empty());
+        store.push_rich_server_system_chat_message(
+            "server notice".to_string(),
+            plain_chat_styled_content("server notice"),
+            None,
+            2,
+        );
+        assert_eq!(store.client_chat().messages.len(), 1);
+        assert_eq!(store.client_chat().report_log.events.len(), 1);
+
+        let mut config = store.chat_presentation_config().clone();
+        config.visibility = ChatVisibilityState::Hidden;
+        store.set_chat_presentation_config(config);
+        store.push_server_system_chat_message("another notice");
+        store.push_client_system_chat_message("local feedback");
+        assert_eq!(store.client_chat().messages.len(), 2);
+        assert_eq!(
+            store.client_chat().messages[1].kind,
+            ChatMessageKind::ClientSystem
+        );
+    }
+
+    #[test]
+    fn reset_chat_preserves_startup_presentation_options() {
+        let mut store = WorldStore::new();
+        store.set_chat_presentation_config(ChatPresentationConfig {
+            visibility: ChatVisibilityState::Hidden,
+            only_show_secure: true,
+            hide_matched_names: false,
+            message_delay_millis: 600,
+            hidden_players: vec![Uuid::from_u128(68)],
+            blocked_players: vec![Uuid::from_u128(69)],
+        });
+        let expected = store.chat_presentation_config().clone();
+
+        store.apply_reset_chat();
+
+        assert_eq!(store.chat_presentation_config(), &expected);
+    }
+
+    #[test]
+    fn publication_snapshot_isolates_chat_delivery_queue_and_reporting() {
+        let mut store = WorldStore::new();
+        store.push_server_system_chat_message("generation a");
+        let generation_a = store.publication_snapshot();
+
+        store.push_server_system_chat_message("generation b");
+        let _ = store.take_pending_chat_narrations();
+        let generation_b = store.publication_snapshot();
+
+        assert_eq!(generation_a.client_chat().messages.len(), 1);
+        assert_eq!(
+            generation_a.client_chat().messages[0].content,
+            "generation a"
+        );
+        assert_eq!(generation_a.client_chat().report_log.events.len(), 1);
+        assert_eq!(generation_a.client_chat().pending_narrations.len(), 1);
+        assert_eq!(generation_b.client_chat().messages.len(), 2);
+        assert_eq!(generation_b.client_chat().report_log.events.len(), 2);
+        assert!(generation_b.client_chat().pending_narrations.is_empty());
     }
 
     fn signature(byte: u8) -> MessageSignature {

@@ -207,10 +207,7 @@ fn player_abilities_spawn_distance_and_chat_update_world_counters() {
     world.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 12 });
     apply_system_chat_update(
         &mut world,
-        bbb_protocol::packets::SystemChat {
-            content: "Server restarting".to_string(),
-            overlay: true,
-        },
+        bbb_protocol::packets::SystemChat::plain("Server restarting", true),
     );
 
     let local = world.local_player();
