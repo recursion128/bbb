@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TRIDENT_ID;
 use bbb_protocol::item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID;
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
@@ -9,6 +10,7 @@ use super::components::{
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityMetadata, EntityTransform,
 };
 use super::schema::{
+    vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_type_client_movement_policy, vanilla_entity_metadata_type_is_living,
@@ -27,6 +29,7 @@ pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
         vanilla_entity_metadata_type_client_movement_policy(entity_type_id),
         Some(
             VanillaEntityClientMovementPolicy::EyeOfEnder
+                | VanillaEntityClientMovementPolicy::AbstractArrow
                 | VanillaEntityClientMovementPolicy::ThrowableProjectile
                 | VanillaEntityClientMovementPolicy::ThrownExperienceBottle
                 | VanillaEntityClientMovementPolicy::ThrownPotion
@@ -159,6 +162,30 @@ impl EntityStore {
                         continue;
                     };
                     advance_llama_spit(metadata, transform);
+                }
+                VanillaEntityClientMovementPolicy::AbstractArrow => {
+                    let Some(accessors) =
+                        vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+                            entity_type_id,
+                        )
+                    else {
+                        continue;
+                    };
+                    let Ok((metadata, transform)) = self
+                        .ecs
+                        .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
+                    else {
+                        continue;
+                    };
+                    advance_abstract_arrow(
+                        entity_id,
+                        entity_type_id,
+                        metadata,
+                        transform,
+                        accessors,
+                        in_water_by_id.get(&entity_id).copied().unwrap_or(false),
+                        &mut particles,
+                    );
                 }
                 VanillaEntityClientMovementPolicy::FireworkRocket => {
                     self.advance_firework_rocket(entity, entity_id, entity_type_id, &mut particles);
@@ -419,6 +446,110 @@ fn advance_llama_spit(metadata: &EntityMetadata, transform: &mut EntityTransform
     }
 }
 
+fn advance_abstract_arrow(
+    entity_id: i32,
+    entity_type_id: i32,
+    metadata: &EntityMetadata,
+    transform: &mut EntityTransform,
+    accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
+    in_water: bool,
+    particles: &mut Vec<EntityClientMovementParticleState>,
+) {
+    let flags = entity_data_byte(
+        &metadata.data_values,
+        accessors.flags_data_id,
+        accessors.flags_default,
+    );
+    let physics_enabled = flags & accessors.no_physics_mask == 0;
+    let in_ground = entity_data_bool(
+        &metadata.data_values,
+        accessors.in_ground_data_id,
+        accessors.in_ground_default,
+    );
+    if in_ground && physics_enabled {
+        return;
+    }
+
+    let original_position = transform.position;
+    let movement = transform.delta_movement;
+    if in_water {
+        let water_inertia = if entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+            0.99_f32
+        } else {
+            0.6_f32
+        };
+        transform.delta_movement = scale(movement, f64::from(water_inertia));
+        append_bubbles(
+            entity_id,
+            original_position,
+            transform.delta_movement,
+            particles,
+        );
+    }
+    if flags & accessors.crit_mask != 0 {
+        append_arrow_crit_particles(entity_id, original_position, movement, particles);
+    }
+
+    update_arrow_rotation(transform, movement, physics_enabled);
+    transform.position = add(original_position, movement);
+    if !in_water {
+        transform.delta_movement = scale(movement, f64::from(0.99_f32));
+    }
+    let no_gravity = vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+        entity_data_bool(
+            &metadata.data_values,
+            accessors.no_gravity_data_id,
+            accessors.no_gravity_default,
+        )
+    });
+    if physics_enabled && !no_gravity {
+        transform.delta_movement.y -= 0.05;
+    }
+}
+
+fn append_arrow_crit_particles(
+    entity_id: i32,
+    position: EntityVec3,
+    movement: EntityVec3,
+    particles: &mut Vec<EntityClientMovementParticleState>,
+) {
+    particles.extend((0..4).map(|index| {
+        let fraction = f64::from(index) / 4.0;
+        EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
+            entity_id,
+            kind: EntityClientMovementSimpleParticleKind::Crit,
+            position: EntityVec3 {
+                x: position.x + movement.x * fraction,
+                y: position.y + movement.y * fraction,
+                z: position.z + movement.z * fraction,
+            },
+            velocity: EntityVec3 {
+                x: -movement.x,
+                y: -movement.y + 0.2,
+                z: -movement.z,
+            },
+        })
+    }));
+}
+
+fn update_arrow_rotation(
+    transform: &mut EntityTransform,
+    movement: EntityVec3,
+    physics_enabled: bool,
+) {
+    let horizontal = (movement.x * movement.x + movement.z * movement.z).sqrt();
+    let target_y_rot = if physics_enabled {
+        vanilla_degrees(movement.x.atan2(movement.z))
+    } else {
+        vanilla_degrees((-movement.x).atan2(-movement.z))
+    };
+    let target_x_rot = vanilla_degrees(movement.y.atan2(horizontal));
+    transform.old_x_rot = unwrap_old_rotation(transform.old_x_rot, target_x_rot);
+    transform.old_y_rot = unwrap_old_rotation(transform.old_y_rot, target_y_rot);
+    transform.x_rot = lerp(0.2, transform.old_x_rot, target_x_rot);
+    transform.y_rot = lerp(0.2, transform.old_y_rot, target_y_rot);
+}
+
 fn throwable_gravity(policy: VanillaEntityClientMovementPolicy) -> f64 {
     match policy {
         VanillaEntityClientMovementPolicy::ThrownExperienceBottle => 0.07,
@@ -478,6 +609,21 @@ fn entity_data_bool(
         .find(|value| value.data_id == data_id)
         .and_then(|value| match value.value {
             EntityDataValueKind::Boolean(value) => Some(value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+fn entity_data_byte(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: i8,
+) -> i8 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match value.value {
+            EntityDataValueKind::Byte(value) => Some(value),
             _ => None,
         })
         .unwrap_or(default)
@@ -603,12 +749,14 @@ fn lerp(alpha: f32, start: f32, end: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
-        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue, SetEntityData as ProtocolSetEntityData,
@@ -904,6 +1052,201 @@ mod tests {
             transform.delta_movement,
             scale(gravity_movement, f64::from(0.8_f32)),
         );
+    }
+
+    #[test]
+    fn abstract_arrows_honor_synced_ground_physics_and_crit_flags() {
+        let mut store = WorldStore::new();
+        for (id, entity_type_id) in [
+            (54, VANILLA_ENTITY_TYPE_ARROW_ID),
+            (55, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID),
+            (56, VANILLA_ENTITY_TYPE_TRIDENT_ID),
+        ] {
+            store.apply_add_entity(projectile(
+                id,
+                entity_type_id,
+                ProtocolVec3d {
+                    x: 1.0,
+                    y: 0.5,
+                    z: 0.0,
+                },
+            ));
+        }
+        let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 54,
+            values: vec![EntityDataValue {
+                data_id: accessors.flags_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(accessors.crit_mask),
+            }],
+        }));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 55,
+            values: vec![EntityDataValue {
+                data_id: accessors.in_ground_data_id,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 56,
+            values: vec![EntityDataValue {
+                data_id: accessors.flags_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(accessors.no_physics_mask),
+            }],
+        }));
+        let generation_a = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+
+        let inertia = f64::from(0.99_f32);
+        let flying = store.probe_entity_transform(54).unwrap();
+        assert_vec3_near(
+            flying.position,
+            EntityVec3 {
+                x: 2.0,
+                y: 64.5,
+                z: -2.0,
+            },
+        );
+        assert_vec3_near(
+            flying.delta_movement,
+            EntityVec3 {
+                x: inertia,
+                y: 0.5 * inertia - 0.05,
+                z: 0.0,
+            },
+        );
+        assert_eq!(flying.y_rot, 18.0);
+        assert_eq!(
+            store.probe_entity_transform(55).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            }
+        );
+        let no_physics = store.probe_entity_transform(56).unwrap();
+        assert_vec3_near(
+            no_physics.delta_movement,
+            EntityVec3 {
+                x: inertia,
+                y: 0.5 * inertia,
+                z: 0.0,
+            },
+        );
+        assert_eq!(no_physics.y_rot, -18.0);
+
+        let particles = store
+            .drain_entity_client_movement_particle_states()
+            .collect::<Vec<_>>();
+        assert_eq!(particles.len(), 4);
+        for (index, particle) in particles.into_iter().enumerate() {
+            assert_eq!(
+                particle,
+                EntityClientMovementParticleState::Simple(
+                    EntityClientMovementSimpleParticleState {
+                        entity_id: 54,
+                        kind: EntityClientMovementSimpleParticleKind::Crit,
+                        position: EntityVec3 {
+                            x: 1.0 + index as f64 / 4.0,
+                            y: 64.0 + 0.5 * index as f64 / 4.0,
+                            z: -2.0,
+                        },
+                        velocity: EntityVec3 {
+                            x: -1.0,
+                            y: -0.3,
+                            z: 0.0,
+                        },
+                    }
+                )
+            );
+        }
+        assert_eq!(
+            generation_a.probe_entity_transform(54).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            "retained publication remains isolated from arrow movement"
+        );
+    }
+
+    #[test]
+    fn abstract_arrow_water_inertia_precedes_bubbles_and_free_flight() {
+        let metadata = EntityMetadata::default();
+        for (entity_id, entity_type_id, inertia) in [
+            (57, VANILLA_ENTITY_TYPE_ARROW_ID, 0.6_f32),
+            (58, VANILLA_ENTITY_TYPE_TRIDENT_ID, 0.99_f32),
+        ] {
+            let mut transform = test_transform(EntityVec3 {
+                x: 0.5,
+                y: -0.25,
+                z: 1.0,
+            });
+            let mut particles = Vec::new();
+            let accessors =
+                vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+                    .unwrap();
+
+            advance_abstract_arrow(
+                entity_id,
+                entity_type_id,
+                &metadata,
+                &mut transform,
+                accessors,
+                true,
+                &mut particles,
+            );
+
+            let water_movement = scale(
+                EntityVec3 {
+                    x: 0.5,
+                    y: -0.25,
+                    z: 1.0,
+                },
+                f64::from(inertia),
+            );
+            assert_vec3_near(
+                transform.position,
+                EntityVec3 {
+                    x: 1.5,
+                    y: 63.75,
+                    z: -1.0,
+                },
+            );
+            assert_vec3_near(
+                transform.delta_movement,
+                EntityVec3 {
+                    y: water_movement.y - 0.05,
+                    ..water_movement
+                },
+            );
+            assert_eq!(particles.len(), 4);
+            assert!(particles.iter().all(|particle| {
+                *particle
+                    == EntityClientMovementParticleState::Simple(
+                        EntityClientMovementSimpleParticleState {
+                            entity_id,
+                            kind: EntityClientMovementSimpleParticleKind::Bubble,
+                            position: EntityVec3 {
+                                x: 1.0 - water_movement.x * 0.25,
+                                y: 64.0 - water_movement.y * 0.25,
+                                z: -2.0 - water_movement.z * 0.25,
+                            },
+                            velocity: water_movement,
+                        },
+                    )
+            }));
+        }
     }
 
     #[test]
