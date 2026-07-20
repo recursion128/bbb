@@ -54,7 +54,9 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
             z: -2.0,
         }
     );
-    assert_eq!(sources[0].y_rot, 135.0);
+    // LivingEntity.recreateFromPacket seeds body yaw from the packet head yaw
+    // (30 degrees in this fixture), independently from the base entity yaw.
+    assert_eq!(sources[0].y_rot, 30.0);
     assert_eq!(sources[0].age_ticks, 0);
     assert_eq!(sources[0].data_values, vec![chicken_baby_data(true)]);
 

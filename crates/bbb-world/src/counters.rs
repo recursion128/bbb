@@ -97,6 +97,7 @@ world_counters! {
     triple_all merchant_offer_packets_received, merchant_offer_packets_applied, merchant_offer_packets_ignored;
     with_default { merchant_offers_tracked }
     plain { entities_tracked, entities_received }
+    with_default { entity_add_updates_applied, entity_add_updates_ignored }
     triple entity_position_syncs_received, entity_position_syncs_applied, entity_position_syncs_ignored;
     triple entity_moves_received, entity_moves_applied, entity_moves_ignored;
     triple entity_teleports_received, entity_teleports_applied, entity_teleports_ignored;
@@ -409,6 +410,8 @@ mod tests {
         "merchant_offers_tracked",
         "entities_tracked",
         "entities_received",
+        "entity_add_updates_applied",
+        "entity_add_updates_ignored",
         "entity_position_syncs_received",
         "entity_position_syncs_applied",
         "entity_position_syncs_ignored",
@@ -478,8 +481,8 @@ mod tests {
         let obj = value
             .as_object()
             .expect("WorldCounters serializes to a JSON object");
-        // Total field count must stay at 332 (guards dropped / extra fields).
-        assert_eq!(obj.len(), 332, "WorldCounters field count changed");
+        // Total field count must stay at 334 (guards dropped / extra fields).
+        assert_eq!(obj.len(), 334, "WorldCounters field count changed");
         assert_eq!(obj.len(), EXPECTED_FIELDS.len());
         // Exact name set (guards renames).
         for name in EXPECTED_FIELDS {

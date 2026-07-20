@@ -245,7 +245,7 @@ impl WorldStore {
         match packet {
             PlayClientbound::BundleDelimiter => {}
             PlayClientbound::AddEntity(entity) => {
-                self.apply_add_entity(entity);
+                let _ = self.apply_add_entity_packet(entity);
             }
             PlayClientbound::EntityAnimation(update) => {
                 let tracking_emitter = tracking_emitter_for_entity_animation(update.action);
@@ -1894,6 +1894,31 @@ mod tests {
         }
     }
 
+    fn record_packet_player_info(store: &mut WorldStore, entity_id: i32) {
+        let uuid = Uuid::from_u128(entity_id as u128);
+        assert_eq!(
+            store.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+                actions: vec![bbb_protocol::packets::PlayerInfoAction::AddPlayer],
+                entries: vec![bbb_protocol::packets::PlayerInfoEntry {
+                    profile_id: uuid,
+                    profile: Some(bbb_protocol::packets::GameProfile {
+                        uuid,
+                        name: format!("remote-{entity_id}"),
+                        properties: Vec::new(),
+                    }),
+                    listed: false,
+                    latency: 0,
+                    game_mode: bbb_protocol::game_types::GameType::default(),
+                    display_name: None,
+                    show_hat: false,
+                    list_order: 0,
+                    chat_session: None,
+                }],
+            }),
+            1
+        );
+    }
+
     fn damage_type_nbt(message_id: &str, effects: &str) -> Vec<u8> {
         let mut out = vec![10];
         write_nbt_string(&mut out, "message_id", message_id);
@@ -2293,6 +2318,7 @@ mod tests {
             y: 72.0,
             z: -5.0,
         };
+        record_packet_player_info(&mut store, 71);
         store.apply_play_packet(
             PlayClientbound::AddEntity(add_entity(71, VANILLA_ENTITY_TYPE_PLAYER_ID, position)),
             &mut random,
@@ -2687,6 +2713,7 @@ mod tests {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut effects = RecordingEffects::default();
+        record_packet_player_info(&mut store, 11);
 
         for packet in [
             PlayClientbound::AddEntity(add_entity(

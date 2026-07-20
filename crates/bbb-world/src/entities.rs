@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::packets::{
-    AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
-    EquipmentSlot as ProtocolEquipmentSlot, EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+    AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
+    EntityDataValueKind, EquipmentSlot as ProtocolEquipmentSlot,
+    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
     FireworkExplosionSummary as ProtocolFireworkExplosionSummary,
     ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
     RemoveEntities as ProtocolRemoveEntities, TakeItemEntity as ProtocolTakeItemEntity,
@@ -28,6 +28,7 @@ mod projectiles;
 mod renderer_catalog;
 mod schema;
 mod sound_variants;
+mod spawn;
 pub(crate) mod state;
 mod status;
 mod store;
@@ -44,7 +45,6 @@ pub(crate) use components::{
     EntityMobEffects, EntityMount, EntityProjectileLifecycle, EntitySupportingBlock,
     EntityTransform, EntityTransientEvents,
 };
-use dimensions::vanilla_client_position_for_entity_data;
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,
@@ -2638,48 +2638,6 @@ impl EntityTransformState {
 }
 
 impl WorldStore {
-    pub fn apply_add_entity(&mut self, packet: ProtocolAddEntity) {
-        self.counters.entities_received += 1;
-        if self.removed_player_vehicle_id == Some(packet.id) {
-            self.removed_player_vehicle_id = None;
-        }
-        let packet_position = entity_vec3(packet.position);
-        let identity = crate::entities::components::EntityIdentity {
-            id: packet.id,
-            uuid: packet.uuid,
-            entity_type_id: packet.entity_type_id,
-            data: packet.data,
-        };
-        let transform = crate::entities::components::EntityTransform {
-            position: vanilla_client_position_for_entity_data(
-                packet.entity_type_id,
-                packet_position,
-                packet.data,
-                &[],
-                None,
-            )
-            .unwrap_or(packet_position),
-            position_base: packet_position,
-            delta_movement: entity_vec3(packet.delta_movement),
-            y_rot: packet.y_rot,
-            x_rot: packet.x_rot,
-            y_head_rot: packet.y_head_rot,
-            on_ground: None,
-            interpolation: None,
-        };
-
-        self.entities
-            .apply_add_entity_components(identity, transform);
-        if packet.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
-            self.record_seen_player_info(packet.uuid);
-        }
-        if packet.entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID {
-            self.trigger_sky_flash();
-        }
-        self.update_entity_count();
-        self.update_active_mob_effect_count();
-    }
-
     pub fn apply_take_item_entity(&mut self, packet: ProtocolTakeItemEntity) -> bool {
         self.counters.take_item_entities_received += 1;
         let Some(entity_type_id) = self.entities.entity_type_id(packet.item_id) else {

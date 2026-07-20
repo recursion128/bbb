@@ -391,6 +391,18 @@ impl EntityStore {
             None,
             self.uuid_for_protocol_id(identity.data),
         );
+        let fresh_client_animations = EntityClientAnimations {
+            animations: EntityClientAnimationState {
+                spawn_body_y_rot: vanilla_living_entity_type(entity_type_id).then_some(
+                    if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
+                        0.0
+                    } else {
+                        transform.y_head_rot
+                    },
+                ),
+                ..EntityClientAnimationState::default()
+            },
+        };
 
         if let Some(entity) = self.by_protocol_id.get(&id).copied() {
             if let Ok(mut existing) = self.ecs.get::<&mut EntityIdentity>(entity) {
@@ -411,7 +423,9 @@ impl EntityStore {
             reset::<EntityMount>(&mut self.ecs, entity);
             reset::<EntityLeash>(&mut self.ecs, entity);
             reset::<EntityMobEffects>(&mut self.ecs, entity);
-            reset::<EntityClientAnimations>(&mut self.ecs, entity);
+            if let Ok(mut existing) = self.ecs.get::<&mut EntityClientAnimations>(entity) {
+                *existing = fresh_client_animations;
+            }
             reset::<EntityDamage>(&mut self.ecs, entity);
             reset::<EntitySupportingBlock>(&mut self.ecs, entity);
             if is_vanilla_minecart_type(entity_type_id) {
@@ -476,7 +490,7 @@ impl EntityStore {
             EntityMount::default(),
             EntityLeash::default(),
             EntityMobEffects::default(),
-            EntityClientAnimations::default(),
+            fresh_client_animations,
             EntityDamage::default(),
             EntitySupportingBlock::default(),
         ));
@@ -2272,7 +2286,14 @@ impl EntityStore {
         let minecart_new_render =
             is_vanilla_minecart_type(identity.entity_type_id) && minecart_improvements_enabled;
         let mut source_position = position;
-        let mut source_y_rot = transform.y_rot;
+        let mut source_y_rot = if client_animations.animations.age_ticks == 0 {
+            client_animations
+                .animations
+                .spawn_body_y_rot
+                .unwrap_or(transform.y_rot)
+        } else {
+            transform.y_rot
+        };
         let mut source_x_rot = transform.x_rot;
         if minecart_new_render {
             if let Some(render_step) = minecart_lerp

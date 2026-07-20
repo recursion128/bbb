@@ -289,6 +289,13 @@ pub(crate) struct EvokerFangsCritParticleOffset {
 pub struct EntityClientAnimationState {
     #[serde(default)]
     pub age_ticks: u32,
+    /// Vanilla `LivingEntity.recreateFromPacket` seeds both body-yaw endpoints
+    /// from the packet head yaw. `Shulker.recreateFromPacket` immediately
+    /// overrides both to zero. This value is consumed only before the first
+    /// client tick; later projection preserves the existing movement-owned
+    /// body-yaw approximation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawn_body_y_rot: Option<f32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boat_damage: Option<BoatDamageAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5426,6 +5433,7 @@ impl EntityClientAnimationState {
         is_swimming: bool,
     ) -> EntityClientTickParticleTriggers {
         self.age_ticks = self.age_ticks.saturating_add(1);
+        self.spawn_body_y_rot = None;
         let mut particle_triggers = EntityClientTickParticleTriggers::default();
         // Vanilla `AbstractArrow.tick`: `if (shakeTime > 0) --shakeTime`.
         // The state is only created for arrow/spectral-arrow metadata updates, so
