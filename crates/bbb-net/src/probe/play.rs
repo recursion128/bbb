@@ -2522,14 +2522,30 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let mut report = probe.finish(5, ChunkPos { x: 0, z: 0 });
         let entity = report.world.probe_entity(123).unwrap();
-        assert_eq!(entity.position.x, 0.5);
-        assert_eq!(entity.position.y, 70.0);
-        assert_eq!(entity.position.z, -4.0);
+        assert_eq!(entity.position.x, 2.0);
+        assert_eq!(entity.position.y, 65.0);
+        assert_eq!(entity.position.z, -3.0);
         assert_eq!(entity.delta_movement.y, 0.2);
-        assert_eq!(entity.y_rot, 10.0);
-        assert_eq!(entity.x_rot, -90.0);
+        assert_eq!(entity.y_rot, 180.0);
+        assert_eq!(entity.x_rot, 30.0);
+        assert_eq!(
+            entity.interpolation.as_ref().map(|state| (
+                state.target_position,
+                state.target_y_rot,
+                state.target_x_rot,
+            )),
+            Some((
+                bbb_world::EntityVec3 {
+                    x: 0.5,
+                    y: 70.0,
+                    z: -4.0,
+                },
+                10.0,
+                -90.0,
+            ))
+        );
         assert_eq!(entity.on_ground, Some(true));
         assert_eq!(
             entity.data_values,
@@ -2624,6 +2640,15 @@ mod tests {
         assert_eq!(report.world_counters.entity_removes_received, 2);
         assert_eq!(report.world_counters.entities_removed, 1);
         assert_eq!(report.world_counters.entity_removes_ignored, 1);
+
+        report.world.advance_entity_client_animations(3);
+        let entity = report.world.probe_entity(123).unwrap();
+        assert_eq!(entity.position.x, 0.5);
+        assert_eq!(entity.position.y, 70.0);
+        assert_eq!(entity.position.z, -4.0);
+        assert_eq!(entity.y_rot, 10.0);
+        assert_eq!(entity.x_rot, -90.0);
+        assert_eq!(entity.interpolation, None);
     }
 
     #[tokio::test]
