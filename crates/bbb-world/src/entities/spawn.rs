@@ -306,8 +306,22 @@ mod tests {
             Some(VANILLA_ENTITY_TYPE_COW_ID)
         );
         assert_eq!(
+            generation_a.entities.attribute_base_value(
+                55,
+                bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+            ),
+            Some(10.0),
+        );
+        assert_eq!(
             generation_b.entity_type_id(55),
             Some(VANILLA_ENTITY_TYPE_ZOMBIE_ID)
+        );
+        assert_eq!(
+            generation_b.entities.attribute_base_value(
+                55,
+                bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+            ),
+            Some(20.0),
         );
     }
 

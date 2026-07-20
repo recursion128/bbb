@@ -8,10 +8,7 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
-use bbb_protocol::attribute_types::{
-    VANILLA_ATTRIBUTE_MAX_HEALTH_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
-    VANILLA_ATTRIBUTE_STEP_HEIGHT_ID,
-};
+use bbb_protocol::attribute_types::vanilla_attribute_type;
 use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID;
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
@@ -60,7 +57,7 @@ use super::schema::{
     vanilla_entity_metadata_type_uses_player_entity_event_handler,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
-    VanillaFireworkRocketMetadataAccessors,
+    vanilla_entity_type_default_attribute, VanillaFireworkRocketMetadataAccessors,
 };
 
 use super::{
@@ -4937,20 +4934,19 @@ fn vanilla_attribute_value(attribute: &ProtocolAttributeSnapshot) -> f64 {
     result
 }
 
-/// Family defaults from vanilla `DefaultAttributes`/`createAttributes`, used
-/// until a `ClientboundUpdateAttributesPacket` overrides the local supplier.
-/// Keep each family arm tied to focused spawn/default coverage rather than
-/// treating the registry-wide `Attributes` defaults as entity-specific values.
+/// Exact Vanilla `DefaultAttributes` supplier value, used until a
+/// `ClientboundUpdateAttributesPacket` overrides it. Membership and family
+/// overrides come from the generated EntityType profile; the Attribute
+/// registry default is consulted only for the one-argument builder overload.
 fn vanilla_default_attribute_base(entity_type_id: i32, attribute_id: i32) -> Option<f64> {
-    if entity_type_id != VANILLA_ENTITY_TYPE_TURTLE_ID {
-        return None;
-    }
-    match attribute_id {
-        VANILLA_ATTRIBUTE_MAX_HEALTH_ID => Some(30.0),
-        VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID => Some(0.25),
-        VANILLA_ATTRIBUTE_STEP_HEIGHT_ID => Some(1.0),
-        _ => None,
-    }
+    let entity_default = vanilla_entity_type_default_attribute(entity_type_id, attribute_id)?;
+    entity_default
+        .base_value_override_bits
+        .map(f64::from_bits)
+        .or_else(|| {
+            vanilla_attribute_type(attribute_id)
+                .map(|attribute| f64::from_bits(attribute.default_value_bits))
+        })
 }
 
 fn shulker_attach_face(

@@ -1749,7 +1749,18 @@ mod tests {
         );
         assert_eq!(world.local_player_armor_value(), 9);
         assert_eq!(world.local_player_attribute_base_value(0), Some(4.0));
-        assert_eq!(world.local_player_attribute_base_value(4), None);
+        assert_eq!(
+            world.local_player_attribute_base_value(
+                bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_SPEED_ID
+            ),
+            Some(4.0),
+        );
+        assert_eq!(
+            world.local_player_attribute_base_value(
+                bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SPAWN_REINFORCEMENTS_CHANCE_ID
+            ),
+            None,
+        );
     }
 
     fn spawned_player_world() -> WorldStore {
@@ -1938,9 +1949,9 @@ mod tests {
             })
         );
 
-        // Without a synced MAX_HEALTH attribute the max falls back to the
-        // `Attributes.MAX_HEALTH` RangedAttribute default 20.0, and without a
-        // synced health the metadata default 1.0F applies.
+        // Without a synced MAX_HEALTH attribute the max falls back to Pig's
+        // `DefaultAttributes` family override 10.0, and without a synced
+        // health the metadata default 1.0F applies.
         let mut world = spawned_player_world();
         add_vehicle(
             &mut world,
@@ -1952,7 +1963,7 @@ mod tests {
             world.local_player_vehicle_health(),
             Some(crate::LocalPlayerVehicleHealth {
                 health: 1.0,
-                max_health: 20.0,
+                max_health: 10.0,
             })
         );
 

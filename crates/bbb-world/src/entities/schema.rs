@@ -4650,6 +4650,22 @@ mod tests {
     }
 
     #[test]
+    fn entity_store_default_attribute_query_uses_only_generated_catalogs() {
+        let store_source = include_str!("store.rs");
+        let function = store_source
+            .split("fn vanilla_default_attribute_base")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("default attribute query source");
+
+        assert!(function.contains("vanilla_entity_type_default_attribute"));
+        assert!(function.contains("vanilla_attribute_type"));
+        assert!(!function.contains("match attribute_id"));
+        assert!(!function.contains("VANILLA_ENTITY_TYPE_TURTLE_ID"));
+    }
+
+    #[test]
     fn generated_accessor_catalog_is_complete_unique_and_default_closed() {
         assert_eq!(VANILLA_ENTITY_METADATA_ACCESSORS_26_1.len(), 227);
         let mut keys = HashSet::new();

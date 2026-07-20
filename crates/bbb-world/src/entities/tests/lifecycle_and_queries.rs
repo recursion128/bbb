@@ -635,6 +635,110 @@ fn turtle_pairing_state_uses_generated_defaults_and_resets_on_readd() {
 }
 
 #[test]
+fn every_fixed_entity_type_exposes_its_generated_default_attribute_supplier() {
+    let mut store = WorldStore::new();
+
+    for entry in VANILLA_ENTITY_TYPE_METADATA_26_1 {
+        store.apply_add_entity(protocol_add_entity_with_type(
+            entry.entity_type_id,
+            entry.entity_type_id,
+        ));
+        assert!(
+            store
+                .probe_entity(entry.entity_type_id)
+                .unwrap()
+                .attributes
+                .is_empty(),
+            "{} must keep constructor defaults virtual",
+            entry.resource_id,
+        );
+
+        for attribute in bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_TYPES {
+            let expected = entry
+                .default_attributes
+                .iter()
+                .find(|default| default.attribute_id == attribute.id)
+                .map(|default| {
+                    default
+                        .base_value_override_bits
+                        .unwrap_or(attribute.default_value_bits)
+                })
+                .map(f64::from_bits);
+            assert_eq!(
+                store
+                    .entities
+                    .attribute_base_value(entry.entity_type_id, attribute.id),
+                expected,
+                "{} / {}",
+                entry.resource_id,
+                attribute.resource_id,
+            );
+            assert_eq!(
+                store
+                    .entities
+                    .attribute_value(entry.entity_type_id, attribute.id),
+                expected,
+                "{} / {}",
+                entry.resource_id,
+                attribute.resource_id,
+            );
+        }
+    }
+
+    assert_eq!(
+        store.entity_count(),
+        VANILLA_ENTITY_TYPE_METADATA_26_1.len()
+    );
+}
+
+#[test]
+fn level_reset_and_id_reuse_restore_generated_attribute_defaults() {
+    let entity_id = 205;
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        entity_id,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+            base: 41.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    let generation_a = store.publication_snapshot();
+
+    store.clear_client_level();
+    assert!(store.probe_entity(entity_id).is_none());
+    store.apply_add_entity(protocol_add_entity_with_type(
+        entity_id,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    let generation_b = store.publication_snapshot();
+
+    assert_eq!(
+        generation_a.entities.attribute_base_value(
+            entity_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID
+        ),
+        Some(41.0),
+    );
+    assert_eq!(
+        generation_b.entities.attribute_base_value(
+            entity_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID
+        ),
+        Some(10.0),
+    );
+    assert!(generation_b
+        .probe_entity(entity_id)
+        .unwrap()
+        .attributes
+        .is_empty());
+}
+
+#[test]
 fn rotate_head_lerps_living_entities_over_three_client_ticks() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
