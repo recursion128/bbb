@@ -14376,8 +14376,15 @@ pub(crate) fn control_renderer_counters(
         dynamic_texture_cache_failed: 0,
         dynamic_texture_cache_stale_results: 0,
         dynamic_texture_cache_queue_full: 0,
+        dynamic_texture_cache_max_resident_bytes: 0,
         dynamic_texture_cache_resident_bytes: 0,
         dynamic_texture_cache_peak_resident_bytes: 0,
+        dynamic_texture_cache_resident_evictions: 0,
+        dynamic_texture_cache_resident_rejections: 0,
+        dynamic_texture_worker_result_bytes: 0,
+        dynamic_texture_peak_worker_result_bytes: 0,
+        dynamic_texture_recent_delivery_bytes: 0,
+        dynamic_texture_peak_delivery_bytes: 0,
     }
 }
 
@@ -14394,10 +14401,32 @@ pub(crate) fn project_dynamic_texture_counters(
     counters.dynamic_texture_cache_failed = observation.failed;
     counters.dynamic_texture_cache_stale_results = observation.stale_results;
     counters.dynamic_texture_cache_queue_full = observation.queue_full;
+    counters.dynamic_texture_cache_max_resident_bytes = observation
+        .max_resident_bytes
+        .try_into()
+        .unwrap_or(u64::MAX);
     counters.dynamic_texture_cache_resident_bytes =
         observation.resident_bytes.try_into().unwrap_or(u64::MAX);
     counters.dynamic_texture_cache_peak_resident_bytes = observation
         .peak_resident_bytes
+        .try_into()
+        .unwrap_or(u64::MAX);
+    counters.dynamic_texture_cache_resident_evictions = observation.resident_evictions;
+    counters.dynamic_texture_cache_resident_rejections = observation.resident_rejections;
+    counters.dynamic_texture_worker_result_bytes = observation
+        .worker_result_bytes
+        .try_into()
+        .unwrap_or(u64::MAX);
+    counters.dynamic_texture_peak_worker_result_bytes = observation
+        .peak_worker_result_bytes
+        .try_into()
+        .unwrap_or(u64::MAX);
+    counters.dynamic_texture_recent_delivery_bytes = observation
+        .recent_delivery_bytes
+        .try_into()
+        .unwrap_or(u64::MAX);
+    counters.dynamic_texture_peak_delivery_bytes = observation
+        .peak_delivery_bytes
         .try_into()
         .unwrap_or(u64::MAX);
 }

@@ -113,9 +113,23 @@ pub struct RendererCounters {
     #[serde(default)]
     pub dynamic_texture_cache_queue_full: u64,
     #[serde(default)]
+    pub dynamic_texture_cache_max_resident_bytes: u64,
+    #[serde(default)]
     pub dynamic_texture_cache_resident_bytes: u64,
     #[serde(default)]
     pub dynamic_texture_cache_peak_resident_bytes: u64,
+    #[serde(default)]
+    pub dynamic_texture_cache_resident_evictions: u64,
+    #[serde(default)]
+    pub dynamic_texture_cache_resident_rejections: u64,
+    #[serde(default)]
+    pub dynamic_texture_worker_result_bytes: u64,
+    #[serde(default)]
+    pub dynamic_texture_peak_worker_result_bytes: u64,
+    #[serde(default)]
+    pub dynamic_texture_recent_delivery_bytes: u64,
+    #[serde(default)]
+    pub dynamic_texture_peak_delivery_bytes: u64,
     pub hud_draw_calls: u64,
     #[serde(default)]
     pub screen_blur_draw_calls: u64,
@@ -273,4 +287,35 @@ pub struct RendererCounters {
     pub non_entity_cache_misses: u64,
     #[serde(default)]
     pub non_entity_rebuilt_owners: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dynamic_texture_byte_observations_default_for_older_payloads() {
+        let mut value = serde_json::to_value(RendererCounters::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        for field in [
+            "dynamic_texture_cache_max_resident_bytes",
+            "dynamic_texture_cache_resident_evictions",
+            "dynamic_texture_cache_resident_rejections",
+            "dynamic_texture_worker_result_bytes",
+            "dynamic_texture_peak_worker_result_bytes",
+            "dynamic_texture_recent_delivery_bytes",
+            "dynamic_texture_peak_delivery_bytes",
+        ] {
+            object.remove(field);
+        }
+
+        let counters: RendererCounters = serde_json::from_value(value).unwrap();
+        assert_eq!(counters.dynamic_texture_cache_max_resident_bytes, 0);
+        assert_eq!(counters.dynamic_texture_cache_resident_evictions, 0);
+        assert_eq!(counters.dynamic_texture_cache_resident_rejections, 0);
+        assert_eq!(counters.dynamic_texture_worker_result_bytes, 0);
+        assert_eq!(counters.dynamic_texture_peak_worker_result_bytes, 0);
+        assert_eq!(counters.dynamic_texture_recent_delivery_bytes, 0);
+        assert_eq!(counters.dynamic_texture_peak_delivery_bytes, 0);
+    }
 }
