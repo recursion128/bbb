@@ -1,6 +1,7 @@
 pub use crate::commands::{
-    CommandArgumentParserState, CommandNodeKindState, CommandNodeState, CommandTreeState,
-    SignableCommandArgument,
+    CommandArgumentParserState, CommandCompletionContext, CommandNodeKindState, CommandNodeState,
+    CommandParseResult, CommandSyntaxErrorKind, CommandSyntaxErrorState, CommandTreeState,
+    ParsedCommandArgument, SignableCommandArgument,
 };
 pub use crate::counters::WorldCounters;
 pub use crate::diagnostics::{WorldApplyDiagnosticsState, WorldApplyErrorState};

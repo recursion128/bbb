@@ -79,16 +79,24 @@ impl CommandArgumentParser {
     /// Replays the packet framing decoder over the retained exact property
     /// bytes. This is the only semantic template decoder.
     pub fn template(&self) -> Result<CommandArgumentTemplate> {
-        let mut decoder = Decoder::new(&self.properties);
-        let template = decode_command_argument_template(&mut decoder, self.type_id)?;
-        if !decoder.is_empty() {
-            return Err(ProtocolError::InvalidData(format!(
-                "trailing bytes after command argument template {}",
-                self.name
-            )));
-        }
-        Ok(template)
+        command_argument_template(self.type_id, &self.properties)
     }
+}
+
+/// Replays the packet framing decoder over retained command-template bytes
+/// without requiring callers that own an immutable projection to copy them.
+pub fn command_argument_template(
+    type_id: i32,
+    properties: &[u8],
+) -> Result<CommandArgumentTemplate> {
+    let mut decoder = Decoder::new(properties);
+    let template = decode_command_argument_template(&mut decoder, type_id)?;
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "trailing bytes after command argument template type {type_id}"
+        )));
+    }
+    Ok(template)
 }
 
 pub(super) fn decode_commands(decoder: &mut Decoder<'_>) -> Result<Commands> {
