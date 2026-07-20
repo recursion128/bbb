@@ -97,7 +97,8 @@ Owner: `bbb-protocol`
 - Build a registry-aware repo-native command dispatcher from the Commands tree,
   matching `CommandBuildContext.simple` argument construction, local parsing,
   validation, redirects and completion rather than retaining only structural
-  nodes and signed-message detection.
+  nodes and signed-message detection; follow the serial owner and gate contract
+  in `docs/command-dispatcher-design.md`.
 
 ## Vanilla Java generator frontend migration
 

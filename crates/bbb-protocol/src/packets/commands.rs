@@ -52,6 +52,45 @@ pub struct CommandArgumentParser {
     pub properties: Vec<u8>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum CommandArgumentTemplate {
+    Unit,
+    Float { min: Option<f32>, max: Option<f32> },
+    Double { min: Option<f64>, max: Option<f64> },
+    Integer { min: Option<i32>, max: Option<i32> },
+    Long { min: Option<i64>, max: Option<i64> },
+    String { mode: CommandStringMode },
+    Entity { single: bool, players_only: bool },
+    ScoreHolder { multiple: bool },
+    Time { minimum: i32 },
+    Registry { registry: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CommandStringMode {
+    SingleWord,
+    QuotablePhrase,
+    GreedyPhrase,
+}
+
+impl CommandArgumentParser {
+    /// Replays the packet framing decoder over the retained exact property
+    /// bytes. This is the only semantic template decoder.
+    pub fn template(&self) -> Result<CommandArgumentTemplate> {
+        let mut decoder = Decoder::new(&self.properties);
+        let template = decode_command_argument_template(&mut decoder, self.type_id)?;
+        if !decoder.is_empty() {
+            return Err(ProtocolError::InvalidData(format!(
+                "trailing bytes after command argument template {}",
+                self.name
+            )));
+        }
+        Ok(template)
+    }
+}
+
 pub(super) fn decode_commands(decoder: &mut Decoder<'_>) -> Result<Commands> {
     let count = decoder.read_len()?;
     if count > MAX_COMMAND_NODES {
@@ -136,17 +175,9 @@ fn decode_command_node(decoder: &mut Decoder<'_>) -> Result<CommandNode> {
             let parser_name = command_argument_parser_name(type_id).ok_or_else(|| {
                 ProtocolError::InvalidData(format!("unknown command argument parser id {type_id}"))
             })?;
-            let properties_before = decoder.remaining().to_vec();
-            skip_command_argument_properties(decoder, type_id)?;
-            let properties_len = properties_before
-                .len()
-                .checked_sub(decoder.remaining_len())
-                .ok_or_else(|| {
-                    ProtocolError::InvalidData(
-                        "command argument property length underflow".to_string(),
-                    )
-                })?;
-            let properties = properties_before[..properties_len].to_vec();
+            let properties_start = decoder.position();
+            decode_command_argument_template(decoder, type_id)?;
+            let properties = decoder.bytes_from(properties_start).to_vec();
             let suggestions = if flags & FLAG_CUSTOM_SUGGESTIONS != 0 {
                 Some(read_resource_location(decoder)?)
             } else {
@@ -183,49 +214,71 @@ fn command_argument_parser_name(type_id: i32) -> Option<&'static str> {
     VANILLA_COMMAND_ARGUMENT_TYPES.get(index).copied()
 }
 
-fn skip_command_argument_properties(decoder: &mut Decoder<'_>, type_id: i32) -> Result<()> {
+fn decode_command_argument_template(
+    decoder: &mut Decoder<'_>,
+    type_id: i32,
+) -> Result<CommandArgumentTemplate> {
     match type_id {
-        1 => skip_number_properties(decoder, NumberPropertyWidth::F32),
-        2 => skip_number_properties(decoder, NumberPropertyWidth::F64),
-        3 => skip_number_properties(decoder, NumberPropertyWidth::I32),
-        4 => skip_number_properties(decoder, NumberPropertyWidth::I64),
+        1 => {
+            let (min, max) = decode_number_properties(decoder, |decoder| decoder.read_f32())?;
+            Ok(CommandArgumentTemplate::Float { min, max })
+        }
+        2 => {
+            let (min, max) = decode_number_properties(decoder, |decoder| decoder.read_f64())?;
+            Ok(CommandArgumentTemplate::Double { min, max })
+        }
+        3 => {
+            let (min, max) = decode_number_properties(decoder, |decoder| decoder.read_i32())?;
+            Ok(CommandArgumentTemplate::Integer { min, max })
+        }
+        4 => {
+            let (min, max) = decode_number_properties(decoder, |decoder| decoder.read_i64())?;
+            Ok(CommandArgumentTemplate::Long { min, max })
+        }
         5 => {
             let string_type = decoder.read_var_i32()?;
-            if !(0..=2).contains(&string_type) {
-                return Err(ProtocolError::InvalidData(format!(
-                    "unknown brigadier string argument type {string_type}"
-                )));
-            }
-            Ok(())
+            let mode = match string_type {
+                0 => CommandStringMode::SingleWord,
+                1 => CommandStringMode::QuotablePhrase,
+                2 => CommandStringMode::GreedyPhrase,
+                _ => {
+                    return Err(ProtocolError::InvalidData(format!(
+                        "unknown brigadier string argument type {string_type}"
+                    )))
+                }
+            };
+            Ok(CommandArgumentTemplate::String { mode })
         }
-        6 | 31 => {
-            decoder.read_u8()?;
-            Ok(())
+        6 => {
+            let flags = decoder.read_u8()?;
+            Ok(CommandArgumentTemplate::Entity {
+                single: flags & 0x01 != 0,
+                players_only: flags & 0x02 != 0,
+            })
         }
-        43 => {
-            decoder.read_i32()?;
-            Ok(())
+        31 => {
+            let flags = decoder.read_u8()?;
+            Ok(CommandArgumentTemplate::ScoreHolder {
+                multiple: flags & 0x01 != 0,
+            })
         }
-        44..=48 => {
-            read_resource_location(decoder)?;
-            Ok(())
-        }
-        id if command_argument_parser_name(id).is_some() => Ok(()),
+        43 => Ok(CommandArgumentTemplate::Time {
+            minimum: decoder.read_i32()?,
+        }),
+        44..=48 => Ok(CommandArgumentTemplate::Registry {
+            registry: read_resource_location(decoder)?,
+        }),
+        id if command_argument_parser_name(id).is_some() => Ok(CommandArgumentTemplate::Unit),
         _ => Err(ProtocolError::InvalidData(format!(
             "unknown command argument parser id {type_id}"
         ))),
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum NumberPropertyWidth {
-    F32,
-    F64,
-    I32,
-    I64,
-}
-
-fn skip_number_properties(decoder: &mut Decoder<'_>, width: NumberPropertyWidth) -> Result<()> {
+fn decode_number_properties<T>(
+    decoder: &mut Decoder<'_>,
+    mut decode_value: impl FnMut(&mut Decoder<'_>) -> Result<T>,
+) -> Result<(Option<T>, Option<T>)> {
     let flags = decoder.read_u8()?;
     if flags & !0x03 != 0 {
         return Err(ProtocolError::InvalidData(format!(
@@ -233,31 +286,13 @@ fn skip_number_properties(decoder: &mut Decoder<'_>, width: NumberPropertyWidth)
         )));
     }
 
-    if flags & 0x01 != 0 {
-        skip_number_property(decoder, width)?;
-    }
-    if flags & 0x02 != 0 {
-        skip_number_property(decoder, width)?;
-    }
-    Ok(())
-}
-
-fn skip_number_property(decoder: &mut Decoder<'_>, width: NumberPropertyWidth) -> Result<()> {
-    match width {
-        NumberPropertyWidth::F32 => {
-            decoder.read_f32()?;
-        }
-        NumberPropertyWidth::F64 => {
-            decoder.read_f64()?;
-        }
-        NumberPropertyWidth::I32 => {
-            decoder.read_i32()?;
-        }
-        NumberPropertyWidth::I64 => {
-            decoder.read_i64()?;
-        }
-    }
-    Ok(())
+    let min = (flags & 0x01 != 0)
+        .then(|| decode_value(decoder))
+        .transpose()?;
+    let max = (flags & 0x02 != 0)
+        .then(|| decode_value(decoder))
+        .transpose()?;
+    Ok((min, max))
 }
 
 fn validate_command_tree(nodes: &[CommandNode], root_index: i32) -> Result<()> {
@@ -474,6 +509,18 @@ mod tests {
             9
         );
         assert_eq!(
+            commands.nodes[1]
+                .parser
+                .as_ref()
+                .unwrap()
+                .template()
+                .unwrap(),
+            CommandArgumentTemplate::Float {
+                min: Some(0.25),
+                max: Some(5.0),
+            }
+        );
+        assert_eq!(
             commands.nodes[2].parser.as_ref().unwrap().name,
             "minecraft:entity"
         );
@@ -482,12 +529,33 @@ mod tests {
             vec![3]
         );
         assert_eq!(
+            commands.nodes[2]
+                .parser
+                .as_ref()
+                .unwrap()
+                .template()
+                .unwrap(),
+            CommandArgumentTemplate::Entity {
+                single: true,
+                players_only: true,
+            }
+        );
+        assert_eq!(
             commands.nodes[3].parser.as_ref().unwrap().name,
             "minecraft:time"
         );
         assert_eq!(
             commands.nodes[3].parser.as_ref().unwrap().properties,
             20i32.to_be_bytes()
+        );
+        assert_eq!(
+            commands.nodes[3]
+                .parser
+                .as_ref()
+                .unwrap()
+                .template()
+                .unwrap(),
+            CommandArgumentTemplate::Time { minimum: 20 }
         );
         assert_eq!(
             commands.nodes[4].parser.as_ref().unwrap().name,
@@ -500,6 +568,53 @@ mod tests {
             commands.nodes[4].parser.as_ref().unwrap().properties,
             expected_resource_properties.into_inner()
         );
+        assert_eq!(
+            commands.nodes[4]
+                .parser
+                .as_ref()
+                .unwrap()
+                .template()
+                .unwrap(),
+            CommandArgumentTemplate::Registry {
+                registry: "minecraft:worldgen/biome".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn every_generated_command_argument_id_has_one_typed_template_family() {
+        for (type_id, name) in VANILLA_COMMAND_ARGUMENT_TYPES.iter().enumerate() {
+            let type_id = type_id as i32;
+            let mut properties = Encoder::new();
+            match type_id {
+                1..=4 => properties.write_u8(0),
+                5 => properties.write_var_i32(0),
+                6 | 31 => properties.write_u8(0),
+                43 => properties.write_i32(0),
+                44..=48 => properties.write_string("minecraft:test"),
+                _ => {}
+            }
+            let parser = CommandArgumentParser {
+                type_id,
+                name: (*name).to_string(),
+                properties: properties.into_inner(),
+            };
+            assert!(
+                parser.template().is_ok(),
+                "generated parser {type_id} {name} has no typed template"
+            );
+        }
+
+        let trailing = CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_BOOL_ID,
+            name: "brigadier:bool".to_string(),
+            properties: vec![0],
+        };
+        assert!(trailing
+            .template()
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes"));
     }
 
     #[test]

@@ -157,32 +157,44 @@ impl CommandTreeState {
     }
 }
 
-impl From<ProtocolCommands> for CommandTreeState {
-    fn from(packet: ProtocolCommands) -> Self {
-        Self {
+impl TryFrom<ProtocolCommands> for CommandTreeState {
+    type Error = String;
+
+    fn try_from(packet: ProtocolCommands) -> Result<Self, Self::Error> {
+        Ok(Self {
             root_index: packet.root_index,
             nodes: packet
                 .nodes
                 .into_iter()
-                .map(CommandNodeState::from)
-                .collect(),
-        }
+                .enumerate()
+                .map(|(index, node)| {
+                    CommandNodeState::try_from(node)
+                        .map_err(|error| format!("command node {index}: {error}"))
+                })
+                .collect::<Result<_, _>>()?,
+        })
     }
 }
 
-impl From<ProtocolCommandNode> for CommandNodeState {
-    fn from(node: ProtocolCommandNode) -> Self {
-        Self {
+impl TryFrom<ProtocolCommandNode> for CommandNodeState {
+    type Error = String;
+
+    fn try_from(node: ProtocolCommandNode) -> Result<Self, Self::Error> {
+        let parser = node
+            .parser
+            .map(CommandArgumentParserState::try_from)
+            .transpose()?;
+        Ok(Self {
             node_type: CommandNodeKindState::from(node.node_type),
             flags: node.flags,
             children: node.children,
             redirect: node.redirect,
             name: node.name,
-            parser: node.parser.map(CommandArgumentParserState::from),
+            parser,
             suggestions: node.suggestions,
             executable: node.executable,
             restricted: node.restricted,
-        }
+        })
     }
 }
 
@@ -196,22 +208,34 @@ impl From<ProtocolCommandNodeType> for CommandNodeKindState {
     }
 }
 
-impl From<ProtocolCommandArgumentParser> for CommandArgumentParserState {
-    fn from(parser: ProtocolCommandArgumentParser) -> Self {
-        Self {
+impl TryFrom<ProtocolCommandArgumentParser> for CommandArgumentParserState {
+    type Error = String;
+
+    fn try_from(parser: ProtocolCommandArgumentParser) -> Result<Self, Self::Error> {
+        parser
+            .template()
+            .map_err(|error| format!("invalid {} template: {error}", parser.name))?;
+        Ok(Self {
             type_id: parser.type_id,
             name: parser.name,
             properties: parser.properties,
-        }
+        })
     }
 }
 
 impl WorldStore {
-    pub fn apply_commands(&mut self, packet: ProtocolCommands) -> &CommandTreeState {
+    pub fn apply_commands(&mut self, packet: ProtocolCommands) -> bool {
         self.counters.command_tree_packets += 1;
-        self.commands = CommandTreeState::from(packet);
+        let commands = match CommandTreeState::try_from(packet) {
+            Ok(commands) => commands,
+            Err(error) => {
+                self.record_apply_error("command_tree", error);
+                return false;
+            }
+        };
+        self.commands = commands;
         self.update_command_tree_counters();
-        &self.commands
+        true
     }
 
     pub fn commands(&self) -> &CommandTreeState {
@@ -445,6 +469,34 @@ mod tests {
     }
 
     #[test]
+    fn command_tree_replacement_rejects_invalid_typed_template_atomically() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_commands(command_tree("say", "minecraft:message")));
+        let retained = store.commands().clone();
+
+        let mut invalid = command_tree("speed", "brigadier:string");
+        invalid.nodes[2]
+            .parser
+            .as_mut()
+            .expect("fixture argument parser")
+            .properties
+            .push(0);
+        assert!(!store.apply_commands(invalid));
+
+        assert_eq!(store.commands(), &retained);
+        assert_eq!(store.counters().command_tree_packets, 2);
+        assert_eq!(store.counters().command_nodes_tracked, 3);
+        assert_eq!(store.counters().world_apply_errors, 1);
+        assert!(store
+            .apply_diagnostics()
+            .last_apply_error
+            .as_ref()
+            .is_some_and(
+                |error| error.source == "command_tree" && error.message.contains("trailing bytes")
+            ));
+    }
+
+    #[test]
     fn detects_signable_message_argument_commands() {
         let mut store = WorldStore::new();
         store.apply_commands(command_tree("say", "minecraft:message"));
@@ -541,7 +593,9 @@ mod tests {
                             VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID
                         },
                         name: parser_name.to_string(),
-                        properties: vec![2],
+                        properties: (parser_name == "brigadier:string")
+                            .then_some(vec![2])
+                            .unwrap_or_default(),
                     }),
                     suggestions: Some("minecraft:ask_server".to_string()),
                     executable: true,
@@ -586,7 +640,9 @@ mod tests {
                     parser: Some(CommandArgumentParser {
                         type_id: VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
                         name: "minecraft:entity".to_string(),
-                        properties: Vec::new(),
+                        // Vanilla EntityArgument.Info flags: multiple entities,
+                        // not players-only.
+                        properties: vec![0],
                     }),
                     suggestions: None,
                     executable: false,

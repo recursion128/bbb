@@ -5277,7 +5277,7 @@ mod tests {
                     parser: Some(CommandArgumentParser {
                         type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
                         name: "minecraft:message".to_string(),
-                        properties: vec![2],
+                        properties: Vec::new(),
                     }),
                     suggestions: Some("minecraft:ask_server".to_string()),
                     executable: true,

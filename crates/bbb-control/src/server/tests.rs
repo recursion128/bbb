@@ -4382,7 +4382,7 @@ fn command_tree(literal: &str) -> Commands {
                 parser: Some(CommandArgumentParser {
                     type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
                     name: "brigadier:string".to_string(),
-                    properties: vec![1, 2],
+                    properties: vec![1],
                 }),
                 suggestions: Some("minecraft:ask_server".to_string()),
                 executable: true,
