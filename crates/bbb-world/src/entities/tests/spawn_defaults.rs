@@ -430,3 +430,135 @@ fn projectile_vehicle_display_mutations_reset_without_touching_retained_generati
             .has_been_shot
     );
 }
+
+#[test]
+fn living_passive_defaults_use_generated_attributes_and_fresh_body_yaw() {
+    let mut store = WorldStore::new();
+    let mut spawned = 0;
+    for entry in VANILLA_ENTITY_TYPES {
+        if spawn_default_family(entry.id) != SpawnDefaultFamily::LivingPassive {
+            continue;
+        }
+        let entity_id = 6_000 + entry.id;
+        store.apply_add_entity(add_entity_with_uuid(
+            entity_id,
+            entry.id,
+            uuid::Uuid::from_u128(0x3000_0000_0000_0000 + entry.id as u128),
+        ));
+        let metadata = &VANILLA_ENTITY_TYPE_METADATA_26_1[entry.id as usize];
+        let entity = store.probe_entity(entity_id).unwrap();
+        assert!(metadata.is_living, "{}", entry.resource_id);
+        assert!(
+            !metadata.default_attributes.is_empty(),
+            "{}",
+            entry.resource_id
+        );
+        assert!(entity.attributes.is_empty(), "{}", entry.resource_id);
+        assert!(entity.data_values.is_empty(), "{}", entry.resource_id);
+        assert_eq!(
+            entity.client_animations.spawn_body_y_rot,
+            Some(30.0),
+            "{}",
+            entry.resource_id
+        );
+        assert_eq!(
+            entity.client_animations.age_ticks, 0,
+            "{}",
+            entry.resource_id
+        );
+        assert_eq!(entity.client_animations.item_bob_offset, None);
+        assert_eq!(entity.client_animations.end_crystal_time_offset, None);
+        spawned += 1;
+    }
+    assert_eq!(spawned, 47);
+}
+
+#[test]
+fn living_passive_tick_owners_reset_without_touching_retained_generation() {
+    let chicken_id = 7_001;
+    let squid_id = 7_002;
+    let camel_id = 7_003;
+    let horse_id = 7_004;
+    let mut store = WorldStore::new();
+    for (entity_id, entity_type_id) in [
+        (chicken_id, VANILLA_ENTITY_TYPE_CHICKEN_ID),
+        (squid_id, VANILLA_ENTITY_TYPE_SQUID_ID),
+        (camel_id, VANILLA_ENTITY_TYPE_CAMEL_ID),
+        (horse_id, VANILLA_ENTITY_TYPE_HORSE_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(entity_id, entity_type_id));
+    }
+    let generation_a = store.publication_snapshot();
+    store.advance_entity_client_animations(1);
+
+    assert!(store
+        .probe_entity(chicken_id)
+        .unwrap()
+        .client_animations
+        .chicken_flap
+        .is_some());
+    assert!(store
+        .probe_entity(squid_id)
+        .unwrap()
+        .client_animations
+        .squid
+        .is_some());
+    assert!(store
+        .probe_entity(camel_id)
+        .unwrap()
+        .client_animations
+        .camel_idle
+        .is_some());
+    assert!(store
+        .probe_entity(horse_id)
+        .unwrap()
+        .client_animations
+        .equine_tail
+        .is_some());
+    for entity_id in [chicken_id, squid_id, camel_id, horse_id] {
+        assert_eq!(
+            store
+                .probe_entity(entity_id)
+                .unwrap()
+                .client_animations
+                .age_ticks,
+            1
+        );
+        assert_eq!(
+            generation_a
+                .probe_entity(entity_id)
+                .unwrap()
+                .client_animations
+                .age_ticks,
+            0
+        );
+    }
+    assert!(generation_a
+        .probe_entity(chicken_id)
+        .unwrap()
+        .client_animations
+        .chicken_flap
+        .is_none());
+    assert!(generation_a
+        .probe_entity(squid_id)
+        .unwrap()
+        .client_animations
+        .squid
+        .is_none());
+
+    for (entity_id, entity_type_id) in [
+        (chicken_id, VANILLA_ENTITY_TYPE_CHICKEN_ID),
+        (squid_id, VANILLA_ENTITY_TYPE_SQUID_ID),
+        (camel_id, VANILLA_ENTITY_TYPE_CAMEL_ID),
+        (horse_id, VANILLA_ENTITY_TYPE_COW_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(entity_id, entity_type_id));
+        let animations = store.probe_entity(entity_id).unwrap().client_animations;
+        assert_eq!(animations.age_ticks, 0);
+        assert_eq!(animations.spawn_body_y_rot, Some(30.0));
+        assert!(animations.chicken_flap.is_none());
+        assert!(animations.squid.is_none());
+        assert!(animations.camel_idle.is_none());
+        assert!(animations.equine_tail.is_none());
+    }
+}

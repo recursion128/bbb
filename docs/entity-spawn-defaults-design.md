@@ -150,6 +150,23 @@ then proves the old publication is unchanged and successful same-id AddEntity
 restores each fresh owner. Constructor fields used only by server motion,
 collision, inventory or lifetime logic do not become client canonical state.
 
+### Living/passive constructor audit
+
+The 47 non-monster living types all use the generated `DefaultAttributes`
+supplier profile while keeping the canonical attribute update map empty at
+spawn. `LivingEntity.recreateFromPacket` seeds the fresh body-yaw endpoint from
+the AddEntity head yaw; the exhaustive group test proves that owner for every
+type in this partition.
+
+Constructor accumulators needed by chicken/parrot flapping, squid tentacles,
+equine tails/poses, camel idling, wolf wetness and similar presentation paths
+remain in `EntityClientAnimationState` and are created only when their client
+tick or metadata transition first needs them. A cross-family test advances
+representative chicken, squid, camel and horse owners, retains the pre-tick
+publication, and then re-adds the ids (including horse-to-cow type reuse). The
+old generation remains fresh and every live optional owner returns to its
+constructor state; no server AI or parallel living-family table is introduced.
+
 ## Serial Phases, Tests, and Gates
 
 1. **Contract and baseline.** Record this contract, the 156-partial baseline,
