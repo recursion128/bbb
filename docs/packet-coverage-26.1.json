@@ -6595,7 +6595,8 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/entities.rs#apply_add_entity",
+            "crates/bbb-world/src/entities/spawn.rs#apply_add_entity_packet",
+            "crates/bbb-world/src/entities/spawn.rs#packet_entity_type_uses_session_resource_identity_not_holder_ordinal",
             "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddEntity"
           ],

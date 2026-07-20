@@ -12,7 +12,7 @@
   "evidence_sets": {
     "generic_spawn": {
       "implementation": [
-        "crates/bbb-world/src/entities.rs#pub fn apply_add_entity"
+        "crates/bbb-world/src/entities/spawn.rs#pub fn apply_add_entity"
       ],
       "tests": [
         "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
@@ -175,7 +175,7 @@
     },
     "turtle_spawn_defaults": {
       "implementation": [
-        "crates/bbb-world/src/entities.rs#pub fn apply_add_entity",
+        "crates/bbb-world/src/entities/spawn.rs#pub fn apply_add_entity",
         "crates/bbb-world/src/entities/store.rs#pub(crate) fn apply_add_entity_components",
         "crates/bbb-world/src/entities/store.rs#pub(crate) fn attribute_value",
         "crates/bbb-world/src/entities/store.rs#fn vanilla_default_attribute_base",
