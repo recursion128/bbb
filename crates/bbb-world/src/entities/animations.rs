@@ -320,6 +320,8 @@ pub struct EntityClientAnimationState {
     pub polar_bear_standing: Option<PolarBearStandingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shulker_peek: Option<ShulkerPeekAnimationState>,
+    #[serde(skip)]
+    pub(crate) shulker_teleport: Option<ShulkerTeleportAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bee_roll: Option<BeeRollAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1080,6 +1082,16 @@ pub struct ShulkerPeekAnimationState {
     pub target_peek_amount: f32,
     pub previous_peek_amount: f32,
     pub current_peek_amount: f32,
+}
+
+/// Vanilla Shulker's client-only attach-position transition. Shulkers do not
+/// use the generic entity interpolation handler: a block-position change snaps
+/// the canonical transform and renders a six-tick quadratic offset from the
+/// previous attachment block instead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ShulkerTeleportAnimationState {
+    pub old_attach_position: Option<[i32; 3]>,
+    pub interpolation_ticks: u8,
 }
 
 /// Canonical client-side bee barrel-roll animation, mirroring vanilla
@@ -4603,6 +4615,67 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.peek_amount(partial_tick))
     }
 
+    pub(crate) fn record_shulker_position_change(
+        &mut self,
+        old_position: EntityVec3,
+        current_position: EntityVec3,
+        is_passenger: bool,
+    ) -> bool {
+        if self.age_ticks == 0 || is_passenger {
+            return false;
+        }
+        let old_block = entity_block_position(old_position);
+        let current_block = entity_block_position(current_position);
+        if old_block == current_block {
+            return false;
+        }
+        let state = self
+            .shulker_teleport
+            .get_or_insert(ShulkerTeleportAnimationState {
+                old_attach_position: None,
+                interpolation_ticks: 0,
+            });
+        if state.old_attach_position == Some(current_block) {
+            return false;
+        }
+        state.old_attach_position = Some(old_block);
+        state.interpolation_ticks = 6;
+        true
+    }
+
+    pub(crate) fn shulker_started_riding(&mut self) {
+        self.shulker_teleport = None;
+    }
+
+    pub(crate) fn shulker_stopped_riding(&mut self, position: EntityVec3) {
+        self.shulker_teleport = Some(ShulkerTeleportAnimationState {
+            old_attach_position: Some(entity_block_position(position)),
+            interpolation_ticks: 0,
+        });
+    }
+
+    pub(crate) fn shulker_render_offset(
+        &self,
+        current_position: EntityVec3,
+        partial_tick: f32,
+        scale: f32,
+    ) -> Option<EntityVec3> {
+        let state = self.shulker_teleport?;
+        let old = state.old_attach_position?;
+        if state.interpolation_ticks == 0 {
+            return None;
+        }
+        let current = entity_block_position(current_position);
+        let mut progress = (f32::from(state.interpolation_ticks) - partial_tick) / 6.0;
+        progress *= progress;
+        let progress = f64::from(progress * scale);
+        Some(EntityVec3 {
+            x: -f64::from(current[0] - old[0]) * progress,
+            y: -f64::from(current[1] - old[1]) * progress,
+            z: -f64::from(current[2] - old[2]) * progress,
+        })
+    }
+
     /// Vanilla `Bee.getRollAmount(partialTick)` projected for the renderer
     /// `BeeModel.setupAnim` barrel-roll flip. Returns `0.0` when the entity is
     /// not a rolling bee.
@@ -5648,6 +5721,14 @@ impl EntityClientAnimationState {
                 if let Some(peek) = self.shulker_peek.as_mut() {
                     peek.advance_client_tick();
                 }
+                if let Some(teleport) = self.shulker_teleport.as_mut() {
+                    if teleport.interpolation_ticks > 0 {
+                        teleport.interpolation_ticks -= 1;
+                        if teleport.interpolation_ticks == 0 {
+                            teleport.old_attach_position = None;
+                        }
+                    }
+                }
             }
             VANILLA_ENTITY_TYPE_BEE_ID => {
                 if let Some(roll) = self.bee_roll.as_mut() {
@@ -6312,6 +6393,14 @@ impl WorldStore {
 
 pub(super) fn entity_chunk_coordinate(position: f64) -> i32 {
     (position.floor() as i32).div_euclid(16)
+}
+
+fn entity_block_position(position: EntityVec3) -> [i32; 3] {
+    [
+        position.x.floor() as i32,
+        position.y.floor() as i32,
+        position.z.floor() as i32,
+    ]
 }
 
 pub(crate) fn boat_paddle_states(

@@ -81,7 +81,10 @@ use crate::{
     bed_scene::bed_model_instances_from_world,
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
-    camera_pose::{camera_hurt_effect_from_world, camera_pose_from_world},
+    camera_pose::{
+        camera_hurt_effect_from_world, camera_pose_from_world,
+        camera_pose_from_world_at_partial_tick,
+    },
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
@@ -2281,7 +2284,7 @@ pub(crate) fn advance_simulation(
     let clear_color = clear_color_for_world_at_camera_with_water_vision(
         world,
         terrain_textures,
-        camera_pose_from_world(world),
+        camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
         render_distance_chunks,
         water_vision,
         hide_lightning_flash,
@@ -2290,7 +2293,7 @@ pub(crate) fn advance_simulation(
         fog_environment_for_world_at_camera(
             world,
             terrain_textures,
-            camera_pose_from_world(world),
+            camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
             render_distance_chunks,
             water_vision,
             rain_fog_multiplier,
@@ -2302,7 +2305,7 @@ pub(crate) fn advance_simulation(
     let sky_environment = sky_environment_for_world_at_camera(
         world,
         terrain_textures,
-        camera_pose_from_world(world),
+        camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
         hide_lightning_flash,
     );
     let cloud_environment = cloud_environment_for_world(world);
@@ -2370,7 +2373,7 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
     );
     world.advance_local_using_item_ticks(advanced_ticks);
-    let particle_camera_pose = camera_pose_from_world(world);
+    let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
     let particle_scope_context =
         particle_local_player_scope_context(world, item_runtime.as_ref(), particle_camera_pose);
     let particle_sound_camera_position =
@@ -2764,7 +2767,7 @@ pub(crate) fn update_renderer_from_publication(
     let trim_pattern_keys = item_registry_keys.trim_patterns;
     let enchantment_keys = item_registry_keys.enchantments;
     let attribute_keys = item_registry_keys.attributes;
-    let camera_pose = camera_pose_from_world(world);
+    let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
     let camera_fov_degrees = camera_fov_ticks.fov_degrees(entity_partial_tick);

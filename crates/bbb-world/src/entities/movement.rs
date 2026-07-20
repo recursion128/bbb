@@ -20,27 +20,32 @@ impl WorldStore {
         let ticking = self.entity_is_ticking(packet.id);
         let interpolation_steps = self.entity_interpolation_steps(packet.id);
         let position = entity_vec3(packet.position);
-        let Some(is_interpolating) = self.entities.with_transform_mut(packet.id, |transform| {
-            transform.position_base = position;
-            if locally_authoritative {
-                return transform.interpolation_target().is_some();
-            }
-            if ticking && entity_distance_squared(transform.position, position) <= 4096.0 {
-                transform.move_or_interpolate_to(
-                    interpolation_steps,
-                    Some(position),
-                    Some(packet.y_rot),
-                    Some(packet.x_rot),
-                );
-            } else {
-                transform.snap_to(position, packet.y_rot, packet.x_rot);
-            }
-            transform.on_ground = Some(packet.on_ground);
-            transform.interpolation_target().is_some()
-        }) else {
+        let Some((is_interpolating, old_position)) =
+            self.entities.with_transform_mut(packet.id, |transform| {
+                let old_position = transform.position;
+                transform.position_base = position;
+                if locally_authoritative {
+                    return (transform.interpolation_target().is_some(), old_position);
+                }
+                if ticking && entity_distance_squared(transform.position, position) <= 4096.0 {
+                    transform.move_or_interpolate_to(
+                        interpolation_steps,
+                        Some(position),
+                        Some(packet.y_rot),
+                        Some(packet.x_rot),
+                    );
+                } else {
+                    transform.snap_to(position, packet.y_rot, packet.x_rot);
+                }
+                transform.on_ground = Some(packet.on_ground);
+                (transform.interpolation_target().is_some(), old_position)
+            })
+        else {
             self.counters.entity_position_syncs_ignored += 1;
             return false;
         };
+        self.entities
+            .finish_shulker_position_change(packet.id, old_position);
         if !locally_authoritative {
             self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
             if !is_interpolating {
@@ -55,7 +60,8 @@ impl WorldStore {
         self.counters.entity_moves_received += 1;
         let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
         let interpolation_steps = self.entity_interpolation_steps(packet.id);
-        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
+        let Some(old_position) = self.entities.with_transform_mut(packet.id, |transform| {
+            let old_position = transform.position;
             let position = if packet.has_position {
                 let position = decode_entity_delta_position(
                     transform.position_base,
@@ -69,7 +75,7 @@ impl WorldStore {
                 None
             };
             if locally_authoritative {
-                return;
+                return old_position;
             }
             if position.is_some() || packet.y_rot.is_some() || packet.x_rot.is_some() {
                 transform.move_or_interpolate_to(
@@ -80,10 +86,13 @@ impl WorldStore {
                 );
             }
             transform.on_ground = Some(packet.on_ground);
+            old_position
         }) else {
             self.counters.entity_moves_ignored += 1;
             return false;
         };
+        self.entities
+            .finish_shulker_position_change(packet.id, old_position);
         if !locally_authoritative {
             self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         }
@@ -207,61 +216,66 @@ impl WorldStore {
         let has_relative_position = packet.relatives_mask
             & (PLAYER_RELATIVE_X | PLAYER_RELATIVE_Y | PLAYER_RELATIVE_Z)
             != 0;
-        let Some(was_interpolated) = self.entities.with_transform_mut(packet.id, |transform| {
-            let (source_position, source_y_rot, source_x_rot) = transform
-                .interpolation_target()
-                .unwrap_or((transform.position, transform.y_rot, transform.x_rot));
-            let absolute = entity_absolute_move_rotation(
-                source_position,
-                transform.delta_movement,
-                source_y_rot,
-                source_x_rot,
-                packet.position,
-                packet.delta_movement,
-                packet.y_rot,
-                packet.x_rot,
-                packet.relatives_mask,
-            );
-            let interpolate = ticking || !locally_authoritative || has_relative_position;
-            let too_big_to_interpolate =
-                entity_distance_squared(source_position, absolute.position) > 4096.0;
-            let was_interpolated = interpolate && !too_big_to_interpolate;
-            if was_interpolated {
-                transform.move_or_interpolate_to(
-                    interpolation_steps,
-                    Some(absolute.position),
-                    Some(absolute.y_rot),
-                    Some(absolute.x_rot),
-                );
-                transform.delta_movement = absolute.delta_movement;
-            } else {
-                transform.position = absolute.position;
-                transform.delta_movement = absolute.delta_movement;
-                transform.set_y_rot(absolute.y_rot);
-                transform.set_x_rot(absolute.x_rot);
-                let old_absolute = entity_absolute_move_rotation(
-                    transform.old_position,
-                    EntityVec3::default(),
-                    transform.old_y_rot,
-                    transform.old_x_rot,
+        let Some((was_interpolated, old_position)) =
+            self.entities.with_transform_mut(packet.id, |transform| {
+                let old_position = transform.position;
+                let (source_position, source_y_rot, source_x_rot) = transform
+                    .interpolation_target()
+                    .unwrap_or((transform.position, transform.y_rot, transform.x_rot));
+                let absolute = entity_absolute_move_rotation(
+                    source_position,
+                    transform.delta_movement,
+                    source_y_rot,
+                    source_x_rot,
                     packet.position,
                     packet.delta_movement,
                     packet.y_rot,
                     packet.x_rot,
                     packet.relatives_mask,
                 );
-                transform.set_old_pos_and_rot_to(
-                    old_absolute.position,
-                    old_absolute.y_rot,
-                    old_absolute.x_rot,
-                );
-            }
-            transform.on_ground = Some(packet.on_ground);
-            was_interpolated
-        }) else {
+                let interpolate = ticking || !locally_authoritative || has_relative_position;
+                let too_big_to_interpolate =
+                    entity_distance_squared(source_position, absolute.position) > 4096.0;
+                let was_interpolated = interpolate && !too_big_to_interpolate;
+                if was_interpolated {
+                    transform.move_or_interpolate_to(
+                        interpolation_steps,
+                        Some(absolute.position),
+                        Some(absolute.y_rot),
+                        Some(absolute.x_rot),
+                    );
+                    transform.delta_movement = absolute.delta_movement;
+                } else {
+                    transform.position = absolute.position;
+                    transform.delta_movement = absolute.delta_movement;
+                    transform.set_y_rot(absolute.y_rot);
+                    transform.set_x_rot(absolute.x_rot);
+                    let old_absolute = entity_absolute_move_rotation(
+                        transform.old_position,
+                        EntityVec3::default(),
+                        transform.old_y_rot,
+                        transform.old_x_rot,
+                        packet.position,
+                        packet.delta_movement,
+                        packet.y_rot,
+                        packet.x_rot,
+                        packet.relatives_mask,
+                    );
+                    transform.set_old_pos_and_rot_to(
+                        old_absolute.position,
+                        old_absolute.y_rot,
+                        old_absolute.x_rot,
+                    );
+                }
+                transform.on_ground = Some(packet.on_ground);
+                (was_interpolated, old_position)
+            })
+        else {
             self.counters.entity_teleports_ignored += 1;
             return (false, None, None);
         };
+        self.entities
+            .finish_shulker_position_change(packet.id, old_position);
         self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_teleports_applied += 1;
         let vehicle_report = (!was_interpolated

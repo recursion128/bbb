@@ -105,6 +105,84 @@ fn living_passenger_body_rotation_follows_interpolated_living_vehicle() {
 }
 
 #[test]
+fn shulker_mount_edges_reset_attach_position_interpolation() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_SHULKER_ID,
+    ));
+    store.advance_entity_client_animations(1);
+    let initial = store.entities.transform(20).unwrap().position;
+    let move_shulker = |store: &mut WorldStore, x: f64| {
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 20,
+            position: ProtocolVec3d {
+                x,
+                y: initial.y,
+                z: initial.z,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: false,
+        })
+    };
+
+    assert!(move_shulker(&mut store, initial.x + 3.0));
+    assert_eq!(
+        store
+            .probe_entity(20)
+            .unwrap()
+            .client_animations
+            .shulker_teleport
+            .unwrap()
+            .interpolation_ticks,
+        6
+    );
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    assert_eq!(
+        store
+            .probe_entity(20)
+            .unwrap()
+            .client_animations
+            .shulker_teleport,
+        None
+    );
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![],
+    }));
+    let stopped = store
+        .probe_entity(20)
+        .unwrap()
+        .client_animations
+        .shulker_teleport
+        .unwrap();
+    assert_eq!(stopped.interpolation_ticks, 0);
+    assert!(stopped.old_attach_position.is_some());
+
+    assert!(move_shulker(&mut store, initial.x + 6.0));
+    assert_eq!(
+        store
+            .probe_entity(20)
+            .unwrap()
+            .client_animations
+            .shulker_teleport
+            .unwrap()
+            .interpolation_ticks,
+        6
+    );
+}
+
+#[test]
 fn debug_passenger_vehicle_targets_follow_vanilla_boat_attachment_slab() {
     let mut store = WorldStore::new();
     store.apply_add_entity(ProtocolAddEntity {

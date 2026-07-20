@@ -471,11 +471,29 @@ fn relative_move_handler_overrides_snap_non_interpolating_entities() {
         }));
     }
 
-    for id in [201, 202, 203] {
+    for id in [201, 203] {
         let entity = store.probe_entity(id).unwrap();
         assert_eq!(entity.position, entity.position_base);
         assert_eq!(entity.interpolation, None);
     }
+    let shulker = store.probe_entity(202).unwrap();
+    assert_eq!(
+        shulker.position_base,
+        EntityVec3 {
+            x: 2.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert_eq!(
+        shulker.position,
+        EntityVec3 {
+            x: 2.5,
+            y: 64.0,
+            z: -1.5,
+        }
+    );
+    assert_eq!(shulker.interpolation, None);
     for id in [201, 202] {
         let entity = store.probe_entity(id).unwrap();
         assert_eq!(entity.y_rot, 90.0);
@@ -2495,4 +2513,45 @@ fn entity_camera_pose_uses_vanilla_eye_height() {
     assert!((store.probe_entity_camera_pose(125).unwrap().eye_height - 1.7775).abs() < 0.0001);
     assert!((store.probe_entity_camera_pose(126).unwrap().eye_height - 0.13).abs() < 0.0001);
     assert_eq!(store.probe_entity_camera_pose(404), None);
+}
+
+#[test]
+fn entity_camera_pose_uses_partial_transform_endpoints() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        127,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.advance_entity_client_animations(1);
+    store.entities.with_transform_mut(127, |transform| {
+        transform.old_position = EntityVec3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        transform.position = EntityVec3 {
+            x: 5.0,
+            y: 6.0,
+            z: 7.0,
+        };
+        transform.old_y_rot = 170.0;
+        transform.y_rot = -170.0;
+        transform.old_x_rot = -20.0;
+        transform.x_rot = 20.0;
+    });
+
+    let pose = store
+        .probe_entity_camera_pose_at_partial_tick(127, 0.5)
+        .unwrap();
+    assert_eq!(
+        pose.position,
+        EntityVec3 {
+            x: 3.0,
+            y: 4.0,
+            z: 5.0,
+        }
+    );
+    assert_eq!(pose.y_rot, 180.0);
+    assert_eq!(pose.x_rot, 0.0);
+    assert_eq!(store.probe_entity_camera_pose(127).unwrap().y_rot, -170.0);
 }

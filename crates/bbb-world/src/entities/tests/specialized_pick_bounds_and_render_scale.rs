@@ -738,6 +738,118 @@ fn shulker_pick_bounds_follow_attach_face_and_peek_metadata() {
 }
 
 #[test]
+fn shulker_block_snap_uses_quadratic_render_offset_and_retained_generation() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        89,
+        VANILLA_ENTITY_TYPE_SHULKER_ID,
+    ));
+    store.advance_entity_client_animations(1);
+    let old_position = store.entities.transform(89).unwrap().position;
+    let packet_position = EntityVec3 {
+        x: old_position.x + 3.2,
+        y: old_position.y + 0.2,
+        z: old_position.z + 0.2,
+    };
+    let new_position = EntityVec3 {
+        x: packet_position.x.floor() + 0.5,
+        y: (packet_position.y + 0.5).floor(),
+        z: packet_position.z.floor() + 0.5,
+    };
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 89,
+            position: ProtocolVec3d {
+                x: packet_position.x,
+                y: packet_position.y,
+                z: packet_position.z,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: -170.0,
+            x_rot: 20.0,
+            on_ground: false,
+        })
+    );
+    store.entities.with_transform_mut(89, |transform| {
+        transform.old_y_rot = 170.0;
+        transform.old_y_head_rot = 170.0;
+        transform.y_head_rot = -170.0;
+    });
+
+    let transform = store.entities.transform(89).unwrap();
+    assert_eq!(transform.old_position, transform.position);
+    assert_eq!(transform.position_base, packet_position);
+    assert_eq!(transform.position, new_position);
+    let animation = store.probe_entity(89).unwrap().client_animations;
+    assert_eq!(
+        animation.shulker_teleport,
+        Some(crate::entities::animations::ShulkerTeleportAnimationState {
+            old_attach_position: Some([
+                old_position.x.floor() as i32,
+                old_position.y.floor() as i32,
+                old_position.z.floor() as i32,
+            ]),
+            interpolation_ticks: 6,
+        })
+    );
+    let serialized_animation = serde_json::to_value(&animation).unwrap();
+    assert!(
+        serialized_animation.get("shulker_teleport").is_none(),
+        "client-only Shulker interpolation must not expand the probe JSON shape"
+    );
+
+    let source = store
+        .entity_model_source_at_partial_tick(89, 0.0)
+        .expect("shulker source");
+    assert_eq!(source.position, old_position);
+    assert_eq!(source.y_rot, -170.0);
+    assert_eq!(source.y_head_rot, -170.0);
+    let candidate = store.entity_render_candidates_at_partial_tick(0.0)[0];
+    assert_eq!(candidate.position, new_position);
+    assert!(
+        candidate.bounds.min[0] < -3.0,
+        "culling bounds must retain the old attachment endpoint"
+    );
+    assert!(
+        store.entity_render_candidates_at_partial_tick(1.0)[0]
+            .bounds
+            .min[0]
+            < -3.0,
+        "Shulker culling uses the complete transition even late in the frame"
+    );
+
+    let generation_a = store.publication_snapshot();
+    let generation_a_source = generation_a
+        .entity_model_source_at_partial_tick(89, 0.0)
+        .expect("retained shulker source");
+    store.advance_entity_client_animations(1);
+    let generation_b_source = store
+        .entity_model_source_at_partial_tick(89, 0.0)
+        .expect("advanced shulker source");
+    assert_eq!(generation_a_source.position, old_position);
+    assert!(generation_b_source.position.x > generation_a_source.position.x);
+    assert_eq!(
+        generation_a
+            .probe_entity(89)
+            .unwrap()
+            .client_animations
+            .shulker_teleport
+            .unwrap()
+            .interpolation_ticks,
+        6
+    );
+
+    store.advance_entity_client_animations(5);
+    assert_eq!(
+        store
+            .entity_model_source_at_partial_tick(89, 0.0)
+            .unwrap()
+            .position,
+        new_position
+    );
+}
+
+#[test]
 fn shulker_peek_pick_bounds_advance_toward_metadata_target() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

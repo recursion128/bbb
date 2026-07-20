@@ -221,6 +221,22 @@ projectile/fishing-hook consumers retain their dedicated owners. They may share
 canonical endpoints, but no special render owner may become an independently
 mutable transform path.
 
+Renderer extraction now derives generic position, yaw, pitch, and living head
+yaw from the canonical previous/current endpoints before visibility culling;
+the survivor projection consumes the exact candidate position. Living riders
+apply Vanilla's vehicle-body `solveBodyRot`, while new minecarts retain their
+weighted track-step override. Shulker block snaps are the deliberate exception:
+the canonical transform endpoints snap together and a client-owned six-tick
+quadratic old-attachment offset expands culling bounds and shifts the projected
+model. Riding clears that offset, dismount records the current attachment, and
+retained publications clone the internal, serde-skipped state rather than
+sharing a mutable renderer cache or expanding the control/probe JSON shape.
+Its packet codec base remains the exact wire position while the non-passenger
+canonical transform follows `Shulker.setPos`'s block-center normalization.
+Local-player and detached-camera render poses likewise interpolate the
+canonical previous/current tick endpoints; input ownership still consumes the
+exact current pose, so render partial tick never feeds back into simulation.
+
 ## Baseline and Required Tests
 
 The phase-1 baseline records all 157 ledger rows as `partial`, one shared

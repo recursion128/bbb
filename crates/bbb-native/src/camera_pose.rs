@@ -2,10 +2,19 @@ use bbb_renderer::{CameraHurtEffect, CameraPose};
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 
 pub(crate) fn camera_pose_from_world(world: &WorldStore) -> Option<CameraPose> {
+    camera_pose_from_world_at_partial_tick(world, 1.0)
+}
+
+pub(crate) fn camera_pose_from_world_at_partial_tick(
+    world: &WorldStore,
+    partial_ticks: f32,
+) -> Option<CameraPose> {
     let camera = world.local_player().camera;
     if let Some(camera_id) = camera.entity_id {
         if !camera.follows_player {
-            if let Some(camera_pose) = world.probe_entity_camera_pose(camera_id) {
+            if let Some(camera_pose) =
+                world.probe_entity_camera_pose_at_partial_tick(camera_id, partial_ticks)
+            {
                 return Some(CameraPose {
                     position: [
                         camera_pose.position.x as f32,
@@ -21,7 +30,7 @@ pub(crate) fn camera_pose_from_world(world: &WorldStore) -> Option<CameraPose> {
     }
 
     world
-        .local_player_pose()
+        .local_player_pose_at_partial_tick(partial_ticks)
         .map(camera_pose_from_local_player_pose)
 }
 
@@ -57,5 +66,47 @@ fn camera_pose_from_local_player_pose(player: LocalPlayerPoseState) -> CameraPos
         y_rot: player.y_rot,
         x_rot: player.x_rot,
         eye_height: player.eye_height() as f32,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_protocol::packets::Vec3d;
+    use bbb_world::LocalPlayerInputState;
+
+    #[test]
+    fn render_camera_uses_local_player_tick_endpoints() {
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: 0.0,
+                y: 64.0,
+                z: 0.0,
+            },
+            y_rot: 170.0,
+            ..LocalPlayerPoseState::default()
+        });
+        let current = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    mouse_delta_x: 200.0,
+                    ..LocalPlayerInputState::default()
+                },
+                0.05,
+            )
+            .unwrap();
+
+        let old = camera_pose_from_world_at_partial_tick(&world, 0.0).unwrap();
+        let mid = camera_pose_from_world_at_partial_tick(&world, 0.5).unwrap();
+        let end = camera_pose_from_world(&world).unwrap();
+        assert_eq!(old.position, [0.0, 64.0, 0.0]);
+        assert_eq!(end.position[2], current.position.z as f32);
+        assert_eq!(mid.position[2], end.position[2] * 0.5);
+        assert_eq!(old.y_rot, 170.0);
+        assert_eq!(mid.y_rot, 182.0);
+        assert_eq!(end.y_rot, current.y_rot);
     }
 }

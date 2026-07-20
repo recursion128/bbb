@@ -9,14 +9,16 @@ use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_EMERGING_ID;
 use bbb_protocol::entity_types::{
     vanilla_entity_type_for_resource_id, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_WARDEN_ID,
+    VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
 };
 use bbb_protocol::packets::{AddEntity as ProtocolAddEntity, EntityDataValue, EntityDataValueKind};
 
 use crate::WorldStore;
 
 use super::components::{EntityIdentity, EntityTransform};
-use super::dimensions::vanilla_client_position_for_entity_data;
+use super::dimensions::{
+    vanilla_client_position_for_entity_data, vanilla_shulker_attached_position,
+};
 use super::movement::entity_vec3;
 use super::schema::vanilla_entity_metadata_entity_accessors;
 
@@ -102,14 +104,18 @@ impl WorldStore {
             entity_type_id: packet.entity_type_id,
             data: packet.data,
         };
-        let client_position = vanilla_client_position_for_entity_data(
-            packet.entity_type_id,
-            packet_position,
-            packet.data,
-            &[],
-            None,
-        )
-        .unwrap_or(packet_position);
+        let client_position = if packet.entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
+            vanilla_shulker_attached_position(packet_position)
+        } else {
+            vanilla_client_position_for_entity_data(
+                packet.entity_type_id,
+                packet_position,
+                packet.data,
+                &[],
+                None,
+            )
+            .unwrap_or(packet_position)
+        };
         let transform = EntityTransform {
             position: client_position,
             old_position: client_position,

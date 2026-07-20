@@ -102,7 +102,7 @@ use crate::entities::dimensions::{
     vanilla_living_entity_type, vanilla_local_player_passenger_position_for_entity_data,
     vanilla_model_source_bounds_for_entity_data, vanilla_passenger_position_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
-    vanilla_render_scale,
+    vanilla_render_scale, vanilla_shulker_attached_position,
 };
 use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
@@ -1526,6 +1526,19 @@ impl EntityStore {
             ) {
                 bounds = bounds.expand_towards_y(display_offset as f32 * 0.75 / 16.0);
             }
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
+                let scale = vanilla_render_scale(identity.entity_type_id, &attributes.attributes);
+                if let Some(offset) =
+                    animations
+                        .animations
+                        .shulker_render_offset(transform.position, 0.0, scale)
+                {
+                    // `ShulkerRenderer.shouldRender` tests the complete old-to-
+                    // current transition at partial tick zero, independently
+                    // of the render state's current interpolation fraction.
+                    bounds = expand_bounds_towards_offset(bounds, offset);
+                }
+            }
             candidates.push(super::EntityRenderCandidateState {
                 entity_id: identity.id,
                 uuid: identity.uuid,
@@ -1577,19 +1590,83 @@ impl EntityStore {
 
     pub(crate) fn refresh_client_position_from_entity_data(&mut self, id: i32) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
-        let (identity, metadata, transform) = self
-            .ecs
-            .query_one_mut::<(&EntityIdentity, &EntityMetadata, &mut EntityTransform)>(entity)
-            .ok()?;
-        let position = vanilla_client_position_for_entity_data(
-            identity.entity_type_id,
-            transform.position_base,
-            identity.data,
-            &metadata.data_values,
-            metadata.painting_variant_projection.as_ref(),
-        )?;
-        transform.position = position;
+        let old_position = {
+            let (identity, metadata, transform) = self
+                .ecs
+                .query_one_mut::<(&EntityIdentity, &EntityMetadata, &mut EntityTransform)>(entity)
+                .ok()?;
+            let position = vanilla_client_position_for_entity_data(
+                identity.entity_type_id,
+                transform.position_base,
+                identity.data,
+                &metadata.data_values,
+                metadata.painting_variant_projection.as_ref(),
+            )?;
+            let old_position = transform.position;
+            transform.position = position;
+            old_position
+        };
+        self.finish_shulker_position_change(id, old_position);
         Some(())
+    }
+
+    pub(crate) fn finish_shulker_position_change(
+        &mut self,
+        id: i32,
+        old_position: super::EntityVec3,
+    ) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut query = self
+            .ecs
+            .query_one::<(
+                &EntityIdentity,
+                &EntityMount,
+                &mut EntityTransform,
+                &mut EntityClientAnimations,
+            )>(entity)
+            .ok()?;
+        let (identity, mount, transform, animations) = query.get()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_SHULKER_ID {
+            return Some(false);
+        }
+        if mount.vehicle_id.is_none() {
+            // Vanilla `Shulker.setPos` keeps the packet codec base untouched,
+            // but snaps a non-passenger's canonical position to its attachment
+            // block center before starting the client render offset.
+            transform.position = vanilla_shulker_attached_position(transform.position);
+        }
+        let started = animations.animations.record_shulker_position_change(
+            old_position,
+            transform.position,
+            mount.vehicle_id.is_some(),
+        );
+        if started {
+            // Vanilla Shulker.setPos makes the generic position endpoints equal
+            // and delegates the visible transition to getRenderPosition.
+            transform.old_position = transform.position;
+        }
+        Some(started)
+    }
+
+    pub(crate) fn shulker_started_riding(&mut self, id: i32) {
+        if self.entity_type_id(id) != Some(VANILLA_ENTITY_TYPE_SHULKER_ID) {
+            return;
+        }
+        let _ = self.with_client_animations_mut(id, |animations| {
+            animations.animations.shulker_started_riding();
+        });
+    }
+
+    pub(crate) fn shulker_stopped_riding(&mut self, id: i32) {
+        if self.entity_type_id(id) != Some(VANILLA_ENTITY_TYPE_SHULKER_ID) {
+            return;
+        }
+        let Some(position) = self.transform(id).map(|transform| transform.position) else {
+            return;
+        };
+        let _ = self.with_client_animations_mut(id, |animations| {
+            animations.animations.shulker_stopped_riding(position);
+        });
     }
 
     pub(crate) fn transform(&self, id: i32) -> Option<EntityTransform> {
@@ -2465,12 +2542,19 @@ impl EntityStore {
         let minecart_new_render =
             is_vanilla_minecart_type(identity.entity_type_id) && minecart_improvements_enabled;
         let mut source_position = position;
-        let render_head_y_rot = transform.render_y_head_rot(partial_ticks);
+        let is_shulker = identity.entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID;
+        let render_head_y_rot = if is_shulker {
+            transform.y_head_rot
+        } else {
+            transform.render_y_head_rot(partial_ticks)
+        };
         let mut source_y_rot = if client_animations.animations.age_ticks == 0 {
             client_animations
                 .animations
                 .spawn_body_y_rot
                 .unwrap_or_else(|| transform.render_body_y_rot(partial_ticks))
+        } else if is_shulker {
+            transform.y_rot
         } else if vanilla_living_entity_type(identity.entity_type_id) {
             transform.render_body_y_rot(partial_ticks)
         } else {
@@ -2518,6 +2602,15 @@ impl EntityStore {
             // when a new-behavior minecart's weighted render position diverges from its
             // normal xOld/getX interpolation.
             source_position = add_entity_vec3(source_position, offset);
+        }
+        if is_shulker {
+            if let Some(offset) = client_animations.animations.shulker_render_offset(
+                transform.position,
+                partial_ticks,
+                scale,
+            ) {
+                source_position = add_entity_vec3(source_position, offset);
+            }
         }
         let boat_bubble_angle = client_animations
             .animations
@@ -3177,6 +3270,14 @@ impl EntityStore {
     }
 
     pub(crate) fn camera_pose_state(&self, id: i32) -> Option<EntityCameraPoseState> {
+        self.camera_pose_state_at_partial_tick(id, 1.0)
+    }
+
+    pub(crate) fn camera_pose_state_at_partial_tick(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<EntityCameraPoseState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
@@ -3193,9 +3294,9 @@ impl EntityStore {
         )?;
         Some(EntityCameraPoseState {
             id: identity.id,
-            position: transform.position,
-            y_rot: transform.y_rot,
-            x_rot: transform.x_rot,
+            position: transform.render_position(partial_ticks),
+            y_rot: transform.render_y_rot(partial_ticks),
+            x_rot: transform.render_x_rot(partial_ticks),
             eye_height,
         })
     }
@@ -3869,6 +3970,16 @@ impl EntityStore {
         let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
         let result = update(&mut transform);
         Some(result)
+    }
+
+    fn with_client_animations_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityClientAnimations) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        Some(update(&mut animations))
     }
 
     pub(crate) fn with_metadata_mut<R>(
@@ -5139,6 +5250,18 @@ fn add_entity_vec3(left: super::EntityVec3, right: super::EntityVec3) -> super::
         y: left.y + right.y,
         z: left.z + right.z,
     }
+}
+
+fn expand_bounds_towards_offset(
+    mut bounds: super::EntityPickBoundsState,
+    offset: super::EntityVec3,
+) -> super::EntityPickBoundsState {
+    for (axis, value) in [offset.x, offset.y, offset.z].into_iter().enumerate() {
+        let value = value as f32;
+        bounds.min[axis] = bounds.min[axis].min(bounds.min[axis] + value);
+        bounds.max[axis] = bounds.max[axis].max(bounds.max[axis] + value);
+    }
+    bounds
 }
 
 fn sub_entity_vec3(left: super::EntityVec3, right: super::EntityVec3) -> super::EntityVec3 {

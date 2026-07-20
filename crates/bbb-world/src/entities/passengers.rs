@@ -47,6 +47,11 @@ impl WorldStore {
             self.counters.entity_passenger_updates_ignored += 1;
             return false;
         }
+        let previous_passengers = self
+            .entities
+            .mount(packet.vehicle_id)
+            .map(|mount| mount.passengers.iter().copied().collect::<Vec<_>>())
+            .unwrap_or_default();
 
         self.entities.for_each_mount_mut(|_, mount| {
             if mount.vehicle_id == Some(packet.vehicle_id) {
@@ -98,6 +103,14 @@ impl WorldStore {
 
         if local_player_was_on_packet_vehicle && !local_player_mounted_here {
             self.local_player_vehicle_id = None;
+        }
+        for passenger_id in previous_passengers {
+            if !mounted.contains(&passenger_id) {
+                self.entities.shulker_stopped_riding(passenger_id);
+            }
+        }
+        for passenger_id in &mounted {
+            self.entities.shulker_started_riding(*passenger_id);
         }
         self.entities.with_mount_mut(packet.vehicle_id, |vehicle| {
             *vehicle.passengers = mounted;

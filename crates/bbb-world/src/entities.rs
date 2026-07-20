@@ -3229,6 +3229,15 @@ impl WorldStore {
         self.entities.camera_pose_state(id)
     }
 
+    pub fn probe_entity_camera_pose_at_partial_tick(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<EntityCameraPoseState> {
+        self.entities
+            .camera_pose_state_at_partial_tick(id, partial_ticks)
+    }
+
     pub fn probe_entity_camera_hurt_state(
         &self,
         id: i32,

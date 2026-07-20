@@ -355,6 +355,14 @@ pub(crate) fn vanilla_client_position_for_entity_data(
     None
 }
 
+pub(crate) fn vanilla_shulker_attached_position(position: EntityVec3) -> EntityVec3 {
+    EntityVec3 {
+        x: position.x.floor() + 0.5,
+        y: (position.y + 0.5).floor(),
+        z: position.z.floor() + 0.5,
+    }
+}
+
 pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
     entity_type_id: i32,
     data_values: &[EntityDataValue],

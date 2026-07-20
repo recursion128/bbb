@@ -503,12 +503,10 @@ impl WorldStore {
         input: LocalPlayerInputState,
         dt_seconds: f64,
     ) -> Option<LocalPlayerPoseState> {
-        let pose = integrate_local_player_input_pose_with_world_effects(
-            self,
-            self.local_player.pose?,
-            input,
-            dt_seconds,
-        );
+        let old_pose = self.local_player.pose?;
+        self.local_player_old_pose = Some(old_pose);
+        let pose =
+            integrate_local_player_input_pose_with_world_effects(self, old_pose, input, dt_seconds);
         self.local_player.pose = Some(pose);
         Some(pose)
     }
@@ -588,6 +586,34 @@ impl WorldStore {
 
     pub fn local_player_pose(&self) -> Option<LocalPlayerPoseState> {
         self.local_player.pose
+    }
+
+    pub fn local_player_pose_at_partial_tick(
+        &self,
+        partial_tick: f32,
+    ) -> Option<LocalPlayerPoseState> {
+        let current = self.local_player.pose?;
+        let old = self.local_player_old_pose.unwrap_or(current);
+        let partial_tick = if partial_tick.is_finite() {
+            partial_tick.clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+        let partial_tick_f64 = f64::from(partial_tick);
+        Some(LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: old.position.x + (current.position.x - old.position.x) * partial_tick_f64,
+                y: old.position.y + (current.position.y - old.position.y) * partial_tick_f64,
+                z: old.position.z + (current.position.z - old.position.z) * partial_tick_f64,
+            },
+            y_rot: if partial_tick == 1.0 {
+                current.y_rot
+            } else {
+                old.y_rot + wrap_degrees_f32(current.y_rot - old.y_rot) * partial_tick
+            },
+            x_rot: old.x_rot + (current.x_rot - old.x_rot) * partial_tick,
+            ..current
+        })
     }
 
     pub fn local_player(&self) -> &LocalPlayerState {
@@ -1178,6 +1204,47 @@ mod tests {
 
         assert_eq!(pose.y_rot, 12.0);
         assert_eq!(pose.x_rot, 90.0);
+    }
+
+    #[test]
+    fn local_player_tick_retains_partial_camera_pose_endpoints() {
+        let mut store = WorldStore::new();
+        let initial = LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            y_rot: 170.0,
+            x_rot: -10.0,
+            ..LocalPlayerPoseState::default()
+        };
+        store.set_local_player_pose(initial);
+
+        let current = store
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    mouse_delta_x: 200.0,
+                    mouse_delta_y: 100.0,
+                    ..LocalPlayerInputState::default()
+                },
+                0.05,
+            )
+            .unwrap();
+        assert_eq!(store.local_player_old_pose, Some(initial));
+
+        let old = store.local_player_pose_at_partial_tick(0.0).unwrap();
+        let mid = store.local_player_pose_at_partial_tick(0.5).unwrap();
+        let end = store.local_player_pose_at_partial_tick(1.0).unwrap();
+        assert_eq!(old.position, initial.position);
+        assert_eq!(end.position, current.position);
+        assert_f64_near(
+            mid.position.z,
+            (initial.position.z + current.position.z) * 0.5,
+            0.000001,
+        );
+        assert_eq!(old.y_rot, 170.0);
+        assert_eq!(mid.y_rot, 182.0);
+        assert_eq!(end.y_rot, current.y_rot);
+        assert_eq!(mid.x_rot, -4.0);
     }
 
     #[test]
