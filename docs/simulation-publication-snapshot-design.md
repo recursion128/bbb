@@ -67,10 +67,12 @@ The frozen storage contract is:
    existing `bbb-world::chunks` mutation boundary before writing. Load replaces
    or inserts one owner and unload removes one owner.
 3. The committed registry set has one shared immutable owner and each item-
-   profile table has its own shared owner. Their existing startup/configuration/
-   reload setters obtain uniqueness before mutation. Pending registry
-   collection stays inside the registry owner and a committed candidate remains
-   atomic with its item defaults.
+   profile table has its own shared owner. The resource-derived command sound-id
+   list is another serde-omitted publication-shared owner. Their existing
+   startup/configuration/reload setters replace or obtain uniqueness before
+   mutation. Pending registry collection stays inside the registry owner and a
+   committed candidate remains atomic with its item defaults; sound ids commit
+   with the matching native audio resource reload acknowledgement.
 4. Entity state stays in the one live hecs owner and is snapshot explicitly at
    publication. It is not placed behind whole-store COW. The baseline shows its
    publication-only cost separately from the much larger entity client-tick

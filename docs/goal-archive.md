@@ -19917,3 +19917,24 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 本片不复制第二套 metadata schema，也不改变 43 种 protocol value decoder、registry
   holder 顺序、rich Component/ItemStack 表示或 entity family 可见行为。后续 rich value、
   holder canonicalization 与 family consumer 仍作为 unsupported ledger 的具体剩余项推进。
+
+## 2026-07-20：repo-native immutable command dispatcher
+
+- [x] `f5c876774` 到 `81a671c8c` 依次关闭 57 种 generated argument template、immutable
+  graph traversal、Brigadier primitive/context-free family 与 frozen RegistryAccess
+  block/item/particle/resource family。唯一 world owner 输出 cursor/span、executable、
+  restricted、best error、typed arguments 与 signable message spans；custom registry order、
+  tags、redirect/cycle、configuration replacement 和 retained generation 均有 focused guard。
+- [x] `1401af655` 将 literal/parser/provider completion 接入 native command entry。
+  `available_sounds` 使用 resource reload 同代提交的 publication-shared sound-id owner；
+  `summonable_entities` 使用生成的 `noSummon` 元数据和 negotiated Vanilla feature gate。
+  普通本地候选不再发送网络请求，只有 `minecraft:ask_server`、unknown provider 或明确
+  server-owned parser 进入既有 request-id/stale/range gate；Tab/HUD/narration 使用同一 owned
+  result，不跨 generation 回读另一个 suggestion payload。
+- [x] phase-5 gate 首次暴露 coverage ledger 依赖稳定测试符号，`170870231` 以正常提交恢复
+  evidence name 后 workspace full gate 通过。当前 HEAD binary 的显式 Vanilla 26.1 live gate
+  完成 8 个 ordered phase、canonical world、movement 与 block interaction，artifact 为
+  `/tmp/bbb-playable-gate.t69XK5`。
+- [x] 剩余边界不伪装关闭：nested selector option value、完整 block property/item component
+  value 补全及本地化 summon tooltip 仍是窄 presentation/completion 后续项；它们必须扩展
+  同一 dispatcher，不能恢复 parallel grammar 或普通节点的无条件 server round trip。

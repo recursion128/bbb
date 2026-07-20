@@ -157,3 +157,41 @@ the existing server provider and never certifies an invalid command as
 executable. Each phase is buildable and reviewable; superseded production paths
 are removed with their replacement. Failures are fixed forward by normal
 commits without amend, rebase or history rewriting.
+
+## Delivered state
+
+The engineering slice landed in serial commits `f5c876774`, `e2794b104`,
+`bd16d596a`, `ffe216f79`, `62fe3723d`, `14369d89f`, `54f065813`, `3f277e3bc`,
+`81a671c8c`, `1401af655`, and the coverage-evidence fix `170870231`.
+
+- Protocol now decodes every generated argument-template id while preserving
+  raw properties for the existing serde/control shape. World owns the one graph
+  parser and returns byte-accurate consumed spans, typed validation state,
+  executable/restricted state, best syntax error, signable arguments and the
+  child context that owns completion.
+- Context-aware parsing reads only the current `FrozenRegistryAccess`; custom
+  holder order, tags, reload, configuration re-entry and retained generations
+  are covered without bootstrap-ordinal substitution.
+- Native command entry consumes one owned local-or-server result. Literals,
+  parser candidates, registry/tag entries and sound ids are resolved locally
+  where Vanilla does so, and all three registered providers follow their exact
+  local/server ownership. Only `ask_server`, an unknown provider, or a parser
+  whose authoritative candidates are server-owned enters the request-id-gated
+  network path. Tab cycling retains one exact result value rather than rereading
+  a newer world generation mid-cycle.
+- `available_sounds` comes from the accepted native audio catalog and commits
+  with resource reload. `summonable_entities` uses generated `noSummon`
+  metadata plus the negotiated Vanilla feature gate; entity type numbers or a
+  parallel membership table are not introduced.
+
+The remaining completion-only fidelity is deliberately explicit rather than a
+second grammar: nested entity-selector option values, complete block-property
+and item-component-value suggestion subgrammars, and localized entity tooltip
+components. The parser already validates those command families; future
+completion work must extend its typed child context and cannot fall back to
+unconditional requests for ordinary local nodes.
+
+Focused closeout results were 865 `bbb-protocol`, 1,809 `bbb-world`, and 2,187
+`bbb-native` tests. The phase-5 workspace full gate passed at `170870231`; an
+explicit current-HEAD Vanilla 26.1 live gate completed all eight ordered phases
+with artifacts at `/tmp/bbb-playable-gate.t69XK5`.

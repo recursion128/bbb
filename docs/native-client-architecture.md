@@ -130,6 +130,20 @@ Owns canonical client state.
 semantic state and lightweight event summaries. It must not store backend
 handles.
 
+The synchronized `Commands` graph is instantiated as one immutable world-owned
+dispatcher. `bbb-protocol` decodes the generated 57-entry argument-template
+catalog; `bbb-world` performs parsing, redirect traversal, validation, signable
+argument extraction, and completion against the exact frozen registries, tags,
+enabled features, player/scoreboard state, and resource-derived sound-id view.
+`bbb-native` owns only editing and suggestion presentation. It consumes the
+world result directly, sends a request only for `minecraft:ask_server`, an
+unknown provider, or an explicitly server-owned parser such as objective names,
+and keeps the existing request-id gate for those responses.
+The sound-id view is a serde-omitted `PublicationShared<Vec<String>>`: reload
+replaces that derived session owner, unchanged publications share it, and old
+world generations cannot observe its mutation. No parser, registry-order cache,
+or command authority is independently mutable outside the simulation owner.
+
 A fresh Login starts a new registry session, while Play reconfiguration carries
 the frozen registry access. Every connection edge clears connection-owned
 resource-pack tracking; level replacement clears chunk/entity/local-level
