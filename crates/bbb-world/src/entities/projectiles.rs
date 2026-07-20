@@ -121,6 +121,7 @@ pub(crate) fn entity_projectile_lifecycle_from_state(
             has_been_shot: false,
             trident_in_ground_time: 0,
             trident_dealt_damage: false,
+            trident_return_ticks: 0,
         },
     )))
 }
@@ -274,11 +275,7 @@ impl EntityStore {
     }
 
     fn protocol_id_for_uuid(&self, uuid: Uuid) -> Option<i32> {
-        self.order.iter().find_map(|id| {
-            let entity = self.by_protocol_id.get(id).copied()?;
-            let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
-            (identity.uuid == uuid).then_some(identity.id)
-        })
+        self.protocol_id_by_uuid.get(&uuid).copied()
     }
 
     fn root_vehicle_id(&self, id: i32) -> i32 {
@@ -657,6 +654,7 @@ mod tests {
                 has_been_shot: false,
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
+                trident_return_ticks: 0,
             })
         );
         store.advance_entity_client_animations(1);
@@ -668,6 +666,7 @@ mod tests {
                 has_been_shot: true,
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
+                trident_return_ticks: 0,
             })
         );
 
@@ -738,6 +737,7 @@ mod tests {
                 has_been_shot: true,
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
+                trident_return_ticks: 0,
             })
         );
     }
@@ -766,6 +766,7 @@ mod tests {
                 has_been_shot: false,
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
+                trident_return_ticks: 0,
             })
         );
         store.advance_entity_client_animations(1);
@@ -777,6 +778,7 @@ mod tests {
                 has_been_shot: true,
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
+                trident_return_ticks: 0,
             })
         );
     }
@@ -856,6 +858,47 @@ mod tests {
             .unwrap();
         assert_eq!(released.trident_in_ground_time, 0);
         assert!(released.trident_dealt_damage);
+    }
+
+    #[test]
+    fn uuid_index_tracks_readd_remove_reuse_and_publication_clone() {
+        let mut store = WorldStore::new();
+        let original_uuid = Uuid::from_u128(10);
+        let replacement_uuid = Uuid::from_u128(11);
+        store.apply_add_entity(protocol_add_entity_with_type(
+            10,
+            VANILLA_ENTITY_TYPE_COW_ID,
+        ));
+        assert_eq!(store.entities.protocol_id_for_uuid(original_uuid), Some(10));
+
+        let mut replacement = protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_COW_ID);
+        replacement.uuid = replacement_uuid;
+        store.apply_add_entity(replacement);
+        assert_eq!(store.entities.protocol_id_for_uuid(original_uuid), None);
+        assert_eq!(
+            store.entities.protocol_id_for_uuid(replacement_uuid),
+            Some(10)
+        );
+
+        assert_eq!(
+            store.apply_remove_entities(ProtocolRemoveEntities {
+                entity_ids: vec![10],
+            }),
+            1
+        );
+        assert_eq!(store.entities.protocol_id_for_uuid(replacement_uuid), None);
+
+        let mut reused = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_COW_ID);
+        reused.uuid = original_uuid;
+        store.apply_add_entity(reused);
+        assert_eq!(store.entities.protocol_id_for_uuid(original_uuid), Some(20));
+        assert_eq!(
+            store
+                .publication_snapshot()
+                .entities
+                .protocol_id_for_uuid(original_uuid),
+            Some(20)
+        );
     }
 
     fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEntity {

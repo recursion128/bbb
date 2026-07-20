@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt,
     time::{Duration, Instant},
 };
@@ -279,10 +279,11 @@ fn equipment_contains_saddle_item(
 pub(crate) struct EntityStore {
     pub(super) ecs: World,
     pub(super) by_protocol_id: BTreeMap<i32, Entity>,
+    pub(super) protocol_id_by_uuid: HashMap<Uuid, i32>,
     pub(super) order: Vec<i32>,
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
-    pub(super) pending_entity_client_movement_effects: VecDeque<EntityClientMovementEffectState>,
+    pub(super) pending_entity_client_movement_effects: Vec<EntityClientMovementEffectState>,
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
     client_tick_scratch: EntityClientTickScratch,
     publication_snapshot_observation: EntityPublicationSnapshotObservation,
@@ -422,6 +423,7 @@ impl EntityStore {
         transform: EntityTransform,
     ) {
         let id = identity.id;
+        let uuid = identity.uuid;
         let entity_type_id = identity.entity_type_id;
         let fresh_projectile = entity_hurting_projectile_from_state(entity_type_id, None);
         let fresh_projectile_lifecycle = entity_projectile_lifecycle_from_state(
@@ -447,6 +449,11 @@ impl EntityStore {
         };
 
         if let Some(entity) = self.by_protocol_id.get(&id).copied() {
+            let previous_uuid = self
+                .ecs
+                .get::<&EntityIdentity>(entity)
+                .ok()
+                .map(|identity| identity.uuid);
             if let Ok(mut existing) = self.ecs.get::<&mut EntityIdentity>(entity) {
                 *existing = identity;
             }
@@ -516,6 +523,12 @@ impl EntityStore {
             } else {
                 let _ = self.ecs.remove_one::<EntityProjectileLifecycle>(entity);
             }
+            if let Some(previous_uuid) = previous_uuid.filter(|previous| *previous != uuid) {
+                if self.protocol_id_by_uuid.get(&previous_uuid) == Some(&id) {
+                    self.protocol_id_by_uuid.remove(&previous_uuid);
+                }
+            }
+            self.protocol_id_by_uuid.insert(uuid, id);
             return;
         }
 
@@ -546,10 +559,12 @@ impl EntityStore {
             let _ = self.ecs.insert_one(entity, projectile);
         }
         self.by_protocol_id.insert(id, entity);
+        self.protocol_id_by_uuid.insert(uuid, id);
     }
 
     fn spawn_components(&mut self, state: EntityState) {
         let id = state.id;
+        let uuid = state.uuid;
         let spawn_owner_uuid = self.uuid_for_protocol_id(state.data);
         let entity = self.ecs.spawn((
             EntityIdentity::from(&state),
@@ -586,10 +601,23 @@ impl EntityStore {
             let _ = self.ecs.insert_one(entity, projectile);
         }
         self.by_protocol_id.insert(id, entity);
+        self.protocol_id_by_uuid.insert(uuid, id);
     }
 
     fn replace_existing_components(&mut self, entity: Entity, state: EntityState) {
+        let uuid = state.uuid;
+        let previous_uuid = self
+            .ecs
+            .get::<&EntityIdentity>(entity)
+            .ok()
+            .map(|identity| identity.uuid);
         self.sync_components_from_state(entity, &state);
+        if let Some(previous_uuid) = previous_uuid.filter(|previous| *previous != uuid) {
+            if self.protocol_id_by_uuid.get(&previous_uuid) == Some(&state.id) {
+                self.protocol_id_by_uuid.remove(&previous_uuid);
+            }
+        }
+        self.protocol_id_by_uuid.insert(uuid, state.id);
     }
 
     pub(crate) fn get(&self, id: i32) -> Option<EntityState> {
@@ -1296,14 +1324,23 @@ impl EntityStore {
 
     pub(crate) fn drain_entity_client_movement_effect_states(
         &mut self,
-    ) -> std::collections::vec_deque::Drain<'_, EntityClientMovementEffectState> {
+    ) -> std::vec::Drain<'_, EntityClientMovementEffectState> {
         self.pending_entity_client_movement_effects.drain(..)
     }
 
-    pub(crate) fn pop_entity_client_movement_effect_state(
+    pub(crate) fn take_entity_client_movement_effect_states(
         &mut self,
-    ) -> Option<EntityClientMovementEffectState> {
-        self.pending_entity_client_movement_effects.pop_front()
+    ) -> Vec<EntityClientMovementEffectState> {
+        std::mem::take(&mut self.pending_entity_client_movement_effects)
+    }
+
+    pub(crate) fn recycle_entity_client_movement_effect_states(
+        &mut self,
+        mut effects: Vec<EntityClientMovementEffectState>,
+    ) {
+        debug_assert!(effects.is_empty());
+        effects.clear();
+        self.pending_entity_client_movement_effects = effects;
     }
 
     pub(crate) fn take_ominous_item_spawner_particle_states(
@@ -4944,6 +4981,11 @@ impl EntityStore {
             let Some(entity) = self.by_protocol_id.remove(id) else {
                 continue;
             };
+            if let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) {
+                if self.protocol_id_by_uuid.get(&identity.uuid) == Some(id) {
+                    self.protocol_id_by_uuid.remove(&identity.uuid);
+                }
+            }
             let _ = self.ecs.despawn(entity);
             removed += 1;
         }
@@ -5142,10 +5184,11 @@ impl Default for EntityStore {
         Self {
             ecs: World::new(),
             by_protocol_id: BTreeMap::new(),
+            protocol_id_by_uuid: HashMap::new(),
             order: Vec::new(),
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
-            pending_entity_client_movement_effects: VecDeque::new(),
+            pending_entity_client_movement_effects: Vec::new(),
             pending_ominous_item_spawner_particles: Vec::new(),
             client_tick_scratch: EntityClientTickScratch::default(),
             publication_snapshot_observation: EntityPublicationSnapshotObservation::default(),
@@ -5218,6 +5261,7 @@ impl Clone for EntityStore {
             }
             store.by_protocol_id.insert(id, cloned);
         }
+        store.protocol_id_by_uuid = self.protocol_id_by_uuid.clone();
         store.order = self.order.clone();
         store.pending_ravager_stun_particles = self.pending_ravager_stun_particles.clone();
         store.pending_evoker_fangs_crit_particles =

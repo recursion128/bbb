@@ -129,6 +129,7 @@ pub(crate) struct EntityProjectileLifecycle {
     pub(crate) has_been_shot: bool,
     pub(crate) trident_in_ground_time: u32,
     pub(crate) trident_dealt_damage: bool,
+    pub(crate) trident_return_ticks: u32,
 }
 
 impl From<&EntityState> for EntityIdentity {
@@ -431,6 +432,7 @@ impl From<ProjectileLifecycleState> for EntityProjectileLifecycle {
             has_been_shot: state.has_been_shot,
             trident_in_ground_time: state.trident_in_ground_time,
             trident_dealt_damage: state.trident_dealt_damage,
+            trident_return_ticks: state.trident_return_ticks,
         }
     }
 }
@@ -443,6 +445,7 @@ impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
             has_been_shot: projectile.has_been_shot,
             trident_in_ground_time: projectile.trident_in_ground_time,
             trident_dealt_damage: projectile.trident_dealt_damage,
+            trident_return_ticks: projectile.trident_return_ticks,
         }
     }
 }

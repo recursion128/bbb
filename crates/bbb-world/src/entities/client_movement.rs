@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
+use bbb_protocol::entity_data_serializers::{
+    VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+};
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TRIDENT_ID;
 use bbb_protocol::item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID;
 use bbb_protocol::packets::EntityDataValueKind;
@@ -8,14 +10,17 @@ use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use hecs::Entity;
 
 use super::components::{
-    EntityClientAnimations, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityMetadata, EntityTransform,
+    EntityAttributes, EntityClientAnimations, EntityEquipment, EntityHurtingProjectile,
+    EntityIdentity, EntityMetadata, EntityProjectileLifecycle, EntityTransform,
 };
+use super::dimensions::vanilla_eye_height_for_entity_data;
 use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
+    vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
     vanilla_entity_metadata_type_client_movement_policy, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     VanillaEntityClientMovementPolicy,
@@ -40,6 +45,12 @@ pub(crate) struct EntityClientMovementCollisionInput {
 pub(crate) struct EntityClientMovementCollisionResult {
     pub(crate) requested_movement: EntityVec3,
     pub(crate) clipped_movement: EntityVec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct EntityClientMovementTridentReturnTarget {
+    eye_position: EntityVec3,
+    loyalty: i8,
 }
 
 pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
@@ -255,12 +266,32 @@ impl EntityStore {
                     else {
                         continue;
                     };
-                    let Ok((metadata, transform)) = self
-                        .ecs
-                        .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
+                    let return_target = (entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID)
+                        .then(|| self.trident_return_target(entity))
+                        .flatten();
+                    let Ok((metadata, projectile, transform)) =
+                        self.ecs.query_one_mut::<(
+                            &mut EntityMetadata,
+                            Option<&mut EntityProjectileLifecycle>,
+                            &mut EntityTransform,
+                        )>(entity)
                     else {
                         continue;
                     };
+                    if entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+                        if let (Some(projectile), Some(return_target)) = (projectile, return_target)
+                        {
+                            advance_returning_trident(
+                                entity_id,
+                                metadata,
+                                projectile,
+                                transform,
+                                accessors,
+                                return_target,
+                                &mut effects,
+                            );
+                        }
+                    }
                     advance_abstract_arrow(
                         entity_id,
                         entity_type_id,
@@ -313,6 +344,83 @@ impl EntityStore {
             }
         }
         self.pending_entity_client_movement_effects.extend(effects);
+    }
+
+    fn trident_return_target(
+        &self,
+        trident: Entity,
+    ) -> Option<EntityClientMovementTridentReturnTarget> {
+        let Ok(mut trident_query) = self
+            .ecs
+            .query_one::<(&EntityMetadata, &EntityProjectileLifecycle)>(trident)
+        else {
+            return None;
+        };
+        let (trident_metadata, projectile) = trident_query.get()?;
+        let trident_accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )?;
+        let loyalty = entity_data_byte(
+            &trident_metadata.data_values,
+            trident_accessors.loyalty_data_id,
+            trident_accessors.loyalty_default,
+        );
+        let arrow_accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )?;
+        let no_physics = entity_data_byte(
+            &trident_metadata.data_values,
+            arrow_accessors.flags_data_id,
+            arrow_accessors.flags_default,
+        ) & arrow_accessors.no_physics_mask
+            != 0;
+        if loyalty <= 0 || (!projectile.trident_dealt_damage && !no_physics) {
+            return None;
+        }
+        let owner_uuid = projectile.owner_uuid?;
+        drop(trident_query);
+        let owner_id = self.protocol_id_by_uuid.get(&owner_uuid).copied()?;
+        let owner = self.by_protocol_id.get(&owner_id).copied()?;
+        let Ok(mut query) = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+            &EntityTransform,
+        )>(owner) else {
+            return None;
+        };
+        let (identity, metadata, attributes, animations, transform) = query.get()?;
+        if !vanilla_entity_metadata_type_is_living(identity.entity_type_id) {
+            return None;
+        }
+        let living_accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            identity.entity_type_id,
+        )?;
+        if entity_data_float(
+            &metadata.data_values,
+            living_accessors.health_data_id,
+            living_accessors.health_default,
+        ) <= 0.0
+        {
+            return None;
+        }
+        let eye_height = vanilla_eye_height_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(animations.animations),
+            metadata.painting_variant_projection.as_ref(),
+        )?;
+        Some(EntityClientMovementTridentReturnTarget {
+            eye_position: EntityVec3 {
+                x: transform.position.x,
+                y: transform.position.y + f64::from(eye_height),
+                z: transform.position.z,
+            },
+            loyalty,
+        })
     }
 
     fn advance_firework_rocket(
@@ -584,6 +692,59 @@ fn advance_llama_spit(metadata: &EntityMetadata, transform: &mut EntityTransform
     }
 }
 
+fn advance_returning_trident(
+    entity_id: i32,
+    metadata: &mut EntityMetadata,
+    projectile: &mut EntityProjectileLifecycle,
+    transform: &mut EntityTransform,
+    arrow_accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
+    target: EntityClientMovementTridentReturnTarget,
+    effects: &mut Vec<EntityClientMovementEffectState>,
+) {
+    let loyalty = target.loyalty;
+    let flags = entity_data_byte(
+        &metadata.data_values,
+        arrow_accessors.flags_data_id,
+        arrow_accessors.flags_default,
+    );
+    if loyalty <= 0
+        || (!projectile.trident_dealt_damage && flags & arrow_accessors.no_physics_mask == 0)
+    {
+        return;
+    }
+
+    set_entity_data_byte(
+        metadata,
+        arrow_accessors.flags_data_id,
+        flags | arrow_accessors.no_physics_mask,
+    );
+    let to_owner = subtract(target.eye_position, transform.position);
+    transform.position.y += to_owner.y * 0.015 * f64::from(loyalty);
+    transform.delta_movement = add(
+        scale(transform.delta_movement, 0.95),
+        scale(normalize(to_owner), 0.05 * f64::from(loyalty)),
+    );
+    if projectile.trident_return_ticks == 0 {
+        let silent = vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+            entity_data_bool(
+                &metadata.data_values,
+                accessors.silent_data_id,
+                accessors.silent_default,
+            )
+        });
+        if !silent {
+            effects.push(EntityClientMovementEffectState::Sound(
+                EntityClientMovementSoundState {
+                    entity_id,
+                    kind: EntityClientMovementSoundKind::TridentReturn,
+                    position: transform.position,
+                },
+            ));
+        }
+    }
+    projectile.trident_return_ticks = projectile.trident_return_ticks.saturating_add(1);
+}
+
 fn advance_abstract_arrow(
     entity_id: i32,
     entity_type_id: i32,
@@ -843,6 +1004,39 @@ fn entity_data_int(
         .unwrap_or(default)
 }
 
+fn entity_data_float(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: f32,
+) -> f32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match value.value {
+            EntityDataValueKind::Float(value) => Some(value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+fn set_entity_data_byte(metadata: &mut EntityMetadata, data_id: u8, value: i8) {
+    let value = bbb_protocol::packets::EntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(value),
+    };
+    if let Some(existing) = metadata
+        .data_values
+        .iter_mut()
+        .find(|existing| existing.data_id == data_id)
+    {
+        *existing = value;
+    } else {
+        metadata.data_values.push(value);
+        metadata.data_values.sort_by_key(|value| value.data_id);
+    }
+}
+
 fn set_entity_data_int(metadata: &mut EntityMetadata, data_id: u8, value: i32) {
     let value = bbb_protocol::packets::EntityDataValue {
         data_id,
@@ -881,6 +1075,14 @@ fn add(left: EntityVec3, right: EntityVec3) -> EntityVec3 {
         x: left.x + right.x,
         y: left.y + right.y,
         z: left.z + right.z,
+    }
+}
+
+fn subtract(left: EntityVec3, right: EntityVec3) -> EntityVec3 {
+    EntityVec3 {
+        x: left.x - right.x,
+        y: left.y - right.y,
+        z: left.z - right.z,
     }
 }
 
@@ -985,11 +1187,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
-        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
-        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue, SetEntityData as ProtocolSetEntityData,
@@ -1487,6 +1689,191 @@ mod tests {
                     ))
             }));
         }
+    }
+
+    #[test]
+    fn loyalty_trident_returns_to_live_owner_once_and_preserves_old_generation() {
+        let mut store = WorldStore::new();
+        let mut owner = projectile(90, VANILLA_ENTITY_TYPE_PLAYER_ID, ProtocolVec3d::default());
+        owner.position = ProtocolVec3d {
+            x: 10.0,
+            y: 64.0,
+            z: 0.0,
+        };
+        store.apply_add_entity(owner);
+        let mut trident = projectile(
+            91,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+            ProtocolVec3d {
+                x: 0.2,
+                y: 0.1,
+                z: -0.3,
+            },
+        );
+        trident.data = 90;
+        store.apply_add_entity(trident);
+        let arrow_accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )
+        .unwrap();
+        let trident_accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 91,
+            values: vec![
+                EntityDataValue {
+                    data_id: arrow_accessors.flags_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    value: EntityDataValueKind::Byte(arrow_accessors.no_physics_mask),
+                },
+                EntityDataValue {
+                    data_id: trident_accessors.loyalty_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    value: EntityDataValueKind::Byte(2),
+                },
+            ],
+        }));
+        let generation_a = store.publication_snapshot();
+        let owner_eye_height = f64::from(store.probe_entity_camera_pose(90).unwrap().eye_height);
+        let original_position = EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        };
+        let to_owner = EntityVec3 {
+            x: 9.0,
+            y: owner_eye_height,
+            z: 2.0,
+        };
+        let adjusted_position = EntityVec3 {
+            y: original_position.y + to_owner.y * 0.03,
+            ..original_position
+        };
+        let return_delta = add(
+            scale(
+                EntityVec3 {
+                    x: 0.2,
+                    y: 0.1,
+                    z: -0.3,
+                },
+                0.95,
+            ),
+            scale(normalize(to_owner), 0.1),
+        );
+
+        store.advance_entity_client_animations(1);
+
+        let transform = store.probe_entity_transform(91).unwrap();
+        assert_vec3_near(transform.position, add(adjusted_position, return_delta));
+        assert_vec3_near(
+            transform.delta_movement,
+            scale(return_delta, f64::from(0.99_f32)),
+        );
+        let lifecycle = store
+            .probe_entity(91)
+            .unwrap()
+            .projectile_lifecycle
+            .unwrap();
+        assert_eq!(lifecycle.trident_return_ticks, 1);
+        assert!(matches!(
+            store
+                .drain_entity_client_movement_effect_states()
+                .collect::<Vec<_>>()
+                .as_slice(),
+            [EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+                entity_id: 91,
+                kind: EntityClientMovementSoundKind::TridentReturn,
+                position,
+            })] if *position == adjusted_position
+        ));
+        assert_eq!(
+            generation_a
+                .probe_entity(91)
+                .unwrap()
+                .projectile_lifecycle
+                .unwrap()
+                .trident_return_ticks,
+            0
+        );
+        assert_eq!(
+            generation_a.probe_entity_transform(91).unwrap().position,
+            original_position
+        );
+
+        store.advance_entity_client_animations(1);
+        assert!(store
+            .drain_entity_client_movement_effect_states()
+            .next()
+            .is_none());
+        assert_eq!(
+            store
+                .probe_entity(91)
+                .unwrap()
+                .projectile_lifecycle
+                .unwrap()
+                .trident_return_ticks,
+            2
+        );
+    }
+
+    #[test]
+    fn silent_returning_trident_suppresses_sound_but_advances_return_counter() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            92,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut trident = projectile(93, VANILLA_ENTITY_TYPE_TRIDENT_ID, ProtocolVec3d::default());
+        trident.data = 92;
+        store.apply_add_entity(trident);
+        let entity_accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+        let arrow_accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )
+        .unwrap();
+        let trident_accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 93,
+            values: vec![
+                EntityDataValue {
+                    data_id: entity_accessors.silent_data_id,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    value: EntityDataValueKind::Boolean(true),
+                },
+                EntityDataValue {
+                    data_id: arrow_accessors.flags_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    value: EntityDataValueKind::Byte(arrow_accessors.no_physics_mask),
+                },
+                EntityDataValue {
+                    data_id: trident_accessors.loyalty_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    value: EntityDataValueKind::Byte(1),
+                },
+            ],
+        }));
+
+        store.advance_entity_client_animations(1);
+
+        assert!(store
+            .drain_entity_client_movement_effect_states()
+            .next()
+            .is_none());
+        assert_eq!(
+            store
+                .probe_entity(93)
+                .unwrap()
+                .projectile_lifecycle
+                .unwrap()
+                .trident_return_ticks,
+            1
+        );
     }
 
     #[test]

@@ -3371,7 +3371,8 @@ fn submit_entity_client_tick_effects(
     );
     batches.submit_particle_batch(batch);
 
-    while let Some(effect) = world.pop_entity_client_movement_effect_state() {
+    let mut effects = world.take_entity_client_movement_effect_states();
+    for effect in effects.drain(..) {
         match effect {
             EntityClientMovementEffectState::Particle(state) => {
                 let Some(particle_events) = particle_events.as_deref_mut() else {
@@ -3389,6 +3390,7 @@ fn submit_entity_client_tick_effects(
             }
         }
     }
+    world.recycle_entity_client_movement_effect_states(effects);
 }
 
 fn submit_ominous_item_spawner_particles(

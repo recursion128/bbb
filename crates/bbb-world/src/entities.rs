@@ -875,6 +875,8 @@ pub struct ProjectileLifecycleState {
     pub trident_in_ground_time: u32,
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub trident_dealt_damage: bool,
+    #[serde(default, skip_serializing_if = "u32_is_zero")]
+    pub trident_return_ticks: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -3826,14 +3828,22 @@ impl WorldStore {
 
     pub fn drain_entity_client_movement_effect_states(
         &mut self,
-    ) -> std::collections::vec_deque::Drain<'_, EntityClientMovementEffectState> {
+    ) -> std::vec::Drain<'_, EntityClientMovementEffectState> {
         self.entities.drain_entity_client_movement_effect_states()
     }
 
-    pub fn pop_entity_client_movement_effect_state(
+    pub fn take_entity_client_movement_effect_states(
         &mut self,
-    ) -> Option<EntityClientMovementEffectState> {
-        self.entities.pop_entity_client_movement_effect_state()
+    ) -> Vec<EntityClientMovementEffectState> {
+        self.entities.take_entity_client_movement_effect_states()
+    }
+
+    pub fn recycle_entity_client_movement_effect_states(
+        &mut self,
+        effects: Vec<EntityClientMovementEffectState>,
+    ) {
+        self.entities
+            .recycle_entity_client_movement_effect_states(effects);
     }
 
     pub fn take_ominous_item_spawner_particle_states(
