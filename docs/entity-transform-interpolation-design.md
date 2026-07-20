@@ -250,6 +250,16 @@ The phase-1 baseline records all 157 ledger rows as `partial`, one shared
 - head rotation already has a three-step target in `EntityClientAnimations`, but
   has no previous/current render endpoint integration.
 
+The closeout partition is generated from the fixed runtime-class graph and
+covers all 157 entries exactly once: 33 direct-`setPos` families, 113 generic
+three-step handlers, three immediate display handlers, seven feature-gated
+minecart handlers, and the one Shulker attach-position special. The generated
+coverage ledger binds every `transform/interpolation` cell to this partition,
+the packet/tick/partial-render tests, and the Vanilla sources above. Adjacent
+client-tick, dimensions/pick, passenger/leash, model/layer, animation, event,
+and save/debug cells remain independently partial where their own ledgers say
+so.
+
 Focused tests must cover, at minimum:
 
 - all packet forms, authority branches, exact target equality, zero/no-handler

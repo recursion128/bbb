@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
-  "baseline_policy": "Conservative audited coverage: generated metadata/schema and the complete source-derived spawn/default audit apply to every catalog row. Generic transform, callback, interpolation, rendering, event, and debug implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, and the source-derived transform/interpolation family partition apply to every catalog row. Generic callback, rendering, event, and debug implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
   "uncertainties": [
     "Generic passenger state is present, but family-specific attachment, controlling-passenger, equipment applicability, and leash presentation have not been reverse-audited together.",
     "Generated dimensions and broad pick tests exist, but each pose/scale/collision exception has not been proven for every family.",
@@ -60,18 +60,41 @@
         "vanilla:net/minecraft/network/syncher/SynchedEntityData.java#private <T> void assignValue"
       ]
     },
-    "generic_transform": {
+    "entity_transform_interpolation": {
       "implementation": [
+        "crates/bbb-world/src/entities/schema.rs#pub(crate) fn vanilla_entity_metadata_type_interpolation_policy",
+        "crates/bbb-world/src/entities/components.rs#pub(crate) fn render_position",
         "crates/bbb-world/src/entities/movement.rs#pub fn apply_entity_position_sync",
         "crates/bbb-world/src/entities/movement.rs#pub fn apply_entity_move",
-        "crates/bbb-world/src/entities/movement.rs#pub fn apply_teleport_entity"
+        "crates/bbb-world/src/entities/movement.rs#pub fn apply_teleport_entity",
+        "crates/bbb-world/src/entities/animations.rs#pub fn advance_entity_client_animations",
+        "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn fill_model_candidates_at_partial_tick",
+        "crates/bbb-world/src/entities.rs#pub fn fill_entity_model_sources_for_candidates_at_partial_tick",
+        "crates/bbb-world/src/client/local_player.rs#pub fn local_player_pose_at_partial_tick"
       ],
       "tests": [
-        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+        "crates/bbb-world/src/entities/schema.rs#generated_transform_policy_partitions_all_fixed_entity_types_once",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#position_sync_uses_loaded_chunk_ticking_distance_and_keeps_packet_velocity_unchanged",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#teleport_resolves_relative_values_from_active_target_and_snap_old_endpoints",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#interpolation_carries_independent_motion_only_into_collision_free_target_bounds",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_vehicle_authority_uses_vanilla_controller_conditions",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#living_passenger_body_rotation_follows_interpolated_living_vehicle",
+        "crates/bbb-world/src/entities/tests/specialized_pick_bounds_and_render_scale.rs#shulker_block_snap_uses_quadratic_render_offset_and_retained_generation",
+        "crates/bbb-native/src/camera_pose.rs#render_camera_uses_local_player_tick_endpoints",
+        "crates/bbb-native/src/entity_scene/tests.rs#visibility_first_culling_keeps_catalog_exceptions_and_custom_bounds"
       ],
       "vanilla": [
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityPositionSync",
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity",
         "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTeleportEntity",
-        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
+        "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#tickNonPassenger",
+        "vanilla:net/minecraft/world/entity/Entity.java#moveOrInterpolateTo",
+        "vanilla:net/minecraft/world/entity/InterpolationHandler.java#interpolate",
+        "vanilla:net/minecraft/world/entity/monster/Shulker.java#getRenderPosition",
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#extractRenderState",
+        "vanilla:net/minecraft/client/renderer/entity/LivingEntityRenderer.java#extractRenderState"
       ]
     },
     "client_tick_audit": {
@@ -277,9 +300,8 @@
       "evidence_ref": "fixed_metadata_schema"
     },
     "transform/interpolation": {
-      "status": "partial",
-      "evidence_ref": "generic_transform",
-      "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation"
+      "status": "complete",
+      "evidence_ref": "entity_transform_interpolation"
     },
     "client tick/movement": {
       "status": "partial",

@@ -20021,3 +20021,24 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   milestone `f2f7597c1` 的 workspace full gate 6/6 通过（65 秒）。
 - [x] entity coverage ledger 的全部 157 个 `spawn/default` cell 统一绑定这组生成/穷举证据并
   标为 complete；移除 Turtle 的冗余特例和对应 unsupported todo，其他九类 cell 原样保留。
+
+## 2026-07-20：157 EntityType transform/interpolation audit
+
+- [x] `7a7d2ffcd` 冻结单一 `EntityStore` owner、packet/tick/render endpoint、local authority、
+  special-family 与 retained-publication 合同；`bf69a5853` 至 `c13ebdc48` 依次完成 PositionCodec、
+  loaded-section ticking、4096 距离 gate、collision-aware target carry、relative teleport、head/body
+  endpoint、local controlling vehicle、indirect passenger correction 及 effect-before-publication
+  顺序。local-authority milestone full gate 通过。
+- [x] `1d5b7eea6`、`9c921bf7a` 将 narrow candidate 与 survivor full projection 统一到 canonical
+  partial-tick endpoint，保留 living-passenger `solveBodyRot`、new-minecart track override、dragon
+  multipart pick 路径，并补齐 Shulker block-center `setPos`、6-tick quadratic attach offset、mount
+  edge、完整 culling transition 与 local/detached camera endpoint。内部 Shulker 过渡随 publication
+  值克隆但跳过 serde，不扩张 control/probe JSON；`19d8e008a` 的 renderer milestone full gate 6/6
+  通过（23 秒）。
+- [x] 生成的 class-graph policy 将固定 catalog 精确分为 direct `setPos` 33、generic three-step
+  113、display immediate 3、minecart feature-gated 7、Shulker special 1；穷举测试证明 157 项恰好
+  覆盖一次。coverage ledger 的全部 `transform/interpolation` cell 绑定统一 evidence 并标为
+  complete，对应 unsupported todo 已删除。
+- [x] 本片不连带关闭 client tick/movement、dimensions/collision/pick、model/texture/layers、
+  animation、equipment/passenger/leash、event/particle/audio 或 save/debug；这些相邻 cell 继续
+  按各自生成 ledger 与 unsupported 边界独立推进。

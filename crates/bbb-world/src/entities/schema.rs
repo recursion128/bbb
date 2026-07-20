@@ -4370,17 +4370,18 @@ pub fn vanilla_entity_metadata_type_is_minecart(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
-/// Returns the vanilla client interpolation-handler length for an entity type.
-///
-/// The membership follows the generated 26.1 runtime-class graph rather than a
-/// hand-maintained registry-id list. `Shulker` overrides the inherited
-/// `LivingEntity` handler with `null`; displays keep their explicit zero-length
-/// handler; and minecarts expose the old-behavior handler only while the
-/// `minecart_improvements` feature is disabled.
-pub(crate) fn vanilla_entity_metadata_type_interpolation_steps(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum VanillaEntityInterpolationPolicy {
+    DirectSetPos,
+    GenericThreeStep,
+    DisplayImmediate,
+    MinecartFeatureGated,
+    ShulkerAttachPosition,
+}
+
+pub(crate) fn vanilla_entity_metadata_type_interpolation_policy(
     entity_type_id: i32,
-    minecart_improvements_enabled: bool,
-) -> Option<u8> {
+) -> Option<VanillaEntityInterpolationPolicy> {
     const ABSTRACT_BOAT: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
     const ABSTRACT_MINECART: &str = "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart";
     const DISPLAY: &str = "net.minecraft.world.entity.Display";
@@ -4392,20 +4393,47 @@ pub(crate) fn vanilla_entity_metadata_type_interpolation_steps(
     let runtime_class = VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)?
         .runtime_class?;
-    if vanilla_class_is_or_implements(runtime_class, SHULKER, 0) {
-        None
-    } else if vanilla_class_is_or_implements(runtime_class, DISPLAY, 0) {
-        Some(0)
-    } else if vanilla_class_is_or_implements(runtime_class, LIVING_ENTITY, 0)
-        || vanilla_class_is_or_implements(runtime_class, EXPERIENCE_ORB, 0)
-        || vanilla_class_is_or_implements(runtime_class, FISHING_HOOK, 0)
-        || vanilla_class_is_or_implements(runtime_class, ABSTRACT_BOAT, 0)
-        || (!minecart_improvements_enabled
-            && vanilla_class_is_or_implements(runtime_class, ABSTRACT_MINECART, 0))
-    {
-        Some(3)
-    } else {
-        None
+    Some(
+        if vanilla_class_is_or_implements(runtime_class, SHULKER, 0) {
+            VanillaEntityInterpolationPolicy::ShulkerAttachPosition
+        } else if vanilla_class_is_or_implements(runtime_class, DISPLAY, 0) {
+            VanillaEntityInterpolationPolicy::DisplayImmediate
+        } else if vanilla_class_is_or_implements(runtime_class, ABSTRACT_MINECART, 0) {
+            VanillaEntityInterpolationPolicy::MinecartFeatureGated
+        } else if vanilla_class_is_or_implements(runtime_class, LIVING_ENTITY, 0)
+            || vanilla_class_is_or_implements(runtime_class, EXPERIENCE_ORB, 0)
+            || vanilla_class_is_or_implements(runtime_class, FISHING_HOOK, 0)
+            || vanilla_class_is_or_implements(runtime_class, ABSTRACT_BOAT, 0)
+        {
+            VanillaEntityInterpolationPolicy::GenericThreeStep
+        } else {
+            VanillaEntityInterpolationPolicy::DirectSetPos
+        },
+    )
+}
+
+/// Returns the vanilla client interpolation-handler length for an entity type.
+///
+/// The membership follows the generated 26.1 runtime-class graph rather than a
+/// hand-maintained registry-id list. `Shulker` overrides the inherited
+/// `LivingEntity` handler with `null`; displays keep their explicit zero-length
+/// handler; and minecarts expose the old-behavior handler only while the
+/// `minecart_improvements` feature is disabled.
+pub(crate) fn vanilla_entity_metadata_type_interpolation_steps(
+    entity_type_id: i32,
+    minecart_improvements_enabled: bool,
+) -> Option<u8> {
+    match vanilla_entity_metadata_type_interpolation_policy(entity_type_id)? {
+        VanillaEntityInterpolationPolicy::GenericThreeStep => Some(3),
+        VanillaEntityInterpolationPolicy::DisplayImmediate => Some(0),
+        VanillaEntityInterpolationPolicy::MinecartFeatureGated
+            if !minecart_improvements_enabled =>
+        {
+            Some(3)
+        }
+        VanillaEntityInterpolationPolicy::DirectSetPos
+        | VanillaEntityInterpolationPolicy::MinecartFeatureGated
+        | VanillaEntityInterpolationPolicy::ShulkerAttachPosition => None,
     }
 }
 
@@ -5080,6 +5108,59 @@ mod tests {
             vanilla_entity_metadata_type_interpolation_steps(
                 VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32,
                 false
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_transform_policy_partitions_all_fixed_entity_types_once() {
+        let mut ids = HashSet::new();
+        let mut counts = [0usize; 5];
+        for entry in VANILLA_ENTITY_TYPES {
+            assert!(ids.insert(entry.id), "duplicate EntityType id {}", entry.id);
+            let policy = vanilla_entity_metadata_type_interpolation_policy(entry.id)
+                .unwrap_or_else(|| panic!("missing transform policy for {}", entry.resource_id));
+            let (index, legacy_steps, improved_steps) = match policy {
+                VanillaEntityInterpolationPolicy::DirectSetPos => (0, None, None),
+                VanillaEntityInterpolationPolicy::GenericThreeStep => (1, Some(3), Some(3)),
+                VanillaEntityInterpolationPolicy::DisplayImmediate => (2, Some(0), Some(0)),
+                VanillaEntityInterpolationPolicy::MinecartFeatureGated => {
+                    assert!(vanilla_entity_metadata_type_is_minecart(entry.id));
+                    (3, Some(3), None)
+                }
+                VanillaEntityInterpolationPolicy::ShulkerAttachPosition => {
+                    assert_eq!(entry.id, VANILLA_ENTITY_TYPE_SHULKER_ID);
+                    (4, None, None)
+                }
+            };
+            counts[index] += 1;
+            assert_eq!(
+                vanilla_entity_metadata_type_interpolation_steps(entry.id, false),
+                legacy_steps,
+                "legacy interpolation policy drifted for {}",
+                entry.resource_id
+            );
+            assert_eq!(
+                vanilla_entity_metadata_type_interpolation_steps(entry.id, true),
+                improved_steps,
+                "improved interpolation policy drifted for {}",
+                entry.resource_id
+            );
+        }
+
+        assert_eq!(ids.len(), 157);
+        assert_eq!(ids.len(), VANILLA_ENTITY_TYPE_METADATA_26_1.len());
+        assert_eq!(counts.iter().sum::<usize>(), ids.len());
+        assert_eq!(
+            counts,
+            [33, 113, 3, 7, 1],
+            "direct/generic/display/minecart/Shulker partition drifted"
+        );
+        assert_eq!(vanilla_entity_metadata_type_interpolation_policy(-1), None);
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_policy(
+                VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32
             ),
             None
         );

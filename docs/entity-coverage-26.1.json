@@ -5,7 +5,7 @@
     "not-applicable",
     "partial"
   ],
-  "baseline_policy": "Conservative audited coverage: generated metadata/schema and the complete source-derived spawn/default audit apply to every catalog row. Generic transform, callback, interpolation, rendering, event, and debug implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, and the source-derived transform/interpolation family partition apply to every catalog row. Generic callback, rendering, event, and debug implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
   "catalog_source": "crates/bbb-protocol/src/entity_types.rs#VANILLA_ENTITY_TYPES",
   "cell_categories": [
@@ -70,9 +70,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 0,
@@ -125,9 +124,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 1,
@@ -180,9 +178,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 2,
@@ -235,9 +232,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 3,
@@ -290,9 +286,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 4,
@@ -345,9 +340,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 5,
@@ -400,9 +394,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 6,
@@ -455,9 +448,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 7,
@@ -510,9 +502,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 8,
@@ -565,9 +556,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 9,
@@ -620,9 +610,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 10,
@@ -675,9 +664,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 11,
@@ -730,9 +718,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 12,
@@ -785,9 +772,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 13,
@@ -840,9 +826,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 14,
@@ -895,9 +880,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 15,
@@ -950,9 +934,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 16,
@@ -1005,9 +988,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 17,
@@ -1060,9 +1042,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 18,
@@ -1115,9 +1096,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 19,
@@ -1170,9 +1150,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 20,
@@ -1225,9 +1204,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 21,
@@ -1280,9 +1258,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 22,
@@ -1335,9 +1312,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 23,
@@ -1390,9 +1366,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 24,
@@ -1445,9 +1420,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 25,
@@ -1500,9 +1474,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 26,
@@ -1555,9 +1528,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 27,
@@ -1610,9 +1582,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 28,
@@ -1665,9 +1636,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 29,
@@ -1720,9 +1690,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 30,
@@ -1775,9 +1744,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 31,
@@ -1830,9 +1798,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 32,
@@ -1885,9 +1852,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 33,
@@ -1940,9 +1906,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 34,
@@ -1995,9 +1960,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 35,
@@ -2050,9 +2014,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 36,
@@ -2105,9 +2068,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 37,
@@ -2160,9 +2122,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 38,
@@ -2215,9 +2176,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 39,
@@ -2270,9 +2230,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 40,
@@ -2325,9 +2284,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 41,
@@ -2380,9 +2338,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 42,
@@ -2435,9 +2392,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 43,
@@ -2490,9 +2446,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 44,
@@ -2545,9 +2500,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 45,
@@ -2600,9 +2554,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 46,
@@ -2655,9 +2608,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 47,
@@ -2710,9 +2662,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 48,
@@ -2765,9 +2716,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 49,
@@ -2820,9 +2770,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 50,
@@ -2875,9 +2824,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 51,
@@ -2930,9 +2878,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 52,
@@ -2985,9 +2932,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 53,
@@ -3040,9 +2986,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 54,
@@ -3095,9 +3040,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 55,
@@ -3150,9 +3094,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 56,
@@ -3205,9 +3148,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 57,
@@ -3260,9 +3202,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 58,
@@ -3315,9 +3256,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 59,
@@ -3370,9 +3310,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 60,
@@ -3425,9 +3364,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 61,
@@ -3480,9 +3418,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 62,
@@ -3535,9 +3472,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 63,
@@ -3590,9 +3526,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 64,
@@ -3645,9 +3580,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 65,
@@ -3700,9 +3634,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 66,
@@ -3755,9 +3688,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 67,
@@ -3810,9 +3742,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 68,
@@ -3865,9 +3796,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 69,
@@ -3920,9 +3850,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 70,
@@ -3975,9 +3904,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 71,
@@ -4030,9 +3958,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 72,
@@ -4085,9 +4012,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 73,
@@ -4140,9 +4066,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 74,
@@ -4195,9 +4120,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 75,
@@ -4250,9 +4174,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 76,
@@ -4305,9 +4228,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 77,
@@ -4360,9 +4282,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 78,
@@ -4415,9 +4336,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 79,
@@ -4470,9 +4390,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 80,
@@ -4525,9 +4444,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 81,
@@ -4580,9 +4498,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 82,
@@ -4635,9 +4552,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 83,
@@ -4690,9 +4606,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 84,
@@ -4745,9 +4660,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 85,
@@ -4800,9 +4714,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 86,
@@ -4855,9 +4768,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 87,
@@ -4910,9 +4822,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 88,
@@ -4965,9 +4876,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 89,
@@ -5020,9 +4930,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 90,
@@ -5075,9 +4984,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 91,
@@ -5130,9 +5038,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 92,
@@ -5185,9 +5092,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 93,
@@ -5240,9 +5146,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 94,
@@ -5295,9 +5200,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 95,
@@ -5350,9 +5254,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 96,
@@ -5405,9 +5308,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 97,
@@ -5460,9 +5362,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 98,
@@ -5515,9 +5416,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 99,
@@ -5570,9 +5470,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 100,
@@ -5625,9 +5524,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 101,
@@ -5680,9 +5578,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 102,
@@ -5735,9 +5632,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 103,
@@ -5790,9 +5686,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 104,
@@ -5845,9 +5740,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 105,
@@ -5900,9 +5794,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 106,
@@ -5955,9 +5848,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 107,
@@ -6010,9 +5902,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 108,
@@ -6065,9 +5956,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 109,
@@ -6120,9 +6010,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 110,
@@ -6175,9 +6064,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 111,
@@ -6230,9 +6118,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 112,
@@ -6285,9 +6172,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 113,
@@ -6340,9 +6226,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 114,
@@ -6395,9 +6280,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 115,
@@ -6450,9 +6334,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 116,
@@ -6505,9 +6388,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 117,
@@ -6560,9 +6442,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 118,
@@ -6615,9 +6496,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 119,
@@ -6670,9 +6550,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 120,
@@ -6725,9 +6604,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 121,
@@ -6780,9 +6658,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 122,
@@ -6835,9 +6712,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 123,
@@ -6890,9 +6766,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 124,
@@ -6945,9 +6820,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 125,
@@ -7000,9 +6874,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 126,
@@ -7055,9 +6928,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 127,
@@ -7110,9 +6982,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 128,
@@ -7165,9 +7036,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 129,
@@ -7220,9 +7090,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 130,
@@ -7275,9 +7144,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 131,
@@ -7330,9 +7198,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 132,
@@ -7385,9 +7252,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 133,
@@ -7440,9 +7306,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 134,
@@ -7495,9 +7360,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 135,
@@ -7550,9 +7414,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 136,
@@ -7601,9 +7464,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 137,
@@ -7656,9 +7518,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 138,
@@ -7711,9 +7572,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 139,
@@ -7766,9 +7626,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 140,
@@ -7821,9 +7680,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 141,
@@ -7876,9 +7734,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 142,
@@ -7931,9 +7788,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 143,
@@ -7986,9 +7842,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 144,
@@ -8041,9 +7896,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 145,
@@ -8096,9 +7950,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 146,
@@ -8151,9 +8004,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 147,
@@ -8206,9 +8058,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 148,
@@ -8261,9 +8112,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 149,
@@ -8316,9 +8166,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 150,
@@ -8371,9 +8220,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 151,
@@ -8426,9 +8274,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 152,
@@ -8481,9 +8328,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 153,
@@ -8536,9 +8382,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 154,
@@ -8591,9 +8436,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 155,
@@ -8646,9 +8490,8 @@
           "status": "complete"
         },
         "transform/interpolation": {
-          "evidence_ref": "generic_transform",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-transform-and-interpolation",
-          "status": "partial"
+          "evidence_ref": "entity_transform_interpolation",
+          "status": "complete"
         }
       },
       "id": 156,
@@ -8732,6 +8575,43 @@
         "vanilla:net/minecraft/world/entity/ai/attributes/DefaultAttributes.java#private static final Map<EntityType<? extends LivingEntity>, AttributeSupplier> SUPPLIERS"
       ]
     },
+    "entity_transform_interpolation": {
+      "implementation": [
+        "crates/bbb-world/src/entities/schema.rs#pub(crate) fn vanilla_entity_metadata_type_interpolation_policy",
+        "crates/bbb-world/src/entities/components.rs#pub(crate) fn render_position",
+        "crates/bbb-world/src/entities/movement.rs#pub fn apply_entity_position_sync",
+        "crates/bbb-world/src/entities/movement.rs#pub fn apply_entity_move",
+        "crates/bbb-world/src/entities/movement.rs#pub fn apply_teleport_entity",
+        "crates/bbb-world/src/entities/animations.rs#pub fn advance_entity_client_animations",
+        "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn fill_model_candidates_at_partial_tick",
+        "crates/bbb-world/src/entities.rs#pub fn fill_entity_model_sources_for_candidates_at_partial_tick",
+        "crates/bbb-world/src/client/local_player.rs#pub fn local_player_pose_at_partial_tick"
+      ],
+      "tests": [
+        "crates/bbb-world/src/entities/schema.rs#generated_transform_policy_partitions_all_fixed_entity_types_once",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#position_sync_uses_loaded_chunk_ticking_distance_and_keeps_packet_velocity_unchanged",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#teleport_resolves_relative_values_from_active_target_and_snap_old_endpoints",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#interpolation_carries_independent_motion_only_into_collision_free_target_bounds",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_vehicle_authority_uses_vanilla_controller_conditions",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#living_passenger_body_rotation_follows_interpolated_living_vehicle",
+        "crates/bbb-world/src/entities/tests/specialized_pick_bounds_and_render_scale.rs#shulker_block_snap_uses_quadratic_render_offset_and_retained_generation",
+        "crates/bbb-native/src/camera_pose.rs#render_camera_uses_local_player_tick_endpoints",
+        "crates/bbb-native/src/entity_scene/tests.rs#visibility_first_culling_keeps_catalog_exceptions_and_custom_bounds"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityPositionSync",
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity",
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTeleportEntity",
+        "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#tickNonPassenger",
+        "vanilla:net/minecraft/world/entity/Entity.java#moveOrInterpolateTo",
+        "vanilla:net/minecraft/world/entity/InterpolationHandler.java#interpolate",
+        "vanilla:net/minecraft/world/entity/monster/Shulker.java#getRenderPosition",
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#extractRenderState",
+        "vanilla:net/minecraft/client/renderer/entity/LivingEntityRenderer.java#extractRenderState"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -8761,20 +8641,6 @@
         "vanilla:net/minecraft/world/entity/Entity.java#defineSynchedData",
         "vanilla:net/minecraft/network/syncher/EntityDataSerializers.java#public static final EntityDataSerializer<ItemStack> ITEM_STACK",
         "vanilla:net/minecraft/network/syncher/SynchedEntityData.java#private <T> void assignValue"
-      ]
-    },
-    "generic_transform": {
-      "implementation": [
-        "crates/bbb-world/src/entities/movement.rs#pub fn apply_entity_position_sync",
-        "crates/bbb-world/src/entities/movement.rs#pub fn apply_entity_move",
-        "crates/bbb-world/src/entities/movement.rs#pub fn apply_teleport_entity"
-      ],
-      "tests": [
-        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
-      ],
-      "vanilla": [
-        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTeleportEntity",
-        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
       ]
     },
     "noop_renderer": {
