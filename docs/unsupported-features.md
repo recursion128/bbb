@@ -1350,7 +1350,9 @@ back into a todo. Do not delete these.
 
 - Complete vanilla remote teleport, head/body rotation, distance-based and
   partial-tick interpolation, collision-aware target adjustment, and the remaining
-  family-specific local-authority/transform exceptions.
+  family-specific local-authority/transform exceptions. The frozen ownership,
+  Vanilla evidence, serial phases, focused tests, and high-risk gates are recorded
+  in `docs/entity-transform-interpolation-design.md`.
 
 ### Entity coverage matrix client tick and movement
 
