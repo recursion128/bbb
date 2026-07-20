@@ -168,6 +168,11 @@ HUD/font, entity and sky owners are built. Failure restores those exact handles
 without old-pack re-upload; success drops the checkpoint only after item/map
 generation invalidation. Audio commit and the simulation acknowledgement follow
 that renderer barrier, so readers cannot observe a cross-generation mixture.
+Downloaded skin/cape/elytra textures share one bounded item-runtime request
+owner keyed by exact resource and connection-session generation. Renderer
+dynamic entity images/atlases and pack-backed entity variants cross the same
+generation edge before accepting new uploads; disconnect, reconnect and reload
+therefore discard late results instead of reviving a prior handle.
 
 ### `bbb-renderer`
 

@@ -48,6 +48,8 @@ impl DynamicEntityTextureUploader for Renderer {
 /// until their image upload succeeds.
 pub(crate) struct NativeEntityVariantTextureRuntime {
     pack_roots: Option<PackRoots>,
+    resource_generation: u64,
+    session: Option<(u64, bool)>,
     entries: HashMap<String, EntityVariantTextureEntry>,
     rejected_presentations: HashSet<(String, i32)>,
     armor_trim_atlas_synchronized: bool,
@@ -59,8 +61,14 @@ pub(crate) struct NativeEntityVariantTextureRuntime {
 
 impl NativeEntityVariantTextureRuntime {
     pub(crate) fn new(pack_roots: Option<PackRoots>) -> Self {
+        let resource_generation = pack_roots
+            .as_ref()
+            .and_then(PackRoots::client_resource_generation)
+            .map_or(0, bbb_pack::ClientResourceGeneration::generation);
         Self {
             pack_roots,
+            resource_generation,
+            session: None,
             entries: HashMap::new(),
             rejected_presentations: HashSet::new(),
             armor_trim_atlas_synchronized: false,
@@ -69,6 +77,26 @@ impl NativeEntityVariantTextureRuntime {
             painting_atlas_synchronized: false,
             painting_atlas_ready: false,
         }
+    }
+
+    pub(crate) fn synchronize_session(
+        &mut self,
+        connection_generation: u64,
+        connected: bool,
+    ) -> bool {
+        let next = (connection_generation, connected);
+        if self.session == Some(next) {
+            return false;
+        }
+        self.session = Some(next);
+        self.entries.clear();
+        self.rejected_presentations.clear();
+        self.armor_trim_atlas_synchronized = false;
+        self.banner_pattern_atlas_synchronized = false;
+        self.banner_pattern_atlas_ready = false;
+        self.painting_atlas_synchronized = false;
+        self.painting_atlas_ready = false;
+        true
     }
 
     /// Discovers every synchronized variant asset and uploads each unique resource once. This
@@ -114,6 +142,9 @@ impl NativeEntityVariantTextureRuntime {
         world: &WorldStore,
         uploader: &mut impl DynamicEntityTextureUploader,
     ) {
+        if matches!(self.session, Some((_, false))) {
+            return;
+        }
         self.synchronize_armor_trim_atlas(uploader);
         self.synchronize_banner_pattern_atlas(uploader);
         self.synchronize_painting_atlas(uploader);
@@ -370,7 +401,14 @@ impl NativeEntityVariantTextureRuntime {
     fn unique_texture_handle(&self, asset_id: &str) -> u64 {
         // Keep resource-backed handles stable within and across runs while tagging the hashed input
         // away from raw profile URLs. Resolve the extremely unlikely in-cache collision by probing.
-        let mut handle = fnv1a64(format!("bbb:resource-texture:{asset_id}").as_bytes());
+        let (connection_generation, connected) = self.session.unwrap_or((0, false));
+        let mut handle = fnv1a64(
+            format!(
+                "bbb:resource-texture:{}:{connection_generation}:{connected}:{asset_id}",
+                self.resource_generation
+            )
+            .as_bytes(),
+        );
         while self.entries.iter().any(|(existing_asset, entry)| {
             existing_asset != asset_id && entry.texture.handle == handle
         }) {
@@ -523,6 +561,73 @@ mod tests {
             uploader.images.len(),
             2,
             "ready and failed assets must both stay deduplicated across frames"
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn session_edges_rebuild_pack_backed_texture_owners_without_same_session_churn() {
+        let root = unique_temp_dir("entity-variant-texture-session");
+        let sources = root.join("sources/26.1");
+        write_png(
+            &sources.join("assets/example/textures/entity/cow/adult.png"),
+            3,
+            2,
+        );
+        write_png(
+            &sources.join("assets/example/textures/entity/cow/baby.png"),
+            2,
+            1,
+        );
+        let roots = PackRoots::from_paths(
+            root.clone(),
+            sources.clone(),
+            sources.join("assets/minecraft"),
+            None,
+        );
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            COW_VARIANT_REGISTRY,
+            0,
+            vec![bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:highland",
+                farm_animal_variant_nbt(
+                    "cold",
+                    "example:entity/cow/adult",
+                    "example:entity/cow/baby",
+                ),
+            )],
+        );
+
+        assert!(runtime.synchronize_session(4, true));
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+        let first_handle = runtime
+            .ready_texture("example:entity/cow/adult")
+            .unwrap()
+            .handle;
+        assert_eq!(uploader.images.len(), 2);
+
+        assert!(!runtime.synchronize_session(4, true));
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+        assert_eq!(uploader.images.len(), 2);
+
+        assert!(runtime.synchronize_session(4, false));
+        assert!(runtime.ready_texture("example:entity/cow/adult").is_none());
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+        assert_eq!(uploader.images.len(), 2);
+
+        assert!(runtime.synchronize_session(5, true));
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+        assert_eq!(uploader.images.len(), 4);
+        assert_ne!(
+            runtime
+                .ready_texture("example:entity/cow/adult")
+                .unwrap()
+                .handle,
+            first_handle
         );
 
         std::fs::remove_dir_all(root).unwrap();

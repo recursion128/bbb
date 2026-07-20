@@ -2329,6 +2329,36 @@ fn pipeline_bind_group_layouts<'a>(
 }
 
 impl Renderer {
+    /// Selects the exact resource/session owner for runtime entity textures.
+    /// Any edge invalidates the CPU images and GPU atlases before downloads or
+    /// pack-backed variants from the new generation are admitted.
+    pub fn synchronize_dynamic_entity_texture_generation(
+        &mut self,
+        resource_generation: u64,
+        connection_generation: u64,
+        connected: bool,
+    ) -> bool {
+        let next = (resource_generation, connection_generation, connected);
+        if self.dynamic_entity_texture_generation == Some(next) {
+            return false;
+        }
+        self.dynamic_entity_texture_generation = Some(next);
+
+        let had_dynamic_textures = !self.entity_dynamic_player_skin_images.is_empty()
+            || self.entity_dynamic_player_skin_atlas.is_some()
+            || !self.entity_dynamic_player_texture_images.is_empty()
+            || self.entity_dynamic_player_texture_atlas.is_some();
+        self.entity_dynamic_player_skin_images.clear();
+        self.entity_dynamic_player_skin_atlas = None;
+        self.entity_dynamic_player_texture_images.clear();
+        self.entity_dynamic_player_texture_atlas = None;
+        if had_dynamic_textures {
+            self.rebuild_entity_model_meshes();
+            self.rebuild_first_person_player_arm_meshes();
+        }
+        true
+    }
+
     pub fn upload_entity_model_textures(
         &mut self,
         images: &[EntityModelTextureImage],
@@ -3847,6 +3877,41 @@ mod tests {
         ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
         ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
     };
+
+    #[test]
+    fn dynamic_entity_texture_generation_reuses_exact_owner_and_invalidates_edges() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            eprintln!("skipping offscreen renderer test without a compatible adapter");
+            return;
+        };
+
+        assert!(renderer.synchronize_dynamic_entity_texture_generation(7, 3, true));
+        renderer
+            .upload_dynamic_player_skin(bbb_render_types::DynamicPlayerSkinImage {
+                handle: 91,
+                rgba: vec![0xff; 64 * 64 * 4],
+            })
+            .unwrap();
+        assert_eq!(renderer.entity_dynamic_player_skin_images.len(), 1);
+        assert!(renderer.entity_dynamic_player_skin_atlas.is_some());
+
+        assert!(!renderer.synchronize_dynamic_entity_texture_generation(7, 3, true));
+        assert_eq!(renderer.entity_dynamic_player_skin_images.len(), 1);
+
+        assert!(renderer.synchronize_dynamic_entity_texture_generation(7, 3, false));
+        assert!(renderer.entity_dynamic_player_skin_images.is_empty());
+        assert!(renderer.entity_dynamic_player_skin_atlas.is_none());
+
+        renderer
+            .upload_dynamic_player_skin(bbb_render_types::DynamicPlayerSkinImage {
+                handle: 91,
+                rgba: vec![0x44; 64 * 64 * 4],
+            })
+            .unwrap();
+        assert!(renderer.synchronize_dynamic_entity_texture_generation(8, 4, true));
+        assert!(renderer.entity_dynamic_player_skin_images.is_empty());
+        assert!(renderer.entity_dynamic_player_skin_atlas.is_none());
+    }
 
     #[test]
     fn entity_model_dissolve_shader_matches_vanilla_entity_fsh_branch_order() {

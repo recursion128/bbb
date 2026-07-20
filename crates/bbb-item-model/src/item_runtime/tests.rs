@@ -1,7 +1,5 @@
 use super::*;
-use crate::skin_runtime::{
-    AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
-};
+use crate::skin_runtime::{AsyncDynamicTextureRuntime, SkinPngFetcher};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_FURNACE_ID,
 };
@@ -48,9 +46,75 @@ fn independent_simulation_projection_copies_catalogs_without_renderer_async_cach
         Some(1234)
     );
     assert!(runtime.profile_resolutions.borrow().is_some());
-    assert!(runtime.dynamic_skins.borrow().is_some());
+    assert!(runtime.dynamic_textures.borrow().is_some());
     assert!(projection.profile_resolutions.borrow().is_none());
-    assert!(projection.dynamic_skins.borrow().is_none());
+    assert!(projection.dynamic_textures.borrow().is_none());
+}
+
+#[test]
+fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
+    let runtime = NativeItemRuntime::empty_for_test();
+    let cache_dir = unique_temp_dir("dynamic-texture-session-reset");
+    std::fs::create_dir_all(&cache_dir).unwrap();
+    let download_calls = Arc::new(AtomicUsize::new(0));
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
+        &cache_dir,
+        TestSkinPngFetcher {
+            bytes: player_skin_png_bytes(),
+            calls: download_calls.clone(),
+        },
+    ));
+    let url = "https://textures.minecraft.net/texture/session-skin";
+    let profile = ResolvableProfileSummary {
+        kind: ResolvableProfileKindSummary::Partial,
+        uuid: Some(uuid::Uuid::from_u128(41)),
+        name: None,
+        properties: Vec::new(),
+        profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+            skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
+                url: url.to_string(),
+                model: bbb_protocol::packets::PlayerModelTypeSummary::Wide,
+            }),
+            cape: None,
+            elytra: None,
+        }),
+        skin_patch: Default::default(),
+    };
+
+    assert!(runtime.synchronize_dynamic_texture_session(3, true));
+    runtime.mark_profile_skin_resolved(url, 9001);
+    assert!(matches!(
+        runtime.player_skin_for_profile(&profile),
+        EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+            handle: 9001,
+            status: EntityDynamicPlayerSkinStatus::Ready,
+            ..
+        })
+    ));
+
+    assert!(!runtime.synchronize_dynamic_texture_session(3, true));
+    assert!(matches!(
+        runtime.player_skin_for_profile(&profile),
+        EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+            handle: 9001,
+            status: EntityDynamicPlayerSkinStatus::Ready,
+            ..
+        })
+    ));
+
+    assert!(runtime.synchronize_dynamic_texture_session(3, false));
+    assert!(matches!(
+        runtime.player_skin_for_profile(&profile),
+        EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+            status: EntityDynamicPlayerSkinStatus::Loading,
+            ..
+        })
+    ));
+    assert_eq!(download_calls.load(Ordering::Relaxed), 0);
+    assert!(runtime.synchronize_dynamic_texture_session(4, true));
+
+    std::fs::remove_dir_all(cache_dir).unwrap();
 }
 
 #[test]
@@ -3766,9 +3830,7 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
                 url: skin_url.to_string(),
                 model: bbb_protocol::packets::PlayerModelTypeSummary::Slim,
             }),
-            cape: Some(bbb_protocol::packets::ProfileTextureSummary {
-                url: "https://textures.minecraft.net/texture/profile-cape".to_string(),
-            }),
+            cape: None,
             elytra: None,
         }),
         skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
@@ -3791,7 +3853,8 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     );
 
     let skin_download_calls = Arc::new(AtomicUsize::new(0));
-    runtime.enable_player_skin_downloads_for_test(AsyncDynamicPlayerSkinRuntime::new(
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
         root.join("skin-cache"),
         TestSkinPngFetcher {
             bytes: player_skin_png_bytes(),
@@ -3919,7 +3982,8 @@ fn player_profile_queues_dynamic_cape_and_elytra_texture_downloads() {
     let root = unique_temp_dir("item-runtime-profile-texture-downloads");
     let runtime = NativeItemRuntime::empty_for_test();
     let texture_download_calls = Arc::new(AtomicUsize::new(0));
-    runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
         root.join("profile-texture-cache"),
         TestSkinPngFetcher {
             bytes: player_profile_texture_png_bytes(),
@@ -3988,7 +4052,8 @@ fn player_profile_resource_texture_patch_suppresses_remote_cape_and_elytra_downl
     let root = unique_temp_dir("item-runtime-profile-texture-patches");
     let runtime = NativeItemRuntime::empty_for_test();
     let texture_download_calls = Arc::new(AtomicUsize::new(0));
-    runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
         root.join("profile-texture-cache"),
         TestSkinPngFetcher {
             bytes: player_profile_texture_png_bytes(),
@@ -4080,7 +4145,8 @@ fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() 
     runtime.profile_texture_resources =
         PackResourceStack::from_roots([root.join("sources").join(bbb_pack::MC_VERSION)]);
     let texture_download_calls = Arc::new(AtomicUsize::new(0));
-    runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
         root.join("profile-texture-cache"),
         TestSkinPngFetcher {
             bytes: player_profile_texture_png_bytes(),
@@ -4175,7 +4241,8 @@ fn player_profile_resource_texture_patch_failure_does_not_use_remote_or_stale_te
     runtime.profile_texture_resources =
         PackResourceStack::from_roots([root.join("sources").join(bbb_pack::MC_VERSION)]);
     let texture_download_calls = Arc::new(AtomicUsize::new(0));
-    runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
         root.join("profile-texture-cache"),
         TestSkinPngFetcher {
             bytes: player_profile_texture_png_bytes(),
@@ -4293,7 +4360,8 @@ fn player_profile_resource_texture_patch_loads_local_body_skin() {
     runtime.profile_texture_resources =
         PackResourceStack::from_roots([root.join("sources").join(bbb_pack::MC_VERSION)]);
     let skin_download_calls = Arc::new(AtomicUsize::new(0));
-    runtime.enable_player_skin_downloads_for_test(AsyncDynamicPlayerSkinRuntime::new(
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
         root.join("skin-cache"),
         TestSkinPngFetcher {
             bytes: player_skin_png_bytes(),
@@ -4366,7 +4434,8 @@ fn player_profile_resource_body_patch_failure_does_not_use_remote_or_stale_skin(
     runtime.profile_texture_resources =
         PackResourceStack::from_roots([root.join("sources").join(bbb_pack::MC_VERSION)]);
     let skin_download_calls = Arc::new(AtomicUsize::new(0));
-    runtime.enable_player_skin_downloads_for_test(AsyncDynamicPlayerSkinRuntime::new(
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
         root.join("skin-cache"),
         TestSkinPngFetcher {
             bytes: player_skin_png_bytes(),

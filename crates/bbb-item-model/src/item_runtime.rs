@@ -64,10 +64,7 @@ use bbb_world::{
 
 use crate::{
     profile_resolver::{AsyncProfileResolutionRuntime, HttpGameProfileFetcher},
-    skin_runtime::{
-        AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, DynamicPlayerTextureKind,
-        HttpSkinPngFetcher,
-    },
+    skin_runtime::{AsyncDynamicTextureRuntime, DynamicPlayerTextureKind, HttpSkinPngFetcher},
 };
 
 mod icon_model;
@@ -241,8 +238,10 @@ pub struct NativeItemRuntime {
     map_text_glyphs: Option<HudFontGlyphMap>,
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
-    dynamic_skins: RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
-    dynamic_textures: RefCell<Option<AsyncDynamicPlayerTextureRuntime>>,
+    dynamic_textures: RefCell<Option<Box<AsyncDynamicTextureRuntime>>>,
+    resource_generation: u64,
+    dynamic_texture_session: Cell<Option<(u64, bool)>>,
+    dynamic_texture_session_generation: Cell<u64>,
     profile_texture_resources: PackResourceStack,
     local_dynamic_skins: RefCell<LocalDynamicPlayerSkinCache>,
     local_dynamic_textures: RefCell<LocalDynamicPlayerTextureCache>,
@@ -537,8 +536,10 @@ impl NativeItemRuntime {
             map_text_glyphs: self.map_text_glyphs.clone(),
             textures: self.textures.clone(),
             profile_resolutions: RefCell::default(),
-            dynamic_skins: RefCell::default(),
             dynamic_textures: RefCell::default(),
+            resource_generation: self.resource_generation,
+            dynamic_texture_session: Cell::new(None),
+            dynamic_texture_session_generation: Cell::new(0),
             profile_texture_resources: self.profile_texture_resources.clone(),
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),
@@ -742,6 +743,9 @@ impl NativeItemRuntime {
             potion_tags,
             attribute_tags,
             villager_type_tags,
+            roots
+                .client_resource_generation()
+                .map_or(0, bbb_pack::ClientResourceGeneration::generation),
             roots.resource_stack(),
         )
     }
@@ -770,6 +774,7 @@ impl NativeItemRuntime {
         potion_tags: Option<TagCatalog>,
         attribute_tags: Option<TagCatalog>,
         villager_type_tags: Option<TagCatalog>,
+        resource_generation: u64,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -863,8 +868,10 @@ impl NativeItemRuntime {
             map_text_glyphs,
             textures,
             profile_resolutions: RefCell::default(),
-            dynamic_skins: RefCell::default(),
             dynamic_textures: RefCell::default(),
+            resource_generation,
+            dynamic_texture_session: Cell::new(None),
+            dynamic_texture_session_generation: Cell::new(0),
             profile_texture_resources,
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),
@@ -924,8 +931,10 @@ impl NativeItemRuntime {
             textures: ItemTextureState::from_images(vec![missing])
                 .expect("test item texture atlas is valid"),
             profile_resolutions: RefCell::default(),
-            dynamic_skins: RefCell::default(),
             dynamic_textures: RefCell::default(),
+            resource_generation: 0,
+            dynamic_texture_session: Cell::new(None),
+            dynamic_texture_session_generation: Cell::new(0),
             profile_texture_resources: PackResourceStack::default(),
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),

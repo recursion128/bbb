@@ -2446,6 +2446,8 @@ pub(crate) fn update_renderer_from_publication(
     let entity_partial_tick = publication.partial_tick_at(render_started_at);
     hud_debug_fps_sampler.record_frame(render_started_at);
     let mut audio_events = audio_events;
+    entity_variant_textures
+        .synchronize_session(net_counters.connection_generation, net_counters.connected);
     entity_variant_textures.synchronize(world, renderer);
     let render_terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed || render_terrain_textures_changed {

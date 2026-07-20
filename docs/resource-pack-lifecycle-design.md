@@ -173,6 +173,32 @@ peak memory remains approximately the sum of adjacent generations. That bounded
 reload spike is preferable to a mixed generation and is released immediately
 at commit or rollback.
 
+## Implemented Dynamic-Texture Boundary
+
+Remote skin, cape and elytra downloads now share one bounded asynchronous owner
+and one HTTP worker. Its exact key contains the committed client-resource
+generation, a render-session generation, semantic texture kind, complete URL
+identity and the derived handle. At most 2,048 logical entries and 64 queued
+requests are retained; a full queue is retryable, failed decode/fetch is an
+explicit terminal entry, and decoded worker-side images are transient rather
+than a second unbounded cache. Disk cache reuse remains independent of decoded
+CPU residency.
+
+`NetCounters::connection_generation` advances on each connection, while the
+connected/disconnected edge remains part of the exact session identity. Before
+any completed download can upload, native aligns the item cache and renderer
+with that immutable publication identity. An edge clears profile resolution
+handles, pack-backed profile patches, renderer CPU images and GPU atlases;
+results still arriving from an older worker generation are counted stale and
+discarded. Pack-backed animal, armor-trim, banner and painting textures use the
+same renderer generation barrier and rebuild only after the old owner has been
+invalidated. Reusing the exact generation is a no-op.
+
+The dynamic atlases are still rebuilt when a new image joins an accepted
+generation. They are bounded by the CPU owner, but incremental atlas placement
+and per-image GPU replacement remain a measured follow-up if profile churn
+makes those joins a frame-time hotspot.
+
 ## Vanilla 26.1 Evidence
 
 - `ClientPackSource` creates mandatory `vanilla` at `BOTTOM`; optional built-in

@@ -5,6 +5,7 @@ pub(super) fn apply_control_projection_event(event: &NetEvent, counters: &mut Ne
     match event {
         NetEvent::Connected => {
             counters.connected = true;
+            counters.connection_generation = counters.connection_generation.saturating_add(1);
             counters.last_error = None;
         }
         NetEvent::Disconnected { reason } => {
@@ -44,6 +45,7 @@ mod tests {
 
         apply_control_projection_event(&NetEvent::Connected, &mut counters);
         assert!(counters.connected);
+        assert_eq!(counters.connection_generation, 1);
         assert!(counters.last_error.is_none());
 
         let state_changed = NetEvent::StateChanged {
@@ -94,7 +96,11 @@ mod tests {
             &mut counters,
         );
         assert!(!counters.connected);
+        assert_eq!(counters.connection_generation, 1);
         assert_eq!(counters.last_error.as_deref(), Some("done"));
+
+        apply_control_projection_event(&NetEvent::Connected, &mut counters);
+        assert_eq!(counters.connection_generation, 2);
 
         apply_control_projection_event(&NetEvent::ResetChat, &mut counters);
         assert_eq!(counters.packets_seen, 1);

@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    sync::mpsc::{self, Receiver, Sender},
+    sync::mpsc::{self, Receiver, SyncSender, TrySendError},
     thread,
     time::Duration,
 };
@@ -203,32 +203,138 @@ impl DynamicPlayerTextureRuntime {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct AsyncDynamicPlayerSkinRuntime {
-    entries: HashMap<String, AsyncDynamicPlayerSkinEntry>,
-    request_tx: Sender<DynamicPlayerSkinRequest>,
-    result_rx: Receiver<DynamicPlayerSkinResult>,
+const DEFAULT_DYNAMIC_TEXTURE_MAX_ENTRIES: usize = 2_048;
+const DEFAULT_DYNAMIC_TEXTURE_PENDING_CAPACITY: usize = 64;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum DynamicTextureRequestKind {
+    Skin,
+    Cape,
+    Elytra,
 }
 
-impl AsyncDynamicPlayerSkinRuntime {
+impl From<DynamicPlayerTextureKind> for DynamicTextureRequestKind {
+    fn from(kind: DynamicPlayerTextureKind) -> Self {
+        match kind {
+            DynamicPlayerTextureKind::Cape => Self::Cape,
+            DynamicPlayerTextureKind::Elytra => Self::Elytra,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct DynamicTextureKey {
+    resource_generation: u64,
+    session_generation: u64,
+    kind: DynamicTextureRequestKind,
+    identity: String,
+    handle: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DownloadedDynamicTexture {
+    Skin(DynamicPlayerSkinImage),
+    Profile(DynamicPlayerTextureImage),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AsyncDynamicTextureState {
+    Pending,
+    Ready(DownloadedDynamicTexture),
+    Failed,
+}
+
+#[derive(Debug, Clone)]
+struct AsyncDynamicTextureEntry {
+    state: AsyncDynamicTextureState,
+    last_used: u64,
+    delivery_pending: bool,
+}
+
+/// One bounded owner for every remote profile texture request. Exact keys keep
+/// resource generation, semantic kind, full URL identity and render handle;
+/// the handle hash is never used as proof of equality.
+#[derive(Debug)]
+pub(crate) struct AsyncDynamicTextureRuntime {
+    resource_generation: u64,
+    session_generation: u64,
+    accepting_requests: bool,
+    entries: HashMap<DynamicTextureKey, AsyncDynamicTextureEntry>,
+    request_tx: SyncSender<DynamicTextureRequest>,
+    result_rx: Receiver<DynamicTextureResult>,
+    sequence: u64,
+    max_entries: usize,
+    stale_results: u64,
+    queue_full: u64,
+}
+
+impl AsyncDynamicTextureRuntime {
     pub(crate) fn new(
+        resource_generation: u64,
         cache_dir: impl Into<PathBuf>,
         fetcher: impl SkinPngFetcher + Send + 'static,
     ) -> Self {
-        let (request_tx, request_rx) = mpsc::channel::<DynamicPlayerSkinRequest>();
-        let (result_tx, result_rx) = mpsc::channel::<DynamicPlayerSkinResult>();
+        Self::with_limits(
+            resource_generation,
+            cache_dir,
+            fetcher,
+            DEFAULT_DYNAMIC_TEXTURE_MAX_ENTRIES,
+            DEFAULT_DYNAMIC_TEXTURE_PENDING_CAPACITY,
+        )
+    }
+
+    fn with_limits(
+        resource_generation: u64,
+        cache_dir: impl Into<PathBuf>,
+        fetcher: impl SkinPngFetcher + Send + 'static,
+        max_entries: usize,
+        pending_capacity: usize,
+    ) -> Self {
+        let (request_tx, request_rx) =
+            mpsc::sync_channel::<DynamicTextureRequest>(pending_capacity);
+        let (result_tx, result_rx) = mpsc::channel::<DynamicTextureResult>();
         let cache_dir = cache_dir.into();
         thread::spawn(move || {
-            let mut runtime = DynamicPlayerSkinRuntime::new(cache_dir);
+            let mut skins = DynamicPlayerSkinRuntime::new(&cache_dir);
+            let mut profiles = DynamicPlayerTextureRuntime::new(cache_dir);
             let mut fetcher = fetcher;
             for request in request_rx {
-                let result = runtime
-                    .get_or_fetch_player_skin(request.handle, &request.url, &mut fetcher)
-                    .cloned()
-                    .map_err(|err| err.to_string());
+                let result = match request.key.kind {
+                    DynamicTextureRequestKind::Skin => skins
+                        .get_or_fetch_player_skin(
+                            request.key.handle,
+                            &request.key.identity,
+                            &mut fetcher,
+                        )
+                        .cloned()
+                        .map(DownloadedDynamicTexture::Skin),
+                    DynamicTextureRequestKind::Cape | DynamicTextureRequestKind::Elytra => {
+                        let kind = request
+                            .key
+                            .kind
+                            .profile_kind()
+                            .expect("profile texture request kind");
+                        profiles
+                            .get_or_fetch_player_texture(
+                                kind,
+                                request.key.handle,
+                                &request.key.identity,
+                                &mut fetcher,
+                            )
+                            .cloned()
+                            .map(DownloadedDynamicTexture::Profile)
+                    }
+                }
+                .map_err(|error| error.to_string());
+                // The bounded outer owner holds every Ready image. Keep the
+                // worker's legacy synchronous caches transient so eviction
+                // from that owner also releases decoded CPU pixels; the disk
+                // cache remains available for a later re-admission.
+                skins.skins.clear();
+                profiles.textures.clear();
                 if result_tx
-                    .send(DynamicPlayerSkinResult {
-                        url: request.url,
+                    .send(DynamicTextureResult {
+                        key: request.key,
                         result,
                     })
                     .is_err()
@@ -238,148 +344,234 @@ impl AsyncDynamicPlayerSkinRuntime {
             }
         });
         Self {
+            resource_generation,
+            session_generation: 0,
+            accepting_requests: true,
             entries: HashMap::new(),
             request_tx,
             result_rx,
+            sequence: 0,
+            max_entries: max_entries.max(1),
+            stale_results: 0,
+            queue_full: 0,
         }
     }
 
-    pub(crate) fn queue(&mut self, handle: u64, url: &str) {
-        self.drain_results();
-        if self.entries.contains_key(url) {
-            return;
-        }
+    pub(crate) fn queue_skin(&mut self, handle: u64, url: &str) -> bool {
+        self.queue(DynamicTextureRequestKind::Skin, handle, url)
+    }
 
-        self.entries
-            .insert(url.to_string(), AsyncDynamicPlayerSkinEntry::Pending);
-        let request = DynamicPlayerSkinRequest {
+    pub(crate) fn queue_profile(
+        &mut self,
+        kind: DynamicPlayerTextureKind,
+        handle: u64,
+        url: &str,
+    ) -> bool {
+        self.queue(kind.into(), handle, url)
+    }
+
+    fn queue(&mut self, kind: DynamicTextureRequestKind, handle: u64, identity: &str) -> bool {
+        self.drain_worker_results();
+        if !self.accepting_requests {
+            return false;
+        }
+        self.sequence = self.sequence.saturating_add(1);
+        let key = DynamicTextureKey {
+            resource_generation: self.resource_generation,
+            session_generation: self.session_generation,
+            kind,
+            identity: identity.to_owned(),
             handle,
-            url: url.to_string(),
         };
-        if self.request_tx.send(request).is_err() {
-            self.entries
-                .insert(url.to_string(), AsyncDynamicPlayerSkinEntry::Failed);
+        if let Some(entry) = self.entries.get_mut(&key) {
+            entry.last_used = self.sequence;
+            return !matches!(entry.state, AsyncDynamicTextureState::Failed);
+        }
+        if self.entries.len() >= self.max_entries {
+            let evicted = self
+                .entries
+                .iter()
+                .filter(|(_, entry)| !matches!(entry.state, AsyncDynamicTextureState::Pending))
+                .min_by_key(|(_, entry)| entry.last_used)
+                .map(|(key, _)| key.clone());
+            let Some(evicted) = evicted else {
+                self.queue_full = self.queue_full.saturating_add(1);
+                return false;
+            };
+            self.entries.remove(&evicted);
+        }
+        self.entries.insert(
+            key.clone(),
+            AsyncDynamicTextureEntry {
+                state: AsyncDynamicTextureState::Pending,
+                last_used: self.sequence,
+                delivery_pending: false,
+            },
+        );
+        match self
+            .request_tx
+            .try_send(DynamicTextureRequest { key: key.clone() })
+        {
+            Ok(()) => true,
+            Err(TrySendError::Full(_)) => {
+                self.queue_full = self.queue_full.saturating_add(1);
+                self.entries.remove(&key);
+                false
+            }
+            Err(TrySendError::Disconnected(_)) => {
+                self.queue_full = self.queue_full.saturating_add(1);
+                self.entries
+                    .get_mut(&key)
+                    .expect("queued dynamic texture entry")
+                    .state = AsyncDynamicTextureState::Failed;
+                false
+            }
         }
     }
 
-    pub(crate) fn drain_results(&mut self) -> Vec<AsyncDynamicPlayerSkinResult> {
-        let mut drained = Vec::new();
+    pub(crate) fn drain_skin_results(&mut self) -> Vec<AsyncDynamicPlayerSkinResult> {
+        self.drain_worker_results();
+        let mut drained = self
+            .entries
+            .iter_mut()
+            .filter_map(|(key, entry)| {
+                if key.kind != DynamicTextureRequestKind::Skin || !entry.delivery_pending {
+                    return None;
+                }
+                entry.delivery_pending = false;
+                let skin = match &entry.state {
+                    AsyncDynamicTextureState::Ready(DownloadedDynamicTexture::Skin(skin)) => {
+                        Some(skin.clone())
+                    }
+                    AsyncDynamicTextureState::Failed => None,
+                    AsyncDynamicTextureState::Pending
+                    | AsyncDynamicTextureState::Ready(DownloadedDynamicTexture::Profile(_)) => {
+                        return None;
+                    }
+                };
+                Some((
+                    entry.last_used,
+                    AsyncDynamicPlayerSkinResult {
+                        url: key.identity.clone(),
+                        skin,
+                    },
+                ))
+            })
+            .collect::<Vec<_>>();
+        drained.sort_by_key(|(sequence, _)| *sequence);
+        drained.into_iter().map(|(_, result)| result).collect()
+    }
+
+    pub(crate) fn drain_profile_results(&mut self) -> Vec<AsyncDynamicPlayerTextureResult> {
+        self.drain_worker_results();
+        let mut drained = self
+            .entries
+            .iter_mut()
+            .filter_map(|(key, entry)| {
+                let kind = key.kind.profile_kind()?;
+                if !entry.delivery_pending {
+                    return None;
+                }
+                entry.delivery_pending = false;
+                let texture = match &entry.state {
+                    AsyncDynamicTextureState::Ready(DownloadedDynamicTexture::Profile(texture)) => {
+                        Some(texture.clone())
+                    }
+                    AsyncDynamicTextureState::Failed => None,
+                    AsyncDynamicTextureState::Pending
+                    | AsyncDynamicTextureState::Ready(DownloadedDynamicTexture::Skin(_)) => {
+                        return None;
+                    }
+                };
+                Some((
+                    entry.last_used,
+                    AsyncDynamicPlayerTextureResult {
+                        kind,
+                        url: key.identity.clone(),
+                        texture,
+                    },
+                ))
+            })
+            .collect::<Vec<_>>();
+        drained.sort_by_key(|(sequence, _)| *sequence);
+        drained.into_iter().map(|(_, result)| result).collect()
+    }
+
+    fn drain_worker_results(&mut self) {
         while let Ok(result) = self.result_rx.try_recv() {
-            let entry = match &result.result {
-                Ok(skin) => AsyncDynamicPlayerSkinEntry::Downloaded(skin.clone()),
-                Err(_) => AsyncDynamicPlayerSkinEntry::Failed,
+            let Some(entry) = self.entries.get_mut(&result.key) else {
+                self.stale_results = self.stale_results.saturating_add(1);
+                continue;
             };
-            self.entries.insert(result.url.clone(), entry);
-            drained.push(AsyncDynamicPlayerSkinResult {
-                url: result.url,
-                skin: result.result.ok(),
-            });
+            if !matches!(entry.state, AsyncDynamicTextureState::Pending)
+                || result.key.resource_generation != self.resource_generation
+                || result.key.session_generation != self.session_generation
+            {
+                self.stale_results = self.stale_results.saturating_add(1);
+                continue;
+            }
+            entry.state = match &result.result {
+                Ok(texture) => AsyncDynamicTextureState::Ready(texture.clone()),
+                Err(_) => AsyncDynamicTextureState::Failed,
+            };
+            entry.delivery_pending = true;
         }
-        drained
+    }
+
+    pub(crate) fn reset_session_generation(
+        &mut self,
+        session_generation: u64,
+        accepting_requests: bool,
+    ) {
+        self.session_generation = session_generation;
+        self.accepting_requests = accepting_requests;
+        self.entries.clear();
     }
 
     #[cfg(test)]
     pub(crate) fn downloaded_skin_count(&self) -> usize {
         self.entries
             .values()
-            .filter(|entry| matches!(entry, AsyncDynamicPlayerSkinEntry::Downloaded(_)))
+            .filter(|entry| {
+                matches!(
+                    entry.state,
+                    AsyncDynamicTextureState::Ready(DownloadedDynamicTexture::Skin(_))
+                )
+            })
             .count()
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct AsyncDynamicPlayerTextureRuntime {
-    entries: HashMap<(DynamicPlayerTextureKind, String), AsyncDynamicPlayerTextureEntry>,
-    request_tx: Sender<DynamicPlayerTextureRequest>,
-    result_rx: Receiver<DynamicPlayerTextureResult>,
-}
-
-impl AsyncDynamicPlayerTextureRuntime {
-    pub(crate) fn new(
-        cache_dir: impl Into<PathBuf>,
-        fetcher: impl SkinPngFetcher + Send + 'static,
-    ) -> Self {
-        let (request_tx, request_rx) = mpsc::channel::<DynamicPlayerTextureRequest>();
-        let (result_tx, result_rx) = mpsc::channel::<DynamicPlayerTextureResult>();
-        let cache_dir = cache_dir.into();
-        thread::spawn(move || {
-            let mut runtime = DynamicPlayerTextureRuntime::new(cache_dir);
-            let mut fetcher = fetcher;
-            for request in request_rx {
-                let result = runtime
-                    .get_or_fetch_player_texture(
-                        request.kind,
-                        request.handle,
-                        &request.url,
-                        &mut fetcher,
-                    )
-                    .cloned()
-                    .map_err(|err| err.to_string());
-                if result_tx
-                    .send(DynamicPlayerTextureResult {
-                        kind: request.kind,
-                        url: request.url,
-                        result,
-                    })
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        });
-        Self {
-            entries: HashMap::new(),
-            request_tx,
-            result_rx,
-        }
-    }
-
-    pub(crate) fn queue(&mut self, kind: DynamicPlayerTextureKind, handle: u64, url: &str) {
-        self.drain_results();
-        let key = (kind, url.to_string());
-        if self.entries.contains_key(&key) {
-            return;
-        }
-
-        self.entries
-            .insert(key, AsyncDynamicPlayerTextureEntry::Pending);
-        let request = DynamicPlayerTextureRequest {
-            kind,
-            handle,
-            url: url.to_string(),
-        };
-        if self.request_tx.send(request).is_err() {
-            self.entries.insert(
-                (kind, url.to_string()),
-                AsyncDynamicPlayerTextureEntry::Failed,
-            );
-        }
-    }
-
-    pub(crate) fn drain_results(&mut self) -> Vec<AsyncDynamicPlayerTextureResult> {
-        let mut drained = Vec::new();
-        while let Ok(result) = self.result_rx.try_recv() {
-            let entry = match &result.result {
-                Ok(texture) => AsyncDynamicPlayerTextureEntry::Downloaded(texture.clone()),
-                Err(_) => AsyncDynamicPlayerTextureEntry::Failed,
-            };
-            self.entries
-                .insert((result.kind, result.url.clone()), entry);
-            drained.push(AsyncDynamicPlayerTextureResult {
-                kind: result.kind,
-                url: result.url,
-                texture: result.result.ok(),
-            });
-        }
-        drained
     }
 
     #[cfg(test)]
     pub(crate) fn downloaded_texture_count(&self) -> usize {
         self.entries
             .values()
-            .filter(|entry| matches!(entry, AsyncDynamicPlayerTextureEntry::Downloaded(_)))
+            .filter(|entry| {
+                matches!(
+                    entry.state,
+                    AsyncDynamicTextureState::Ready(DownloadedDynamicTexture::Profile(_))
+                )
+            })
             .count()
+    }
+
+    #[cfg(test)]
+    fn stale_results(&self) -> u64 {
+        self.stale_results
+    }
+
+    #[cfg(test)]
+    fn queue_full(&self) -> u64 {
+        self.queue_full
+    }
+}
+
+impl DynamicTextureRequestKind {
+    const fn profile_kind(self) -> Option<DynamicPlayerTextureKind> {
+        match self {
+            Self::Skin => None,
+            Self::Cape => Some(DynamicPlayerTextureKind::Cape),
+            Self::Elytra => Some(DynamicPlayerTextureKind::Elytra),
+        }
     }
 }
 
@@ -397,43 +589,14 @@ pub(crate) struct AsyncDynamicPlayerTextureResult {
 }
 
 #[derive(Debug, Clone)]
-struct DynamicPlayerSkinRequest {
-    handle: u64,
-    url: String,
-}
-
-#[derive(Debug, Clone)]
-struct DynamicPlayerTextureRequest {
-    kind: DynamicPlayerTextureKind,
-    handle: u64,
-    url: String,
+struct DynamicTextureRequest {
+    key: DynamicTextureKey,
 }
 
 #[derive(Debug)]
-struct DynamicPlayerSkinResult {
-    url: String,
-    result: std::result::Result<DynamicPlayerSkinImage, String>,
-}
-
-#[derive(Debug)]
-struct DynamicPlayerTextureResult {
-    kind: DynamicPlayerTextureKind,
-    url: String,
-    result: std::result::Result<DynamicPlayerTextureImage, String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum AsyncDynamicPlayerSkinEntry {
-    Pending,
-    Downloaded(DynamicPlayerSkinImage),
-    Failed,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum AsyncDynamicPlayerTextureEntry {
-    Pending,
-    Downloaded(DynamicPlayerTextureImage),
-    Failed,
+struct DynamicTextureResult {
+    key: DynamicTextureKey,
+    result: std::result::Result<DownloadedDynamicTexture, String>,
 }
 
 pub fn default_player_skin_cache_dir() -> PathBuf {
@@ -634,7 +797,8 @@ mod tests {
     fn async_dynamic_skin_runtime_downloads_processes_and_reuses_result() {
         let root = unique_temp_dir("async-dynamic-skin-runtime-ready");
         let calls = Arc::new(AtomicUsize::new(0));
-        let mut runtime = AsyncDynamicPlayerSkinRuntime::new(
+        let mut runtime = AsyncDynamicTextureRuntime::new(
+            0,
             &root,
             AsyncStaticSkinFetcher::new(
                 rgba_png(64, 64, |x, y| [x as u8, y as u8, 19, 255]),
@@ -643,9 +807,9 @@ mod tests {
         );
         let url = "https://textures.minecraft.net/texture/async-ready";
 
-        runtime.queue(0x55, url);
+        runtime.queue_skin(0x55, url);
         let results = drain_until_async_skin_result(&mut runtime);
-        runtime.queue(0x55, url);
+        runtime.queue_skin(0x55, url);
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].url, url);
@@ -662,15 +826,16 @@ mod tests {
     fn async_dynamic_skin_runtime_caches_failed_download_or_decode() {
         let root = unique_temp_dir("async-dynamic-skin-runtime-failed");
         let calls = Arc::new(AtomicUsize::new(0));
-        let mut runtime = AsyncDynamicPlayerSkinRuntime::new(
+        let mut runtime = AsyncDynamicTextureRuntime::new(
+            0,
             &root,
             AsyncStaticSkinFetcher::new(b"not a png".to_vec(), calls.clone()),
         );
         let url = "https://textures.minecraft.net/texture/async-failed";
 
-        runtime.queue(0x66, url);
+        runtime.queue_skin(0x66, url);
         let results = drain_until_async_skin_result(&mut runtime);
-        runtime.queue(0x66, url);
+        runtime.queue_skin(0x66, url);
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].url, url);
@@ -685,7 +850,8 @@ mod tests {
     fn async_dynamic_texture_runtime_downloads_processes_and_reuses_result() {
         let root = unique_temp_dir("async-dynamic-texture-runtime-ready");
         let calls = Arc::new(AtomicUsize::new(0));
-        let mut runtime = AsyncDynamicPlayerTextureRuntime::new(
+        let mut runtime = AsyncDynamicTextureRuntime::new(
+            0,
             &root,
             AsyncStaticSkinFetcher::new(
                 rgba_png(64, 32, |x, y| [x as u8, y as u8, 71, 255]),
@@ -694,9 +860,9 @@ mod tests {
         );
         let url = "https://textures.minecraft.net/texture/async-cape";
 
-        runtime.queue(DynamicPlayerTextureKind::Cape, 0x77, url);
+        runtime.queue_profile(DynamicPlayerTextureKind::Cape, 0x77, url);
         let results = drain_until_async_texture_result(&mut runtime);
-        runtime.queue(DynamicPlayerTextureKind::Cape, 0x77, url);
+        runtime.queue_profile(DynamicPlayerTextureKind::Cape, 0x77, url);
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].kind, DynamicPlayerTextureKind::Cape);
@@ -714,15 +880,16 @@ mod tests {
     fn async_dynamic_texture_runtime_caches_failed_download_or_decode() {
         let root = unique_temp_dir("async-dynamic-texture-runtime-failed");
         let calls = Arc::new(AtomicUsize::new(0));
-        let mut runtime = AsyncDynamicPlayerTextureRuntime::new(
+        let mut runtime = AsyncDynamicTextureRuntime::new(
+            0,
             &root,
             AsyncStaticSkinFetcher::new(b"not a png".to_vec(), calls.clone()),
         );
         let url = "https://textures.minecraft.net/texture/async-cape-failed";
 
-        runtime.queue(DynamicPlayerTextureKind::Cape, 0x78, url);
+        runtime.queue_profile(DynamicPlayerTextureKind::Cape, 0x78, url);
         let results = drain_until_async_texture_result(&mut runtime);
-        runtime.queue(DynamicPlayerTextureKind::Cape, 0x78, url);
+        runtime.queue_profile(DynamicPlayerTextureKind::Cape, 0x78, url);
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].kind, DynamicPlayerTextureKind::Cape);
@@ -731,6 +898,77 @@ mod tests {
         assert_eq!(runtime.downloaded_texture_count(), 0);
         assert_eq!(calls.load(Ordering::Relaxed), 1);
 
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn unified_dynamic_texture_runtime_discards_previous_generation_result() {
+        let root = unique_temp_dir("async-dynamic-texture-stale-generation");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut runtime = AsyncDynamicTextureRuntime::new(
+            7,
+            &root,
+            AsyncStaticSkinFetcher::new(
+                rgba_png(64, 64, |x, y| [x as u8, y as u8, 93, 255]),
+                calls.clone(),
+            ),
+        );
+        let url = "https://textures.minecraft.net/texture/stale-generation";
+
+        assert!(runtime.queue_skin(0x91, url));
+        for _ in 0..100 {
+            if calls.load(Ordering::Relaxed) != 0 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        runtime.reset_session_generation(8, true);
+        for _ in 0..100 {
+            assert!(runtime.drain_skin_results().is_empty());
+            if runtime.stale_results() == 1 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        assert_eq!(runtime.stale_results(), 1);
+        assert_eq!(runtime.downloaded_skin_count(), 0);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn unified_dynamic_texture_runtime_bounds_all_pending_entries() {
+        let root = unique_temp_dir("async-dynamic-texture-bounded");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let (release_tx, release_rx) = mpsc::channel();
+        let mut runtime = AsyncDynamicTextureRuntime::with_limits(
+            3,
+            &root,
+            BlockingSkinFetcher::new(
+                rgba_png(64, 64, |x, y| [x as u8, y as u8, 17, 255]),
+                calls.clone(),
+                release_rx,
+            ),
+            1,
+            1,
+        );
+
+        assert!(runtime.queue_skin(1, "https://textures.minecraft.net/texture/one"));
+        for _ in 0..100 {
+            if calls.load(Ordering::Relaxed) == 1 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert!(!runtime.queue_profile(
+            DynamicPlayerTextureKind::Cape,
+            2,
+            "https://textures.minecraft.net/texture/two",
+        ));
+        assert_eq!(runtime.entries.len(), 1);
+        assert_eq!(runtime.queue_full(), 1);
+        release_tx.send(()).unwrap();
+        assert_eq!(drain_until_async_skin_result(&mut runtime).len(), 1);
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -776,6 +1014,30 @@ mod tests {
         calls: Arc<AtomicUsize>,
     }
 
+    struct BlockingSkinFetcher {
+        bytes: Vec<u8>,
+        calls: Arc<AtomicUsize>,
+        release_rx: mpsc::Receiver<()>,
+    }
+
+    impl BlockingSkinFetcher {
+        fn new(bytes: Vec<u8>, calls: Arc<AtomicUsize>, release_rx: mpsc::Receiver<()>) -> Self {
+            Self {
+                bytes,
+                calls,
+                release_rx,
+            }
+        }
+    }
+
+    impl SkinPngFetcher for BlockingSkinFetcher {
+        fn fetch_skin_png(&mut self, _url: &str) -> Result<Vec<u8>> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            self.release_rx.recv().context("release test skin fetch")?;
+            Ok(self.bytes.clone())
+        }
+    }
+
     impl AsyncStaticSkinFetcher {
         fn new(bytes: Vec<u8>, calls: Arc<AtomicUsize>) -> Self {
             Self { bytes, calls }
@@ -804,10 +1066,10 @@ mod tests {
     }
 
     fn drain_until_async_skin_result(
-        runtime: &mut AsyncDynamicPlayerSkinRuntime,
+        runtime: &mut AsyncDynamicTextureRuntime,
     ) -> Vec<AsyncDynamicPlayerSkinResult> {
         for _ in 0..100 {
-            let results = runtime.drain_results();
+            let results = runtime.drain_skin_results();
             if !results.is_empty() {
                 return results;
             }
@@ -817,10 +1079,10 @@ mod tests {
     }
 
     fn drain_until_async_texture_result(
-        runtime: &mut AsyncDynamicPlayerTextureRuntime,
+        runtime: &mut AsyncDynamicTextureRuntime,
     ) -> Vec<AsyncDynamicPlayerTextureResult> {
         for _ in 0..100 {
-            let results = runtime.drain_results();
+            let results = runtime.drain_profile_results();
             if !results.is_empty() {
                 return results;
             }

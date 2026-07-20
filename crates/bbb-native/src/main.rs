@@ -773,8 +773,22 @@ fn main() -> Result<()> {
                     ) => {}
                 WindowEvent::RedrawRequested => {
                     let profiler_frame_started_at = Instant::now();
+                    let dynamic_texture_resource_generation = item_runtime
+                        .as_ref()
+                        .map_or(0, NativeItemRuntime::dynamic_texture_resource_generation);
                     if let Some(items) = item_runtime.as_ref() {
+                        items.synchronize_dynamic_texture_session(
+                            render_publication.net_counters.connection_generation,
+                            render_publication.net_counters.connected,
+                        );
                         items.drain_profile_resolution_results();
+                    }
+                    renderer.synchronize_dynamic_entity_texture_generation(
+                        dynamic_texture_resource_generation,
+                        render_publication.net_counters.connection_generation,
+                        render_publication.net_counters.connected,
+                    );
+                    if let Some(items) = item_runtime.as_ref() {
                         drain_dynamic_player_skin_downloads(items, &mut renderer);
                     }
                     let profiler_update_started_at = Instant::now();

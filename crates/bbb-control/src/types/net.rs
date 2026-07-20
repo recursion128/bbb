@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NetCounters {
     pub connected: bool,
+    /// Monotonic identity of the current network connection. Disconnect keeps
+    /// the last identity while `connected` distinguishes its terminal edge.
+    #[serde(default)]
+    pub connection_generation: u64,
     pub state: Option<String>,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
@@ -173,6 +177,7 @@ mod tests {
     fn publication_build_observation_defaults_for_older_counter_payloads() {
         let mut value = serde_json::to_value(NetCounters::default()).unwrap();
         let object = value.as_object_mut().unwrap();
+        object.remove("connection_generation");
         object.remove("simulation_publication_build_nanos");
         object.remove("simulation_productive_steps");
         object.remove("simulation_noop_steps");
@@ -195,6 +200,7 @@ mod tests {
         object.remove("simulation_entity_snapshot_rebuilt_entities");
 
         let counters: NetCounters = serde_json::from_value(value).unwrap();
+        assert_eq!(counters.connection_generation, 0);
         assert_eq!(counters.simulation_publication_build_nanos, 0);
         assert_eq!(counters.simulation_productive_steps, 0);
         assert_eq!(counters.simulation_noop_steps, 0);
