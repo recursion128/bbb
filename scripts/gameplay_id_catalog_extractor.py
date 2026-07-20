@@ -27,6 +27,7 @@ class AttributeEntry:
     constant_name: str
     resource_id: str
     description_key: str
+    default_value_bits: int
     sentiment: str
     syncable: bool
 
@@ -447,6 +448,21 @@ def _integer(source: JavaSource, expression: JavaExpression) -> int:
         _fail(source, expression, "invalid integer literal")
 
 
+def _double_literal_bits(source: JavaSource, expression: JavaExpression) -> int:
+    literal = expression.canonical.replace("_", "").replace(" ", "")
+    suffix = literal[-1:] if literal[-1:] in {"f", "F", "d", "D"} else ""
+    text = literal[:-1] if suffix else literal
+    try:
+        value = float(text)
+    except ValueError:
+        _fail(source, expression, "expected numeric literal")
+    if suffix in {"f", "F"}:
+        value = struct.unpack("!f", struct.pack("!f", value))[0]
+    if not math.isfinite(value):
+        _fail(source, expression, "numeric literal must be finite")
+    return struct.unpack("!Q", struct.pack("!d", value))[0]
+
+
 def _signed_integer(source: JavaSource, expression: JavaExpression) -> int:
     canonical = expression.canonical.replace("_", "").replace(" ", "")
     try:
@@ -528,8 +544,8 @@ def attribute_entries(source: JavaSource, expected_count: int = 35) -> list[Attr
         if len(arguments) != 2:
             _fail(source, field.initializer, "attribute register must have two arguments")
         constructor = _object_arguments(source, arguments[1])
-        if len(constructor) < 1:
-            _fail(source, arguments[1], "attribute constructor lacks description key")
+        if len(constructor) != 4:
+            _fail(source, arguments[1], "ranged attribute constructor must have four arguments")
         sentiment_calls = _calls(source, field.initializer, "setSentiment")
         if len(sentiment_calls) > 1 or (sentiment_calls and len(sentiment_calls[0].arguments) != 1):
             _fail(source, field.initializer, "ambiguous attribute sentiment")
@@ -549,6 +565,7 @@ def attribute_entries(source: JavaSource, expected_count: int = 35) -> list[Attr
                 field.name,
                 "minecraft:" + _string(source, arguments[0]),
                 _string(source, constructor[0]),
+                _double_literal_bits(source, constructor[1]),
                 sentiment,
                 bool(sync_calls),
             )

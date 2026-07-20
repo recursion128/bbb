@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -134,10 +135,21 @@ class EntityMetadataExtractorFixtureTests(unittest.TestCase):
             ("MAX_HEALTH", "MOVEMENT_SPEED"),
         )
         self.assertEqual(
+            resolved[0].attribute_base_overrides,
+            (
+                ("MAX_HEALTH", None),
+                (
+                    "MOVEMENT_SPEED",
+                    struct.unpack("!Q", struct.pack("!d", 0.23))[0],
+                ),
+            ),
+        )
+        self.assertEqual(
             resolved[0].attribute_factory_owner,
             "net.minecraft.world.entity.monster.Zombie",
         )
         self.assertEqual(resolved[1].attribute_constants, ())
+        self.assertEqual(resolved[1].attribute_base_overrides, ())
 
     def test_multilevel_inheritance_empty_parent_sibling_index_reuse_multiline(self) -> None:
         _, _, accessors = fixture_sources(
@@ -291,6 +303,18 @@ class EntityMetadataExtractorFixtureTests(unittest.TestCase):
         self.assertIn("BLOCK_INTERACTION_RANGE", player.attribute_constants)
         zombie = next(item for item in suppliers if item.constant_name == "ZOMBIE")
         self.assertIn("SPAWN_REINFORCEMENTS_CHANCE", zombie.attribute_constants)
+        self.assertTrue(
+            all(
+                len(item.attribute_constants) == len(item.attribute_base_overrides)
+                for item in suppliers
+            )
+        )
+        turtle = next(item for item in suppliers if item.constant_name == "TURTLE")
+        self.assertEqual(
+            dict(turtle.attribute_base_overrides)["MAX_HEALTH"],
+            struct.unpack("!Q", struct.pack("!d", 30.0))[0],
+        )
+        self.assertIsNone(dict(turtle.attribute_base_overrides)["ARMOR"])
         self.assertIn(
             "net/minecraft/world/level/block/WeatheringCopper.java",
             result.sources,

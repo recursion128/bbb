@@ -675,6 +675,31 @@ pub enum VanillaEntityBabyBehavior {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaEntityDefaultAttribute {
+    pub attribute_id: i32,
+    /// Exact Java `double` bits passed to `AttributeSupplier.Builder.add`.
+    /// `None` means the one-argument overload retained the Attribute registry
+    /// default rather than supplying an entity-family override.
+    pub base_value_override_bits: Option<u64>,
+}
+
+impl VanillaEntityDefaultAttribute {
+    pub const fn registry_default(attribute_id: i32) -> Self {
+        Self {
+            attribute_id,
+            base_value_override_bits: None,
+        }
+    }
+
+    pub const fn overridden(attribute_id: i32, base_value_override_bits: u64) -> Self {
+        Self {
+            attribute_id,
+            base_value_override_bits: Some(base_value_override_bits),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -684,7 +709,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     /// Exact membership of the Vanilla `DefaultAttributes` supplier for this
     /// entity type, expressed in the canonical built-in attribute id space.
     /// Non-living entity types have an empty slice.
-    pub attribute_ids: &'static [i32],
+    pub default_attributes: &'static [VanillaEntityDefaultAttribute],
     /// Nearest vanilla class that declares `handleEntityEvent(byte)` for this runtime type.
     pub handle_entity_event_owner: Option<&'static str>,
     /// Source-derived nearest `LivingEntity.isBaby()` behavior for this runtime class.
@@ -735,12 +760,24 @@ pub const fn vanilla_entity_metadata_schema(
 }
 
 pub fn vanilla_entity_type_has_attribute(entity_type_id: i32, attribute_id: i32) -> bool {
+    vanilla_entity_type_default_attribute(entity_type_id, attribute_id).is_some()
+}
+
+pub fn vanilla_entity_type_default_attribute(
+    entity_type_id: i32,
+    attribute_id: i32,
+) -> Option<&'static VanillaEntityDefaultAttribute> {
     let Ok(index) = usize::try_from(entity_type_id) else {
-        return false;
+        return None;
     };
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(index)
-        .is_some_and(|entry| entry.attribute_ids.contains(&attribute_id))
+        .and_then(|entry| {
+            entry
+                .default_attributes
+                .iter()
+                .find(|entry| entry.attribute_id == attribute_id)
+        })
 }
 
 pub fn vanilla_entity_metadata_field(
@@ -4497,8 +4534,8 @@ mod tests {
     use std::collections::{HashMap, HashSet};
 
     use bbb_protocol::attribute_types::{
-        VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID, VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
-        VANILLA_ATTRIBUTE_SPAWN_REINFORCEMENTS_CHANCE_ID,
+        VANILLA_ATTRIBUTE_ARMOR_ID, VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID,
+        VANILLA_ATTRIBUTE_MAX_HEALTH_ID, VANILLA_ATTRIBUTE_SPAWN_REINFORCEMENTS_CHANCE_ID,
     };
     use bbb_protocol::entity_data_serializers::{
         vanilla_entity_data_serializer_for_constant_name, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
@@ -4588,6 +4625,28 @@ mod tests {
             -1,
             VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
         ));
+        assert_eq!(
+            vanilla_entity_type_default_attribute(
+                VANILLA_ENTITY_TYPE_TURTLE_ID,
+                VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+            )
+            .and_then(|entry| entry.base_value_override_bits)
+            .map(f64::from_bits),
+            Some(30.0),
+        );
+        assert_eq!(
+            vanilla_entity_type_default_attribute(
+                VANILLA_ENTITY_TYPE_TURTLE_ID,
+                VANILLA_ATTRIBUTE_ARMOR_ID,
+            )
+            .map(|entry| entry.base_value_override_bits),
+            Some(None),
+        );
+        assert!(vanilla_entity_type_default_attribute(
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        )
+        .is_none());
     }
 
     #[test]

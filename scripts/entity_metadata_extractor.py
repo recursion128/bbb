@@ -8,6 +8,8 @@ by :mod:`vanilla_java_source` and Tree-sitter Java.
 from __future__ import annotations
 
 import hashlib
+import math
+import struct
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -94,6 +96,7 @@ class EntityTypeRegistration:
     attribute_factory_owner: str | None = None
     attribute_factory_method: str | None = None
     attribute_constants: tuple[str, ...] = ()
+    attribute_base_overrides: tuple[tuple[str, int | None], ...] = ()
 
 
 @dataclass
@@ -670,15 +673,31 @@ def _qualified_factory_owner(
     )
 
 
-def _attribute_factory_constants(
+def _double_literal_bits(source: JavaSource, node: Node, context: str) -> int:
+    expression = source.expression(node)
+    literal = expression.canonical.replace("_", "").replace(" ", "")
+    suffix = literal[-1:] if literal[-1:] in {"f", "F", "d", "D"} else ""
+    text = literal[:-1] if suffix else literal
+    try:
+        value = float(text)
+    except ValueError as error:
+        raise ExtractionError(f"{context}: expected numeric literal {literal!r}") from error
+    if suffix in {"f", "F"}:
+        value = struct.unpack("!f", struct.pack("!f", value))[0]
+    if not math.isfinite(value):
+        raise ExtractionError(f"{context}: numeric literal must be finite")
+    return struct.unpack("!Q", struct.pack("!d", value))[0]
+
+
+def _attribute_factory_defaults(
     sources: dict[str, JavaSource],
     known_types: dict[str, JavaType],
     owner: str,
     method_name: str,
     attribute_names: set[str],
-    cache: dict[tuple[str, str], tuple[str, ...]],
+    cache: dict[tuple[str, str], tuple[tuple[str, int | None], ...]],
     active: set[tuple[str, str]],
-) -> tuple[str, ...]:
+) -> tuple[tuple[str, int | None], ...]:
     key = (owner, method_name)
     if key in cache:
         return cache[key]
@@ -707,7 +726,7 @@ def _attribute_factory_constants(
         )
 
     node = returns[0].named_children[0]
-    own_constants: list[str] = []
+    own_defaults: list[tuple[str, int | None]] = []
     while True:
         call_name, qualifier, arguments = _method_invocation_parts(source, node)
         if call_name != "add":
@@ -727,7 +746,16 @@ def _attribute_factory_constants(
             raise ExtractionError(
                 f"{owner}.{method_name}: unknown Attributes constant {constant}"
             )
-        own_constants.append(constant)
+        override = (
+            _double_literal_bits(
+                source,
+                arguments[1],
+                f"{owner}.{method_name} Attributes.{constant}",
+            )
+            if len(arguments) == 2
+            else None
+        )
+        own_defaults.append((constant, override))
         if qualifier is None:
             raise ExtractionError(
                 f"{owner}.{method_name}: add call lacks a builder qualifier"
@@ -745,7 +773,7 @@ def _attribute_factory_constants(
         else None
     )
     if call_name == "builder" and qualifier_text == "AttributeSupplier":
-        inherited: tuple[str, ...] = ()
+        inherited: tuple[tuple[str, int | None], ...] = ()
     else:
         factory_owner = _qualified_factory_owner(
             sources, source, owner, qualifier, call_name, known_types
@@ -754,7 +782,7 @@ def _attribute_factory_constants(
             raise ExtractionError(
                 f"{owner}.{method_name}: unsupported AttributeSupplier factory {call_name}"
             )
-        inherited = _attribute_factory_constants(
+        inherited = _attribute_factory_defaults(
             sources,
             known_types,
             factory_owner,
@@ -765,9 +793,13 @@ def _attribute_factory_constants(
         )
 
     ordered = list(inherited)
-    for constant in reversed(own_constants):
-        if constant not in ordered:
-            ordered.append(constant)
+    positions = {constant: index for index, (constant, _) in enumerate(ordered)}
+    for constant, override in reversed(own_defaults):
+        if constant in positions:
+            ordered[positions[constant]] = (constant, override)
+        else:
+            positions[constant] = len(ordered)
+            ordered.append((constant, override))
     result = tuple(ordered)
     if not result:
         raise ExtractionError(f"{owner}.{method_name}: empty attribute supplier")
@@ -854,7 +886,7 @@ def extract_attribute_suppliers(
     attribute_names = {
         field.name for field in attribute_source.fields_for(ATTRIBUTES_OWNER)
     }
-    cache: dict[tuple[str, str], tuple[str, ...]] = {}
+    cache: dict[tuple[str, str], tuple[tuple[str, int | None], ...]] = {}
     living_owner = "net.minecraft.world.entity.LivingEntity"
     output: list[EntityTypeRegistration] = []
     for entity_type in entity_types:
@@ -876,7 +908,7 @@ def extract_attribute_suppliers(
             output.append(entity_type)
             continue
         factory_owner, factory_method = factory
-        constants = _attribute_factory_constants(
+        defaults = _attribute_factory_defaults(
             sources,
             known_types,
             factory_owner,
@@ -890,7 +922,8 @@ def extract_attribute_suppliers(
                 entity_type,
                 attribute_factory_owner=factory_owner,
                 attribute_factory_method=factory_method,
-                attribute_constants=constants,
+                attribute_constants=tuple(constant for constant, _ in defaults),
+                attribute_base_overrides=defaults,
             )
         )
     if set(factories) != {

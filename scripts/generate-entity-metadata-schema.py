@@ -3763,6 +3763,15 @@ def render(result: ExtractionResult) -> str:
         "",
         "use super::*;",
         "",
+        "macro_rules! default_attribute {",
+        "    ($attribute:expr) => {",
+        "        VanillaEntityDefaultAttribute::registry_default($attribute)",
+        "    };",
+        "    ($attribute:expr, $bits:expr) => {",
+        "        VanillaEntityDefaultAttribute::overridden($attribute, $bits)",
+        "    };",
+        "}",
+        "",
     ]
 
     for public_name, key in DATA_ALIASES.items():
@@ -4015,10 +4024,16 @@ def render(result: ExtractionResult) -> str:
                 f"        resource_id: {rust_string(item.resource_id)},",
                 f"        runtime_class: {option_string(item.runtime_class)},",
                 f"        schema_class: {option_string(schema_class(item.runtime_class))},",
-                "        attribute_ids: &["
+                "        default_attributes: &["
                 + ", ".join(
-                    f"VANILLA_ATTRIBUTE_{constant}_ID"
-                    for constant in item.attribute_constants
+                    (
+                        "default_attribute!("
+                        f"VANILLA_ATTRIBUTE_{constant}_ID, {override})"
+                        if override is not None
+                        else "default_attribute!("
+                        f"VANILLA_ATTRIBUTE_{constant}_ID)"
+                    )
+                    for constant, override in item.attribute_base_overrides
                 )
                 + "],",
                 f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
@@ -4172,9 +4187,9 @@ def render(result: ExtractionResult) -> str:
             "    fn default_attribute_suppliers_cover_exactly_living_entity_types() {",
             "        let mut supplier_count = 0;",
             "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
-            "            assert_eq!(entry.is_living, !entry.attribute_ids.is_empty(), \"{}\", entry.resource_id);",
+            "            assert_eq!(entry.is_living, !entry.default_attributes.is_empty(), \"{}\", entry.resource_id);",
             "            let mut unique = std::collections::BTreeSet::new();",
-            "            assert!(entry.attribute_ids.iter().all(|id| unique.insert(*id)), \"{}\", entry.resource_id);",
+            "            assert!(entry.default_attributes.iter().all(|attribute| unique.insert(attribute.attribute_id)), \"{}\", entry.resource_id);",
             "            supplier_count += usize::from(entry.is_living);",
             "        }",
             "        assert_eq!(supplier_count, 92);",

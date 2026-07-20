@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -242,7 +243,7 @@ class BadStats {
 package fixture;
 public class Attributes {
   public static final Holder<Attribute> ONE = register(
-      "one", new RangedAttribute("attribute.one", 0, 0, 1)
+      "one", new RangedAttribute("attribute.one", 0.1F, 0, 1)
           .setSentiment(Attribute.Sentiment.NEUTRAL)
           .setSyncable(true));
   private static String fake = ".setSyncable(true)";
@@ -263,8 +264,25 @@ public class MobEffects {
         )
         attribute = attribute_entries(attributes, 1)[0]
         self.assertEqual(
-            (attribute.resource_id, attribute.description_key, attribute.sentiment, attribute.syncable),
-            ("minecraft:one", "attribute.one", "NEUTRAL", True),
+            (
+                attribute.resource_id,
+                attribute.description_key,
+                attribute.default_value_bits,
+                attribute.sentiment,
+                attribute.syncable,
+            ),
+            (
+                "minecraft:one",
+                "attribute.one",
+                struct.unpack(
+                    "!Q",
+                    struct.pack(
+                        "!d", struct.unpack("!f", struct.pack("!f", 0.1))[0]
+                    ),
+                )[0],
+                "NEUTRAL",
+                True,
+            ),
         )
         effect = mob_effect_entries(effects, 1, 1)[0]
         self.assertEqual(effect.category, "HARMFUL")
