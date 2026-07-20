@@ -66,7 +66,7 @@ impl ResourceDataGenerationBudget {
         })
     }
 
-    fn reject(&self, message: impl Into<String>) -> anyhow::Error {
+    pub(crate) fn reject(&self, message: impl Into<String>) -> anyhow::Error {
         self.rejections.fetch_add(1, Ordering::Relaxed);
         anyhow::anyhow!(message.into())
     }

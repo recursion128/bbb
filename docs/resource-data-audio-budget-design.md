@@ -56,6 +56,21 @@ constants. Overflow and all size arithmetic use checked `u64`/`usize`
 conversion. A limit is tested as an exact deterministic admission rule, not a
 wall-clock CI threshold.
 
+The model/font semantic ceilings are fixed as follows. A generation admits at
+most 65,536 blockstate documents, 262,144 blockstate selection entries, 65,536
+cuboid-model documents, 262,144 model elements, 1,048,576 faces, 262,144 model
+texture slots, 65,536 item-model definitions and 262,144 item-model references.
+One flattened font graph admits at most 256 definitions, 4,096 providers,
+1,048,576 bitmap glyph slots and 65,536 space advances. Repeated/cyclic font
+references retain first-visit semantics and count each visited definition once.
+
+Logical retained charges use stable estimates rather than allocator layout:
+512 bytes per blockstate/model/item-model/font-definition owner, 256 bytes per
+blockstate selection/model element/font provider, 128 bytes per model face,
+texture slot or item-model reference, and 64 bytes per font glyph slot or space
+advance. These charges are additive with bounded JSON source/tree/listing
+charges and are intentionally conservative; they do not claim to measure RSS.
+
 ## Before baseline and cost attribution
 
 The local official Java 26.1 `assets/**` tree contains 6,538 JSON documents,

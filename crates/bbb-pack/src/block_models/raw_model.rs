@@ -20,6 +20,22 @@ pub(crate) struct RawBlockModel {
     pub(super) elements: Vec<RawBlockElement>,
 }
 
+impl RawBlockModel {
+    pub(super) fn element_count(&self) -> usize {
+        self.elements.len()
+    }
+
+    pub(super) fn face_count(&self) -> Option<usize> {
+        self.elements.iter().try_fold(0_usize, |count, element| {
+            count.checked_add(element.faces.len())
+        })
+    }
+
+    pub(super) fn texture_slot_count(&self) -> usize {
+        self.textures.len()
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 pub(super) struct RawBlockModelDisplayTransforms {
     #[serde(default, rename = "thirdperson_lefthand")]

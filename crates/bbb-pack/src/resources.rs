@@ -243,6 +243,20 @@ impl PackResourceStack {
         self.data_budget.reserve_derived(logical_bytes, label)
     }
 
+    pub fn admit_resource_collection_count(
+        &self,
+        count: u64,
+        maximum: u64,
+        label: &str,
+    ) -> Result<()> {
+        if count > maximum {
+            return Err(self.data_budget.reject(format!(
+                "resource collection {label} has {count} entries, exceeding the {maximum} entry limit"
+            )));
+        }
+        Ok(())
+    }
+
     pub fn ensure_resource_data_admitted(&self) -> Result<()> {
         self.data_budget.ensure_admitted()
     }

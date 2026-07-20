@@ -9,6 +9,11 @@ use crate::{
     roots::PackRoots,
 };
 
+const MAX_ITEM_MODEL_DEFINITIONS: u64 = 65_536;
+const MAX_ITEM_MODEL_REFERENCES: u64 = 262_144;
+const ITEM_MODEL_DEFINITION_LOGICAL_BYTES: u64 = 512;
+const ITEM_MODEL_REFERENCE_LOGICAL_BYTES: u64 = 128;
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ItemModelCatalog {
     definitions: BTreeMap<String, ClientItemDefinition>,
@@ -21,6 +26,8 @@ impl ItemModelCatalog {
 
     pub fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
         let mut definitions = BTreeMap::new();
+        let mut definition_count = 0_u64;
+        let mut reference_count = 0_u64;
         for resource in stack.list_resources("items", ".json")? {
             let item_id = item_id_from_resource(&resource.location)?;
             let raw: Value = stack
@@ -28,8 +35,36 @@ impl ItemModelCatalog {
                 .with_context(|| format!("parse item model {}", resource.path.display()))?;
             let definition = ClientItemDefinition::from_value(raw)
                 .with_context(|| format!("parse item model {}", resource.path.display()))?;
+            definition_count = definition_count
+                .checked_add(1)
+                .context("item model definition count overflow")?;
+            reference_count = reference_count
+                .checked_add(
+                    u64::try_from(definition.model_references().len())
+                        .context("item model reference count overflow")?,
+                )
+                .context("item model reference count overflow")?;
+            stack.admit_resource_collection_count(
+                definition_count,
+                MAX_ITEM_MODEL_DEFINITIONS,
+                "item model definitions",
+            )?;
+            stack.admit_resource_collection_count(
+                reference_count,
+                MAX_ITEM_MODEL_REFERENCES,
+                "item model references",
+            )?;
             definitions.insert(item_id, definition);
         }
+        let logical_bytes = definition_count
+            .checked_mul(ITEM_MODEL_DEFINITION_LOGICAL_BYTES)
+            .and_then(|bytes| {
+                reference_count
+                    .checked_mul(ITEM_MODEL_REFERENCE_LOGICAL_BYTES)
+                    .and_then(|references| bytes.checked_add(references))
+            })
+            .context("item model derived logical byte count overflow")?;
+        stack.reserve_derived_resource_bytes(logical_bytes, "retained item model catalog")?;
         Ok(Self { definitions })
     }
 
@@ -1038,6 +1073,38 @@ mod tests {
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    #[test]
+    fn item_model_semantic_counts_accept_exact_limits_and_reject_overflow() {
+        let exact = PackResourceStack::default();
+        exact
+            .admit_resource_collection_count(
+                MAX_ITEM_MODEL_DEFINITIONS,
+                MAX_ITEM_MODEL_DEFINITIONS,
+                "item model definitions",
+            )
+            .unwrap();
+        exact
+            .admit_resource_collection_count(
+                MAX_ITEM_MODEL_REFERENCES,
+                MAX_ITEM_MODEL_REFERENCES,
+                "item model references",
+            )
+            .unwrap();
+
+        for (maximum, label) in [
+            (MAX_ITEM_MODEL_DEFINITIONS, "item model definitions"),
+            (MAX_ITEM_MODEL_REFERENCES, "item model references"),
+        ] {
+            let stack = PackResourceStack::default();
+            let error = stack
+                .admit_resource_collection_count(maximum + 1, maximum, label)
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(label), "{error}");
+            assert!(stack.ensure_resource_data_admitted().is_err());
+        }
+    }
 
     #[test]
     fn item_model_supported_types_match_vanilla_bootstrap_when_sources_are_available() {

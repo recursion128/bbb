@@ -11,6 +11,14 @@ pub(super) struct RawBlockstate {
 }
 
 impl RawBlockstate {
+    pub(super) fn selection_entry_count(&self) -> Option<usize> {
+        self.variants
+            .values()
+            .map(RawBlockstateVariant::entry_count)
+            .chain(self.multipart.iter().map(|part| part.apply.entry_count()))
+            .try_fold(0_usize, usize::checked_add)
+    }
+
     pub(super) fn select_variants(
         &self,
         properties: &BTreeMap<String, String>,
@@ -64,6 +72,13 @@ enum RawBlockstateVariant {
 }
 
 impl RawBlockstateVariant {
+    fn entry_count(&self) -> usize {
+        match self {
+            Self::One(_) => 1,
+            Self::Many(models) => models.len(),
+        }
+    }
+
     fn select_model(&self, seed: Option<i64>) -> Option<RawModelVariant> {
         match self {
             Self::One(model) => Some(model.clone()),

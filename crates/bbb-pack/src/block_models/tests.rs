@@ -6,12 +6,75 @@ use serde::Deserialize;
 
 use super::{
     BlockModelDisplayContext, BlockModelDisplayTransform, BlockModelFace, BlockModelGuiLight,
-    BlockModelShape,
+    BlockModelShape, MAX_BLOCKSTATE_DOCUMENTS, MAX_BLOCKSTATE_SELECTION_ENTRIES,
+    MAX_CUBOID_MODEL_DOCUMENTS, MAX_CUBOID_MODEL_ELEMENTS, MAX_CUBOID_MODEL_FACES,
+    MAX_CUBOID_MODEL_TEXTURE_SLOTS,
 };
-use crate::{PackRoots, MC_VERSION};
+use crate::{PackResourceStack, PackRoots, MC_VERSION};
 
 const VANILLA_BLOCK_STATES_JSON: &str =
     include_str!("../../../bbb-world/data/block_states_26_1.json");
+
+#[test]
+fn model_semantic_counts_accept_exact_limits_and_reject_overflow() {
+    let exact = PackResourceStack::default();
+    for (count, maximum, label) in [
+        (
+            MAX_BLOCKSTATE_DOCUMENTS,
+            MAX_BLOCKSTATE_DOCUMENTS,
+            "blockstate documents",
+        ),
+        (
+            MAX_BLOCKSTATE_SELECTION_ENTRIES,
+            MAX_BLOCKSTATE_SELECTION_ENTRIES,
+            "blockstate selection entries",
+        ),
+        (
+            MAX_CUBOID_MODEL_DOCUMENTS,
+            MAX_CUBOID_MODEL_DOCUMENTS,
+            "model documents",
+        ),
+        (
+            MAX_CUBOID_MODEL_ELEMENTS,
+            MAX_CUBOID_MODEL_ELEMENTS,
+            "model elements",
+        ),
+        (
+            MAX_CUBOID_MODEL_FACES,
+            MAX_CUBOID_MODEL_FACES,
+            "model faces",
+        ),
+        (
+            MAX_CUBOID_MODEL_TEXTURE_SLOTS,
+            MAX_CUBOID_MODEL_TEXTURE_SLOTS,
+            "model texture slots",
+        ),
+    ] {
+        exact
+            .admit_resource_collection_count(count, maximum, label)
+            .unwrap();
+    }
+
+    for (maximum, label) in [
+        (MAX_BLOCKSTATE_DOCUMENTS, "blockstate documents"),
+        (
+            MAX_BLOCKSTATE_SELECTION_ENTRIES,
+            "blockstate selection entries",
+        ),
+        (MAX_CUBOID_MODEL_DOCUMENTS, "model documents"),
+        (MAX_CUBOID_MODEL_ELEMENTS, "model elements"),
+        (MAX_CUBOID_MODEL_FACES, "model faces"),
+        (MAX_CUBOID_MODEL_TEXTURE_SLOTS, "model texture slots"),
+    ] {
+        let stack = PackResourceStack::default();
+        let error = stack
+            .admit_resource_collection_count(maximum + 1, maximum, label)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains(label), "{error}");
+        assert!(stack.ensure_resource_data_admitted().is_err());
+    }
+}
 
 #[test]
 fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {

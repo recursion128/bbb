@@ -12,6 +12,14 @@ use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation};
 use serde_json::Value;
 
+const MAX_FONT_DEFINITIONS: u64 = 256;
+const MAX_FONT_PROVIDERS: u64 = 4_096;
+const MAX_FONT_BITMAP_GLYPH_SLOTS: u64 = 1_048_576;
+const MAX_FONT_SPACE_ADVANCES: u64 = 65_536;
+const FONT_DEFINITION_LOGICAL_BYTES: u64 = 512;
+const FONT_PROVIDER_LOGICAL_BYTES: u64 = 256;
+const FONT_GLYPH_SLOT_LOGICAL_BYTES: u64 = 64;
+
 /// One flattened `"type": "bitmap"` provider, mirroring vanilla
 /// `BitmapProvider.Definition` (codec fields `file`, `height` default 8,
 /// `ascent`, `chars`).
@@ -59,7 +67,16 @@ pub fn load_font_providers(
     font_id: &str,
 ) -> Result<Vec<FontProviderDefinition>> {
     let stack = roots.resource_stack();
-    let mut load_definition = |id: &str| -> Result<String> {
+    let mut definition_count = 0_u64;
+    let mut load_definition = |id: &str| -> Result<Value> {
+        let next_definition_count = definition_count
+            .checked_add(1)
+            .context("font definition count overflow")?;
+        stack.admit_resource_collection_count(
+            next_definition_count,
+            MAX_FONT_DEFINITIONS,
+            "font definitions",
+        )?;
         let location = font_definition_location(id)?;
         let resource = stack
             .get_resource(&location)
@@ -67,10 +84,12 @@ pub fn load_font_providers(
         let value: Value = stack
             .read_json_resource(&resource, "font definition")
             .with_context(|| format!("read font definition {}", resource.path.display()))?;
-        serde_json::to_string(&value)
-            .with_context(|| format!("retain font definition {}", resource.path.display()))
+        definition_count = next_definition_count;
+        Ok(value)
     };
-    flatten_font_providers(font_id, &mut load_definition)
+    let providers = flatten_font_provider_values(font_id, &mut load_definition)?;
+    admit_font_collections(&stack, definition_count, &providers)?;
+    Ok(providers)
 }
 
 /// Resolves a font id to its definition asset path, e.g.
@@ -84,9 +103,21 @@ fn font_definition_location(id: &str) -> Result<ResourceLocation> {
     )
 }
 
+#[cfg(test)]
 pub(crate) fn flatten_font_providers(
     font_id: &str,
     load_definition: &mut dyn FnMut(&str) -> Result<String>,
+) -> Result<Vec<FontProviderDefinition>> {
+    let mut load_value = |id: &str| -> Result<Value> {
+        let json = load_definition(id)?;
+        serde_json::from_str(&json).with_context(|| format!("parse font definition {id}"))
+    };
+    flatten_font_provider_values(font_id, &mut load_value)
+}
+
+fn flatten_font_provider_values(
+    font_id: &str,
+    load_definition: &mut dyn FnMut(&str) -> Result<Value>,
 ) -> Result<Vec<FontProviderDefinition>> {
     let mut visited = HashSet::new();
     let mut providers = Vec::new();
@@ -96,7 +127,7 @@ pub(crate) fn flatten_font_providers(
 
 fn flatten_into(
     font_id: &str,
-    load_definition: &mut dyn FnMut(&str) -> Result<String>,
+    load_definition: &mut dyn FnMut(&str) -> Result<Value>,
     visited: &mut HashSet<String>,
     out: &mut Vec<FontProviderDefinition>,
 ) -> Result<()> {
@@ -104,12 +135,14 @@ fn flatten_into(
     // provider wins (`FontSet.computeGlyphInfo`), so a second inclusion of the
     // same providers can never change lookup results; skipping also guards
     // against reference cycles.
-    if !visited.insert(font_id.to_string()) {
+    if visited.contains(font_id) {
         return Ok(());
     }
-    let json = load_definition(font_id)?;
-    let root: Value =
-        serde_json::from_str(&json).with_context(|| format!("parse font definition {font_id}"))?;
+    visited.insert(font_id.to_string());
+    let root = load_definition(font_id)?;
+    if visited.len() > usize::try_from(MAX_FONT_DEFINITIONS).expect("font limit fits usize") {
+        bail!("font provider graph exceeds the {MAX_FONT_DEFINITIONS} definition limit");
+    }
     let providers = root
         .get("providers")
         .and_then(Value::as_array)
@@ -146,6 +179,84 @@ fn flatten_into(
         }
     }
     Ok(())
+}
+
+fn admit_font_collection_counts(
+    stack: &bbb_pack::PackResourceStack,
+    definition_count: u64,
+    provider_count: u64,
+    glyph_slots: u64,
+    space_advances: u64,
+) -> Result<()> {
+    stack.admit_resource_collection_count(
+        definition_count,
+        MAX_FONT_DEFINITIONS,
+        "font definitions",
+    )?;
+    stack.admit_resource_collection_count(provider_count, MAX_FONT_PROVIDERS, "font providers")?;
+    stack.admit_resource_collection_count(
+        glyph_slots,
+        MAX_FONT_BITMAP_GLYPH_SLOTS,
+        "font bitmap glyph slots",
+    )?;
+    stack.admit_resource_collection_count(
+        space_advances,
+        MAX_FONT_SPACE_ADVANCES,
+        "font space advances",
+    )?;
+    let logical_bytes = definition_count
+        .checked_mul(FONT_DEFINITION_LOGICAL_BYTES)
+        .and_then(|bytes| {
+            provider_count
+                .checked_mul(FONT_PROVIDER_LOGICAL_BYTES)
+                .and_then(|providers| bytes.checked_add(providers))
+        })
+        .and_then(|bytes| {
+            glyph_slots
+                .checked_add(space_advances)
+                .and_then(|glyphs| glyphs.checked_mul(FONT_GLYPH_SLOT_LOGICAL_BYTES))
+                .and_then(|glyphs| bytes.checked_add(glyphs))
+        })
+        .context("font derived logical byte count overflow")?;
+    stack.reserve_derived_resource_bytes(logical_bytes, "retained font provider catalog")
+}
+
+fn admit_font_collections(
+    stack: &bbb_pack::PackResourceStack,
+    definition_count: u64,
+    providers: &[FontProviderDefinition],
+) -> Result<()> {
+    let provider_count = u64::try_from(providers.len()).context("font provider count overflow")?;
+    let mut glyph_slots = 0_u64;
+    let mut space_advances = 0_u64;
+    for provider in providers {
+        match provider {
+            FontProviderDefinition::Bitmap(bitmap) => {
+                for row in &bitmap.chars {
+                    glyph_slots = glyph_slots
+                        .checked_add(
+                            u64::try_from(row.len()).context("font glyph slot count overflow")?,
+                        )
+                        .context("font glyph slot count overflow")?;
+                }
+            }
+            FontProviderDefinition::Space(space) => {
+                space_advances = space_advances
+                    .checked_add(
+                        u64::try_from(space.advances.len())
+                            .context("font space advance count overflow")?,
+                    )
+                    .context("font space advance count overflow")?;
+            }
+        }
+    }
+    admit_font_collection_counts(
+        stack,
+        definition_count,
+        provider_count,
+        glyph_slots,
+        space_advances,
+    )
 }
 
 fn parse_bitmap_provider(font_id: &str, provider: &Value) -> Result<FontBitmapProviderDefinition> {
@@ -286,6 +397,64 @@ mod tests {
         };
         assert_eq!(space.advances, vec![(' ', 5)]);
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn font_reference_graph_accepts_exact_limit_and_rejects_next_definition() {
+        let mut exact = reference_chain_loader(MAX_FONT_DEFINITIONS);
+        assert!(flatten_font_providers("minecraft:0", &mut exact).is_ok());
+
+        let mut overflow = reference_chain_loader(MAX_FONT_DEFINITIONS + 1);
+        let error = flatten_font_providers("minecraft:0", &mut overflow)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("256 definition limit"), "{error}");
+    }
+
+    #[test]
+    fn font_semantic_counts_accept_exact_limits_and_reject_overflow() {
+        let exact = bbb_pack::PackResourceStack::default();
+        admit_font_collection_counts(
+            &exact,
+            MAX_FONT_DEFINITIONS,
+            MAX_FONT_PROVIDERS,
+            MAX_FONT_BITMAP_GLYPH_SLOTS,
+            MAX_FONT_SPACE_ADVANCES,
+        )
+        .unwrap();
+        assert!(exact.ensure_resource_data_admitted().is_ok());
+
+        for (label, counts) in [
+            ("definitions", (MAX_FONT_DEFINITIONS + 1, 0, 0, 0)),
+            ("providers", (0, MAX_FONT_PROVIDERS + 1, 0, 0)),
+            ("glyph slots", (0, 0, MAX_FONT_BITMAP_GLYPH_SLOTS + 1, 0)),
+            ("space advances", (0, 0, 0, MAX_FONT_SPACE_ADVANCES + 1)),
+        ] {
+            let stack = bbb_pack::PackResourceStack::default();
+            let error =
+                admit_font_collection_counts(&stack, counts.0, counts.1, counts.2, counts.3)
+                    .unwrap_err()
+                    .to_string();
+            assert!(error.contains(label), "{error}");
+            assert!(stack.ensure_resource_data_admitted().is_err());
+        }
+    }
+
+    fn reference_chain_loader(definitions: u64) -> impl FnMut(&str) -> Result<String> {
+        move |id: &str| {
+            let index = id
+                .strip_prefix("minecraft:")
+                .context("reference fixture namespace")?
+                .parse::<u64>()?;
+            if index + 1 < definitions {
+                Ok(format!(
+                    r#"{{"providers":[{{"type":"reference","id":"minecraft:{}"}}]}}"#,
+                    index + 1
+                ))
+            } else {
+                Ok(r#"{"providers":[]}"#.to_string())
+            }
+        }
     }
 
     fn test_loader(definitions: &[(&str, &str)]) -> impl FnMut(&str) -> Result<String> {

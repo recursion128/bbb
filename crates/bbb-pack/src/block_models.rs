@@ -27,6 +27,19 @@ pub use types::{
     BlockModelQuad, BlockModelShape, BlockRenderModel,
 };
 
+const MAX_BLOCKSTATE_DOCUMENTS: u64 = 65_536;
+const MAX_BLOCKSTATE_SELECTION_ENTRIES: u64 = 262_144;
+const MAX_CUBOID_MODEL_DOCUMENTS: u64 = 65_536;
+const MAX_CUBOID_MODEL_ELEMENTS: u64 = 262_144;
+const MAX_CUBOID_MODEL_FACES: u64 = 1_048_576;
+const MAX_CUBOID_MODEL_TEXTURE_SLOTS: u64 = 262_144;
+const BLOCKSTATE_DOCUMENT_LOGICAL_BYTES: u64 = 512;
+const BLOCKSTATE_SELECTION_LOGICAL_BYTES: u64 = 256;
+const CUBOID_MODEL_DOCUMENT_LOGICAL_BYTES: u64 = 512;
+const CUBOID_MODEL_ELEMENT_LOGICAL_BYTES: u64 = 256;
+const CUBOID_MODEL_FACE_LOGICAL_BYTES: u64 = 128;
+const CUBOID_MODEL_TEXTURE_SLOT_LOGICAL_BYTES: u64 = 128;
+
 #[derive(Debug, Clone)]
 pub struct BlockModelCatalog {
     blockstates: HashMap<String, Vec<RawBlockstate>>,
@@ -40,17 +53,55 @@ impl BlockModelCatalog {
 
     fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
         let mut blockstates = HashMap::new();
+        let mut blockstate_documents = 0_u64;
+        let mut blockstate_selections = 0_u64;
         for (location, resources) in stack.list_resource_stacks("blockstates", ".json")? {
             let id = blockstate_id_from_resource(&location)?;
             let mut blockstate_stack = Vec::with_capacity(resources.len());
             for resource in resources {
-                let blockstate = stack
-                    .read_json_resource(&resource, "blockstate")
-                    .with_context(|| format!("parse blockstate {}", resource.path.display()))?;
+                let blockstate: RawBlockstate =
+                    stack
+                        .read_json_resource(&resource, "blockstate")
+                        .with_context(|| format!("parse blockstate {}", resource.path.display()))?;
+                blockstate_documents = blockstate_documents
+                    .checked_add(1)
+                    .context("blockstate document count overflow")?;
+                blockstate_selections = blockstate_selections
+                    .checked_add(
+                        u64::try_from(
+                            blockstate
+                                .selection_entry_count()
+                                .context("blockstate selection count overflow")?,
+                        )
+                        .context("blockstate selection count overflow")?,
+                    )
+                    .context("blockstate selection count overflow")?;
+                stack.admit_resource_collection_count(
+                    blockstate_documents,
+                    MAX_BLOCKSTATE_DOCUMENTS,
+                    "blockstate documents",
+                )?;
+                stack.admit_resource_collection_count(
+                    blockstate_selections,
+                    MAX_BLOCKSTATE_SELECTION_ENTRIES,
+                    "blockstate selection entries",
+                )?;
                 blockstate_stack.push(blockstate);
             }
             blockstates.insert(id, blockstate_stack);
         }
+        let blockstate_logical_bytes = blockstate_documents
+            .checked_mul(BLOCKSTATE_DOCUMENT_LOGICAL_BYTES)
+            .and_then(|bytes| {
+                blockstate_selections
+                    .checked_mul(BLOCKSTATE_SELECTION_LOGICAL_BYTES)
+                    .and_then(|selections| bytes.checked_add(selections))
+            })
+            .context("blockstate derived logical byte count overflow")?;
+        stack.reserve_derived_resource_bytes(
+            blockstate_logical_bytes,
+            "retained blockstate catalog",
+        )?;
 
         let models = load_cuboid_model_resources(stack, "models", "block model")?;
 
@@ -172,13 +223,71 @@ pub(crate) fn load_cuboid_model_resources(
     label: &str,
 ) -> Result<HashMap<String, RawBlockModel>> {
     let mut models = HashMap::new();
+    let mut documents = 0_u64;
+    let mut elements = 0_u64;
+    let mut faces = 0_u64;
+    let mut texture_slots = 0_u64;
     for resource in stack.list_resources(path_prefix, ".json")? {
         let id = cuboid_model_id_from_resource(&resource.location)?;
-        let model = stack
+        let model: RawBlockModel = stack
             .read_json_resource(&resource, label)
             .with_context(|| format!("parse {label} {}", resource.path.display()))?;
+        documents = documents.checked_add(1).context("model count overflow")?;
+        elements = elements
+            .checked_add(u64::try_from(model.element_count()).context("model element overflow")?)
+            .context("model element count overflow")?;
+        faces = faces
+            .checked_add(
+                u64::try_from(model.face_count().context("model face overflow")?)
+                    .context("model face overflow")?,
+            )
+            .context("model face count overflow")?;
+        texture_slots = texture_slots
+            .checked_add(
+                u64::try_from(model.texture_slot_count()).context("model texture slot overflow")?,
+            )
+            .context("model texture slot count overflow")?;
+        stack.admit_resource_collection_count(
+            documents,
+            MAX_CUBOID_MODEL_DOCUMENTS,
+            &format!("{label} documents"),
+        )?;
+        stack.admit_resource_collection_count(
+            elements,
+            MAX_CUBOID_MODEL_ELEMENTS,
+            &format!("{label} elements"),
+        )?;
+        stack.admit_resource_collection_count(
+            faces,
+            MAX_CUBOID_MODEL_FACES,
+            &format!("{label} faces"),
+        )?;
+        stack.admit_resource_collection_count(
+            texture_slots,
+            MAX_CUBOID_MODEL_TEXTURE_SLOTS,
+            &format!("{label} texture slots"),
+        )?;
         models.insert(id, model);
     }
+    let logical_bytes = documents
+        .checked_mul(CUBOID_MODEL_DOCUMENT_LOGICAL_BYTES)
+        .and_then(|bytes| {
+            elements
+                .checked_mul(CUBOID_MODEL_ELEMENT_LOGICAL_BYTES)
+                .and_then(|elements| bytes.checked_add(elements))
+        })
+        .and_then(|bytes| {
+            faces
+                .checked_mul(CUBOID_MODEL_FACE_LOGICAL_BYTES)
+                .and_then(|faces| bytes.checked_add(faces))
+        })
+        .and_then(|bytes| {
+            texture_slots
+                .checked_mul(CUBOID_MODEL_TEXTURE_SLOT_LOGICAL_BYTES)
+                .and_then(|slots| bytes.checked_add(slots))
+        })
+        .context("model derived logical byte count overflow")?;
+    stack.reserve_derived_resource_bytes(logical_bytes, &format!("retained {label} catalog"))?;
     Ok(models)
 }
 

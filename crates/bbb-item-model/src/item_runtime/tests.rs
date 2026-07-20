@@ -11042,7 +11042,8 @@ fn native_item_runtime_loads_assets_with_empty_registry_override() {
 #[test]
 #[ignore = "requires local vanilla 26.1 sources"]
 fn loads_local_vanilla_item_runtime_assets() {
-    let runtime = NativeItemRuntime::load(&PackRoots::discover().unwrap()).unwrap();
+    let roots = PackRoots::discover().unwrap();
+    let runtime = NativeItemRuntime::load(&roots).unwrap();
 
     assert_eq!(runtime.item_definition_count(), 1506);
     assert_eq!(runtime.item_registry_count(), 1506);
@@ -11054,6 +11055,11 @@ fn loads_local_vanilla_item_runtime_assets() {
     assert!(runtime.resolved_model_count() > runtime.item_definition_count());
     assert!(runtime.atlas_size().0 > 0);
     assert!(runtime.atlas_size().1 > 0);
+    roots.ensure_resource_data_admitted().unwrap();
+    let observation = roots.resource_data_memory_observation();
+    eprintln!("vanilla item runtime resource data charge: {observation:?}");
+    assert!(observation.derived_logical_bytes > 0);
+    assert!(observation.charged_logical_bytes < observation.max_logical_bytes);
 }
 
 fn assets_dir(root: &Path) -> PathBuf {
