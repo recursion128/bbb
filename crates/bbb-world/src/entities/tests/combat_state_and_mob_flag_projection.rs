@@ -386,7 +386,7 @@ fn entity_model_sources_project_auto_spin_attack_flag() {
         73,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     ));
-    assert!(set_flags(&mut store, 73, living_flags.spin_attack_mask));
+    assert!(!set_flags(&mut store, 73, living_flags.spin_attack_mask));
     assert!(!auto_spin(&store, 73));
 }
 
@@ -442,7 +442,7 @@ fn entity_model_sources_project_using_item_flags() {
         81,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     ));
-    assert!(set_flags(
+    assert!(!set_flags(
         &mut store,
         81,
         living_flags.is_using_mask | living_flags.off_hand_mask,
@@ -535,7 +535,7 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
         84,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     ));
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 84,
         values: vec![mob_flags_collision_data(zombie_accessors.left_handed_mask)],
     }));
@@ -690,10 +690,16 @@ fn entity_model_sources_project_spellcaster_illager_casting() {
     ] {
         store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
         assert!(!casting(&store, id));
-        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-            id,
-            values: vec![protocol_byte_data(casting_data_id, 2)],
-        }));
+        assert_eq!(
+            store.apply_set_entity_data(ProtocolSetEntityData {
+                id,
+                values: vec![protocol_byte_data(casting_data_id, 2)],
+            }),
+            matches!(
+                entity_type_id,
+                VANILLA_ENTITY_TYPE_EVOKER_ID | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
+            )
+        );
     }
 
     assert!(casting(&store, 96));
@@ -756,7 +762,7 @@ fn entity_model_sources_project_villager_unhappy() {
             1,
         )],
     }));
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 88,
         values: vec![abstract_villager_unhappy_collision_data(12)],
     }));
@@ -868,7 +874,7 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
         91,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     ));
-    assert!(set_carry_and_creepy(
+    assert!(!set_carry_and_creepy(
         &mut store,
         91,
         Some(GRASS_BLOCK_STATE_ID),
@@ -942,7 +948,7 @@ fn entity_model_sources_project_bat_resting_and_flying_start_phase() {
         71,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_flags(
+    assert!(!set_flags(
         &mut store,
         71,
         bat_flags_collision_data(resting_mask)
@@ -995,7 +1001,7 @@ fn entity_model_sources_project_vex_charging_from_flags() {
         73,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_flags(
+    assert!(!set_flags(
         &mut store,
         73,
         vex_flags_collision_data(charging_mask)
@@ -1055,7 +1061,7 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
         81,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_inv(
+    assert!(!set_inv(
         &mut store,
         81,
         wither_invulnerability_collision_data(220)
@@ -1254,7 +1260,7 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
         73,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_flags(&mut store, 73, accessors.has_stung_mask));
+    assert!(!set_flags(&mut store, 73, accessors.has_stung_mask));
     assert!(has_stinger(&store, 73));
 }
 
@@ -1355,13 +1361,15 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
     assert!(set_data(
         &mut store,
         77,
-        vec![
-            entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
-            protocol_byte_data(
-                tamable_accessors.flags_data_id,
-                tamable_accessors.sitting_mask,
-            ),
-        ],
+        vec![entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID)],
+    ));
+    assert!(!set_data(
+        &mut store,
+        77,
+        vec![protocol_byte_data(
+            tamable_accessors.flags_data_id,
+            tamable_accessors.sitting_mask,
+        )],
     ));
     assert_eq!(state(&store, 77), (true, false, false));
 
@@ -1371,11 +1379,15 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         vec![
             entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
             entity_shared_flags_data(entity_accessors.sprinting_mask),
-            protocol_byte_data(
-                tamable_accessors.flags_data_id,
-                tamable_accessors.sitting_mask,
-            ),
         ],
+    ));
+    assert!(!set_data(
+        &mut store,
+        78,
+        vec![protocol_byte_data(
+            tamable_accessors.flags_data_id,
+            tamable_accessors.sitting_mask,
+        )],
     ));
     assert_eq!(state(&store, 78), (false, false, false));
 

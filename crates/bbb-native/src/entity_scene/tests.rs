@@ -1684,7 +1684,7 @@ fn entity_model_instances_shake_zombie_family_while_converting() {
     assert_eq!(body_rot(&world, 84), 0.0);
     assert_eq!(body_rot(&world, 85), 0.0);
 
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 84,
         values: vec![protocol_zombie_villager_converting_data(true)],
     }));
@@ -1785,7 +1785,7 @@ fn entity_model_instances_shake_striders_while_suffocating() {
         }
     );
 
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 87,
         values: vec![strider_suffocating_data(
             VANILLA_ENTITY_TYPE_STRIDER_ID,
@@ -1839,7 +1839,7 @@ fn entity_model_instances_shake_skeletons_while_freeze_converting() {
     let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
     assert!((body_rot(&world) - expected_shake).abs() < 1e-6);
 
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 88,
         values: vec![skeleton_freeze_conversion_data(
             VANILLA_ENTITY_TYPE_SKELETON_ID,
@@ -2016,7 +2016,7 @@ fn entity_model_instances_project_auto_spin_attack() {
 
     // The living-entity gate keeps a non-living entity from ever spinning, even
     // if a stray flags byte is present.
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 87,
         values: vec![living_entity_flags_data(
             VANILLA_ENTITY_TYPE_CHICKEN_ID,
@@ -2557,7 +2557,7 @@ fn entity_model_instances_project_turtle_has_egg() {
     assert!(!has_egg(&world, 141));
 
     // The same flag on a non-turtle (bat) does NOT project turtle_has_egg.
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 142,
         values: vec![turtle_has_egg_collision_data(true)],
     }));
@@ -2607,7 +2607,7 @@ fn entity_model_instances_project_pillager_charging_crossbow() {
     assert!(charging(&world, 160));
 
     // The same wire slot on an evoker does NOT project charging.
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 161,
         values: vec![protocol_bool_data(charging_data_id, true)],
     }));
@@ -2797,7 +2797,7 @@ fn entity_model_instances_project_piglin_dancing() {
 
     // The same encoded value on a piglin brute does NOT project dancing because the generated
     // accessor is not defined on it.
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 181,
         values: vec![protocol_bool_data(piglin_dancing_data_id(), true)],
     }));
@@ -2875,7 +2875,7 @@ fn entity_model_instances_project_piglin_crossbow_charge() {
     assert!(charging(&world, 190));
 
     // The same data id on a piglin brute does NOT project a draw.
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 191,
         values: vec![protocol_bool_data(charging_data_id, true)],
     }));
@@ -4826,7 +4826,7 @@ fn entity_model_instances_project_villager_unhappy() {
             values: vec![abstract_villager_unhappy_data(entity_type_id, 12)],
         }));
     }
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 193,
         values: vec![abstract_villager_unhappy_collision_data(12)],
     }));
@@ -4953,7 +4953,7 @@ fn entity_model_instances_project_turtle_laying_egg() {
     assert!(laying(&world, 151));
 
     // The same flag on a non-turtle (bat) does NOT project turtle_laying_egg.
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 152,
         values: vec![turtle_laying_egg_collision_data(true)],
     }));
@@ -5052,7 +5052,7 @@ fn entity_model_instances_project_end_crystal_beam_target() {
     }));
     assert!(beam(&world, 162).is_none());
 
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 163,
         values: vec![end_crystal_beam_target_collision_data(Some(
             bbb_protocol::packets::BlockPos {
@@ -11137,14 +11137,19 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 44,
-        values: vec![
-            pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
-            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
-        ],
+        values: vec![pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID)],
+    }));
+    assert!(!world.apply_set_entity_data(SetEntityData {
+        id: 44,
+        values: vec![tamable_animal_flags_data(
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            false,
+            true,
+        )],
     }));
     assert_eq!(feline_state(&world, 44), (true, false, false));
 
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 45,
         values: vec![
             pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
@@ -11217,7 +11222,7 @@ fn entity_model_instances_project_cat_lie_down_and_relax_amounts_from_world() {
     assert_amounts(feline_amounts(&world, 46, 1.0), (0.3, 0.16, 0.2));
     assert_amounts(feline_amounts(&world, 46, 0.5), (0.225, 0.12, 0.15));
 
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 47,
         values: vec![
             protocol_bool_data(cat_metadata_accessors().lying_data_id, true),
@@ -11718,7 +11723,7 @@ fn entity_model_instances_project_illager_spellcasting_flag_from_world() {
     assert!(casting(&world, 161));
 
     // The same byte on a non-spellcaster (vindicator) does NOT project illager_spellcasting.
-    assert!(world.apply_set_entity_data(SetEntityData {
+    assert!(!world.apply_set_entity_data(SetEntityData {
         id: 162,
         values: vec![protocol_byte_data(
             spellcaster_casting_data_id(VANILLA_ENTITY_TYPE_EVOKER_ID),

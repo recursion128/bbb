@@ -434,7 +434,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
             0.75, 0.75, 0.0625, 0.0,
         ))
     );
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 20,
         // Slot 9 belongs to ItemFrame.DATA_ITEM here; a mismatched painting serializer must not
         // populate the Painting-only client projection.

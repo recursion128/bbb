@@ -19900,3 +19900,20 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Arc 可能延迟到 audio callback 才释放，因此瞬时峰值可接近旧 active 512 MiB + 新 cache
   512 MiB + 单次 static decode 256 MiB。shader binary、ZIP/download 与 renderer/GPU derived
   owner 继续由各自 P4/资源 presentation 切片约束，不把本轮边界扩大成全进程内存证明。
+
+## 2026-07-20：SetEntityData 生成 schema 校验
+
+- [x] 对照 Vanilla 26.1 `ClientboundSetEntityDataPacket`、
+  `SynchedEntityData.assignValues/assignValue` 与 `ClientPacketListener.handleSetEntityData`，
+  在任何 metadata owner、动画 callback、position refresh 或 renderer projection mutation
+  前，以目标 entity type 的生成继承 accessor 表解析每个 `data_id`，并要求 wire serializer
+  与 accessor serializer 完全一致。unknown entity 延续既有忽略语义；未知 slot 或类型不匹配
+  原子拒绝整包并进入 bounded world apply diagnostics，避免先应用合法前缀再污染 canonical ECS。
+- [x] focused regression 覆盖 base accessor 被 Player 继承、Player-only slot 不泄漏到 Item、
+  合法更新、错 serializer、未知 slot、同包合法前缀回滚，以及 retained publication A 与后续
+  合法 generation B 的 metadata owner 隔离。全量 world fixture 审计将历史跨 family 伪造
+  metadata packet 改为明确 rejection；当另一个 entity 在同 slot 拥有相同 serializer 时仍按
+  其自身合法 accessor 接收，因为 wire 不携带 Java accessor owner identity。
+- [x] 本片不复制第二套 metadata schema，也不改变 43 种 protocol value decoder、registry
+  holder 顺序、rich Component/ItemStack 表示或 entity family 可见行为。后续 rich value、
+  holder canonicalization 与 family consumer 仍作为 unsupported ledger 的具体剩余项推进。

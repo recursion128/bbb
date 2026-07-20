@@ -762,6 +762,67 @@ fn set_entity_data_ignores_unknown_entities() {
 }
 
 #[test]
+fn set_entity_data_rejects_unknown_or_mismatched_schema_without_partial_mutation() {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(123));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![entity_air_supply_data(42)],
+    }));
+    let generation_a = store.publication_snapshot();
+    let expected = generation_a.probe_entity(123).unwrap().data_values;
+
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![
+            entity_invisible_data(),
+            ProtocolEntityDataValue {
+                data_id: accessors.air_supply_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            },
+        ],
+    }));
+    assert_eq!(store.probe_entity(123).unwrap().data_values, expected);
+    assert!(store
+        .apply_diagnostics()
+        .last_apply_error
+        .as_ref()
+        .is_some_and(|error| error.source == "entity_data_schema"
+            && error.message.contains("expected serializer")));
+
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![ProtocolEntityDataValue {
+            data_id: u8::MAX - 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: EntityDataValueKind::Byte(0),
+        }],
+    }));
+    assert_eq!(store.probe_entity(123).unwrap().data_values, expected);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![entity_invisible_data()],
+    }));
+    let generation_b = store.publication_snapshot();
+    assert_eq!(
+        generation_a.probe_entity(123).unwrap().data_values,
+        expected
+    );
+    assert_ne!(
+        generation_b.probe_entity(123).unwrap().data_values,
+        expected
+    );
+    assert_eq!(store.counters().entity_data_updates_received, 4);
+    assert_eq!(store.counters().entity_data_updates_applied, 2);
+    assert_eq!(store.counters().entity_data_updates_ignored, 2);
+    assert_eq!(store.counters().world_apply_errors, 2);
+}
+
+#[test]
 fn local_player_using_item_tracks_living_entity_flags() {
     let accessors = living_entity_metadata_accessors();
     let mut store = WorldStore::new();

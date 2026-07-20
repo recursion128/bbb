@@ -624,7 +624,7 @@ fn entity_model_sources_project_end_crystal_beam_target() {
     assert!(beam(&store, 180).is_none());
 
     // The same data id on a non-crystal is ignored.
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 181,
         values: vec![end_crystal_beam_target_collision_data(Some(
             ProtocolBlockPos {

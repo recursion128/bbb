@@ -59,7 +59,7 @@ fn item_entity_stacks_filters_and_preserves_protocol_order() {
         id: 30,
         values: vec![item_stack_entity_data(item_stack(42, 3))],
     }));
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 20,
         values: vec![item_stack_entity_data(item_stack(99, 1))],
     }));
@@ -197,7 +197,7 @@ fn firework_rocket_item_states_project_item_stack_pose_and_attachment_gate() {
             protocol_bool_data(accessors.shot_at_angle_data_id, true),
         ],
     }));
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 73,
         values: vec![firework_item_stack_entity_data(item_stack(903, 1))],
     }));
@@ -346,7 +346,7 @@ fn ominous_item_spawner_item_states_project_item_stack_and_age_ticks() {
             ProtocolItemStackSummary::empty(),
         )],
     }));
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 82,
         values: vec![ominous_item_stack_collision_entity_data(item_stack(912, 1))],
     }));
@@ -355,7 +355,7 @@ fn ominous_item_spawner_item_states_project_item_stack_and_age_ticks() {
         .data_id
         .checked_add(1)
         .expect("fixture accessor id must permit an adjacent wrong-id sample");
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 83,
         values: vec![wrong_data_id],
     }));

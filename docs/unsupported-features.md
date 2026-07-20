@@ -87,12 +87,11 @@ Owner: `bbb-protocol`
   beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
   never by applying a bootstrap ordinal to authoritative synchronized contents.
-- Complete SetEntityData semantic fidelity: preserve rich Component and full
-  ItemStack/component values, resolve registry-holder ids through the session
-  RegistryAccess, validate each data id/serializer against the generated entity
-  accessor schema like `SynchedEntityData.assignValues`, and close the remaining
-  family consumers through the entity matrix. The current flat summary merge is
-  not proof of complete metadata behavior.
+- Complete the remaining SetEntityData semantic fidelity: preserve rich Component
+  and full ItemStack/component values, resolve registry-holder ids through the
+  session RegistryAccess, and close the remaining family consumers through the
+  entity matrix. The current flat summary merge is not proof of complete metadata
+  behavior.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
 - Build a registry-aware repo-native command dispatcher from the Commands tree,

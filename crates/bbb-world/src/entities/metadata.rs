@@ -12,6 +12,7 @@ use crate::WorldStore;
 
 use super::dimensions::vanilla_living_entity_type;
 use super::schema::{
+    vanilla_entity_metadata_accessor_for_entity_type_and_data_id,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_living, vanilla_entity_type_has_attribute,
@@ -24,15 +25,49 @@ impl WorldStore {
         self.counters.entity_data_updates_received += 1;
         self.counters.entity_data_values_received += packet.values.len();
         let id = packet.id;
+        let Some(entity_type_id) = self.entities.entity_type_id(id) else {
+            self.counters.entity_data_updates_ignored += 1;
+            return false;
+        };
+        for value in &packet.values {
+            let Some(accessor) = vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
+                entity_type_id,
+                value.data_id,
+            ) else {
+                self.record_apply_error(
+                    "entity_data_schema",
+                    format!(
+                        "unknown entity data field {} for entity {id} type {entity_type_id}",
+                        value.data_id
+                    ),
+                );
+                self.counters.entity_data_updates_ignored += 1;
+                return false;
+            };
+            if accessor.serializer_id != value.serializer_id {
+                self.record_apply_error(
+                    "entity_data_schema",
+                    format!(
+                        "invalid entity data item type for entity {id} type {entity_type_id} field {} (id {}): expected serializer {} ({}), received {}",
+                        accessor.java_name,
+                        value.data_id,
+                        accessor.serializer_id,
+                        accessor.serializer_name,
+                        value.serializer_id
+                    ),
+                );
+                self.counters.entity_data_updates_ignored += 1;
+                return false;
+            }
+        }
         let is_local_player = self.local_player_id == Some(id);
         let local_living_entity_accessors = is_local_player
-            .then(|| self.entities.entity_type_id(id))
-            .flatten()
+            .then_some(entity_type_id)
             .and_then(vanilla_entity_metadata_living_entity_accessors_for_entity_type);
         let updated_values = packet.values.clone();
-        let painting_variant_projection = self.entities.entity_type_id(id).and_then(|type_id| {
-            self.painting_variant_projection_from_metadata(type_id, &updated_values)
-        });
+        let type_id = entity_type_id;
+        let painting_variant_projection =
+            self.painting_variant_projection_from_metadata(type_id, &updated_values);
         let mut local_living_entity_flags = None;
         let Some(()) = self.entities.with_metadata_mut(id, |metadata| {
             for value in packet.values {

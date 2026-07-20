@@ -1235,7 +1235,7 @@ fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
     assert_amounts(amounts(&store, 92, 0.0), (0.3, 0.16, 0.2));
     assert_amounts(amounts(&store, 92, 1.0), (0.08, 0.03, 0.07));
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 93,
         values: vec![
             protocol_bool_data(accessors.lying_data_id, true),
@@ -1309,7 +1309,7 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
         "awake nearby players and far sleeping players do not set the cat renderer flag"
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 97,
         values: vec![protocol_bool_data(accessors.lying_data_id, true)],
     }));

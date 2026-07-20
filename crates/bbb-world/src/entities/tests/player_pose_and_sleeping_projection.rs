@@ -572,7 +572,7 @@ fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_i
     assert_eq!(shoulders(&store, 101), (None, Some(1)));
 
     // Non-player entities ignore the same data ids even if the metadata packet carries them.
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 102,
         values: vec![
             protocol_optional_unsigned_int_data(

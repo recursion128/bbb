@@ -11988,6 +11988,8 @@
             "crates/bbb-world/src/entities/metadata.rs#apply_set_entity_data",
             "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
             "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_entity_data_ignores_unknown_entities",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_entity_data_rejects_unknown_or_mismatched_schema_without_partial_mutation",
+            "crates/bbb-world/src/entities/schema.rs#vanilla_entity_metadata_accessor_for_entity_type_and_data_id",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEntityData",
             "vanilla:net/minecraft/network/syncher/SynchedEntityData.java#assignValues"
           ],
@@ -12032,6 +12034,8 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world",
             "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
             "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_entity_data_ignores_unknown_entities",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_entity_data_rejects_unknown_or_mismatched_schema_without_partial_mutation",
+            "crates/bbb-world/src/entities/schema.rs#generated_accessor_data_id_lookup_follows_entity_inheritance",
             "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_events_update_world_and_world_counters"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",

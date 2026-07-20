@@ -774,6 +774,24 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type(
         .find(|entry| entry.java_name == java_name)
 }
 
+/// Resolves the accessor occupying `data_id` along an entity type's generated
+/// metadata inheritance chain.
+///
+/// Vanilla indexes `SynchedEntityData.itemsById` by this value before comparing
+/// the accessor's serializer in `assignValue`. Keeping the same lookup on the
+/// generated schema prevents a packet from attaching a valid wire value to an
+/// accessor owned by another entity family.
+pub fn vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
+    entity_type_id: i32,
+    data_id: u8,
+) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
+    vanilla_entity_metadata_accessor_index()
+        .get(usize::try_from(entity_type_id).ok()?)?
+        .iter()
+        .copied()
+        .find(|entry| entry.data_id == data_id)
+}
+
 fn vanilla_entity_type_metadata_entry(
     entity_type_id: i32,
 ) -> Option<&'static VanillaEntityTypeMetadataCatalogEntry> {
@@ -4484,6 +4502,7 @@ mod tests {
     };
     use bbb_protocol::entity_data_serializers::{
         vanilla_entity_data_serializer_for_constant_name, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
     };
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
@@ -4584,6 +4603,69 @@ mod tests {
                 Some(entry.serializer_id)
             );
         }
+    }
+
+    #[test]
+    fn generated_accessor_data_id_lookup_follows_entity_inheritance() {
+        let base = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity accessors must resolve");
+        for entity_type in VANILLA_ENTITY_TYPE_METADATA_26_1 {
+            let inherited =
+                &vanilla_entity_metadata_accessor_index()[entity_type.entity_type_id as usize];
+            let mut data_ids = HashSet::new();
+            for accessor in inherited {
+                assert!(
+                    data_ids.insert(accessor.data_id),
+                    "{} inherits duplicate metadata data id {}",
+                    entity_type.resource_id,
+                    accessor.data_id
+                );
+            }
+            assert_eq!(
+                vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
+                    entity_type.entity_type_id,
+                    base.shared_flags_data_id,
+                )
+                .map(|accessor| accessor.java_name),
+                Some("DATA_SHARED_FLAGS_ID"),
+                "{} must inherit the base Entity schema",
+                entity_type.resource_id
+            );
+        }
+        let player = vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            base.shared_flags_data_id,
+        )
+        .expect("Player must inherit the base shared-flags accessor");
+        assert_eq!(player.owner, "net.minecraft.world.entity.Entity");
+        assert_eq!(player.serializer_id, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID);
+
+        let player_absorption = vanilla_entity_metadata_player_absorption_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        )
+        .expect("generated Player absorption accessor must resolve");
+        assert_eq!(
+            vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                player_absorption.0,
+            )
+            .map(|accessor| accessor.serializer_id),
+            Some(VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID)
+        );
+        assert!(
+            vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                player_absorption.0,
+            )
+            .is_none()
+        );
+        assert!(
+            vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                u8::MAX - 1,
+            )
+            .is_none()
+        );
     }
 
     #[test]

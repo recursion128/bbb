@@ -1857,7 +1857,7 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
-        assert!(set_entity_data(
+        assert!(!set_entity_data(
             &mut world,
             8,
             absorption_data_id,
