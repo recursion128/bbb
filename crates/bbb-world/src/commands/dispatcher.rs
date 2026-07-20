@@ -18,12 +18,15 @@ use super::{
 use crate::FrozenRegistryAccess;
 
 mod blocks;
+mod completion;
 mod context_free;
 mod items;
 mod particle;
 mod registry_aware;
 mod resource_or_id;
 mod text;
+
+pub(super) use completion::CommandCompletionSources;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandParseResult {
@@ -62,9 +65,24 @@ pub struct ParsedCommandArgument {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandCompletionContext {
+    /// Node whose children own the suggestions at `start`.
     pub node_index: i32,
     pub start: usize,
     pub suggestions: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandCompletionResult {
+    pub start: usize,
+    pub length: usize,
+    pub suggestions: Vec<CommandCompletionSuggestion>,
+    pub request_server: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandCompletionSuggestion {
+    pub text: String,
+    pub tooltip: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,6 +121,8 @@ struct ParseCandidate {
     error: Option<CommandSyntaxErrorState>,
     suggestions: Option<String>,
     parsed_any_node: bool,
+    completion_parent: i32,
+    completion_start: usize,
 }
 
 impl ParseCandidate {
@@ -117,6 +137,8 @@ impl ParseCandidate {
             error: None,
             suggestions: None,
             parsed_any_node: false,
+            completion_parent: root_index,
+            completion_start: 0,
         }
     }
 }
@@ -192,8 +214,8 @@ impl CommandTreeState {
             signable_arguments,
             error,
             completion: CommandCompletionContext {
-                node_index: candidate.current_node,
-                start: candidate.cursor + source_offset,
+                node_index: candidate.completion_parent,
+                start: candidate.completion_start + source_offset,
                 suggestions: candidate.suggestions,
             },
         }
@@ -237,6 +259,9 @@ impl CommandTreeState {
                 }
             }
 
+            candidate.completion_parent = node_index;
+            candidate.completion_start = context.cursor;
+
             if command
                 .as_bytes()
                 .get(candidate.cursor)
@@ -261,11 +286,15 @@ impl CommandTreeState {
                 candidate.cursor += 1;
                 if let Some(redirect) = child.redirect {
                     candidate.current_node = redirect;
+                    candidate.completion_parent = redirect;
+                    candidate.completion_start = candidate.cursor;
                     let result =
                         self.parse_nodes(redirect, command, candidate, active, registry_access);
                     active.remove(&(node_index, context.cursor));
                     return result;
                 }
+                candidate.completion_parent = child_index;
+                candidate.completion_start = candidate.cursor;
                 let next =
                     self.parse_nodes(child_index, command, candidate, active, registry_access);
                 potentials.push(next);

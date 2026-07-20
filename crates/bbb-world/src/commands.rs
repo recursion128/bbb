@@ -9,8 +9,8 @@ use crate::WorldStore;
 mod dispatcher;
 
 pub use dispatcher::{
-    CommandCompletionContext, CommandParseResult, CommandSyntaxErrorKind, CommandSyntaxErrorState,
-    ParsedCommandArgument,
+    CommandCompletionContext, CommandCompletionResult, CommandCompletionSuggestion,
+    CommandParseResult, CommandSyntaxErrorKind, CommandSyntaxErrorState, ParsedCommandArgument,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -166,6 +166,39 @@ impl WorldStore {
             .parse_command_with_registry(command, Some(self.frozen_registry_access()))
     }
 
+    pub fn complete_command(&self, command: &str) -> CommandCompletionResult {
+        let registry_access = self.frozen_registry_access();
+        self.commands.complete_command_with_sources(
+            command,
+            dispatcher::CommandCompletionSources {
+                registry_access,
+                online_player_names: self
+                    .player_info
+                    .entries
+                    .values()
+                    .map(|entry| entry.profile.name.as_str())
+                    .collect(),
+                team_names: self.scoreboard.teams.keys().map(String::as_str).collect(),
+                available_levels: self.available_levels.iter().map(String::as_str).collect(),
+                available_sounds: self
+                    .available_command_sounds
+                    .iter()
+                    .map(String::as_str)
+                    .collect(),
+                // Every 26.1 entity type uses EntityType.Builder's default
+                // FeatureFlags.VANILLA_SET; the source contains no per-type
+                // requiredFeatures override.
+                vanilla_feature_enabled: self.is_feature_enabled("minecraft:vanilla"),
+            },
+        )
+    }
+
+    pub fn set_available_command_sounds(&mut self, mut sounds: Vec<String>) {
+        sounds.sort();
+        sounds.dedup();
+        self.available_command_sounds = sounds.into();
+    }
+
     pub(crate) fn reset_command_tree_for_new_listener(&mut self) {
         self.commands = CommandTreeState::default();
         self.update_command_tree_counters();
@@ -215,9 +248,11 @@ mod tests {
     use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
         CommandArgumentParser, CommandNode, CommandNodeType, Commands, RegistryTags,
-        TagNetworkPayload, UpdateTags, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
+        TagNetworkPayload, UpdateTags, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_BOOL_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_STACK_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_SELECTOR_ID,
     };
@@ -441,6 +476,153 @@ mod tests {
         assert!(generation_a
             .parse_command("choose #example:selected")
             .is_valid_command());
+    }
+
+    #[test]
+    fn local_completion_uses_literal_parser_and_registry_sources() {
+        let mut store = WorldStore::new();
+        let mut tree = command_tree("choose", "brigadier:string");
+        tree.nodes[2].suggestions = None;
+        tree.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_BOOL_ID,
+            name: "brigadier:bool".to_string(),
+            properties: Vec::new(),
+        });
+        assert!(store.apply_commands(tree));
+
+        let literal = store.complete_command("/cho");
+        assert_eq!((literal.start, literal.length), (1, 3));
+        assert_eq!(
+            literal
+                .suggestions
+                .iter()
+                .map(|suggestion| suggestion.text.as_str())
+                .collect::<Vec<_>>(),
+            vec!["choose"]
+        );
+        assert!(!literal.request_server);
+
+        let boolean = store.complete_command("/choose f");
+        assert_eq!((boolean.start, boolean.length), (8, 1));
+        assert_eq!(boolean.suggestions[0].text, "false");
+        assert!(!boolean.request_server);
+
+        store.record_registry_entries(
+            "example:things",
+            0,
+            vec![
+                RegistryPacketEntry::stub("example:first"),
+                RegistryPacketEntry::stub("example:second"),
+            ],
+        );
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "example:things".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:selected".to_string(),
+                    entries: vec![0],
+                }],
+            }],
+        });
+        let mut tree = registry_command_tree(
+            VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_ID,
+            "minecraft:resource_or_tag",
+            "example:things",
+        );
+        tree.nodes[2].suggestions = None;
+        assert!(store.apply_commands(tree));
+        let registry = store.complete_command("/choose fir");
+        assert_eq!(registry.suggestions[0].text, "example:first");
+        assert!(!registry.request_server);
+        assert_eq!(
+            store.complete_command("/choose #").suggestions[0].text,
+            "#example:selected"
+        );
+    }
+
+    #[test]
+    fn registered_completion_providers_are_local_and_unknown_providers_ask_server() {
+        let mut store = WorldStore::new();
+        store.set_available_command_sounds(vec![
+            "example:wind".to_string(),
+            "minecraft:block.note_block.harp".to_string(),
+        ]);
+        let mut sounds = command_tree("playsound", "brigadier:string");
+        sounds.nodes[2].suggestions = Some("minecraft:available_sounds".to_string());
+        assert!(store.apply_commands(sounds));
+        let sound = store.complete_command("/playsound wind");
+        assert_eq!(sound.suggestions[0].text, "example:wind");
+        assert!(!sound.request_server);
+
+        let mut summon = command_tree("summon", "brigadier:string");
+        summon.nodes[2].suggestions = Some("minecraft:summonable_entities".to_string());
+        assert!(store.apply_commands(summon));
+        let summonable = store.complete_command("/summon player");
+        assert!(summonable.suggestions.is_empty());
+        assert!(!summonable.request_server);
+        assert!(store
+            .complete_command("/summon lightning")
+            .suggestions
+            .iter()
+            .any(|suggestion| suggestion.text == "minecraft:lightning_bolt"));
+        store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec!["minecraft:trade_rebalance".to_string()],
+        });
+        assert!(store
+            .complete_command("/summon lightning")
+            .suggestions
+            .is_empty());
+
+        let mut unknown = command_tree("custom", "brigadier:string");
+        unknown.nodes[2].suggestions = Some("example:remote".to_string());
+        assert!(store.apply_commands(unknown));
+        assert!(store.complete_command("/custom value").request_server);
+    }
+
+    #[test]
+    fn client_server_fallback_and_item_component_completion_match_parser_owners() {
+        let mut store = WorldStore::new();
+        let mut objective = command_tree("score", "brigadier:string");
+        objective.nodes[2].suggestions = None;
+        objective.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID,
+            name: "minecraft:objective".to_string(),
+            properties: Vec::new(),
+        });
+        assert!(store.apply_commands(objective));
+        assert!(store.complete_command("/score kills").request_server);
+
+        let mut item = command_tree("give", "brigadier:string");
+        item.nodes[2].suggestions = None;
+        item.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_STACK_ID,
+            name: "minecraft:item_stack".to_string(),
+            properties: Vec::new(),
+        });
+        assert!(store.apply_commands(item));
+        let item = store.complete_command("/give minecraft:stone");
+        assert!(item
+            .suggestions
+            .iter()
+            .any(|suggestion| suggestion.text == "minecraft:stone["));
+        assert!(!item.request_server);
+    }
+
+    #[test]
+    fn resource_sound_completion_view_is_publication_shared_and_generation_isolated() {
+        let mut store = WorldStore::new();
+        store.set_available_command_sounds(vec!["example:first".to_string()]);
+        let generation_a = store.publication_snapshot();
+        store.set_available_command_sounds(vec!["example:second".to_string()]);
+
+        assert_eq!(
+            generation_a.available_command_sounds.as_slice(),
+            ["example:first"]
+        );
+        assert_eq!(
+            store.available_command_sounds.as_slice(),
+            ["example:second"]
+        );
     }
 
     fn command_tree(literal: &str, parser_name: &str) -> Commands {

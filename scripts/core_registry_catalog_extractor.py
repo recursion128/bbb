@@ -27,6 +27,7 @@ class EntityTypeEntry:
     allowed_in_peaceful: bool
     only_op_can_set_nbt: bool
     serializable: bool
+    can_summon: bool
     width: float
     height: float
     eye_height: float | None
@@ -428,6 +429,7 @@ def entity_type_entries(
                 not _calls_in_expression(source, field.initializer, "notInPeaceful"),
                 field.name in op_only_constants,
                 not _calls_in_expression(source, field.initializer, "noSave"),
+                not _calls_in_expression(source, field.initializer, "noSummon"),
                 width,
                 height,
                 eye_height,

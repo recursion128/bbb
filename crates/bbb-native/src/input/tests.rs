@@ -113,7 +113,8 @@ use bbb_protocol::packets::{
     SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
     SignedMessageBody, StatUpdate, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
-    WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+    WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
+    VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::recipe_wire_types::{
@@ -1266,7 +1267,7 @@ fn signable_message_command_tree() -> Commands {
             },
             CommandNode {
                 node_type: CommandNodeType::Argument,
-                flags: 6,
+                flags: 22,
                 children: Vec::new(),
                 redirect: None,
                 name: Some("message".to_string()),
@@ -1275,11 +1276,77 @@ fn signable_message_command_tree() -> Commands {
                     name: "minecraft:message".to_string(),
                     properties: Vec::new(),
                 }),
-                suggestions: None,
+                suggestions: Some("minecraft:ask_server".to_string()),
                 executable: true,
                 restricted: false,
             },
         ],
+    }
+}
+
+fn ask_server_command_tree() -> Commands {
+    Commands {
+        root_index: 0,
+        nodes: vec![
+            CommandNode {
+                node_type: CommandNodeType::Root,
+                flags: 0,
+                children: vec![1],
+                redirect: None,
+                name: None,
+                parser: None,
+                suggestions: None,
+                executable: false,
+                restricted: false,
+            },
+            CommandNode {
+                node_type: CommandNodeType::Argument,
+                flags: 18,
+                children: Vec::new(),
+                redirect: None,
+                name: Some("value".to_string()),
+                parser: Some(CommandArgumentParser {
+                    type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
+                    name: "brigadier:string".to_string(),
+                    properties: vec![2],
+                }),
+                suggestions: Some("minecraft:ask_server".to_string()),
+                executable: true,
+                restricted: false,
+            },
+        ],
+    }
+}
+
+fn local_literal_command_tree(literals: &[&str]) -> Commands {
+    let children = (1..=literals.len())
+        .map(|index| i32::try_from(index).expect("fixture node index"))
+        .collect();
+    let mut nodes = vec![CommandNode {
+        node_type: CommandNodeType::Root,
+        flags: 0,
+        children,
+        redirect: None,
+        name: None,
+        parser: None,
+        suggestions: None,
+        executable: false,
+        restricted: false,
+    }];
+    nodes.extend(literals.iter().map(|literal| CommandNode {
+        node_type: CommandNodeType::Literal,
+        flags: 5,
+        children: Vec::new(),
+        redirect: None,
+        name: Some((*literal).to_string()),
+        parser: None,
+        suggestions: None,
+        executable: true,
+        restricted: false,
+    }));
+    Commands {
+        root_index: 0,
+        nodes,
     }
 }
 
@@ -16404,6 +16471,7 @@ fn slash_text_opens_command_entry_and_releases_pressed_input() {
     input.forward = true;
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/");
 
@@ -16441,6 +16509,7 @@ fn command_entry_submits_slash_command_without_leading_slash() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(
         &mut input,
@@ -16885,6 +16954,7 @@ fn command_entry_filters_vanilla_disallowed_formatting_character() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(
         &mut input,
@@ -16983,6 +17053,7 @@ fn chat_entry_starting_with_slash_requests_suggestions_and_submits_command() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_key_input(
         &mut input,
@@ -17027,6 +17098,7 @@ fn command_entry_blocks_movement_keys_and_backspace_edits_text() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/givw");
     handle_key_input(
@@ -17085,6 +17157,7 @@ fn command_entry_cursor_editing_updates_slash_suggestions() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/givve");
     handle_key_input(
@@ -17138,6 +17211,7 @@ fn command_entry_control_word_keys_edit_text() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(
         &mut input,
@@ -17233,6 +17307,7 @@ fn command_entry_control_a_selection_replaces_and_submits_command() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(
         &mut input,
@@ -17426,6 +17501,7 @@ fn command_entry_escape_cancels_without_queuing_command() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/seed");
     handle_key_input(
@@ -17457,6 +17533,7 @@ fn slash_only_enter_requests_suggestions_but_does_not_submit_command() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/");
     handle_key_input(
@@ -17488,6 +17565,7 @@ fn command_entry_multi_character_commit_requests_suggestions_once() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/seed");
 
@@ -17507,25 +17585,15 @@ fn command_entry_multi_character_commit_requests_suggestions_once() {
 }
 
 #[test]
-fn command_entry_tab_applies_latest_suggestion_range() {
+fn command_entry_tab_applies_local_literal_without_server_request() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(local_literal_command_tree(&["give"]));
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/giv");
-    world.apply_command_suggestions(CommandSuggestions {
-        id: 0,
-        start: 1,
-        length: 3,
-        suggestions: vec![CommandSuggestion {
-            text: "give".to_string(),
-            tooltip: Some("Run give".to_string()),
-            tooltip_styled: None,
-            tooltip_component: None,
-        }],
-    });
     handle_key_input(
         &mut input,
         &mut counters,
@@ -17546,14 +17614,8 @@ fn command_entry_tab_applies_latest_suggestion_range() {
             .and_then(|entry| entry.last_suggestion_request_text.as_deref()),
         Some("/give")
     );
-    assert_eq!(counters.command_suggestion_commands_queued, 1);
-    assert_eq!(
-        rx.try_recv().unwrap(),
-        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
-            id: 0,
-            command: "/giv".to_string(),
-        })
-    );
+    assert_eq!(counters.command_suggestion_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
 
     handle_key_input(
         &mut input,
@@ -17576,6 +17638,7 @@ fn command_suggestion_list_cycles_applies_suffix_and_preserves_narration_state()
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/ga");
     world.apply_command_suggestions(CommandSuggestions {
@@ -17694,6 +17757,7 @@ fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/c");
     world.apply_command_suggestions(CommandSuggestions {
         id: 0,
@@ -17774,6 +17838,7 @@ fn command_suggestion_escape_hides_list_before_closing_command_entry() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/se");
     world.apply_command_suggestions(CommandSuggestions {
         id: 0,
@@ -17958,6 +18023,7 @@ fn command_entry_tab_ignores_stale_suggestion_response() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/giv");
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "e");
@@ -18010,6 +18076,7 @@ fn command_entry_tab_ignores_invalid_suggestion_range() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_commands(ask_server_command_tree());
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "/give");
     world.apply_command_suggestions(CommandSuggestions {

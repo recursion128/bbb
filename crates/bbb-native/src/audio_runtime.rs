@@ -91,6 +91,10 @@ impl NativeAudioRuntime {
         counters
     }
 
+    pub(crate) fn available_sound_ids(&self) -> Vec<String> {
+        self.catalog.events.keys().cloned().collect()
+    }
+
     pub(crate) fn prepare_reload(roots: &PackRoots) -> Result<NativeAudioReload> {
         Ok(NativeAudioReload {
             catalog: load_required_native_sound_catalog(roots)?,

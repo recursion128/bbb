@@ -148,6 +148,12 @@ pub struct WorldStore {
     pub(crate) command_suggestions: CommandSuggestionsState,
     #[serde(default)]
     pub(crate) commands: CommandTreeState,
+    /// Resource-pack sound event ids exposed by the native sound manager to
+    /// the `minecraft:available_sounds` command suggestion provider. The
+    /// derived resource view is publication-shared and intentionally omitted
+    /// from serialized canonical snapshots.
+    #[serde(skip)]
+    pub(crate) available_command_sounds: PublicationShared<Vec<String>>,
     #[serde(default)]
     pub(crate) recipe_book: crate::ClientRecipeBookState,
     #[serde(default)]

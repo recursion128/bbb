@@ -1091,6 +1091,9 @@ fn apply_resource_reload_ack(
             commit.item_defaults.apply(context.world);
             context
                 .world
+                .set_available_command_sounds(commit.available_command_sounds);
+            context
+                .world
                 .set_default_block_destroy_profiles(commit.block_destroy_profiles);
             context
                 .world

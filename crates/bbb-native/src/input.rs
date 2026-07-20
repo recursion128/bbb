@@ -129,8 +129,9 @@ use bbb_world::{
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
-    vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos, EntityState,
-    EntityVec3, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
+    vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos,
+    CommandSuggestionState, CommandSuggestionsResultState, EntityState, EntityVec3,
+    LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
     VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
 };
 use bbb_world::{
@@ -736,6 +737,7 @@ const COMMAND_SUGGESTION_LINE_LIMIT: usize = 10;
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ChatSuggestionListState {
     result_id: i32,
+    result: CommandSuggestionsResultState,
     original_contents: String,
     sorted_indices: Vec<usize>,
     current: usize,
@@ -1325,8 +1327,8 @@ impl ClientInputState {
     ) -> Option<CommandSuggestionHudState> {
         let entry = self.chat_entry.as_mut()?;
         sync_chat_suggestion_list(entry, world);
-        update_chat_suggestion_list_rect(entry, world, measurer, surface_size);
-        Some(chat_suggestion_hud_state(entry, world))
+        update_chat_suggestion_list_rect(entry, measurer, surface_size);
+        Some(chat_suggestion_hud_state(entry))
     }
 
     pub(crate) fn command_suggestions_active(&self) -> bool {
@@ -1341,6 +1343,7 @@ impl ClientInputState {
         let Some(entry) = self.chat_entry.as_mut() else {
             return false;
         };
+        sync_chat_suggestion_list(entry, world);
         let previous = entry.mouse_position;
         entry.mouse_position = cursor_position.and_then(physical_position_floor_i32);
         if previous == entry.mouse_position {
@@ -1359,7 +1362,7 @@ impl ClientInputState {
             return true;
         };
         let selected = list.offset.saturating_add(line);
-        select_chat_suggestion(entry, world, selected, true);
+        select_chat_suggestion(entry, selected, true);
         true
     }
 
@@ -1373,6 +1376,7 @@ impl ClientInputState {
         let Some(entry) = self.chat_entry.as_mut() else {
             return false;
         };
+        sync_chat_suggestion_list(entry, world);
         entry.mouse_position = cursor_position.and_then(physical_position_floor_i32);
         if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
             return true;
@@ -1392,8 +1396,8 @@ impl ClientInputState {
         if selected >= list.sorted_indices.len() {
             return true;
         }
-        select_chat_suggestion(entry, world, selected, true);
-        use_selected_chat_suggestion(entry, world);
+        select_chat_suggestion(entry, selected, true);
+        use_selected_chat_suggestion(entry);
         true
     }
 
@@ -9804,9 +9808,9 @@ fn handle_chat_entry_key(
                     return false;
                 };
                 if tab_cycles {
-                    cycle_chat_suggestion(entry, world, if shift_down { -1 } else { 1 });
+                    cycle_chat_suggestion(entry, if shift_down { -1 } else { 1 });
                 }
-                use_selected_chat_suggestion(entry, world);
+                use_selected_chat_suggestion(entry);
                 true
             });
             if !used_list {
@@ -9821,7 +9825,7 @@ fn handle_chat_entry_key(
         KeyCode::ArrowUp => {
             if let Some(entry) = input.chat_entry.as_mut() {
                 if entry.suggestion_list.is_some() {
-                    cycle_chat_suggestion(entry, world, -1);
+                    cycle_chat_suggestion(entry, -1);
                     if let Some(list) = entry.suggestion_list.as_mut() {
                         list.tab_cycles = false;
                     }
@@ -9831,7 +9835,7 @@ fn handle_chat_entry_key(
         KeyCode::ArrowDown => {
             if let Some(entry) = input.chat_entry.as_mut() {
                 if entry.suggestion_list.is_some() {
-                    cycle_chat_suggestion(entry, world, 1);
+                    cycle_chat_suggestion(entry, 1);
                     if let Some(list) = entry.suggestion_list.as_mut() {
                         list.tab_cycles = false;
                     }
@@ -9940,27 +9944,64 @@ fn apply_latest_chat_suggestion(input: &mut ClientInputState, world: &WorldStore
 }
 
 fn sync_chat_suggestion_list(entry: &mut ChatEntryState, world: &WorldStore) {
-    if entry.suggestion_list.is_some() {
+    if !entry.text.starts_with('/') {
         return;
     }
-    let suggestions = world.command_suggestions();
-    let request = match suggestions.last_request.as_ref() {
-        Some(request) if request.command == entry.text => request,
-        _ => return,
-    };
-    let result = match suggestions
-        .last_id
-        .and_then(|id| suggestions.by_id.get(&id))
+    if entry
+        .suggestion_list
+        .as_ref()
+        .is_some_and(|list| list.tab_cycles)
     {
-        Some(result)
-            if result.id == request.id
-                && entry.hidden_suggestion_id != Some(result.id)
-                && !result.suggestions.is_empty() =>
+        return;
+    }
+    let completion = world.complete_command(&entry.text);
+    let result = if completion.request_server {
+        let suggestions = world.command_suggestions();
+        let request = match suggestions.last_request.as_ref() {
+            Some(request) if request.command == entry.text => request,
+            _ => {
+                entry.suggestion_list = None;
+                return;
+            }
+        };
+        match suggestions
+            .last_id
+            .and_then(|id| suggestions.by_id.get(&id))
         {
-            result
+            Some(result) if result.id == request.id => result.clone(),
+            _ => {
+                entry.suggestion_list = None;
+                return;
+            }
         }
-        _ => return,
+    } else {
+        CommandSuggestionsResultState {
+            // Server request ids are always non-negative and wrap to zero.
+            id: -1,
+            start: i32::try_from(completion.start).unwrap_or(i32::MAX),
+            length: i32::try_from(completion.length).unwrap_or(i32::MAX),
+            suggestions: completion
+                .suggestions
+                .into_iter()
+                .map(|suggestion| CommandSuggestionState {
+                    text: suggestion.text,
+                    tooltip: suggestion.tooltip,
+                    tooltip_styled: None,
+                    tooltip_component: None,
+                })
+                .collect(),
+        }
     };
+
+    if entry.hidden_suggestion_id == Some(result.id) || result.suggestions.is_empty() {
+        entry.suggestion_list = None;
+        return;
+    }
+    if entry.suggestion_list.as_ref().is_some_and(|list| {
+        list.original_contents == entry.text && list.result_id == result.id && list.result == result
+    }) {
+        return;
+    }
 
     let cursor_byte = text_edit::byte_index(
         &entry.text,
@@ -9983,6 +10024,7 @@ fn sync_chat_suggestion_list(entry: &mut ChatEntryState, world: &WorldStore) {
     let sorted_indices = direct.into_iter().chain(partial).collect();
     entry.suggestion_list = Some(ChatSuggestionListState {
         result_id: result.id,
+        result,
         original_contents: entry.text.clone(),
         sorted_indices,
         current: 0,
@@ -10002,14 +10044,14 @@ fn show_hidden_chat_suggestion_list(entry: &mut ChatEntryState, world: &WorldSto
         .as_ref()
         .is_some_and(|list| list.result_id == hidden_id);
     if shown {
-        update_chat_suggestion_narration(entry, world);
+        update_chat_suggestion_narration(entry);
     } else {
         entry.hidden_suggestion_id = Some(hidden_id);
     }
     shown
 }
 
-fn cycle_chat_suggestion(entry: &mut ChatEntryState, world: &WorldStore, direction: i32) {
+fn cycle_chat_suggestion(entry: &mut ChatEntryState, direction: i32) {
     let Some(list) = entry.suggestion_list.as_ref() else {
         return;
     };
@@ -10022,15 +10064,10 @@ fn cycle_chat_suggestion(entry: &mut ChatEntryState, world: &WorldStore, directi
     } else {
         (list.current + 1) % len
     };
-    select_chat_suggestion(entry, world, current, true);
+    select_chat_suggestion(entry, current, true);
 }
 
-fn select_chat_suggestion(
-    entry: &mut ChatEntryState,
-    world: &WorldStore,
-    index: usize,
-    narrate: bool,
-) {
+fn select_chat_suggestion(entry: &mut ChatEntryState, index: usize, narrate: bool) {
     let Some(list) = entry.suggestion_list.as_mut() else {
         return;
     };
@@ -10055,22 +10092,19 @@ fn select_chat_suggestion(
     if !narrate || !changed {
         return;
     }
-    update_chat_suggestion_narration(entry, world);
+    update_chat_suggestion_narration(entry);
 }
 
-fn update_chat_suggestion_narration(entry: &mut ChatEntryState, world: &WorldStore) {
+fn update_chat_suggestion_narration(entry: &mut ChatEntryState) {
     let Some(list) = entry.suggestion_list.as_ref() else {
         return;
     };
     let len = list.sorted_indices.len();
     let current = list.current;
-    let Some(suggestion) = world
-        .command_suggestions_by_id(list.result_id)
-        .and_then(|result| {
-            list.sorted_indices
-                .get(current)
-                .and_then(|index| result.suggestions.get(*index))
-        })
+    let Some(suggestion) = list
+        .sorted_indices
+        .get(current)
+        .and_then(|index| list.result.suggestions.get(*index))
     else {
         return;
     };
@@ -10082,28 +10116,25 @@ fn update_chat_suggestion_narration(entry: &mut ChatEntryState, world: &WorldSto
     });
 }
 
-fn use_selected_chat_suggestion(entry: &mut ChatEntryState, world: &WorldStore) {
+fn use_selected_chat_suggestion(entry: &mut ChatEntryState) {
     let Some(list) = entry.suggestion_list.as_ref() else {
-        return;
-    };
-    let Some(result) = world.command_suggestions_by_id(list.result_id) else {
         return;
     };
     let Some(suggestion) = list
         .sorted_indices
         .get(list.current)
-        .and_then(|index| result.suggestions.get(*index))
+        .and_then(|index| list.result.suggestions.get(*index))
     else {
         return;
     };
-    let start = match usize::try_from(result.start) {
+    let start = match usize::try_from(list.result.start) {
         Ok(start) => start,
         Err(_) => return,
     };
     let Some(updated) = apply_command_suggestion_text(
         &list.original_contents,
-        result.start,
-        result.length,
+        list.result.start,
+        list.result.length,
         &suggestion.text,
     ) else {
         return;
@@ -10122,25 +10153,20 @@ fn use_selected_chat_suggestion(entry: &mut ChatEntryState, world: &WorldStore) 
 
 fn update_chat_suggestion_list_rect(
     entry: &mut ChatEntryState,
-    world: &WorldStore,
     measurer: &impl CommandSuggestionTextMeasurer,
     surface_size: PhysicalSize<u32>,
 ) {
     let Some(list) = entry.suggestion_list.as_mut() else {
         return;
     };
-    let Some(result) = world.command_suggestions_by_id(list.result_id) else {
-        list.rect = None;
-        return;
-    };
     let max_width = list
         .sorted_indices
         .iter()
-        .filter_map(|index| result.suggestions.get(*index))
+        .filter_map(|index| list.result.suggestions.get(*index))
         .map(|suggestion| measurer.command_suggestion_text_width(&suggestion.text))
         .max()
         .unwrap_or_default();
-    let start = usize::try_from(result.start).unwrap_or_default();
+    let start = usize::try_from(list.result.start).unwrap_or_default();
     let prefix_width = list
         .original_contents
         .get(..start)
@@ -10169,10 +10195,7 @@ fn update_chat_suggestion_list_rect(
     });
 }
 
-fn chat_suggestion_hud_state(
-    entry: &ChatEntryState,
-    world: &WorldStore,
-) -> CommandSuggestionHudState {
+fn chat_suggestion_hud_state(entry: &ChatEntryState) -> CommandSuggestionHudState {
     let empty_rect = CommandSuggestionRect {
         x: 0,
         y: 0,
@@ -10193,20 +10216,7 @@ fn chat_suggestion_hud_state(
             narration: entry.suggestion_narration.clone(),
         };
     };
-    let Some(result) = world.command_suggestions_by_id(list.result_id) else {
-        return CommandSuggestionHudState {
-            input_text: entry.text.clone(),
-            cursor: entry.cursor,
-            selection: entry.selection,
-            suffix: None,
-            rect: empty_rect,
-            entries: Vec::new(),
-            has_previous: false,
-            has_next: false,
-            tooltip: None,
-            narration: entry.suggestion_narration.clone(),
-        };
-    };
+    let result = &list.result;
     let visible_end = list
         .offset
         .saturating_add(COMMAND_SUGGESTION_LINE_LIMIT)
@@ -10521,6 +10531,10 @@ fn maybe_queue_command_suggestion_request(
     let Some(entry) = &mut input.chat_entry else {
         return;
     };
+    if !world.complete_command(&entry.text).request_server {
+        entry.last_suggestion_request_text = None;
+        return;
+    }
     if entry.last_suggestion_request_text.as_deref() == Some(entry.text.as_str()) {
         return;
     }

@@ -382,6 +382,12 @@ fn main() -> Result<()> {
         ),
     };
     let narrator_status = NarratorStatus::from(args.client_narrator);
+    world.set_available_command_sounds(
+        audio_runtime
+            .as_ref()
+            .map(NativeAudioRuntime::available_sound_ids)
+            .unwrap_or_default(),
+    );
     let mut narrator_runtime = args.narrator_command.clone().map(|command| {
         NativeNarratorRuntime::new(narrator_status, command, args.narrator_command_args.clone())
     });

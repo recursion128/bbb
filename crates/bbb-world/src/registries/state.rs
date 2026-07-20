@@ -592,6 +592,18 @@ impl<'a> FrozenRegistryAccess<'a> {
         }
     }
 
+    pub fn tag_ids(self, registry: &str) -> Option<Vec<&'a str>> {
+        Some(
+            self.registries
+                .tags
+                .get(registry)?
+                .tags
+                .keys()
+                .map(String::as_str)
+                .collect(),
+        )
+    }
+
     pub fn block_properties_membership(
         self,
         resource_id: &str,
