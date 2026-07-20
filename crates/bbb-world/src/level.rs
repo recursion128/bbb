@@ -556,6 +556,7 @@ impl WorldStore {
         self.chunk_view = crate::ChunkViewState::default();
         self.last_block_changed_ack = None;
         self.local_player = crate::LocalPlayerState::default();
+        self.local_player_old_pose = None;
         self.local_player_id = None;
         self.local_player_vehicle_id = None;
         self.removed_player_vehicle_id = None;
@@ -781,6 +782,7 @@ impl WorldStore {
         let keep_entity_data = data_to_keep & RESPAWN_KEEP_ENTITY_DATA != 0;
         let keep_attribute_modifiers = data_to_keep & RESPAWN_KEEP_ATTRIBUTE_MODIFIERS != 0;
         let old_local_player = std::mem::take(&mut self.local_player);
+        self.local_player_old_pose = None;
         let old_pose = old_local_player.pose;
 
         // handleRespawn constructs a fresh LocalPlayer. Only state explicitly
@@ -1523,6 +1525,7 @@ mod tests {
     fn respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers() {
         let mut store = respawn_state_with_local_player_data();
         let old_pose = store.local_player_pose().unwrap();
+        store.local_player_old_pose = Some(old_pose);
 
         store.apply_respawn(&respawn_packet(3));
 
@@ -1544,6 +1547,7 @@ mod tests {
             })
         );
         assert_eq!(store.local_player().camera, CameraState::default());
+        assert_eq!(store.local_player_old_pose, None);
         assert_eq!(
             store.local_player().interaction,
             crate::LocalPlayerInteractionState::default()
@@ -1603,6 +1607,7 @@ mod tests {
             min_y: 0,
             height: 256,
         });
+        store.local_player_old_pose = Some(LocalPlayerPoseState::default());
         store.level = Some(WorldLevelInfo {
             dimension: "minecraft:the_nether".to_string(),
             dimension_type_id: 1,
@@ -1699,6 +1704,7 @@ mod tests {
         assert_eq!(store.local_player_id(), None);
         assert_eq!(store.local_player_vehicle_id(), None);
         assert_eq!(store.local_player(), &crate::LocalPlayerState::default());
+        assert_eq!(store.local_player_old_pose, None);
 
         let counters = store.counters();
         assert_eq!(counters.play_logins_received, 1);

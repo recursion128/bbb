@@ -1980,7 +1980,10 @@ mod tests {
             .await
             .unwrap();
         probe
-            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(10)))
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity_with_type(
+                10,
+                VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            )))
             .await
             .unwrap();
         probe
@@ -2067,6 +2070,61 @@ mod tests {
         assert_eq!(report.world_counters.vehicle_moves_acked, 0);
         assert_eq!(report.world_counters.vehicle_moves_snapped, 0);
         assert_eq!(report.world_counters.vehicle_moves_ignored, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_controlled_vehicle_teleport_sends_post_snap_ack() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Login(protocol_play_login(99)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity_with_type(
+                10,
+                VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            )))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetPassengers(SetPassengers {
+                vehicle_id: 10,
+                passenger_ids: vec![99],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TeleportEntity(TeleportEntity {
+                id: 10,
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 45.0,
+                x_rot: -5.0,
+                relatives_mask: 0,
+                on_ground: true,
+            }))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("teleport vehicle ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_VEHICLE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 5.0);
+        assert_eq!(decoder.read_f64().unwrap(), 66.0);
+        assert_eq!(decoder.read_f64().unwrap(), -7.0);
+        assert_eq!(decoder.read_f32().unwrap(), 45.0);
+        assert_eq!(decoder.read_f32().unwrap(), -5.0);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
     }
 
     #[tokio::test]

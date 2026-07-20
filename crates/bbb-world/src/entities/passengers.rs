@@ -1,20 +1,31 @@
 use bbb_protocol::packets::{
-    MoveVehicle as ProtocolMoveVehicle, SetPassengers as ProtocolSetPassengers,
+    EquipmentSlot as ProtocolEquipmentSlot, InteractionHand, MoveVehicle as ProtocolMoveVehicle,
+    SetPassengers as ProtocolSetPassengers,
+};
+use bbb_protocol::{
+    entity_types::{
+        vanilla_entity_type_is_non_controlling_rider, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    },
+    item_types::{VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID},
 };
 
 use crate::{LocalPlayerInputState, WorldStore};
 
 use super::schema::{
+    vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
+    vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_type_has_custom_inventory_screen,
-    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_player_rideable_jumping,
+    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_mob, vanilla_entity_metadata_type_is_player_rideable_jumping,
 };
 use super::{
-    is_vanilla_boat_type,
+    is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type, is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
     VehicleMoveReport,
 };
 
-const MOVE_VEHICLE_SNAP_EPSILON_SQUARED: f64 = 1e-10;
+const MOVE_VEHICLE_SNAP_EPSILON: f64 = 1.0e-5_f32 as f64;
 const LOCAL_BOAT_TICK_SECONDS: f64 = 0.05;
 const LOCAL_BOAT_TURN_DEGREES_PER_TICK: f32 = 1.0;
 const LOCAL_BOAT_FORWARD_ACCELERATION_PER_TICK: f64 = 0.04;
@@ -123,21 +134,26 @@ impl WorldStore {
             self.counters.vehicle_moves_ignored += 1;
             return None;
         };
+        if !self.entity_is_locally_authoritative(root_vehicle_id) {
+            self.counters.vehicle_moves_ignored += 1;
+            return None;
+        }
         let packet_position = entity_vec3(packet.position);
         let Some(current_transform) = self.entities.transform(root_vehicle_id) else {
             self.counters.vehicle_moves_ignored += 1;
             return None;
         };
-        let snapped = entity_distance_squared(current_transform.position, packet_position)
-            > MOVE_VEHICLE_SNAP_EPSILON_SQUARED;
+        let comparison_position = current_transform
+            .interpolation_target()
+            .map_or(current_transform.position, |(position, _, _)| position);
+        let snapped = entity_distance_squared(comparison_position, packet_position).sqrt()
+            > MOVE_VEHICLE_SNAP_EPSILON;
 
         if snapped {
             self.entities
                 .with_transform_mut(root_vehicle_id, |transform| {
-                    transform.position = packet_position;
-                    transform.position_base = packet_position;
-                    transform.y_rot = packet.y_rot;
-                    transform.x_rot = packet.x_rot;
+                    transform.cancel_interpolation();
+                    transform.abs_snap_to(packet_position, packet.y_rot, packet.x_rot);
                 });
             self.counters.vehicle_moves_snapped += 1;
         }
@@ -375,6 +391,171 @@ impl WorldStore {
             vehicle_id = parent_vehicle_id;
         }
         None
+    }
+
+    pub(super) fn entity_is_locally_authoritative(&self, entity_id: i32) -> bool {
+        let Some(local_player_id) = self.local_player_id else {
+            return false;
+        };
+        if entity_id == local_player_id {
+            return true;
+        }
+
+        let mut controlled_id = entity_id;
+        for _ in 0..=self.entities.len() {
+            let Some(controller_id) = self.entity_controlling_passenger(controlled_id) else {
+                return false;
+            };
+            if controller_id == local_player_id {
+                return true;
+            }
+            controlled_id = controller_id;
+        }
+        false
+    }
+
+    fn entity_controlling_passenger(&self, entity_id: i32) -> Option<i32> {
+        let entity_type_id = self.entities.entity_type_id(entity_id)?;
+        let first_passenger_id = self
+            .entities
+            .mount(entity_id)?
+            .passengers
+            .first()
+            .copied()?;
+
+        if is_vanilla_boat_type(entity_type_id) {
+            return self
+                .entity_id_is_living(first_passenger_id)
+                .then_some(first_passenger_id);
+        }
+
+        let has_saddle = self
+            .entities
+            .saddle_slot_contains_saddle_item(entity_id, &self.items.default_item_equipment_slots);
+        if is_vanilla_abstract_horse_type(entity_type_id)
+            || is_vanilla_abstract_nautilus_type(entity_type_id)
+        {
+            if has_saddle && self.entity_id_is_player(first_passenger_id) {
+                return Some(first_passenger_id);
+            }
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID {
+            if has_saddle
+                && self.entity_id_is_player(first_passenger_id)
+                && first_passenger_id == self.local_player_id?
+                && self.local_player_holds_item(VANILLA_ITEM_CARROT_ON_A_STICK_ID)
+            {
+                return Some(first_passenger_id);
+            }
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID {
+            if has_saddle
+                && self.entity_id_is_player(first_passenger_id)
+                && first_passenger_id == self.local_player_id?
+                && self.local_player_holds_item(VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID)
+            {
+                return Some(first_passenger_id);
+            }
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
+            let accessors =
+                vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(entity_type_id)?;
+            let stays_still = self.entities.metadata_bool_for_entity(
+                entity_id,
+                accessors.stays_still_data_id,
+                accessors.stays_still_default,
+            )?;
+            if !stays_still
+                && self
+                    .entities
+                    .equipment_slot_contains_nonempty_item(entity_id, ProtocolEquipmentSlot::Body)
+                && self.entity_id_is_player(first_passenger_id)
+            {
+                return Some(first_passenger_id);
+            }
+        }
+
+        // Vanilla `Mob.getControllingPassenger`: subclass overrides above fall
+        // back to this exact generated ancestry/metadata/tag decision.
+        let mob_accessors = vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)?;
+        let mob_flags = self.entities.metadata_byte(
+            entity_id,
+            mob_accessors.flags_data_id,
+            mob_accessors.flags_default,
+        )?;
+        let no_ai = mob_flags & mob_accessors.no_ai_mask != 0;
+        let first_passenger_type_id = self.entities.entity_type_id(first_passenger_id)?;
+        (!no_ai
+            && vanilla_entity_metadata_type_is_mob(first_passenger_type_id)
+            && !vanilla_entity_type_is_non_controlling_rider(first_passenger_type_id))
+        .then_some(first_passenger_id)
+    }
+
+    fn entity_id_is_living(&self, entity_id: i32) -> bool {
+        self.local_player_id == Some(entity_id)
+            || self
+                .entities
+                .entity_type_id(entity_id)
+                .is_some_and(vanilla_entity_metadata_type_is_living)
+    }
+
+    fn entity_id_is_player(&self, entity_id: i32) -> bool {
+        self.local_player_id == Some(entity_id)
+            || self.entities.entity_type_id(entity_id) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
+    }
+
+    fn local_player_holds_item(&self, item_id: i32) -> bool {
+        [InteractionHand::MainHand, InteractionHand::OffHand]
+            .into_iter()
+            .any(|hand| {
+                self.local_item_in_hand(hand).and_then(|item| item.item_id) == Some(item_id)
+            })
+    }
+
+    pub(super) fn correct_local_player_passenger_after_entity_snap(
+        &mut self,
+        vehicle_id: i32,
+    ) -> bool {
+        if !self.local_player_vehicle_chain_contains(vehicle_id) {
+            return false;
+        }
+        let Some(local_player_id) = self.local_player_id else {
+            return false;
+        };
+
+        if self.local_player_vehicle_id == Some(vehicle_id) {
+            let game_time = self.world_time().map_or(0, |time| time.game_time);
+            let current_pose = self.local_player.pose;
+            let position = if self.entities.contains(local_player_id) {
+                self.entities
+                    .passenger_position(local_player_id, vehicle_id, game_time)
+            } else {
+                self.entities.local_player_passenger_position(
+                    vehicle_id,
+                    local_player_id,
+                    current_pose.is_some_and(|pose| pose.swimming),
+                    game_time,
+                )
+            };
+            if let (Some(mut pose), Some(position)) = (current_pose, position) {
+                pose.position.x = position.x;
+                pose.position.y = position.y;
+                pose.position.z = position.z;
+                self.local_player.pose = Some(pose);
+            }
+            if let Some(position) = position {
+                let _ = self
+                    .entities
+                    .with_transform_mut(local_player_id, |transform| {
+                        transform.position = position;
+                    });
+            }
+        }
+
+        if let Some(pose) = self.local_player.pose {
+            self.local_player_old_pose = Some(pose);
+        }
+        let _ = self
+            .entities
+            .with_transform_mut(local_player_id, |transform| transform.set_old_pos_and_rot());
+        true
     }
 }
 

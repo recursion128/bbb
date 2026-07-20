@@ -477,6 +477,17 @@ impl EntityTransform {
         self.set_old_pos_and_rot();
     }
 
+    pub(crate) fn abs_snap_to(&mut self, position: EntityVec3, y_rot: f32, x_rot: f32) {
+        self.position = EntityVec3 {
+            x: position.x.clamp(-3.0e7, 3.0e7),
+            y: position.y,
+            z: position.z.clamp(-3.0e7, 3.0e7),
+        };
+        self.set_y_rot(y_rot % 360.0);
+        self.set_x_rot(x_rot.clamp(-90.0, 90.0) % 360.0);
+        self.set_old_pos_and_rot();
+    }
+
     pub(crate) fn begin_client_tick(&mut self) {
         self.set_old_pos_and_rot();
         self.old_y_head_rot = self.y_head_rot;

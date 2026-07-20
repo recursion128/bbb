@@ -121,6 +121,13 @@ Local source root: `/home/zgy/Work/mc-code/sources/26.1`.
   authoritative root vehicle. It compares the packet target against an active
   interpolation target when present, cancels a meaningfully different target,
   and snaps the vehicle.
+- `Entity.isLocalClientAuthoritative` recursively follows the exact controlling
+  passenger. `AbstractBoat` accepts a first `LivingEntity`; abstract horses and
+  nautiluses require a saddle plus a first `Player`; pig and strider additionally
+  require the matching steering item; Happy Ghast requires body armor and no
+  still timeout. `Mob` falls back to a non-no-AI first `Mob` whose type is not in
+  `minecraft:non_controlling_rider`. The latter membership is generated from
+  the Vanilla data tag with the fixed EntityType catalog.
 - `InterpolationHandler` keeps a target, remaining steps, and previous tick
   position/rotation. Retargeting an exactly equal target is a no-op. Each tick
   carries entity self-motion into the target only when the shifted target bounds
@@ -196,6 +203,16 @@ authoritative only while the local player is its exact controlling passenger;
 ordinary riding and indirect passenger relationships do not broaden authority.
 Passenger reposition/reset and serverbound correction ordering are emitted as a
 narrow world report consumed by native before publication.
+
+Phase 3 stores the local rider's previous pose endpoint beside canonical local
+player state, repositions only a direct passenger while still resetting an
+indirect passenger endpoint, and clones that endpoint into immutable
+publications. Respawn and level reset clear it. `MoveVehicle` compares against
+the active interpolation target, leaves an equal target running, and otherwise
+cancels before Vanilla `absSnapTo` clamping; that correction does not rewrite
+the protocol position-codec base. Teleport correction reuses the existing
+lossless vehicle report path, so native/probe encode it after world mutation and
+before the corresponding publication can become visible.
 
 Generated ancestry classifies generic handlers and explicit no-handler or
 special behavior. Minecart track interpolation, display interpolation metadata,

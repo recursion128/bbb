@@ -473,6 +473,44 @@ pub(crate) fn vanilla_passenger_position_for_entity_data(
     })
 }
 
+pub(crate) fn vanilla_local_player_passenger_position_for_entity_data(
+    vehicle_entity_type_id: i32,
+    vehicle_position: EntityVec3,
+    vehicle_y_rot: f32,
+    vehicle_bounds: EntityPickBoundsState,
+    vehicle_data_values: &[EntityDataValue],
+    vehicle_attributes: &[AttributeSnapshot],
+    vehicle_client_animations: Option<EntityClientAnimationState>,
+    vehicle_passengers: &[i32],
+    passenger_id: i32,
+    passenger_is_swimming: bool,
+    game_time: i64,
+) -> Option<EntityVec3> {
+    let riding_position = vanilla_passenger_riding_position_for_entity_data(
+        vehicle_entity_type_id,
+        vehicle_position,
+        vehicle_y_rot,
+        vehicle_bounds,
+        vehicle_data_values,
+        vehicle_attributes,
+        vehicle_client_animations,
+        vehicle_passengers,
+        passenger_id,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        game_time,
+    )?;
+    let vehicle_attachment = if passenger_is_swimming {
+        [0.0; 3]
+    } else {
+        vanilla_entity_type_vehicle_attachment(VANILLA_ENTITY_TYPE_PLAYER_ID)?
+    };
+    Some(EntityVec3 {
+        x: riding_position.x - f64::from(vehicle_attachment[0]),
+        y: riding_position.y - f64::from(vehicle_attachment[1]),
+        z: riding_position.z - f64::from(vehicle_attachment[2]),
+    })
+}
+
 fn vanilla_passenger_riding_position_for_entity_data(
     vehicle_entity_type_id: i32,
     vehicle_position: EntityVec3,

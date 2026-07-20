@@ -99,8 +99,8 @@ use crate::entities::dimensions::{
     vanilla_age_scale, vanilla_body_anchor_y_offset_for_entity_data,
     vanilla_bounds_for_entity_data, vanilla_client_position_for_entity_data,
     vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat,
-    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
-    vanilla_passenger_position_for_entity_data,
+    vanilla_living_entity_type, vanilla_local_player_passenger_position_for_entity_data,
+    vanilla_model_source_bounds_for_entity_data, vanilla_passenger_position_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale,
 };
@@ -613,6 +613,22 @@ impl EntityStore {
             return false;
         };
         equipment_contains_saddle_item(Some(&*equipment), equipment_slots)
+    }
+
+    pub(crate) fn equipment_slot_contains_nonempty_item(
+        &self,
+        id: i32,
+        slot: ProtocolEquipmentSlot,
+    ) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        let Ok(equipment) = self.ecs.get::<&EntityEquipment>(entity) else {
+            return false;
+        };
+        equipment.equipment.iter().any(|update| {
+            update.slot == slot && update.item.count > 0 && update.item.item_id.is_some()
+        })
     }
 
     pub(crate) fn first_entity_id_with_type_and_data(
@@ -1712,6 +1728,104 @@ impl EntityStore {
             passenger_bounds,
             &passenger_metadata.data_values,
             0,
+        )
+    }
+
+    pub(crate) fn passenger_position(
+        &self,
+        passenger_id: i32,
+        vehicle_id: i32,
+        game_time: i64,
+    ) -> Option<super::EntityVec3> {
+        let passenger_bounds = self.pick_bounds(passenger_id)?;
+        let passenger_entity = self.by_protocol_id.get(&passenger_id).copied()?;
+        let mut passenger_query = self
+            .ecs
+            .query_one::<(&EntityIdentity, &EntityTransform, &EntityMetadata)>(passenger_entity)
+            .ok()?;
+        let (passenger_identity, passenger_transform, passenger_metadata) =
+            passenger_query.get()?;
+
+        let vehicle_bounds = self.pick_bounds(vehicle_id)?;
+        let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
+        let mut vehicle_query = self
+            .ecs
+            .query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &EntityMount,
+                &EntityMetadata,
+                &EntityAttributes,
+                Option<&EntityClientAnimations>,
+            )>(vehicle_entity)
+            .ok()?;
+        let (
+            vehicle_identity,
+            vehicle_transform,
+            vehicle_mount,
+            vehicle_metadata,
+            vehicle_attributes,
+            vehicle_client_animations,
+        ) = vehicle_query.get()?;
+
+        vanilla_passenger_position_for_entity_data(
+            vehicle_identity.entity_type_id,
+            vehicle_transform.position,
+            vehicle_transform.y_rot,
+            vehicle_bounds,
+            &vehicle_metadata.data_values,
+            &vehicle_attributes.attributes,
+            vehicle_client_animations.map(|animations| animations.animations),
+            &vehicle_mount.passengers,
+            passenger_id,
+            passenger_identity.entity_type_id,
+            passenger_transform.y_rot,
+            passenger_bounds,
+            &passenger_metadata.data_values,
+            game_time,
+        )
+    }
+
+    pub(crate) fn local_player_passenger_position(
+        &self,
+        vehicle_id: i32,
+        passenger_id: i32,
+        passenger_is_swimming: bool,
+        game_time: i64,
+    ) -> Option<super::EntityVec3> {
+        let vehicle_bounds = self.pick_bounds(vehicle_id)?;
+        let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
+        let mut vehicle_query = self
+            .ecs
+            .query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &EntityMount,
+                &EntityMetadata,
+                &EntityAttributes,
+                Option<&EntityClientAnimations>,
+            )>(vehicle_entity)
+            .ok()?;
+        let (
+            vehicle_identity,
+            vehicle_transform,
+            vehicle_mount,
+            vehicle_metadata,
+            vehicle_attributes,
+            vehicle_client_animations,
+        ) = vehicle_query.get()?;
+        vanilla_local_player_passenger_position_for_entity_data(
+            vehicle_identity.entity_type_id,
+            vehicle_transform.position,
+            vehicle_transform.y_rot,
+            vehicle_bounds,
+            &vehicle_metadata.data_values,
+            &vehicle_attributes.attributes,
+            vehicle_client_animations.map(|animations| animations.animations),
+            &vehicle_mount.passengers,
+            passenger_id,
+            passenger_is_swimming,
+            game_time,
         )
     }
 

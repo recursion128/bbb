@@ -1,5 +1,9 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::item_types::{
+    VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+};
+
 use crate::{ItemEquipmentSlot, LocalPlayerPoseState};
 
 use super::*;
@@ -479,24 +483,26 @@ fn removed_player_vehicle_teleport_recovers_the_local_player() {
     assert_eq!(store.local_player_vehicle_id(), None);
     assert_eq!(store.removed_player_vehicle_id(), Some(10));
 
-    let (applied, recovery) = store.apply_teleport_entity_with_recovery(ProtocolTeleportEntity {
-        id: 10,
-        position: ProtocolVec3d {
-            x: 8.0,
-            y: 70.0,
-            z: -4.0,
-        },
-        delta_movement: ProtocolVec3d {
-            x: 0.0,
-            y: 0.5,
-            z: 0.0,
-        },
-        y_rot: 90.0,
-        x_rot: -15.0,
-        relatives_mask: 0,
-        on_ground: true,
-    });
+    let (applied, recovery, vehicle_report) =
+        store.apply_teleport_entity_with_recovery(ProtocolTeleportEntity {
+            id: 10,
+            position: ProtocolVec3d {
+                x: 8.0,
+                y: 70.0,
+                z: -4.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.5,
+                z: 0.0,
+            },
+            y_rot: 90.0,
+            x_rot: -15.0,
+            relatives_mask: 0,
+            on_ground: true,
+        });
     assert!(applied);
+    assert_eq!(vehicle_report, None);
     let recovery = recovery.unwrap();
     assert_eq!(recovery.removed_vehicle_id, 10);
     assert_eq!(recovery.player_pose.position.x, 8.0);
@@ -908,9 +914,20 @@ fn local_boat_input_ignores_unfocused_controls() {
 #[test]
 fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
     store.apply_login(&protocol_play_login(99));
-    store.apply_add_entity(protocol_add_entity(10));
-    store.apply_add_entity(protocol_add_entity(20));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    equip_test_saddle(&mut store, 20);
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 20,
         passenger_ids: vec![99],
@@ -919,6 +936,8 @@ fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
         vehicle_id: 10,
         passenger_ids: vec![20],
     }));
+    assert!(store.entity_is_locally_authoritative(20));
+    assert!(store.entity_is_locally_authoritative(10));
 
     let report = store
         .apply_move_vehicle(ProtocolMoveVehicle {
@@ -951,7 +970,14 @@ fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
     );
     let root = store.probe_entity(10).unwrap();
     assert_eq!(root.position, report.position);
-    assert_eq!(root.position_base, report.position);
+    assert_eq!(
+        root.position_base,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
     assert_eq!(root.y_rot, 45.0);
     assert_eq!(root.x_rot, -5.0);
     assert_eq!(
@@ -973,7 +999,10 @@ fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
 fn move_vehicle_without_mount_is_noop() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));
-    store.apply_add_entity(protocol_add_entity(10));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
 
     assert_eq!(
         store.apply_move_vehicle(ProtocolMoveVehicle {
@@ -1136,6 +1165,122 @@ fn local_boat_position_sync_only_rebases_server_position_codec() {
 }
 
 #[test]
+fn snapped_position_sync_repositions_noncontrolling_local_passenger() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: -10.0,
+            y: 20.0,
+            z: 30.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity(123));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![123, 99],
+    }));
+    assert!(!store.entity_is_locally_authoritative(10));
+
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 10,
+            position: ProtocolVec3d {
+                x: 8.0,
+                y: 70.0,
+                z: -9.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 90.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
+
+    let expected = store
+        .entities
+        .local_player_passenger_position(10, 99, false, 0)
+        .unwrap();
+    let pose = store.local_player_pose().unwrap();
+    assert_eq!(pose.position.x, expected.x);
+    assert_eq!(pose.position.y, expected.y);
+    assert_eq!(pose.position.z, expected.z);
+    assert_eq!(store.local_player_old_pose, Some(pose));
+}
+
+#[test]
+fn snapped_controlled_vehicle_teleport_repositions_rider_and_reports_after_state() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.set_local_player_pose(LocalPlayerPoseState::default());
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    let generation_a = store.publication_snapshot();
+
+    let (applied, recovery, vehicle_report) =
+        store.apply_teleport_entity_with_recovery(ProtocolTeleportEntity {
+            id: 10,
+            position: ProtocolVec3d {
+                x: 12.0,
+                y: 75.0,
+                z: -6.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 135.0,
+            x_rot: -10.0,
+            relatives_mask: 0,
+            on_ground: true,
+        });
+
+    assert!(applied);
+    assert_eq!(recovery, None);
+    let report = vehicle_report.expect("controlled vehicle correction");
+    let vehicle = store.probe_entity(10).unwrap();
+    assert_eq!(report.vehicle_id, 10);
+    assert_eq!(report.position, vehicle.position);
+    assert_eq!(report.y_rot, vehicle.y_rot);
+    assert_eq!(report.x_rot, vehicle.x_rot);
+    assert!(report.on_ground);
+    assert!(report.snapped);
+    let pose = store.local_player_pose().unwrap();
+    assert_ne!(pose.position, ProtocolVec3d::default());
+    assert_eq!(store.local_player_old_pose, Some(pose));
+    assert_eq!(
+        generation_a.probe_entity(10).unwrap().position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert_eq!(
+        generation_a.local_player_pose().unwrap().position,
+        ProtocolVec3d::default()
+    );
+    assert_eq!(
+        generation_a.local_player_old_pose,
+        Some(LocalPlayerPoseState::default())
+    );
+    let generation_b = store.publication_snapshot();
+    assert_eq!(
+        generation_b.probe_entity(10).unwrap().position,
+        report.position
+    );
+    assert_eq!(generation_b.local_player_old_pose, Some(pose));
+}
+
+#[test]
 fn local_player_relative_move_only_advances_server_position_base() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));
@@ -1211,7 +1356,10 @@ fn relative_move_uses_old_minecart_interpolation_only_without_improvements() {
 fn move_vehicle_small_delta_acks_without_snap() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));
-    store.apply_add_entity(protocol_add_entity(10));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 10,
         passenger_ids: vec![99],
@@ -1253,6 +1401,238 @@ fn move_vehicle_small_delta_acks_without_snap() {
     assert_eq!(store.counters().vehicle_moves_acked, 1);
     assert_eq!(store.counters().vehicle_moves_snapped, 0);
     assert_eq!(store.counters().vehicle_moves_ignored, 0);
+}
+
+#[test]
+fn local_vehicle_authority_uses_vanilla_controller_conditions() {
+    let mut boat = WorldStore::new();
+    boat.apply_login(&protocol_play_login(99));
+    boat.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(boat.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert!(boat.entity_is_locally_authoritative(10));
+
+    for entity_type_id in [
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    ] {
+        let mut mount = WorldStore::new();
+        mount.set_default_item_equipment_slots(BTreeMap::from([(
+            TEST_SADDLE_ITEM_ID,
+            ItemEquipmentSlot::Saddle,
+        )]));
+        mount.apply_login(&protocol_play_login(99));
+        mount.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
+        assert!(mount.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        }));
+        assert!(!mount.entity_is_locally_authoritative(10));
+        equip_test_saddle(&mut mount, 10);
+        assert!(mount.entity_is_locally_authoritative(10));
+    }
+
+    for (entity_type_id, steering_item_id) in [
+        (
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            VANILLA_ITEM_CARROT_ON_A_STICK_ID,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+            VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+        ),
+    ] {
+        let mut mount = WorldStore::new();
+        mount.set_default_item_equipment_slots(BTreeMap::from([(
+            TEST_SADDLE_ITEM_ID,
+            ItemEquipmentSlot::Saddle,
+        )]));
+        mount.apply_login(&protocol_play_login(99));
+        mount.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
+        equip_test_saddle(&mut mount, 10);
+        assert!(mount.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        }));
+        assert!(!mount.entity_is_locally_authoritative(10));
+        assert!(
+            mount.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: 0,
+                item: item_stack(steering_item_id, 1),
+            })
+        );
+        assert!(mount.entity_is_locally_authoritative(10));
+    }
+
+    let mut happy_ghast = WorldStore::new();
+    happy_ghast.apply_login(&protocol_play_login(99));
+    happy_ghast.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    ));
+    assert!(happy_ghast.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert!(!happy_ghast.entity_is_locally_authoritative(10));
+    assert!(happy_ghast.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 10,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: item_stack(77, 1),
+        }],
+    }));
+    assert!(happy_ghast.entity_is_locally_authoritative(10));
+    let accessors = vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    )
+    .unwrap();
+    assert!(happy_ghast.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![ProtocolEntityDataValue {
+            data_id: accessors.stays_still_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(!happy_ghast.entity_is_locally_authoritative(10));
+}
+
+#[test]
+fn generic_mob_controller_uses_no_ai_and_generated_non_controlling_rider_tag() {
+    let mut no_ai = WorldStore::new();
+    no_ai.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    no_ai.apply_login(&protocol_play_login(99));
+    no_ai.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    no_ai.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    equip_test_saddle(&mut no_ai, 20);
+    assert!(no_ai.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    assert!(no_ai.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    assert!(no_ai.entity_is_locally_authoritative(10));
+    let mob_accessors =
+        vanilla_entity_metadata_mob_accessors_for_entity_type(VANILLA_ENTITY_TYPE_ZOMBIE_ID)
+            .unwrap();
+    assert!(no_ai.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![ProtocolEntityDataValue {
+            data_id: mob_accessors.flags_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: EntityDataValueKind::Byte(mob_accessors.no_ai_mask),
+        }],
+    }));
+    assert!(!no_ai.entity_is_locally_authoritative(10));
+
+    let mut tag = WorldStore::new();
+    tag.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    tag.apply_login(&protocol_play_login(99));
+    for (id, entity_type_id) in [
+        (10, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+        (20, VANILLA_ENTITY_TYPE_SLIME_ID),
+        (30, VANILLA_ENTITY_TYPE_HORSE_ID),
+    ] {
+        tag.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+    }
+    equip_test_saddle(&mut tag, 30);
+    assert!(tag.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 30,
+        passenger_ids: vec![99],
+    }));
+    assert!(tag.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![30],
+    }));
+    assert!(tag.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    assert!(tag.entity_is_locally_authoritative(20));
+    assert!(!tag.entity_is_locally_authoritative(10));
+}
+
+#[test]
+fn move_vehicle_compares_active_target_before_cancel_and_abs_snap() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    let target = EntityVec3 {
+        x: 9.0,
+        y: 70.0,
+        z: -4.0,
+    };
+    store
+        .entities
+        .with_transform_mut(10, |transform| {
+            transform.move_or_interpolate_to(Some(3), Some(target), Some(80.0), Some(12.0));
+        })
+        .unwrap();
+
+    let same_target = store
+        .apply_move_vehicle(ProtocolMoveVehicle {
+            position: ProtocolVec3d {
+                x: target.x,
+                y: target.y,
+                z: target.z,
+            },
+            y_rot: 80.0,
+            x_rot: 12.0,
+        })
+        .unwrap();
+    assert!(!same_target.snapped);
+    assert!(store.probe_entity(10).unwrap().interpolation.is_some());
+
+    let correction = store
+        .apply_move_vehicle(ProtocolMoveVehicle {
+            position: ProtocolVec3d {
+                x: 40_000_001.0,
+                y: 72.0,
+                z: -40_000_001.0,
+            },
+            y_rot: 450.0,
+            x_rot: 120.0,
+        })
+        .unwrap();
+    assert!(correction.snapped);
+    assert_eq!(correction.position.x, 30_000_000.0);
+    assert_eq!(correction.position.z, -30_000_000.0);
+    assert_eq!(correction.y_rot, 90.0);
+    assert_eq!(correction.x_rot, 90.0);
+    let corrected = store.probe_entity(10).unwrap();
+    assert_eq!(corrected.interpolation, None);
+    assert_eq!(corrected.position_base.x, 1.0);
+    let transform = store.entities.transform(10).unwrap();
+    assert_eq!(transform.old_position, correction.position);
+    assert_eq!(transform.old_y_rot, correction.y_rot);
+    assert_eq!(transform.old_x_rot, correction.x_rot);
 }
 
 #[test]

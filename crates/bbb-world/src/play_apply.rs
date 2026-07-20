@@ -768,9 +768,13 @@ impl WorldStore {
                 self.apply_set_entity_data(update);
             }
             PlayClientbound::TeleportEntity(update) => {
-                let (_, recovery) = self.apply_teleport_entity_with_recovery(update);
+                let (_, recovery, vehicle_report) =
+                    self.apply_teleport_entity_with_recovery(update);
                 if let Some(recovery) = recovery {
                     effects.removed_player_vehicle_teleport(recovery);
+                }
+                if let Some(report) = vehicle_report {
+                    effects.vehicle_move_report(report);
                 }
             }
             PlayClientbound::PlayerAbilities(update) => {
@@ -1664,14 +1668,15 @@ mod tests {
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
     use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
 
@@ -1763,6 +1768,7 @@ mod tests {
         thrown_egg_hit_particles: Vec<ThrownEggHitParticleState>,
         honey_block_particles: Vec<HoneyBlockParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
+        vehicle_move_reports: Vec<VehicleMoveReport>,
         removed_vehicle_teleports: Vec<RemovedPlayerVehicleTeleportRecovery>,
         chat_disconnects: Vec<ChatDisconnectReason>,
     }
@@ -1792,6 +1798,10 @@ mod tests {
             recovery: RemovedPlayerVehicleTeleportRecovery,
         ) {
             self.removed_vehicle_teleports.push(recovery);
+        }
+
+        fn vehicle_move_report(&mut self, report: VehicleMoveReport) {
+            self.vehicle_move_reports.push(report);
         }
 
         fn chat_disconnect(&mut self, reason: ChatDisconnectReason) {
@@ -2339,6 +2349,49 @@ mod tests {
             effects.removed_vehicle_teleports[0].player_pose.position.x,
             4.0
         );
+    }
+
+    #[test]
+    fn controlled_vehicle_teleport_routes_post_snap_move_report() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        store.set_local_player_pose(LocalPlayerPoseState::default());
+        store.apply_add_entity(add_entity(
+            10,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            vec3(0.0, 64.0, 0.0),
+        ));
+        assert!(store.apply_set_passengers(SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![7],
+        }));
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::TeleportEntity(TeleportEntity {
+                    id: 10,
+                    position: vec3(4.0, 70.0, -2.0),
+                    delta_movement: Vec3d::default(),
+                    y_rot: 80.0,
+                    x_rot: -10.0,
+                    relatives_mask: 0,
+                    on_ground: true,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+
+        assert!(effects.removed_vehicle_teleports.is_empty());
+        assert_eq!(effects.vehicle_move_reports.len(), 1);
+        let report = effects.vehicle_move_reports[0];
+        let vehicle = store.probe_entity(10).unwrap();
+        assert_eq!(report.position, vehicle.position);
+        assert_eq!(report.y_rot, vehicle.y_rot);
+        assert_eq!(report.x_rot, vehicle.x_rot);
+        assert!(report.snapped);
     }
 
     #[test]

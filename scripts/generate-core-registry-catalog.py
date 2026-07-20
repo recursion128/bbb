@@ -201,6 +201,7 @@ def render_entity_types(
     arrows: frozenset[str],
     redirectable_projectiles: frozenset[str],
     powder_snow_walkable_mobs: frozenset[str],
+    non_controlling_riders: frozenset[str],
     can_equip_saddle: frozenset[str],
     can_wear_horse_armor: frozenset[str],
 ) -> str:
@@ -240,6 +241,7 @@ def render_entity_types(
         "    pub in_arrows_tag: bool,",
         "    pub redirectable_projectile: bool,",
         "    pub powder_snow_walkable: bool,",
+        "    pub non_controlling_rider: bool,",
         "    pub can_equip_saddle: bool,",
         "    pub can_wear_horse_armor: bool,",
         "}",
@@ -277,6 +279,7 @@ def render_entity_types(
                 f"        in_arrows_tag: {str(entry.resource_id in arrows).lower()},",
                 f"        redirectable_projectile: {str(entry.resource_id in redirectable_projectiles).lower()},",
                 f"        powder_snow_walkable: {str(entry.resource_id in powder_snow_walkable_mobs).lower()},",
+                f"        non_controlling_rider: {str(entry.resource_id in non_controlling_riders).lower()},",
                 f"        can_equip_saddle: {str(entry.resource_id in can_equip_saddle).lower()},",
                 f"        can_wear_horse_armor: {str(entry.resource_id in can_wear_horse_armor).lower()},",
                 "    },",
@@ -380,6 +383,12 @@ def render_entity_types(
             "        .unwrap_or(false)",
             "}",
             "",
+            "pub fn vanilla_entity_type_is_non_controlling_rider(entity_type_id: i32) -> bool {",
+            "    vanilla_entity_type(entity_type_id)",
+            "        .map(|entry| entry.non_controlling_rider)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
             "pub fn vanilla_entity_type_can_wear_horse_armor(entity_type_id: i32) -> bool {",
             "    vanilla_entity_type(entity_type_id)",
             "        .map(|entry| entry.can_wear_horse_armor)",
@@ -415,6 +424,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.in_arrows_tag).count(), 2);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.redirectable_projectile).count(), 3);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.powder_snow_walkable).count(), 4);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.non_controlling_rider).count(), 2);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_equip_saddle).count(), 11);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_wear_horse_armor).count(), 2);",
             "    }",
@@ -447,6 +457,14 @@ def render_entity_types(
             "        assert!(vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID));",
             "        assert!(!vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID));",
             "        assert!(!vanilla_entity_type_is_redirectable_projectile(-1));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn non_controlling_rider_membership_comes_from_the_vanilla_tag() {",
+            "        assert!(vanilla_entity_type_is_non_controlling_rider(VANILLA_ENTITY_TYPE_SLIME_ID));",
+            "        assert!(vanilla_entity_type_is_non_controlling_rider(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID));",
+            "        assert!(!vanilla_entity_type_is_non_controlling_rider(VANILLA_ENTITY_TYPE_ZOMBIE_ID));",
+            "        assert!(!vanilla_entity_type_is_non_controlling_rider(-1));",
             "    }",
             "",
             "    #[test]",
@@ -1639,6 +1657,14 @@ def generated_files(
             registry_name="entity type",
         )
     )
+    non_controlling_riders = frozenset(
+        resolve_tag_values(
+            entity_type_tags,
+            "minecraft:non_controlling_rider",
+            2,
+            registry_name="entity type",
+        )
+    )
     can_equip_saddle = frozenset(
         resolve_tag_values(
             entity_type_tags,
@@ -1659,6 +1685,7 @@ def generated_files(
         arrows
         | redirectable_projectiles
         | powder_snow_walkable_mobs
+        | non_controlling_riders
         | can_equip_saddle
         | can_wear_horse_armor
     ) - entity_type_resources
@@ -1692,6 +1719,7 @@ def generated_files(
                 arrows,
                 redirectable_projectiles,
                 powder_snow_walkable_mobs,
+                non_controlling_riders,
                 can_equip_saddle,
                 can_wear_horse_armor,
             )

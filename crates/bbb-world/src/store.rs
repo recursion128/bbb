@@ -166,6 +166,10 @@ pub struct WorldStore {
     pub(crate) last_map_color_patch: Option<LastMapColorPatchState>,
     #[serde(default)]
     pub(crate) local_player: LocalPlayerState,
+    /// Previous local-player pose endpoint used by render interpolation. It is
+    /// runtime client state rather than serialized canonical wire state.
+    #[serde(skip)]
+    pub(crate) local_player_old_pose: Option<crate::LocalPlayerPoseState>,
     #[serde(default)]
     pub(crate) local_player_id: Option<i32>,
     #[serde(default)]

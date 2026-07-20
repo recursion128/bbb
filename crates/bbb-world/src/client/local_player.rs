@@ -495,6 +495,7 @@ impl WorldStore {
 
     pub fn set_local_player_pose(&mut self, pose: LocalPlayerPoseState) {
         self.local_player.pose = Some(pose);
+        self.local_player_old_pose = Some(pose);
     }
 
     pub fn advance_local_player_input(

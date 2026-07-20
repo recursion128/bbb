@@ -186,6 +186,68 @@ fn removed_player_vehicle_teleport_queues_forced_player_pos_rot() {
 }
 
 #[test]
+fn controlled_vehicle_teleport_queues_post_snap_vehicle_correction() {
+    let (tx, mut rx) = mpsc::channel(8);
+    tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
+        99,
+    ))))
+    .unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    world.set_local_player_pose(LocalPlayerPoseState::default());
+
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPassengers(
+        SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::TeleportEntity(
+        TeleportEntity {
+            id: 10,
+            position: ProtocolVec3d {
+                x: 8.0,
+                y: 70.0,
+                z: -4.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 90.0,
+            x_rot: -15.0,
+            relatives_mask: 0,
+            on_ground: true,
+        },
+    )))
+    .unwrap();
+
+    let (command_tx, mut command_rx) = mpsc::channel(2);
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &Some(command_tx)),
+        3
+    );
+
+    let NetCommand::MoveVehicle(command) = command_rx.try_recv().unwrap() else {
+        panic!("controlled vehicle teleport must queue a vehicle correction");
+    };
+    let vehicle = world.probe_entity(10).unwrap();
+    assert_eq!(command.position.x, vehicle.position.x);
+    assert_eq!(command.position.y, vehicle.position.y);
+    assert_eq!(command.position.z, vehicle.position.z);
+    assert_eq!(command.y_rot, vehicle.y_rot);
+    assert_eq!(command.x_rot, vehicle.x_rot);
+    assert!(command.on_ground);
+    assert_eq!(counters.move_vehicle_commands_queued, 1);
+}
+
+#[test]
 fn border_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::Play(PlayClientbound::InitializeBorder(

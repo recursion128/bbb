@@ -20,10 +20,10 @@ impl WorldStore {
         let ticking = self.entity_is_ticking(packet.id);
         let interpolation_steps = self.entity_interpolation_steps(packet.id);
         let position = entity_vec3(packet.position);
-        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
+        let Some(is_interpolating) = self.entities.with_transform_mut(packet.id, |transform| {
             transform.position_base = position;
             if locally_authoritative {
-                return;
+                return transform.interpolation_target().is_some();
             }
             if ticking && entity_distance_squared(transform.position, position) <= 4096.0 {
                 transform.move_or_interpolate_to(
@@ -36,12 +36,16 @@ impl WorldStore {
                 transform.snap_to(position, packet.y_rot, packet.x_rot);
             }
             transform.on_ground = Some(packet.on_ground);
+            transform.interpolation_target().is_some()
         }) else {
             self.counters.entity_position_syncs_ignored += 1;
             return false;
         };
         if !locally_authoritative {
             self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+            if !is_interpolating {
+                self.correct_local_player_passenger_after_entity_snap(packet.id);
+            }
         }
         self.counters.entity_position_syncs_applied += 1;
         true
@@ -129,7 +133,11 @@ impl WorldStore {
     pub(crate) fn apply_teleport_entity_with_recovery(
         &mut self,
         packet: ProtocolTeleportEntity,
-    ) -> (bool, Option<super::RemovedPlayerVehicleTeleportRecovery>) {
+    ) -> (
+        bool,
+        Option<super::RemovedPlayerVehicleTeleportRecovery>,
+        Option<super::VehicleMoveReport>,
+    ) {
         self.counters.entity_teleports_received += 1;
         if !self.entities.contains(packet.id)
             && self.removed_player_vehicle_id == Some(packet.id)
@@ -137,13 +145,25 @@ impl WorldStore {
         {
             let Some(mut pose) = self.local_player.pose else {
                 self.counters.entity_teleports_ignored += 1;
-                return (false, None);
+                return (false, None, None);
             };
             let absolute = entity_absolute_move_rotation(
                 entity_vec3(pose.position),
                 entity_vec3(pose.delta_movement),
                 pose.y_rot,
                 pose.x_rot,
+                packet.position,
+                packet.delta_movement,
+                packet.y_rot,
+                packet.x_rot,
+                packet.relatives_mask,
+            );
+            let mut old_pose = self.local_player_old_pose.unwrap_or(pose);
+            let old_absolute = entity_absolute_move_rotation(
+                entity_vec3(old_pose.position),
+                EntityVec3::default(),
+                old_pose.y_rot,
+                old_pose.x_rot,
                 packet.position,
                 packet.delta_movement,
                 packet.y_rot,
@@ -163,6 +183,14 @@ impl WorldStore {
             pose.y_rot = absolute.y_rot;
             pose.x_rot = absolute.x_rot;
             self.local_player.pose = Some(pose);
+            old_pose.position = ProtocolVec3d {
+                x: old_absolute.position.x,
+                y: old_absolute.position.y,
+                z: old_absolute.position.z,
+            };
+            old_pose.y_rot = old_absolute.y_rot;
+            old_pose.x_rot = old_absolute.x_rot;
+            self.local_player_old_pose = Some(old_pose);
             self.counters.entity_teleports_applied += 1;
             return (
                 true,
@@ -170,6 +198,7 @@ impl WorldStore {
                     removed_vehicle_id: packet.id,
                     player_pose: pose,
                 }),
+                None,
             );
         }
         let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
@@ -231,12 +260,26 @@ impl WorldStore {
             was_interpolated
         }) else {
             self.counters.entity_teleports_ignored += 1;
-            return (false, None);
+            return (false, None, None);
         };
         self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_teleports_applied += 1;
-        let _ = was_interpolated;
-        (true, None)
+        let vehicle_report = (!was_interpolated
+            && self.correct_local_player_passenger_after_entity_snap(packet.id)
+            && locally_authoritative)
+            .then(|| {
+                let transform = self.entities.transform(packet.id)?;
+                Some(super::VehicleMoveReport {
+                    vehicle_id: packet.id,
+                    position: transform.position,
+                    y_rot: transform.y_rot,
+                    x_rot: transform.x_rot,
+                    on_ground: transform.on_ground.unwrap_or(false),
+                    snapped: true,
+                })
+            })
+            .flatten();
+        (true, None, vehicle_report)
     }
 
     fn entity_interpolation_steps(&self, entity_id: i32) -> Option<u8> {
@@ -270,11 +313,6 @@ impl WorldStore {
             z: (transform.position.z.floor() as i32).div_euclid(16),
         })
         .is_some()
-    }
-
-    fn entity_is_locally_authoritative(&self, entity_id: i32) -> bool {
-        self.local_player_id == Some(entity_id)
-            || self.local_player_first_passenger_root_boat_vehicle_id() == Some(entity_id)
     }
 }
 
