@@ -448,6 +448,34 @@ impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
 }
 
 impl EntityTransform {
+    pub(crate) fn render_position(self, partial_ticks: f32) -> EntityVec3 {
+        EntityVec3 {
+            x: lerp_f64(partial_ticks, self.old_position.x, self.position.x),
+            y: lerp_f64(partial_ticks, self.old_position.y, self.position.y),
+            z: lerp_f64(partial_ticks, self.old_position.z, self.position.z),
+        }
+    }
+
+    pub(crate) fn render_y_rot(self, partial_ticks: f32) -> f32 {
+        if partial_ticks == 1.0 {
+            self.y_rot
+        } else {
+            rot_lerp(partial_ticks, self.old_y_rot, self.y_rot)
+        }
+    }
+
+    pub(crate) fn render_body_y_rot(self, partial_ticks: f32) -> f32 {
+        rot_lerp(partial_ticks, self.old_y_rot, self.y_rot)
+    }
+
+    pub(crate) fn render_x_rot(self, partial_ticks: f32) -> f32 {
+        self.old_x_rot + (self.x_rot - self.old_x_rot) * partial_ticks
+    }
+
+    pub(crate) fn render_y_head_rot(self, partial_ticks: f32) -> f32 {
+        rot_lerp(partial_ticks, self.old_y_head_rot, self.y_head_rot)
+    }
+
     pub(crate) fn set_y_rot(&mut self, y_rot: f32) {
         if y_rot.is_finite() {
             self.y_rot = y_rot;

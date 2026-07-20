@@ -71,6 +71,40 @@ fn tracks_entity_passenger_updates() {
 }
 
 #[test]
+fn living_passenger_body_rotation_follows_interpolated_living_vehicle() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.advance_entity_client_animations(1);
+    store.entities.with_transform_mut(10, |transform| {
+        transform.old_y_rot = 0.0;
+        transform.y_rot = 20.0;
+    });
+    store.entities.with_transform_mut(20, |transform| {
+        transform.old_y_head_rot = 100.0;
+        transform.y_head_rot = 140.0;
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+
+    let source = store
+        .entity_model_source_at_partial_tick(20, 0.5)
+        .expect("living passenger source");
+    assert_eq!(source.y_head_rot, 120.0);
+    // Vanilla LivingEntityRenderer.solveBodyRot: vehicle body 10, head delta
+    // clamps to 85, then the over-50 correction adds 17 degrees.
+    assert_eq!(source.y_rot, 52.0);
+}
+
+#[test]
 fn debug_passenger_vehicle_targets_follow_vanilla_boat_attachment_slab() {
     let mut store = WorldStore::new();
     store.apply_add_entity(ProtocolAddEntity {

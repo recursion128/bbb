@@ -1433,7 +1433,7 @@ impl EntityStore {
             } else if let Some(bounds) = self.pick_bounds(identity.id) {
                 targets.push(super::EntityPickTargetState {
                     entity_id: identity.id,
-                    position: transform.position,
+                    position: transform.render_position(partial_ticks),
                     bounds,
                 });
             }
@@ -1461,7 +1461,11 @@ impl EntityStore {
                 continue;
             };
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
-                targets.push(ender_dragon_parent_pick_target(identity.id, *transform));
+                targets.push(ender_dragon_parent_pick_target(
+                    identity.id,
+                    *transform,
+                    partial_ticks,
+                ));
                 let dragon_animation =
                     client_animations.and_then(|animations| animations.animations.ender_dragon);
                 targets.extend(ender_dragon_part_pick_targets_at_partial_tick(
@@ -1473,7 +1477,7 @@ impl EntityStore {
             } else if let Some(bounds) = self.pick_bounds(identity.id) {
                 targets.push(super::EntityPickTargetState {
                     entity_id: identity.id,
-                    position: transform.position,
+                    position: transform.render_position(partial_ticks),
                     bounds,
                 });
             }
@@ -1483,7 +1487,7 @@ impl EntityStore {
 
     pub(crate) fn fill_model_candidates_at_partial_tick(
         &self,
-        _partial_ticks: f32,
+        partial_ticks: f32,
         registries: &RegistrySet,
         candidates: &mut Vec<super::EntityRenderCandidateState>,
     ) {
@@ -1526,7 +1530,7 @@ impl EntityStore {
                 entity_id: identity.id,
                 uuid: identity.uuid,
                 entity_type_id: identity.entity_type_id,
-                position: transform.position,
+                position: transform.render_position(partial_ticks),
                 bounds,
                 vehicle_id: mount.and_then(|mount| mount.vehicle_id),
                 leash_holder_id: leash.and_then(|leash| leash.holder_id),
@@ -1678,6 +1682,7 @@ impl EntityStore {
         &self,
         passenger_id: i32,
         vehicle_id: i32,
+        partial_ticks: f32,
     ) -> Option<super::EntityVec3> {
         let passenger_bounds = self.pick_bounds(passenger_id)?;
         let passenger_entity = self.by_protocol_id.get(&passenger_id).copied()?;
@@ -1715,8 +1720,8 @@ impl EntityStore {
 
         vanilla_passenger_position_for_entity_data(
             vehicle_identity.entity_type_id,
-            vehicle_transform.position,
-            vehicle_transform.y_rot,
+            vehicle_transform.render_position(partial_ticks),
+            vehicle_transform.render_y_rot(partial_ticks),
             vehicle_bounds,
             &vehicle_metadata.data_values,
             &vehicle_attributes.attributes,
@@ -1724,11 +1729,31 @@ impl EntityStore {
             &vehicle_mount.passengers,
             passenger_id,
             passenger_identity.entity_type_id,
-            passenger_transform.y_rot,
+            passenger_transform.render_y_rot(partial_ticks),
             passenger_bounds,
             &passenger_metadata.data_values,
             0,
         )
+    }
+
+    fn living_body_render_y_rot(&self, id: i32, partial_ticks: f32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut query = self
+            .ecs
+            .query_one::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>(entity)
+            .ok()?;
+        let (identity, transform, animations) = query.get()?;
+        if !vanilla_living_entity_type(identity.entity_type_id) {
+            return None;
+        }
+        Some(if animations.animations.age_ticks == 0 {
+            animations
+                .animations
+                .spawn_body_y_rot
+                .unwrap_or_else(|| transform.render_body_y_rot(partial_ticks))
+        } else {
+            transform.render_body_y_rot(partial_ticks)
+        })
     }
 
     pub(crate) fn passenger_position(
@@ -2440,15 +2465,28 @@ impl EntityStore {
         let minecart_new_render =
             is_vanilla_minecart_type(identity.entity_type_id) && minecart_improvements_enabled;
         let mut source_position = position;
+        let render_head_y_rot = transform.render_y_head_rot(partial_ticks);
         let mut source_y_rot = if client_animations.animations.age_ticks == 0 {
             client_animations
                 .animations
                 .spawn_body_y_rot
-                .unwrap_or(transform.y_rot)
+                .unwrap_or_else(|| transform.render_body_y_rot(partial_ticks))
+        } else if vanilla_living_entity_type(identity.entity_type_id) {
+            transform.render_body_y_rot(partial_ticks)
         } else {
-            transform.y_rot
+            transform.render_y_rot(partial_ticks)
         };
-        let mut source_x_rot = transform.x_rot;
+        if vanilla_living_entity_type(identity.entity_type_id) {
+            if let Some(vehicle_body_y_rot) = mount
+                .as_ref()
+                .and_then(|mount| mount.vehicle_id)
+                .and_then(|vehicle_id| self.living_body_render_y_rot(vehicle_id, partial_ticks))
+            {
+                source_y_rot =
+                    solve_living_passenger_body_y_rot(render_head_y_rot, vehicle_body_y_rot);
+            }
+        }
+        let mut source_x_rot = transform.render_x_rot(partial_ticks);
         if minecart_new_render {
             if let Some(render_step) = minecart_lerp
                 .as_ref()
@@ -2462,7 +2500,9 @@ impl EntityStore {
         if let Some(passenger_position) = mount
             .as_ref()
             .and_then(|mount| mount.vehicle_id)
-            .and_then(|vehicle_id| self.turtle_passenger_render_position(id, vehicle_id))
+            .and_then(|vehicle_id| {
+                self.turtle_passenger_render_position(id, vehicle_id, partial_ticks)
+            })
         {
             source_position = passenger_position;
         }
@@ -2514,7 +2554,7 @@ impl EntityStore {
             position: source_position,
             y_rot: source_y_rot,
             x_rot: source_x_rot,
-            y_head_rot: transform.y_head_rot,
+            y_head_rot: render_head_y_rot,
             arrow_shake: client_animations.animations.arrow_shake(partial_ticks),
             is_passenger,
             age_ticks: if identity.entity_type_id == VANILLA_ENTITY_TYPE_END_CRYSTAL_ID {
@@ -5120,6 +5160,26 @@ fn lerp_entity_vec3(
         y: from.y + (to.y - from.y) * alpha,
         z: from.z + (to.z - from.z) * alpha,
     }
+}
+
+fn solve_living_passenger_body_y_rot(head_y_rot: f32, vehicle_body_y_rot: f32) -> f32 {
+    let head_difference = wrap_degrees_f32(head_y_rot - vehicle_body_y_rot).clamp(-85.0, 85.0);
+    let mut body_y_rot = head_y_rot - head_difference;
+    if head_difference.abs() > 50.0 {
+        body_y_rot += head_difference * 0.2;
+    }
+    body_y_rot
+}
+
+fn wrap_degrees_f32(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }
 
 fn vanilla_attribute_value(attribute: &ProtocolAttributeSnapshot) -> f64 {

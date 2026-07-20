@@ -270,10 +270,11 @@ pub(crate) fn ender_dragon_part_pick_targets_at_partial_tick(
 pub(crate) fn ender_dragon_parent_pick_target(
     parent_id: i32,
     transform: EntityTransform,
+    partial_ticks: f32,
 ) -> EntityPickTargetState {
     EntityPickTargetState {
         entity_id: parent_id,
-        position: transform.position,
+        position: transform.render_position(partial_ticks),
         // Vanilla 26.1 `EntityType.ENDER_DRAGON.sized(16.0F, 8.0F)`.
         bounds: EntityPickBoundsState::from_base_size(16.0, 8.0, 0.0),
     }
@@ -295,7 +296,7 @@ fn part_position(
     animation: EnderDragonAnimationState,
     partial_ticks: f32,
 ) -> EntityVec3 {
-    let yaw = f64::from(transform.y_rot).to_radians();
+    let yaw = f64::from(transform.render_body_y_rot(partial_ticks)).to_radians();
     let sin_yaw = yaw.sin();
     let cos_yaw = yaw.cos();
     let sample_0 = animation.flight_history.get_interpolated(0, partial_ticks);
@@ -345,9 +346,9 @@ fn part_position(
         EnderDragonPartOffset::Wing(side) => (cos_yaw * 4.5 * side, 2.0, sin_yaw * 4.5 * side),
     };
     EntityVec3 {
-        x: transform.position.x + x,
-        y: transform.position.y + y,
-        z: transform.position.z + z,
+        x: transform.render_position(partial_ticks).x + x,
+        y: transform.render_position(partial_ticks).y + y,
+        z: transform.render_position(partial_ticks).z + z,
     }
 }
 

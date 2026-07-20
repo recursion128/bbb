@@ -767,6 +767,90 @@ fn client_tick_captures_transform_and_head_render_endpoints_before_lerp() {
 }
 
 #[test]
+fn partial_tick_queries_share_canonical_transform_render_endpoints() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        214,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.advance_entity_client_animations(1);
+    store.entities.with_transform_mut(214, |transform| {
+        transform.old_position = EntityVec3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        transform.position = EntityVec3 {
+            x: 5.0,
+            y: 6.0,
+            z: 7.0,
+        };
+        transform.old_y_rot = 170.0;
+        transform.y_rot = -170.0;
+        transform.old_x_rot = -20.0;
+        transform.x_rot = 20.0;
+        transform.old_y_head_rot = 170.0;
+        transform.y_head_rot = -170.0;
+    });
+
+    let old_candidate = store.entity_render_candidates_at_partial_tick(0.0)[0];
+    let mid_candidate = store.entity_render_candidates_at_partial_tick(0.5)[0];
+    let current_candidate = store.entity_render_candidates_at_partial_tick(1.0)[0];
+    assert_eq!(
+        old_candidate.position,
+        EntityVec3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        }
+    );
+    assert_eq!(
+        mid_candidate.position,
+        EntityVec3 {
+            x: 3.0,
+            y: 4.0,
+            z: 5.0,
+        }
+    );
+    assert_eq!(
+        current_candidate.position,
+        EntityVec3 {
+            x: 5.0,
+            y: 6.0,
+            z: 7.0,
+        }
+    );
+
+    let old_source = store.entity_model_sources_at_partial_tick(0.0)[0].clone();
+    let mid_source = store.entity_model_sources_at_partial_tick(0.5)[0].clone();
+    let current_source = store.entity_model_sources_at_partial_tick(1.0)[0].clone();
+    assert_eq!(old_source.position, old_candidate.position);
+    assert_eq!(mid_source.position, mid_candidate.position);
+    assert_eq!(current_source.position, current_candidate.position);
+    assert_eq!(
+        (old_source.y_rot, old_source.x_rot, old_source.y_head_rot),
+        (170.0, -20.0, 170.0)
+    );
+    assert_eq!(
+        (mid_source.y_rot, mid_source.x_rot, mid_source.y_head_rot),
+        (180.0, 0.0, 180.0)
+    );
+    assert_eq!(
+        (
+            current_source.y_rot,
+            current_source.x_rot,
+            current_source.y_head_rot
+        ),
+        (190.0, 20.0, 190.0)
+    );
+
+    let pick = store.entity_pick_targets_at_partial_tick(0.5);
+    let debug = store.entity_debug_hitbox_targets_at_partial_tick(0.5);
+    assert_eq!(pick[0].position, mid_candidate.position);
+    assert_eq!(debug[0].position, mid_candidate.position);
+}
+
+#[test]
 fn interpolation_and_head_lerp_pause_outside_ticking_client_sections() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(999));
