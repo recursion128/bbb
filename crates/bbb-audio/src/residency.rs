@@ -31,6 +31,7 @@ use crate::ResolvedSound;
 pub(crate) const MAX_AUDIO_COMPRESSED_BYTES: u64 = 64 * 1024 * 1024;
 pub(crate) const MAX_AUDIO_SAMPLE_RATE: u32 = 192_000;
 pub(crate) const MAX_AUDIO_DURATION_SECONDS: u64 = 30 * 60;
+pub(crate) const MAX_AUDIO_DECODE_PACKET_FRAMES: usize = 65_536;
 pub(crate) const MAX_STATIC_SOUND_DECODED_BYTES: u64 = 256 * 1024 * 1024;
 pub(crate) const MAX_STATIC_SOUND_CACHE_BYTES: u64 = 512 * 1024 * 1024;
 pub(crate) const MAX_STATIC_SOUND_CACHE_BUFFERS: usize = 65_536;
@@ -432,12 +433,7 @@ fn frames_from_typed_buffer<S: Sample>(
 where
     f32: FromSample<S>,
 {
-    if buffer.frames() > remaining {
-        return Err(AudioDecodeError::Limit(format!(
-            "decoded audio packet has {} frames but only {remaining} admitted frames remain",
-            buffer.frames()
-        )));
-    }
+    admit_decoded_chunk(buffer.frames(), remaining)?;
     match buffer.spec().channels.count() {
         1 => Ok(buffer
             .chan(0)
@@ -454,6 +450,21 @@ where
             "decoded audio channel count {channels} is outside the mono/stereo limit"
         ))),
     }
+}
+
+fn admit_decoded_chunk(frames: usize, remaining: usize) -> Result<(), AudioDecodeError> {
+    if frames > MAX_AUDIO_DECODE_PACKET_FRAMES {
+        return Err(AudioDecodeError::Limit(format!(
+            "decoded audio packet has {frames} frames, exceeding the {MAX_AUDIO_DECODE_PACKET_FRAMES} frame packet limit"
+        )));
+    }
+    if frames > remaining {
+        return Err(AudioDecodeError::Limit(format!(
+            "decoded audio packet has {} frames but only {remaining} admitted frames remain",
+            frames
+        )));
+    }
+    Ok(())
 }
 
 fn frame_bytes(frames: usize) -> Result<u64, AudioDecodeError> {
@@ -564,6 +575,13 @@ mod tests {
             false
         )
         .is_err());
+        admit_decoded_chunk(
+            MAX_AUDIO_DECODE_PACKET_FRAMES,
+            MAX_AUDIO_DECODE_PACKET_FRAMES,
+        )
+        .unwrap();
+        assert!(admit_decoded_chunk(MAX_AUDIO_DECODE_PACKET_FRAMES + 1, usize::MAX).is_err());
+        assert!(admit_decoded_chunk(2, 1).is_err());
         assert!(admit_audio_metadata(
             48_000,
             2,
@@ -748,10 +766,29 @@ mod tests {
         assert_eq!(Arc::strong_count(&active_pin), 2);
         assert_eq!(residency.static_cache.len(), 1);
 
+        drop(active_pin);
+        residency.ensure_static_capacity(1).unwrap();
+        assert!(residency.static_cache.is_empty());
+
+        let reset_data = test_static_sound(1);
+        let reset_pin = Arc::clone(&reset_data.frames);
+        residency.static_cache.insert(
+            AudioResourceKey {
+                generation: 3,
+                path: PathBuf::from("reset-pinned.ogg"),
+            },
+            StaticCacheEntry {
+                data: reset_data,
+                decoded_bytes: frame_bytes(1).unwrap(),
+                last_used: 3,
+            },
+        );
+        residency.observation.static_buffers = 1;
+        residency.observation.static_decoded_bytes = frame_bytes(1).unwrap();
         residency.reset_generation(4);
         assert_eq!(residency.observation().static_buffers, 0);
         assert_eq!(residency.observation().static_decoded_bytes, 0);
-        assert_eq!(Arc::strong_count(&active_pin), 1);
+        assert_eq!(Arc::strong_count(&reset_pin), 1);
     }
 
     fn test_static_sound(frames: usize) -> StaticSoundData {

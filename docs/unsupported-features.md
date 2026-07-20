@@ -57,17 +57,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   and chunk-update comparison captures; report any losing scene by measured
   owner instead of reducing visible work.
 
-## Remaining untrusted resource aggregate budgets
-
-Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-audio`
-
-- Bound remaining untrusted resource JSON/model/font collections and audio
-  decode duration/output, with malformed-input and aggregate-count tests. Do
-  not treat the completed generation-wide/dynamic decoded-image limits as proof
-  that these independent parsers or derived renderer/GPU allocations are
-  bounded. The closed image owner and its exclusions are recorded in
-  [`resource-image-memory-budget-design.md`](resource-image-memory-budget-design.md).
-
 ## Protocol coverage for remaining required 26.1 packet families
 
 Owner: `bbb-protocol`

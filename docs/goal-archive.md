@@ -19868,3 +19868,35 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   一个 64 MiB delivery value，另加至多一个小 skin value）。这些是逻辑 owner 证据，不冒充
   allocator RSS；compressed input、decoder scratch、renderer atlas/GPU/driver-deferred peak 与
   JSON/model/font/audio aggregate budget 继续留在 unsupported ledger。
+
+## 2026-07-20：resource JSON/model/font/sound 与 decoded-audio 聚合预算
+
+- [x] `a2c964f4f` 冻结高风险 owner/限额/失败合同；`37d30ec5b` 将全部生产 pack JSON
+  consumer 收敛到 opened-file 16 MiB、262,144 nodes、16 MiB decoded strings 的单一
+  reader，并为 listing 增加 65,536 result / 64 depth 上限。JSON source/tree/listing 与
+  retained derived charge 共享 512 MiB generation owner，accepted + staged 上限 1 GiB；
+  swallowed optional parse 也保留 sticky rejection。该阶段 milestone full gate 通过。
+- [x] `d83a010f8` 为 blockstate/model/item-model/font 的 document、selection、element、face、
+  texture-slot、reference、provider 与 glyph owner 增加 checked semantic caps 和稳定逻辑
+  charge。字体 reference/cycle 保持 first-visit 语义，生产 font loader 不再序列化后重复解析
+  同一个 bounded JSON tree。
+- [x] `2dc288a45` 为 sound event/entry retained catalog 增加 65,536 / 262,144 上限，并把
+  `ResolvedSound` 绑定 exact resource generation。`bbb-audio` 在 Kira 前验证 64 MiB compressed、
+  192 kHz、mono/stereo、30 minute、256 MiB per-static-sound 限额；静态 owner 以
+  `(generation, exact path)` 共享 `Arc<[Frame]>`，65,536 owner / 512 MiB cache 只逐出 inactive
+  LRU，active pin 无空间时明确拒绝。streaming decoder 同样有 duration 和逐 packet output
+  accounting；reload 停止旧 handle、清 delayed/cache，旧 generation 不能重新命中。该阶段
+  milestone full gate 通过；收口审计再为 static/streaming exposed output 增加 65,536-frame
+  packet ceiling。
+- [x] 同机官方本地 resource 树 after charge 为 34,438,925 logical bytes（32.84 MiB，512 MiB
+  ceiling 的 6.41%）：JSON source 4,832,934 bytes、11,339 documents、204,611 nodes、
+  2,621,803 string bytes、11,271 listing entries、10,505,856 derived bytes，0 rejection。
+  item runtime 子集为 16,293,223 logical bytes，其中 4,661,888 derived bytes。与旧路径每次
+  non-stream play 新建完整 `Vec<Frame>` 相比，exact cache hit 的新增 decoded-frame owner bytes
+  为 0，并由 `Arc::ptr_eq`/pin/LRU 测试固定；本机源码/下载目录没有 official OGG payload，故未
+  伪造普通声音 wall-clock 倍率或 duration distribution。
+- [x] 剩余风险明确保留：逻辑 charge 不等于 allocator RSS；JSON/decoder 临时 scratch、路径/
+  HashMap owner overhead 和 Kira/device buffer 不在计数内；reload 后已 stop 的旧 active frame
+  Arc 可能延迟到 audio callback 才释放，因此瞬时峰值可接近旧 active 512 MiB + 新 cache
+  512 MiB + 单次 static decode 256 MiB。shader binary、ZIP/download 与 renderer/GPU derived
+  owner 继续由各自 P4/资源 presentation 切片约束，不把本轮边界扩大成全进程内存证明。

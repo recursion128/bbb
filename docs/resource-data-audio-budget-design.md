@@ -41,7 +41,8 @@ The slice is complete when:
 - every production pack JSON consumer either uses the bounded owner or is a
   checked-in/generated constant with a source guard proving the exception;
 - one OGG cannot exceed 64 MiB compressed, 192 kHz, stereo, 30 minutes, or
-  256 MiB of static decoded stereo frames;
+  256 MiB of static decoded stereo frames; one decoded packet cannot expose
+  more than 65,536 stereo frames to either playback path;
 - the static decoded-sound owner retains at most 512 MiB, shares one exact frame
   allocation across simultaneous plays, retains at most 65,536 buffer owners,
   evicts only inactive least-recently-used owners, and rejects admission when
@@ -105,6 +106,36 @@ duration admission. There is no decoded resident-byte owner, and resource
 reload replaces only the catalog rather than clearing playback data. The after
 record must therefore separate deterministic byte/frame ownership evidence
 from any future official-asset timing capture.
+
+## After measurements and cost ownership
+
+On the same host, loading the representative official resource consumers into
+one generation charges 34,438,925 logical bytes (32.84 MiB, 6.41% of the
+512 MiB ceiling): 4,832,934 JSON source bytes, 11,339 documents, 204,611 value
+nodes, 2,621,803 decoded string bytes, 11,271 listing entries and 10,505,856
+derived bytes, with zero rejections. The item-runtime subset charges 16,293,223
+logical bytes, including 4,661,888 derived bytes. These are repeatable owner
+counters from the normal loaders, not an allocator sample.
+
+The audio before/after result is structural because this checkout and its local
+downloads contain no official OGG payload. Before, every non-streaming play
+called `StaticSoundData::from_file` and constructed a fresh complete
+`Vec<Frame>`. After, the first admitted play constructs one cache owner and an
+exact generation/path hit adds zero decoded-frame owner bytes; focused tests
+prove simultaneous returned data use the identical frame `Arc`, inactive LRU
+eviction occurs in order, active pins reject pressure, and reset cannot reuse a
+stale generation. No wall-clock multiplier or ordinary-sound duration
+distribution is claimed without the missing payloads.
+
+The 512 MiB audio number covers retained decoded frame owners, not total RSS.
+Path/hash-table overhead, Symphonia/Kira scratch and device/backend buffers are
+outside the logical counter. Reload clears the cache immediately, but a stopped
+sound's old frame `Arc` can remain pinned until the audio callback observes the
+stop; a conservative transient envelope is therefore old active frames up to
+512 MiB plus the new 512 MiB cache plus one admitted 256 MiB static decode.
+Compressed streaming input is file-backed and capped, and each exposed decoded
+packet is capped at 65,536 stereo frames, but codec-private scratch remains an
+external bounded-library risk rather than a measured BBB owner.
 
 ## Ownership and integration contract
 

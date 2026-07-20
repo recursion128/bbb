@@ -175,6 +175,16 @@ conservative charge until the staged generation is dropped. Exact current/peak
 logical bytes are immutable diagnostics, not allocator or GPU-memory estimates;
 the detailed contract and measurements are in
 [`resource-image-memory-budget-design.md`](resource-image-memory-budget-design.md).
+The generation also owns one independent 512 MiB logical resource-data counter.
+Every production pack JSON read is admitted at the opened-file boundary, then
+charges parsed nodes, decoded strings, bounded listing results and retained
+model/blockstate/item/font/sound collection estimates to that exact owner.
+Selected plus staged data generations are capped at 1 GiB without releasing the
+rollback source. Semantic collection limits are checked before downstream bake
+or atlas work; sticky rejection prevents an optional malformed-resource path
+from committing a partial budget-exhausted generation. The complete limits and
+local official-tree measurements are in
+[`resource-data-audio-budget-design.md`](resource-data-audio-budget-design.md).
 Renderer reload is a synchronous owner transaction: accepted GPU handles are
 retained in a private checkpoint while the next particle/item, terrain,
 HUD/font, entity and sky owners are built. Failure restores those exact handles
@@ -226,9 +236,23 @@ behind a default `kira` feature and the device backend behind `device`.
 - Input: audio commands derived from world/net events.
 - Backend: Kira is appropriate here, not inside `bbb-world`.
 - Owns audio manager, tracks, sound handles, spatial/following sound state,
-  fade/stop behavior, and device errors.
+  fade/stop behavior, generation-scoped decoded residency, and device errors.
 - Uses `bbb-pack` to resolve vanilla sound events through `sounds.json` and
   resource-pack lookup.
+
+Before playback, the exact selected OGG path is opened through a 64 MiB bounded
+media source and must prove sample rate, mono/stereo shape, finite duration and
+decoded-frame limits. Non-streaming sounds decode once into a cache-owned
+`Arc<[Frame]>`; simultaneous instances clone only that owner and keep
+volume/pitch/loop settings instance-local. The cache key is `(resource
+generation, exact path)`, retains at most 65,536 owners / 512 MiB of decoded
+frames, and evicts only entries whose frame Arc is not pinned by playback.
+Streaming uses the same admission plus a 65,536-frame output-chunk ceiling, but
+does not retain a complete decoded frame owner. Reload stops old handles, clears
+delayed commands and cache ownership, then installs the new generation; an old
+command cannot hit or repopulate the new cache. Current/peak bytes and
+hit/miss/eviction/rejection counters are backend telemetry copied into the next
+immutable publication, not canonical world state.
 
 `bbb-world::client::audio` should keep protocol/canonical audio event state only:
 last sound event, last entity sound event, stop sound event, counters, and
@@ -656,6 +680,8 @@ The audio runtime owns playback:
 
 - Kira `AudioManager`.
 - Decoded sound data cache.
+- Exact resource-generation/path cache keys, bounded file/metadata/frame
+  admission, inactive-only LRU eviction, and immutable frame sharing.
 - Sound instance handles.
 - Category/track mapping for vanilla `SoundSource`.
 - Entity-following sound handle updates.
