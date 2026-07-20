@@ -2112,8 +2112,7 @@ impl Renderer {
         // Rebuild the advance-grouped obfuscated pool once here, not per frame.
         self.hud_obfuscated_glyph_pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
         self.hud_font_glyphs = glyphs;
-        self.hud_chat_lines =
-            hud_wrap_chat_messages(&self.hud_chat_messages, &self.hud_font_glyphs);
+        self.rebuild_chat_lines();
         Ok(())
     }
 
@@ -4207,8 +4206,7 @@ impl Renderer {
             .skip(skip)
             .map(sanitize_hud_chat_message)
             .collect();
-        self.hud_chat_lines =
-            hud_wrap_chat_messages(&self.hud_chat_messages, &self.hud_font_glyphs);
+        self.rebuild_chat_lines();
     }
 
     pub fn set_hud_chat_context(&mut self, mut context: HudChatContext) {
@@ -4219,6 +4217,11 @@ impl Renderer {
             .map(|text| sanitize_hud_text_preserving_empty(text, 256))
             .filter(|text| !text.is_empty());
         self.hud_chat_context = context;
+    }
+
+    fn rebuild_chat_lines(&mut self) {
+        self.hud_chat_lines =
+            hud_wrap_chat_messages(&self.hud_chat_messages, &self.hud_font_glyphs);
     }
 
     /// Resolves a focused-chat pointer against the exact cached line wrapping

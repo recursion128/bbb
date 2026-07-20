@@ -65,6 +65,15 @@ impl Renderer {
             }};
         }
 
+        macro_rules! clone_owner {
+            ($field:ident) => {{
+                let previous = self.$field.clone();
+                restores.push(Box::new(move |renderer: &mut Renderer| {
+                    renderer.$field = previous;
+                }));
+            }};
+        }
+
         // Particle/item/terrain lookup owners. The mandatory terrain atlas and
         // bind groups are captured lazily after their replacements have been
         // built successfully (see `upload_terrain_texture_atlas_mips`).
@@ -156,6 +165,11 @@ impl Renderer {
         take_owner!(world_border_texture);
 
         take_hud_resource_owners!(take_owner);
+        // Wrapped chat lines are presentation state derived from both the
+        // canonical message cache and the active font metrics. Keep them live
+        // while staging, but retain an exact clone so a failed font reload
+        // cannot leave new-generation wrapping paired with old glyph owners.
+        clone_owner!(hud_chat_lines);
 
         self.resource_reload_checkpoint = Some(RendererResourceReloadCheckpoint {
             restores,
@@ -192,6 +206,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_font_atlas);
         $take_owner!(hud_font_glyphs);
         $take_owner!(hud_obfuscated_glyph_pool);
+        $take_owner!(hud_chat_modified_icon);
         $take_owner!(hud_inworld_menu_background);
         $take_owner!(hud_inventory_background);
         $take_owner!(hud_tooltip_background);
@@ -389,8 +404,8 @@ mod tests {
     use anyhow::{anyhow, Result};
 
     use crate::{
-        entity_model_texture_refs, EntityModelTextureImage, ParticleSpriteUv, ParticleUvRect,
-        Renderer,
+        entity_model_texture_refs, EntityModelTextureImage, HudAsciiGlyph, HudChatMessage,
+        HudFontGlyphMap, HudStyledTextRun, ParticleSpriteUv, ParticleUvRect, Renderer,
     };
 
     #[test]
@@ -491,6 +506,51 @@ mod tests {
     }
 
     #[test]
+    fn failed_font_reload_restores_exact_wrapped_chat_cache() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        let mut old_glyphs = HudFontGlyphMap::new();
+        old_glyphs.insert_first_wins(
+            'a',
+            HudAsciiGlyph {
+                advance: 6,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], old_glyphs)
+            .expect("old font");
+        renderer.set_hud_chat_messages(vec![HudChatMessage {
+            display_sequence: 1,
+            added_tick: 0,
+            runs: vec![HudStyledTextRun::plain(&"a".repeat(60))],
+            interactions: Vec::new(),
+            tag: None,
+        }]);
+        let previous_lines = renderer.hud_chat_lines.clone();
+
+        let error = renderer
+            .transactional_resource_reload(|renderer| -> Result<()> {
+                let mut new_glyphs = HudFontGlyphMap::new();
+                new_glyphs.insert_first_wins(
+                    'a',
+                    HudAsciiGlyph {
+                        advance: 1,
+                        ..HudAsciiGlyph::default()
+                    },
+                );
+                renderer.upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], new_glyphs)?;
+                assert_ne!(renderer.hud_chat_lines, previous_lines);
+                Err(anyhow!("injected font failure"))
+            })
+            .expect_err("font reload failure");
+
+        assert_eq!(error.to_string(), "injected font failure");
+        assert_eq!(renderer.hud_chat_lines, previous_lines);
+    }
+
+    #[test]
     fn every_pack_reloadable_hud_owner_is_checkpointed() {
         let hud_source = include_str!("hud.rs");
         let uploads = &hud_source[hud_source
@@ -513,7 +573,8 @@ mod tests {
 
         for owner in owners {
             assert!(
-                checkpoint_source.contains(&format!("take_owner!({owner})")),
+                checkpoint_source.contains(&format!("take_owner!({owner})"))
+                    || checkpoint_source.contains(&format!("clone_owner!({owner})")),
                 "reloadable HUD owner {owner} is missing from the transaction checkpoint"
             );
         }
