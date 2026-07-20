@@ -19776,3 +19776,35 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   上层 optional fast path，不是收益依据。剩余边界为 scissored GUI fallback、dynamic/special property
   evaluation、instance upload/draw-state tail、driver deferred release，以及严格 equal-load official Java
   26.1 CPU/GPU capture；本轮 isolated microbench 不冒充整客户端胜出结论。
+
+## 2026-07-20：统一 client resource-pack generation 与原子 reload lifecycle
+
+- [x] `677bc0cd9` 冻结高风险工程合同；`f3936f5ab` 为 vanilla、启动目录和 server pack
+  建立 low-to-high `SelectedClientPackStack`，保留 source、compatibility、required/fixed policy
+  与 metadata，并修正 simultaneous server pack 的 push-order 优先级。`PackRoots` 通过
+  `Arc<ClientResourceGeneration>` 复用一次编译的 overlay/filter/resource stack；阶段 2 full
+  gate 通过。
+- [x] `fd3334d9f` 将 language/font、atlas/texture、block/item model、particle、waypoint、sound、
+  world defaults 和 audio preparation 收敛到同一 immutable generation；malformed metadata、
+  overlay/filter 在 consumer 前失败，world canonical state 不因 preparation 改写。
+- [x] `e2ea62bdd` 把 renderer reload 改为同步 owner transaction：旧 particle/item、terrain、
+  HUD/font、entity、sky 和 residency handle 进入 checkpoint，新 generation 全部 stage 成功后
+  才与 audio/simulation acknowledgement 一起可见；注入每个 stage 的失败都恢复 exact old
+  handles，不再尝试重新上传旧 pack。阶段 4 full gate 通过；reload 峰值内存是相邻两代
+  GPU owners 之和，commit/rollback 后释放。
+- [x] `303c072bc` 合并 skin/cape/elytra HTTP work 为一个 2,048-entry、64-request bounded
+  dynamic texture owner；exact key 包含 resource generation、connection/session generation、
+  semantic kind、完整 URL 与 handle。disconnect/reconnect/reload 清空 item/renderer/pack-backed
+  variant owners，late result 计 stale 后丢弃；worker decoded cache 不形成第二套无界 residency。
+- [x] `923d07a19` 增加实际 consumer 级两包冲突 fixture：item definition、cuboid model、PNG
+  texture、font provider、sound definition 与 data resource 从同一 selected generation 取最高
+  优先级值；既有 blockstate/atlas/language/equipment/particle/waypoint/tag/known-pack tests 继续
+  锁定各自 merge/fallback。control 同 immutable publication 报告 generation、pack source/
+  priority/policy、prepare/commit failure，以及 dynamic cache state/stale/queue/decoded bytes；
+  session-static pack diagnostics 使用显式 serde 的 `Arc`，publication clone 不深拷贝字符串。
+  阶段 6 full gate 在该 commit 通过。
+- [x] 仍开放的资源 presentation breadth 被重新路由到 P3/unsupported：player-head block entity
+  与 broader non-profile remote texture、custom synchronized block/entity registry→model 绑定、
+  atlas mip animation、完整 item tint/equipment layers、per-resource fallback diagnostics 和
+  deterministic screenshot/audio live evidence。它们必须复用本轮 lifecycle，不得重建平行
+  pack stack、async cache 或 selectable old/new path。

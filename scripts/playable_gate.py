@@ -297,6 +297,22 @@ def _validate_lifecycle(lifecycle: Any) -> None:
         raise GateFailure("resource-pack push/pop did not complete both reload barriers")
     if resource_pack.get("tracked_after_pop") != 0:
         raise GateFailure("popped server resource pack remained in canonical state")
+    active_resource_generation = _positive_int(
+        resource_pack.get("active_resource_generation"),
+        "lifecycle.resource_pack.active_resource_generation",
+    )
+    after_pop_resource_generation = _positive_int(
+        resource_pack.get("after_pop_resource_generation"),
+        "lifecycle.resource_pack.after_pop_resource_generation",
+    )
+    if after_pop_resource_generation <= active_resource_generation:
+        raise GateFailure("resource-pack pop did not advance the committed resource generation")
+    if resource_pack.get("server_pack_selected_while_active") is not True:
+        raise GateFailure("active server pack was absent from client resource diagnostics")
+    if resource_pack.get("server_pack_selected_after_pop") is not False:
+        raise GateFailure("popped server pack remained in client resource diagnostics")
+    if resource_pack.get("reload_failure_stage") is not None:
+        raise GateFailure("successful resource-pack lifecycle retained a reload failure stage")
 
     reconfiguration = _object(
         lifecycle.get("reconfiguration"), "lifecycle.reconfiguration"
@@ -1262,6 +1278,24 @@ def _resource_pack_state(
     return pack if isinstance(pack, dict) else None
 
 
+def _client_resource_diagnostics(address: tuple[str, int]) -> dict[str, Any]:
+    counters = _object(_control_request(address, "net.counters"), "net.counters")
+    return _object(counters.get("client_resources"), "net.counters.client_resources")
+
+
+def _diagnostics_select_server_pack(diagnostics: dict[str, Any], pack_id: str) -> bool:
+    selected = diagnostics.get("selected_packs")
+    if not isinstance(selected, list):
+        return False
+    prefix = f"server:{pack_id}@"
+    return any(
+        isinstance(pack, dict)
+        and isinstance(pack.get("source"), str)
+        and pack["source"].startswith(prefix)
+        for pack in selected
+    )
+
+
 def _log_occurrences(path: Path, phrase: str) -> int:
     if not path.exists():
         return 0
@@ -1382,6 +1416,14 @@ def drive_session_lifecycle(
     world_with_active_pack = _object(
         _control_request(address, "world.counters"), "world.counters"
     )
+    resources_with_active_pack = _await_value(
+        deadline,
+        "active pack in committed client resource diagnostics",
+        lambda: _client_resource_diagnostics(address),
+        lambda value: int(value.get("generation", 0)) > 0
+        and _diagnostics_select_server_pack(value, server_pack_id)
+        and value.get("last_reload_failure_stage") is None,
+    )
     _send_chat_command(address, f"serverpack pop {server_pack_id}", deadline)
     _await_value(
         deadline,
@@ -1398,6 +1440,15 @@ def drive_session_lifecycle(
     world_after_pack = _object(
         _control_request(address, "world.counters"), "world.counters"
     )
+    resources_after_pack = _await_value(
+        deadline,
+        "popped pack absent from committed client resource diagnostics",
+        lambda: _client_resource_diagnostics(address),
+        lambda value: int(value.get("generation", 0))
+        > int(resources_with_active_pack.get("generation", 0))
+        and not _diagnostics_select_server_pack(value, server_pack_id)
+        and value.get("last_reload_failure_stage") is None,
+    )
     progress["resource_pack"] = {
         "pack_id": server_pack_id,
         "active_phase": active_pack["runtime"]["phase"],
@@ -1413,6 +1464,17 @@ def drive_session_lifecycle(
         - int(world_with_active_pack.get("resource_pack_pop_packets", 0)),
         "tracked_after_pop": int(world_after_pack.get("resource_packs_tracked", 0)),
         "reload_barriers_delta": int(reloads_after),
+        "active_resource_generation": int(
+            resources_with_active_pack.get("generation", 0)
+        ),
+        "after_pop_resource_generation": int(resources_after_pack.get("generation", 0)),
+        "server_pack_selected_while_active": _diagnostics_select_server_pack(
+            resources_with_active_pack, server_pack_id
+        ),
+        "server_pack_selected_after_pop": _diagnostics_select_server_pack(
+            resources_after_pack, server_pack_id
+        ),
+        "reload_failure_stage": resources_after_pack.get("last_reload_failure_stage"),
     }
 
     progress["stage"] = "reconfiguration"

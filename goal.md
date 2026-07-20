@@ -603,40 +603,29 @@ ledger 中归属本队列的 HUD/screen 条目全部完成或有窄 deferred/not
 必须有 deterministic screenshot/pixel readback，无法自动化的分支留下可复现 vanilla
 对比步骤与截图证据，不以 widget 存在或 draw-call 数量代替呈现语义。
 
-### P3：资源包加载、reload 与动态资源泛化
+### P3：动态资源 presentation breadth
 
-目标是实现 vanilla 26.1 客户端 pack stack 和 reload 生命周期，使内置资源、用户指定
-资源包、服务器 resource-pack push/pop、datapack registry asset 与运行时下载纹理能按
-统一优先级和状态机组合；不能只让首次启动路径正确，reload 后继续引用 stale atlas/
-model/font/sound/texture handle。
-高风险工程切片的冻结 owner、Vanilla 依据、串行阶段、focused validation 与安全停止点见
-`docs/resource-pack-lifecycle-design.md`。
+统一 selected pack、server push/pop、原子 reload generation 和 profile/skin/cape/elytra
+动态纹理 owner 的完成史见 `docs/goal-archive.md`；其 owner/失效合同继续以
+`docs/resource-pack-lifecycle-design.md` 为准。剩余工作不得重建平行 pack stack、cache
+状态机或 selectable old/new reload path。
 
-1. **pack stack 与来源**：冻结 vanilla/client built-in、启动参数 pack、server pack 的
-   优先级、namespace/path 解析、metadata/pack-format 校验与 selected/required/prompt
-   状态；继续禁止 in-game 配置 UI，用户选择从命令行或 control surface 进入。
-2. **server pack 生命周期**：覆盖 push/pop、UUID、URL/hash、required、prompt、download/
-   verify/cache/apply/fail/decline 状态与 serverbound response 时序；重复、替换、断线和
-   session 切换不复用错误 pack 或 pending request。
-3. **统一 reload barrier**：资源集合变化时按依赖顺序重建语言/font、atlases/textures、
-   blockstate/model/item model、particle、waypoint、sound 与 renderer/audio caches；world
-   canonical state 不被资源 reload 重置，旧 generation 的异步 decode/upload 结果不得
-   回写新 generation。
-4. **动态纹理与自定义资源**：完成 broader non-profile dynamic texture、资源包 override、
-   custom block/item/entity model、datapack registry asset 的组合；profile/skin、cape/
-   elytra、painting/map/banner/sign/GUI 等 consumer 复用统一 loading/pending/ready/failed
-   surface，不各建缓存状态机。
-5. **fallback 与 diagnostics**：missing/invalid/unsupported 资源遵循明确 vanilla fallback，
-   submission metadata 在 atlas/texture 未就绪时仍先记录；不画 stale texture，不把解析
-   失败伪装成成功，control/debug 可定位 pack、resource id、generation 和失败阶段。
-6. **reload 集成测试**：用两个最小 pack 验证优先级覆盖、push→apply→pop 恢复、模型/
-   atlas/font/sound 同步切换、异步旧结果丢弃、失败保留上一可用或 missing fallback；
-   playable-gate 覆盖一次服务器 pack 生命周期与 deterministic screenshot/audio 变化。
+1. **non-profile 动态纹理**：让 player-head block entity profile skin 及后续真实远端
+   producer 复用既有 bounded pending/ready/failed owner；profileless head 保留 vanilla
+   default skin，不允许旧 resource/session generation 回写。
+2. **同步 registry 到 custom presentation**：把 server/datapack 的 custom block/entity
+   identity 接到现有 model/texture loader 与 exact fallback；不能用 bootstrap ordinal、
+   名称猜测或第二套 schema 代替 session RegistryAccess。
+3. **剩余 pack-backed consumer parity**：消费 atlas mip animation metadata，完成所有 item
+   render path 的 dynamic tint，并加载 equipment asset layers；资源 reload 必须继续原子
+   失效对应 renderer/audio owner。
+4. **诊断与集成证据**：为 missing/invalid/unsupported resource 补足精确 resource-id/fallback
+   观测；live playable 增加 deterministic screenshot/audio 变化，证明实际 presentation
+   随 push→apply→pop 切换，而不仅是 lifecycle counters 变化。
 
-完成标准：pack stack、download/cache、reload generation 与所有资源 consumer 共享唯一
-生命周期；资源切换不要求重启客户端且无 stale handle；server response 与实际 apply
-状态一致；custom model/texture/sound/font 的支持范围由 semantic tests 锁定；资源缺失和
-恶意声明安全失败并保留可诊断 fallback。
+完成标准：上述新增 consumer 全部加入同一个 immutable resource generation 和有界动态
+纹理 surface；无 stale handle 或跨 session id reuse；custom presentation 有 semantic test，
+服务器 pack 的可见/可听变化有 deterministic live 证据。
 
 ### P4：健壮性、运行时性能与平台交付
 

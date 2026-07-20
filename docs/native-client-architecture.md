@@ -173,6 +173,13 @@ owner keyed by exact resource and connection-session generation. Renderer
 dynamic entity images/atlases and pack-backed entity variants cross the same
 generation edge before accepting new uploads; disconnect, reconnect and reload
 therefore discard late results instead of reviving a prior handle.
+Control receives only immutable observations: the selected pack list and last
+reload result use one session-static `Arc` so publication cloning does not copy
+pack ids/strings, while dynamic texture state/bytes are sampled into latest-value
+backend telemetry without waking simulation. The JSON projection exposes no pack
+filesystem path, decoded image, renderer/audio handle or mutable selection API.
+Missing resource-id diagnostics and new non-profile texture producers extend
+this observation surface; they do not create another lifecycle owner.
 
 ### `bbb-renderer`
 

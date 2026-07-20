@@ -206,6 +206,23 @@ class PlayableGateLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(playable_gate.GateFailure, "both reload barriers"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_resource_generation_must_advance_and_drop_popped_pack(self):
+        evidence = copy.deepcopy(self.fixture)
+        resource_pack = evidence["lifecycle"]["resource_pack"]
+        resource_pack["after_pop_resource_generation"] = resource_pack[
+            "active_resource_generation"
+        ]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "resource generation"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["resource_pack"][
+            "server_pack_selected_after_pop"
+        ] = True
+        with self.assertRaisesRegex(playable_gate.GateFailure, "remained"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
     def test_reconfiguration_registry_drift_fails(self):
         evidence = copy.deepcopy(self.fixture)
         evidence["lifecycle"]["reconfiguration"]["registry_revision_after"][

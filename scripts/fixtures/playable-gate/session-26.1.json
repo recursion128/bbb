@@ -65,11 +65,16 @@
     },
     "resource_pack": {
       "active_phase": "active",
+      "active_resource_generation": 1,
+      "after_pop_resource_generation": 2,
       "pack_id": "5d77e69d-1c8f-4fd8-9884-4ce89238f170",
       "pop_packets_delta": 1,
       "push_packets_delta": 1,
+      "reload_failure_stage": null,
       "reload_barriers_delta": 2,
       "response_packets_delta": 3,
+      "server_pack_selected_after_pop": false,
+      "server_pack_selected_while_active": true,
       "tracked_after_pop": 0
     },
     "transfer": {

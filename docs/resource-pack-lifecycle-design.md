@@ -291,7 +291,8 @@ another cache state machine.
 6. **Custom-resource composition and diagnostics.** Close resource overrides and
    the scoped custom model/texture/sound/font consumers exposed by two minimal
    packs; publish observations and audit every remaining consumer/cache. Commit
-   and run a high-risk full gate.
+   and run a high-risk full gate. Completed by `923d07a19`; the full gate passed
+   at that exact commit.
 7. **Closeout.** Update ledger/archive/architecture, run final focused tests,
    docs/fmt/diff checks and the final full gate. Build `bbb-native` from the
    delivered HEAD, verify its timestamp, then run explicit Weston-backed

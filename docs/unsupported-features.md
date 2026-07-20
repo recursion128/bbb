@@ -1092,15 +1092,19 @@ long-session coverage.
 
 Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
 
-- Give vanilla, startup and server packs one validated selected-stack identity,
-  compatibility record, required/fixed policy and deterministic priority; stage
-  every reload consumer and atomically commit one resource generation instead
-  of reconstructing old GPU owners after a partial apply.
+Lifecycle invariants (not todos): vanilla, startup and server packs share one
+validated low-to-high selected stack and immutable generation; CPU consumers
+prepare from that stack, renderer/audio owners commit atomically, and control
+publishes source/priority/failure plus bounded dynamic-texture observations.
+Skin/cape/elytra requests share one exact resource/session-generation cache.
+
 - Implement broader non-profile dynamic texture loading.
 - Resolve player-head block-entity `profile` owner skins through that pipeline.
   Profileless player heads use the vanilla default player skin fallback.
-- Compose resource-pack overrides, custom models, and datapack registry assets
-  dynamically.
+- Connect synchronized custom block/entity registry identities to the existing
+  resource-pack model/texture loaders. The selected-generation fixtures already
+  cover custom item/cuboid model, PNG texture, font, sound and data-resource
+  precedence; do not infer unsupported registry mappings from those loader tests.
 - Give failed, pending, and ready states an explicit fallback. Never draw a
   stale texture.
 
