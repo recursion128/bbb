@@ -12,17 +12,24 @@ use bbb_protocol::{
         VANILLA_COMMAND_ARGUMENT_TYPE_FUNCTION_ID, VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID, VANILLA_COMMAND_ARGUMENT_TYPE_INT_RANGE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOTS_ID, VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOT_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_NBT_COMPOUND_TAG_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_NBT_PATH_ID, VANILLA_COMMAND_ARGUMENT_TYPE_NBT_TAG_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_OPERATION_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_LOCATION_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_ROTATION_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_SCOREBOARD_SLOT_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID, VANILLA_COMMAND_ARGUMENT_TYPE_SWIZZLE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_TEAM_ID, VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_VEC2_ID, VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_TEAM_ID, VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_MIRROR_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_ROTATION_ID, VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_UUID_ID, VANILLA_COMMAND_ARGUMENT_TYPE_VEC2_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID, VANILLA_COMMAND_SLOTS, VANILLA_TEMPLATE_MIRRORS,
+        VANILLA_TEMPLATE_ROTATIONS,
     },
     parse_command_coordinates_prefix, parse_command_entity_selector_prefix,
+    parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_uuid_prefix,
     scoreboard_display_slots::VANILLA_SCOREBOARD_DISPLAY_SLOTS,
-    CommandCoordinatesKind,
+    CommandCoordinatesKind, CommandSnbtKind,
 };
 
 use super::{
@@ -51,6 +58,13 @@ pub(super) fn parse(
         VANILLA_COMMAND_ARGUMENT_TYPE_VEC2_ID => {
             parse_coordinates(command, start, CommandCoordinatesKind::Position2)
         }
+        VANILLA_COMMAND_ARGUMENT_TYPE_NBT_COMPOUND_TAG_ID => {
+            parse_snbt(command, start, CommandSnbtKind::Compound)
+        }
+        VANILLA_COMMAND_ARGUMENT_TYPE_NBT_TAG_ID => {
+            parse_snbt(command, start, CommandSnbtKind::Tag)
+        }
+        VANILLA_COMMAND_ARGUMENT_TYPE_NBT_PATH_ID => parse_nbt_path(command, start),
         VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID => parse_color(command, start),
         VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID => parse_hex_color(command, start),
         VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID | VANILLA_COMMAND_ARGUMENT_TYPE_TEAM_ID => {
@@ -77,6 +91,18 @@ pub(super) fn parse(
         VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID => {
             parse_score_holder(command, start, template)
         }
+        VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOT_ID => parse_item_slot(command, start, true),
+        VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOTS_ID => parse_item_slot(command, start, false),
+        VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_MIRROR_ID => {
+            parse_generated_name(command, start, VANILLA_TEMPLATE_MIRRORS, "template mirror")
+        }
+        VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_ROTATION_ID => parse_generated_name(
+            command,
+            start,
+            VANILLA_TEMPLATE_ROTATIONS,
+            "template rotation",
+        ),
+        VANILLA_COMMAND_ARGUMENT_TYPE_UUID_ID => parse_uuid(command, start),
         _ => return None,
     };
     Some(result)
@@ -159,6 +185,56 @@ fn parse_coordinates(
     parse_command_coordinates_prefix(&command[start..], kind)
         .map(|consumed| validated(start + consumed))
         .ok_or_else(|| invalid_argument(start, "invalid or incomplete coordinates"))
+}
+
+fn parse_snbt(
+    command: &str,
+    start: usize,
+    kind: CommandSnbtKind,
+) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    parse_command_snbt_prefix(&command[start..], kind)
+        .map(|consumed| validated(start + consumed))
+        .ok_or_else(|| invalid_argument(start, "invalid SNBT argument"))
+}
+
+fn parse_nbt_path(command: &str, start: usize) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    parse_command_nbt_path_prefix(&command[start..])
+        .map(|consumed| validated(start + consumed))
+        .ok_or_else(|| invalid_argument(start, "invalid NBT path"))
+}
+
+fn parse_item_slot(
+    command: &str,
+    start: usize,
+    single_only: bool,
+) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    let end = token_end(command, start);
+    let raw = &command[start..end];
+    VANILLA_COMMAND_SLOTS
+        .iter()
+        .any(|(name, single)| *name == raw && (!single_only || *single))
+        .then(|| validated(end))
+        .ok_or_else(|| invalid_argument(end, format!("invalid item slot {raw}")))
+}
+
+fn parse_generated_name(
+    command: &str,
+    start: usize,
+    values: &[&str],
+    family: &str,
+) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    let end = parse_unquoted_string(command, start);
+    let raw = &command[start..end];
+    values
+        .contains(&raw)
+        .then(|| validated(end))
+        .ok_or_else(|| invalid_argument(end, format!("invalid {family} {raw}")))
+}
+
+fn parse_uuid(command: &str, start: usize) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    parse_command_uuid_prefix(&command[start..])
+        .map(|consumed| validated(start + consumed))
+        .ok_or_else(|| invalid_argument(start, "invalid UUID"))
 }
 
 fn parse_color(command: &str, start: usize) -> Result<ParsedValue, CommandSyntaxErrorState> {
@@ -541,11 +617,16 @@ mod tests {
         VANILLA_COMMAND_ARGUMENT_TYPE_FUNCTION_ID, VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID, VANILLA_COMMAND_ARGUMENT_TYPE_INT_RANGE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOTS_ID, VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOT_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_NBT_COMPOUND_TAG_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_NBT_PATH_ID, VANILLA_COMMAND_ARGUMENT_TYPE_NBT_TAG_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_OPERATION_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_LOCATION_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_SCOREBOARD_SLOT_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID, VANILLA_COMMAND_ARGUMENT_TYPE_SWIZZLE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID, VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_MIRROR_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_ROTATION_ID, VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_UUID_ID, VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID,
     };
 
     use super::*;
@@ -652,6 +733,47 @@ mod tests {
         assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID, "^1 ~ ^-5");
         assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID, "1 ~ ~.5");
         assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID, "1.5 2 3");
+    }
+
+    #[test]
+    fn validates_snbt_paths_slots_template_transforms_and_uuids() {
+        assert_valid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_NBT_COMPOUND_TAG_ID,
+            "{foo:[1,2],bar:'value'}",
+        );
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_NBT_COMPOUND_TAG_ID, "[1,2]");
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_NBT_TAG_ID, "[I;1,2,3]");
+        assert_valid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_NBT_PATH_ID,
+            "foo[{id:'minecraft:pig'}].bar",
+        );
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_NBT_PATH_ID, "foo[bad]");
+
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOT_ID, "container.53");
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOT_ID, "container.*");
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOTS_ID, "armor.*");
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOTS_ID, "armor.unknown");
+
+        assert_valid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_MIRROR_ID,
+            "left_right",
+        );
+        assert_invalid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_MIRROR_ID,
+            "LEFT_RIGHT",
+        );
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_ROTATION_ID, "180");
+        assert_invalid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_ROTATION_ID,
+            "clockwise_45",
+        );
+
+        assert_valid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_UUID_ID,
+            "dd12be42-52a9-4a91-a8a1-11c01849e498",
+        );
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_UUID_ID, "1-2-3-4-5");
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_UUID_ID, "not-a-uuid");
     }
 
     fn assert_valid(type_id: i32, input: &str) {

@@ -675,7 +675,7 @@ fn is_java_whitespace(next: char) -> bool {
     )
 }
 
-fn is_java_uuid_string(value: &str) -> bool {
+pub(super) fn is_java_uuid_string(value: &str) -> bool {
     if value.len() > 36 {
         return false;
     }

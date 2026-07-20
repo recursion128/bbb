@@ -42,6 +42,12 @@ pub(crate) fn validate_snbt_compound_prefix(input: &str) -> Result<usize> {
     Ok(parser.cursor)
 }
 
+pub(crate) fn validate_snbt_prefix(input: &str) -> Result<usize> {
+    let mut parser = SnbtParser::new(input);
+    parser.parse_value(0)?;
+    Ok(parser.cursor)
+}
+
 struct SnbtParser<'a> {
     input: &'a str,
     cursor: usize,

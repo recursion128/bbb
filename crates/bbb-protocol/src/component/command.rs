@@ -1,4 +1,4 @@
-use crate::nbt_summary::validate_snbt_compound_prefix;
+use crate::nbt_summary::{validate_snbt_compound_prefix, validate_snbt_prefix};
 
 mod entity_selector;
 
@@ -86,6 +86,35 @@ pub(super) fn is_valid_block_position(value: &str) -> bool {
         == Some(value.len())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandSnbtKind {
+    Compound,
+    Tag,
+}
+
+pub fn parse_command_snbt_prefix(value: &str, kind: CommandSnbtKind) -> Option<usize> {
+    match kind {
+        CommandSnbtKind::Compound => validate_snbt_compound_prefix(value).ok(),
+        CommandSnbtKind::Tag => validate_snbt_prefix(value).ok(),
+    }
+}
+
+pub fn parse_command_nbt_path_prefix(value: &str) -> Option<usize> {
+    NbtPathParser {
+        input: value,
+        cursor: 0,
+    }
+    .parse()
+}
+
+pub fn parse_command_uuid_prefix(value: &str) -> Option<usize> {
+    let consumed = value
+        .bytes()
+        .take_while(|byte| byte.is_ascii_hexdigit() || *byte == b'-')
+        .count();
+    (consumed != 0 && entity_selector::is_java_uuid_string(&value[..consumed])).then_some(consumed)
+}
+
 fn parse_world_coordinate(bytes: &[u8], cursor: &mut usize, integer: bool) -> bool {
     if *cursor >= bytes.len() || bytes[*cursor] == b'^' {
         return false;
@@ -144,11 +173,7 @@ fn is_brigadier_double(number: &str) -> bool {
 }
 
 pub(super) fn is_valid_nbt_path(value: &str) -> bool {
-    NbtPathParser {
-        input: value,
-        cursor: 0,
-    }
-    .parse()
+    parse_command_nbt_path_prefix(value) == Some(value.len())
 }
 
 struct NbtPathParser<'a> {
@@ -157,20 +182,20 @@ struct NbtPathParser<'a> {
 }
 
 impl NbtPathParser<'_> {
-    fn parse(mut self) -> bool {
+    fn parse(mut self) -> Option<usize> {
         let mut first_node = true;
         while self.peek().is_some_and(|next| next != ' ') {
             if !self.parse_node(first_node) {
-                return false;
+                return None;
             }
             first_node = false;
             if let Some(next) = self.peek() {
                 if next != ' ' && next != '[' && next != '{' && !self.consume('.') {
-                    return false;
+                    return None;
                 }
             }
         }
-        self.cursor == self.input.len()
+        Some(self.cursor)
     }
 
     fn parse_node(&mut self, first_node: bool) -> bool {
@@ -273,7 +298,11 @@ fn is_unquoted_nbt_path_name(next: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_valid_nbt_path, parse_command_coordinates_prefix, CommandCoordinatesKind};
+    use super::{
+        is_valid_nbt_path, parse_command_coordinates_prefix, parse_command_nbt_path_prefix,
+        parse_command_snbt_prefix, parse_command_uuid_prefix, CommandCoordinatesKind,
+        CommandSnbtKind,
+    };
 
     #[test]
     fn parses_vanilla_command_coordinate_families_and_prefixes() {
@@ -316,6 +345,32 @@ mod tests {
             parse_command_coordinates_prefix("1.5 2", CommandCoordinatesKind::ColumnPosition),
             None
         );
+    }
+
+    #[test]
+    fn exposes_exact_snbt_nbt_path_and_uuid_prefixes() {
+        assert_eq!(
+            parse_command_snbt_prefix("{foo:[1,2]} trailing", CommandSnbtKind::Compound),
+            Some("{foo:[1,2]}".len())
+        );
+        assert_eq!(
+            parse_command_snbt_prefix("[I;1,2] trailing", CommandSnbtKind::Tag),
+            Some("[I;1,2]".len())
+        );
+        assert_eq!(
+            parse_command_snbt_prefix("[1]", CommandSnbtKind::Compound),
+            None
+        );
+        assert_eq!(
+            parse_command_nbt_path_prefix("foo[{id:'pig'}].bar trailing"),
+            Some("foo[{id:'pig'}].bar".len())
+        );
+        assert_eq!(
+            parse_command_uuid_prefix("dd12be42-52a9-4a91-a8a1-11c01849e498 trailing"),
+            Some(36)
+        );
+        assert_eq!(parse_command_uuid_prefix("1-2-3-4-5 trailing"), Some(9));
+        assert_eq!(parse_command_uuid_prefix("not-a-uuid"), None);
     }
 
     #[test]
