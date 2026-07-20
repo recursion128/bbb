@@ -94,15 +94,10 @@ Owner: `bbb-protocol`
   behavior.
 - Then cover the remaining play, movement, inventory, chat and interaction
   families end to end.
-- The registry-aware repo-native command dispatcher is now the single owner for
-  `Commands` graph traversal, all 57 typed argument templates, validation,
-  redirects, signable spans and local/server-backed completion; the delivered
-  ownership and gate record is in `docs/command-dispatcher-design.md`.
-  Remaining command-completion fidelity is narrower: nested selector option
+- Complete the remaining command-completion fidelity for nested selector option
   values, block-property/component-value subgrammar suggestions and localized
-  summonable-entity tooltip components still need dedicated presentation
-  slices. They must extend this dispatcher rather than restore a parallel
-  native grammar or unconditional server requests.
+  summonable-entity tooltip components. Extend the world-owned dispatcher rather
+  than restoring a parallel native grammar or unconditional server requests.
 
 ## Vanilla Java generator frontend migration
 
