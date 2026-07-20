@@ -133,6 +133,23 @@ no uncovered client-observable fresh owner: their synchronized defaults already
 come from the generated metadata schema, while server AI/lifetime/container
 fields remain out of scope.
 
+### Projectile/vehicle/display constructor audit
+
+The 55-type source-derived group uses the existing narrow owners rather than a
+new family component. Generated class flags attach `EntityMinecartLerp` only to
+minecarts, initial acceleration only to `AbstractHurtingProjectile`, and saved
+projectile lifecycle only to serializable `Projectile` subclasses. Arrow/boat
+animation values remain virtual zero until their first client mutation, while
+display, hanging and item-frame constructor defaults remain sparse generated
+metadata or AddEntity packet data.
+
+The exhaustive group test proves conditional owner membership for all 55 fixed
+types. A retained-generation/reset test mutates weighted minecart lerp,
+projectile power, saved-trident lifecycle and display interpolation metadata,
+then proves the old publication is unchanged and successful same-id AddEntity
+restores each fresh owner. Constructor fields used only by server motion,
+collision, inventory or lifetime logic do not become client canonical state.
+
 ## Serial Phases, Tests, and Gates
 
 1. **Contract and baseline.** Record this contract, the 156-partial baseline,

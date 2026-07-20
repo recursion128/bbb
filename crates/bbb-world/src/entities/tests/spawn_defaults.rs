@@ -230,3 +230,203 @@ fn constructor_random_state_survives_entity_store_serialization() {
     assert_eq!(decoded.probe_entity(3_001), store.probe_entity(3_001));
     assert_eq!(decoded.probe_entity(3_002), store.probe_entity(3_002));
 }
+
+#[test]
+fn projectile_vehicle_display_defaults_attach_only_generated_family_owners() {
+    let mut store = WorldStore::new();
+    let mut spawned = 0;
+    for entry in VANILLA_ENTITY_TYPES {
+        if spawn_default_family(entry.id) != SpawnDefaultFamily::ProjectileVehicleDisplay {
+            continue;
+        }
+        let entity_id = 4_000 + entry.id;
+        store.apply_add_entity(add_entity_with_uuid(
+            entity_id,
+            entry.id,
+            uuid::Uuid::from_u128(0x2000_0000_0000_0000 + entry.id as u128),
+        ));
+        let metadata = &VANILLA_ENTITY_TYPE_METADATA_26_1[entry.id as usize];
+        let entity = store.probe_entity(entity_id).unwrap();
+        assert_eq!(entity.entity_type_id, entry.id, "{}", entry.resource_id);
+        assert!(entity.data_values.is_empty(), "{}", entry.resource_id);
+        assert!(entity.attributes.is_empty(), "{}", entry.resource_id);
+        assert_eq!(
+            entity.hurting_projectile.is_some(),
+            metadata.is_hurting_projectile,
+            "{}",
+            entry.resource_id
+        );
+        assert_eq!(
+            entity.projectile_lifecycle.is_some(),
+            metadata.is_projectile && entry.serializable,
+            "{}",
+            entry.resource_id
+        );
+        assert_eq!(
+            store.entities.minecart_lerp(entity_id).is_some(),
+            metadata.is_minecart,
+            "{}",
+            entry.resource_id
+        );
+        assert_eq!(
+            entity.client_animations.age_ticks, 0,
+            "{}",
+            entry.resource_id
+        );
+        assert_eq!(entity.client_animations.item_bob_offset, None);
+        assert_eq!(entity.client_animations.end_crystal_time_offset, None);
+        spawned += 1;
+    }
+    assert_eq!(spawned, 55);
+}
+
+#[test]
+fn projectile_vehicle_display_mutations_reset_without_touching_retained_generation() {
+    let minecart_id = 5_001;
+    let fireball_id = 5_002;
+    let trident_id = 5_003;
+    let display_id = 5_004;
+    let mut store = WorldStore::new();
+    store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec![
+            "minecraft:vanilla".to_string(),
+            "minecraft:minecart_improvements".to_string(),
+        ],
+    });
+    for (entity_id, entity_type_id) in [
+        (minecart_id, VANILLA_ENTITY_TYPE_MINECART_ID),
+        (fireball_id, VANILLA_ENTITY_TYPE_FIREBALL_ID),
+        (trident_id, VANILLA_ENTITY_TYPE_TRIDENT_ID),
+        (display_id, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(entity_id, entity_type_id));
+    }
+    let generation_a = store.publication_snapshot();
+
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: minecart_id,
+            lerp_steps: vec![minecart_step(
+                2.0, 65.0, -3.0, 0.25, 0.0, -0.25, 90.0, 5.0, 1.0,
+            )],
+        })
+    );
+    assert!(
+        store.apply_projectile_power(bbb_protocol::packets::ProjectilePower {
+            entity_id: fireball_id,
+            acceleration_power: 0.35,
+        })
+    );
+    let display_duration = vanilla_entity_metadata_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+        "DATA_POS_ROT_INTERPOLATION_DURATION_ID",
+    )
+    .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: display_id,
+        values: vec![protocol_int_data(display_duration.data_id, 7)],
+    }));
+    store.advance_entity_client_animations(1);
+
+    assert_eq!(
+        store
+            .probe_entity(minecart_id)
+            .unwrap()
+            .minecart_lerp_pending_steps
+            .len(),
+        0
+    );
+    assert_eq!(
+        store
+            .probe_entity(minecart_id)
+            .unwrap()
+            .minecart_lerp_steps
+            .len(),
+        1
+    );
+    assert_eq!(
+        store
+            .probe_entity(fireball_id)
+            .unwrap()
+            .hurting_projectile
+            .unwrap()
+            .acceleration_power,
+        0.35
+    );
+    assert!(
+        store
+            .probe_entity(trident_id)
+            .unwrap()
+            .projectile_lifecycle
+            .unwrap()
+            .has_been_shot
+    );
+    assert_eq!(store.probe_entity(display_id).unwrap().data_values.len(), 1);
+
+    assert!(generation_a
+        .probe_entity(minecart_id)
+        .unwrap()
+        .minecart_lerp_pending_steps
+        .is_empty());
+    assert_eq!(
+        generation_a
+            .probe_entity(fireball_id)
+            .unwrap()
+            .hurting_projectile
+            .unwrap()
+            .acceleration_power,
+        0.1
+    );
+    assert!(
+        !generation_a
+            .probe_entity(trident_id)
+            .unwrap()
+            .projectile_lifecycle
+            .unwrap()
+            .has_been_shot
+    );
+    assert!(generation_a
+        .probe_entity(display_id)
+        .unwrap()
+        .data_values
+        .is_empty());
+
+    for (entity_id, entity_type_id) in [
+        (minecart_id, VANILLA_ENTITY_TYPE_MINECART_ID),
+        (fireball_id, VANILLA_ENTITY_TYPE_FIREBALL_ID),
+        (trident_id, VANILLA_ENTITY_TYPE_TRIDENT_ID),
+        (display_id, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(entity_id, entity_type_id));
+        let entity = store.probe_entity(entity_id).unwrap();
+        assert_eq!(entity.client_animations.age_ticks, 0);
+        assert!(entity.data_values.is_empty());
+    }
+    assert!(store
+        .probe_entity(minecart_id)
+        .unwrap()
+        .minecart_lerp_pending_steps
+        .is_empty());
+    assert!(store
+        .probe_entity(minecart_id)
+        .unwrap()
+        .minecart_lerp_steps
+        .is_empty());
+    assert_eq!(
+        store
+            .probe_entity(fireball_id)
+            .unwrap()
+            .hurting_projectile
+            .unwrap()
+            .acceleration_power,
+        0.1
+    );
+    assert!(
+        !store
+            .probe_entity(trident_id)
+            .unwrap()
+            .projectile_lifecycle
+            .unwrap()
+            .has_been_shot
+    );
+}
