@@ -562,3 +562,139 @@ fn living_passive_tick_owners_reset_without_touching_retained_generation() {
         assert!(animations.equine_tail.is_none());
     }
 }
+
+#[test]
+fn hostile_boss_defaults_use_generated_profiles_and_guardian_phase_owner() {
+    let mut store = WorldStore::new();
+    let mut spawned = 0;
+    for entry in VANILLA_ENTITY_TYPES {
+        if spawn_default_family(entry.id) != SpawnDefaultFamily::HostileBoss {
+            continue;
+        }
+        let entity_id = 8_000 + entry.id;
+        store.apply_add_entity(add_entity_with_uuid(
+            entity_id,
+            entry.id,
+            uuid::Uuid::from_u128(0x4000_0000_0000_0000 + entry.id as u128),
+        ));
+        let metadata = &VANILLA_ENTITY_TYPE_METADATA_26_1[entry.id as usize];
+        let entity = store.probe_entity(entity_id).unwrap();
+        assert!(metadata.is_living, "{}", entry.resource_id);
+        assert!(
+            !metadata.default_attributes.is_empty(),
+            "{}",
+            entry.resource_id
+        );
+        assert!(entity.attributes.is_empty(), "{}", entry.resource_id);
+        assert_eq!(
+            entity.client_animations.spawn_body_y_rot,
+            if entry.id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+                None
+            } else {
+                Some(if entry.id == VANILLA_ENTITY_TYPE_SHULKER_ID {
+                    0.0
+                } else {
+                    30.0
+                })
+            },
+            "{}",
+            entry.resource_id
+        );
+        assert_eq!(
+            entity.client_animations.guardian_tail.is_some(),
+            metadata.is_guardian,
+            "{}",
+            entry.resource_id
+        );
+        if let Some(tail) = entity.client_animations.guardian_tail {
+            assert!((0.0..1.0).contains(&tail.tail_animation));
+            assert_eq!(tail.previous_tail_animation, tail.tail_animation);
+            assert_eq!(tail.tail_animation_speed, 0.0);
+        }
+        spawned += 1;
+    }
+    assert_eq!(spawned, 44);
+}
+
+#[test]
+fn guardian_constructor_phase_resets_and_is_generation_isolated() {
+    let guardian_id = 9_001;
+    let uuid = uuid::Uuid::from_u128(0x4444_5555_6666_7777_8888_9999_aaaa_bbbb);
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_entity_with_uuid(
+        guardian_id,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        uuid,
+    ));
+    let initial = store
+        .probe_entity(guardian_id)
+        .unwrap()
+        .client_animations
+        .guardian_tail
+        .unwrap();
+    assert!((0.0..1.0).contains(&initial.tail_animation));
+    let generation_a = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+    let advanced = store
+        .probe_entity(guardian_id)
+        .unwrap()
+        .client_animations
+        .guardian_tail
+        .unwrap();
+    assert_ne!(advanced, initial);
+    assert_eq!(
+        generation_a
+            .probe_entity(guardian_id)
+            .unwrap()
+            .client_animations
+            .guardian_tail,
+        Some(initial)
+    );
+
+    store.apply_add_entity(add_entity_with_uuid(
+        guardian_id,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        uuid,
+    ));
+    assert_eq!(
+        store
+            .probe_entity(guardian_id)
+            .unwrap()
+            .client_animations
+            .guardian_tail,
+        Some(initial)
+    );
+
+    store.apply_add_entity(add_entity_with_uuid(
+        guardian_id,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        uuid::Uuid::from_u128(0x5555_6666_7777_8888_9999_aaaa_bbbb_cccc),
+    ));
+    assert_ne!(
+        store
+            .probe_entity(guardian_id)
+            .unwrap()
+            .client_animations
+            .guardian_tail,
+        Some(initial)
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        guardian_id,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store
+        .probe_entity(guardian_id)
+        .unwrap()
+        .client_animations
+        .guardian_tail
+        .is_none());
+    assert_eq!(
+        generation_a
+            .probe_entity(guardian_id)
+            .unwrap()
+            .client_animations
+            .guardian_tail,
+        Some(initial)
+    );
+}

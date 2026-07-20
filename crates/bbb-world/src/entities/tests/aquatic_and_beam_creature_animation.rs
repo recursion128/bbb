@@ -377,34 +377,40 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
     // In water + moving: from the rest speed (`0`, which is `< 0.5`) the first tick
     // snaps the speed to `4.0`, so the tail jumps by 4 per tick.
     let mut wet_moving = make_store(true, true);
+    let wet_moving_initial = tail(&wet_moving);
     wet_moving.advance_entity_client_animations(1);
     let after_one = tail(&wet_moving);
     assert!(
-        (after_one - 4.0).abs() < 1.0e-4,
+        (after_one - wet_moving_initial - 4.0).abs() < 1.0e-4,
         "in-water moving guardian snaps its tail speed to 4.0 from rest: {after_one}"
     );
 
     // In water + idle: the speed eases toward `0.125` by `0.2` (`0 + (0.125 - 0)*0.2 =
     // 0.025`), a slow hover wave — far slower than either other branch.
     let mut wet_idle = make_store(false, true);
+    let wet_idle_initial = tail(&wet_idle);
     wet_idle.advance_entity_client_animations(1);
     let idle_one = tail(&wet_idle);
     assert!(
-        (idle_one - 0.025).abs() < 1.0e-4,
+        (idle_one - wet_idle_initial - 0.025).abs() < 1.0e-4,
         "in-water idle guardian eases its tail speed toward 0.125 (0.025 from rest): {idle_one}"
     );
 
     // Out of water: the speed is forced to `2.0` regardless of the moving flag.
     let mut dry = make_store(true, false);
+    let dry_initial = tail(&dry);
     dry.advance_entity_client_animations(1);
     let dry_one = tail(&dry);
     assert!(
-        (dry_one - 2.0).abs() < 1.0e-4,
+        (dry_one - dry_initial - 2.0).abs() < 1.0e-4,
         "an out-of-water guardian flops its tail at speed 2.0: {dry_one}"
     );
 
     // The three branches advance the tail at distinctly different rates.
-    assert!(after_one > dry_one && dry_one > idle_one);
+    assert!(
+        after_one - wet_moving_initial > dry_one - dry_initial
+            && dry_one - dry_initial > idle_one - wet_idle_initial
+    );
 }
 
 #[test]

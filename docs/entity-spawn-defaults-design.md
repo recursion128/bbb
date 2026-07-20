@@ -167,6 +167,21 @@ publication, and then re-adds the ids (including horse-to-cow type reuse). The
 old generation remains fresh and every live optional owner returns to its
 constructor state; no server AI or parallel living-family table is introduced.
 
+### Hostile/boss constructor audit
+
+The 44 generated `MobCategory.MONSTER` living types use the same generated
+attribute supplier and sparse metadata rules. Generic living types seed body
+yaw from AddEntity head yaw, Shulker applies its Vanilla zero override, and the
+Ender Dragon stays on its dedicated non-generic body history path.
+
+`Guardian` and `ElderGuardian` exposed the remaining constructor approximation:
+Vanilla initializes both tail lerp endpoints from one `random.nextFloat()` while
+leaving tail speed zero. The shared spawn initializer now stores a stable
+UUID-derived `[0, 1)` phase in `EntityClientAnimationState`; the existing exact
+water/movement tick dynamics advance from that phase. Exhaustive membership,
+same-id reset, entity-type reuse, serde and retained-publication tests prove the
+owner cannot leak to other hostile or replacement entities.
+
 ## Serial Phases, Tests, and Gates
 
 1. **Contract and baseline.** Record this contract, the 156-partial baseline,

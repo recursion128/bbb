@@ -2520,11 +2520,6 @@ pub struct GuardianTailAnimationState {
 
 impl Default for GuardianTailAnimationState {
     fn default() -> Self {
-        // Vanilla seeds `clientSideTailAnimation = random.nextFloat()` in the
-        // constructor (and `clientSideTailAnimationO = clientSideTailAnimation`).
-        // That per-spawn RNG is non-deterministic, so we start the phase at `0.0`:
-        // only the starting phase is an approximation of a value vanilla itself
-        // randomizes — the per-tick sway dynamics below are exact.
         Self {
             tail_animation: 0.0,
             previous_tail_animation: 0.0,
@@ -2534,6 +2529,16 @@ impl Default for GuardianTailAnimationState {
 }
 
 impl GuardianTailAnimationState {
+    fn with_initial_phase(phase: f32) -> Self {
+        // Vanilla's constructor assigns the same random nextFloat to both lerp
+        // endpoints and leaves the speed at Java's zero field default.
+        Self {
+            tail_animation: phase,
+            previous_tail_animation: phase,
+            tail_animation_speed: 0.0,
+        }
+    }
+
     /// Advances one client tick of `Guardian.aiStep`'s tail-sway accumulator.
     ///
     /// Vanilla saves the lerp endpoint (`clientSideTailAnimationO`), then ramps
@@ -3813,6 +3818,12 @@ impl EntityClientAnimationState {
             .then(|| spawn_random_unit_float(uuid, 0x6974_656d) * std::f32::consts::TAU);
         self.end_crystal_time_offset = (entity_type_id == VANILLA_ENTITY_TYPE_END_CRYSTAL_ID)
             .then(|| (spawn_random_bits(uuid, 0x6372_7973_7461_6c) % 100_000) as u32);
+        self.guardian_tail = vanilla_entity_metadata_type_is_guardian(entity_type_id).then(|| {
+            GuardianTailAnimationState::with_initial_phase(spawn_random_unit_float(
+                uuid,
+                0x6775_6172_6469_616e,
+            ))
+        });
     }
 
     pub(crate) fn item_bob_offset(&self) -> f32 {
