@@ -63,7 +63,8 @@ pub use enchantments::{
     VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 pub(crate) use environment_attributes::{
-    decode_client_environment_attributes, EnvironmentAttributeProjectionError,
+    decode_client_environment_attributes, validate_command_particle_fields,
+    EnvironmentAttributeProjectionError,
 };
 pub use environment_attributes::{
     ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle, ClientAmbientSounds,

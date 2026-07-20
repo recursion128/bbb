@@ -4,10 +4,17 @@ use bbb_protocol::attribute_types::{
     vanilla_attribute_type, vanilla_attribute_type_for_resource_id,
 };
 use bbb_protocol::damage_types::{vanilla_damage_type, vanilla_damage_type_for_resource_id};
+use bbb_protocol::data_component_types::{
+    vanilla_data_component_predicate_type, vanilla_data_component_type,
+    vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_PREDICATE_TYPES,
+};
 use bbb_protocol::mob_effect_types::{
     vanilla_mob_effect_type, vanilla_mob_effect_type_for_resource_id,
 };
 use bbb_protocol::packets::RegistryDataEntry as ProtocolRegistryDataEntry;
+use bbb_protocol::particle_types::{
+    vanilla_particle_type, vanilla_particle_type_id_for_resource_id,
+};
 use bbb_protocol::potion_types::{vanilla_potion, vanilla_potion_for_resource_id};
 use bbb_protocol::sound_event_types::{
     vanilla_sound_event_registry_id, vanilla_sound_event_resource_id,
@@ -472,6 +479,13 @@ impl RegistrySet {
             "minecraft:world_clock" => Some(vanilla_world_clock_type_by_id(holder_id)?.resource_id),
             "minecraft:stat_type" => Some(vanilla_stat_type_by_id(holder_id)?.resource_id),
             "minecraft:custom_stat" => Some(vanilla_custom_stat_by_id(holder_id)?.resource_id),
+            "minecraft:particle_type" => Some(vanilla_particle_type(holder_id)?.resource_id),
+            "minecraft:data_component_type" => {
+                Some(vanilla_data_component_type(holder_id)?.resource_id)
+            }
+            "minecraft:data_component_predicate_type" => {
+                Some(vanilla_data_component_predicate_type(holder_id)?.resource_id)
+            }
             _ => None,
         }
     }
@@ -501,6 +515,14 @@ impl RegistrySet {
             }
             "minecraft:stat_type" => Some(vanilla_stat_type_by_resource_id(resource_id)?.id),
             "minecraft:custom_stat" => Some(vanilla_custom_stat_by_resource_id(resource_id)?.id),
+            "minecraft:particle_type" => vanilla_particle_type_id_for_resource_id(resource_id),
+            "minecraft:data_component_type" => {
+                Some(vanilla_data_component_type_for_resource_id(resource_id)?.type_id)
+            }
+            "minecraft:data_component_predicate_type" => VANILLA_DATA_COMPONENT_PREDICATE_TYPES
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .map(|entry| entry.type_id),
             _ => None,
         }
     }
@@ -792,6 +814,9 @@ fn registry_has_exact_vanilla_fallback(registry: &str) -> bool {
             | "minecraft:world_clock"
             | "minecraft:stat_type"
             | "minecraft:custom_stat"
+            | "minecraft:particle_type"
+            | "minecraft:data_component_type"
+            | "minecraft:data_component_predicate_type"
     )
 }
 

@@ -19,8 +19,9 @@ pub use canonical_json::{
 pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPayload};
 pub use command::{
     parse_command_coordinates_prefix, parse_command_entity_selector_prefix,
-    parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_uuid_prefix,
-    CommandCoordinatesKind, CommandEntitySelectorPrefix, CommandSnbtKind,
+    parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_snbt_value_prefix,
+    parse_command_uuid_prefix, CommandCoordinatesKind, CommandEntitySelectorPrefix,
+    CommandSnbtKind,
 };
 
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`

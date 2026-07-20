@@ -297,6 +297,33 @@ pub(super) fn decode_item_predicate(
     })
 }
 
+pub(in crate::client::dialog::body) fn validate_command_item_predicate_value(
+    resource_id: &str,
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    if resource_id == "minecraft:count" {
+        decode_int_bounds(value, "command item count predicate")?;
+        return Ok(());
+    }
+    if VANILLA_DATA_COMPONENT_PREDICATE_TYPES
+        .iter()
+        .any(|candidate| candidate.resource_id == resource_id)
+    {
+        decode_concrete_component_predicate(
+            resource_id,
+            value,
+            DialogDecodeContext::with_registry_access(Some(registry_access), 0),
+            "command item component predicate",
+        )?;
+        return Ok(());
+    }
+    vanilla_data_component_type_for_resource_id(resource_id)
+        .ok_or_else(|| format!("unknown command item predicate {resource_id}"))?;
+    compound(value, "command any-component predicate")?;
+    Ok(())
+}
+
 fn decode_block_predicate(
     value: &NbtSummaryValue,
     context: DialogDecodeContext<'_>,

@@ -234,6 +234,26 @@ fn every_vanilla_particle_type_has_a_wire_decoder() {
 }
 
 #[test]
+fn classifies_every_vanilla_particle_command_codec() {
+    for particle_type in VANILLA_PARTICLE_TYPES {
+        let options = vanilla_particle_command_options(particle_type.resource_id)
+            .expect("generated particle must have command options");
+        let expected = if is_simple_particle_type(particle_type.id) {
+            VanillaParticleCommandOptions::Empty
+        } else if matches!(
+            particle_type.resource_id,
+            "minecraft:dragon_breath" | "minecraft:effect" | "minecraft:instant_effect"
+        ) {
+            VanillaParticleCommandOptions::OptionalMap
+        } else {
+            VanillaParticleCommandOptions::RequiredMap
+        };
+        assert_eq!(options, expected, "{}", particle_type.resource_id);
+    }
+    assert_eq!(vanilla_particle_command_options("minecraft:missing"), None);
+}
+
+#[test]
 fn decodes_item_particle_options_from_item_stack_template() {
     let mut particle_options = Encoder::new();
     particle_options.write_var_i32(42);

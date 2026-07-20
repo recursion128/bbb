@@ -1,4 +1,7 @@
-use crate::nbt_summary::{validate_snbt_compound_prefix, validate_snbt_prefix};
+use crate::{
+    nbt_summary::{parse_snbt_prefix, validate_snbt_compound_prefix, validate_snbt_prefix},
+    NbtSummaryValue,
+};
 
 mod entity_selector;
 
@@ -97,6 +100,10 @@ pub fn parse_command_snbt_prefix(value: &str, kind: CommandSnbtKind) -> Option<u
         CommandSnbtKind::Compound => validate_snbt_compound_prefix(value).ok(),
         CommandSnbtKind::Tag => validate_snbt_prefix(value).ok(),
     }
+}
+
+pub fn parse_command_snbt_value_prefix(value: &str) -> Option<(usize, NbtSummaryValue)> {
+    parse_snbt_prefix(value).ok()
 }
 
 pub fn parse_command_nbt_path_prefix(value: &str) -> Option<usize> {
@@ -300,8 +307,8 @@ fn is_unquoted_nbt_path_name(next: char) -> bool {
 mod tests {
     use super::{
         is_valid_nbt_path, parse_command_coordinates_prefix, parse_command_nbt_path_prefix,
-        parse_command_snbt_prefix, parse_command_uuid_prefix, CommandCoordinatesKind,
-        CommandSnbtKind,
+        parse_command_snbt_prefix, parse_command_snbt_value_prefix, parse_command_uuid_prefix,
+        CommandCoordinatesKind, CommandSnbtKind, NbtSummaryValue,
     };
 
     #[test]
@@ -371,6 +378,11 @@ mod tests {
         );
         assert_eq!(parse_command_uuid_prefix("1-2-3-4-5 trailing"), Some(9));
         assert_eq!(parse_command_uuid_prefix("not-a-uuid"), None);
+
+        let (consumed, value) =
+            parse_command_snbt_value_prefix("{foo:[1,2]} trailing").expect("parsed SNBT value");
+        assert_eq!(consumed, "{foo:[1,2]}".len());
+        assert!(matches!(value, NbtSummaryValue::Compound(_)));
     }
 
     #[test]

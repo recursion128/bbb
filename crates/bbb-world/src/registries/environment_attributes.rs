@@ -947,6 +947,13 @@ fn validate_particle_fields(resource_id: &str, fields: &[NbtSummaryEntry]) -> Op
     }
 }
 
+pub(crate) fn validate_command_particle_fields(
+    resource_id: &str,
+    fields: &[NbtSummaryEntry],
+) -> bool {
+    validate_particle_fields(resource_id, fields).is_some()
+}
+
 fn validate_particle_scale(value: &NbtSummaryValue) -> Option<()> {
     numeric_f32(value)
         .filter(|value| (0.01..=4.0).contains(value))

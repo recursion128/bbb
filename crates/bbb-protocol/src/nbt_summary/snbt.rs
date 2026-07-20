@@ -43,9 +43,13 @@ pub(crate) fn validate_snbt_compound_prefix(input: &str) -> Result<usize> {
 }
 
 pub(crate) fn validate_snbt_prefix(input: &str) -> Result<usize> {
+    parse_snbt_prefix(input).map(|(consumed, _)| consumed)
+}
+
+pub(crate) fn parse_snbt_prefix(input: &str) -> Result<(usize, NbtSummaryValue)> {
     let mut parser = SnbtParser::new(input);
-    parser.parse_value(0)?;
-    Ok(parser.cursor)
+    let value = parser.parse_value(0)?;
+    Ok((parser.cursor, value))
 }
 
 struct SnbtParser<'a> {

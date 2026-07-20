@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
+use crate::particle_types::{
+    vanilla_particle_type_id_for_resource_id, VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID,
+    VANILLA_PARTICLE_TYPE_EFFECT_ID, VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID,
+};
 
 use super::{data_components, Vec3d};
 
@@ -30,6 +34,31 @@ pub struct LevelParticles {
 pub struct ParticlePayload {
     pub particle_type_id: i32,
     pub raw_options: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaParticleCommandOptions {
+    Empty,
+    OptionalMap,
+    RequiredMap,
+}
+
+pub fn vanilla_particle_command_options(
+    resource_id: &str,
+) -> Option<VanillaParticleCommandOptions> {
+    let type_id = vanilla_particle_type_id_for_resource_id(resource_id)?;
+    if is_simple_particle_type(type_id) {
+        Some(VanillaParticleCommandOptions::Empty)
+    } else if matches!(
+        type_id,
+        VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID
+            | VANILLA_PARTICLE_TYPE_EFFECT_ID
+            | VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID
+    ) {
+        Some(VanillaParticleCommandOptions::OptionalMap)
+    } else {
+        Some(VanillaParticleCommandOptions::RequiredMap)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

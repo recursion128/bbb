@@ -13,9 +13,9 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::registries::normalize_codec_identifier;
 #[cfg(test)]
 use crate::RegistrySet;
+use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess};
 
 use super::{
     compound_entries, decode_component, find_entry, optional_bool, optional_i32, required_entry,
@@ -42,6 +42,40 @@ pub(super) fn validate_component_player_profile(
     what: &str,
 ) -> Result<(), String> {
     validate_player_profile(value, what)
+}
+
+pub(crate) fn validate_command_item_component(
+    type_id: i32,
+    resource_id: &str,
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<bool, String> {
+    decode_supported_component_value_with_context(
+        type_id,
+        resource_id,
+        value,
+        DialogDecodeContext::with_registry_access(Some(registry_access), 0),
+    )
+    .map(|decoded| decoded.is_some())
+}
+
+pub(crate) fn validate_command_item_predicate_value(
+    resource_id: &str,
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    component_value::validate_command_item_predicate_value(resource_id, value, registry_access)
+}
+
+pub(crate) fn validate_command_item_stack_template(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    decode_item_stack_template(
+        value,
+        DialogDecodeContext::with_registry_access(Some(registry_access), 0),
+    )
+    .map(|_| ())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

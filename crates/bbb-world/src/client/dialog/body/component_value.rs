@@ -161,6 +161,7 @@ use potion_contents::{
     decode_potion_contents, DialogMobEffectDetailsState, DialogMobEffectInstanceState,
     DialogPotionContentsState,
 };
+pub(super) use predicates::validate_command_item_predicate_value;
 use predicates::{
     decode_adventure_mode_predicate, decode_item_predicate, DialogAdventureModePredicateState,
     DialogBlockPredicateState, DialogItemPredicateState, DialogPartialDataComponentPredicateState,

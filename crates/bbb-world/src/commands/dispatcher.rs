@@ -19,7 +19,11 @@ use crate::FrozenRegistryAccess;
 
 mod blocks;
 mod context_free;
+mod items;
+mod particle;
 mod registry_aware;
+mod resource_or_id;
+mod text;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandParseResult {
@@ -117,6 +121,7 @@ impl ParseCandidate {
     }
 }
 
+#[derive(Debug)]
 pub(super) struct ParsedValue {
     pub(super) end: usize,
     pub(super) validated: bool,
@@ -461,6 +466,10 @@ fn parse_argument(
         }
         (type_id, template) => context_free::parse(type_id, command, start, &template)
             .or_else(|| blocks::parse(type_id, command, start, registry_access))
+            .or_else(|| items::parse(type_id, command, start, registry_access))
+            .or_else(|| particle::parse(type_id, command, start, registry_access))
+            .or_else(|| resource_or_id::parse(type_id, command, start, registry_access))
+            .or_else(|| text::parse(type_id, command, start, registry_access))
             .or_else(|| registry_aware::parse(type_id, command, start, &template, registry_access))
             .unwrap_or_else(|| parse_unimplemented_family(command, start, &parser.name)),
     }

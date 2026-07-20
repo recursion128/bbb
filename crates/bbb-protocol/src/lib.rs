@@ -7,11 +7,11 @@ pub use component::{
     canonical_nbt_json_utf16_len, canonical_resolvable_profile_json_utf16_len,
     component_style_from_nbt_value, decode_sign_block_entity_nbt, decode_styled_component_summary,
     java_float_to_string, parse_command_coordinates_prefix, parse_command_entity_selector_prefix,
-    parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_uuid_prefix,
-    styled_component_runs_from_nbt_value, styled_runs_summary_text, validate_component_nbt,
-    visit_component_payloads, CanonicalComponentOwnerValue, CommandCoordinatesKind,
-    CommandEntitySelectorPrefix, CommandSnbtKind, ComponentClickEvent, ComponentPayload,
-    ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
+    parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_snbt_value_prefix,
+    parse_command_uuid_prefix, styled_component_runs_from_nbt_value, styled_runs_summary_text,
+    validate_component_nbt, visit_component_payloads, CanonicalComponentOwnerValue,
+    CommandCoordinatesKind, CommandEntitySelectorPrefix, CommandSnbtKind, ComponentClickEvent,
+    ComponentPayload, ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
 };
 pub use nbt_summary::{decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry, NbtSummaryValue};
 

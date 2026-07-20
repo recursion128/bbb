@@ -16,6 +16,10 @@ mod input;
 pub(in crate::client::dialog) use canonical_json::canonical_component_json_utf16_len_with_context;
 
 pub use action::{DialogActionState, DialogCommandTemplateState};
+pub(crate) use body::{
+    validate_command_item_component, validate_command_item_predicate_value,
+    validate_command_item_stack_template,
+};
 pub use body::{
     DialogBodyState, DialogDataComponentPatchEntryState, DialogDataComponentPatchState,
     DialogDataComponentValueState, DialogItemStackTemplateState, DialogPlainMessageState,
@@ -679,6 +683,43 @@ fn decode_component(
         runs,
         component: value.clone(),
     })
+}
+
+pub(crate) fn validate_command_rich_text(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    decode_component(
+        value,
+        "command component",
+        DialogDecodeContext::with_registry_access(Some(registry_access), 0),
+    )
+    .map(|_| ())
+}
+
+pub(crate) fn validate_command_style(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err("command style is not an SNBT compound".to_string());
+    };
+    let mut component_entries = entries.clone();
+    component_entries.push(NbtSummaryEntry {
+        name: "text".to_string(),
+        value: NbtSummaryValue::String(String::new()),
+    });
+    validate_command_rich_text(
+        &NbtSummaryValue::Compound(component_entries),
+        registry_access,
+    )
+}
+
+pub(crate) fn validate_command_dialog(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<(), String> {
+    decode_dialog_data_inner(value, Some(registry_access), 0).map(|_| ())
 }
 
 fn optional_bool(entries: &[NbtSummaryEntry], key: &str, default: bool) -> Result<bool, String> {
