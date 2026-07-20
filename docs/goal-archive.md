@@ -19938,3 +19938,29 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 剩余边界不伪装关闭：nested selector option value、完整 block property/item component
   value 补全及本地化 summon tooltip 仍是窄 presentation/completion 后续项；它们必须扩展
   同一 dispatcher，不能恢复 parallel grammar 或普通节点的无条件 server round trip。
+
+## 2026-07-20：SetEntityData rich value 与 session identity foundation
+
+- [x] `09b6402d1` 依据 Vanilla 26.1
+  `ComponentSerialization.TRUSTED_STREAM_CODEC`，将 metadata Component 从单一
+  plain-text summary 提升为 exact validated NBT、继承后的 styled runs 与 plain
+  projection 同值保存；world preflight 在任何 ECS/callback mutation 前验证 nested
+  owner-sensitive payload。旧 publication generation 保持原值，renderer/debug/control
+  仍读取同一 world Arc/generation。该阶段 milestone full gate 通过。
+- [x] `098ce237b` 将 12 种 generic entity holder、VillagerData type/profession 与
+  named PaintingVariant 在 world preflight 原子绑定为 holder id + exact resource id +
+  registry source/revision。visual fallback catalog 下沉到 `bbb-render-types` 与 renderer
+  共用，animal sound/painting fallback 继续由 world 的单一生成 catalog 提供；render、
+  audio 与 F3 save 不再用当前 registry 重解释旧 ordinal。missing holder 整包拒绝，
+  reload/reconnect/id reuse/retained-generation 均有专项覆盖；102 秒 milestone full gate
+  通过。
+- [x] `252aeef62` 对照 `EntityDataSerializers.ITEM_STACK` 与
+  `ItemStack.OPTIONAL_STREAM_CODEC`，证明 metadata、inventory、equipment 共用同一个
+  bounded data-component decoder。nested custom NBT、rich name、model、foil、removal 与
+  recursive `use_remainder` fixture 固定等价路径，source guard 禁止 metadata-only
+  decoder；retained publication 测试证明 outer/nested patch 与 canonical item query 的
+  A/B generation 隔离。
+- [x] 本片只关闭 SetEntityData 的值/registry ownership foundation，不关闭 157 个
+  entity family 的 subclass callback、animation/effect、render/audio/particle/save/debug
+  cell，也不把共享 `ItemStackSummary` 宣称为完整 Mojang mutable component map；这些
+  剩余项继续由 entity matrix 与 Inventory ledger 逐项约束。

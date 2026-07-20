@@ -126,10 +126,15 @@ drives typed tooltip text, entity bounds/direction, per-tile light, and
 front/back/boundary geometry from the `paintings` atlas; malformed or unknown
 holders fail closed, and a direct network holder is never fabricated into a
 persistent inline value.
-The synchronized cat, chicken, cow, pig, and wolf sound-variant stream holders
-are `complete`: entity metadata ids resolve in each server registry order, all
-five codec shapes retain their required named/direct SoundEvent holders, and
-adult/baby death sounds reach positioned audio with malformed payloads closed.
+The synchronized entity-metadata variant holders are `complete` at the holder
+boundary: before canonical mutation, each wire id is stored together with its
+exact resource id, source, and frozen registry revision. Visual catalogs are
+shared below world/renderer, sound and painting catalogs remain single-owned by
+world, and stale revisions fail closed instead of reinterpreting an ordinal.
+The cat, chicken, cow, pig, and wolf sound-variant stream holders retain all
+required named/direct SoundEvent forms; adult/baby death sounds reach
+positioned audio with malformed payloads closed. This holder completion does
+not mark the wider entity-family render/event matrix complete.
 The two typed debug holder calls are narrowly `deferred` until raw debug payload
 retention is replaced by the `DEBUG_SUBSCRIPTION` value codecs. The generic
 `holderRegistry` delegation inside vanilla `holderSet` is `not-applicable` as a

@@ -203,3 +203,8 @@ commit.
   inventory, and equipment have one bounded decoder; nested patch and retained
   publication tests cover the full-value path, and no concrete current
   metadata consumer payload was found on a lossy branch.
+- Phase 4 records the shared value boundary in architecture and the packet,
+  registry-holder, and 157-row entity ledgers. SetEntityData ownership is
+  complete, but its decode/apply/test/side-effect cells and every unaffected
+  family cell retain their prior partial status; the closeout does not convert
+  foundation evidence into family completion.

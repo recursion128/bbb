@@ -583,6 +583,20 @@ do not trigger whole-entity or whole-store COW. The generated metadata schema
 resolver uses a process-static reference-only inheritance index; it contains no
 copied accessors, defaults, type ids, or independently authored membership.
 
+`ClientboundSetEntityDataPacket` crosses two explicit ownership stages.
+`bbb-protocol` preserves exact rich Component state and decodes metadata
+ItemStacks through the same bounded component catalog as inventory and
+equipment; registry holders remain unresolved wire references there.
+`bbb-world` validates every row against the generated accessor schema and then
+atomically binds each holder to its exact resource id, source, and frozen
+registry revision before mutating `EntityMetadata`. The identity lives inside
+the metadata value rather than in a side table. Renderer, audio, debug, and
+control therefore cannot reinterpret an old holder ordinal against a newer
+session, and a retained publication keeps the complete old value even after
+reload, removal, or protocol-id reuse. This value boundary does not imply that
+every entity family's callbacks or presentation are complete; those remain in
+the entity coverage matrix.
+
 ### Component Ownership
 
 Prefer small semantic components:

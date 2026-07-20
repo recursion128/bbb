@@ -151,9 +151,10 @@
         "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes",
         "crates/bbb-native/src/item_models/tests.rs#fn painting_tooltip_context_uses_session_order_and_typed_components",
         "crates/bbb-native/src/entity_variant_textures.rs#fn painting_atlas_uploads_front_back_and_missingno_sprites",
-        "crates/bbb-renderer/src/entity_models/tests/painting.rs#fn painting_tiles_emit_vanilla_partitioned_faces_and_per_tile_light"
+        "crates/bbb-renderer/src/entity_models/tests/painting.rs#fn painting_tiles_emit_vanilla_partitioned_faces_and_per_tile_light",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "Vanilla 26.1 synchronizes PaintingVariant.DIRECT_CODEC and sends named or inline holders in item components and painting entity metadata. Protocol retains both forms; world resolves the current-session holder order, validates width/height/asset/components, and permits resource-identity fallback only for known vanilla data-less stubs. Tooltips, entity bounds/direction, per-tile light, paintings-atlas sprites, and exact front/back/boundary geometry consume that typed projection; malformed and unknown entries never fall back by bootstrap ordinal."
+      "decision": "Vanilla 26.1 synchronizes PaintingVariant.DIRECT_CODEC and sends named or inline holders in item components and painting entity metadata. Protocol retains both forms; world resolves the current-session holder order, stores named metadata identity with its exact resource/source/revision, validates width/height/asset/components, and permits resource-identity fallback only for known vanilla data-less stubs. Tooltips, entity bounds/direction, per-tile light, paintings-atlas sprites, and exact front/back/boundary geometry consume that typed projection; malformed and unknown entries never fall back by bootstrap ordinal."
     },
     {
       "id": "network-holder-or-inline",
@@ -240,9 +241,10 @@
         "crates/bbb-native/src/entity_variant_textures.rs#fn texture_entries_become_ready_only_after_upload_and_fail_without_retry",
         "crates/bbb-native/src/entity_scene/tests.rs#fn entity_model_instances_project_chicken_variants_from_world_registry_order",
         "crates/bbb-native/src/entity_scene/tests.rs#fn entity_model_instances_project_cow_variants_from_world_registry_order",
-        "crates/bbb-native/src/entity_scene/tests.rs#fn entity_model_instances_project_pig_variants_from_world_registry_order"
+        "crates/bbb-native/src/entity_scene/tests.rs#fn entity_model_instances_project_pig_variants_from_world_registry_order",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "The synchronized holder id selects the server entry order, the NETWORK_CODEC presentation is projected for all three families, and custom adult/baby textures become visible only after upload."
+      "decision": "The synchronized holder id selects the server entry order and is stored with exact resource/source/revision identity; the NETWORK_CODEC presentation is projected for all three families, and custom adult/baby textures become visible only after upload."
     },
     {
       "id": "network-holder-reference-villager-built-ins",
@@ -265,9 +267,10 @@
         "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn villager_model_data",
         "crates/bbb-native/src/entity_scene/tests.rs#fn villager_model_data_uses_fixed_built_in_registry_order",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set/tests.rs#fn decodes_builtin_villager_variant_without_session_remapping",
-        "crates/bbb-item-model/src/item_runtime/tests.rs#component_condition_villager_variant_present"
+        "crates/bbb-item-model/src/item_runtime/tests.rs#component_condition_villager_variant_present",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "Vanilla 26.1 villager type and profession are client built-ins; both entity VillagerData and the villager-variant component use the generated fixed registry order and ignore configuration remapping."
+      "decision": "Vanilla 26.1 villager type and profession are client built-ins; entity VillagerData stores both generated resource identities with the frozen revision, while the villager-variant component uses the same generated fixed registry order. Configuration data cannot remap either path."
     },
     {
       "id": "network-holder-reference-world-clock",
@@ -319,9 +322,10 @@
         "crates/bbb-world/src/registries/sound_variants.rs#fn world_queries_use_server_holder_order_for_every_sound_variant_shape",
         "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
         "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds",
-        "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload"
+        "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five complete codec shapes project their required SoundEvent holders, and adult/baby hurt and death sounds reach positioned audio with custom order, direct range, stub, armor/bypass, and malformed-payload coverage."
+      "decision": "Entity metadata holder ids resolve through each synchronized server registry and retain exact resource/source/revision identity; all five complete codec shapes project their required SoundEvent holders, and adult/baby hurt and death sounds reach positioned audio with custom order, direct range, stub, armor/bypass, malformed-payload, and stale-revision coverage."
     },
     {
       "id": "network-holder-reference-cat-variant",
@@ -342,9 +346,10 @@
         "crates/bbb-world/src/registries/animal_variants.rs#fn cat_world_query_uses_server_holder_order_and_omits_stubs",
         "crates/bbb-native/src/entity_variant_textures.rs#fn synchronized_cat_assets_are_discovered_in_server_holder_order",
         "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn ready_cat_variant_texture",
-        "crates/bbb-native/src/entity_scene/tests.rs#fn ready_cat_presentation_selects_the_age_specific_network_texture"
+        "crates/bbb-native/src/entity_scene/tests.rs#fn ready_cat_presentation_selects_the_age_specific_network_texture",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "The metadata holder id resolves through the synchronized server order; CatVariant.NETWORK_CODEC projects both age-specific ResourceTexture assets, and entity rendering switches to the selected custom texture only after upload while stubs and failures preserve the checked built-in fallback."
+      "decision": "The metadata holder id resolves through synchronized server order and retains exact resource/source/revision identity; CatVariant.NETWORK_CODEC projects both age-specific ResourceTexture assets, and entity rendering switches to the selected custom texture only after upload while stubs, stale revisions, and failures preserve the checked built-in fallback."
     },
     {
       "id": "network-holder-reference-frog-variant",
@@ -365,9 +370,10 @@
         "crates/bbb-world/src/registries/animal_variants.rs#fn frog_world_query_uses_server_holder_order_and_omits_stubs",
         "crates/bbb-native/src/entity_variant_textures.rs#fn synchronized_frog_asset_reaches_the_entity_instance",
         "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn ready_frog_variant_texture",
-        "crates/bbb-native/src/entity_scene/tests.rs#fn entity_model_kind_maps_frog_to_real_model"
+        "crates/bbb-native/src/entity_scene/tests.rs#fn entity_model_kind_maps_frog_to_real_model",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "The metadata holder id resolves through the synchronized server order; FrogVariant.NETWORK_CODEC projects its ResourceTexture, and the custom texture reaches the entity instance only after upload while stubs and failures preserve the checked built-in identity fallback."
+      "decision": "The metadata holder id resolves through synchronized server order and retains exact resource/source/revision identity; FrogVariant.NETWORK_CODEC projects its ResourceTexture, and the custom texture reaches the entity instance only after upload while stubs, stale revisions, and failures preserve the checked built-in identity fallback."
     },
     {
       "id": "network-holder-reference-zombie-nautilus-variant",
@@ -388,9 +394,10 @@
         "crates/bbb-world/src/registries/animal_variants.rs#fn zombie_nautilus_world_query_uses_server_holder_order_and_omits_stubs",
         "crates/bbb-native/src/entity_variant_textures.rs#fn synchronized_zombie_nautilus_model_and_texture_reach_the_entity_instance_atomically",
         "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn apply_ready_zombie_nautilus_variant_presentation",
-        "crates/bbb-native/src/entity_scene/tests.rs#fn zombie_nautilus_network_model_waits_for_its_matching_texture"
+        "crates/bbb-native/src/entity_scene/tests.rs#fn zombie_nautilus_network_model_waits_for_its_matching_texture",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "The metadata holder resolves through synchronized server order; ModelAndTexture projects the normal/warm model selector and ResourceTexture, and entity rendering switches both geometry and custom texture atomically after upload while stubs, malformed values, and failures preserve the checked built-in presentation."
+      "decision": "The metadata holder resolves through synchronized server order and retains exact resource/source/revision identity; ModelAndTexture projects the normal/warm model selector and ResourceTexture, and entity rendering switches both geometry and custom texture atomically after upload while stubs, stale revisions, malformed values, and failures preserve the checked built-in presentation."
     },
     {
       "id": "network-holder-reference-dimension-type",
@@ -476,9 +483,10 @@
         "crates/bbb-world/src/registries/animal_variants.rs#fn wolf_world_query_uses_server_holder_order_and_omits_stubs",
         "crates/bbb-native/src/entity_variant_textures.rs#fn synchronized_wolf_assets_upload_and_wild_adult_reaches_the_entity_instance",
         "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn ready_wolf_variant_texture",
-        "crates/bbb-native/src/entity_scene/tests.rs#fn ready_wolf_presentation_selects_vanilla_age_and_state_texture"
+        "crates/bbb-native/src/entity_scene/tests.rs#fn ready_wolf_presentation_selects_vanilla_age_and_state_texture",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity"
       ],
-      "decision": "The metadata holder resolves through synchronized server order; both AssetInfo compounds project all wild/tame/angry adult and baby ResourceTextures, all six resources are uploaded, and entity rendering selects the ready age/state texture with vanilla tame-over-angry priority while stubs, malformed values, and failed uploads preserve the checked built-in presentation."
+      "decision": "The metadata holder resolves through synchronized server order and retains exact resource/source/revision identity; both AssetInfo compounds project all wild/tame/angry adult and baby ResourceTextures, all six resources are uploaded, and entity rendering selects the ready age/state texture with vanilla tame-over-angry priority while stubs, stale revisions, malformed values, and failed uploads preserve the checked built-in presentation."
     },
     {
       "id": "network-holder-reference-item-built-in",

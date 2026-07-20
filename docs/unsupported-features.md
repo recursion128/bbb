@@ -87,11 +87,15 @@ Owner: `bbb-protocol`
   beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
   never by applying a bootstrap ordinal to authoritative synchronized contents.
-- Complete the remaining SetEntityData semantic fidelity: preserve rich Component
-  and full ItemStack/component values, resolve registry-holder ids through the
-  session RegistryAccess, and close the remaining family consumers through the
-  entity matrix. The current flat summary merge is not proof of complete metadata
-  behavior.
+- Close the remaining SetEntityData family behavior through the entity matrix:
+  subclass callbacks, animation/effect ordering, and family-specific renderer,
+  audio, particle, save, and debug consumers remain the proof boundary. The
+  shared value foundation now retains exact Component NBT/styled/plain state,
+  uses the inventory/equipment ItemStack component decoder, and binds metadata
+  holders to value-local session resource/source/revision identity before
+  canonical mutation. That foundation does not mark any still-partial family
+  cell complete, nor does it close the separate added-value ItemStack gaps
+  tracked under Inventory.
 - Then cover the remaining play, movement, inventory, chat and interaction
   families end to end.
 - Complete the remaining command-completion fidelity for nested selector option

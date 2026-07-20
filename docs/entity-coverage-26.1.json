@@ -5,7 +5,7 @@
     "not-applicable",
     "partial"
   ],
-  "baseline_policy": "Conservative foundation audit: only the fixed metadata schema is complete for every catalog row; generic canonical spawn/transform implementations do not prove family defaults or interpolation, so those composite cells remain partial. Family-specific behavior stays partial until its family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Conservative foundation audit: only the generated metadata schema and shared rich-value/session-identity apply boundary are complete for every catalog row; generic canonical spawn/transform implementations do not prove family defaults, callbacks, or interpolation, so those composite cells remain partial. Family-specific behavior stays partial until its family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
   "catalog_source": "crates/bbb-protocol/src/entity_types.rs#VANILLA_ENTITY_TYPES",
   "cell_categories": [
@@ -8871,13 +8871,21 @@
     },
     "fixed_metadata_schema": {
       "implementation": [
-        "crates/bbb-world/src/entities/schema/generated_26_1.rs#pub const VANILLA_ENTITY_TYPE_METADATA_26_1"
+        "crates/bbb-protocol/src/packets/entities.rs#pub enum EntityDataValueKind",
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#pub const VANILLA_ENTITY_TYPE_METADATA_26_1",
+        "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_entity_data"
       ],
       "tests": [
-        "crates/bbb-world/src/entities/schema.rs#generated_entity_type_catalog_resolves_all_fixed_types"
+        "crates/bbb-protocol/src/packets/entities/tests.rs#fn set_entity_data_preserves_exact_styled_component_value",
+        "crates/bbb-protocol/src/packets/entities/tests.rs#fn metadata_item_stack_uses_the_shared_nested_component_decoder",
+        "crates/bbb-world/src/entities/schema.rs#generated_entity_type_catalog_resolves_all_fixed_types",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity",
+        "crates/bbb-world/src/publication_snapshot.rs#fn retained_generation_isolated_from_nested_metadata_item_stack_mutation"
       ],
       "vanilla": [
-        "vanilla:net/minecraft/world/entity/Entity.java#defineSynchedData"
+        "vanilla:net/minecraft/world/entity/Entity.java#defineSynchedData",
+        "vanilla:net/minecraft/network/syncher/EntityDataSerializers.java#public static final EntityDataSerializer<ItemStack> ITEM_STACK",
+        "vanilla:net/minecraft/network/syncher/SynchedEntityData.java#private <T> void assignValue"
       ]
     },
     "generic_spawn": {
