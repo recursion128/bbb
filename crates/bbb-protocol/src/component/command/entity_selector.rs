@@ -5,12 +5,22 @@ use crate::{
     packets::normalize_resource_location,
 };
 
-pub(super) fn is_valid_entity_selector(value: &str) -> bool {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EntitySelectorPrefix {
+    pub consumed: usize,
+    pub multiple: bool,
+    pub includes_entities: bool,
+    pub self_selector: bool,
+}
+
+pub(super) fn parse_entity_selector_prefix(value: &str) -> Option<EntitySelectorPrefix> {
     SelectorParser::new(value).parse()
 }
 
 #[derive(Default)]
 struct SelectorState {
+    multiple: bool,
+    includes_entities: bool,
     current_entity: bool,
     type_limited: bool,
     type_inverse: bool,
@@ -51,21 +61,37 @@ impl<'a> SelectorParser<'a> {
         }
     }
 
-    fn parse(mut self) -> bool {
+    fn parse(mut self) -> Option<EntitySelectorPrefix> {
         let valid = if self.peek() == Some('@') {
             self.bump();
             self.parse_selector()
         } else {
             self.parse_name_or_uuid()
         };
-        valid && self.cursor == self.input.len()
+        valid.then_some(EntitySelectorPrefix {
+            consumed: self.cursor,
+            multiple: self.state.multiple,
+            includes_entities: self.state.includes_entities,
+            self_selector: self.state.current_entity,
+        })
     }
 
     fn parse_selector(&mut self) -> bool {
         match self.bump() {
-            Some('a' | 'p' | 'r') => self.state.type_limited = true,
-            Some('s') => self.state.current_entity = true,
-            Some('e' | 'n') => {}
+            Some('a') => {
+                self.state.multiple = true;
+                self.state.type_limited = true;
+            }
+            Some('p' | 'r') => self.state.type_limited = true,
+            Some('s') => {
+                self.state.includes_entities = true;
+                self.state.current_entity = true;
+            }
+            Some('e') => {
+                self.state.multiple = true;
+                self.state.includes_entities = true;
+            }
+            Some('n') => self.state.includes_entities = true,
             _ => return false,
         }
         self.peek() != Some('[') || self.parse_options()
@@ -75,7 +101,12 @@ impl<'a> SelectorParser<'a> {
         let Some(name) = self.read_string() else {
             return false;
         };
-        is_java_uuid_string(&name) || (!name.is_empty() && name.encode_utf16().count() <= 16)
+        if is_java_uuid_string(&name) {
+            self.state.includes_entities = true;
+            true
+        } else {
+            !name.is_empty() && name.encode_utf16().count() <= 16
+        }
     }
 
     fn parse_options(&mut self) -> bool {
@@ -231,6 +262,7 @@ impl<'a> SelectorParser<'a> {
         if limit < 1 {
             return false;
         }
+        self.state.multiple = limit > 1;
         self.state.limited = true;
         true
     }
@@ -661,7 +693,11 @@ fn is_java_positive_hex_long(part: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::is_valid_entity_selector;
+    use super::parse_entity_selector_prefix;
+
+    fn is_valid_entity_selector(value: &str) -> bool {
+        parse_entity_selector_prefix(value).is_some_and(|parsed| parsed.consumed == value.len())
+    }
 
     #[test]
     fn accepts_names_selector_types_and_every_registered_option_shape() {
@@ -727,5 +763,26 @@ mod tests {
         ] {
             assert!(!is_valid_entity_selector(selector), "accepted {selector:?}");
         }
+    }
+
+    #[test]
+    fn reports_prefix_and_entity_argument_constraints() {
+        let all = parse_entity_selector_prefix("@e[type=minecraft:pig] trailing").unwrap();
+        assert_eq!(all.consumed, "@e[type=minecraft:pig]".len());
+        assert!(all.multiple);
+        assert!(all.includes_entities);
+        assert!(!all.self_selector);
+
+        let nearest_player = parse_entity_selector_prefix("@p").unwrap();
+        assert!(!nearest_player.multiple);
+        assert!(!nearest_player.includes_entities);
+
+        let current = parse_entity_selector_prefix("@s").unwrap();
+        assert!(current.includes_entities);
+        assert!(current.self_selector);
+
+        let limited = parse_entity_selector_prefix("@e[limit=1]").unwrap();
+        assert!(!limited.multiple);
+        assert!(limited.includes_entities);
     }
 }

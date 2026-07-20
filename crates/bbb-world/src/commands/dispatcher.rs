@@ -9,6 +9,7 @@ use bbb_protocol::packets::{
     VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_LONG_ID,
     VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
+use bbb_protocol::parse_command_entity_selector_prefix;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -689,11 +690,33 @@ fn parse_message(command: &str, start: usize) -> Result<ParsedValue, CommandSynt
             format!("message length {utf16_length} exceeds 256"),
         ));
     }
+    validate_message_selectors(command, start)?;
     Ok(ParsedValue {
         end: command.len(),
-        // Entity-selector validation belongs to the context-free family phase.
-        validated: !command[start..].contains('@'),
+        validated: true,
     })
+}
+
+fn validate_message_selectors(command: &str, start: usize) -> Result<(), CommandSyntaxErrorState> {
+    let mut cursor = start;
+    while let Some(offset) = command[cursor..].find('@') {
+        cursor += offset;
+        let selector_type = command[cursor + 1..].chars().next();
+        if !matches!(selector_type, Some('a' | 'e' | 'n' | 'p' | 'r' | 's')) {
+            cursor += 1;
+            continue;
+        }
+        let selector =
+            parse_command_entity_selector_prefix(&command[cursor..]).ok_or_else(|| {
+                syntax_error(
+                    CommandSyntaxErrorKind::InvalidArgument,
+                    cursor,
+                    "invalid entity selector in message",
+                )
+            })?;
+        cursor += selector.consumed;
+    }
+    Ok(())
 }
 
 fn parse_unimplemented_family(
@@ -917,7 +940,7 @@ mod tests {
         let tree = redirect_tree();
         let parsed = tree.parse_command("relay Alex through hello world");
 
-        assert!(!parsed.validation_complete);
+        assert!(parsed.is_valid_command());
         assert!(parsed.executable);
         assert_eq!(parsed.arguments.len(), 2);
         assert_eq!(
@@ -927,6 +950,17 @@ mod tests {
                 value: "hello world".to_string(),
             }]
         );
+    }
+
+    #[test]
+    fn message_validates_selector_parts_but_ignores_unknown_at_sequences() {
+        assert!(parse_message("hello @e[type=minecraft:pig]", 0).is_ok());
+        assert!(parse_message("email@example and @unknown", 0).is_ok());
+        let error = match parse_message("broken @e[type=missing]", 0) {
+            Err(error) => error,
+            Ok(_) => panic!("malformed known selector was accepted"),
+        };
+        assert_eq!(error.kind, CommandSyntaxErrorKind::InvalidArgument);
     }
 
     #[test]

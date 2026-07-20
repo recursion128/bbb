@@ -6,16 +6,23 @@ use bbb_protocol::{
     normalize_resource_location,
     packets::{
         CommandArgumentTemplate, VANILLA_COMMAND_ARGUMENT_TYPE_ANGLE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID, VANILLA_COMMAND_ARGUMENT_TYPE_DIMENSION_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_FLOAT_RANGE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_FUNCTION_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID, VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_COLUMN_POS_ID, VANILLA_COMMAND_ARGUMENT_TYPE_DIMENSION_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID, VANILLA_COMMAND_ARGUMENT_TYPE_FLOAT_RANGE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_FUNCTION_ID, VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID, VANILLA_COMMAND_ARGUMENT_TYPE_INT_RANGE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_OPERATION_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_LOCATION_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_SCOREBOARD_SLOT_ID, VANILLA_COMMAND_ARGUMENT_TYPE_SWIZZLE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ROTATION_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_SCOREBOARD_SLOT_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID, VANILLA_COMMAND_ARGUMENT_TYPE_SWIZZLE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_TEAM_ID, VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_VEC2_ID, VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID,
     },
+    parse_command_coordinates_prefix, parse_command_entity_selector_prefix,
     scoreboard_display_slots::VANILLA_SCOREBOARD_DISPLAY_SLOTS,
+    CommandCoordinatesKind,
 };
 
 use super::{
@@ -30,6 +37,20 @@ pub(super) fn parse(
     template: &CommandArgumentTemplate,
 ) -> Option<Result<ParsedValue, CommandSyntaxErrorState>> {
     let result = match type_id {
+        VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID => parse_entity(command, start, template),
+        VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID => parse_game_profile(command, start),
+        VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID => {
+            parse_coordinates(command, start, CommandCoordinatesKind::BlockPosition)
+        }
+        VANILLA_COMMAND_ARGUMENT_TYPE_COLUMN_POS_ID => {
+            parse_coordinates(command, start, CommandCoordinatesKind::ColumnPosition)
+        }
+        VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID => {
+            parse_coordinates(command, start, CommandCoordinatesKind::Position3)
+        }
+        VANILLA_COMMAND_ARGUMENT_TYPE_VEC2_ID => {
+            parse_coordinates(command, start, CommandCoordinatesKind::Position2)
+        }
         VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID => parse_color(command, start),
         VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID => parse_hex_color(command, start),
         VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID | VANILLA_COMMAND_ARGUMENT_TYPE_TEAM_ID => {
@@ -50,9 +71,94 @@ pub(super) fn parse(
         VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID => parse_game_mode(command, start),
         VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID => parse_time(command, start, template),
         VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID => parse_heightmap(command, start),
+        VANILLA_COMMAND_ARGUMENT_TYPE_ROTATION_ID => {
+            parse_coordinates(command, start, CommandCoordinatesKind::Rotation)
+        }
+        VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID => {
+            parse_score_holder(command, start, template)
+        }
         _ => return None,
     };
     Some(result)
+}
+
+fn parse_entity(
+    command: &str,
+    start: usize,
+    template: &CommandArgumentTemplate,
+) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    let CommandArgumentTemplate::Entity {
+        single,
+        players_only,
+    } = template
+    else {
+        return Err(invalid_argument(start, "invalid entity argument template"));
+    };
+    let selector = parse_command_entity_selector_prefix(&command[start..])
+        .ok_or_else(|| invalid_argument(start, "invalid entity selector"))?;
+    if *single && selector.multiple {
+        return Err(invalid_argument(
+            start,
+            "entity selector selects multiple entities",
+        ));
+    }
+    if *players_only && selector.includes_entities && !selector.self_selector {
+        return Err(invalid_argument(
+            start,
+            "entity selector may select non-player entities",
+        ));
+    }
+    Ok(validated(start + selector.consumed))
+}
+
+fn parse_game_profile(command: &str, start: usize) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    if command.as_bytes().get(start) != Some(&b'@') {
+        return Ok(validated(token_end(command, start)));
+    }
+    let selector = parse_command_entity_selector_prefix(&command[start..])
+        .ok_or_else(|| invalid_argument(start, "invalid player selector"))?;
+    if selector.includes_entities {
+        return Err(invalid_argument(
+            start,
+            "player selector may select non-player entities",
+        ));
+    }
+    Ok(validated(start + selector.consumed))
+}
+
+fn parse_score_holder(
+    command: &str,
+    start: usize,
+    template: &CommandArgumentTemplate,
+) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    let CommandArgumentTemplate::ScoreHolder { multiple } = template else {
+        return Err(invalid_argument(
+            start,
+            "invalid score-holder argument template",
+        ));
+    };
+    if command.as_bytes().get(start) != Some(&b'@') {
+        return Ok(validated(token_end(command, start)));
+    }
+    let selector = parse_command_entity_selector_prefix(&command[start..])
+        .ok_or_else(|| invalid_argument(start, "invalid score-holder selector"))?;
+    if !*multiple && selector.multiple {
+        return Err(invalid_argument(
+            start,
+            "score-holder selector selects multiple entities",
+        ));
+    }
+    Ok(validated(start + selector.consumed))
+}
+
+fn parse_coordinates(
+    command: &str,
+    start: usize,
+    kind: CommandCoordinatesKind,
+) -> Result<ParsedValue, CommandSyntaxErrorState> {
+    parse_command_coordinates_prefix(&command[start..], kind)
+        .map(|consumed| validated(start + consumed))
+        .ok_or_else(|| invalid_argument(start, "invalid or incomplete coordinates"))
 }
 
 fn parse_color(command: &str, start: usize) -> Result<ParsedValue, CommandSyntaxErrorState> {
@@ -422,17 +528,24 @@ fn validated(end: usize) -> ParsedValue {
     }
 }
 
+fn invalid_argument(cursor: usize, message: impl Into<String>) -> CommandSyntaxErrorState {
+    syntax_error(CommandSyntaxErrorKind::InvalidArgument, cursor, message)
+}
+
 #[cfg(test)]
 mod tests {
     use bbb_protocol::packets::{
         CommandArgumentTemplate, VANILLA_COMMAND_ARGUMENT_TYPE_ANGLE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID, VANILLA_COMMAND_ARGUMENT_TYPE_FLOAT_RANGE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID, VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID, VANILLA_COMMAND_ARGUMENT_TYPE_FLOAT_RANGE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_FUNCTION_ID, VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID, VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_INT_RANGE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_OPERATION_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID, VANILLA_COMMAND_ARGUMENT_TYPE_INT_RANGE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_OPERATION_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_LOCATION_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_SCOREBOARD_SLOT_ID, VANILLA_COMMAND_ARGUMENT_TYPE_SWIZZLE_ID,
-        VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_SCOREBOARD_SLOT_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID, VANILLA_COMMAND_ARGUMENT_TYPE_SWIZZLE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID, VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID,
     };
 
     use super::*;
@@ -497,6 +610,50 @@ mod tests {
         assert_time_invalid("2m", 0);
     }
 
+    #[test]
+    fn validates_entity_profiles_score_holders_and_coordinates() {
+        assert_parse_valid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
+            "@s",
+            CommandArgumentTemplate::Entity {
+                single: true,
+                players_only: true,
+            },
+        );
+        assert_parse_invalid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
+            "@e",
+            CommandArgumentTemplate::Entity {
+                single: true,
+                players_only: false,
+            },
+        );
+        assert_parse_invalid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
+            "@n",
+            CommandArgumentTemplate::Entity {
+                single: false,
+                players_only: true,
+            },
+        );
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID, "@a");
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID, "@e");
+        assert_parse_invalid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID,
+            "@a",
+            CommandArgumentTemplate::ScoreHolder { multiple: false },
+        );
+        assert_parse_valid(
+            VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID,
+            "@e[limit=2]",
+            CommandArgumentTemplate::ScoreHolder { multiple: true },
+        );
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID, "^1 ^ ^-5");
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID, "^1 ~ ^-5");
+        assert_valid(VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID, "1 ~ ~.5");
+        assert_invalid(VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID, "1.5 2 3");
+    }
+
     fn assert_valid(type_id: i32, input: &str) {
         let result = parse(type_id, input, 0, &CommandArgumentTemplate::Unit)
             .expect("owned context-free parser")
@@ -508,6 +665,22 @@ mod tests {
     fn assert_invalid(type_id: i32, input: &str) {
         let result = parse(type_id, input, 0, &CommandArgumentTemplate::Unit)
             .expect("owned context-free parser");
+        assert!(
+            result.is_err() || result.is_ok_and(|value| value.end != input.len()),
+            "{input}"
+        );
+    }
+
+    fn assert_parse_valid(type_id: i32, input: &str, template: CommandArgumentTemplate) {
+        let result = parse(type_id, input, 0, &template)
+            .expect("owned context-free parser")
+            .unwrap_or_else(|error| panic!("{input}: {error:?}"));
+        assert_eq!(result.end, input.len());
+        assert!(result.validated);
+    }
+
+    fn assert_parse_invalid(type_id: i32, input: &str, template: CommandArgumentTemplate) {
+        let result = parse(type_id, input, 0, &template).expect("owned context-free parser");
         assert!(
             result.is_err() || result.is_ok_and(|value| value.end != input.len()),
             "{input}"

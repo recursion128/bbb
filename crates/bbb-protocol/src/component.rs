@@ -17,6 +17,10 @@ pub use canonical_json::{
     java_float_to_string, CanonicalComponentOwnerValue,
 };
 pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPayload};
+pub use command::{
+    parse_command_coordinates_prefix, parse_command_entity_selector_prefix, CommandCoordinatesKind,
+    CommandEntitySelectorPrefix,
+};
 
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`
 /// (`Style.Serializer.MAP_CODEC`). Each key is `None` when the component chain
