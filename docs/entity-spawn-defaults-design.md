@@ -199,6 +199,15 @@ same-id re-add and type reuse clear it. Exhaustive one-member family, virtual
 attribute, fresh-tick/reset and retained-publication tests cover this boundary
 without modeling local-player startup as an AddEntity default.
 
+### Coverage closeout
+
+All 157 fixed catalog rows now resolve `spawn/default` to one shared complete
+evidence set. That evidence names the five exhaustive family tests rather than
+copying facts into 157 overrides; the catalog-driven 10/55/47/44/1 partition
+proves every row is covered exactly once. Turtle's former special override is
+removed because the generated default owner subsumes it, while every adjacent
+coverage cell and its remaining gap is unchanged.
+
 ## Serial Phases, Tests, and Gates
 
 1. **Contract and baseline.** Record this contract, the 156-partial baseline,

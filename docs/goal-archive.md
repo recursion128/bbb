@@ -20006,3 +20006,18 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   五维覆盖已经闭合。该结论只覆盖 packet-caused creation/recreation lifecycle；custom
   EntityType factory/presentation、各 entity family 的 model/texture/layer/animation、后续
   metadata callback/event/client-tick 仍由 entity matrix 与现有 unsupported 条目约束。
+
+## 2026-07-20：157 EntityType spawn/default audit
+
+- [x] 以生成的 runtime-class、`DefaultAttributes` 与 `MobCategory` catalog 将固定实体精确
+  分为 base/non-living 10、projectile/vehicle/display 55、living/passive 47、hostile/boss
+  44 和 Player 1；五组穷举测试证明 157 项恰好覆盖一次，不维护第二套名字/id 表。
+- [x] `EntityStore` 仍是唯一 canonical owner：默认 metadata/attribute 保持 sparse，查询
+  从生成 profile 取 virtual base；同 id re-add、type/id reuse、reset 与 retained publication
+  均有隔离测试。Item bob、EndCrystal age 和 Guardian tail 的构造期 client RNG 使用 UUID
+  派生的窄 serializable owner，不引入 server AI、第二实体世界或 renderer 副本。
+- [x] Player 保留 Vanilla 的 PlayerInfo admission gate，远端 cloak owner 在首个 client tick
+  初始化；Living/Shulker body yaw 与 family tick owners 均在 fresh spawn 正确复位。family
+  milestone `f2f7597c1` 的 workspace full gate 6/6 通过（65 秒）。
+- [x] entity coverage ledger 的全部 157 个 `spawn/default` cell 统一绑定这组生成/穷举证据并
+  标为 complete；移除 Turtle 的冗余特例和对应 unsupported todo，其他九类 cell 原样保留。

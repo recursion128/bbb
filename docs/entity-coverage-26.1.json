@@ -5,7 +5,7 @@
     "not-applicable",
     "partial"
   ],
-  "baseline_policy": "Conservative foundation audit: only the generated metadata schema and shared rich-value/session-identity apply boundary are complete for every catalog row; generic canonical spawn/transform implementations do not prove family defaults, callbacks, or interpolation, so those composite cells remain partial. Family-specific behavior stays partial until its family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Conservative audited coverage: generated metadata/schema and the complete source-derived spawn/default audit apply to every catalog row. Generic transform, callback, interpolation, rendering, event, and debug implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
   "catalog_source": "crates/bbb-protocol/src/entity_types.rs#VANILLA_ENTITY_TYPES",
   "cell_categories": [
@@ -66,9 +66,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -122,9 +121,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -178,9 +176,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -234,9 +231,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -290,9 +286,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -346,9 +341,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -402,9 +396,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -458,9 +451,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -514,9 +506,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -570,9 +561,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -626,9 +616,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -682,9 +671,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -738,9 +726,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -794,9 +781,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -850,9 +836,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -906,9 +891,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -962,9 +946,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1018,9 +1001,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1074,9 +1056,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1130,9 +1111,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1186,9 +1166,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1242,9 +1221,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1298,9 +1276,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1354,9 +1331,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1410,9 +1386,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1466,9 +1441,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1522,9 +1496,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1578,9 +1551,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1634,9 +1606,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1690,9 +1661,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1746,9 +1716,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1802,9 +1771,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1858,9 +1826,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1914,9 +1881,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -1970,9 +1936,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2026,9 +1991,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2082,9 +2046,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2138,9 +2101,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2194,9 +2156,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2250,9 +2211,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2306,9 +2266,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2362,9 +2321,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2418,9 +2376,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2474,9 +2431,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2530,9 +2486,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2586,9 +2541,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2642,9 +2596,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2698,9 +2651,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2754,9 +2706,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2810,9 +2761,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2866,9 +2816,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2922,9 +2871,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -2978,9 +2926,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3034,9 +2981,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3090,9 +3036,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3146,9 +3091,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3202,9 +3146,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3258,9 +3201,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3314,9 +3256,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3370,9 +3311,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3426,9 +3366,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3482,9 +3421,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3538,9 +3476,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3594,9 +3531,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3650,9 +3586,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3706,9 +3641,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3762,9 +3696,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3818,9 +3751,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3874,9 +3806,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3930,9 +3861,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -3986,9 +3916,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4042,9 +3971,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4098,9 +4026,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4154,9 +4081,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4210,9 +4136,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4266,9 +4191,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4322,9 +4246,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4378,9 +4301,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4434,9 +4356,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4490,9 +4411,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4546,9 +4466,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4602,9 +4521,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4658,9 +4576,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4714,9 +4631,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4770,9 +4686,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4826,9 +4741,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4882,9 +4796,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4938,9 +4851,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -4994,9 +4906,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5050,9 +4961,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5106,9 +5016,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5162,9 +5071,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5218,9 +5126,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5274,9 +5181,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5330,9 +5236,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5386,9 +5291,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5442,9 +5346,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5498,9 +5401,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5554,9 +5456,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5610,9 +5511,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5666,9 +5566,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5722,9 +5621,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5778,9 +5676,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5834,9 +5731,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5890,9 +5786,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -5946,9 +5841,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6002,9 +5896,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6058,9 +5951,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6114,9 +6006,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6170,9 +6061,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6226,9 +6116,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6282,9 +6171,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6338,9 +6226,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6394,9 +6281,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6450,9 +6336,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6506,9 +6391,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6562,9 +6446,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6618,9 +6501,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6674,9 +6556,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6730,9 +6611,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6786,9 +6666,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6842,9 +6721,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6898,9 +6776,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -6954,9 +6831,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7010,9 +6886,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7066,9 +6941,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7122,9 +6996,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7178,9 +7051,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7234,9 +7106,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7290,9 +7161,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7346,9 +7216,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7402,9 +7271,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7458,9 +7326,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7514,9 +7381,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7570,9 +7436,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7626,9 +7491,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7682,9 +7546,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7734,7 +7597,7 @@
           "status": "complete"
         },
         "spawn/default": {
-          "evidence_ref": "turtle_spawn_defaults",
+          "evidence_ref": "entity_spawn_defaults",
           "status": "complete"
         },
         "transform/interpolation": {
@@ -7789,9 +7652,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7845,9 +7707,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7901,9 +7762,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -7957,9 +7817,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8013,9 +7872,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8069,9 +7927,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8125,9 +7982,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8181,9 +8037,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8237,9 +8092,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8293,9 +8147,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8349,9 +8202,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8405,9 +8257,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8461,9 +8312,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8517,9 +8367,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8573,9 +8422,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8629,9 +8477,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8685,9 +8532,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8741,9 +8587,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8797,9 +8642,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "entity_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -8857,6 +8701,37 @@
         "vanilla:net/minecraft/world/entity/Entity.java#handleEntityEvent"
       ]
     },
+    "entity_spawn_defaults": {
+      "implementation": [
+        "crates/bbb-world/src/entities/spawn.rs#pub fn apply_add_entity",
+        "crates/bbb-world/src/entities/spawn.rs#pub(crate) fn apply_add_entity_packet",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn apply_add_entity_components",
+        "crates/bbb-world/src/entities/store.rs#fn vanilla_default_attribute_base",
+        "crates/bbb-world/src/entities/animations.rs#pub(crate) fn initialize_spawn_defaults",
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#pub const VANILLA_ENTITY_TYPE_METADATA_26_1"
+      ],
+      "tests": [
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#generated_spawn_family_partition_covers_the_fixed_catalog_once",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#base_non_living_spawn_defaults_stay_sparse_and_type_owned",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#projectile_vehicle_display_defaults_attach_only_generated_family_owners",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#living_passive_defaults_use_generated_attributes_and_fresh_body_yaw",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#hostile_boss_defaults_use_generated_profiles_and_guardian_phase_owner",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#player_defaults_use_generated_profile_and_sparse_spawn_owners",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#item_and_end_crystal_constructor_random_state_resets_and_is_generation_isolated",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#projectile_vehicle_display_mutations_reset_without_touching_retained_generation",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#living_passive_tick_owners_reset_without_touching_retained_generation",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#guardian_constructor_phase_resets_and_is_generation_isolated",
+        "crates/bbb-world/src/entities/tests/spawn_defaults.rs#player_tick_owner_resets_without_touching_retained_generation",
+        "crates/bbb-world/src/entities/spawn.rs#player_packet_requires_current_player_info_before_replacement"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#private @Nullable Entity createEntityFromPacket",
+        "vanilla:net/minecraft/world/entity/EntityType.java#public @Nullable T create",
+        "vanilla:net/minecraft/world/entity/Entity.java#public void recreateFromPacket",
+        "vanilla:net/minecraft/world/entity/LivingEntity.java#public void recreateFromPacket",
+        "vanilla:net/minecraft/world/entity/ai/attributes/DefaultAttributes.java#private static final Map<EntityType<? extends LivingEntity>, AttributeSupplier> SUPPLIERS"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -8886,17 +8761,6 @@
         "vanilla:net/minecraft/world/entity/Entity.java#defineSynchedData",
         "vanilla:net/minecraft/network/syncher/EntityDataSerializers.java#public static final EntityDataSerializer<ItemStack> ITEM_STACK",
         "vanilla:net/minecraft/network/syncher/SynchedEntityData.java#private <T> void assignValue"
-      ]
-    },
-    "generic_spawn": {
-      "implementation": [
-        "crates/bbb-world/src/entities/spawn.rs#pub fn apply_add_entity"
-      ],
-      "tests": [
-        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
-      ],
-      "vanilla": [
-        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#createEntityFromPacket"
       ]
     },
     "generic_transform": {
@@ -9048,26 +8912,6 @@
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void travelInWater",
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static class TurtleMoveControl",
         "vanilla:net/minecraft/client/renderer/entity/TurtleRenderer.java#public void extractRenderState"
-      ]
-    },
-    "turtle_spawn_defaults": {
-      "implementation": [
-        "crates/bbb-world/src/entities/spawn.rs#pub fn apply_add_entity",
-        "crates/bbb-world/src/entities/store.rs#pub(crate) fn apply_add_entity_components",
-        "crates/bbb-world/src/entities/store.rs#pub(crate) fn attribute_value",
-        "crates/bbb-world/src/entities/store.rs#fn vanilla_default_attribute_base",
-        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_turtle_accessors_for_entity_type"
-      ],
-      "tests": [
-        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
-        "crates/bbb-world/src/entities/schema.rs#generated_turtle_accessors_own_membership_indices_and_defaults"
-      ],
-      "vanilla": [
-        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#private @Nullable Entity createEntityFromPacket",
-        "vanilla:net/minecraft/world/entity/Entity.java#public void recreateFromPacket",
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void defineSynchedData",
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public static AttributeSupplier.Builder createAttributes()",
-        "vanilla:net/minecraft/server/level/ServerEntity.java#public void sendPairingData"
       ]
     }
   },

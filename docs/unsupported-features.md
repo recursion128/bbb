@@ -1346,12 +1346,6 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
-### Entity coverage matrix spawn and defaults
-
-- Audit every fixed entity family for `ClientPacketListener.createEntityFromPacket`
-  recreation, add-packet `data`, constructor/client defaults, and replacement
-  semantics beyond the generic canonical identity and transform insertion.
-
 ### Entity coverage matrix transform and interpolation
 
 - Complete vanilla remote teleport, head/body rotation, distance-based and
