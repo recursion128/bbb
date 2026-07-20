@@ -154,14 +154,25 @@ fn build_heterogeneous_entity_world(count: usize) -> WorldStore {
 
 fn build_payload_heavy_entity_world(count: usize) -> WorldStore {
     let mut world = build_entity_world(count);
+    let byte_accessors = [
+        "DATA_SHARED_FLAGS_ID",
+        "DATA_LIVING_ENTITY_FLAGS",
+        "DATA_MOB_FLAGS_ID",
+    ]
+    .map(|java_name| {
+        vanilla_entity_metadata_accessor_for_entity_type(VANILLA_ENTITY_TYPE_ZOMBIE_ID, java_name)
+            .unwrap_or_else(|| panic!("missing generated Zombie accessor {java_name}"))
+    });
     for id in 1..=count as i32 {
         assert!(world.apply_set_entity_data(SetEntityData {
             id,
-            values: (0..8)
-                .map(|data_id| EntityDataValue {
-                    data_id,
-                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(data_id as i8),
+            values: byte_accessors
+                .iter()
+                .enumerate()
+                .map(|(index, accessor)| EntityDataValue {
+                    data_id: accessor.data_id,
+                    serializer_id: accessor.serializer_id,
+                    value: EntityDataValueKind::Byte(index as i8),
                 })
                 .collect(),
         }));

@@ -1352,7 +1352,8 @@ back into a todo. Do not delete these.
   movement, remote interpolation, projectile motion/trails, and client-only
   timers that the multiplayer client actually advances. Keep AI, pathfinding,
   authoritative combat, drops, spawning, and server RNG outside the client
-  implementation.
+  implementation. The frozen owner/evidence/phase contract is
+  `docs/entity-client-tick-movement-design.md`.
 
 ### Entity coverage matrix dimensions collision and pick
 

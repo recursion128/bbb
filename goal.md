@@ -516,7 +516,8 @@ metadata match。
    interpolation，以及 `ClientLevel` 确实执行的 subclass tick、animation counters、粒子、音频、
    projectile motion/trail/presentation；server correction 覆盖预测。命中、伤害、爆炸、方块
    修改、权威移除、mob AI/goal、寻路、刷怪、繁殖、战利品和不可重建 server RNG 均标为
-   `not-applicable`，不得进入客户端完成矩阵或以 synthetic state 冒充。
+   `not-applicable`，不得进入客户端完成矩阵或以 synthetic state 冒充。当前高风险工程合同、
+   Vanilla 依据、串行阶段与门禁见 `docs/entity-client-tick-movement-design.md`。
 5. **渲染与动画**：逐 family 补齐 model family、baby/scale、texture/variant、equipment/
    emissive/overlay/held-item/armor 等 layer、keyframe/procedural animation、name/tag、
    shadow/culling/bounds 与 render-state interpolation；missing asset 保留明确 vanilla

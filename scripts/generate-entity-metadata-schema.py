@@ -3644,6 +3644,10 @@ def render(result: ExtractionResult) -> str:
     can_use_every_slot_cache: dict[str, bool] = {}
     illager_celebrating_cache: dict[str, bool] = {}
     handle_entity_event_owner_cache: dict[str, str] = {}
+    tick_owner_cache: dict[str, str] = {}
+    base_tick_owner_cache: dict[str, str] = {}
+    ai_step_owner_cache: dict[str, str] = {}
+    ride_tick_owner_cache: dict[str, str] = {}
     baby_behavior_cache: dict[str, str] = {}
     baby_age_scale_cache: dict[str, str] = {}
     for java_class in class_map:
@@ -4037,6 +4041,10 @@ def render(result: ExtractionResult) -> str:
                 )
                 + "],",
                 f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
+                f"        tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'tick', 0, tick_owner_cache) if item.runtime_class is not None else None)},",
+                f"        base_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'baseTick', 0, base_tick_owner_cache) if item.runtime_class is not None else None)},",
+                f"        ai_step_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'aiStep', 0, ai_step_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
+                f"        ride_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'rideTick', 0, ride_tick_owner_cache) if item.runtime_class is not None else None)},",
                 f"        baby_behavior: VanillaEntityBabyBehavior::{class_baby_behavior(result, class_map, item.runtime_class, baby_behavior_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'Never'},",
                 f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
@@ -4193,6 +4201,28 @@ def render(result: ExtractionResult) -> str:
             "            supplier_count += usize::from(entry.is_living);",
             "        }",
             "        assert_eq!(supplier_count, 92);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn client_tick_method_owner_inventory_covers_every_entity_type() {",
+            "        assert_eq!(super::VANILLA_ENTITY_TYPE_METADATA_26_1.len(), 157);",
+            "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
+            "            assert!(entry.tick_owner.is_some(), \"{} lacks tick owner\", entry.resource_id);",
+            "            assert!(entry.base_tick_owner.is_some(), \"{} lacks baseTick owner\", entry.resource_id);",
+            "            assert!(entry.ride_tick_owner.is_some(), \"{} lacks rideTick owner\", entry.resource_id);",
+            "            assert_eq!(entry.is_living, entry.ai_step_owner.is_some(), \"{} aiStep/living mismatch\", entry.resource_id);",
+            "        }",
+            "        let owner = |resource_id: &str| {",
+            "            super::VANILLA_ENTITY_TYPE_METADATA_26_1",
+            "                .iter()",
+            "                .find(|entry| entry.resource_id == resource_id)",
+            "                .unwrap_or_else(|| panic!(\"missing {resource_id}\"))",
+            "        };",
+            "        assert!(owner(\"minecraft:item\").tick_owner.unwrap().ends_with(\".ItemEntity\"));",
+            "        assert!(owner(\"minecraft:zombie\").tick_owner.unwrap().ends_with(\".Zombie\"));",
+            "        assert!(owner(\"minecraft:cow\").tick_owner.unwrap().ends_with(\".Mob\"));",
+            "        assert!(owner(\"minecraft:player\").ride_tick_owner.unwrap().ends_with(\".Player\"));",
+            "        assert!(owner(\"minecraft:armor_stand\").ai_step_owner.unwrap().ends_with(\".LivingEntity\"));",
             "    }",
             "",
             "    #[test]",

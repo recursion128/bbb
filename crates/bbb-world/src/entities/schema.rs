@@ -712,6 +712,13 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub default_attributes: &'static [VanillaEntityDefaultAttribute],
     /// Nearest vanilla class that declares `handleEntityEvent(byte)` for this runtime type.
     pub handle_entity_event_owner: Option<&'static str>,
+    /// Nearest runtime-class declarations for the methods driven by
+    /// `ClientLevel.tickNonPassenger` / `tickPassenger`. These are generated
+    /// audit facts, not a claim that each whole method body executes client side.
+    pub tick_owner: Option<&'static str>,
+    pub base_tick_owner: Option<&'static str>,
+    pub ai_step_owner: Option<&'static str>,
+    pub ride_tick_owner: Option<&'static str>,
     /// Source-derived nearest `LivingEntity.isBaby()` behavior for this runtime class.
     pub baby_behavior: VanillaEntityBabyBehavior,
     /// Baby branch of the nearest `LivingEntity.getAgeScale()` implementation, as exact f32 bits.
