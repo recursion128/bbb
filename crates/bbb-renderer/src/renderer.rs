@@ -315,6 +315,7 @@ pub struct Renderer {
     pub(super) lightmap: LightmapGpu,
     pub(super) lightmap_hud_bind_group: wgpu::BindGroup,
     pub(super) _lightmap_hud_sampler: wgpu::Sampler,
+    pub(super) lightmap_sample_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) entity_outline_sobel_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_blur_horizontal_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_blur_vertical_pipeline: wgpu::RenderPipeline,
@@ -742,6 +743,8 @@ pub struct Renderer {
     pub(super) hud_boss_bar_notched_progress_sprites:
         [Option<HudSpriteGpu>; crate::hud::HudBossBarOverlay::NOTCHED.len()],
     pub(super) particles: ParticleRuntimeState,
+    pub(super) resource_reload_checkpoint:
+        Option<crate::resource_reload::RendererResourceReloadCheckpoint>,
 }
 
 pub(super) struct ResidentTerrainMesh {
@@ -1556,6 +1559,7 @@ impl Renderer {
             lightmap,
             lightmap_hud_bind_group,
             _lightmap_hud_sampler: lightmap_hud_sampler,
+            lightmap_sample_bind_group_layout,
             entity_outline_sobel_pipeline,
             entity_outline_blur_horizontal_pipeline,
             entity_outline_blur_vertical_pipeline,
@@ -1947,6 +1951,7 @@ impl Renderer {
             hud_boss_bar_notched_backgrounds: Default::default(),
             hud_boss_bar_notched_progress_sprites: Default::default(),
             particles: ParticleRuntimeState::default(),
+            resource_reload_checkpoint: None,
         })
     }
 
@@ -2431,20 +2436,38 @@ impl Renderer {
         height: u32,
         mip_rgba: &[&[u8]],
     ) -> Result<()> {
-        self.terrain_atlas =
+        let terrain_atlas =
             create_terrain_atlas_mips_gpu(&self.device, &self.queue, width, height, mip_rgba)?;
-        self.terrain_bind_group = create_terrain_bind_group(
+        let terrain_bind_group = create_terrain_bind_group(
             &self.device,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
-            &self.terrain_atlas,
+            &terrain_atlas,
         );
-        self.gui_item_bind_group = create_terrain_bind_group(
+        let gui_item_bind_group = create_terrain_bind_group(
             &self.device,
             &self.terrain_bind_group_layout,
             &self.gui_item_camera_buffer,
-            &self.terrain_atlas,
+            &terrain_atlas,
         );
+        if self.resource_reload_in_progress() {
+            let previous = std::mem::replace(&mut self.terrain_atlas, terrain_atlas);
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.terrain_atlas = previous;
+            }));
+            let previous = std::mem::replace(&mut self.terrain_bind_group, terrain_bind_group);
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.terrain_bind_group = previous;
+            }));
+            let previous = std::mem::replace(&mut self.gui_item_bind_group, gui_item_bind_group);
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.gui_item_bind_group = previous;
+            }));
+        } else {
+            self.terrain_atlas = terrain_atlas;
+            self.terrain_bind_group = terrain_bind_group;
+            self.gui_item_bind_group = gui_item_bind_group;
+        }
         self.counters.atlas_pages = 1;
         self.counters.atlas_reallocations += 1;
         self.counters.atlas_width = width;
@@ -2889,6 +2912,10 @@ impl Renderer {
             self.cloud_frame,
             self.cloud_texture.as_ref(),
         );
+    }
+
+    pub(super) fn restore_cloud_uniform_after_resource_reload(&self) {
+        self.write_cloud_uniform();
     }
 
     fn scene_bounds(&self) -> Option<TerrainBounds> {

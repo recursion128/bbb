@@ -143,12 +143,7 @@ fn apply_native_resource_reload(
         .items
         .enable_http_player_skin_downloads(player_skin_cache_dir.to_path_buf());
 
-    // Map pixels are canonical world data, but their atlas slots/bind groups
-    // and the background/decoration atlases are renderer-derived resource
-    // owners. Invalidate them before the atomic upload attempt; recovery
-    // reloads the previous pack assets on failure.
-    renderer.invalidate_map_texture_residency();
-    let upload_result =
+    let next_terrain_textures = renderer.transactional_resource_reload(|renderer| {
         upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
             .and_then(|()| {
                 try_load_terrain_textures(renderer, &prepared.roots)
@@ -161,24 +156,29 @@ fn apply_native_resource_reload(
                     .context("upload entity resources during resource reload")?;
                 try_load_sky_textures(renderer, &prepared.roots)
                     .context("upload sky resources during resource reload")?;
+                match prepared.audio {
+                    PreparedAudioReload::Existing(reload) => {
+                        let audio = audio_runtime
+                            .as_mut()
+                            .context("existing native audio runtime disappeared during reload")?;
+                        audio.commit_reload(reload);
+                    }
+                    PreparedAudioReload::Disabled => {}
+                }
+                if let Some(audio) = audio_runtime.as_mut() {
+                    audio.set_sound_event_registry(sound_events);
+                    audio.set_jukebox_song_registry(jukebox_songs);
+                    *audio_status = audio.counters();
+                }
+                // Map pixels remain canonical world data, while every map
+                // atlas/bind group is resource-generation-derived. Do this
+                // only after every fallible upload has succeeded, inside the
+                // same render-thread transaction.
+                renderer.invalidate_map_texture_residency();
+                renderer.invalidate_item_model_resources();
                 Ok(textures)
-            });
-    let next_terrain_textures = match upload_result {
-        Ok(textures) => textures,
-        Err(error) => {
-            recover_reload_resources(
-                renderer,
-                active_roots.as_ref(),
-                particle_render_runtime.as_ref(),
-                item_runtime.as_ref(),
-            );
-            return Err(error);
-        }
-    };
-    // All resource uploads have succeeded. Advance the item residency epoch at
-    // the same reload barrier so old exact handles cannot alias the newly
-    // committed model/atlas resources.
-    renderer.invalidate_item_model_resources();
+            })
+    })?;
     prepared
         .particles
         .simulation
@@ -187,21 +187,6 @@ fn apply_native_resource_reload(
         .particles
         .simulation
         .set_default_item_particle_sprite_ids(&prepared.items);
-
-    match prepared.audio {
-        PreparedAudioReload::Existing(reload) => {
-            let audio = audio_runtime
-                .as_mut()
-                .context("existing native audio runtime disappeared during reload")?;
-            audio.commit_reload(reload);
-        }
-        PreparedAudioReload::Disabled => {}
-    }
-    if let Some(audio) = audio_runtime.as_mut() {
-        audio.set_sound_event_registry(sound_events);
-        audio.set_jukebox_song_registry(jukebox_songs);
-        *audio_status = audio.counters();
-    }
 
     let NativeParticleResources { simulation, render } = prepared.particles;
     let item_defaults = ItemRuntimeWorldDefaults::from_runtime(&prepared.items);
@@ -286,39 +271,6 @@ fn upload_reload_atlases(
         .upload_particle_atlas(renderer)
         .context("upload particle atlas during resource reload")?;
     upload_item_atlases(renderer, items).context("upload item atlases during resource reload")
-}
-
-fn recover_reload_resources(
-    renderer: &mut bbb_renderer::Renderer,
-    roots: Option<&PackRoots>,
-    particles: Option<&NativeParticleRenderRuntime>,
-    items: Option<&NativeItemRuntime>,
-) {
-    if let Some(particles) = particles {
-        if let Err(error) = particles.upload_particle_atlas(renderer) {
-            tracing::warn!(?error, "failed to recover previous particle atlas");
-        }
-    }
-    if let Some(items) = items {
-        if let Err(error) = upload_item_atlases(renderer, items) {
-            tracing::warn!(?error, "failed to recover previous item atlases");
-        }
-    }
-    let Some(roots) = roots else {
-        return;
-    };
-    if let Err(error) = try_load_terrain_textures(renderer, roots) {
-        tracing::warn!(?error, "failed to recover previous terrain resources");
-    }
-    if let Err(error) = try_load_hud_textures(renderer, roots) {
-        tracing::warn!(?error, "failed to recover previous HUD resources");
-    }
-    if let Err(error) = try_load_entity_model_textures(renderer, roots) {
-        tracing::warn!(?error, "failed to recover previous entity resources");
-    }
-    if let Err(error) = try_load_sky_textures(renderer, roots) {
-        tracing::warn!(?error, "failed to recover previous sky resources");
-    }
 }
 
 fn upload_item_atlases(
@@ -544,22 +496,24 @@ mod tests {
     #[test]
     fn item_residency_generation_advances_only_after_reload_uploads_succeed() {
         let source = include_str!("resource_reload.rs");
-        let upload_result = source
-            .find("let upload_result =")
-            .expect("reload should stage all renderer uploads");
-        let failure_return = source
-            .find("            return Err(error);\n")
-            .expect("failed renderer uploads should recover and return");
+        let transaction = source
+            .find(".transactional_resource_reload(|renderer|")
+            .expect("reload should retain accepted renderer owners");
         let residency_barrier = source
-            .find("    renderer.invalidate_item_model_resources();\n")
+            .find("                renderer.invalidate_item_model_resources();\n")
             .expect("successful reload should advance the item residency generation");
+        let audio_commit = source
+            .find("                        audio.commit_reload(reload);\n")
+            .expect("audio should commit inside the renderer transaction barrier");
         let simulation_commit = source
             .find("    prepared\n        .particles\n        .simulation")
             .expect("reload should commit the matching simulation resources");
 
-        assert!(upload_result < failure_return);
-        assert!(failure_return < residency_barrier);
+        assert!(transaction < audio_commit);
+        assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);
+        let legacy_recovery = ["recover", "reload", "resources"].join("_");
+        assert!(!source.contains(&legacy_recovery));
     }
     use std::{
         path::PathBuf,

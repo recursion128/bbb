@@ -407,6 +407,16 @@ impl ItemModelResidency {
         }
     }
 
+    fn empty_for_resource_reload(&self) -> Self {
+        Self {
+            resource_generation: self.resource_generation,
+            block_atlas_generation: self.block_atlas_generation,
+            item_atlas_generation: self.item_atlas_generation,
+            frame_index: self.frame_index,
+            ..Self::with_limits(self.max_owners, self.max_bytes)
+        }
+    }
+
     fn key(
         &self,
         identity: ItemModelAssetIdentity,
@@ -1254,11 +1264,21 @@ impl Renderer {
 
     /// Advances the resource generation and drops all derived model owners.
     pub fn invalidate_item_model_resources(&mut self) {
+        if self.resource_reload_in_progress() {
+            let next = self.item_model_residency.empty_for_resource_reload();
+            let previous = std::mem::replace(&mut self.item_model_residency, next);
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.item_model_residency = previous;
+            }));
+        }
         self.item_model_residency
             .invalidate_resources(&mut self.counters);
     }
 
     pub(crate) fn invalidate_item_model_atlas(&mut self, atlas: ItemModelAtlasKind) {
+        if self.resource_reload_in_progress() {
+            return;
+        }
         self.item_model_residency
             .invalidate_atlas(atlas, &mut self.counters);
     }

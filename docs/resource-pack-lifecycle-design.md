@@ -150,9 +150,28 @@ with the request generation before any audio, item, particle, terrain, HUD,
 entity or sky consumer runs. Malformed filters/overlays therefore fail at the
 preparation boundary, while an explicitly admitted incompatible format remains
 visible in the selected-pack compatibility record. Resource lookup results
-carry the exact selected pack id. The renderer/audio apply side is still the
-next phase: it currently mutates subsystem owners sequentially and relies on
-recovery uploads after failure.
+carry the exact selected pack id.
+
+The renderer apply side is now a synchronous all-or-nothing owner transaction.
+Before particle/item, terrain, HUD/font, entity and sky/environment uploads run,
+the renderer moves every replaceable accepted GPU/CPU-derived owner into a
+private checkpoint and exposes empty staging slots only to the render thread.
+The mandatory terrain atlas and its world/GUI bind groups are checkpointed only
+after all replacement handles have been built. Any stage error restores the
+exact previous handles and counters in reverse order; it never decodes the old
+pack again or performs a recovery upload. Item-atlas invalidation is suppressed
+while uploads are staged, and full item/map generation invalidation happens
+after the last fallible upload inside the same barrier. Audio was already
+prepare/commit based and commits only after this renderer transaction succeeds,
+before the simulation projection and server acknowledgement become visible.
+
+Offscreen GPU tests inject failure after the particle/item, terrain, HUD,
+entity, sky and final invalidation stages. Every failure retains the accepted
+HUD pixels and restores all observable counters; success exposes only the new
+owner. The checkpoint temporarily retains old and new GPU owners, so reload
+peak memory remains approximately the sum of adjacent generations. That bounded
+reload spike is preferable to a mixed generation and is released immediately
+at commit or rollback.
 
 ## Vanilla 26.1 Evidence
 

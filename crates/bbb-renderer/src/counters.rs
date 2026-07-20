@@ -24,7 +24,7 @@ pub struct TerrainMeshWorkerCounters {
     pub peak_build_sections: usize,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RendererCounters {
     pub frame_index: u64,
     pub width: u32,

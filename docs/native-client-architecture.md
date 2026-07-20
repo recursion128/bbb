@@ -162,6 +162,12 @@ packs. That generation owns the exact selected stack plus one precompiled
 regexes are admitted once, then every language/model/atlas/sound consumer gets
 a cheap clone of the same immutable lookup owner. The directory list retained
 for serde compatibility is a projection, not the runtime selection authority.
+Renderer reload is a synchronous owner transaction: accepted GPU handles are
+retained in a private checkpoint while the next particle/item, terrain,
+HUD/font, entity and sky owners are built. Failure restores those exact handles
+without old-pack re-upload; success drops the checkpoint only after item/map
+generation invalidation. Audio commit and the simulation acknowledgement follow
+that renderer barrier, so readers cannot observe a cross-generation mixture.
 
 ### `bbb-renderer`
 
