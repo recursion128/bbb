@@ -303,6 +303,118 @@ mod tests {
     }
 
     #[test]
+    fn one_selected_generation_composes_custom_model_texture_font_sound_and_data_resources() {
+        let root = unique_temp_dir("custom-resource-composition");
+        let sources = root.join("sources/26.1");
+        let low = root.join("packs/low");
+        let high = root.join("packs/high");
+        std::fs::create_dir_all(sources.join("assets/minecraft")).unwrap();
+        write_metadata(&low, 84);
+        write_metadata(&high, 84);
+        write_file(
+            &low.join("assets/example/items/widget.json"),
+            br#"{"model":{"type":"minecraft:model","model":"example:item/low"}}"#,
+        );
+        write_file(
+            &high.join("assets/example/items/widget.json"),
+            br#"{"model":{"type":"minecraft:model","model":"example:item/high"}}"#,
+        );
+        write_file(
+            &low.join("assets/example/models/item/widget.json"),
+            br#"{"gui_light":"side"}"#,
+        );
+        write_file(
+            &high.join("assets/example/models/item/widget.json"),
+            br#"{"gui_light":"front"}"#,
+        );
+        write_png(
+            &low.join("assets/example/textures/item/widget.png"),
+            [1, 2, 3, 255],
+        );
+        write_png(
+            &high.join("assets/example/textures/item/widget.png"),
+            [7, 11, 13, 255],
+        );
+        write_file(
+            &low.join("assets/example/font/default.json"),
+            br#"{"providers":[{"type":"space","advances":{" ":3}}]}"#,
+        );
+        write_file(
+            &high.join("assets/example/font/default.json"),
+            br#"{"providers":[{"type":"space","advances":{" ":5}}]}"#,
+        );
+        write_file(
+            &low.join("assets/example/sounds.json"),
+            br#"{"widget":{"sounds":[{"type":"event","name":"example:low"}]}}"#,
+        );
+        write_file(
+            &high.join("assets/example/sounds.json"),
+            br#"{"widget":{"replace":true,"sounds":[{"type":"event","name":"example:high"}]}}"#,
+        );
+        write_file(
+            &low.join("data/example/test_registry/widget.json"),
+            br#"{"source":"low"}"#,
+        );
+        write_file(
+            &high.join("data/example/test_registry/widget.json"),
+            br#"{"source":"high"}"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected = SelectedClientPackStack::from_startup_dirs(&roots, [low, high]).unwrap();
+        let roots = roots.with_client_resource_generation(37, selected).unwrap();
+        let resources = roots.resource_stack();
+
+        for id in ["example:font/default.json", "example:sounds.json"] {
+            let resource = resources
+                .get_resource(&crate::ResourceLocation::parse(id).unwrap())
+                .unwrap();
+            assert_eq!(resource.pack_id, "startup/1");
+        }
+        assert_eq!(
+            roots
+                .load_item_model_catalog()
+                .unwrap()
+                .model_references("example:widget")
+                .unwrap(),
+            vec!["example:item/high"]
+        );
+        assert_eq!(
+            roots
+                .load_item_cuboid_model_catalog()
+                .unwrap()
+                .model("example:item/widget")
+                .unwrap()
+                .gui_light,
+            crate::BlockModelGuiLight::Front
+        );
+        let texture = roots
+            .load_resource_texture_image("example:item/widget")
+            .unwrap();
+        assert_eq!(texture.size, [1, 1]);
+        assert_eq!(texture.rgba, [7, 11, 13, 255]);
+        let sound = roots
+            .load_sound_catalog()
+            .unwrap()
+            .event("example:widget")
+            .unwrap()
+            .clone();
+        assert!(sound.replace);
+        assert_eq!(sound.sounds.len(), 1);
+        assert_eq!(sound.sounds[0].name, "example:high");
+        let data = resources
+            .get_data_resource(
+                &crate::ResourceLocation::parse("example:test_registry/widget.json").unwrap(),
+            )
+            .unwrap();
+        assert_eq!(data.pack_id, "startup/1");
+        assert_eq!(std::fs::read(data.path).unwrap(), br#"{"source":"high"}"#);
+        assert_eq!(roots.client_resource_generation().unwrap().generation(), 37);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn startup_stack_records_identity_policy_and_compatibility() {
         let root = unique_temp_dir("startup-stack");
         let sources = root.join("sources/26.1");
@@ -526,6 +638,11 @@ mod tests {
     fn write_file(path: &Path, payload: &[u8]) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, payload).unwrap();
+    }
+
+    fn write_png(path: &Path, rgba: [u8; 4]) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        image::save_buffer(path, &rgba, 1, 1, image::ColorType::Rgba8).unwrap();
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {

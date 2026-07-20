@@ -14370,7 +14370,36 @@ pub(crate) fn control_renderer_counters(
         non_entity_cache_hits: 0,
         non_entity_cache_misses: 0,
         non_entity_rebuilt_owners: 0,
+        dynamic_texture_cache_entries: 0,
+        dynamic_texture_cache_pending: 0,
+        dynamic_texture_cache_ready: 0,
+        dynamic_texture_cache_failed: 0,
+        dynamic_texture_cache_stale_results: 0,
+        dynamic_texture_cache_queue_full: 0,
+        dynamic_texture_cache_resident_bytes: 0,
+        dynamic_texture_cache_peak_resident_bytes: 0,
     }
+}
+
+pub(crate) fn project_dynamic_texture_counters(
+    counters: &mut RendererCounters,
+    items: Option<&NativeItemRuntime>,
+) {
+    let observation = items
+        .map(NativeItemRuntime::dynamic_texture_cache_observation)
+        .unwrap_or_default();
+    counters.dynamic_texture_cache_entries = observation.entries;
+    counters.dynamic_texture_cache_pending = observation.pending;
+    counters.dynamic_texture_cache_ready = observation.ready;
+    counters.dynamic_texture_cache_failed = observation.failed;
+    counters.dynamic_texture_cache_stale_results = observation.stale_results;
+    counters.dynamic_texture_cache_queue_full = observation.queue_full;
+    counters.dynamic_texture_cache_resident_bytes =
+        observation.resident_bytes.try_into().unwrap_or(u64::MAX);
+    counters.dynamic_texture_cache_peak_resident_bytes = observation
+        .peak_resident_bytes
+        .try_into()
+        .unwrap_or(u64::MAX);
 }
 
 #[cfg(test)]

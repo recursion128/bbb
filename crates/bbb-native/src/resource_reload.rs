@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use bbb_control::AudioCounters;
+use bbb_control::{AudioCounters, ClientResourceDiagnostics, ClientResourcePackDiagnostic};
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
@@ -58,7 +58,13 @@ pub(crate) struct ResourceReloadSimulationCommit {
 
 pub(crate) struct ResourceReloadAck {
     pub(crate) generation: u64,
+    pub(crate) diagnostics: ClientResourceDiagnostics,
     pub(crate) result: std::result::Result<ResourceReloadSimulationCommit, String>,
+}
+
+struct NativeResourceReloadFailure {
+    stage: &'static str,
+    error: anyhow::Error,
 }
 
 impl std::fmt::Debug for ResourceReloadAck {
@@ -66,6 +72,7 @@ impl std::fmt::Debug for ResourceReloadAck {
         formatter
             .debug_struct("ResourceReloadAck")
             .field("generation", &self.generation)
+            .field("failure_stage", &self.diagnostics.last_reload_failure_stage)
             .field("success", &self.result.is_ok())
             .finish()
     }
@@ -106,9 +113,26 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
         client_locale,
         particle_status,
         player_skin_cache_dir,
-    )
-    .map_err(|error| format!("{error:#}"));
-    ResourceReloadAck { generation, result }
+    );
+    let (result, failure) = match result {
+        Ok(commit) => (Ok(commit), None),
+        Err(failure) => {
+            let error = format!("{:#}", failure.error);
+            (Err(error.clone()), Some((failure.stage, error)))
+        }
+    };
+    let diagnostics = client_resource_reload_diagnostics(
+        active_roots.as_ref(),
+        generation,
+        failure
+            .as_ref()
+            .map(|(stage, error)| (*stage, error.as_str())),
+    );
+    ResourceReloadAck {
+        generation,
+        diagnostics,
+        result,
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -129,7 +153,7 @@ fn apply_native_resource_reload(
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
     player_skin_cache_dir: &Path,
-) -> Result<ResourceReloadSimulationCommit> {
+) -> std::result::Result<ResourceReloadSimulationCommit, NativeResourceReloadFailure> {
     let mut prepared = prepare_native_resource_reload(
         base_roots,
         reload.generation,
@@ -137,48 +161,57 @@ fn apply_native_resource_reload(
         audio_runtime.is_some(),
         client_locale,
         particle_status,
-    )?;
+    )
+    .map_err(|error| NativeResourceReloadFailure {
+        stage: "prepare",
+        error,
+    })?;
     prepared.items.enable_http_profile_resolution();
     prepared
         .items
         .enable_http_player_skin_downloads(player_skin_cache_dir.to_path_buf());
 
-    let next_terrain_textures = renderer.transactional_resource_reload(|renderer| {
-        upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
-            .and_then(|()| {
-                try_load_terrain_textures(renderer, &prepared.roots)
-                    .context("upload terrain resources during resource reload")
-            })
-            .and_then(|textures| {
-                try_load_hud_textures(renderer, &prepared.roots)
-                    .context("upload HUD resources during resource reload")?;
-                try_load_entity_model_textures(renderer, &prepared.roots)
-                    .context("upload entity resources during resource reload")?;
-                try_load_sky_textures(renderer, &prepared.roots)
-                    .context("upload sky resources during resource reload")?;
-                match prepared.audio {
-                    PreparedAudioReload::Existing(reload) => {
-                        let audio = audio_runtime
-                            .as_mut()
-                            .context("existing native audio runtime disappeared during reload")?;
-                        audio.commit_reload(reload);
+    let next_terrain_textures = renderer
+        .transactional_resource_reload(|renderer| {
+            upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
+                .and_then(|()| {
+                    try_load_terrain_textures(renderer, &prepared.roots)
+                        .context("upload terrain resources during resource reload")
+                })
+                .and_then(|textures| {
+                    try_load_hud_textures(renderer, &prepared.roots)
+                        .context("upload HUD resources during resource reload")?;
+                    try_load_entity_model_textures(renderer, &prepared.roots)
+                        .context("upload entity resources during resource reload")?;
+                    try_load_sky_textures(renderer, &prepared.roots)
+                        .context("upload sky resources during resource reload")?;
+                    match prepared.audio {
+                        PreparedAudioReload::Existing(reload) => {
+                            let audio = audio_runtime.as_mut().context(
+                                "existing native audio runtime disappeared during reload",
+                            )?;
+                            audio.commit_reload(reload);
+                        }
+                        PreparedAudioReload::Disabled => {}
                     }
-                    PreparedAudioReload::Disabled => {}
-                }
-                if let Some(audio) = audio_runtime.as_mut() {
-                    audio.set_sound_event_registry(sound_events);
-                    audio.set_jukebox_song_registry(jukebox_songs);
-                    *audio_status = audio.counters();
-                }
-                // Map pixels remain canonical world data, while every map
-                // atlas/bind group is resource-generation-derived. Do this
-                // only after every fallible upload has succeeded, inside the
-                // same render-thread transaction.
-                renderer.invalidate_map_texture_residency();
-                renderer.invalidate_item_model_resources();
-                Ok(textures)
-            })
-    })?;
+                    if let Some(audio) = audio_runtime.as_mut() {
+                        audio.set_sound_event_registry(sound_events);
+                        audio.set_jukebox_song_registry(jukebox_songs);
+                        *audio_status = audio.counters();
+                    }
+                    // Map pixels remain canonical world data, while every map
+                    // atlas/bind group is resource-generation-derived. Do this
+                    // only after every fallible upload has succeeded, inside the
+                    // same render-thread transaction.
+                    renderer.invalidate_map_texture_residency();
+                    renderer.invalidate_item_model_resources();
+                    Ok(textures)
+                })
+        })
+        .map_err(|error| NativeResourceReloadFailure {
+            stage: "commit",
+            error,
+        })?;
     prepared
         .particles
         .simulation
@@ -206,6 +239,63 @@ fn apply_native_resource_reload(
         block_destroy_profiles: prepared.block_destroy_profiles,
         block_sound_profiles: prepared.block_sound_profiles,
     })
+}
+
+pub(crate) fn client_resource_pack_diagnostics(
+    roots: Option<&PackRoots>,
+) -> ClientResourceDiagnostics {
+    let Some(generation) = roots.and_then(PackRoots::client_resource_generation) else {
+        return ClientResourceDiagnostics::default();
+    };
+    ClientResourceDiagnostics {
+        generation: generation.generation(),
+        selected_packs: generation
+            .selected_packs()
+            .packs()
+            .iter()
+            .enumerate()
+            .map(|(priority, pack)| ClientResourcePackDiagnostic {
+                priority,
+                id: pack.id.clone(),
+                source: match &pack.source {
+                    bbb_pack::ClientPackSource::Vanilla => "vanilla".to_string(),
+                    bbb_pack::ClientPackSource::Startup { argument_index } => {
+                        format!("startup:{argument_index}")
+                    }
+                    bbb_pack::ClientPackSource::Server {
+                        pack_id,
+                        push_sequence,
+                    } => format!("server:{pack_id}@{push_sequence}"),
+                    bbb_pack::ClientPackSource::Unmanaged => "unmanaged".to_string(),
+                },
+                compatibility: match pack.compatibility {
+                    bbb_pack::ClientPackCompatibility::Compatible => "compatible",
+                    bbb_pack::ClientPackCompatibility::TooOld => "too_old",
+                    bbb_pack::ClientPackCompatibility::TooNew => "too_new",
+                }
+                .to_string(),
+                required: pack.selection.required,
+                fixed_position: pack.selection.fixed_position,
+            })
+            .collect(),
+        last_reload_generation: None,
+        last_reload_failure_stage: None,
+        last_reload_error: None,
+    }
+}
+
+fn client_resource_reload_diagnostics(
+    roots: Option<&PackRoots>,
+    reload_generation: u64,
+    failure: Option<(&str, &str)>,
+) -> ClientResourceDiagnostics {
+    let mut diagnostics = client_resource_pack_diagnostics(roots);
+    diagnostics.last_reload_generation = Some(reload_generation);
+    if let Some((stage, error)) = failure {
+        diagnostics.last_reload_failure_stage = Some(stage.to_string());
+        diagnostics.last_reload_error = Some(error.to_string());
+    }
+    diagnostics
 }
 
 fn prepare_native_resource_reload(
@@ -571,6 +661,76 @@ mod tests {
             composed.client_resource_generation().unwrap().generation(),
             7
         );
+        assert_eq!(
+            client_resource_pack_diagnostics(Some(&composed)),
+            ClientResourceDiagnostics {
+                generation: 7,
+                selected_packs: vec![
+                    ClientResourcePackDiagnostic {
+                        priority: 0,
+                        id: "vanilla".to_string(),
+                        source: "vanilla".to_string(),
+                        compatibility: "compatible".to_string(),
+                        required: true,
+                        fixed_position: false,
+                    },
+                    ClientResourcePackDiagnostic {
+                        priority: 1,
+                        id: "unmanaged/0".to_string(),
+                        source: "unmanaged".to_string(),
+                        compatibility: "compatible".to_string(),
+                        required: false,
+                        fixed_position: false,
+                    },
+                    ClientResourcePackDiagnostic {
+                        priority: 2,
+                        id: "unmanaged/1".to_string(),
+                        source: "unmanaged".to_string(),
+                        compatibility: "compatible".to_string(),
+                        required: false,
+                        fixed_position: false,
+                    },
+                    ClientResourcePackDiagnostic {
+                        priority: 3,
+                        id: "server/00000000000000000001/first".to_string(),
+                        source: "server:first@1".to_string(),
+                        compatibility: "compatible".to_string(),
+                        required: true,
+                        fixed_position: true,
+                    },
+                    ClientResourcePackDiagnostic {
+                        priority: 4,
+                        id: "server/00000000000000000002/second".to_string(),
+                        source: "server:second@2".to_string(),
+                        compatibility: "compatible".to_string(),
+                        required: true,
+                        fixed_position: true,
+                    },
+                ],
+                last_reload_generation: None,
+                last_reload_failure_stage: None,
+                last_reload_error: None,
+            }
+        );
+        let failed = client_resource_reload_diagnostics(
+            Some(&composed),
+            8,
+            Some(("prepare", "invalid custom model")),
+        );
+        assert_eq!(failed.generation, 7);
+        assert_eq!(failed.last_reload_generation, Some(8));
+        assert_eq!(failed.last_reload_failure_stage.as_deref(), Some("prepare"));
+        assert_eq!(
+            failed.last_reload_error.as_deref(),
+            Some("invalid custom model")
+        );
+        assert_eq!(failed.selected_packs.len(), 5);
+
+        let succeeded = client_resource_reload_diagnostics(Some(&composed), 9, None);
+        assert_eq!(succeeded.generation, 7);
+        assert_eq!(succeeded.last_reload_generation, Some(9));
+        assert_eq!(succeeded.last_reload_failure_stage, None);
+        assert_eq!(succeeded.last_reload_error, None);
         std::fs::remove_dir_all(temp).unwrap();
     }
 

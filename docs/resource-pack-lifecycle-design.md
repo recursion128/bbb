@@ -199,6 +199,49 @@ generation. They are bounded by the CPU owner, but incremental atlas placement
 and per-image GPU replacement remain a measured follow-up if profile churn
 makes those joins a frame-time hotspot.
 
+## Implemented Composition and Diagnostics Boundary
+
+Every pack-backed consumer now enters reload through the immutable
+`ClientResourceGeneration` prepared by `bbb-pack`; there is no consumer-local
+directory append or metadata reread in the native reload transaction. A
+two-startup-pack fixture places conflicting item definitions, cuboid models,
+PNG resource textures, font definitions, sound definitions and synchronized
+data resources in one custom namespace. The highest-priority selected pack is
+observed through the actual item-model, cuboid-model, texture and sound loaders,
+the font provider loader has a matching selected-generation fixture, and the
+data resource resolves through that exact compiled stack. Existing focused
+fixtures retain semantic coverage for blockstate/model, atlas source and
+metadata, language, equipment, particles, waypoint styles, tags and known-pack
+registry data. These tests complement one another: the combined fixture proves
+one owner/generation, while the colocated consumer tests prove each parser's
+merge and fallback rules.
+
+The immutable control publication now reports the committed client-resource
+generation and its complete low-to-high selected-pack list, including stable
+pack id, source, compatibility, required policy and fixed-position policy. A
+reload acknowledgement reports both the attempted reload generation and the
+accepted generation: on failure the accepted generation/list remains old and
+the `prepare` or `commit` stage plus contextual error is recorded; on success
+the new list is visible and failure fields clear. Stale acknowledgements are
+rejected before these diagnostics or simulation projections can change.
+The complete diagnostic value is held by an immutable `Arc`, with explicit
+serde projection preserving the control JSON shape, so ordinary publication
+clones do not recopy session-static pack ids and strings.
+
+Dynamic texture observations are sampled into ordinary backend telemetry and
+therefore do not wake simulation by themselves. They report bounded entry state,
+stale results, queue saturation and current/process-peak decoded bytes. Counts
+are maintained on insert, worker completion, eviction and generation reset, so
+observation does not scan or clone texture payloads. Diagnostics contain no pack
+filesystem path, decoded asset, GPU handle or mutable selection control.
+
+The remaining resource-specific gaps are behavioral breadth rather than a
+parallel lifecycle: atlas mip animation consumption, full dynamic item tint
+coverage, equipment layer presentation, player-head block-entity profile skin,
+and broader non-profile remote texture producers. New consumers must join the
+same selected generation and bounded dynamic texture surface; they must not add
+another cache state machine.
+
 ## Vanilla 26.1 Evidence
 
 - `ClientPackSource` creates mandatory `vanilla` at `BOTTOM`; optional built-in

@@ -64,7 +64,10 @@ use bbb_world::{
 
 use crate::{
     profile_resolver::{AsyncProfileResolutionRuntime, HttpGameProfileFetcher},
-    skin_runtime::{AsyncDynamicTextureRuntime, DynamicPlayerTextureKind, HttpSkinPngFetcher},
+    skin_runtime::{
+        AsyncDynamicTextureRuntime, DynamicPlayerTextureKind, DynamicTextureCacheObservation,
+        HttpSkinPngFetcher,
+    },
 };
 
 mod icon_model;

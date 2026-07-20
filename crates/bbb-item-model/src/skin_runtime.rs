@@ -237,6 +237,30 @@ enum DownloadedDynamicTexture {
     Profile(DynamicPlayerTextureImage),
 }
 
+impl DownloadedDynamicTexture {
+    fn logical_bytes(&self) -> usize {
+        match self {
+            Self::Skin(image) => image.rgba.len(),
+            Self::Profile(image) => image.rgba.len(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DynamicTextureCacheObservation {
+    pub resource_generation: u64,
+    pub session_generation: u64,
+    pub accepting_requests: bool,
+    pub entries: usize,
+    pub pending: usize,
+    pub ready: usize,
+    pub failed: usize,
+    pub stale_results: u64,
+    pub queue_full: u64,
+    pub resident_bytes: usize,
+    pub peak_resident_bytes: usize,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum AsyncDynamicTextureState {
     Pending,
@@ -264,8 +288,13 @@ pub(crate) struct AsyncDynamicTextureRuntime {
     result_rx: Receiver<DynamicTextureResult>,
     sequence: u64,
     max_entries: usize,
+    pending_entries: usize,
+    ready_entries: usize,
+    failed_entries: usize,
     stale_results: u64,
     queue_full: u64,
+    resident_bytes: usize,
+    peak_resident_bytes: usize,
 }
 
 impl AsyncDynamicTextureRuntime {
@@ -352,8 +381,13 @@ impl AsyncDynamicTextureRuntime {
             result_rx,
             sequence: 0,
             max_entries: max_entries.max(1),
+            pending_entries: 0,
+            ready_entries: 0,
+            failed_entries: 0,
             stale_results: 0,
             queue_full: 0,
+            resident_bytes: 0,
+            peak_resident_bytes: 0,
         }
     }
 
@@ -398,7 +432,7 @@ impl AsyncDynamicTextureRuntime {
                 self.queue_full = self.queue_full.saturating_add(1);
                 return false;
             };
-            self.entries.remove(&evicted);
+            self.remove_entry(&evicted);
         }
         self.entries.insert(
             key.clone(),
@@ -408,6 +442,7 @@ impl AsyncDynamicTextureRuntime {
                 delivery_pending: false,
             },
         );
+        self.pending_entries = self.pending_entries.saturating_add(1);
         match self
             .request_tx
             .try_send(DynamicTextureRequest { key: key.clone() })
@@ -415,15 +450,18 @@ impl AsyncDynamicTextureRuntime {
             Ok(()) => true,
             Err(TrySendError::Full(_)) => {
                 self.queue_full = self.queue_full.saturating_add(1);
-                self.entries.remove(&key);
+                self.remove_entry(&key);
                 false
             }
             Err(TrySendError::Disconnected(_)) => {
                 self.queue_full = self.queue_full.saturating_add(1);
-                self.entries
+                let entry = self
+                    .entries
                     .get_mut(&key)
-                    .expect("queued dynamic texture entry")
-                    .state = AsyncDynamicTextureState::Failed;
+                    .expect("queued dynamic texture entry");
+                entry.state = AsyncDynamicTextureState::Failed;
+                self.pending_entries = self.pending_entries.saturating_sub(1);
+                self.failed_entries = self.failed_entries.saturating_add(1);
                 false
             }
         }
@@ -515,6 +553,18 @@ impl AsyncDynamicTextureRuntime {
                 Err(_) => AsyncDynamicTextureState::Failed,
             };
             entry.delivery_pending = true;
+            self.pending_entries = self.pending_entries.saturating_sub(1);
+            match &result.result {
+                Ok(texture) => {
+                    self.ready_entries = self.ready_entries.saturating_add(1);
+                    self.resident_bytes =
+                        self.resident_bytes.saturating_add(texture.logical_bytes());
+                    self.peak_resident_bytes = self.peak_resident_bytes.max(self.resident_bytes);
+                }
+                Err(_) => {
+                    self.failed_entries = self.failed_entries.saturating_add(1);
+                }
+            }
         }
     }
 
@@ -526,6 +576,45 @@ impl AsyncDynamicTextureRuntime {
         self.session_generation = session_generation;
         self.accepting_requests = accepting_requests;
         self.entries.clear();
+        self.pending_entries = 0;
+        self.ready_entries = 0;
+        self.failed_entries = 0;
+        self.resident_bytes = 0;
+    }
+
+    pub(crate) fn observation(&mut self) -> DynamicTextureCacheObservation {
+        self.drain_worker_results();
+        DynamicTextureCacheObservation {
+            resource_generation: self.resource_generation,
+            session_generation: self.session_generation,
+            accepting_requests: self.accepting_requests,
+            entries: self.entries.len(),
+            pending: self.pending_entries,
+            ready: self.ready_entries,
+            failed: self.failed_entries,
+            stale_results: self.stale_results,
+            queue_full: self.queue_full,
+            resident_bytes: self.resident_bytes,
+            peak_resident_bytes: self.peak_resident_bytes,
+        }
+    }
+
+    fn remove_entry(&mut self, key: &DynamicTextureKey) {
+        let Some(entry) = self.entries.remove(key) else {
+            return;
+        };
+        match entry.state {
+            AsyncDynamicTextureState::Pending => {
+                self.pending_entries = self.pending_entries.saturating_sub(1);
+            }
+            AsyncDynamicTextureState::Ready(texture) => {
+                self.ready_entries = self.ready_entries.saturating_sub(1);
+                self.resident_bytes = self.resident_bytes.saturating_sub(texture.logical_bytes());
+            }
+            AsyncDynamicTextureState::Failed => {
+                self.failed_entries = self.failed_entries.saturating_sub(1);
+            }
+        }
     }
 
     #[cfg(test)]
@@ -818,6 +907,13 @@ mod tests {
         assert_eq!(skin.rgba.len(), 64 * 64 * 4);
         assert_eq!(runtime.downloaded_skin_count(), 1);
         assert_eq!(calls.load(Ordering::Relaxed), 1);
+        let observation = runtime.observation();
+        assert_eq!(
+            (observation.pending, observation.ready, observation.failed),
+            (0, 1, 0)
+        );
+        assert_eq!(observation.resident_bytes, 64 * 64 * 4);
+        assert_eq!(observation.peak_resident_bytes, 64 * 64 * 4);
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -842,6 +938,12 @@ mod tests {
         assert_eq!(results[0].skin, None);
         assert_eq!(runtime.downloaded_skin_count(), 0);
         assert_eq!(calls.load(Ordering::Relaxed), 1);
+        let observation = runtime.observation();
+        assert_eq!(
+            (observation.pending, observation.ready, observation.failed),
+            (0, 0, 1)
+        );
+        assert_eq!(observation.resident_bytes, 0);
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -969,6 +1071,38 @@ mod tests {
         assert_eq!(runtime.queue_full(), 1);
         release_tx.send(()).unwrap();
         assert_eq!(drain_until_async_skin_result(&mut runtime).len(), 1);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn unified_dynamic_texture_observation_tracks_ready_eviction_without_byte_growth() {
+        let root = unique_temp_dir("async-dynamic-texture-observed-eviction");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut runtime = AsyncDynamicTextureRuntime::with_limits(
+            5,
+            &root,
+            AsyncStaticSkinFetcher::new(
+                rgba_png(64, 64, |x, y| [x as u8, y as u8, 31, 255]),
+                calls.clone(),
+            ),
+            1,
+            1,
+        );
+
+        assert!(runtime.queue_skin(1, "https://textures.minecraft.net/texture/one"));
+        assert_eq!(drain_until_async_skin_result(&mut runtime).len(), 1);
+        assert!(runtime.queue_skin(2, "https://textures.minecraft.net/texture/two"));
+        assert_eq!(drain_until_async_skin_result(&mut runtime).len(), 1);
+
+        let observation = runtime.observation();
+        assert_eq!(calls.load(Ordering::Relaxed), 2);
+        assert_eq!(observation.entries, 1);
+        assert_eq!(
+            (observation.pending, observation.ready, observation.failed),
+            (0, 1, 0)
+        );
+        assert_eq!(observation.resident_bytes, 64 * 64 * 4);
+        assert_eq!(observation.peak_resident_bytes, 64 * 64 * 4);
         fs::remove_dir_all(root).unwrap();
     }
 

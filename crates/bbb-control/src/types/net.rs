@@ -1,4 +1,25 @@
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClientResourcePackDiagnostic {
+    pub priority: usize,
+    pub id: String,
+    pub source: String,
+    pub compatibility: String,
+    pub required: bool,
+    pub fixed_position: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClientResourceDiagnostics {
+    pub generation: u64,
+    pub selected_packs: Vec<ClientResourcePackDiagnostic>,
+    pub last_reload_generation: Option<u64>,
+    pub last_reload_failure_stage: Option<String>,
+    pub last_reload_error: Option<String>,
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NetCounters {
@@ -7,6 +28,8 @@ pub struct NetCounters {
     /// the last identity while `connected` distinguishes its terminal edge.
     #[serde(default)]
     pub connection_generation: u64,
+    #[serde(default, with = "client_resource_diagnostics_arc")]
+    pub client_resources: Arc<ClientResourceDiagnostics>,
     pub state: Option<String>,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
@@ -169,15 +192,69 @@ pub struct NetCounters {
     pub last_error: Option<String>,
 }
 
+mod client_resource_diagnostics_arc {
+    use super::*;
+
+    pub(super) fn serialize<S>(
+        value: &Arc<ClientResourceDiagnostics>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        value.as_ref().serialize(serializer)
+    }
+
+    pub(super) fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<Arc<ClientResourceDiagnostics>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        ClientResourceDiagnostics::deserialize(deserializer).map(Arc::new)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resource_diagnostics_clone_shares_owner_and_preserves_json_shape() {
+        let mut counters = NetCounters::default();
+        counters.client_resources = Arc::new(ClientResourceDiagnostics {
+            generation: 17,
+            selected_packs: vec![ClientResourcePackDiagnostic {
+                priority: 0,
+                id: "vanilla".to_string(),
+                source: "vanilla".to_string(),
+                compatibility: "compatible".to_string(),
+                required: true,
+                fixed_position: false,
+            }],
+            ..ClientResourceDiagnostics::default()
+        });
+
+        let cloned = counters.clone();
+
+        assert!(Arc::ptr_eq(
+            &counters.client_resources,
+            &cloned.client_resources
+        ));
+        let json = serde_json::to_value(cloned).unwrap();
+        assert_eq!(json["client_resources"]["generation"], 17);
+        assert_eq!(
+            json["client_resources"]["selected_packs"][0]["id"],
+            "vanilla"
+        );
+    }
 
     #[test]
     fn publication_build_observation_defaults_for_older_counter_payloads() {
         let mut value = serde_json::to_value(NetCounters::default()).unwrap();
         let object = value.as_object_mut().unwrap();
         object.remove("connection_generation");
+        object.remove("client_resources");
         object.remove("simulation_publication_build_nanos");
         object.remove("simulation_productive_steps");
         object.remove("simulation_noop_steps");
@@ -201,6 +278,10 @@ mod tests {
 
         let counters: NetCounters = serde_json::from_value(value).unwrap();
         assert_eq!(counters.connection_generation, 0);
+        assert_eq!(
+            counters.client_resources.as_ref(),
+            &ClientResourceDiagnostics::default()
+        );
         assert_eq!(counters.simulation_publication_build_nanos, 0);
         assert_eq!(counters.simulation_productive_steps, 0);
         assert_eq!(counters.simulation_noop_steps, 0);

@@ -111,6 +111,10 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
             ..
         })
     ));
+    let observation = runtime.dynamic_texture_cache_observation();
+    assert!(!observation.accepting_requests);
+    assert_eq!(observation.entries, 0);
+    assert_eq!(observation.resident_bytes, 0);
     assert_eq!(download_calls.load(Ordering::Relaxed), 0);
     assert!(runtime.synchronize_dynamic_texture_session(4, true));
 

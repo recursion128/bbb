@@ -6,7 +6,7 @@ mod snapshot;
 
 pub use api::{ControlRequest, ControlResponse};
 pub use audio::AudioCounters;
-pub use net::NetCounters;
+pub use net::{ClientResourceDiagnostics, ClientResourcePackDiagnostic, NetCounters};
 pub use renderer::RendererCounters;
 pub use snapshot::{
     AppStatus, CodeOfConductControlRequest, ContainerChangedSlotControl,

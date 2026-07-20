@@ -77,14 +77,15 @@ use remote_debug::{RemoteDebugRendererSelection, RemoteDebugSelectionCache};
 use resource_pack_runtime::{default_server_resource_pack_cache_dir, ServerResourcePackRuntime};
 use resource_reload::{
     apply_item_runtime_world_defaults, apply_server_resource_pack_reload_effect,
-    block_destroy_profiles_for_world, block_sound_profiles_for_world, item_particle_sprite_uvs,
+    block_destroy_profiles_for_world, block_sound_profiles_for_world,
+    client_resource_pack_diagnostics, item_particle_sprite_uvs,
 };
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, narrate_command_suggestion_change,
-    world_client_tick_interval, CameraFovTickState, ClientAnimationTickState, DebugCollisionCache,
-    DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
-    HudDebugNetworkSampler, HudDebugTpsSampler, HudRenderRuntime, LevelEventSoundRandomState,
-    LightmapTickState,
+    project_dynamic_texture_counters, world_client_tick_interval, CameraFovTickState,
+    ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
+    DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
+    HudRenderRuntime, LevelEventSoundRandomState, LightmapTickState,
 };
 use simulation::{
     commands::{SimulationCommand, SimulationMailbox},
@@ -323,7 +324,9 @@ fn main() -> Result<()> {
         .install_sink(std::sync::Arc::new(simulation_mailbox.clone()));
     let mut world = WorldStore::new();
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
-    let net_counters = NetCounters::default();
+    let mut net_counters = NetCounters::default();
+    net_counters.client_resources =
+        std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref()));
     let code_of_conduct_store_path = args
         .code_of_conduct_store
         .clone()
@@ -591,7 +594,8 @@ fn main() -> Result<()> {
     let mut code_of_conduct_overlay_renderer = CodeOfConductOverlayRenderer::default();
     let simulation_input_runtime =
         simulation::input_commands::SimulationInputRuntime::new(window.inner_size(), false);
-    let renderer_counters = control_renderer_counters(renderer.counters());
+    let mut renderer_counters = control_renderer_counters(renderer.counters());
+    project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
     let publisher = SimulationPublisher::new(
         SimulationPublicationInput {
             effect_sequence: 0,
@@ -938,6 +942,7 @@ fn main() -> Result<()> {
                     renderer_counters.non_entity_cache_misses = non_entity_observation.cache_misses;
                     renderer_counters.non_entity_rebuilt_owners =
                         non_entity_observation.rebuilt_owners;
+                    project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
                     simulation_mailbox.update_backend_telemetry(
                         renderer_counters,
                         audio_counters,

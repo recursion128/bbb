@@ -1085,6 +1085,7 @@ fn apply_resource_reload_ack(
         );
         return;
     }
+    context.net_counters.client_resources = std::sync::Arc::new(ack.diagnostics);
     match ack.result {
         Ok(commit) => {
             commit.item_defaults.apply(context.world);

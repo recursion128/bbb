@@ -18,4 +18,6 @@ pub use item_runtime::{
     NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDownload, NativeItemMapTooltipData,
     NativeItemRuntime, NativeItemTooltipLine, NativeItemTooltipOptions,
 };
-pub use skin_runtime::{default_player_skin_cache_dir, DynamicPlayerTextureKind};
+pub use skin_runtime::{
+    default_player_skin_cache_dir, DynamicPlayerTextureKind, DynamicTextureCacheObservation,
+};

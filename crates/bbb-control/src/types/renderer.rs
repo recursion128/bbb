@@ -100,6 +100,22 @@ pub struct RendererCounters {
     pub map_surface_instances: usize,
     #[serde(default)]
     pub item_extraction_scratch_capacity_growths: u64,
+    #[serde(default)]
+    pub dynamic_texture_cache_entries: usize,
+    #[serde(default)]
+    pub dynamic_texture_cache_pending: usize,
+    #[serde(default)]
+    pub dynamic_texture_cache_ready: usize,
+    #[serde(default)]
+    pub dynamic_texture_cache_failed: usize,
+    #[serde(default)]
+    pub dynamic_texture_cache_stale_results: u64,
+    #[serde(default)]
+    pub dynamic_texture_cache_queue_full: u64,
+    #[serde(default)]
+    pub dynamic_texture_cache_resident_bytes: u64,
+    #[serde(default)]
+    pub dynamic_texture_cache_peak_resident_bytes: u64,
     pub hud_draw_calls: u64,
     #[serde(default)]
     pub screen_blur_draw_calls: u64,

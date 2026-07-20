@@ -244,7 +244,46 @@ fn parse_provider_int(value: &Value) -> Result<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
+    use std::{
+        collections::HashMap,
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    #[test]
+    fn selected_resource_generation_applies_font_pack_precedence() {
+        let root = unique_temp_dir("selected-font-generation");
+        let low = root.join("packs/low");
+        let high = root.join("packs/high");
+        std::fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
+        for pack in [&low, &high] {
+            write_file(
+                &pack.join("pack.mcmeta"),
+                br#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
+            );
+        }
+        write_file(
+            &low.join("assets/example/font/default.json"),
+            br#"{"providers":[{"type":"space","advances":{" ":3}}]}"#,
+        );
+        write_file(
+            &high.join("assets/example/font/default.json"),
+            br#"{"providers":[{"type":"space","advances":{" ":5}}]}"#,
+        );
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&roots, [low, high]).unwrap();
+        let roots = roots.with_client_resource_generation(41, selected).unwrap();
+
+        let providers = load_font_providers(&roots, "example:default").unwrap();
+
+        assert_eq!(roots.client_resource_generation().unwrap().generation(), 41);
+        let FontProviderDefinition::Space(space) = &providers[0] else {
+            panic!("expected selected space provider");
+        };
+        assert_eq!(space.advances, vec![(' ', 5)]);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     fn test_loader(definitions: &[(&str, &str)]) -> impl FnMut(&str) -> Result<String> {
         let definitions: HashMap<String, String> = definitions
@@ -257,6 +296,22 @@ mod tests {
                 .cloned()
                 .with_context(|| format!("missing font definition {id}"))
         }
+    }
+
+    fn write_file(path: &Path, payload: &[u8]) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, payload).unwrap();
+    }
+
+    fn unique_temp_dir(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "bbb-item-model-font-{label}-{}-{nonce}",
+            std::process::id()
+        ))
     }
 
     /// Test convenience for fixtures that only exercise bitmap providers:

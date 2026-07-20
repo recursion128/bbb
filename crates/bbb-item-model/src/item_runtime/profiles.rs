@@ -606,6 +606,19 @@ impl NativeItemRuntime {
         self.resource_generation
     }
 
+    pub fn dynamic_texture_cache_observation(&self) -> DynamicTextureCacheObservation {
+        self.dynamic_textures
+            .borrow_mut()
+            .as_mut()
+            .map(|runtime| runtime.observation())
+            .unwrap_or(DynamicTextureCacheObservation {
+                resource_generation: self.resource_generation,
+                session_generation: self.dynamic_texture_session_generation.get(),
+                accepting_requests: false,
+                ..DynamicTextureCacheObservation::default()
+            })
+    }
+
     /// Aligns remote and pack-backed dynamic texture caches with the exact
     /// network session visible in the immutable publication. A disconnect is
     /// a distinct owner boundary even before the next connection increments
