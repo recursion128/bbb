@@ -66,12 +66,12 @@ use bbb_renderer::{
 };
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
-    ContainerState, EntityClientMovementParticleState, EntityClientTickWork,
-    EvokerFangsCritParticleState, ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState,
-    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
-    OminousItemSpawnerParticleState, PrimedTntSmokeParticleState, RavagerStunParticleState,
-    SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState,
-    TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
+    ContainerState, EntityClientTickWork, EvokerFangsCritParticleState, ItemEquipmentSlot,
+    LocalSoundEventState, MerchantOfferState, MerchantOffersState, MobEffectState,
+    MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
+    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
+    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -3359,8 +3359,6 @@ fn submit_entity_client_tick_particles(
     world: &mut WorldStore,
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
 ) {
-    let movement_particles: Vec<EntityClientMovementParticleState> =
-        world.take_entity_client_movement_particle_states();
     let batch = entity_client_tick_particle_batch(
         world.take_ravager_stun_particle_states(),
         world.take_evoker_fangs_crit_particle_states(),
@@ -3368,9 +3366,12 @@ fn submit_entity_client_tick_particles(
     batches.submit_particle_batch(batch);
 
     let Some(particle_events) = particle_events.as_deref_mut() else {
+        world
+            .drain_entity_client_movement_particle_states()
+            .for_each(drop);
         return;
     };
-    for state in movement_particles {
+    for state in world.drain_entity_client_movement_particle_states() {
         batches
             .submit_particle_batch(particle_events.spawn_entity_client_movement_particles(state));
     }

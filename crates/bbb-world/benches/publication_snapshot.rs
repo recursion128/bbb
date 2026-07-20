@@ -339,7 +339,14 @@ fn bench_entity_tick_only(c: &mut Criterion) {
     }
     let mut heterogeneous = build_heterogeneous_entity_world(ENTITY_COUNT);
     group.bench_function("heterogeneous/2000", |b| {
-        b.iter(|| heterogeneous.advance_entity_client_animations(black_box(1)));
+        b.iter(|| {
+            heterogeneous.advance_entity_client_animations(black_box(1));
+            black_box(
+                heterogeneous
+                    .drain_entity_client_movement_particle_states()
+                    .count(),
+            );
+        });
     });
     group.finish();
 }
@@ -358,6 +365,7 @@ fn bench_entity_tick_phase_observation(c: &mut Criterion) {
         group.bench_function(name, |b| {
             b.iter(|| {
                 let work = world.advance_entity_client_animations_with_observation(black_box(1));
+                black_box(world.drain_entity_client_movement_particle_states().count());
                 calls = calls.saturating_add(1);
                 aggregate.preparation_duration += work.preparation_duration;
                 aggregate.schedule_duration += work.schedule_duration;
@@ -468,6 +476,11 @@ fn bench_entity_tick_and_publication(c: &mut Criterion) {
     group.bench_function("heterogeneous/2000", |b| {
         b.iter(|| {
             heterogeneous.advance_entity_client_animations(black_box(1));
+            black_box(
+                heterogeneous
+                    .drain_entity_client_movement_particle_states()
+                    .count(),
+            );
             held = black_box(Arc::new(heterogeneous.publication_snapshot()));
         });
     });
@@ -653,7 +666,7 @@ fn bench_entity_effect_generation(c: &mut Criterion) {
     group.bench_function("2000_firework_trails", |b| {
         b.iter(|| {
             world.advance_entity_client_animations(black_box(1));
-            black_box(world.take_entity_client_movement_particle_states());
+            black_box(world.drain_entity_client_movement_particle_states().count());
         });
     });
     group.finish();

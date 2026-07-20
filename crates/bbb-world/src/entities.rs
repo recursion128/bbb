@@ -3802,10 +3802,10 @@ impl WorldStore {
         self.entities.take_evoker_fangs_crit_particle_states()
     }
 
-    pub fn take_entity_client_movement_particle_states(
+    pub fn drain_entity_client_movement_particle_states(
         &mut self,
-    ) -> Vec<EntityClientMovementParticleState> {
-        self.entities.take_entity_client_movement_particle_states()
+    ) -> std::vec::Drain<'_, EntityClientMovementParticleState> {
+        self.entities.drain_entity_client_movement_particle_states()
     }
 
     pub fn take_ominous_item_spawner_particle_states(

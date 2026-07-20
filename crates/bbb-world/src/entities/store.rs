@@ -1294,10 +1294,10 @@ impl EntityStore {
         std::mem::take(&mut self.pending_evoker_fangs_crit_particles)
     }
 
-    pub(crate) fn take_entity_client_movement_particle_states(
+    pub(crate) fn drain_entity_client_movement_particle_states(
         &mut self,
-    ) -> Vec<EntityClientMovementParticleState> {
-        std::mem::take(&mut self.pending_entity_client_movement_particles)
+    ) -> std::vec::Drain<'_, EntityClientMovementParticleState> {
+        self.pending_entity_client_movement_particles.drain(..)
     }
 
     pub(crate) fn take_ominous_item_spawner_particle_states(
@@ -4556,8 +4556,10 @@ impl EntityStore {
                     can_carry_interpolation_target(identity.id),
                 );
             }
-            self.advance_direct_client_movement(&tick_scratch.scheduled_entities, in_water_by_id);
             work.interpolation_duration += interpolation_started_at.elapsed();
+            let movement_started_at = Instant::now();
+            self.advance_direct_client_movement(&tick_scratch.scheduled_entities, in_water_by_id);
+            work.projectile_duration += movement_started_at.elapsed();
             let animation_started_at = Instant::now();
             work.scanned_entities = work
                 .scanned_entities

@@ -1950,7 +1950,9 @@ fn firework_rocket_trail_particles_queue_once_per_client_tick() {
 
     store.advance_entity_client_animations(2);
 
-    let states = store.take_entity_client_movement_particle_states();
+    let states = store
+        .drain_entity_client_movement_particle_states()
+        .collect::<Vec<_>>();
     assert_eq!(states.len(), 2);
     assert!(states.iter().all(|state| matches!(
         state,
@@ -1968,8 +1970,9 @@ fn firework_rocket_trail_particles_queue_once_per_client_tick() {
                 }
     )));
     assert!(store
-        .take_entity_client_movement_particle_states()
-        .is_empty());
+        .drain_entity_client_movement_particle_states()
+        .next()
+        .is_none());
 }
 
 #[test]
