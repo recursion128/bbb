@@ -53,6 +53,11 @@
 ^crates/bbb-renderer/src/hud(/.*)?[.]rs$	fallback
 ^crates/bbb-renderer/src/(camera|render|item_models|offscreen|sky|transparency)[.]rs$	fallback
 ^crates/bbb-renderer/src/item_models/.*[.]rs$	fallback
+# Renderer/control residency fallback fields are observations for the explicit
+# bounded owner overflow path. The path preserves every visible item/map and is
+# not a required-packet, canonical-state, or default renderer fallback.
+^crates/bbb-renderer/src/counters[.]rs$	(item_model|map_texture)_fallbacks
+^crates/bbb-control/src/types/renderer[.]rs$	(item_model|map_texture)_fallbacks
 ^crates/bbb-renderer/src/particles/descriptors[.]rs$	fallback
 ^crates/bbb-renderer/src/renderer[.]rs$	force_fallback_adapter
 ^crates/bbb-render-types/src/(entity_textures|hud_glyphs)[.]rs$	fallback
