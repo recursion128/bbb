@@ -653,7 +653,7 @@ fn bench_entity_effect_generation(c: &mut Criterion) {
     group.bench_function("2000_firework_trails", |b| {
         b.iter(|| {
             world.advance_entity_client_animations(black_box(1));
-            black_box(world.take_firework_rocket_trail_particle_states());
+            black_box(world.take_entity_client_movement_particle_states());
         });
     });
     group.finish();

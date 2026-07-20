@@ -1950,27 +1950,25 @@ fn firework_rocket_trail_particles_queue_once_per_client_tick() {
 
     store.advance_entity_client_animations(2);
 
-    let states = store.take_firework_rocket_trail_particle_states();
+    let states = store.take_entity_client_movement_particle_states();
     assert_eq!(states.len(), 2);
-    assert!(states.iter().all(|state| state.entity_id == 210));
-    assert!(states.iter().all(|state| {
-        state.position
-            == EntityVec3 {
-                x: 3.5,
-                y: 70.25,
-                z: -6.75,
-            }
-    }));
-    assert!(states.iter().all(|state| {
-        state.delta_movement
-            == EntityVec3 {
-                x: 0.2,
-                y: 0.8,
-                z: -0.4,
-            }
-    }));
+    assert!(states.iter().all(|state| matches!(
+        state,
+        EntityClientMovementParticleState::FireworkRocket(state)
+            if state.entity_id == 210
+                && state.position == EntityVec3 {
+                    x: 3.5,
+                    y: 70.25,
+                    z: -6.75,
+                }
+                && state.delta_movement == EntityVec3 {
+                    x: 0.2,
+                    y: 0.8,
+                    z: -0.4,
+                }
+    )));
     assert!(store
-        .take_firework_rocket_trail_particle_states()
+        .take_entity_client_movement_particle_states()
         .is_empty());
 }
 

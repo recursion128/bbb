@@ -66,11 +66,10 @@ use bbb_renderer::{
 };
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
-    ContainerState, EntityClientTickWork, EvokerFangsCritParticleState,
-    EyeOfEnderTrailParticleState, FireworkRocketTrailParticleState, ItemEquipmentSlot,
-    LocalSoundEventState, MerchantOfferState, MerchantOffersState, MobEffectState,
-    MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
-    PrimedTntSmokeParticleState, RavagerStunParticleState, ShulkerBulletTrailParticleState,
+    ContainerState, EntityClientMovementParticleState, EntityClientTickWork,
+    EvokerFangsCritParticleState, ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState,
+    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
+    OminousItemSpawnerParticleState, PrimedTntSmokeParticleState, RavagerStunParticleState,
     SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState,
     TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
@@ -3360,12 +3359,8 @@ fn submit_entity_client_tick_particles(
     world: &mut WorldStore,
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
 ) {
-    let firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState> =
-        world.take_firework_rocket_trail_particle_states();
-    let eye_of_ender_trail_particles: Vec<EyeOfEnderTrailParticleState> =
-        world.take_eye_of_ender_trail_particle_states();
-    let shulker_bullet_trail_particles: Vec<ShulkerBulletTrailParticleState> =
-        world.take_shulker_bullet_trail_particle_states();
+    let movement_particles: Vec<EntityClientMovementParticleState> =
+        world.take_entity_client_movement_particle_states();
     let batch = entity_client_tick_particle_batch(
         world.take_ravager_stun_particle_states(),
         world.take_evoker_fangs_crit_particle_states(),
@@ -3375,14 +3370,9 @@ fn submit_entity_client_tick_particles(
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
-    for state in firework_rocket_trail_particles {
-        batches.submit_particle_batch(particle_events.spawn_firework_rocket_trail_particles(state));
-    }
-    for state in eye_of_ender_trail_particles {
-        batches.submit_particle_batch(particle_events.spawn_eye_of_ender_trail_particles(state));
-    }
-    for state in shulker_bullet_trail_particles {
-        batches.submit_particle_batch(particle_events.spawn_shulker_bullet_trail_particles(state));
+    for state in movement_particles {
+        batches
+            .submit_particle_batch(particle_events.spawn_entity_client_movement_particles(state));
     }
 }
 

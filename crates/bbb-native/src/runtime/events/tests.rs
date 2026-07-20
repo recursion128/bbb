@@ -57,15 +57,14 @@ use bbb_world::{
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState, BlockPos,
-    ChunkPos, DolphinHappyParticleState, EntityTamingParticleState, EyeOfEnderTrailParticleState,
-    FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    ChunkPos, DolphinHappyParticleState, EntityClientMovementParticleState,
+    EntityTamingParticleState, FireworkRocketExplosionParticleState, FoxEatParticleState,
     HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState,
     LlamaSpitRecreationParticleState, LocalPlayerPoseState, OminousItemSpawnerParticleState,
-    RavagerRoarParticleState, RegistryPacketEntry, ShulkerBulletTrailParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
-    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile,
-    WorldStore,
+    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -644,9 +643,7 @@ struct RecordingParticleSink {
     firework_empty_explosion_camera_positions: Vec<Option<[f64; 3]>>,
     firework_explosion_states: Vec<FireworkRocketExplosionParticleState>,
     firework_explosion_camera_positions: Vec<Option<[f64; 3]>>,
-    firework_rocket_trail_states: Vec<FireworkRocketTrailParticleState>,
-    eye_of_ender_trail_states: Vec<EyeOfEnderTrailParticleState>,
-    shulker_bullet_trail_states: Vec<ShulkerBulletTrailParticleState>,
+    entity_client_movement_states: Vec<EntityClientMovementParticleState>,
     llama_spit_recreation_states: Vec<LlamaSpitRecreationParticleState>,
     ominous_item_spawner_states: Vec<OminousItemSpawnerParticleState>,
     tracking_emitter_states: Vec<crate::particle_runtime::TrackingEmitterParticleState>,
@@ -758,31 +755,11 @@ impl ParticleEventSink for RecordingParticleSink {
         batch
     }
 
-    fn spawn_firework_rocket_trail_particles(
+    fn spawn_entity_client_movement_particles(
         &mut self,
-        state: FireworkRocketTrailParticleState,
+        state: EntityClientMovementParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
-        self.firework_rocket_trail_states.push(state);
-        let batch = bbb_renderer::ParticleSpawnBatch::default();
-        self.batches.push(batch.clone());
-        batch
-    }
-
-    fn spawn_eye_of_ender_trail_particles(
-        &mut self,
-        state: EyeOfEnderTrailParticleState,
-    ) -> bbb_renderer::ParticleSpawnBatch {
-        self.eye_of_ender_trail_states.push(state);
-        let batch = bbb_renderer::ParticleSpawnBatch::default();
-        self.batches.push(batch.clone());
-        batch
-    }
-
-    fn spawn_shulker_bullet_trail_particles(
-        &mut self,
-        state: ShulkerBulletTrailParticleState,
-    ) -> bbb_renderer::ParticleSpawnBatch {
-        self.shulker_bullet_trail_states.push(state);
+        self.entity_client_movement_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

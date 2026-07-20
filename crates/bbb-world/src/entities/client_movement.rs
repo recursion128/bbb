@@ -7,7 +7,8 @@ use super::schema::{
     vanilla_entity_metadata_type_client_movement_policy, VanillaEntityClientMovementPolicy,
 };
 use super::{
-    EntityStore, EntityVec3, EyeOfEnderTrailParticleState, ShulkerBulletTrailParticleState,
+    EntityClientMovementParticleState, EntityStore, EntityVec3, EyeOfEnderTrailParticleState,
+    FireworkRocketTrailParticleState, ShulkerBulletTrailParticleState,
 };
 
 pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
@@ -26,8 +27,7 @@ impl EntityStore {
         scheduled: &[Entity],
         in_water_by_id: &HashMap<i32, bool>,
     ) {
-        let mut eye_particles = Vec::new();
-        let mut shulker_particles = Vec::new();
+        let mut particles = Vec::new();
         for &entity in scheduled {
             let Ok((identity, transform)) = self
                 .ecs
@@ -41,16 +41,18 @@ impl EntityStore {
                     // the projectile lifecycle pass, then the client keeps the
                     // server-provided velocity and advances one position step.
                     advance_position(transform);
-                    eye_particles.push(EyeOfEnderTrailParticleState {
-                        entity_id: identity.id,
-                        origin: EntityVec3 {
-                            x: transform.position.x - transform.delta_movement.x * 0.25,
-                            y: transform.position.y - transform.delta_movement.y * 0.25,
-                            z: transform.position.z - transform.delta_movement.z * 0.25,
+                    particles.push(EntityClientMovementParticleState::EyeOfEnder(
+                        EyeOfEnderTrailParticleState {
+                            entity_id: identity.id,
+                            origin: EntityVec3 {
+                                x: transform.position.x - transform.delta_movement.x * 0.25,
+                                y: transform.position.y - transform.delta_movement.y * 0.25,
+                                z: transform.position.z - transform.delta_movement.z * 0.25,
+                            },
+                            delta_movement: transform.delta_movement,
+                            in_water: in_water_by_id.get(&identity.id).copied().unwrap_or(false),
                         },
-                        delta_movement: transform.delta_movement,
-                        in_water: in_water_by_id.get(&identity.id).copied().unwrap_or(false),
-                    });
+                    ));
                 }
                 Some(VanillaEntityClientMovementPolicy::ShulkerBullet) => {
                     // `ShulkerBullet.tick` changes its homing vector only on
@@ -58,22 +60,31 @@ impl EntityStore {
                     // vector and eases rotation toward it by one half.
                     advance_position(transform);
                     rotate_towards_movement(transform, 0.5);
-                    shulker_particles.push(ShulkerBulletTrailParticleState {
-                        entity_id: identity.id,
-                        position: EntityVec3 {
-                            x: transform.position.x - transform.delta_movement.x,
-                            y: transform.position.y - transform.delta_movement.y + 0.15,
-                            z: transform.position.z - transform.delta_movement.z,
+                    particles.push(EntityClientMovementParticleState::ShulkerBullet(
+                        ShulkerBulletTrailParticleState {
+                            entity_id: identity.id,
+                            position: EntityVec3 {
+                                x: transform.position.x - transform.delta_movement.x,
+                                y: transform.position.y - transform.delta_movement.y + 0.15,
+                                z: transform.position.z - transform.delta_movement.z,
+                            },
                         },
-                    });
+                    ));
+                }
+                Some(VanillaEntityClientMovementPolicy::FireworkRocket) => {
+                    particles.push(EntityClientMovementParticleState::FireworkRocket(
+                        FireworkRocketTrailParticleState {
+                            entity_id: identity.id,
+                            position: transform.position,
+                            delta_movement: transform.delta_movement,
+                        },
+                    ));
                 }
                 _ => {}
             }
         }
-        self.pending_eye_of_ender_trail_particles
-            .extend(eye_particles);
-        self.pending_shulker_bullet_trail_particles
-            .extend(shulker_particles);
+        self.pending_entity_client_movement_particles
+            .extend(particles);
     }
 }
 
@@ -149,32 +160,31 @@ mod tests {
         store.advance_entity_client_animations(1);
 
         assert_eq!(
-            store.take_eye_of_ender_trail_particle_states(),
-            vec![EyeOfEnderTrailParticleState {
-                entity_id: 10,
-                origin: EntityVec3 {
-                    x: 1.1875,
-                    y: 63.625,
-                    z: -1.25,
-                },
-                delta_movement: EntityVec3 {
-                    x: 0.25,
-                    y: -0.5,
-                    z: 1.0,
-                },
-                in_water: false,
-            }]
-        );
-        assert_eq!(
-            store.take_shulker_bullet_trail_particle_states(),
-            vec![ShulkerBulletTrailParticleState {
-                entity_id: 20,
-                position: EntityVec3 {
-                    x: 1.0,
-                    y: 64.15,
-                    z: -2.0,
-                },
-            }]
+            store.take_entity_client_movement_particle_states(),
+            vec![
+                EntityClientMovementParticleState::EyeOfEnder(EyeOfEnderTrailParticleState {
+                    entity_id: 10,
+                    origin: EntityVec3 {
+                        x: 1.1875,
+                        y: 63.625,
+                        z: -1.25,
+                    },
+                    delta_movement: EntityVec3 {
+                        x: 0.25,
+                        y: -0.5,
+                        z: 1.0,
+                    },
+                    in_water: false,
+                }),
+                EntityClientMovementParticleState::ShulkerBullet(ShulkerBulletTrailParticleState {
+                    entity_id: 20,
+                    position: EntityVec3 {
+                        x: 1.0,
+                        y: 64.15,
+                        z: -2.0,
+                    },
+                },),
+            ]
         );
 
         assert_eq!(

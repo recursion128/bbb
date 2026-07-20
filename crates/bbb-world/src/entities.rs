@@ -683,6 +683,30 @@ pub struct ShulkerBulletTrailParticleState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum EntityClientMovementSimpleParticleKind {
+    Bubble,
+    Crit,
+    Smoke,
+    DragonBreath,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityClientMovementSimpleParticleState {
+    pub entity_id: i32,
+    pub kind: EntityClientMovementSimpleParticleKind,
+    pub position: EntityVec3,
+    pub velocity: EntityVec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum EntityClientMovementParticleState {
+    FireworkRocket(FireworkRocketTrailParticleState),
+    EyeOfEnder(EyeOfEnderTrailParticleState),
+    ShulkerBullet(ShulkerBulletTrailParticleState),
+    Simple(EntityClientMovementSimpleParticleState),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct LlamaSpitRecreationParticleState {
     pub entity_id: i32,
     pub position: EntityVec3,
@@ -3778,20 +3802,10 @@ impl WorldStore {
         self.entities.take_evoker_fangs_crit_particle_states()
     }
 
-    pub fn take_firework_rocket_trail_particle_states(
+    pub fn take_entity_client_movement_particle_states(
         &mut self,
-    ) -> Vec<FireworkRocketTrailParticleState> {
-        self.entities.take_firework_rocket_trail_particle_states()
-    }
-
-    pub fn take_eye_of_ender_trail_particle_states(&mut self) -> Vec<EyeOfEnderTrailParticleState> {
-        self.entities.take_eye_of_ender_trail_particle_states()
-    }
-
-    pub fn take_shulker_bullet_trail_particle_states(
-        &mut self,
-    ) -> Vec<ShulkerBulletTrailParticleState> {
-        self.entities.take_shulker_bullet_trail_particle_states()
+    ) -> Vec<EntityClientMovementParticleState> {
+        self.entities.take_entity_client_movement_particle_states()
     }
 
     pub fn take_ominous_item_spawner_particle_states(

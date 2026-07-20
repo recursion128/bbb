@@ -65,17 +65,17 @@ use super::{
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
     EntityAttachmentFace, EntityAttributes, EntityBlockModelState, EntityCameraHurtState,
-    EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations, EntityDamage,
-    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations,
+    EntityClientMovementParticleState, EntityDamage, EntityEquipment, EntityHurtingProjectile,
+    EntityIdentity, EntityInterpolationCollisionInput, EntityLeash, EntityMetadata,
+    EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
+    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
-    EyeOfEnderTrailParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
-    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
-    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
-    ShulkerBulletTrailParticleState, WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    FoxEatParticleState, HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState,
+    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
+    OminousItemSpawnerItemState, OminousItemSpawnerParticleState, RavagerRoarParticleState,
+    RavagerStunParticleState, WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
     VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
     VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
@@ -282,9 +282,7 @@ pub(crate) struct EntityStore {
     pub(super) order: Vec<i32>,
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
-    pending_firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState>,
-    pub(super) pending_eye_of_ender_trail_particles: Vec<EyeOfEnderTrailParticleState>,
-    pub(super) pending_shulker_bullet_trail_particles: Vec<ShulkerBulletTrailParticleState>,
+    pub(super) pending_entity_client_movement_particles: Vec<EntityClientMovementParticleState>,
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
     client_tick_scratch: EntityClientTickScratch,
     publication_snapshot_observation: EntityPublicationSnapshotObservation,
@@ -1296,22 +1294,10 @@ impl EntityStore {
         std::mem::take(&mut self.pending_evoker_fangs_crit_particles)
     }
 
-    pub(crate) fn take_firework_rocket_trail_particle_states(
+    pub(crate) fn take_entity_client_movement_particle_states(
         &mut self,
-    ) -> Vec<FireworkRocketTrailParticleState> {
-        std::mem::take(&mut self.pending_firework_rocket_trail_particles)
-    }
-
-    pub(crate) fn take_eye_of_ender_trail_particle_states(
-        &mut self,
-    ) -> Vec<EyeOfEnderTrailParticleState> {
-        std::mem::take(&mut self.pending_eye_of_ender_trail_particles)
-    }
-
-    pub(crate) fn take_shulker_bullet_trail_particle_states(
-        &mut self,
-    ) -> Vec<ShulkerBulletTrailParticleState> {
-        std::mem::take(&mut self.pending_shulker_bullet_trail_particles)
+    ) -> Vec<EntityClientMovementParticleState> {
+        std::mem::take(&mut self.pending_entity_client_movement_particles)
     }
 
     pub(crate) fn take_ominous_item_spawner_particle_states(
@@ -4737,7 +4723,6 @@ impl EntityStore {
                 append_client_tick_particle_triggers(
                     &mut self.pending_ravager_stun_particles,
                     &mut self.pending_evoker_fangs_crit_particles,
-                    &mut self.pending_firework_rocket_trail_particles,
                     identity,
                     transform,
                     &metadata.data_values,
@@ -5144,9 +5129,7 @@ impl Default for EntityStore {
             order: Vec::new(),
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
-            pending_firework_rocket_trail_particles: Vec::new(),
-            pending_eye_of_ender_trail_particles: Vec::new(),
-            pending_shulker_bullet_trail_particles: Vec::new(),
+            pending_entity_client_movement_particles: Vec::new(),
             pending_ominous_item_spawner_particles: Vec::new(),
             client_tick_scratch: EntityClientTickScratch::default(),
             publication_snapshot_observation: EntityPublicationSnapshotObservation::default(),
@@ -5223,12 +5206,8 @@ impl Clone for EntityStore {
         store.pending_ravager_stun_particles = self.pending_ravager_stun_particles.clone();
         store.pending_evoker_fangs_crit_particles =
             self.pending_evoker_fangs_crit_particles.clone();
-        store.pending_firework_rocket_trail_particles =
-            self.pending_firework_rocket_trail_particles.clone();
-        store.pending_eye_of_ender_trail_particles =
-            self.pending_eye_of_ender_trail_particles.clone();
-        store.pending_shulker_bullet_trail_particles =
-            self.pending_shulker_bullet_trail_particles.clone();
+        store.pending_entity_client_movement_particles =
+            self.pending_entity_client_movement_particles.clone();
         store.pending_ominous_item_spawner_particles =
             self.pending_ominous_item_spawner_particles.clone();
         store.publication_snapshot_observation = EntityPublicationSnapshotObservation {
@@ -5404,7 +5383,6 @@ fn entity_block_pos(position: super::EntityVec3) -> crate::BlockPos {
 fn append_client_tick_particle_triggers(
     pending_ravager_stun_particles: &mut Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: &mut Vec<EvokerFangsCritParticleState>,
-    pending_firework_rocket_trail_particles: &mut Vec<FireworkRocketTrailParticleState>,
     identity: &EntityIdentity,
     transform: &EntityTransform,
     data_values: &[bbb_protocol::packets::EntityDataValue],
@@ -5412,16 +5390,6 @@ fn append_client_tick_particle_triggers(
     client_animations: Option<EntityClientAnimationState>,
     triggers: EntityClientTickParticleTriggers,
 ) {
-    if vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(identity.entity_type_id)
-        .is_some()
-    {
-        pending_firework_rocket_trail_particles.push(FireworkRocketTrailParticleState {
-            entity_id: identity.id,
-            position: transform.position,
-            delta_movement: transform.delta_movement,
-        });
-    }
-
     if triggers.ravager_stun.is_none() && triggers.evoker_fangs_crit.is_none() {
         return;
     }

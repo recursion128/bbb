@@ -147,6 +147,60 @@ fn shulker_bullet_trail_batch_matches_vanilla_client_tick_particle() {
 }
 
 #[test]
+fn entity_client_movement_simple_particles_resolve_typed_commands() {
+    let cases = [
+        (
+            EntityClientMovementSimpleParticleKind::Bubble,
+            VANILLA_PARTICLE_TYPE_BUBBLE_ID,
+            "minecraft:bubble",
+        ),
+        (
+            EntityClientMovementSimpleParticleKind::Crit,
+            VANILLA_PARTICLE_TYPE_CRIT_ID,
+            "minecraft:crit",
+        ),
+        (
+            EntityClientMovementSimpleParticleKind::Smoke,
+            VANILLA_PARTICLE_TYPE_SMOKE_ID,
+            "minecraft:smoke",
+        ),
+        (
+            EntityClientMovementSimpleParticleKind::DragonBreath,
+            VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID,
+            "minecraft:dragon_breath",
+        ),
+    ];
+    let mut resolver = test_resolver(0);
+    for (kind, particle_type_id, particle_id) in cases {
+        let batch = resolver.entity_client_movement_particle_batch(
+            EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
+                entity_id: 10,
+                kind,
+                position: bbb_world::EntityVec3 {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                },
+                velocity: bbb_world::EntityVec3 {
+                    x: 0.25,
+                    y: -0.5,
+                    z: 0.75,
+                },
+            }),
+        );
+        assert_eq!(batch.commands.len(), 1);
+        assert_particle_command(
+            &batch.commands[0],
+            particle_type_id,
+            particle_id,
+            [1.0, 2.0, 3.0],
+            [0.25, -0.5, 0.75],
+            false,
+        );
+    }
+}
+
+#[test]
 fn llama_spit_recreation_batch_matches_vanilla_horizontal_velocity_scales() {
     let mut resolver = test_resolver(0);
     let batch = resolver.llama_spit_recreation_particle_batch(
@@ -8501,6 +8555,7 @@ fn test_resolver_with_particle_status(
             "gust_0",
             "ominous_spawning_0",
             "smoke_0",
+            "crit_0",
             "large_smoke_0",
             "lava",
             "white_smoke_0",
@@ -8710,6 +8765,14 @@ fn test_resolver_with_cloud_textures(
         r#"{
           "textures": [
             "minecraft:smoke_0"
+          ]
+        }"#,
+    );
+    write_json(
+        &particle_dir(&root).join("crit.json"),
+        r#"{
+          "textures": [
+            "minecraft:crit_0"
           ]
         }"#,
     );

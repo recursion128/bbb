@@ -1,6 +1,62 @@
 use super::*;
 
 impl ParticleCommandResolver {
+    pub(super) fn entity_client_movement_particle_batch(
+        &mut self,
+        state: EntityClientMovementParticleState,
+    ) -> ParticleSpawnBatch {
+        match state {
+            EntityClientMovementParticleState::FireworkRocket(state) => {
+                self.firework_rocket_trail_particle_batch(state)
+            }
+            EntityClientMovementParticleState::EyeOfEnder(state) => {
+                self.eye_of_ender_trail_particle_batch(state)
+            }
+            EntityClientMovementParticleState::ShulkerBullet(state) => {
+                self.shulker_bullet_trail_particle_batch(state)
+            }
+            EntityClientMovementParticleState::Simple(state) => {
+                self.entity_client_movement_simple_particle_batch(state)
+            }
+        }
+    }
+
+    fn entity_client_movement_simple_particle_batch(
+        &mut self,
+        state: EntityClientMovementSimpleParticleState,
+    ) -> ParticleSpawnBatch {
+        let particle_type_id = match state.kind {
+            EntityClientMovementSimpleParticleKind::Bubble => VANILLA_PARTICLE_TYPE_BUBBLE_ID,
+            EntityClientMovementSimpleParticleKind::Crit => VANILLA_PARTICLE_TYPE_CRIT_ID,
+            EntityClientMovementSimpleParticleKind::Smoke => VANILLA_PARTICLE_TYPE_SMOKE_ID,
+            EntityClientMovementSimpleParticleKind::DragonBreath => {
+                VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID
+            }
+        };
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            commands: vec![self.command_from_template(
+                &template,
+                Vec3d {
+                    x: state.position.x,
+                    y: state.position.y,
+                    z: state.position.z,
+                },
+                Vec3d {
+                    x: state.velocity.x,
+                    y: state.velocity.y,
+                    z: state.velocity.z,
+                },
+                false,
+            )],
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
     pub(super) fn eye_of_ender_trail_particle_batch(
         &mut self,
         state: EyeOfEnderTrailParticleState,

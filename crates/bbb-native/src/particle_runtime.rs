@@ -26,8 +26,9 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, vanilla_air_block_state_id,
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
-    EyeOfEnderTrailParticleState, FireworkRocketExplosionParticleState,
+    BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityClientMovementParticleState,
+    EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState,
+    EntityTamingParticleState, EyeOfEnderTrailParticleState, FireworkRocketExplosionParticleState,
     FireworkRocketTrailParticleState, FoxEatParticleState, HoneyBlockParticleState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState,
@@ -81,17 +82,9 @@ pub(crate) trait ParticleEventSink {
         state: &FireworkRocketExplosionParticleState,
         camera_position: Option<[f64; 3]>,
     ) -> ParticleSpawnBatch;
-    fn spawn_firework_rocket_trail_particles(
+    fn spawn_entity_client_movement_particles(
         &mut self,
-        state: FireworkRocketTrailParticleState,
-    ) -> ParticleSpawnBatch;
-    fn spawn_eye_of_ender_trail_particles(
-        &mut self,
-        state: EyeOfEnderTrailParticleState,
-    ) -> ParticleSpawnBatch;
-    fn spawn_shulker_bullet_trail_particles(
-        &mut self,
-        state: ShulkerBulletTrailParticleState,
+        state: EntityClientMovementParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_llama_spit_recreation_particles(
         &mut self,
@@ -403,25 +396,11 @@ impl ParticleEventSink for NativeParticleRuntime {
             .firework_explosion_particle_batch(state, camera_position)
     }
 
-    fn spawn_firework_rocket_trail_particles(
+    fn spawn_entity_client_movement_particles(
         &mut self,
-        state: FireworkRocketTrailParticleState,
+        state: EntityClientMovementParticleState,
     ) -> ParticleSpawnBatch {
-        self.resolver.firework_rocket_trail_particle_batch(state)
-    }
-
-    fn spawn_eye_of_ender_trail_particles(
-        &mut self,
-        state: EyeOfEnderTrailParticleState,
-    ) -> ParticleSpawnBatch {
-        self.resolver.eye_of_ender_trail_particle_batch(state)
-    }
-
-    fn spawn_shulker_bullet_trail_particles(
-        &mut self,
-        state: ShulkerBulletTrailParticleState,
-    ) -> ParticleSpawnBatch {
-        self.resolver.shulker_bullet_trail_particle_batch(state)
+        self.resolver.entity_client_movement_particle_batch(state)
     }
 
     fn spawn_llama_spit_recreation_particles(
