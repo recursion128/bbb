@@ -16,6 +16,12 @@ pub struct ClientResourcePackDiagnostic {
 pub struct ClientResourceDiagnostics {
     pub generation: u64,
     pub selected_packs: Vec<ClientResourcePackDiagnostic>,
+    #[serde(default)]
+    pub image_rgba_limit_bytes: u64,
+    #[serde(default)]
+    pub image_rgba_charged_bytes: u64,
+    #[serde(default)]
+    pub image_rgba_peak_charged_bytes: u64,
     pub last_reload_generation: Option<u64>,
     pub last_reload_failure_stage: Option<String>,
     pub last_reload_error: Option<String>,
@@ -247,6 +253,22 @@ mod tests {
             json["client_resources"]["selected_packs"][0]["id"],
             "vanilla"
         );
+    }
+
+    #[test]
+    fn resource_image_diagnostics_default_for_older_payloads() {
+        let diagnostics: ClientResourceDiagnostics = serde_json::from_value(serde_json::json!({
+            "generation": 3,
+            "selected_packs": [],
+            "last_reload_generation": null,
+            "last_reload_failure_stage": null,
+            "last_reload_error": null
+        }))
+        .unwrap();
+
+        assert_eq!(diagnostics.image_rgba_limit_bytes, 0);
+        assert_eq!(diagnostics.image_rgba_charged_bytes, 0);
+        assert_eq!(diagnostics.image_rgba_peak_charged_bytes, 0);
     }
 
     #[test]

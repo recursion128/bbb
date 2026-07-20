@@ -10,7 +10,8 @@ use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
     FurnaceFuelSourceRule, PackRoots, RegistryDependentItemComponentInitializer,
-    SelectedClientPack,
+    SelectedClientPack, MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+    MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
@@ -156,6 +157,7 @@ fn apply_native_resource_reload(
 ) -> std::result::Result<ResourceReloadSimulationCommit, NativeResourceReloadFailure> {
     let mut prepared = prepare_native_resource_reload(
         base_roots,
+        active_roots,
         reload.generation,
         reload.server_packs,
         audio_runtime.is_some(),
@@ -244,9 +246,13 @@ fn apply_native_resource_reload(
 pub(crate) fn client_resource_pack_diagnostics(
     roots: Option<&PackRoots>,
 ) -> ClientResourceDiagnostics {
-    let Some(generation) = roots.and_then(PackRoots::client_resource_generation) else {
+    let Some(roots) = roots else {
         return ClientResourceDiagnostics::default();
     };
+    let Some(generation) = roots.client_resource_generation() else {
+        return ClientResourceDiagnostics::default();
+    };
+    let image_memory = roots.resource_image_memory_observation();
     ClientResourceDiagnostics {
         generation: generation.generation(),
         selected_packs: generation
@@ -278,6 +284,9 @@ pub(crate) fn client_resource_pack_diagnostics(
                 fixed_position: pack.selection.fixed_position,
             })
             .collect(),
+        image_rgba_limit_bytes: image_memory.max_rgba_bytes,
+        image_rgba_charged_bytes: image_memory.charged_rgba_bytes,
+        image_rgba_peak_charged_bytes: image_memory.peak_charged_rgba_bytes,
         last_reload_generation: None,
         last_reload_failure_stage: None,
         last_reload_error: None,
@@ -300,13 +309,15 @@ fn client_resource_reload_diagnostics(
 
 fn prepare_native_resource_reload(
     base_roots: &Option<PackRoots>,
+    active_roots: &Option<PackRoots>,
     generation: u64,
     server_packs: Vec<SelectedClientPack>,
     has_audio_runtime: bool,
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
 ) -> Result<PreparedNativeResourceReload> {
-    let roots = compose_server_resource_pack_roots(base_roots, generation, server_packs)?;
+    let roots =
+        compose_server_resource_pack_roots(base_roots, active_roots, generation, server_packs)?;
     let audio = if has_audio_runtime {
         PreparedAudioReload::Existing(NativeAudioRuntime::prepare_reload(&roots)?)
     } else {
@@ -338,6 +349,7 @@ fn prepare_native_resource_reload(
 
 fn compose_server_resource_pack_roots(
     base_roots: &Option<PackRoots>,
+    active_roots: &Option<PackRoots>,
     generation: u64,
     server_packs: Vec<SelectedClientPack>,
 ) -> Result<PackRoots> {
@@ -347,9 +359,33 @@ fn compose_server_resource_pack_roots(
     let selected = base_roots
         .selected_client_packs_or_unmanaged()
         .with_server_packs(server_packs)?;
+    let accepted_image_rgba_bytes = active_roots
+        .as_ref()
+        .map(|roots| roots.resource_image_memory_observation().charged_rgba_bytes)
+        .unwrap_or(0);
+    let staged_image_limit = resource_image_reload_allowance(
+        accepted_image_rgba_bytes,
+        MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+        MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
+    )?;
     base_roots
         .clone()
-        .with_client_resource_generation(generation, selected)
+        .with_client_resource_generation_image_limit(generation, selected, staged_image_limit)
+}
+
+fn resource_image_reload_allowance(
+    accepted_rgba_bytes: u64,
+    generation_limit_bytes: u64,
+    process_limit_bytes: u64,
+) -> Result<u64> {
+    let process_allowance = process_limit_bytes
+        .checked_sub(accepted_rgba_bytes)
+        .with_context(|| {
+            format!(
+                "accepted resource image generation already charges {accepted_rgba_bytes} RGBA bytes, exceeding the {process_limit_bytes} byte process limit"
+            )
+        })?;
+    Ok(generation_limit_bytes.min(process_allowance))
 }
 
 fn upload_reload_atlases(
@@ -636,6 +672,7 @@ mod tests {
 
         let composed = compose_server_resource_pack_roots(
             &Some(base),
+            &None,
             7,
             vec![
                 SelectedClientPack::server("first", 1, &server_first, first_metadata).unwrap(),
@@ -707,6 +744,9 @@ mod tests {
                         fixed_position: true,
                     },
                 ],
+                image_rgba_limit_bytes: MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
+                image_rgba_charged_bytes: 0,
+                image_rgba_peak_charged_bytes: 0,
                 last_reload_generation: None,
                 last_reload_failure_stage: None,
                 last_reload_error: None,
@@ -736,11 +776,89 @@ mod tests {
 
     #[test]
     fn server_resource_pack_reload_requires_vanilla_base_roots() {
-        let error = compose_server_resource_pack_roots(&None, 1, Vec::new()).unwrap_err();
+        let error = compose_server_resource_pack_roots(&None, &None, 1, Vec::new()).unwrap_err();
 
         assert!(error
             .to_string()
             .contains("vanilla pack roots are unavailable"));
+    }
+
+    #[test]
+    fn staged_resource_image_allowance_respects_generation_and_process_limits() {
+        assert_eq!(resource_image_reload_allowance(0, 512, 1_024).unwrap(), 512);
+        assert_eq!(
+            resource_image_reload_allowance(700, 512, 1_024).unwrap(),
+            324
+        );
+        let error = resource_image_reload_allowance(1_025, 512, 1_024)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("accepted resource image generation"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn staged_resource_generation_does_not_mutate_accepted_image_charge() {
+        let temp = unique_temp_dir("staged-image-budget");
+        let sources = temp.join("sources");
+        std::fs::create_dir_all(sources.join("assets/minecraft")).unwrap();
+        write_png(&sources.join("assets/minecraft/textures/item/widget.png"));
+        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"), None);
+        let selected = base.selected_client_packs_or_unmanaged();
+        let accepted = base
+            .clone()
+            .with_client_resource_generation_image_limit(4, selected, 64)
+            .unwrap();
+
+        let staged = compose_server_resource_pack_roots(
+            &Some(base.clone()),
+            &Some(accepted.clone()),
+            5,
+            Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(
+            staged.resource_image_memory_observation().max_rgba_bytes,
+            MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES
+        );
+        assert!(staged
+            .load_resource_texture_image("minecraft:item/widget")
+            .is_ok());
+        assert_eq!(
+            staged
+                .resource_image_memory_observation()
+                .charged_rgba_bytes,
+            4
+        );
+        let staged_diagnostics = client_resource_pack_diagnostics(Some(&staged));
+        assert_eq!(
+            staged_diagnostics.image_rgba_limit_bytes,
+            MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES
+        );
+        assert_eq!(staged_diagnostics.image_rgba_charged_bytes, 4);
+        assert_eq!(staged_diagnostics.image_rgba_peak_charged_bytes, 4);
+        assert_eq!(
+            accepted
+                .resource_image_memory_observation()
+                .charged_rgba_bytes,
+            0
+        );
+        drop(staged);
+
+        let retry = compose_server_resource_pack_roots(&Some(base), &Some(accepted), 6, Vec::new())
+            .unwrap();
+        assert_eq!(
+            retry.resource_image_memory_observation().charged_rgba_bytes,
+            0
+        );
+        assert_eq!(
+            retry.resource_image_memory_observation().max_rgba_bytes,
+            MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES
+        );
+
+        std::fs::remove_dir_all(temp).unwrap();
     }
 
     fn write_resource(root: &std::path::Path, payload: &[u8]) {
@@ -752,6 +870,11 @@ mod tests {
         let path = root.join("assets/minecraft/test/value.txt");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, payload).unwrap();
+    }
+
+    fn write_png(path: &std::path::Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        image::save_buffer(path, &[1, 2, 3, 255], 1, 1, image::ColorType::Rgba8).unwrap();
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {

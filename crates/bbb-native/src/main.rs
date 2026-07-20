@@ -560,6 +560,8 @@ fn main() -> Result<()> {
             }
         }
     }
+    net_counters.client_resources =
+        std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref()));
     let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
     let mut entity_render_extraction = EntityRenderExtractionScratch::default();
     let mut non_entity_render_extraction = runtime::NonEntityRenderExtractionScratch::default();
