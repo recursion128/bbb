@@ -86,10 +86,13 @@ entity state and its movement, lightmap, HUD, tooltip, and item-component consum
 retain that identity, while reversed RegistryData cannot remap it. Persistent
 mob-effect codecs and holder sets remain separate rows.
 The attribute reference call is `complete` against its immutable 35-entry
-client built-in registry. UpdateAttributes and item attribute modifiers validate
-the generated order at their wire boundary, the world registry provides checked
-static forward/reverse lookup, and scale, movement, tooltip, and item-model
-consumers retain those ids. Reversed RegistryData cannot remap the identity;
+client built-in registry and connection RegistryAccess view. UpdateAttributes
+retains the wire holder until the world boundary, resolves the resource through
+the frozen session view, and validates membership against the generated target
+entity `AttributeSupplier`; item attribute modifiers keep strict built-in
+validation in their context-free component decoder. Scale, movement, tooltip,
+and item-model consumers retain canonical generated ids. Custom holder order,
+session reset, entity-id reuse, and retained publication isolation are covered;
 persistent attribute codecs and holder sets remain separate rows.
 The potion reference call is `complete` against its immutable 46-entry client
 built-in registry. PotionContents validates its optional holder at the wire

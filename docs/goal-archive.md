@@ -19827,3 +19827,21 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   相邻 generation、以及 2,048-entry dynamic owner 的 individually-valid 大纹理仍可能形成很高的
   有限峰值；generation-wide/dynamic resident-byte admission 与 JSON/model/font/audio budget 已留在
   unsupported robustness ledger。
+
+## 2026-07-20：UpdateAttributes session holder 与 AttributeSupplier 校验
+
+- [x] `0cc4236cf` 扩展既有 Tree-sitter entity metadata extractor，从
+  `DefaultAttributes.SUPPLIERS` 及继承的 builder factory chain 生成 92 个 living entity type 的
+  exact attribute membership；非 living entry 为空，未知 factory、继承环、重复 membership 和
+  supplier 覆盖偏差都令生成失败。`9fbe8aa4f` 以窄 world export 修复阶段 gate 的 dead-code
+  回归，milestone workspace full gate 在该 commit 通过。
+- [x] `ba5bd09c7` 让 protocol `UpdateAttributes` decoder 保留原始 holder id，canonical world
+  通过当前 `FrozenRegistryAccess` 解析 resource identity，再映射到生成的固定 Attribute catalog，
+  并仅在目标 entity type 的生成 `AttributeSupplier` 包含该 attribute 时更新；同一 packet 中的
+  合法 sibling 仍按 wire 顺序应用，unknown/custom 与 non-member snapshot 安全忽略。
+- [x] 对照 Vanilla 26.1 `ClientboundUpdateAttributesPacket.AttributeSnapshot.STREAM_CODEC`、
+  `ClientPacketListener.handleUpdateAttributes`、`AttributeMap.getInstance`、`DefaultAttributes` 和各
+  entity attribute builder chain 锁定边界。focused tests 覆盖 custom reorder、unknown resource、
+  zombie/player membership 差异、session reset、entity-id remove/reuse 和 retained publication；
+  生成的 reverse guard 禁止 protocol 恢复 built-in ordinal 解释或 world 绕过 registry/supplier
+  resolution。context-free `ItemAttributeModifiers` 仍保留独立的 built-in holder 校验。

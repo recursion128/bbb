@@ -973,7 +973,7 @@ mod tests {
     }
 
     #[test]
-    fn play_attributes_keeps_registry_and_instance_resolution_open() {
+    fn play_attributes_closes_session_registry_and_instance_resolution() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -982,17 +982,17 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_UPDATE_ATTRIBUTES"
             })
             .expect("update attributes coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        for dimension in ["canonical_apply", "runtime_side_effect"] {
+            assert!(entry.coverage[dimension].evidence.iter().any(|evidence| {
+                evidence.contains(
+                    "update_attributes_resolves_session_holders_and_validates_entity_supplier",
+                )
+            }));
+        }
     }
 
     #[test]

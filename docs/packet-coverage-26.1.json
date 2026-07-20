@@ -13714,10 +13714,11 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/entities/metadata.rs#apply_update_attributes",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_resolves_session_holders_and_validates_entity_supplier",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateAttributes"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -13738,15 +13739,18 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/entities/metadata.rs#apply_update_attributes",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_resolves_session_holders_and_validates_entity_supplier",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateAttributes"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_update_attributes_packet",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#update_attributes_preserves_holder_ids_for_session_registry_resolution",
             "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_ignores_non_living_entities",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_resolves_session_holders_and_validates_entity_supplier",
             "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world"
           ],
           "gap": null,

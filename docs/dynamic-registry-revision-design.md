@@ -231,6 +231,24 @@ Implementation evidence:
   test references. Network NBT and selected known-pack JSON feed the same typed
   projection owners.
 
+## Packet consumer boundary: UpdateAttributes
+
+`ClientboundUpdateAttributesPacket` carries `Attribute.STREAM_CODEC` through a
+`RegistryFriendlyByteBuf`. The protocol crate therefore preserves each numeric
+holder id without interpreting it as a process-global ordinal. The canonical
+world owner resolves that id through the current `FrozenRegistryAccess`, maps
+the resulting resource id to the generated built-in attribute identity, and
+checks the generated target entity `AttributeSupplier` before mutating its
+attribute component. Unknown resources and attributes absent from the target
+supplier are ignored like a missing `AttributeMap` instance; valid siblings in
+the same packet still apply in packet order.
+
+The generated reverse guard keeps this context boundary intact. Session reset,
+entity-id reuse, and retained publications cannot reuse the prior holder view or
+mutate an older generation. `ItemAttributeModifiers` remains a separate
+context-free component decoder and continues to validate the immutable built-in
+catalog at its protocol boundary.
+
 ## Gate positions
 
 Every phase runs the per-commit checks from `goal.md`. This changes a core

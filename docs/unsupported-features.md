@@ -102,9 +102,6 @@ Owner: `bbb-protocol`
   beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
   never by applying a bootstrap ordinal to authoritative synchronized contents.
-- Resolve UpdateAttributes holder ids through that session RegistryAccess and
-  validate each snapshot against the target living entity's actual AttributeMap
-  instance set; do not accept arbitrary fixed-id attributes on every living type.
 - Complete SetEntityData semantic fidelity: preserve rich Component and full
   ItemStack/component values, resolve registry-holder ids through the session
   RegistryAccess, validate each data id/serializer against the generated entity
