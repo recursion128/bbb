@@ -4049,7 +4049,7 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
         position: ProtocolVec3d {
             x: 0.0,
             y: 1.0,
-            z: 3.0,
+            z: 2.0,
         },
         delta_movement: ProtocolVec3d::default(),
         x_rot: 0.0,
@@ -4080,7 +4080,7 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
-            x: 0.0,
+            x: 0.5,
             y: 0.0,
             z: 0.0,
         },
@@ -4109,7 +4109,7 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
     assert_eq!(
         clipboard.text.as_deref(),
         Some(
-            "/summon minecraft:shulker 0.00 1.00 3.00 \
+            "/summon minecraft:shulker 0.50 1.00 2.50 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              LeftHanded: 1b, AttachFace: 5b, Peek: 30b, \
              Color: 11b}"
