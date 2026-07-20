@@ -14,6 +14,18 @@ pub struct AudioCounters {
     #[serde(default)]
     pub sound_cache_bytes: u64,
     #[serde(default)]
+    pub sound_cache_peak_bytes: u64,
+    #[serde(default)]
+    pub sound_cache_hits: u64,
+    #[serde(default)]
+    pub sound_cache_misses: u64,
+    #[serde(default)]
+    pub sound_cache_evictions: u64,
+    #[serde(default)]
+    pub sound_admission_rejections: u64,
+    #[serde(default)]
+    pub sound_streaming_starts: u64,
+    #[serde(default)]
     pub sound_static_channels_used: usize,
     #[serde(default)]
     pub sound_static_channels_capacity: usize,
@@ -43,5 +55,22 @@ impl AudioCounters {
             disabled_reason: Some(reason.into()),
             ..Self::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn residency_observations_default_for_older_payloads() {
+        let counters: AudioCounters = serde_json::from_str(r#"{"enabled":true}"#).unwrap();
+
+        assert_eq!(counters.sound_cache_peak_bytes, 0);
+        assert_eq!(counters.sound_cache_hits, 0);
+        assert_eq!(counters.sound_cache_misses, 0);
+        assert_eq!(counters.sound_cache_evictions, 0);
+        assert_eq!(counters.sound_admission_rejections, 0);
+        assert_eq!(counters.sound_streaming_starts, 0);
     }
 }

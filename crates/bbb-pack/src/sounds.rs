@@ -11,9 +11,16 @@ use crate::{
     resources::{PackResourceStack, ResourceLocation},
 };
 
+const MAX_SOUND_EVENT_DEFINITIONS: u64 = 65_536;
+const MAX_SOUND_ENTRIES: u64 = 262_144;
+const SOUND_EVENT_LOGICAL_BYTES: u64 = 512;
+const SOUND_ENTRY_LOGICAL_BYTES: u64 = 256;
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SoundCatalog {
     pub events: BTreeMap<String, SoundEventDefinition>,
+    #[serde(skip)]
+    resource_generation: u64,
 }
 
 impl SoundCatalog {
@@ -67,12 +74,14 @@ impl SoundCatalog {
 
     pub fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
         let mut catalog = Self::default();
-        catalog.merge_resource_stack(stack)?;
+        catalog.merge_resource_stack_with_namespace_fallback(stack, None)?;
+        catalog.admit_retained_collections(stack)?;
         Ok(catalog)
     }
 
     pub fn merge_resource_stack(&mut self, stack: &PackResourceStack) -> Result<()> {
-        self.merge_resource_stack_with_namespace_fallback(stack, None)
+        self.merge_resource_stack_with_namespace_fallback(stack, None)?;
+        self.admit_retained_collections(stack)
     }
 
     pub(crate) fn merge_resource_stack_with_namespace_fallback(
@@ -152,24 +161,71 @@ impl SoundCatalog {
         fallback: Option<(&str, &Path)>,
     ) -> Result<()> {
         ResourceLocation::parse(&format!("{namespace}:_"))?;
+        let mut retained_event_count = self.events.len();
+        let mut retained_entry_count = self.sound_entry_count()?;
         for (event_path, event) in raw {
             let location = ResourceLocation::new(namespace.to_string(), event_path.clone())?;
             let id = location.id();
             let definition = event
                 .into_definition(namespace, id, namespace_assets_dir, stack, fallback)
                 .with_context(|| format!("parse sound event {event_path:?}"))?;
-            self.merge_definition(definition);
+            self.merge_definition(
+                definition,
+                stack,
+                &mut retained_event_count,
+                &mut retained_entry_count,
+            )?;
         }
         Ok(())
     }
 
-    fn merge_definition(&mut self, definition: SoundEventDefinition) {
+    fn merge_definition(
+        &mut self,
+        definition: SoundEventDefinition,
+        stack: Option<&PackResourceStack>,
+        retained_event_count: &mut usize,
+        retained_entry_count: &mut usize,
+    ) -> Result<()> {
+        let existing = self.events.get(&definition.id);
+        let next_event_count = if existing.is_some() {
+            *retained_event_count
+        } else {
+            retained_event_count
+                .checked_add(1)
+                .context("sound event count overflow")?
+        };
+        let replaced_entries = existing.map_or(0, |existing| existing.sounds.len());
+        let next_entry_count = if existing.is_some_and(|_| !definition.replace) {
+            retained_entry_count
+                .checked_add(definition.sounds.len())
+                .context("sound entry count overflow")?
+        } else {
+            retained_entry_count
+                .checked_sub(replaced_entries)
+                .and_then(|count| count.checked_add(definition.sounds.len()))
+                .context("sound entry count overflow")?
+        };
+        admit_sound_collection_count(
+            stack,
+            u64::try_from(next_event_count).context("sound event count overflow")?,
+            MAX_SOUND_EVENT_DEFINITIONS,
+            "sound event definitions",
+        )?;
+        admit_sound_collection_count(
+            stack,
+            u64::try_from(next_entry_count).context("sound entry count overflow")?,
+            MAX_SOUND_ENTRIES,
+            "sound entries",
+        )?;
         match self.events.get_mut(&definition.id) {
             Some(existing) if !definition.replace => existing.sounds.extend(definition.sounds),
             _ => {
                 self.events.insert(definition.id.clone(), definition);
             }
         }
+        *retained_event_count = next_event_count;
+        *retained_entry_count = next_entry_count;
+        Ok(())
     }
 
     pub fn event(&self, id: &str) -> Option<&SoundEventDefinition> {
@@ -184,6 +240,60 @@ impl SoundCatalog {
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
+
+    pub fn resource_generation(&self) -> u64 {
+        self.resource_generation
+    }
+
+    pub(crate) fn set_resource_generation(&mut self, generation: u64) {
+        self.resource_generation = generation;
+    }
+
+    pub(crate) fn admit_retained_collections(&self, stack: &PackResourceStack) -> Result<()> {
+        let events = u64::try_from(self.events.len()).context("sound event count overflow")?;
+        let entries =
+            u64::try_from(self.sound_entry_count()?).context("sound entry count overflow")?;
+        stack.admit_resource_collection_count(
+            events,
+            MAX_SOUND_EVENT_DEFINITIONS,
+            "sound event definitions",
+        )?;
+        stack.admit_resource_collection_count(entries, MAX_SOUND_ENTRIES, "sound entries")?;
+        let logical_bytes = events
+            .checked_mul(SOUND_EVENT_LOGICAL_BYTES)
+            .and_then(|bytes| {
+                entries
+                    .checked_mul(SOUND_ENTRY_LOGICAL_BYTES)
+                    .and_then(|entries| bytes.checked_add(entries))
+            })
+            .context("sound catalog derived logical byte count overflow")?;
+        stack.reserve_derived_resource_bytes(logical_bytes, "retained sound catalog")
+    }
+
+    fn sound_entry_count(&self) -> Result<usize> {
+        self.events.values().try_fold(0_usize, |count, event| {
+            count
+                .checked_add(event.sounds.len())
+                .context("sound entry count overflow")
+        })
+    }
+}
+
+fn admit_sound_collection_count(
+    stack: Option<&PackResourceStack>,
+    count: u64,
+    maximum: u64,
+    label: &str,
+) -> Result<()> {
+    if let Some(stack) = stack {
+        return stack.admit_resource_collection_count(count, maximum, label);
+    }
+    if count > maximum {
+        bail!(
+            "resource collection {label} has {count} entries, exceeding the {maximum} entry limit"
+        );
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -461,6 +571,78 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::roots::{PackRoots, MC_VERSION};
+
+    #[test]
+    fn sound_semantic_counts_accept_exact_limits_and_reject_overflow() {
+        let exact = PackResourceStack::default();
+        admit_sound_collection_count(
+            Some(&exact),
+            MAX_SOUND_EVENT_DEFINITIONS,
+            MAX_SOUND_EVENT_DEFINITIONS,
+            "sound event definitions",
+        )
+        .unwrap();
+        admit_sound_collection_count(
+            Some(&exact),
+            MAX_SOUND_ENTRIES,
+            MAX_SOUND_ENTRIES,
+            "sound entries",
+        )
+        .unwrap();
+
+        for (maximum, label) in [
+            (MAX_SOUND_EVENT_DEFINITIONS, "sound event definitions"),
+            (MAX_SOUND_ENTRIES, "sound entries"),
+        ] {
+            let stack = PackResourceStack::default();
+            let error = admit_sound_collection_count(Some(&stack), maximum + 1, maximum, label)
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(label), "{error}");
+            assert!(stack.ensure_resource_data_admitted().is_err());
+        }
+    }
+
+    #[test]
+    fn retained_sound_catalog_charges_events_and_entries_once() {
+        let assets_dir = PathBuf::from("assets/minecraft");
+        let catalog = SoundCatalog::from_json_bytes(
+            "minecraft",
+            &assets_dir,
+            br#"{"test":{"sounds":["test/one","test/two"]}}"#,
+        )
+        .unwrap();
+        let stack = PackResourceStack::default();
+
+        catalog.admit_retained_collections(&stack).unwrap();
+
+        let observation = stack.resource_data_memory_observation();
+        assert_eq!(
+            observation.derived_logical_bytes,
+            SOUND_EVENT_LOGICAL_BYTES + 2 * SOUND_ENTRY_LOGICAL_BYTES
+        );
+    }
+
+    #[test]
+    fn pack_roots_stamp_sound_catalog_with_exact_resource_generation() {
+        let root = unique_temp_dir("sound-generation");
+        let assets_dir = root.join("sources/26.1/assets/minecraft");
+        std::fs::create_dir_all(assets_dir.join("sounds/test")).unwrap();
+        std::fs::write(
+            assets_dir.join("sounds.json"),
+            r#"{"test":{"sounds":["test/one"]}}"#,
+        )
+        .unwrap();
+        std::fs::write(assets_dir.join("sounds/test/one.ogg"), []).unwrap();
+        let roots = PackRoots::from_root(&root).unwrap();
+        let selected = crate::SelectedClientPackStack::from_startup_dirs(&roots, []).unwrap();
+        let roots = roots.with_client_resource_generation(47, selected).unwrap();
+
+        let catalog = roots.load_sound_catalog().unwrap();
+
+        assert_eq!(catalog.resource_generation(), 47);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn parses_sound_definitions_with_vanilla_defaults_and_paths() {

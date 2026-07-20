@@ -3,19 +3,16 @@ use std::collections::HashSet;
 use anyhow::{anyhow, Result};
 use kira::{
     listener::ListenerHandle,
-    sound::{
-        static_sound::{StaticSoundData, StaticSoundHandle},
-        streaming::{StreamingSoundData, StreamingSoundHandle},
-        FromFileError, PlaybackState,
-    },
+    sound::{static_sound::StaticSoundHandle, streaming::StreamingSoundHandle, PlaybackState},
     track::{SpatialTrackBuilder, SpatialTrackHandle},
     AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Tween,
 };
 
 use crate::{
-    AudioCategory, AudioCommand, AudioListenerState, EntitySoundPosition,
-    PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand, StopSoundCommand,
-    TickEntitySoundPositionsCommand, TickableEntitySoundUpdate,
+    residency::{AudioDecodeError, AudioResidency},
+    AudioCategory, AudioCommand, AudioListenerState, AudioResidencyObservation,
+    EntitySoundPosition, PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand,
+    StopSoundCommand, TickEntitySoundPositionsCommand, TickableEntitySoundUpdate,
 };
 
 const MIN_SPATIAL_DISTANCE: f32 = 1.0;
@@ -28,6 +25,7 @@ pub struct KiraAudioRuntime {
     listener_position: [f64; 3],
     delayed_positioned: Vec<KiraDelayedPositionedSound>,
     playing: Vec<KiraPlayingSound>,
+    residency: AudioResidency,
 }
 
 #[derive(Debug, Clone)]
@@ -48,11 +46,15 @@ struct KiraPlayingSound {
 
 enum KiraSoundHandle {
     Static(StaticSoundHandle),
-    Streaming(StreamingSoundHandle<FromFileError>),
+    Streaming(StreamingSoundHandle<AudioDecodeError>),
 }
 
 impl KiraAudioRuntime {
     pub fn new() -> Result<Self> {
+        Self::new_with_resource_generation(0)
+    }
+
+    pub fn new_with_resource_generation(resource_generation: u64) -> Result<Self> {
         let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
             .map_err(|_| anyhow!("initialize Kira audio manager"))?;
         let listener = manager
@@ -64,7 +66,21 @@ impl KiraAudioRuntime {
             listener_position: [0.0, 0.0, 0.0],
             delayed_positioned: Vec::new(),
             playing: Vec::new(),
+            residency: AudioResidency::new(resource_generation),
         })
+    }
+
+    pub fn residency_observation(&self) -> AudioResidencyObservation {
+        self.residency.observation()
+    }
+
+    pub fn reset_resource_generation(&mut self, resource_generation: u64) {
+        self.delayed_positioned.clear();
+        for sound in &mut self.playing {
+            sound.handle.stop();
+        }
+        self.playing.clear();
+        self.residency.reset_generation(resource_generation);
     }
 
     pub fn handle_command(&mut self, command: &AudioCommand) -> Result<()> {
@@ -128,12 +144,16 @@ impl KiraAudioRuntime {
         let volume = channel_decibels_from_gain(channel_gain);
         let playback_rate = channel_playback_rate(playback_rate);
         let handle = if sound.stream {
-            let data = StreamingSoundData::from_file(&sound.ogg_path)?
+            let data = self
+                .residency
+                .streaming_sound(sound)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
             KiraSoundHandle::Streaming(self.manager.play(data)?)
         } else {
-            let data = StaticSoundData::from_file(&sound.ogg_path)?
+            let data = self
+                .residency
+                .static_sound(sound)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
             KiraSoundHandle::Static(self.manager.play(data)?)
@@ -218,7 +238,9 @@ impl KiraAudioRuntime {
         let volume = channel_decibels_from_gain(channel_gain);
         let playback_rate = channel_playback_rate(playback_rate);
         let handle = if sound.stream {
-            let data = StreamingSoundData::from_file(&sound.ogg_path)?
+            let data = self
+                .residency
+                .streaming_sound(sound)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
             let data = if looping { data.loop_region(..) } else { data };
@@ -228,7 +250,9 @@ impl KiraAudioRuntime {
                 self.manager.play(data)?
             })
         } else {
-            let data = StaticSoundData::from_file(&sound.ogg_path)?
+            let data = self
+                .residency
+                .static_sound(sound)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
             let data = if looping { data.loop_region(..) } else { data };
@@ -596,6 +620,7 @@ mod tests {
             event_id: "minecraft:entity.cat.ambient".to_string(),
             sound_name: "minecraft:mob/cat/meow1".to_string(),
             ogg_path: "sounds/mob/cat/meow1.ogg".into(),
+            resource_generation: 0,
             stream: false,
             preload: false,
             attenuation_distance: 16,
@@ -633,6 +658,7 @@ mod tests {
             event_id: "minecraft:entity.cat.ambient".to_string(),
             sound_name: "minecraft:mob/cat/meow1".to_string(),
             ogg_path: "sounds/mob/cat/meow1.ogg".into(),
+            resource_generation: 0,
             stream: false,
             preload: false,
             attenuation_distance: 16,
@@ -652,6 +678,7 @@ mod tests {
             event_id: "minecraft:entity.cat.ambient".to_string(),
             sound_name: "minecraft:mob/cat/meow1".to_string(),
             ogg_path: "sounds/mob/cat/meow1.ogg".into(),
+            resource_generation: 0,
             stream: false,
             preload: false,
             attenuation_distance: 16,
@@ -890,6 +917,7 @@ mod tests {
                 .unwrap_or(event_id)
                 .replace('.', "/"),
             ogg_path: format!("sounds/{event_id}.ogg").into(),
+            resource_generation: 0,
             stream: false,
             preload: false,
             attenuation_distance: 16,

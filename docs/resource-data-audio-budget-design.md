@@ -43,8 +43,9 @@ The slice is complete when:
 - one OGG cannot exceed 64 MiB compressed, 192 kHz, stereo, 30 minutes, or
   256 MiB of static decoded stereo frames;
 - the static decoded-sound owner retains at most 512 MiB, shares one exact frame
-  allocation across simultaneous plays, evicts only inactive least-recently-used
-  owners, and rejects admission when active owners pin the allowance;
+  allocation across simultaneous plays, retains at most 65,536 buffer owners,
+  evicts only inactive least-recently-used owners, and rejects admission when
+  active owners pin the allowance;
 - reload/reset, stopped handles, malformed/truncated input, unknown duration,
   cache eviction and resource-generation reuse have focused coverage; and
 - immutable diagnostics report current/peak logical data and decoded-audio
@@ -63,13 +64,19 @@ texture slots, 65,536 item-model definitions and 262,144 item-model references.
 One flattened font graph admits at most 256 definitions, 4,096 providers,
 1,048,576 bitmap glyph slots and 65,536 space advances. Repeated/cyclic font
 references retain first-visit semantics and count each visited definition once.
+The retained sound catalog admits at most 65,536 event definitions and 262,144
+file/event entries across all namespaces and selected layers. Replacement and
+extension are checked against the resulting retained collection before each
+definition is installed.
 
 Logical retained charges use stable estimates rather than allocator layout:
 512 bytes per blockstate/model/item-model/font-definition owner, 256 bytes per
 blockstate selection/model element/font provider, 128 bytes per model face,
 texture slot or item-model reference, and 64 bytes per font glyph slot or space
-advance. These charges are additive with bounded JSON source/tree/listing
-charges and are intentionally conservative; they do not claim to measure RSS.
+advance. Sound catalogs charge 512 bytes per retained event and 256 bytes per
+retained entry. These charges are additive with bounded JSON
+source/tree/listing charges and are intentionally conservative; they do not
+claim to measure RSS.
 
 ## Before baseline and cost attribution
 

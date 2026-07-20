@@ -334,6 +334,7 @@ impl<'a> AudioCommandResolver<'a> {
                 event_id,
                 entry,
                 modifiers,
+                self.catalog.resource_generation(),
             )?),
             SoundEntryKind::Event => self.resolve_event(
                 root_event_id,
@@ -451,6 +452,7 @@ fn resolved_file_sound(
     event_id: &str,
     entry: &SoundEntry,
     modifiers: SoundModifiers,
+    resource_generation: u64,
 ) -> Result<ResolvedSound, AudioResolveError> {
     let ogg_path =
         entry
@@ -464,6 +466,7 @@ fn resolved_file_sound(
         event_id: root_event_id.to_string(),
         sound_name: entry.name.clone(),
         ogg_path,
+        resource_generation,
         stream: entry.stream || modifiers.stream,
         preload: entry.preload,
         attenuation_distance: entry.attenuation_distance,

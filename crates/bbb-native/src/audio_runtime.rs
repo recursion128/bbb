@@ -59,12 +59,13 @@ impl NativeAudioRuntime {
         let catalog = load_required_native_sound_catalog(roots)?;
         let registry = SoundEventRegistry::vanilla_26_1();
         let jukebox_registry = JukeboxSongRegistry::vanilla_26_1();
-        let playback = KiraAudioRuntime::new().context("initialize Kira audio runtime")?;
+        let playback =
+            KiraAudioRuntime::new_with_resource_generation(catalog.resource_generation())
+                .context("initialize Kira audio runtime")?;
         let counters = AudioCounters {
             enabled: true,
             catalog_events: catalog.len(),
             registry_entries: registry.len(),
-            sound_cache_buffers: catalog.len(),
             ..AudioCounters::default()
         };
         Ok(Self {
@@ -77,7 +78,17 @@ impl NativeAudioRuntime {
     }
 
     pub(crate) fn counters(&self) -> AudioCounters {
-        self.counters.clone()
+        let mut counters = self.counters.clone();
+        let observation = self.playback.residency_observation();
+        counters.sound_cache_buffers = observation.static_buffers;
+        counters.sound_cache_bytes = observation.static_decoded_bytes;
+        counters.sound_cache_peak_bytes = observation.peak_static_decoded_bytes;
+        counters.sound_cache_hits = observation.static_cache_hits;
+        counters.sound_cache_misses = observation.static_cache_misses;
+        counters.sound_cache_evictions = observation.static_cache_evictions;
+        counters.sound_admission_rejections = observation.audio_admission_rejections;
+        counters.sound_streaming_starts = observation.streaming_starts;
+        counters
     }
 
     pub(crate) fn prepare_reload(roots: &PackRoots) -> Result<NativeAudioReload> {
@@ -87,8 +98,9 @@ impl NativeAudioRuntime {
     }
 
     pub(crate) fn commit_reload(&mut self, reload: NativeAudioReload) {
+        self.playback
+            .reset_resource_generation(reload.catalog.resource_generation());
         self.counters.catalog_events = reload.catalog.len();
-        self.counters.sound_cache_buffers = reload.catalog.len();
         self.catalog = reload.catalog;
     }
 

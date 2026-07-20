@@ -449,7 +449,7 @@ impl PackRoots {
     }
 
     pub fn load_sound_catalog(&self) -> Result<SoundCatalog> {
-        if !self.source_sounds_definition().is_file() {
+        let mut catalog = if !self.source_sounds_definition().is_file() {
             if let Some(generated_assets_dir) = self.generated_sound_assets_dir() {
                 let resource_pack_stack = self.resource_pack_stack();
                 let sounds_location = ResourceLocation::new("minecraft", "sounds.json")?;
@@ -472,10 +472,19 @@ impl PackRoots {
                     &resource_pack_stack,
                     Some(("minecraft", generated_assets_dir)),
                 )?;
-                return Ok(catalog);
+                catalog.admit_retained_collections(&resource_pack_stack)?;
+                catalog
+            } else {
+                SoundCatalog::load_resource_stack(&self.resource_stack())?
             }
-        }
-        SoundCatalog::load_resource_stack(&self.resource_stack())
+        } else {
+            SoundCatalog::load_resource_stack(&self.resource_stack())?
+        };
+        catalog.set_resource_generation(
+            self.client_resource_generation()
+                .map_or(0, ClientResourceGeneration::generation),
+        );
+        Ok(catalog)
     }
 
     pub fn load_required_sound_catalog(&self) -> Result<SoundCatalog> {

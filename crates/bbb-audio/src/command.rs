@@ -127,6 +127,8 @@ pub struct ResolvedSound {
     pub event_id: String,
     pub sound_name: String,
     pub ogg_path: PathBuf,
+    #[serde(default)]
+    pub resource_generation: u64,
     pub stream: bool,
     pub preload: bool,
     pub attenuation_distance: i32,
