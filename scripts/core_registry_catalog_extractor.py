@@ -24,6 +24,7 @@ class RegistryEntry:
 class EntityTypeEntry:
     constant_name: str
     resource_id: str
+    mob_category: str
     allowed_in_peaceful: bool
     only_op_can_set_nbt: bool
     serializable: bool
@@ -318,6 +319,30 @@ def entity_type_entries(
         arguments = _register_arguments(source, field)
         if len(arguments) != 2:
             _fail(source, field.initializer, f"entity register has {len(arguments)} arguments")
+        builder_calls = _calls_in_expression(source, field.initializer, "of")
+        category_argument_index = 1
+        if not builder_calls:
+            builder_calls = _calls_in_expression(source, field.initializer, "createNothing")
+            category_argument_index = 0
+        if (
+            len(builder_calls) != 1
+            or len(builder_calls[0].arguments) != category_argument_index + 1
+        ):
+            _fail(
+                source,
+                field.initializer,
+                "entity builder expected one of(factory, MobCategory) or createNothing(MobCategory) call",
+            )
+        category_argument = builder_calls[0].arguments[category_argument_index]
+        category = category_argument.canonical
+        category_prefix = "MobCategory."
+        if not category.startswith(category_prefix):
+            _fail(
+                source,
+                category_argument,
+                "entity builder category is not a MobCategory constant",
+            )
+        mob_category = category.removeprefix(category_prefix)
         sized_calls = _calls_in_expression(source, field.initializer, "sized")
         if len(sized_calls) != 1:
             _fail(
@@ -426,6 +451,7 @@ def entity_type_entries(
             EntityTypeEntry(
                 field.name,
                 _string_literal(source, arguments[0]),
+                mob_category,
                 not _calls_in_expression(source, field.initializer, "notInPeaceful"),
                 field.name in op_only_constants,
                 not _calls_in_expression(source, field.initializer, "noSave"),

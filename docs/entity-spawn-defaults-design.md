@@ -68,7 +68,11 @@ cross-family tests; and the final full, explicit live, and auto gates pass.
   profiles initialize or reset only narrow ECS owners. Renderer/control query
   the same immutable publication and never receive a parallel default table.
 - `bbb-protocol` continues to own the fixed EntityType catalog and wire packet;
-  no runtime-class or default semantics move into packet decoding.
+  no runtime-class or default semantics move into packet decoding. The catalog
+  also records the exact `MobCategory` argument from each Vanilla builder. That
+  generated field is the authoritative hostile/passive family partition for
+  this audit; it is not a hand-maintained membership table and does not alter
+  the packet shape.
 - `bbb-native` remains an ordered side-effect adapter. Constructor/default state
   that has no Vanilla client side effect does not create a runtime command.
 

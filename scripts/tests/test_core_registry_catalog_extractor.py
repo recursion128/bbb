@@ -176,9 +176,9 @@ public interface DamageTypes {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).sized(1, 1).eyeHeight(1.25F).passengerAttachments(0.5F).ridingOffset(-0.25F));
+      "one", Builder.of(One::new, MobCategory.CREATURE).sized(1, 1).eyeHeight(1.25F).passengerAttachments(0.5F).ridingOffset(-0.25F));
   public static final EntityType<Two> TWO = register(
-      "two", Builder.of(Two::new)
+      "two", Builder.of(Two::new, MobCategory.MONSTER)
           .sized(0.6F, 1.8F).passengerAttachments(new Vec3(0.25, 1.0, -0.5))
           .vehicleAttachment(Avatar.DEFAULT_VEHICLE_ATTACHMENT).notInPeaceful().noSave());
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(TWO);
@@ -192,6 +192,7 @@ public class EntityType {
             named_vec3_constants={"Avatar.DEFAULT_VEHICLE_ATTACHMENT": (0.0, 0.6, 0.0)},
         )
         self.assertEqual([entry.resource_id for entry in entries], ["minecraft:one", "minecraft:two"])
+        self.assertEqual([entry.mob_category for entry in entries], ["CREATURE", "MONSTER"])
         self.assertEqual([entry.allowed_in_peaceful for entry in entries], [True, False])
         self.assertEqual([entry.only_op_can_set_nbt for entry in entries], [False, True])
         self.assertEqual([entry.serializable for entry in entries], [True, False])
@@ -205,6 +206,21 @@ public class EntityType {
             [entry.vehicle_attachment for entry in entries],
             [(0.0, 0.25, 0.0), (0.0, 0.6, 0.0)],
         )
+
+    def test_entity_builder_category_supports_create_nothing(self) -> None:
+        source = parse_source(
+            "fixture/EntityType.java",
+            b"""
+package fixture;
+public class EntityType {
+  public static final EntityType<Player> PLAYER = register(
+      "player", Builder.<Player>createNothing(MobCategory.MISC).sized(0.6F, 1.8F));
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
+}
+""",
+        )
+        entries = entity_type_entries(source, expected_count=1)
+        self.assertEqual(entries[0].mob_category, "MISC")
 
     def test_vec3_constant_comes_from_literal_constructor(self) -> None:
         source = parse_source(
@@ -228,7 +244,7 @@ public abstract class Avatar {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).sized(1, 1).eyeHeight(DEFAULT_EYE_HEIGHT));
+      "one", Builder.of(One::new, MobCategory.MISC).sized(1, 1).eyeHeight(DEFAULT_EYE_HEIGHT));
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
 }
 """,
@@ -246,7 +262,7 @@ public class EntityType {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).sized(DEFAULT_WIDTH, 1));
+      "one", Builder.of(One::new, MobCategory.MISC).sized(DEFAULT_WIDTH, 1));
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
 }
 """,
@@ -264,7 +280,7 @@ public class EntityType {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).sized(1, 1)
+      "one", Builder.of(One::new, MobCategory.MISC).sized(1, 1)
           .passengerAttachments(new Vec3(0, DEFAULT_Y, 0)));
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
 }
@@ -374,7 +390,7 @@ public class BadEntityType {
             b"""
 package fixture;
 public class EntityType {
-  public static final EntityType<One> ONE = register("one", Builder.of(One::new).sized(1, 1));
+  public static final EntityType<One> ONE = register("one", Builder.of(One::new, MobCategory.MISC).sized(1, 1));
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(MISSING);
 }
 """,
