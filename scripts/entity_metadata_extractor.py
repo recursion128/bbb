@@ -8,7 +8,7 @@ by :mod:`vanilla_java_source` and Tree-sitter Java.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -91,6 +91,9 @@ class EntityTypeRegistration:
     runtime_class: str | None
     diagnostic: str | None
     source_span: SourceSpan
+    attribute_factory_owner: str | None = None
+    attribute_factory_method: str | None = None
+    attribute_constants: tuple[str, ...] = ()
 
 
 @dataclass
@@ -102,6 +105,11 @@ class ExtractionResult:
     serializer_names: list[str]
     manifest_digest: str
     sources: dict[str, JavaSource] = field(repr=False)
+
+
+DEFAULT_ATTRIBUTES_OWNER = "net.minecraft.world.entity.ai.attributes.DefaultAttributes"
+ATTRIBUTE_SUPPLIER_OWNER = "net.minecraft.world.entity.ai.attributes.AttributeSupplier"
+ATTRIBUTES_OWNER = "net.minecraft.world.entity.ai.attributes.Attributes"
 
 
 def _ancestor(node: Node, kind: str) -> Node | None:
@@ -586,6 +594,314 @@ def _manifest_digest(files: Iterable[tuple[str, bytes]]) -> str:
     return digest.hexdigest()
 
 
+def _source_for_owner(
+    sources: dict[str, JavaSource], owner: str
+) -> JavaSource:
+    matches = [
+        source
+        for source in sources.values()
+        if any(java_type.fqcn == owner for java_type in source.types)
+    ]
+    if len(matches) != 1:
+        raise ExtractionError(
+            f"{owner}: expected one source owner, found {len(matches)}"
+        )
+    return matches[0]
+
+
+def _method_invocation_parts(
+    source: JavaSource, node: Node
+) -> tuple[str, Node | None, list[Node]]:
+    if node.type != "method_invocation":
+        raise ExtractionError(
+            f"{source.relative_path}:{node.start_point.row + 1}: "
+            f"expected method invocation, found {node.type}"
+        )
+    name = node.child_by_field_name("name")
+    arguments = node.child_by_field_name("arguments")
+    if name is None or arguments is None:
+        raise ExtractionError(
+            f"{source.relative_path}:{node.start_point.row + 1}: "
+            "incomplete method invocation"
+        )
+    return (
+        source.text(name),
+        node.child_by_field_name("object"),
+        list(arguments.named_children),
+    )
+
+
+def _qualified_factory_owner(
+    sources: dict[str, JavaSource],
+    source: JavaSource,
+    current_owner: str,
+    qualifier: Node | None,
+    method_name: str,
+    known_types: dict[str, JavaType],
+) -> str:
+    candidate = current_owner
+    if qualifier is not None:
+        qualifier_text = source.expression(qualifier).canonical.replace(" ", "")
+        current_type = known_types[current_owner]
+        candidate = resolve_type_reference(qualifier_text, current_type, known_types)
+        if candidate is None:
+            raise ExtractionError(
+                f"{current_owner}.{method_name}: unresolved factory qualifier "
+                f"{qualifier_text!r}"
+            )
+
+    seen: set[str] = set()
+    while candidate is not None:
+        if candidate in seen:
+            raise ExtractionError(
+                f"{current_owner}.{method_name}: attribute factory inheritance cycle"
+            )
+        seen.add(candidate)
+        candidate_source = _source_for_owner(sources, candidate)
+        if any(
+            method.name == method_name and len(method.parameters) == 0
+            for method in candidate_source.methods_for(candidate)
+        ):
+            return candidate
+        java_type = known_types.get(candidate)
+        candidate = java_type.superclass if java_type is not None else None
+    raise ExtractionError(
+        f"{current_owner}.{method_name}: no zero-argument attribute factory in hierarchy"
+    )
+
+
+def _attribute_factory_constants(
+    sources: dict[str, JavaSource],
+    known_types: dict[str, JavaType],
+    owner: str,
+    method_name: str,
+    attribute_names: set[str],
+    cache: dict[tuple[str, str], tuple[str, ...]],
+    active: set[tuple[str, str]],
+) -> tuple[str, ...]:
+    key = (owner, method_name)
+    if key in cache:
+        return cache[key]
+    if key in active:
+        raise ExtractionError(
+            f"{owner}.{method_name}: recursive attribute supplier factory"
+        )
+    active.add(key)
+    source = _source_for_owner(sources, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and len(method.parameters) == 0
+    ]
+    if len(methods) != 1:
+        raise ExtractionError(
+            f"{owner}.{method_name}: expected one zero-argument factory, found {len(methods)}"
+        )
+    body = methods[0].node.child_by_field_name("body")
+    returns = [
+        node for node in descendants(body) if node.type == "return_statement"
+    ]
+    if len(returns) != 1 or len(returns[0].named_children) != 1:
+        raise ExtractionError(
+            f"{owner}.{method_name}: expected one direct return expression"
+        )
+
+    node = returns[0].named_children[0]
+    own_constants: list[str] = []
+    while True:
+        call_name, qualifier, arguments = _method_invocation_parts(source, node)
+        if call_name != "add":
+            break
+        if len(arguments) not in {1, 2}:
+            raise ExtractionError(
+                f"{owner}.{method_name}: AttributeSupplier.Builder.add has "
+                f"{len(arguments)} arguments"
+            )
+        attribute = source.expression(arguments[0]).canonical.replace(" ", "")
+        if not attribute.startswith("Attributes."):
+            raise ExtractionError(
+                f"{owner}.{method_name}: unsupported attribute expression {attribute!r}"
+            )
+        constant = attribute.removeprefix("Attributes.")
+        if constant not in attribute_names:
+            raise ExtractionError(
+                f"{owner}.{method_name}: unknown Attributes constant {constant}"
+            )
+        own_constants.append(constant)
+        if qualifier is None:
+            raise ExtractionError(
+                f"{owner}.{method_name}: add call lacks a builder qualifier"
+            )
+        node = qualifier
+
+    call_name, qualifier, arguments = _method_invocation_parts(source, node)
+    if arguments:
+        raise ExtractionError(
+            f"{owner}.{method_name}: base factory {call_name} takes arguments"
+        )
+    qualifier_text = (
+        source.expression(qualifier).canonical.replace(" ", "")
+        if qualifier is not None
+        else None
+    )
+    if call_name == "builder" and qualifier_text == "AttributeSupplier":
+        inherited: tuple[str, ...] = ()
+    else:
+        factory_owner = _qualified_factory_owner(
+            sources, source, owner, qualifier, call_name, known_types
+        )
+        if factory_owner == ATTRIBUTE_SUPPLIER_OWNER:
+            raise ExtractionError(
+                f"{owner}.{method_name}: unsupported AttributeSupplier factory {call_name}"
+            )
+        inherited = _attribute_factory_constants(
+            sources,
+            known_types,
+            factory_owner,
+            call_name,
+            attribute_names,
+            cache,
+            active,
+        )
+
+    ordered = list(inherited)
+    for constant in reversed(own_constants):
+        if constant not in ordered:
+            ordered.append(constant)
+    result = tuple(ordered)
+    if not result:
+        raise ExtractionError(f"{owner}.{method_name}: empty attribute supplier")
+    cache[key] = result
+    active.remove(key)
+    return result
+
+
+def extract_attribute_suppliers(
+    sources: dict[str, JavaSource],
+    classes: list[JavaType],
+    entity_types: list[EntityTypeRegistration],
+) -> list[EntityTypeRegistration]:
+    """Attach each living entity's exact Vanilla `DefaultAttributes` membership."""
+
+    known_types = {item.fqcn: item for item in classes}
+    default_source = _source_for_owner(sources, DEFAULT_ATTRIBUTES_OWNER)
+    default_type = known_types[DEFAULT_ATTRIBUTES_OWNER]
+    supplier_fields = [
+        field
+        for field in default_source.fields_for(DEFAULT_ATTRIBUTES_OWNER)
+        if field.name == "SUPPLIERS"
+    ]
+    if len(supplier_fields) != 1 or supplier_fields[0].initializer is None:
+        raise ExtractionError(
+            "DefaultAttributes.SUPPLIERS: expected one initialized field"
+        )
+    supplier_span = supplier_fields[0].initializer.span
+    factories: dict[str, tuple[str, str]] = {}
+    for call in default_source.calls_for(DEFAULT_ATTRIBUTES_OWNER):
+        if (
+            call.name != "put"
+            or call.span.start_byte < supplier_span.start_byte
+            or call.span.end_byte > supplier_span.end_byte
+        ):
+            continue
+        if len(call.arguments) != 2:
+            raise ExtractionError(
+                "DefaultAttributes.SUPPLIERS: put requires entity and supplier"
+            )
+        entity = call.arguments[0].node
+        entity_owner = entity.child_by_field_name("object")
+        entity_field = entity.child_by_field_name("field")
+        if (
+            entity.type != "field_access"
+            or entity_owner is None
+            or default_source.text(entity_owner) != "EntityType"
+            or entity_field is None
+        ):
+            raise ExtractionError(
+                "DefaultAttributes.SUPPLIERS: unsupported entity key "
+                + call.arguments[0].canonical
+            )
+        constant_name = default_source.text(entity_field)
+        build_name, provider, build_arguments = _method_invocation_parts(
+            default_source, call.arguments[1].node
+        )
+        if build_name != "build" or provider is None or build_arguments:
+            raise ExtractionError(
+                f"DefaultAttributes.{constant_name}: expected factory().build()"
+            )
+        factory_name, factory_qualifier, factory_arguments = _method_invocation_parts(
+            default_source, provider
+        )
+        if factory_qualifier is None or factory_arguments:
+            raise ExtractionError(
+                f"DefaultAttributes.{constant_name}: unsupported supplier factory"
+            )
+        factory_owner = _qualified_factory_owner(
+            sources,
+            default_source,
+            default_type.fqcn,
+            factory_qualifier,
+            factory_name,
+            known_types,
+        )
+        if constant_name in factories:
+            raise ExtractionError(
+                f"DefaultAttributes.SUPPLIERS: duplicate EntityType.{constant_name}"
+            )
+        factories[constant_name] = (factory_owner, factory_name)
+
+    attribute_source = _source_for_owner(sources, ATTRIBUTES_OWNER)
+    attribute_names = {
+        field.name for field in attribute_source.fields_for(ATTRIBUTES_OWNER)
+    }
+    cache: dict[tuple[str, str], tuple[str, ...]] = {}
+    living_owner = "net.minecraft.world.entity.LivingEntity"
+    output: list[EntityTypeRegistration] = []
+    for entity_type in entity_types:
+        current = entity_type.runtime_class
+        is_living = False
+        while current is not None:
+            if current == living_owner:
+                is_living = True
+                break
+            java_type = known_types.get(current)
+            current = java_type.superclass if java_type is not None else None
+        factory = factories.get(entity_type.constant_name)
+        if is_living != (factory is not None):
+            raise ExtractionError(
+                f"EntityType.{entity_type.constant_name}: living={is_living} "
+                f"but DefaultAttributes supplier={factory is not None}"
+            )
+        if factory is None:
+            output.append(entity_type)
+            continue
+        factory_owner, factory_method = factory
+        constants = _attribute_factory_constants(
+            sources,
+            known_types,
+            factory_owner,
+            factory_method,
+            attribute_names,
+            cache,
+            set(),
+        )
+        output.append(
+            replace(
+                entity_type,
+                attribute_factory_owner=factory_owner,
+                attribute_factory_method=factory_method,
+                attribute_constants=constants,
+            )
+        )
+    if set(factories) != {
+        item.constant_name for item in output if item.attribute_constants
+    }:
+        raise ExtractionError(
+            "DefaultAttributes.SUPPLIERS does not match generated living entities"
+        )
+    return output
+
+
 def extract(source_root: Path) -> ExtractionResult:
     entity_root = source_root / ENTITY_TREE
     if not entity_root.is_dir():
@@ -667,6 +983,7 @@ def extract(source_root: Path) -> ExtractionResult:
     entity_types = parse_entity_types(
         sources[ENTITY_TYPE_SOURCE.as_posix()], known_types
     )
+    entity_types = extract_attribute_suppliers(sources, classes, entity_types)
     return ExtractionResult(
         sorted(classes, key=lambda item: item.fqcn),
         sorted(accessors, key=lambda item: (item.owner, item.declaration_order)),

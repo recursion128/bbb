@@ -3758,6 +3758,7 @@ def render(result: ExtractionResult) -> str:
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py check",
         f"// Stable source manifest SHA-256: {result.manifest_digest}",
         "",
+        "use bbb_protocol::attribute_types::*;",
         "use bbb_protocol::entity_data_serializers::*;",
         "",
         "use super::*;",
@@ -4014,6 +4015,12 @@ def render(result: ExtractionResult) -> str:
                 f"        resource_id: {rust_string(item.resource_id)},",
                 f"        runtime_class: {option_string(item.runtime_class)},",
                 f"        schema_class: {option_string(schema_class(item.runtime_class))},",
+                "        attribute_ids: &["
+                + ", ".join(
+                    f"VANILLA_ATTRIBUTE_{constant}_ID"
+                    for constant in item.attribute_constants
+                )
+                + "],",
                 f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
                 f"        baby_behavior: VanillaEntityBabyBehavior::{class_baby_behavior(result, class_map, item.runtime_class, baby_behavior_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'Never'},",
                 f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
@@ -4161,6 +4168,18 @@ def render(result: ExtractionResult) -> str:
         [
             "#[cfg(test)]",
             "mod generated_catalog_guards {",
+            "    #[test]",
+            "    fn default_attribute_suppliers_cover_exactly_living_entity_types() {",
+            "        let mut supplier_count = 0;",
+            "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
+            "            assert_eq!(entry.is_living, !entry.attribute_ids.is_empty(), \"{}\", entry.resource_id);",
+            "            let mut unique = std::collections::BTreeSet::new();",
+            "            assert!(entry.attribute_ids.iter().all(|id| unique.insert(*id)), \"{}\", entry.resource_id);",
+            "            supplier_count += usize::from(entry.is_living);",
+            "        }",
+            "        assert_eq!(supplier_count, 92);",
+            "    }",
+            "",
             "    #[test]",
             "    fn ender_dragon_sitting_phase_membership_matches_registered_classes() {",
             "        for phase in super::VANILLA_ENDER_DRAGON_PHASES_26_1 {",

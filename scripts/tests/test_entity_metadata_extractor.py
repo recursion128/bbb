@@ -10,11 +10,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from entity_metadata_extractor import (  # noqa: E402
     Accessor,
+    EntityTypeRegistration,
     ExtractionError,
     assign_data_ids,
     attach_defaults,
     extract,
     extract_accessors,
+    extract_attribute_suppliers,
     extract_flags,
 )
 from vanilla_java_source import parse_source, resolve_class_hierarchy  # noqa: E402
@@ -39,6 +41,104 @@ def fixture_sources(files: dict[str, str]):
 
 
 class EntityMetadataExtractorFixtureTests(unittest.TestCase):
+    def test_default_attribute_supplier_membership_follows_factory_inheritance(self) -> None:
+        source_text = {
+            "net/minecraft/world/entity/ai/attributes/AttributeSupplier.java": """
+                package net.minecraft.world.entity.ai.attributes;
+                class AttributeSupplier {
+                  static Builder builder() { return null; }
+                  static class Builder {
+                    Builder add(Object value) { return this; }
+                    Builder add(Object value, double base) { return this; }
+                    AttributeSupplier build() { return null; }
+                  }
+                }
+            """,
+            "net/minecraft/world/entity/ai/attributes/Attributes.java": """
+                package net.minecraft.world.entity.ai.attributes;
+                class Attributes {
+                  static final Object MAX_HEALTH = null;
+                  static final Object MOVEMENT_SPEED = null;
+                }
+            """,
+            "net/minecraft/world/entity/ai/attributes/DefaultAttributes.java": """
+                package net.minecraft.world.entity.ai.attributes;
+                import net.minecraft.world.entity.EntityType;
+                import net.minecraft.world.entity.monster.Zombie;
+                class DefaultAttributes {
+                  static final Object SUPPLIERS = Map.builder()
+                    .put(EntityType.ZOMBIE, Zombie.createAttributes().build())
+                    .build();
+                }
+            """,
+            "net/minecraft/world/entity/EntityType.java": """
+                package net.minecraft.world.entity;
+                class EntityType { static final Object ZOMBIE = null; static final Object ITEM = null; }
+            """,
+            "net/minecraft/world/entity/LivingEntity.java": """
+                package net.minecraft.world.entity;
+                import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+                import net.minecraft.world.entity.ai.attributes.Attributes;
+                class LivingEntity {
+                  static AttributeSupplier.Builder createLivingAttributes() {
+                    return AttributeSupplier.builder().add(Attributes.MAX_HEALTH);
+                  }
+                }
+            """,
+            "net/minecraft/world/entity/monster/Zombie.java": """
+                package net.minecraft.world.entity.monster;
+                import net.minecraft.world.entity.LivingEntity;
+                import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+                import net.minecraft.world.entity.ai.attributes.Attributes;
+                class Zombie extends LivingEntity {
+                  static AttributeSupplier.Builder createAttributes() {
+                    return createLivingAttributes().add(Attributes.MOVEMENT_SPEED, 0.23);
+                  }
+                }
+            """,
+            "net/minecraft/world/entity/item/ItemEntity.java": """
+                package net.minecraft.world.entity.item;
+                class ItemEntity {}
+            """,
+        }
+        sources = {
+            path: parse_source(path, text.encode("utf-8"))
+            for path, text in source_text.items()
+        }
+        classes = [item for source in sources.values() for item in source.types]
+        resolve_class_hierarchy(classes)
+        span = classes[0].span
+        entity_types = [
+            EntityTypeRegistration(
+                0,
+                "ZOMBIE",
+                "minecraft:zombie",
+                "net.minecraft.world.entity.monster.Zombie",
+                None,
+                span,
+            ),
+            EntityTypeRegistration(
+                1,
+                "ITEM",
+                "minecraft:item",
+                "net.minecraft.world.entity.item.ItemEntity",
+                None,
+                span,
+            ),
+        ]
+
+        resolved = extract_attribute_suppliers(sources, classes, entity_types)
+
+        self.assertEqual(
+            resolved[0].attribute_constants,
+            ("MAX_HEALTH", "MOVEMENT_SPEED"),
+        )
+        self.assertEqual(
+            resolved[0].attribute_factory_owner,
+            "net.minecraft.world.entity.monster.Zombie",
+        )
+        self.assertEqual(resolved[1].attribute_constants, ())
+
     def test_multilevel_inheritance_empty_parent_sibling_index_reuse_multiline(self) -> None:
         _, _, accessors = fixture_sources(
             {
@@ -183,6 +283,14 @@ class EntityMetadataExtractorFixtureTests(unittest.TestCase):
             227,
         )
         self.assertEqual(len(result.entity_types), 157)
+        suppliers = [
+            item for item in result.entity_types if item.attribute_constants
+        ]
+        self.assertEqual(len(suppliers), 92)
+        player = next(item for item in suppliers if item.constant_name == "PLAYER")
+        self.assertIn("BLOCK_INTERACTION_RANGE", player.attribute_constants)
+        zombie = next(item for item in suppliers if item.constant_name == "ZOMBIE")
+        self.assertIn("SPAWN_REINFORCEMENTS_CHANCE", zombie.attribute_constants)
         self.assertIn(
             "net/minecraft/world/level/block/WeatheringCopper.java",
             result.sources,

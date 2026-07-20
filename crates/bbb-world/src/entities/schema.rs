@@ -681,6 +681,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub resource_id: &'static str,
     pub runtime_class: Option<&'static str>,
     pub schema_class: Option<&'static str>,
+    /// Exact membership of the Vanilla `DefaultAttributes` supplier for this
+    /// entity type, expressed in the canonical built-in attribute id space.
+    /// Non-living entity types have an empty slice.
+    pub attribute_ids: &'static [i32],
     /// Nearest vanilla class that declares `handleEntityEvent(byte)` for this runtime type.
     pub handle_entity_event_owner: Option<&'static str>,
     /// Source-derived nearest `LivingEntity.isBaby()` behavior for this runtime class.
@@ -728,6 +732,15 @@ pub const fn vanilla_entity_metadata_schema(
     family: VanillaEntityMetadataFamily,
 ) -> &'static VanillaEntityMetadataFamilySchema {
     generated_26_1::generated_entity_metadata_schema(family)
+}
+
+pub fn vanilla_entity_type_has_attribute(entity_type_id: i32, attribute_id: i32) -> bool {
+    let Ok(index) = usize::try_from(entity_type_id) else {
+        return false;
+    };
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(index)
+        .is_some_and(|entry| entry.attribute_ids.contains(&attribute_id))
 }
 
 pub fn vanilla_entity_metadata_field(
@@ -4465,6 +4478,10 @@ pub fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> Option<i3
 mod tests {
     use std::collections::{HashMap, HashSet};
 
+    use bbb_protocol::attribute_types::{
+        VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID, VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        VANILLA_ATTRIBUTE_SPAWN_REINFORCEMENTS_CHANCE_ID,
+    };
     use bbb_protocol::entity_data_serializers::{
         vanilla_entity_data_serializer_for_constant_name, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
     };
@@ -4525,6 +4542,34 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn generated_default_attribute_membership_is_entity_specific() {
+        assert!(vanilla_entity_type_has_attribute(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID,
+        ));
+        assert!(!vanilla_entity_type_has_attribute(
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID,
+        ));
+        assert!(vanilla_entity_type_has_attribute(
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ATTRIBUTE_SPAWN_REINFORCEMENTS_CHANCE_ID,
+        ));
+        assert!(vanilla_entity_type_has_attribute(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        ));
+        assert!(!vanilla_entity_type_has_attribute(
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        ));
+        assert!(!vanilla_entity_type_has_attribute(
+            -1,
+            VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        ));
+    }
 
     #[test]
     fn generated_accessor_catalog_is_complete_unique_and_default_closed() {
