@@ -136,8 +136,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 2:
-        raise GateFailure(f"playable evidence schema must be 2, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 3:
+        raise GateFailure(f"playable evidence schema must be 3, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -223,6 +223,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
 
     _validate_movement(evidence.get("movement"))
     _validate_block_interaction(evidence.get("block_interaction"))
+    _validate_entity_interaction(evidence.get("entity_interaction"))
     _validate_lifecycle(evidence.get("lifecycle"))
 
 
@@ -414,6 +415,40 @@ def _validate_block_interaction(block_interaction: Any) -> None:
             raise GateFailure(
                 f"block_interaction.{key} must record at least one observed "
                 f"command/update, got {value!r}"
+            )
+
+
+ENTITY_INTERACTION_COMMAND_DELTAS = (
+    "attack_entity_commands_delta",
+    "swing_commands_delta",
+)
+
+
+def _validate_entity_interaction(entity_interaction: Any) -> None:
+    """The attack smoke must observe server results and presentation, not
+    queued commands: the summoned entity reaching the client entity store and
+    the pick-target surface, and the attack removing it from both."""
+
+    entity_interaction = _object(entity_interaction, "entity_interaction")
+    entity_id = entity_interaction.get("entity_id")
+    if not isinstance(entity_id, int) or isinstance(entity_id, bool):
+        raise GateFailure("entity_interaction.entity_id must be an integer")
+    _finite_position(
+        entity_interaction.get("summon_position"), "entity_interaction.summon_position"
+    )
+    if entity_interaction.get("entity_type") != "minecraft:armor_stand":
+        raise GateFailure(
+            "entity_interaction.entity_type must record the summoned armor stand"
+        )
+    for key in ("seen_in_pick_targets", "removed"):
+        if entity_interaction.get(key) is not True:
+            raise GateFailure(f"entity_interaction.{key} must be true")
+    for key in ENTITY_INTERACTION_COMMAND_DELTAS:
+        value = entity_interaction.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise GateFailure(
+                f"entity_interaction.{key} must record at least one observed "
+                f"command, got {value!r}"
             )
 
 
@@ -1155,6 +1190,193 @@ def drive_block_interaction(
     }
 
 
+def _entity_transform_by_id(address: tuple[str, int]) -> dict[int, dict[str, Any]]:
+    transforms = _control_request(address, "world.entity_transforms")
+    if not isinstance(transforms, list):
+        return {}
+    return {
+        int(entry["id"]): entry
+        for entry in transforms
+        if isinstance(entry, dict) and isinstance(entry.get("id"), int)
+    }
+
+
+def _entity_pick_target_ids(address: tuple[str, int]) -> set[int]:
+    targets = _control_request(address, "world.entity_pick_targets", {"partial_tick": 1.0})
+    if not isinstance(targets, list):
+        return set()
+    return {
+        int(entry["entity_id"])
+        for entry in targets
+        if isinstance(entry, dict) and isinstance(entry.get("entity_id"), int)
+    }
+
+
+def _look_to_entity(
+    address: tuple[str, int], entity_id: int, deadline: float
+) -> None:
+    """Closed-loop yaw+pitch steering onto the entity's mid-body point,
+    re-reading both poses every round so a drifting player or entity cannot
+    invalidate a precomputed angle.  Same ~0.12 deg/px sensitivity model as
+    the pitch steering used by the block smoke."""
+
+    while time.monotonic() < deadline:
+        entity = _control_request(address, "world.probe_entity_transform", {"id": entity_id})
+        if not isinstance(entity, dict):
+            raise GateFailure(f"entity {entity_id} vanished while steering onto it")
+        pose = _local_player_pose(address)
+        position = _object(pose.get("position"), "local_player.pose.position")
+        target = _object(entity.get("position"), "entity.position")
+        dx = float(target["x"]) - float(position["x"])
+        dz = float(target["z"]) - float(position["z"])
+        # Standing eye height against the armor stand's mid-body point.
+        dy = float(target["y"]) + 1.2 - (float(position["y"]) + 1.62)
+        horizontal = math.hypot(dx, dz)
+        target_yaw = math.degrees(math.atan2(-dx, dz))
+        target_pitch = math.degrees(-math.atan2(dy, horizontal))
+        yaw_error = ((target_yaw - float(pose.get("y_rot", 0.0)) + 180.0) % 360.0) - 180.0
+        pitch_error = target_pitch - float(pose.get("x_rot", 0.0))
+        if abs(yaw_error) < 1.0 and abs(pitch_error) < 1.0:
+            return
+        _control_request(
+            address,
+            "input.look_delta",
+            {
+                "dx": max(-600.0, min(600.0, yaw_error / 0.12 * 0.7)),
+                "dy": max(-600.0, min(600.0, pitch_error / 0.12 * 0.7)),
+            },
+        )
+        time.sleep(0.1)
+    raise GateFailure(f"look steering did not converge onto entity {entity_id}")
+
+
+def drive_entity_interaction(
+    address: tuple[str, int], server_command: Path, timeout_seconds: float
+) -> dict[str, Any]:
+    """Summon an armor stand next to the player, steer the crosshair onto it,
+    and left-click attack it through the synthetic mouse path.  The creative
+    attack breaks the stand server-side, so the assertions observe server
+    results (the entity reaching and then leaving the canonical store) and
+    presentation (the pick-target surface listing and dropping it), not just
+    queued commands."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    _control_request(address, "input.focus", {"focused": True})
+
+    pose = _await_settled_player(address, deadline)
+    position = _object(pose.get("position"), "local_player.pose.position")
+    feet_y = math.floor(float(position["y"]))
+    summon = None
+    for dx, dz in ((2, 0), (-2, 0), (0, 2), (0, -2)):
+        column_x = math.floor(float(position["x"])) + dx
+        column_z = math.floor(float(position["z"])) + dz
+        body = _probe_block(address, column_x, feet_y, column_z)
+        head = _probe_block(address, column_x, feet_y + 1, column_z)
+        if _block_is_air(body) and _block_is_air(head):
+            summon = {"x": column_x + 0.5, "y": float(feet_y), "z": column_z + 0.5}
+            break
+    if summon is None:
+        raise GateFailure("no clear two-block column near the player to summon into")
+
+    ids_before = set(_entity_transform_by_id(address))
+    _server_console_command(
+        server_command,
+        "summon minecraft:armor_stand "
+        f"{summon['x']:.1f} {summon['y']:.1f} {summon['z']:.1f} {{NoGravity:1b}}",
+    )
+
+    def _find_summoned() -> int | None:
+        for entity_id, entry in _entity_transform_by_id(address).items():
+            if entity_id in ids_before:
+                continue
+            target = entry.get("position")
+            if not isinstance(target, dict):
+                continue
+            if (
+                abs(float(target.get("x", 0.0)) - summon["x"]) <= 1.0
+                and abs(float(target.get("y", 0.0)) - summon["y"]) <= 1.0
+                and abs(float(target.get("z", 0.0)) - summon["z"]) <= 1.0
+            ):
+                return entity_id
+        return None
+
+    entity_id = _await_value(
+        deadline,
+        "the summoned armor stand to reach the client entity store",
+        _find_summoned,
+        lambda value: value is not None,
+    )
+
+    # Presentation surface: the stand must be offered as a pick target
+    # before the synthetic click can be expected to hit it.
+    _await_value(
+        deadline,
+        "the summoned armor stand to enter the pick-target surface",
+        lambda: _entity_pick_target_ids(address),
+        lambda ids: entity_id in ids,
+    )
+    seen_in_pick_targets = True
+
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before entity interaction")
+
+    # Attack loop: steer, tap, and require the entity-attack counter (not
+    # just the swing) to move -- a swing without an attack means the ray
+    # missed and the shot must be re-aimed, not re-fired blindly.
+    attacked = False
+    while not attacked and time.monotonic() < deadline:
+        _look_to_entity(address, entity_id, deadline)
+        _await_input_pipeline(address, deadline)
+        attacks_before = _net_counter(address, "attack_entity_commands_queued")
+        swings_before = _net_counter(address, "swing_commands_queued")
+        _press_mouse(address, "left", True)
+        _press_mouse(address, "left", False)
+        consume_deadline = min(deadline, time.monotonic() + 10.0)
+        while time.monotonic() < consume_deadline:
+            if _net_counter(address, "swing_commands_queued") > swings_before:
+                break
+            time.sleep(0.1)
+        if _net_counter(address, "attack_entity_commands_queued") > attacks_before:
+            attacked = True
+    if not attacked:
+        raise GateFailure(
+            f"synthetic clicks never queued an entity attack on {entity_id}"
+        )
+
+    # Server result: the creative attack breaks the stand, and the removal
+    # must flow back into the canonical store and off the pick surface.
+    _await_value(
+        deadline,
+        "the attacked armor stand to be removed from the canonical store",
+        lambda: _control_request(address, "world.probe_entity", {"id": entity_id}),
+        lambda value: not isinstance(value, dict),
+    )
+    _await_value(
+        deadline,
+        "the attacked armor stand to leave the pick-target surface",
+        lambda: _entity_pick_target_ids(address),
+        lambda ids: entity_id not in ids,
+    )
+
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_after, "after entity interaction")
+
+    def _delta(key: str) -> int:
+        return int(net_after.get(key, 0)) - int(net_before.get(key, 0))
+
+    return {
+        "entity_type": "minecraft:armor_stand",
+        "entity_id": entity_id,
+        "summon_position": summon,
+        "seen_in_pick_targets": seen_in_pick_targets,
+        "removed": True,
+        "attack_entity_commands_delta": _delta("attack_entity_commands_queued"),
+        "swing_commands_delta": _delta("swing_commands_queued"),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def _await_value(
     deadline: float,
     description: str,
@@ -1728,7 +1950,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 2,
+            "schema": 3,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -1736,6 +1958,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "world_snapshot": last_snapshot,
             "movement": None,
             "block_interaction": None,
+            "entity_interaction": None,
             "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
@@ -1750,6 +1973,7 @@ def collect_live(args: argparse.Namespace) -> None:
 
     movement: dict[str, Any] | None = None
     block_interaction: dict[str, Any] | None = None
+    entity_interaction: dict[str, Any] | None = None
     lifecycle: dict[str, Any] | None = None
     try:
         _await_control_stability(address, deadline)
@@ -1757,6 +1981,9 @@ def collect_live(args: argparse.Namespace) -> None:
             address, min(30.0, float(args.timeout))
         )
         block_interaction = drive_block_interaction(
+            address, args.server_command, min(90.0, float(args.timeout))
+        )
+        entity_interaction = drive_entity_interaction(
             address, args.server_command, min(90.0, float(args.timeout))
         )
         lifecycle = {}
@@ -1779,7 +2006,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 2,
+            "schema": 3,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -1787,6 +2014,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "world_snapshot": last_snapshot,
             "movement": movement,
             "block_interaction": block_interaction,
+            "entity_interaction": entity_interaction,
             "lifecycle": lifecycle,
             "failure": failure,
             "artifacts": {
@@ -1804,7 +2032,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 2,
+            "schema": 3,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -1812,6 +2040,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "world_snapshot": last_snapshot,
             "movement": movement,
             "block_interaction": block_interaction,
+            "entity_interaction": entity_interaction,
             "lifecycle": lifecycle,
             "failure": str(error),
             "artifacts": {
@@ -1824,7 +2053,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 2,
+        "schema": 3,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -1832,6 +2061,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "world_snapshot": last_snapshot,
         "movement": movement,
         "block_interaction": block_interaction,
+        "entity_interaction": entity_interaction,
         "lifecycle": lifecycle,
         "artifacts": {
             "timeline": str(args.client_log),

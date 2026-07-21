@@ -100,4 +100,7 @@
 - **2026-07-21**：remote boat client tick 状态；entity 与 client-level tick
   交错；entity block effect tick 策略生成与批量应用；Strider renderer
   fixture 稳定；文档瘦身工作流 v5（本索引取代逐 slice 归档散文，goal.md
-  优先级刷新，已闭环 design doc 迁入 docs/archive/）。
+  优先级刷新，已闭环 design doc 迁入 docs/archive/）；
+  `Entity.applyEffectsFromBlocks` 边界全闭合（雪花粒子收尾）；live gate
+  基础游玩新增实体攻击场景（summon→pick 面→瞄准攻击→canonical/呈现双移除，
+  evidence schema 3，live 实跑全绿）。

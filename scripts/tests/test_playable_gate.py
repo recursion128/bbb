@@ -161,6 +161,40 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_missing_entity_interaction_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["entity_interaction"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "entity_interaction"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_unremoved_entity_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["entity_interaction"]["removed"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "entity_interaction.removed"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_entity_missing_from_pick_targets_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["entity_interaction"]["seen_in_pick_targets"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "entity_interaction.seen_in_pick_targets"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_zero_entity_attack_commands_fail(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["entity_interaction"]["attack_entity_commands_delta"] = 0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "attack_entity_commands_delta"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
 
 class PlayableGateLifecycleTests(unittest.TestCase):
     def setUp(self):
