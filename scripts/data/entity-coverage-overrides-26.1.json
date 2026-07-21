@@ -120,14 +120,25 @@
     },
     "dimensions_pick_audit": {
       "implementation": [
+        "crates/bbb-world/src/entities/dimensions.rs#fn vanilla_bounds_for_entity_data",
+        "crates/bbb-world/src/entities/dimensions.rs#fn vanilla_variant_eye_height_basis",
+        "crates/bbb-world/src/entities/dimensions.rs#fn vanilla_baby_passenger_attachment_basis",
+        "crates/bbb-world/src/entities/store.rs#fn debug_hitbox_targets_at_partial_tick",
+        "crates/bbb-world/src/client/local_player_collision.rs#fn debug_entity_can_be_collided_with",
         "crates/bbb-world/src/entities.rs#pub fn entity_pick_targets_at_partial_tick"
       ],
       "tests": [
-        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#entity_pick_bounds_follow_vanilla_is_pickable"
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#entity_pick_bounds_follow_vanilla_is_pickable",
+        "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#fn variant_eye_heights_use_vanilla_with_eye_height_declarations",
+        "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#fn area_effect_cloud_debug_bounds_follow_synced_radius_without_pickability",
+        "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#fn debug_hitboxes_cover_non_pickable_entities_and_skip_invisible_ones",
+        "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#fn baby_equine_and_panda_passenger_attachments_use_vanilla_declared_points"
       ],
       "vanilla": [
         "vanilla:net/minecraft/world/entity/Entity.java#public EntityDimensions getDimensions",
-        "vanilla:net/minecraft/world/entity/Entity.java#public boolean isPickable()"
+        "vanilla:net/minecraft/world/entity/EntityDimensions.java#public EntityDimensions scale",
+        "vanilla:net/minecraft/client/renderer/debug/EntityHitboxDebugRenderer.java#emitGizmos"
       ]
     },
     "renderer_audit": {
@@ -319,9 +330,8 @@
       "evidence_ref": "client_tick_audit"
     },
     "dimensions/collision/pick": {
-      "status": "partial",
-      "evidence_ref": "dimensions_pick_audit",
-      "gap": "docs/unsupported-features.md#entity-coverage-matrix-dimensions-collision-and-pick"
+      "status": "complete",
+      "evidence_ref": "dimensions_pick_audit"
     },
     "model/texture/layers": {
       "status": "partial",

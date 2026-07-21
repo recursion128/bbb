@@ -161,3 +161,18 @@
   组装/分派/Mannequin/Display 实现 + 四语义测试 + 三 vanilla 锚点，
   base cell 翻 complete；顺带补齐 coverage JSON 引用的
   events/particles/audio 悬空锚点标题。
+- **2026-07-21（同日再续）**：entity 矩阵第六类目 **dimensions/collision/pick
+  全量 157 行 complete**。三轮 vanilla 全 override 枚举审计：①bounds sweep
+  （37 个 `getDimensions`/`getDefaultDimensions` 覆盖逐一对账，wired
+  AreaEffectCloud 半径维度，F3+B debug hitbox 对齐
+  `EntityHitboxDebugRenderer` 全非 invisible 语义，commit "Align debug
+  hitboxes with vanilla visibility semantics"）；②眼高 sweep（18 处
+  `withEyeHeight` 显式声明改用声明 (eye,height) 基准，纯 scale 变体保持
+  比例——vanilla `EntityDimensions.scale` 等比缩放眼高，commit "Project
+  exact vanilla variant eye heights"）；③attachment sweep（碰撞面
+  `canBeCollidedWith`/pushability kinds/`makeBoundingBox` 三覆盖/pick 半径
+  验证无缺口；baby 马系/羊驼/熊猫 `withAttachments` 重声明骑乘点落地，
+  commit "Ride baby vehicles at vanilla declared attachments"）。
+  `dimensions_pick_audit` 证据集扩为 6 实现 + 6 语义测试 + 3 vanilla 锚点。
+  开放类目余 4：model/layers、animation、equipment/passenger/leash、
+  event/particle/audio。

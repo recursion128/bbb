@@ -1358,32 +1358,6 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
-### Entity coverage matrix dimensions collision and pick
-
-- Close the remaining family-specific pose/dimension changes, collision
-  exceptions, multipart hit targets, scale caps, and pickability rules against
-  the generated entity type and metadata catalogs. The 2026-07-21 sweep of
-  every vanilla `getDimensions`/`getDefaultDimensions` override confirmed the
-  pose maps (avatar/camel/goat/sniffer/warden/polar-bear/shulker/sleeping),
-  metadata-driven sizes (slime, phantom, pufferfish, salmon, interaction, and
-  the newly wired area-effect-cloud radius), the baby-dimension table with its
-  ageable fallback, ender-dragon multipart targets, and the scale attribute
-  are covered, and aligned the debug-hitbox projection with vanilla
-  `EntityHitboxDebugRenderer` (every non-invisible entity draws its box;
-  pickability only gates pick targeting). The same-day eye-height sweep of
-  every vanilla `withEyeHeight` declaration replaced the proportional
-  approximation with the declared (eye, height) pairs — avatar pose map,
-  living sleeping, camel sitting, sniffer digging, and the thirteen explicit
-  baby tables — while pure-`scale` variants (goat long-jump, warden digging,
-  slime/phantom, scale attribute) stay proportional because vanilla scales
-  the eye height by the same factor. The follow-up attachment sweep verified
-  the collision surfaces (`canBeCollidedWith` in local-player collision with
-  tests, schema-derived pushability kinds, the Shulker/wind-charge/Interaction
-  `makeBoundingBox` overrides, and the redirectable-projectile pick radius)
-  and closed the last attachment gap: baby equine/llama/panda variants that
-  re-declare their passenger point through `withAttachments` now ride at the
-  declared basis instead of the ratio-scaled adult table point.
-
 ### Entity coverage matrix model texture and layers
 
 - Audit every non-noop vanilla renderer registration for exact model family,
