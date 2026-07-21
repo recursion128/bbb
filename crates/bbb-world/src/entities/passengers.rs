@@ -44,7 +44,7 @@ use super::schema::{
 use super::{
     is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type, is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
-    EntityBoatStatus, VehicleMoveReport,
+    EntityBoatStatus, VehicleMoveReport, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
 };
 
 const MOVE_VEHICLE_SNAP_EPSILON: f64 = 1.0e-5_f32 as f64;
@@ -971,6 +971,284 @@ impl WorldStore {
         })
     }
 
+    /// Advances a directly controlled `AbstractNautilus` through its exact
+    /// `tickRidden` dash stage, overridden water travel, shared lava/air travel,
+    /// and post-movement subclass cooldown/sound/bubble tick.
+    pub fn advance_local_nautilus_vehicle_input(
+        &mut self,
+        input: LocalPlayerInputState,
+        ticks: u32,
+    ) -> Option<VehicleMoveReport> {
+        let vehicle_id = self.local_player_first_passenger_root_vehicle_id()?;
+        let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
+        if !is_vanilla_abstract_nautilus_type(entity_type_id)
+            || self.entity_controlling_passenger(vehicle_id) != self.local_player_id
+        {
+            return None;
+        }
+        let controller = self.local_player.pose?;
+        let slow_factor = if controller.sneaking || controller.swimming {
+            self.local_player_id
+                .and_then(|id| {
+                    self.entities
+                        .attribute_value(id, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID)
+                })
+                .unwrap_or(0.3)
+        } else {
+            1.0
+        };
+        let (strafe, forward_axis) = if input.focused && self.local_player.camera.follows_player {
+            local_player_move_vector(input, slow_factor)
+        } else {
+            (0.0, 0.0)
+        };
+        let mut forward = 0.0_f32;
+        let mut up = 0.0_f32;
+        if forward_axis != 0.0 {
+            let pitch = controller.x_rot * std::f32::consts::PI / 180.0;
+            forward = super::client_movement::vanilla_mth_cos(f64::from(pitch));
+            up = -super::client_movement::vanilla_mth_sin(f64::from(pitch));
+            if forward_axis < 0.0 {
+                forward *= -0.5;
+                up *= -0.5;
+            }
+        }
+        let ridden_input = HappyGhastInput {
+            x: f64::from(strafe),
+            y: f64::from(up),
+            z: f64::from(forward),
+        };
+        let movement_speed = self
+            .entities
+            .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)?;
+        let max_up_step =
+            self.entities
+                .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_STEP_HEIGHT_ID)? as f32;
+        let gravity = if self.entities.no_gravity(vehicle_id).unwrap_or(false) {
+            0.0
+        } else {
+            self.entities
+                .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_GRAVITY_ID)?
+        };
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+        let shared_flags = self.entities.metadata_byte(
+            vehicle_id,
+            entity_accessors.shared_flags_data_id,
+            entity_accessors.shared_flags_default,
+        )?;
+        let sprinting = shared_flags & entity_accessors.sprinting_mask != 0;
+        let levitation = self
+            .entities
+            .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_LEVITATION_ID);
+        let slow_falling = self
+            .entities
+            .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_SLOW_FALLING_ID)
+            .is_some();
+        let entity_collision_targets = (ticks > 0)
+            .then(|| self.entities.vehicle_entity_collision_targets())
+            .unwrap_or_default();
+
+        for _ in 0..ticks {
+            let transform = self.entities.transform(vehicle_id)?;
+            let previous_supporting_block = self.entities.supporting_block(vehicle_id)?;
+            let mut next_transform = transform;
+            let y_rot =
+                transform.y_rot + wrap_degrees_f32(controller.y_rot - transform.y_rot) * 0.5_f32;
+            next_transform.y_rot = y_rot;
+            next_transform.old_y_rot = y_rot;
+            next_transform.x_rot = controller.x_rot * 0.5;
+            next_transform.y_head_rot = y_rot;
+
+            let bounds = self.entities.pick_bounds(vehicle_id)?;
+            let relative_min = bounds.min.map(f64::from);
+            let relative_max = bounds.max.map(f64::from);
+            let position = [
+                next_transform.position.x,
+                next_transform.position.y,
+                next_transform.position.z,
+            ];
+            let aabb_min = std::array::from_fn(|axis| position[axis] + relative_min[axis]);
+            let aabb_max = std::array::from_fn(|axis| position[axis] + relative_max[axis]);
+            let eye_y = position[1] + f64::from(self.entities.standing_eye_height(vehicle_id)?);
+            let fluid_contact = crate::client::entity_fluid_contact(
+                self,
+                aabb_min,
+                aabb_max,
+                position[1],
+                [position[0], eye_y, position[2]],
+            );
+
+            let mut ridden_jump = self.entities.ridden_jump_state(vehicle_id)?;
+            if ridden_jump.player_jump_pending_scale > 0.0 {
+                let amount = ridden_jump.player_jump_pending_scale;
+                let look = super::calculate_view_vector(controller.x_rot, controller.y_rot);
+                let momentum = f64::from(if fluid_contact.in_water() {
+                    1.2_f32
+                } else {
+                    0.5_f32
+                }) * f64::from(amount)
+                    * movement_speed
+                    * entity_block_speed_factor(self, position);
+                next_transform.delta_movement.x += look.x * momentum;
+                next_transform.delta_movement.y += look.y * momentum;
+                next_transform.delta_movement.z += look.z * momentum;
+                let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
+                    set_metadata_bool(metadata, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, true);
+                });
+                self.entities.start_local_nautilus_dash(vehicle_id)?;
+            }
+            ridden_jump.player_jump_pending_scale = 0.0;
+            let _ = self
+                .entities
+                .with_ridden_jump_state_mut(vehicle_id, |state| *state = ridden_jump);
+
+            let is_falling = next_transform.delta_movement.y <= 0.0;
+            let effective_gravity = if is_falling && slow_falling {
+                gravity.min(0.01)
+            } else {
+                gravity
+            };
+            let old_y = next_transform.position.y;
+            let old_on_ground = transform.on_ground.unwrap_or(false);
+            if fluid_contact.in_water() {
+                add_relative_movement(
+                    &mut next_transform,
+                    ridden_input,
+                    f64::from(0.0325_f32) * movement_speed,
+                );
+                let outcome = move_local_living_entity(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    max_up_step,
+                    previous_supporting_block,
+                    &entity_collision_targets,
+                    next_transform,
+                );
+                next_transform = outcome.transform;
+                next_transform.delta_movement.x *= f64::from(0.9_f32);
+                next_transform.delta_movement.y *= f64::from(0.9_f32);
+                next_transform.delta_movement.z *= f64::from(0.9_f32);
+                store_living_move(
+                    &mut self.entities,
+                    vehicle_id,
+                    next_transform,
+                    outcome.supporting_block,
+                )?;
+            } else if fluid_contact.in_lava() {
+                add_relative_movement(&mut next_transform, ridden_input, f64::from(0.02_f32));
+                let outcome = move_local_living_entity(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    max_up_step,
+                    previous_supporting_block,
+                    &entity_collision_targets,
+                    next_transform,
+                );
+                next_transform = outcome.transform;
+                if fluid_contact.lava_height <= 0.4 {
+                    next_transform.delta_movement.x *= 0.5;
+                    next_transform.delta_movement.y *= f64::from(0.8_f32);
+                    next_transform.delta_movement.z *= 0.5;
+                    next_transform.delta_movement.y = fluid_falling_adjusted_velocity(
+                        next_transform.delta_movement.y,
+                        effective_gravity,
+                        is_falling,
+                        sprinting,
+                    );
+                } else {
+                    next_transform.delta_movement.x *= 0.5;
+                    next_transform.delta_movement.y *= 0.5;
+                    next_transform.delta_movement.z *= 0.5;
+                }
+                if effective_gravity != 0.0 {
+                    next_transform.delta_movement.y -= effective_gravity / 4.0;
+                }
+                jump_out_of_fluid_if_free(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    &entity_collision_targets,
+                    old_y,
+                    outcome.horizontal_collision,
+                    &mut next_transform,
+                );
+                store_living_move(
+                    &mut self.entities,
+                    vehicle_id,
+                    next_transform,
+                    outcome.supporting_block,
+                )?;
+            } else {
+                let block_friction = if old_on_ground {
+                    entity_movement_block_friction(self, position, previous_supporting_block.main)
+                } else {
+                    1.0
+                };
+                let friction = block_friction * 0.91_f32;
+                let ridden_speed = f64::from(0.02_f32) * movement_speed;
+                let speed = if old_on_ground {
+                    ridden_speed
+                        * f64::from(
+                            0.21600002_f32 / (block_friction * block_friction * block_friction),
+                        )
+                } else {
+                    ridden_speed * f64::from(0.1_f32)
+                };
+                add_relative_movement(&mut next_transform, ridden_input, speed);
+                let outcome = move_local_living_entity(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    max_up_step,
+                    previous_supporting_block,
+                    &entity_collision_targets,
+                    next_transform,
+                );
+                next_transform = outcome.transform;
+                next_transform.delta_movement.y = if let Some(amplifier) = levitation {
+                    next_transform.delta_movement.y
+                        + (0.05 * f64::from(amplifier + 1) - next_transform.delta_movement.y) * 0.2
+                } else {
+                    next_transform.delta_movement.y - effective_gravity
+                };
+                next_transform.delta_movement.x *= f64::from(friction);
+                next_transform.delta_movement.y *= f64::from(0.98_f32);
+                next_transform.delta_movement.z *= f64::from(friction);
+                store_living_move(
+                    &mut self.entities,
+                    vehicle_id,
+                    next_transform,
+                    outcome.supporting_block,
+                )?;
+            }
+            self.entities.advance_deferred_nautilus_subclass_tick(
+                vehicle_id,
+                fluid_contact.in_water(),
+                fluid_contact.eye_in_water,
+            )?;
+        }
+
+        let transform = self.entities.transform(vehicle_id)?;
+        Some(VehicleMoveReport {
+            vehicle_id,
+            position: transform.position,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            on_ground: transform.on_ground.unwrap_or(false),
+            snapped: false,
+        })
+    }
+
     pub fn local_player_root_vehicle_id(&self) -> Option<i32> {
         self.resolve_root_vehicle_id(self.local_player_vehicle_id?)
     }
@@ -1034,8 +1312,7 @@ impl WorldStore {
     /// player's controlled jumpable mount. `local_player_rideable_jumping_vehicle_id`
     /// applies the shared `canJump()` saddle gate. Non-cooldown mount classes
     /// use the interface default of zero; currently tracked cooldown classes
-    /// are camel and camel husk. Nautilus dash cooldown is not yet
-    /// reconstructed.
+    /// are Camel/CamelHusk and AbstractNautilus.
     pub fn local_player_rideable_jumping_vehicle_cooldown(
         &self,
         partial_ticks: f32,
@@ -1051,9 +1328,20 @@ impl WorldStore {
     /// partial-tick adjusted.
     pub fn local_player_rideable_jumping_vehicle_cooldown_ticks(&self) -> Option<i32> {
         let vehicle_id = self.local_player_rideable_jumping_vehicle_id()?;
-        self.entities
-            .camel_jump_cooldown_ticks(vehicle_id)
-            .map(|cooldown| cooldown.max(0))
+        let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
+        if vanilla_entity_metadata_type_is_camel(entity_type_id) {
+            return self
+                .entities
+                .camel_jump_cooldown_ticks(vehicle_id)
+                .map(|cooldown| cooldown.max(0));
+        }
+        if is_vanilla_abstract_nautilus_type(entity_type_id) {
+            return self
+                .entities
+                .nautilus_jump_cooldown_ticks(vehicle_id)
+                .map(|cooldown| cooldown.max(0));
+        }
+        Some(0)
     }
 
     /// Applies the local `PlayerRideableJumping.onPlayerJump` call that
@@ -1067,14 +1355,10 @@ impl WorldStore {
         let Some(entity_type_id) = self.entities.entity_type_id(vehicle_id) else {
             return false;
         };
-        if !is_vanilla_abstract_horse_type(entity_type_id) {
+        let is_nautilus = is_vanilla_abstract_nautilus_type(entity_type_id);
+        if !is_vanilla_abstract_horse_type(entity_type_id) && !is_nautilus {
             return false;
         }
-        let Some(accessors) =
-            vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
-        else {
-            return false;
-        };
         let should_stand = jump_amount >= 0;
         let jump_amount = jump_amount.max(0);
         let pending_scale = if jump_amount >= 90 {
@@ -1094,11 +1378,19 @@ impl WorldStore {
                 return false;
             }
         }
+        if is_nautilus
+            && self
+                .entities
+                .nautilus_jump_cooldown_ticks(vehicle_id)
+                .is_none_or(|cooldown| cooldown > 0)
+        {
+            return false;
+        }
         let Some(()) = self
             .entities
             .with_ridden_jump_state_mut(vehicle_id, |state| {
                 state.player_jump_pending_scale = pending_scale;
-                if should_stand && !is_camel {
+                if should_stand && !is_camel && !is_nautilus {
                     state.allow_stand_sliding = true;
                     state.local_stand_ticks_remaining = 20;
                 } else if is_camel {
@@ -1108,11 +1400,16 @@ impl WorldStore {
         else {
             return false;
         };
+        let Some(accessors) =
+            vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
+        else {
+            return is_nautilus;
+        };
         let flags = self
             .entities
             .metadata_byte(vehicle_id, accessors.flags_data_id, accessors.flags_default)
             .unwrap_or(accessors.flags_default);
-        if should_stand && !is_camel {
+        if should_stand && !is_camel && !is_nautilus {
             let flags = (flags & !accessors.eating_mask) | accessors.standing_mask;
             let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
                 set_metadata_byte(metadata, accessors.flags_data_id, flags);
@@ -1281,7 +1578,7 @@ impl WorldStore {
         false
     }
 
-    fn entity_controlling_passenger(&self, entity_id: i32) -> Option<i32> {
+    pub(crate) fn entity_controlling_passenger(&self, entity_id: i32) -> Option<i32> {
         let entity_type_id = self.entities.entity_type_id(entity_id)?;
         let first_passenger_id = self
             .entities

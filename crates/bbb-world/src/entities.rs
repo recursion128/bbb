@@ -749,10 +749,25 @@ pub enum EntityClientMovementParticleState {
 pub enum EntityClientMovementSoundKind {
     BoatPaddleLeft,
     BoatPaddleRight,
-    BlazeBurn { volume: f32, pitch: f32 },
-    GuardianFlop { elder: bool },
-    CamelDashReady { husk: bool },
-    CamelStand { husk: bool, pitch: f32 },
+    BlazeBurn {
+        volume: f32,
+        pitch: f32,
+    },
+    GuardianFlop {
+        elder: bool,
+    },
+    CamelDashReady {
+        husk: bool,
+    },
+    CamelStand {
+        husk: bool,
+        pitch: f32,
+    },
+    NautilusDashReady {
+        zombie: bool,
+        underwater: bool,
+        pitch: f32,
+    },
     BreezeDeflect,
     FireworkRocketLaunch,
     TridentReturn,

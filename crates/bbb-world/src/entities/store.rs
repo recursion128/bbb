@@ -27,7 +27,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-    VANILLA_ENTITY_TYPE_WITHER_ID,
+    VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
 use bbb_protocol::item_types::VANILLA_ITEM_DRAGON_HEAD_ID;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
@@ -94,7 +94,8 @@ use super::{
     HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
     LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
     OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
-    WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+    VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
     VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
     VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
@@ -337,6 +338,7 @@ struct EntityClientTickScratch {
     guardian_dry_jump_entities: Vec<i32>,
     camel_clear_dash_entities: Vec<i32>,
     camel_stand_instantly_entities: Vec<i32>,
+    nautilus_clear_dash_entities: Vec<i32>,
 }
 
 impl EntityClientTickScratch {
@@ -347,6 +349,7 @@ impl EntityClientTickScratch {
         self.guardian_dry_jump_entities.clear();
         self.camel_clear_dash_entities.clear();
         self.camel_stand_instantly_entities.clear();
+        self.nautilus_clear_dash_entities.clear();
     }
 }
 
@@ -377,6 +380,8 @@ pub(crate) struct EntityInWaterTickInput {
     pub(crate) entity_type_id: i32,
     pub(crate) aabb_min: [f64; 3],
     pub(crate) aabb_max: [f64; 3],
+    pub(crate) position: EntityVec3,
+    pub(crate) eye_position: [f64; 3],
     pub(crate) guardian_below_pos: Option<crate::BlockPos>,
     pub(crate) guardian_attack_target_id: i32,
 }
@@ -385,6 +390,7 @@ pub(crate) struct EntityInWaterTickInput {
 pub(crate) struct EntityClientTickFluidFacts {
     pub(crate) in_water: bool,
     pub(crate) in_liquid: bool,
+    pub(crate) eye_in_water: bool,
 }
 
 impl EntityClientTickWork {
@@ -869,15 +875,22 @@ impl EntityStore {
     ) -> Option<f32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
-        if !vanilla_entity_metadata_type_is_camel(identity.entity_type_id) {
-            return Some(0.0);
-        }
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
-        Some(
-            client_animations
-                .animations
-                .camel_jump_cooldown(partial_ticks),
-        )
+        if vanilla_entity_metadata_type_is_camel(identity.entity_type_id) {
+            return Some(
+                client_animations
+                    .animations
+                    .camel_jump_cooldown(partial_ticks),
+            );
+        }
+        if is_vanilla_abstract_nautilus_type(identity.entity_type_id) {
+            return Some(
+                client_animations
+                    .animations
+                    .nautilus_jump_cooldown(partial_ticks),
+            );
+        }
+        Some(0.0)
     }
 
     pub(crate) fn ridden_jump_state(&self, id: i32) -> Option<RiddenJumpState> {
@@ -896,6 +909,83 @@ impl EntityStore {
                 .map(|cooldown| cooldown.cooldown_ticks())
                 .unwrap_or(0),
         )
+    }
+
+    pub(crate) fn nautilus_jump_cooldown_ticks(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(
+            animations
+                .animations
+                .nautilus_dash_cooldown
+                .map(|cooldown| cooldown.cooldown_ticks())
+                .unwrap_or(0),
+        )
+    }
+
+    pub(crate) fn start_local_nautilus_dash(&mut self, id: i32) -> Option<()> {
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.start_local_nautilus_dash();
+        })
+    }
+
+    pub(crate) fn advance_deferred_nautilus_subclass_tick(
+        &mut self,
+        id: i32,
+        in_water: bool,
+        underwater: bool,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let (identity, transform, triggers) = {
+            let (identity, transform, metadata, animations) = self
+                .ecs
+                .query_one_mut::<(
+                    &EntityIdentity,
+                    &EntityTransform,
+                    &mut EntityMetadata,
+                    &mut EntityClientAnimations,
+                )>(entity)
+                .ok()?;
+            let is_dashing = entity_data_bool(
+                &metadata.data_values,
+                VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+                VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
+            );
+            let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+            let is_silent = entity_data_bool(
+                &metadata.data_values,
+                entity_accessors.silent_data_id,
+                entity_accessors.silent_default,
+            );
+            let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
+            let triggers = animations.animations.advance_nautilus_subclass_tick(
+                identity.id,
+                is_dashing,
+                in_water,
+                underwater,
+                is_silent,
+                is_baby,
+                transform.delta_movement,
+            );
+            if triggers.nautilus_clear_dash {
+                upsert_metadata_value(
+                    metadata,
+                    ProtocolEntityDataValue {
+                        data_id: VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                        value: EntityDataValueKind::Boolean(false),
+                    },
+                );
+            }
+            (identity.clone(), *transform, triggers)
+        };
+        append_nautilus_tick_triggers(
+            &mut self.pending_entity_client_movement_effects,
+            &identity,
+            &transform,
+            &triggers,
+        );
+        Some(())
     }
 
     pub(crate) fn start_local_camel_dash_after_tick(&mut self, id: i32) -> Option<()> {
@@ -4933,6 +5023,19 @@ impl EntityStore {
                 transform.position.y + f64::from(bounds.max[1]),
                 transform.position.z + f64::from(bounds.max[2]),
             ];
+            let eye_height = if is_vanilla_abstract_nautilus_type(identity.entity_type_id) {
+                vanilla_eye_height_for_entity_data(
+                    identity.entity_type_id,
+                    identity.data,
+                    &metadata.data_values,
+                    &attributes.attributes,
+                    Some(animations.animations),
+                    metadata.painting_variant_projection.as_ref(),
+                )
+                .unwrap_or(bounds.max[1])
+            } else {
+                0.0
+            };
             let guardian_below_pos =
                 (vanilla_entity_metadata_type_is_guardian(identity.entity_type_id)
                     && transform.delta_movement.y < 0.0)
@@ -4952,6 +5055,12 @@ impl EntityStore {
                 entity_type_id: identity.entity_type_id,
                 aabb_min,
                 aabb_max,
+                position: transform.position,
+                eye_position: [
+                    transform.position.x,
+                    transform.position.y + f64::from(eye_height),
+                    transform.position.z,
+                ],
                 guardian_below_pos,
                 guardian_attack_target_id,
             });
@@ -5150,6 +5259,7 @@ impl EntityStore {
         runs_normally: bool,
         deferred_boat_paddle_entity_id: Option<i32>,
         deferred_local_camel_vehicle_id: Option<i32>,
+        deferred_local_nautilus_vehicle_id: Option<i32>,
         spectator_player_uuids: &HashSet<Uuid>,
         fluid_facts_by_id: &HashMap<i32, EntityClientTickFluidFacts>,
         guardian_can_stand_on_below_by_id: &HashMap<i32, bool>,
@@ -5350,6 +5460,13 @@ impl EntityStore {
                             .push(identity.id);
                     }
                 }
+                let is_nautilus = is_vanilla_abstract_nautilus_type(entity_type_id);
+                let nautilus_is_dashing = is_nautilus
+                    && entity_data_bool(
+                        &metadata.data_values,
+                        VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+                        VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
+                    );
                 let copper_golem_animation =
                     if entity_type_id == VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID {
                         copper_golem_animation_flags(entity_type_id, &metadata.data_values)
@@ -5405,14 +5522,15 @@ impl EntityStore {
                     .is_some_and(|(data_id, default)| {
                         entity_data_bool(&metadata.data_values, data_id, default)
                     });
-                let is_silent = (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID || is_guardian)
-                    && vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
-                        entity_data_bool(
-                            &metadata.data_values,
-                            accessors.silent_data_id,
-                            accessors.silent_default,
-                        )
-                    });
+                let is_silent =
+                    (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID || is_guardian || is_nautilus)
+                        && vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+                            entity_data_bool(
+                                &metadata.data_values,
+                                accessors.silent_data_id,
+                                accessors.silent_default,
+                            )
+                        });
                 let client_animations_before_tick = animations
                     .animations
                     .needs_particle_trigger_bounds_snapshot()
@@ -5460,6 +5578,27 @@ impl EntityStore {
                     is_silent,
                     is_swimming,
                 );
+                if is_nautilus && deferred_local_nautilus_vehicle_id != Some(identity.id) {
+                    let fluid_facts = fluid_facts_by_id
+                        .get(&identity.id)
+                        .copied()
+                        .unwrap_or_default();
+                    let nautilus_triggers = animations.animations.advance_nautilus_subclass_tick(
+                        identity.id,
+                        nautilus_is_dashing,
+                        fluid_facts.in_water,
+                        fluid_facts.eye_in_water,
+                        is_silent,
+                        is_baby,
+                        transform.delta_movement,
+                    );
+                    if nautilus_triggers.nautilus_clear_dash {
+                        tick_scratch.nautilus_clear_dash_entities.push(identity.id);
+                    }
+                    particle_triggers.nautilus_dash_ready_sound =
+                        nautilus_triggers.nautilus_dash_ready_sound;
+                    particle_triggers.nautilus_bubble = nautilus_triggers.nautilus_bubble;
+                }
                 append_client_tick_particle_triggers(
                     &mut self.pending_ravager_stun_particles,
                     &mut self.pending_evoker_fangs_crit_particles,
@@ -5564,6 +5703,21 @@ impl EntityStore {
                             data_id: last_pose_data_id,
                             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
                             value: EntityDataValueKind::Long(game_time.saturating_sub(53).max(0)),
+                        },
+                    );
+                }
+            }
+            for entity_id in tick_scratch.nautilus_clear_dash_entities.drain(..) {
+                let Some(&entity) = self.by_protocol_id.get(&entity_id) else {
+                    continue;
+                };
+                if let Ok(mut metadata) = self.ecs.get::<&mut EntityMetadata>(entity) {
+                    upsert_metadata_value(
+                        &mut metadata,
+                        ProtocolEntityDataValue {
+                            data_id: VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+                            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                            value: EntityDataValueKind::Boolean(false),
                         },
                     );
                 }
@@ -6356,6 +6510,12 @@ fn append_client_tick_particle_triggers(
             },
         ));
     }
+    append_nautilus_tick_triggers(
+        pending_entity_client_movement_effects,
+        identity,
+        transform,
+        triggers,
+    );
     if triggers.minecart_tnt_smoke {
         pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
             EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
@@ -6546,6 +6706,43 @@ fn append_client_tick_particle_triggers(
                 velocity: offset.velocity,
             }
         }));
+    }
+}
+
+fn append_nautilus_tick_triggers(
+    pending_entity_client_movement_effects: &mut Vec<EntityClientMovementEffectState>,
+    identity: &EntityIdentity,
+    transform: &EntityTransform,
+    triggers: &EntityClientTickParticleTriggers,
+) {
+    if let Some(sound) = triggers.nautilus_dash_ready_sound {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::NautilusDashReady {
+                    zombie: identity.entity_type_id == VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                    underwater: sound.underwater,
+                    pitch: sound.pitch,
+                },
+                position: transform.position,
+            },
+        ));
+    }
+    if let Some(velocity) = triggers.nautilus_bubble {
+        let view =
+            super::calculate_view_vector(transform.x_rot.clamp(-10.0, 10.0), transform.y_rot);
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
+                entity_id: identity.id,
+                kind: EntityClientMovementSimpleParticleKind::Bubble,
+                position: super::EntityVec3 {
+                    x: transform.position.x - view.x * 1.1,
+                    y: transform.position.y - view.y + 0.25,
+                    z: transform.position.z - view.z * 1.1,
+                },
+                velocity,
+            }),
+        ));
     }
 }
 

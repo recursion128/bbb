@@ -64,9 +64,11 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_metadata_entity_accessors,
+    is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_vehicle_entity_type,
+    vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type, vanilla_entity_type_is_squid,
-    EntityTransform, EntityVec3, VanillaEntityEventKind, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    EntityTransform, EntityVec3, VanillaEntityEventKind, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
 use bbb_protocol::entity_types::*;
 
@@ -253,6 +255,15 @@ const EVOKER_FANGS_PARTICLE_RANDOM_SALT: i64 = 0xF46;
 /// the synced dash flag rises, and `Camel.tick` decrements it each client tick. The renderer consumes
 /// `max(dashCooldown - partialTicks, 0)` as `CamelRenderState.jumpCooldown`.
 const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
+/// Vanilla `AbstractNautilus.DASH_COOLDOWN_TICKS`. Unlike Camel, metadata updates seed this
+/// cooldown from `onSyncedDataUpdated(DASH)` even when the synchronized value is `false`.
+const NAUTILUS_DASH_COOLDOWN_TICKS: i32 = 40;
+const NAUTILUS_DASH_MINIMUM_DURATION_TICKS: i32 = 5;
+const NAUTILUS_BUBBLE_PROBABILITY_MIN: f64 = 0.15;
+const NAUTILUS_BUBBLE_PROBABILITY_MAX: f64 = 1.0;
+const NAUTILUS_BUBBLE_PROBABILITY_MULTIPLIER: f64 = 2.0;
+const NAUTILUS_BUBBLE_SPREAD_FACTOR: f64 = 0.8;
+const NAUTILUS_CLIENT_RANDOM_SALT: u64 = 0x6e61_7574_696c_7573;
 /// Vanilla `Camel.setupAnimationStates`: `idleAnimationTimeout = random.nextInt(40) + 80`, then
 /// `idleAnimationState.start(tickCount)`. `CAMEL_IDLE` itself is the 4.0 s non-looping keyframe.
 const CAMEL_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
@@ -306,6 +317,17 @@ pub(crate) struct EntityClientTickParticleTriggers {
     /// Vanilla `Camel.tick` plays the neutral dash-ready sound on the exact
     /// client tick where the retained cooldown reaches zero.
     pub(crate) camel_dash_ready_sound: bool,
+    /// Vanilla `AbstractNautilus.tick` clears DASH before decrementing its cooldown.
+    pub(crate) nautilus_clear_dash: bool,
+    /// The ready sound precedes the optional bubble in the subclass tick.
+    pub(crate) nautilus_dash_ready_sound: Option<NautilusDashReadySoundParameters>,
+    pub(crate) nautilus_bubble: Option<EntityVec3>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct NautilusDashReadySoundParameters {
+    pub(crate) underwater: bool,
+    pub(crate) pitch: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -442,6 +464,10 @@ pub struct EntityClientAnimationState {
     pub camel_idle: Option<CamelIdleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub camel_dash_cooldown: Option<CamelDashCooldownState>,
+    /// Client-only `AbstractNautilus.dashCooldown`. It is canonical mutable tick state but not part
+    /// of the stable probe/renderer shape; immutable publications still clone it for isolation.
+    #[serde(skip)]
+    pub(crate) nautilus_dash_cooldown: Option<NautilusDashCooldownState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copper_golem_idle: Option<CopperGolemIdleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -556,6 +582,10 @@ pub struct EntityClientAnimationState {
     /// distribution and old-generation isolation without a parallel owner.
     #[serde(skip)]
     pub(crate) camel_voice_random_seed: Option<u64>,
+    /// Shared client-local `AbstractNautilus.random` cursor for ready-sound pitch and bubbles in
+    /// exact subclass order. The server does not synchronize its initial seed.
+    #[serde(skip)]
+    pub(crate) nautilus_client_random_seed: Option<u64>,
     /// Client-local `PlayerRideableJumping` input retained between the local
     /// player's release edge and the controlled vehicle's ridden tick. It is
     /// cloned into immutable publications for old-generation isolation but is
@@ -1435,6 +1465,48 @@ impl CamelDashCooldownState {
 
     fn is_settled(self) -> bool {
         self.cooldown_ticks == 0 && !self.was_dashing
+    }
+}
+
+/// Vanilla `AbstractNautilus.dashCooldown`, retained on the canonical entity so a released local
+/// dash, a synchronized remote dash, and immutable generations all observe one owner.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct NautilusDashCooldownState {
+    cooldown_ticks: i32,
+}
+
+impl NautilusDashCooldownState {
+    fn seed_from_synced_update(&mut self) {
+        if self.cooldown_ticks == 0 {
+            self.cooldown_ticks = NAUTILUS_DASH_COOLDOWN_TICKS;
+        }
+    }
+
+    fn start_local_dash(&mut self) {
+        self.cooldown_ticks = NAUTILUS_DASH_COOLDOWN_TICKS;
+    }
+
+    fn advance_subclass_tick(&mut self, is_dashing: bool) -> (bool, bool) {
+        let clear_dash = is_dashing
+            && self.cooldown_ticks
+                < NAUTILUS_DASH_COOLDOWN_TICKS - NAUTILUS_DASH_MINIMUM_DURATION_TICKS;
+        let previous = self.cooldown_ticks;
+        if self.cooldown_ticks > 0 {
+            self.cooldown_ticks -= 1;
+        }
+        (clear_dash, previous == 1)
+    }
+
+    pub(crate) fn cooldown_ticks(self) -> i32 {
+        self.cooldown_ticks
+    }
+
+    fn cooldown(self, partial_tick: f32) -> f32 {
+        (self.cooldown_ticks as f32 - partial_tick).max(0.0)
+    }
+
+    fn is_settled(self) -> bool {
+        self.cooldown_ticks == 0
     }
 }
 
@@ -4049,6 +4121,76 @@ impl EntityClientAnimationState {
         }
     }
 
+    pub(crate) fn start_local_nautilus_dash(&mut self) {
+        self.nautilus_dash_cooldown
+            .get_or_insert_with(Default::default)
+            .start_local_dash();
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn advance_nautilus_subclass_tick(
+        &mut self,
+        entity_id: i32,
+        is_dashing: bool,
+        in_water: bool,
+        underwater: bool,
+        is_silent: bool,
+        is_baby: bool,
+        delta_movement: EntityVec3,
+    ) -> EntityClientTickParticleTriggers {
+        let mut triggers = EntityClientTickParticleTriggers::default();
+        let (clear_dash, ready_sound) = self
+            .nautilus_dash_cooldown
+            .as_mut()
+            .map_or((is_dashing, false), |cooldown| {
+                cooldown.advance_subclass_tick(is_dashing)
+            });
+        triggers.nautilus_clear_dash = clear_dash;
+        if self
+            .nautilus_dash_cooldown
+            .is_some_and(NautilusDashCooldownState::is_settled)
+        {
+            self.nautilus_dash_cooldown = None;
+        }
+
+        let random_seed = self.nautilus_client_random_seed.get_or_insert_with(|| {
+            java_random_seed(i64::from(entity_id).wrapping_add(NAUTILUS_CLIENT_RANDOM_SALT as i64))
+        });
+        if ready_sound {
+            // `makeSound(getDashReadySound())` evaluates `getVoicePitch()` before
+            // `Entity.playSound` applies the silent gate.
+            let base = if is_baby { 1.5 } else { 1.0 };
+            let pitch = (java_random_next_float(random_seed) - java_random_next_float(random_seed))
+                * 0.2
+                + base;
+            if !is_silent {
+                triggers.nautilus_dash_ready_sound =
+                    Some(NautilusDashReadySoundParameters { underwater, pitch });
+            }
+        }
+        if in_water {
+            let speed = (delta_movement.x * delta_movement.x
+                + delta_movement.y * delta_movement.y
+                + delta_movement.z * delta_movement.z)
+                .sqrt();
+            let probability = (speed * NAUTILUS_BUBBLE_PROBABILITY_MULTIPLIER).clamp(
+                NAUTILUS_BUBBLE_PROBABILITY_MIN,
+                NAUTILUS_BUBBLE_PROBABILITY_MAX,
+            );
+            if f64::from(java_random_next_float(random_seed)) < probability {
+                let spread = java_random_next_double(random_seed)
+                    * NAUTILUS_BUBBLE_SPREAD_FACTOR
+                    * (1.0 + speed);
+                triggers.nautilus_bubble = Some(EntityVec3 {
+                    x: (f64::from(java_random_next_float(random_seed)) - 0.5) * spread,
+                    y: (f64::from(java_random_next_float(random_seed)) - 0.5) * spread,
+                    z: (f64::from(java_random_next_float(random_seed)) - 0.5) * spread,
+                });
+            }
+        }
+        triggers
+    }
+
     pub(crate) fn needs_particle_trigger_bounds_snapshot(&self) -> bool {
         self.ravager.is_some() || self.evoker_fangs.is_some()
     }
@@ -4093,6 +4235,14 @@ impl EntityClientAnimationState {
                     CAMEL_VOICE_RANDOM_SALT ^ entity_type_id as u64,
                 ) as i64)
             });
+        self.nautilus_client_random_seed =
+            is_vanilla_abstract_nautilus_type(entity_type_id).then(|| {
+                java_random_seed(spawn_random_bits(
+                    uuid,
+                    NAUTILUS_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
+                ) as i64)
+            });
+        self.nautilus_dash_cooldown = None;
         self.ridden_jump = vanilla_entity_metadata_type_is_player_rideable_jumping(entity_type_id)
             .then(RiddenJumpState::default);
     }
@@ -4152,6 +4302,18 @@ impl EntityClientAnimationState {
                     self.boat_damage = Some(damage);
                 }
             }
+        }
+        // `AbstractNautilus.onSyncedDataUpdated(DASH)` seeds the cooldown after
+        // the first entity tick regardless of the synchronized boolean value.
+        if is_vanilla_abstract_nautilus_type(entity_type_id)
+            && self.age_ticks > 0
+            && updated_values
+                .iter()
+                .any(|value| value.data_id == VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID)
+        {
+            self.nautilus_dash_cooldown
+                .get_or_insert_with(Default::default)
+                .seed_from_synced_update();
         }
     }
 
@@ -5127,6 +5289,12 @@ impl EntityClientAnimationState {
     pub fn camel_jump_cooldown(self, partial_tick: f32) -> f32 {
         self.camel_dash_cooldown
             .map(|state| state.jump_cooldown(partial_tick))
+            .unwrap_or(0.0)
+    }
+
+    pub(crate) fn nautilus_jump_cooldown(self, partial_tick: f32) -> f32 {
+        self.nautilus_dash_cooldown
+            .map(|state| state.cooldown(partial_tick))
             .unwrap_or(0.0)
     }
 
@@ -6514,6 +6682,7 @@ pub(super) fn spawn_random_bits(uuid: Uuid, salt: u64) -> u64 {
 pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
     vanilla_entity_metadata_type_is_guardian(entity_type_id)
         || vanilla_entity_metadata_type_is_camel(entity_type_id)
+        || is_vanilla_abstract_nautilus_type(entity_type_id)
         || vanilla_entity_type_is_squid(entity_type_id)
         || matches!(
             entity_type_id,
@@ -6802,7 +6971,20 @@ impl WorldStore {
         let mut guardian_can_stand_on_below_by_id = std::collections::HashMap::new();
         let mut guardian_attack_target_ids = std::collections::HashSet::new();
         for input in in_water_inputs {
-            let in_water = crate::fluid::world_aabb_in_water(self, input.aabb_min, input.aabb_max);
+            let nautilus_fluid_contact = is_vanilla_abstract_nautilus_type(input.entity_type_id)
+                .then(|| {
+                    crate::client::entity_fluid_contact(
+                        self,
+                        input.aabb_min,
+                        input.aabb_max,
+                        input.position.y,
+                        input.eye_position,
+                    )
+                });
+            let in_water = nautilus_fluid_contact.map_or_else(
+                || crate::fluid::world_aabb_in_water(self, input.aabb_min, input.aabb_max),
+                |contact| contact.in_water(),
+            );
             let in_liquid = vanilla_entity_metadata_type_is_camel(input.entity_type_id)
                 && crate::client::entity_bounds_contains_any_fluid(
                     self,
@@ -6814,6 +6996,8 @@ impl WorldStore {
                 super::store::EntityClientTickFluidFacts {
                     in_water,
                     in_liquid,
+                    eye_in_water: nautilus_fluid_contact
+                        .is_some_and(|contact| contact.eye_in_water),
                 },
             );
             if let Some(pos) = input.guardian_below_pos.filter(|_| !in_water) {
@@ -7039,6 +7223,14 @@ impl WorldStore {
                     .entity_type_id(*entity_id)
                     .is_some_and(vanilla_entity_metadata_type_is_camel)
             });
+        let deferred_local_nautilus_vehicle_id = self
+            .local_player_first_passenger_root_vehicle_id()
+            .filter(|entity_id| {
+                self.entities
+                    .entity_type_id(*entity_id)
+                    .is_some_and(is_vanilla_abstract_nautilus_type)
+                    && self.entity_controlling_passenger(*entity_id) == self.local_player_id
+            });
         let has_client_level = self.level.is_some();
         let chunks = &self.chunks;
         let is_ticking_entity = |_: i32, entity_type_id: i32, position: EntityVec3| {
@@ -7061,6 +7253,7 @@ impl WorldStore {
             runs_normally,
             deferred_boat_paddle_entity_id,
             deferred_local_camel_vehicle_id,
+            deferred_local_nautilus_vehicle_id,
             &spectator_player_uuids,
             &fluid_facts_by_id,
             &guardian_can_stand_on_below_by_id,

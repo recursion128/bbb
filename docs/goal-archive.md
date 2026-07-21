@@ -20182,3 +20182,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   生成数万条 required beam positions；精确容量上界预留只回收约 1--3%，证明主要成本是 RNG/
   三角计算/particle payload，而非 realloc 或 snapshot，未把工作转移到 resolver/下一次 mutation。
   peak pending logical memory 仍随同 tick beam 总长度线性增长。
+
+## 2026-07-20：AbstractNautilus ridden client tick
+
+- [x] Nautilus/ZombieNautilus 复用 canonical `PlayerRideableJumping` owner，在 direct local
+  controller 下执行 strafe、pitch-forward/up、half-pitch/half-yaw、water/land ridden speed、
+  look-vector dash、collision-clipped travel 与 water 0.9 resistance；`isPushedByFluid=false`
+  因此只探测 fluid contact，不错误加入 fluid current。
+- [x] private 40-tick cooldown 与 instance-local Java RNG 随 immutable publication clone；
+  synchronized DASH 的 true/false callback、五个完整 dash tick、clear-before-decrement、
+  adult/baby ready sound、silent gate、water bubble RNG/mouth origin 均保持 Vanilla 顺序。
+  local subclass tick 在 ridden movement 后执行，remote/uncontrolled instance 留在 common
+  ordered pass；Breath effect、AI、pathing、damage和 inventory 结果仍归 server authority。
+- [x] water/land、local/remote cooldown、metadata false callback、sound/bubble、packet order、
+  same-id recreation 与 retained A/B 均有专项测试。同机 Criterion 为 steady physics
+  3.8731 us、physics + retained publication 8.0037 us、fresh dash + retained publication
+  21.112 us；约 4.13 us retained 增量在当前操作支付，没有转移到下一次 mutation。

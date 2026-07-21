@@ -680,12 +680,13 @@ Movement:
 - Complete the remaining vanilla boat physics after the direct local root-boat
   status/buoyancy/block/entity/world-border collision/control foundation: remote
   persistent status, bubble-column motion, passenger push, block
-  inside/emission callbacks and exact scheduler integration. Implement
-  non-boat vehicle movement only for the locally controlled instance; resolve
-  entity-specific `getControllingPassenger` gates (saddle/held item/armor and
-  related state) rather than treating first passenger as sufficient, and cancel
-  active interpolation on accepted corrections. Remote vehicles remain
-  server-transform/interpolation driven.
+  inside/emission callbacks and exact scheduler integration. Complete the
+  remaining locally controlled vehicle subclasses and controller gates after
+  the generated saddle/first-passenger AbstractHorse, Camel, HappyGhast and
+  AbstractNautilus foundations; Pig/Strider still need exact held-item control
+  and `ItemBasedSteering` boost. Do not treat first passenger as universally
+  sufficient, and cancel active interpolation on accepted corrections. Remote
+  vehicles remain server-transform/interpolation driven.
 
 Block destroy:
 

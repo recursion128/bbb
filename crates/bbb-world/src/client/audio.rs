@@ -83,6 +83,11 @@ const CAMEL_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.camel.dash_ready";
 const CAMEL_HUSK_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.camel_husk.dash_ready";
 const CAMEL_STAND_SOUND_EVENT: &str = "minecraft:entity.camel.stand";
 const CAMEL_HUSK_STAND_SOUND_EVENT: &str = "minecraft:entity.camel_husk.stand";
+const NAUTILUS_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.nautilus.dash_ready";
+const NAUTILUS_DASH_READY_LAND_SOUND_EVENT: &str = "minecraft:entity.nautilus.dash_ready_land";
+const ZOMBIE_NAUTILUS_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.zombie_nautilus.dash_ready";
+const ZOMBIE_NAUTILUS_DASH_READY_LAND_SOUND_EVENT: &str =
+    "minecraft:entity.zombie_nautilus.dash_ready_land";
 const BREEZE_DEFLECT_SOUND_EVENT: &str = "minecraft:entity.breeze.deflect";
 const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
 const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
@@ -1424,6 +1429,21 @@ impl WorldStore {
                 },
                 "neutral",
                 0.8,
+                pitch,
+            ),
+            EntityClientMovementSoundKind::NautilusDashReady {
+                zombie,
+                underwater,
+                pitch,
+            } => (
+                match (zombie, underwater) {
+                    (false, true) => NAUTILUS_DASH_READY_SOUND_EVENT,
+                    (false, false) => NAUTILUS_DASH_READY_LAND_SOUND_EVENT,
+                    (true, true) => ZOMBIE_NAUTILUS_DASH_READY_SOUND_EVENT,
+                    (true, false) => ZOMBIE_NAUTILUS_DASH_READY_LAND_SOUND_EVENT,
+                },
+                "neutral",
+                1.0,
                 pitch,
             ),
             EntityClientMovementSoundKind::BreezeDeflect => {
@@ -3763,6 +3783,26 @@ mod tests {
                 },
                 position: crate::EntityVec3::default(),
             });
+        let nautilus_land =
+            store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+                entity_id: 15,
+                kind: EntityClientMovementSoundKind::NautilusDashReady {
+                    zombie: false,
+                    underwater: false,
+                    pitch: 0.925,
+                },
+                position: crate::EntityVec3::default(),
+            });
+        let zombie_nautilus_underwater =
+            store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+                entity_id: 16,
+                kind: EntityClientMovementSoundKind::NautilusDashReady {
+                    zombie: true,
+                    underwater: true,
+                    pitch: 1.075,
+                },
+                position: crate::EntityVec3::default(),
+            });
         let breeze = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
             entity_id: 9,
             kind: EntityClientMovementSoundKind::BreezeDeflect,
@@ -3829,6 +3869,19 @@ mod tests {
         assert_eq!(camel_husk_stand.source, "neutral");
         assert_eq!(camel_husk_stand.volume, 0.8);
         assert_eq!(camel_husk_stand.pitch, 1.125);
+        assert_eq!(
+            nautilus_land.sound.location.as_deref(),
+            Some("minecraft:entity.nautilus.dash_ready_land")
+        );
+        assert_eq!(nautilus_land.source, "neutral");
+        assert_eq!(nautilus_land.volume, 1.0);
+        assert_eq!(nautilus_land.pitch, 0.925);
+        assert_eq!(
+            zombie_nautilus_underwater.sound.location.as_deref(),
+            Some("minecraft:entity.zombie_nautilus.dash_ready")
+        );
+        assert_eq!(zombie_nautilus_underwater.source, "neutral");
+        assert_eq!(zombie_nautilus_underwater.pitch, 1.075);
         assert_eq!(
             breeze.sound.location.as_deref(),
             Some("minecraft:entity.breeze.deflect")

@@ -103,6 +103,7 @@ pub(crate) fn advance_player_input_for_client_ticks(
         let vehicle_report = world
             .advance_local_boat_vehicle_input(input_state, client_ticks)
             .or_else(|| world.advance_local_abstract_horse_vehicle_input(input_state, client_ticks))
+            .or_else(|| world.advance_local_nautilus_vehicle_input(input_state, client_ticks))
             .or_else(|| world.advance_local_happy_ghast_vehicle_input(input_state, client_ticks));
         if client_ticks > 0 || boat_vehicle && input.last_vehicle_command_at.is_none() {
             maybe_queue_vehicle_commands(input, world, counters, net_commands, now, vehicle_report);
@@ -431,7 +432,7 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, CommonPlayerSpawnInfo, EntityMove, EquipmentSlot, EquipmentSlotUpdate,
@@ -1405,6 +1406,43 @@ mod tests {
     }
 
     #[test]
+    fn nautilus_jump_release_starts_dash_before_vehicle_report() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let now = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        input.riding_jump_charge_seconds = Some(0.40);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_NAUTILUS_ID);
+        let mut counters = NetCounters::default();
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            now,
+            1,
+        );
+
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerCommand(command)
+                if command.action == PlayerCommandAction::StartRidingJump && command.data == 90
+        ));
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MoveVehicle(_)));
+        assert!(rx.try_recv().is_err());
+        assert_eq!(
+            world.local_player_rideable_jumping_vehicle_cooldown_ticks(),
+            Some(39)
+        );
+    }
+
+    #[test]
     fn mounted_non_jumpable_vehicle_release_does_not_queue_riding_jump() {
         let (tx, mut rx) = mpsc::channel(3);
         let commands = Some(tx);
@@ -1476,7 +1514,9 @@ mod tests {
         world.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
         if matches!(
             entity_type_id,
-            VANILLA_ENTITY_TYPE_HORSE_ID | VANILLA_ENTITY_TYPE_CAMEL_ID
+            VANILLA_ENTITY_TYPE_HORSE_ID
+                | VANILLA_ENTITY_TYPE_CAMEL_ID
+                | VANILLA_ENTITY_TYPE_NAUTILUS_ID
         ) {
             world.set_default_item_equipment_slots(BTreeMap::from([(
                 SADDLE_ITEM_ID,

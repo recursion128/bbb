@@ -732,6 +732,41 @@ Nautilus ridden travel and the remaining subclass inventory are still phase-4
 work, so this is the next buildable local-vehicle milestone rather than
 coverage closeout.
 
+The AbstractNautilus stage now consumes the same canonical retained
+`PlayerRideableJumping` state for Nautilus and ZombieNautilus. Generated class
+membership and the generated DASH accessor select the family; no protocol-id
+table, alternate metadata schema, or vehicle side map was added. Direct local
+control applies the controller's strafe and pitch-derived forward/up input,
+half-pitch and half-yaw approach, water/land ridden speed, exact look-vector
+dash momentum, collision-clipped travel, and the water-specific `0.9`
+resistance. Because Vanilla returns `isPushedByFluid() == false`, this path
+deliberately probes water/lava without adding a fluid current.
+
+The canonical client animation owner retains the private 40-tick dash
+cooldown and instance-local Java RNG cursor across immutable publications.
+Both synchronized DASH values seed a settled cooldown after the first tick,
+matching `onSyncedDataUpdated`; local and remote ticks keep five full dashing
+ticks, clear DASH before decrement, emit the exact adult/baby neutral ready
+sound at zero, and then evaluate the water bubble with Vanilla's RNG order and
+clamped mouth pitch. The directly controlled Nautilus defers this subclass
+stage until its ridden movement has completed, while remote/uncontrolled
+instances remain in the common ordered entity pass. Server-side Breath of the
+Nautilus refresh, AI, pathing, damage, inventory outcomes, and other authority
+are not synthesized.
+
+Focused tests cover water and land travel, local and synchronized dash
+boundaries, the false-valued metadata callback, ready-sound selection/silence,
+bubble origin, packet-before-MoveVehicle ordering, same-id recreation, and
+retained A/B generation isolation. On the same machine, the repo Criterion
+case (20 samples, one-second warm-up, two-second measurement) measures
+3.8731 us for steady Nautilus physics, 8.0037 us for physics plus a retained
+publication, and 21.112 us for a fresh dash plus retained publication. The
+roughly 4.13 us steady retained-snapshot increment is paid in the current
+operation rather than deferred to the following mutation. These are absolute
+costs for newly implemented client work, not a speedup claim. Pig/Strider
+`ItemBasedSteering` boost and the remaining subclass inventory still precede
+phase-4 closure.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:
