@@ -117,4 +117,9 @@
   pitch-90 排除云漂移，双帧 readback 按 7-bit 位深比较——vanilla lightmap
   blockLightFlicker 每 tick 随机游走使 ±1 LSB 抖动成为语义本身；顺带修
   场景列探测缺中间列视线检查的间歇失败，evidence schema 8，live 实跑
-  全绿）。
+  全绿）与 inventory 背包场景（E 键真实路径开背包 + player menu
+  quick-move + server playerdata Slot 区间双确认，evidence schema 9）；
+  **修正 canonical 缺口**：vanilla 容器 menu 与背包共享底层 Inventory，
+  快照镜像未回写——容器 set_content/set_slot/本地 click 的尾部 36 槽玩家段
+  现镜像回 player_slots 与 survival menu 投影。**至此 P1 playable 阶段 1
+  基础游玩交互全部闭环**，playable 门禁剩阶段 2 扩展失败证据。

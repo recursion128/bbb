@@ -529,7 +529,7 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 result: None,
                 error: Some(
                     "input.key requires param key in \
-                     forward/backward/left/right/jump/sneak/sprint/hotbar1-9"
+                     forward/backward/left/right/jump/sneak/sprint/hotbar1-9/inventory"
                         .to_string(),
                 ),
             };

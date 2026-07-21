@@ -276,17 +276,13 @@ foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺
 断裂。命令入口 `scripts/playable-gate.sh`；lifecycle 工程合同见
 `docs/playable-session-lifecycle-design.md`。session lifecycle（death/respawn、
 Overworld↔Nether、resource-pack push/pop、Play→Configuration→Play、双 server
-Transfer）与基础游玩的 movement/破坏放置/连接活性均已闭环。
+Transfer）与基础游玩交互（movement、破坏/放置、实体攻击、容器
+开箱/quick-move/关箱、chat round-trip、hotbar 切槽、声音/粒子推送、
+deterministic screenshot、inventory 背包操作，evidence schema 9）均已闭环。
 
 剩余阶段：
 
-1. **基础游玩交互**：通过 control/CLI 驱动 inventory 背包操作（survival
-   player menu click 路径），验证 server acknowledgement、world 结果和呈现
-   side effect，而不只检查命令入队（movement、破坏/放置、实体攻击、容器
-   开箱/quick-move/关箱、chat 消息/命令 round-trip、hotbar 数字键切槽、
-   server 推送声音/粒子落 canonical 呈现输入、deterministic screenshot
-   readback（vanilla lightmap flicker 位容差判据）已闭环）。
-2. **扩展失败证据**：在已有 packet/session timeline、world/control snapshot 与
+1. **扩展失败证据**：在已有 packet/session timeline、world/control snapshot 与
    双 server log 基础上增加同 lifecycle generation 的 renderer/audio counters、
    pending request 断言和最后 screenshot；失败继续区分 server 启动、网络、
    canonical apply、runtime side effect 和 presentation 阶段。

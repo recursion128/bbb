@@ -143,6 +143,63 @@ fn tracks_player_inventory_and_container_state() {
 }
 
 #[test]
+fn container_player_section_updates_mirror_into_the_backpack() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
+    // A 9x3 chest menu has 27 container slots, then main 27..54 mapping to
+    // backpack 9-35 and hotbar 54..63 mapping to backpack 0-8. Vanilla's
+    // menus share the player inventory object, so a server refresh of the
+    // trailing section is a backpack update.
+    let mut items = vec![ProtocolItemStackSummary::empty(); 63];
+    items[27] = item_stack(42, 3);
+    items[62] = item_stack(43, 5);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 2,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let backpack = |store: &WorldStore, slot: i32| {
+        store
+            .inventory()
+            .player_slots
+            .iter()
+            .find(|row| row.slot == slot)
+            .map(|row| row.item.clone())
+    };
+    assert_eq!(backpack(&store, 9), Some(item_stack(42, 3)));
+    assert_eq!(backpack(&store, 8), Some(item_stack(43, 5)));
+
+    // A single-slot refresh in the player section mirrors the same way.
+    store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 3,
+        slot: 27,
+        item: ProtocolItemStackSummary::empty(),
+    });
+    assert_eq!(backpack(&store, 9), Some(ProtocolItemStackSummary::empty()));
+
+    // Closing the chest and opening the survival inventory must show the
+    // mirrored rows in the menu projection.
+    store.apply_container_close(ProtocolContainerClose { container_id: 7 });
+    assert!(store.open_local_inventory());
+    let menu_hotbar_last = store
+        .inventory()
+        .inventory_menu
+        .slots
+        .iter()
+        .find(|row| row.slot == 44)
+        .map(|row| row.item.clone());
+    assert_eq!(menu_hotbar_last, Some(item_stack(43, 5)));
+}
+
+#[test]
 fn set_player_inventory_only_tracks_vanilla_inventory_and_equipment_slots() {
     let mut store = WorldStore::new();
 

@@ -325,6 +325,33 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_missing_inventory_interaction_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["inventory_interaction"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "inventory_interaction"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_server_unconfirmed_inventory_move_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["inventory_interaction"]["server_confirmed"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "inventory_interaction.server_confirmed"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_unmoved_inventory_stack_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["inventory_interaction"]["to_slot"] = evidence[
+            "inventory_interaction"
+        ]["from_slot"]
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "must move the stack between slots"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
     def test_missing_screenshot_readback_section_fails(self):
         evidence = copy.deepcopy(self.fixture)
         del evidence["screenshot_readback"]

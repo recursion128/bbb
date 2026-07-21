@@ -160,6 +160,7 @@ fn input_key_code(key: InputKeyControl) -> KeyCode {
         InputKeyControl::Hotbar7 => KeyCode::Digit7,
         InputKeyControl::Hotbar8 => KeyCode::Digit8,
         InputKeyControl::Hotbar9 => KeyCode::Digit9,
+        InputKeyControl::Inventory => KeyCode::KeyE,
     }
 }
 
@@ -582,6 +583,43 @@ mod tests {
         VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
     };
     use uuid::Uuid;
+
+    #[test]
+    fn pump_control_input_requests_opens_local_inventory_through_the_real_key_handler() {
+        let requests = bbb_control::SharedControlRequests::default();
+        {
+            let mut guard = requests.lock().unwrap();
+            guard
+                .input_requests
+                .push(InputControlRequest::Focus { focused: true });
+            guard.input_requests.push(InputControlRequest::Key {
+                key: InputKeyControl::Inventory,
+                pressed: true,
+            });
+            guard.input_requests.push(InputControlRequest::Key {
+                key: InputKeyControl::Inventory,
+                pressed: false,
+            });
+        }
+        let mut input = ClientInputState::new(false);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+            1.0,
+        );
+
+        assert!(requests.lock().unwrap().input_requests.is_empty());
+        assert!(world.inventory().local_inventory_open);
+    }
 
     #[test]
     fn pump_control_input_requests_selects_hotbar_slot_through_the_real_key_handler() {

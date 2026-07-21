@@ -628,6 +628,8 @@ impl InventoryState {
             return true;
         }
 
+        let total_slots = slots.len() as i16;
+        self.write_back_container_player_section(counters, total_slots, &slots);
         let existing = self
             .open_container
             .take()
@@ -709,7 +711,8 @@ impl InventoryState {
         packet: ProtocolContainerSetSlot,
     ) -> bool {
         counters.container_slot_updates_received += 1;
-        let container = if packet.container_id == INVENTORY_MENU_CONTAINER_ID {
+        let is_inventory_menu = packet.container_id == INVENTORY_MENU_CONTAINER_ID;
+        let container = if is_inventory_menu {
             self.inventory_menu_container()
         } else if let Some(container) = self
             .open_container
@@ -721,14 +724,21 @@ impl InventoryState {
             return false;
         };
         container.state_id = packet.state_id;
-        set_container_slot(
-            &mut container.slots,
-            ContainerSlot {
-                slot: packet.slot,
-                item: packet.item,
-                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
-            },
-        );
+        let row = ContainerSlot {
+            slot: packet.slot,
+            item: packet.item,
+            local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+        };
+        set_container_slot(&mut container.slots, row.clone());
+        let total_slots = container
+            .slots
+            .iter()
+            .map(|slot| slot.slot + 1)
+            .max()
+            .unwrap_or(0);
+        if !is_inventory_menu {
+            self.write_back_container_player_section(counters, total_slots, &[row]);
+        }
         self.update_merchant_offer_count(counters);
         true
     }
@@ -1797,6 +1807,9 @@ impl InventoryState {
         let carried_item = hashed_stack_from_summary(&cursor_after)
             .ok_or(ContainerClickBuildError::UnhashableCarriedItem)?;
 
+        let write_back_rows = (container_id != INVENTORY_MENU_CONTAINER_ID)
+            .then(|| slots_after.clone())
+            .unwrap_or_default();
         {
             let container = self
                 .active_container_mut()
@@ -1810,6 +1823,13 @@ impl InventoryState {
         self.local_quick_craft = quick_craft_after;
         if container_id == INVENTORY_MENU_CONTAINER_ID {
             self.sync_player_inventory_slots_from_inventory_menu(counters);
+        } else {
+            let total_slots = write_back_rows
+                .iter()
+                .map(|slot| slot.slot + 1)
+                .max()
+                .unwrap_or(0);
+            self.write_back_container_player_section(counters, total_slots, &write_back_rows);
         }
 
         Ok(ProtocolContainerClick {
@@ -1937,6 +1957,52 @@ impl InventoryState {
                 );
             }
         }
+    }
+
+    /// Vanilla container menus share the player `Inventory` object, so their
+    /// trailing 27 main + 9 hotbar slots ARE the backpack. Mirror those rows
+    /// back into the player-inventory layer and the survival-menu projection,
+    /// which are separate snapshots here.
+    fn write_back_container_player_section(
+        &mut self,
+        counters: &mut WorldCounters,
+        total_slots: i16,
+        container_slots: &[ContainerSlot],
+    ) {
+        if total_slots < 36 {
+            return;
+        }
+        let player_start = total_slots - 36;
+        let hotbar_start = total_slots - 9;
+        for slot in container_slots {
+            if slot.slot < player_start || slot.slot >= total_slots {
+                continue;
+            }
+            let inventory_slot = if slot.slot >= hotbar_start {
+                i32::from(slot.slot - hotbar_start)
+            } else {
+                9 + i32::from(slot.slot - player_start)
+            };
+            set_inventory_slot(
+                &mut self.player_slots,
+                InventorySlot {
+                    slot: inventory_slot,
+                    item: slot.item.clone(),
+                    local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
+                },
+            );
+            if let Some(menu_slot) = inventory_slot_to_inventory_menu_slot(inventory_slot) {
+                set_container_slot(
+                    &mut self.inventory_menu.slots,
+                    ContainerSlot {
+                        slot: menu_slot,
+                        item: slot.item.clone(),
+                        local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
+                    },
+                );
+            }
+        }
+        self.update_inventory_slot_count(counters);
     }
 
     fn sync_inventory_menu_slots_from_player_inventory(&mut self) {

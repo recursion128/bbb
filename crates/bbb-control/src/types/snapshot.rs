@@ -216,6 +216,7 @@ pub enum InputKeyControl {
     Hotbar7,
     Hotbar8,
     Hotbar9,
+    Inventory,
 }
 
 impl InputKeyControl {
@@ -237,6 +238,7 @@ impl InputKeyControl {
             "hotbar7" => Some(Self::Hotbar7),
             "hotbar8" => Some(Self::Hotbar8),
             "hotbar9" => Some(Self::Hotbar9),
+            "inventory" => Some(Self::Inventory),
             _ => None,
         }
     }

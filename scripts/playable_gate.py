@@ -137,8 +137,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 8:
-        raise GateFailure(f"playable evidence schema must be 8, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 9:
+        raise GateFailure(f"playable evidence schema must be 9, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -229,6 +229,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_chat_interaction(evidence.get("chat_interaction"))
     _validate_hotbar_interaction(evidence.get("hotbar_interaction"))
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
+    _validate_inventory_interaction(evidence.get("inventory_interaction"))
     _validate_screenshot_readback(evidence.get("screenshot_readback"))
     _validate_lifecycle(evidence.get("lifecycle"))
 
@@ -581,6 +582,31 @@ def _validate_sound_particle_push(sound_particle_push: Any) -> None:
                 f"sound_particle_push.{key} must record at least one observed "
                 f"packet, got {value!r}"
             )
+
+
+def _validate_inventory_interaction(inventory_interaction: Any) -> None:
+    """The inventory smoke must observe the server's own player data slot
+    numbering crossing the hotbar/main boundary, not just a queued click."""
+
+    inventory_interaction = _object(inventory_interaction, "inventory_interaction")
+    for key in ("opened", "server_confirmed", "closed"):
+        if inventory_interaction.get(key) is not True:
+            raise GateFailure(f"inventory_interaction.{key} must be true")
+    from_slot = inventory_interaction.get("from_slot")
+    to_slot = inventory_interaction.get("to_slot")
+    for name, value in (("from_slot", from_slot), ("to_slot", to_slot)):
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise GateFailure(
+                f"inventory_interaction.{name} must be a menu slot index, got {value!r}"
+            )
+    if from_slot == to_slot:
+        raise GateFailure("inventory_interaction must move the stack between slots")
+    delta = inventory_interaction.get("container_click_commands_delta")
+    if not isinstance(delta, int) or isinstance(delta, bool) or delta < 1:
+        raise GateFailure(
+            "inventory_interaction.container_click_commands_delta must record at "
+            f"least one observed command, got {delta!r}"
+        )
 
 
 def _validate_screenshot_readback(screenshot_readback: Any) -> None:
@@ -2017,6 +2043,159 @@ def drive_sound_particle_push(
     }
 
 
+PLAYER_MENU_HOTBAR_FIRST_SLOT = 36
+PLAYER_MENU_MAIN_FIRST_SLOT = 9
+
+
+def _inventory_state(address: tuple[str, int]) -> dict[str, Any]:
+    inventory = _control_request(address, "world.client_inventory")
+    return inventory if isinstance(inventory, dict) else {}
+
+
+def _player_menu_stacks(address: tuple[str, int]) -> dict[int, dict[str, Any]]:
+    menu = _inventory_state(address).get("inventory_menu")
+    if not isinstance(menu, dict):
+        return {}
+    stacks = {}
+    for slot in menu.get("slots") or []:
+        if not isinstance(slot, dict):
+            continue
+        item = slot.get("item")
+        if isinstance(item, dict) and int(item.get("count") or 0) > 0:
+            stacks[int(slot.get("slot", -1))] = item
+    return stacks
+
+
+def drive_inventory_interaction(
+    address: tuple[str, int],
+    server_command: Path,
+    server_log: Path,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    """Open the survival inventory with the real keyboard path, quick-move
+    the diamond stack the container smoke deposited between the hotbar and
+    the main inventory, and require both the canonical player menu and the
+    server's own player data to show the move before closing the screen."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    _control_request(address, "input.focus", {"focused": True})
+
+    _control_request(address, "input.key", {"key": "inventory", "pressed": True})
+    _control_request(address, "input.key", {"key": "inventory", "pressed": False})
+    _await_value(
+        deadline,
+        "the local survival inventory to open",
+        lambda: _inventory_state(address).get("local_inventory_open"),
+        lambda value: value is True,
+    )
+
+    def _diamond_slot() -> tuple[int, dict[str, Any]] | None:
+        for slot, item in sorted(_player_menu_stacks(address).items()):
+            if slot >= PLAYER_MENU_MAIN_FIRST_SLOT and int(item.get("count") or 0) == 3:
+                return slot, item
+        return None
+
+    found = _await_value(
+        deadline,
+        "the container smoke's three-item stack in the player menu",
+        _diamond_slot,
+        lambda value: value is not None,
+    )
+    from_slot, moved_item = found
+    moved_item_id = moved_item.get("item_id")
+    from_hotbar = from_slot >= PLAYER_MENU_HOTBAR_FIRST_SLOT
+
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before inventory interaction")
+
+    _control_request(
+        address,
+        "net.container_click_slot",
+        {"slot_num": from_slot, "button_num": 0, "input": "quick_move"},
+    )
+
+    def _moved_slot() -> int | None:
+        stacks = _player_menu_stacks(address)
+        if from_slot in stacks:
+            return None
+        for slot, item in stacks.items():
+            if item.get("item_id") != moved_item_id or int(item.get("count") or 0) != 3:
+                continue
+            if from_hotbar and slot < PLAYER_MENU_HOTBAR_FIRST_SLOT:
+                return slot
+            if not from_hotbar and slot >= PLAYER_MENU_HOTBAR_FIRST_SLOT:
+                return slot
+        return None
+
+    to_slot = _await_value(
+        deadline,
+        "the quick-moved stack to land in the opposite inventory section",
+        _moved_slot,
+        lambda value: value is not None,
+    )
+
+    # Server-authoritative result: player data slot numbering uses 0-8 for
+    # the hotbar and 9-35 for the main inventory; the moved stack must have
+    # crossed that boundary server-side.
+    marker = "has the following entity data"
+    occurrences_before = _log_occurrences(server_log, marker)
+    _server_console_command(
+        server_command,
+        "data get entity bbb-playablegate Inventory",
+    )
+
+    def _server_confirmed() -> bool:
+        text = server_log.read_text(encoding="utf-8", errors="replace")
+        lines = [line for line in text.splitlines() if marker in line]
+        if len(lines) <= occurrences_before:
+            return False
+        entries = re.findall(r"\{[^{}]*\}", lines[-1])
+        for entry in entries:
+            if "minecraft:diamond" not in entry:
+                continue
+            slot_match = re.search(r"Slot:\s*(\d+)b", entry)
+            if slot_match is None:
+                continue
+            slot = int(slot_match.group(1))
+            if from_hotbar:
+                return PLAYER_MENU_MAIN_FIRST_SLOT <= slot <= 35
+            return slot <= 8
+        return False
+
+    _await_value(
+        deadline,
+        "the server player data to report the moved stack",
+        _server_confirmed,
+        lambda value: value is True,
+    )
+
+    _control_request(address, "net.container_close", {"container_id": 0})
+    _await_value(
+        deadline,
+        "the local survival inventory to close",
+        lambda: _inventory_state(address).get("local_inventory_open"),
+        lambda value: value is not True,
+    )
+
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_after, "after inventory interaction")
+
+    return {
+        "opened": True,
+        "from_slot": from_slot,
+        "to_slot": to_slot,
+        "moved_to_hotbar": not from_hotbar,
+        "server_confirmed": True,
+        "closed": True,
+        "container_click_commands_delta": int(
+            net_after.get("container_click_commands_queued", 0)
+        )
+        - int(net_before.get("container_click_commands_queued", 0)),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def _png_dimensions(data: bytes) -> tuple[int, int]:
     if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
         raise GateFailure("screenshot readback did not produce a PNG file")
@@ -2780,7 +2959,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 8,
+            "schema": 9,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2793,6 +2972,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "chat_interaction": None,
             "hotbar_interaction": None,
             "sound_particle_push": None,
+            "inventory_interaction": None,
             "screenshot_readback": None,
             "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
@@ -2813,6 +2993,7 @@ def collect_live(args: argparse.Namespace) -> None:
     chat_interaction: dict[str, Any] | None = None
     hotbar_interaction: dict[str, Any] | None = None
     sound_particle_push: dict[str, Any] | None = None
+    inventory_interaction: dict[str, Any] | None = None
     screenshot_readback: dict[str, Any] | None = None
     lifecycle: dict[str, Any] | None = None
     try:
@@ -2838,6 +3019,9 @@ def collect_live(args: argparse.Namespace) -> None:
         sound_particle_push = drive_sound_particle_push(
             address, args.server_command, min(60.0, float(args.timeout))
         )
+        inventory_interaction = drive_inventory_interaction(
+            address, args.server_command, args.server_log, min(60.0, float(args.timeout))
+        )
         screenshot_readback = drive_screenshot_readback(
             address, args.server_command, args.output.parent, min(90.0, float(args.timeout))
         )
@@ -2861,7 +3045,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 8,
+            "schema": 9,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2874,6 +3058,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "chat_interaction": chat_interaction,
             "hotbar_interaction": hotbar_interaction,
             "sound_particle_push": sound_particle_push,
+            "inventory_interaction": inventory_interaction,
             "screenshot_readback": screenshot_readback,
             "lifecycle": lifecycle,
             "failure": failure,
@@ -2892,7 +3077,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 8,
+            "schema": 9,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2905,6 +3090,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "chat_interaction": chat_interaction,
             "hotbar_interaction": hotbar_interaction,
             "sound_particle_push": sound_particle_push,
+            "inventory_interaction": inventory_interaction,
             "screenshot_readback": screenshot_readback,
             "lifecycle": lifecycle,
             "failure": str(error),
@@ -2918,7 +3104,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 8,
+        "schema": 9,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -2931,6 +3117,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "chat_interaction": chat_interaction,
         "hotbar_interaction": hotbar_interaction,
         "sound_particle_push": sound_particle_push,
+        "inventory_interaction": inventory_interaction,
         "screenshot_readback": screenshot_readback,
         "lifecycle": lifecycle,
         "artifacts": {
