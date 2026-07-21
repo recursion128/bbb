@@ -712,8 +712,16 @@ pub struct BlazeAmbientParticleState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EnderAmbientParticleState {
+    pub entity_id: i32,
+    pub positions: [EntityVec3; 2],
+    pub velocities: [EntityVec3; 2],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum EntityClientMovementParticleState {
     BlazeAmbient(BlazeAmbientParticleState),
+    EnderAmbient(EnderAmbientParticleState),
     FireworkRocket(FireworkRocketTrailParticleState),
     EyeOfEnder(EyeOfEnderTrailParticleState),
     ShulkerBullet(ShulkerBulletTrailParticleState),

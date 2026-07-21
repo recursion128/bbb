@@ -151,3 +151,97 @@ fn silent_blaze_suppresses_burn_sound_without_suppressing_smoke() {
             .all(|effect| matches!(effect, EntityClientMovementEffectState::Particle(_))));
     }
 }
+
+fn ender_ambient_effect(
+    effects: &[EntityClientMovementEffectState],
+    entity_id: i32,
+) -> EnderAmbientParticleState {
+    effects
+        .iter()
+        .find_map(|effect| match effect {
+            EntityClientMovementEffectState::Particle(
+                EntityClientMovementParticleState::EnderAmbient(state),
+            ) if state.entity_id == entity_id => Some(*state),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("missing ender ambient state for {entity_id}: {effects:?}"))
+}
+
+#[test]
+fn enderman_and_endermite_emit_two_exactly_bounded_portal_particles() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        143,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        144,
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+    ));
+    let mut retained = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(effects.len(), 2);
+
+    for (entity_id, entity_type_id, y_offset) in [
+        (143, VANILLA_ENTITY_TYPE_ENDERMAN_ID, -0.25),
+        (144, VANILLA_ENTITY_TYPE_ENDERMITE_ID, 0.0),
+    ] {
+        let state = ender_ambient_effect(&effects, entity_id);
+        let [width, height] =
+            bbb_protocol::entity_types::vanilla_entity_type_dimensions(entity_type_id).unwrap();
+        let half_width = f64::from(width) * 0.5;
+        for (position, velocity) in state.positions.into_iter().zip(state.velocities) {
+            assert!((1.0 - half_width..=1.0 + half_width).contains(&position.x));
+            assert!((64.0 + y_offset..=64.0 + f64::from(height) + y_offset).contains(&position.y));
+            assert!((-2.0 - half_width..=-2.0 + half_width).contains(&position.z));
+            assert!((-1.0..1.0).contains(&velocity.x));
+            assert!((-1.0..=0.0).contains(&velocity.y));
+            assert!((-1.0..1.0).contains(&velocity.z));
+        }
+    }
+
+    retained.advance_entity_client_animations(1);
+    let retained_effects = retained
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        ender_ambient_effect(&retained_effects, 143),
+        ender_ambient_effect(&effects, 143)
+    );
+    assert_eq!(
+        ender_ambient_effect(&retained_effects, 144),
+        ender_ambient_effect(&effects, 144)
+    );
+}
+
+#[test]
+fn ender_ambient_rng_resets_on_same_id_recreation() {
+    let mut store = WorldStore::new();
+    let packet = protocol_add_entity_with_type(145, VANILLA_ENTITY_TYPE_ENDERMAN_ID);
+    store.apply_add_entity(packet.clone());
+    store.advance_entity_client_animations(1);
+    let first = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![145],
+        }),
+        1
+    );
+    store.apply_add_entity(packet);
+    store.advance_entity_client_animations(1);
+    let recreated = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        ender_ambient_effect(&recreated, 145),
+        ender_ambient_effect(&first, 145)
+    );
+}

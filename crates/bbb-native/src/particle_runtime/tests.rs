@@ -110,6 +110,56 @@ fn blaze_ambient_batch_reuses_one_large_smoke_template_for_two_positions() {
 }
 
 #[test]
+fn ender_ambient_batch_reuses_one_portal_template_for_two_commands() {
+    let mut resolver = test_resolver(0);
+    let positions = [
+        bbb_world::EntityVec3 {
+            x: 2.1,
+            y: 64.2,
+            z: -3.3,
+        },
+        bbb_world::EntityVec3 {
+            x: 1.8,
+            y: 65.4,
+            z: -2.9,
+        },
+    ];
+    let velocities = [
+        bbb_world::EntityVec3 {
+            x: -0.25,
+            y: -0.4,
+            z: 0.75,
+        },
+        bbb_world::EntityVec3 {
+            x: 0.5,
+            y: -0.8,
+            z: -0.1,
+        },
+    ];
+    let batch = resolver.entity_client_movement_particle_batch(
+        EntityClientMovementParticleState::EnderAmbient(EnderAmbientParticleState {
+            entity_id: 41,
+            positions,
+            velocities,
+        }),
+    );
+
+    assert_eq!(batch.missing_definition_count, 0);
+    assert_eq!(batch.missing_sprite_count, 0);
+    assert_eq!(batch.commands.len(), 2);
+    for ((command, position), velocity) in batch.commands.iter().zip(positions).zip(velocities) {
+        assert_particle_command(
+            command,
+            VANILLA_PARTICLE_TYPE_PORTAL_ID,
+            "minecraft:portal",
+            [position.x, position.y, position.z],
+            [velocity.x, velocity.y, velocity.z],
+            false,
+        );
+    }
+}
+
+#[test]
 fn eye_of_ender_trail_batch_matches_vanilla_water_and_portal_paths() {
     let state = EyeOfEnderTrailParticleState {
         entity_id: 8,

@@ -20133,3 +20133,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 2,000 fueled carts 的 repo-native tick/effect drain 从 1.4128 ms 变为 1.4642 ms（+3.64%，
   每 tick 约 500 个 Vanilla-required effects）；retained publication 从 3.4939 ms 变为
   3.4689 ms，未检出显著变化，因此新增成本没有转移到 snapshot 或下一次 mutation。
+
+## 2026-07-20：Enderman/Endermite ambient portal tick
+
+- [x] 对照 Vanilla 26.1 `EnderMan.aiStep` 与 `Endermite.aiStep`，两个 family 每个 client
+  tick 按精确 RNG 调用顺序生成两个 `portal` particle；位置使用 generated
+  dimensions 与 canonical SCALE，仅 Enderman 保留 `getRandomY() - 0.25`。两个粒子共用
+  一个 typed FIFO owner 和 native sprite-template lookup，不增加第二套 family/type 表。
+- [x] client-local Java-LCG cursor 随 UUID/type incarnation 初始化、随 immutable publication
+  clone、在 same-id recreation/reset 时重置，并跳过 stable probe serde；专项测试锁定边界、
+  调用顺序、retained generation 隔离和 id reuse。
+- [x] 1,000 Enderman + 1,000 Endermite 同机 Criterion：tick/effect drain 从
+  3.2399 ms 变为 3.3377 ms（+3.02%），retained publication 从 4.7202 ms 变为
+  4.9143 ms（中心 +4.11%，Criterion 未检出显著变化）。增量属于 4,000 个
+  Vanilla-required particle payload 与 exact RNG；FIFO 每 tick drain，未转移到 snapshot 或
+  下一次 mutation。峰值逻辑内存仍随同 tick ambient entity 数量线性增长，是后续
+  effect-stream 优化边界。

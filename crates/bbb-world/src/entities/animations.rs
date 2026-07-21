@@ -234,6 +234,7 @@ const RAVAGER_STUN_PARTICLE_RANDOM_SALT: i64 = 0x5A17;
 /// entity `RandomSource`; the cursor still belongs to the canonical entity and
 /// is cloned into immutable publications so retained generations cannot advance.
 const BLAZE_CLIENT_RANDOM_SALT: u64 = 0x626c_617a_655f_7469;
+const ENDER_AMBIENT_RANDOM_SALT: u64 = 0x656e_6465_725f_7469;
 /// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
 /// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
 const HOGLIN_ATTACK_TICKS: i32 = 10;
@@ -281,6 +282,8 @@ pub(crate) struct EntityClientTickParticleTriggers {
     pub(crate) blaze_large_smoke: Option<[BlazeSmokeParticleOffset; 2]>,
     /// The optional burn sound is ordered before the two smoke particles.
     pub(crate) blaze_burn_sound: Option<BlazeBurnSoundParameters>,
+    /// Vanilla Enderman/Endermite `aiStep`: two portal particles per tick.
+    pub(crate) ender_portal: Option<[EnderAmbientParticleOffset; 2]>,
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
@@ -300,6 +303,14 @@ pub(crate) struct BlazeSmokeParticleOffset {
 pub(crate) struct BlazeBurnSoundParameters {
     pub(crate) volume: f32,
     pub(crate) pitch: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EnderAmbientParticleOffset {
+    pub(crate) x_unit: f64,
+    pub(crate) y_unit: f64,
+    pub(crate) z_unit: f64,
+    pub(crate) velocity: EntityVec3,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -489,6 +500,10 @@ pub struct EntityClientAnimationState {
     /// positions. Cloned for publication isolation, omitted from stable probes.
     #[serde(skip)]
     pub(crate) blaze_client_random_seed: Option<u64>,
+    /// Shared client-local entity RNG owner for the Enderman and Endermite
+    /// portal-particle family. This is one cursor per canonical entity.
+    #[serde(skip)]
+    pub(crate) ender_ambient_random_seed: Option<u64>,
 }
 
 /// The client-observable `BaseSpawner` state owned by `MinecartSpawner`. Vanilla constructs it
@@ -3900,6 +3915,16 @@ impl EntityClientAnimationState {
             .then(|| java_random_seed(spawn_random_bits(uuid, 0x6675_726e_6163_655f) as i64));
         self.blaze_client_random_seed = (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID)
             .then(|| java_random_seed(spawn_random_bits(uuid, BLAZE_CLIENT_RANDOM_SALT) as i64));
+        self.ender_ambient_random_seed = matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_ENDERMAN_ID | VANILLA_ENTITY_TYPE_ENDERMITE_ID
+        )
+        .then(|| {
+            java_random_seed(spawn_random_bits(
+                uuid,
+                ENDER_AMBIENT_RANDOM_SALT ^ entity_type_id as u64,
+            ) as i64)
+        });
     }
 
     pub(crate) fn item_bob_offset(&self) -> f32 {
@@ -5685,6 +5710,29 @@ impl EntityClientAnimationState {
                     x_unit: java_random_next_double(random_seed) - 0.5,
                     y_unit: java_random_next_double(random_seed),
                     z_unit: java_random_next_double(random_seed) - 0.5,
+                }));
+        }
+        if matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_ENDERMAN_ID | VANILLA_ENTITY_TYPE_ENDERMITE_ID
+        ) {
+            let random_seed = self.ender_ambient_random_seed.get_or_insert_with(|| {
+                java_random_seed(
+                    i64::from(entity_id)
+                        .wrapping_add(ENDER_AMBIENT_RANDOM_SALT as i64)
+                        .wrapping_add(i64::from(entity_type_id)),
+                )
+            });
+            particle_triggers.ender_portal =
+                Some(std::array::from_fn(|_| EnderAmbientParticleOffset {
+                    x_unit: java_random_next_double(random_seed) - 0.5,
+                    y_unit: java_random_next_double(random_seed),
+                    z_unit: java_random_next_double(random_seed) - 0.5,
+                    velocity: EntityVec3 {
+                        x: (java_random_next_double(random_seed) - 0.5) * 2.0,
+                        y: -java_random_next_double(random_seed),
+                        z: (java_random_next_double(random_seed) - 0.5) * 2.0,
+                    },
                 }));
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {

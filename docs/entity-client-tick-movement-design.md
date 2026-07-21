@@ -525,6 +525,30 @@ of generating 4,000 required particles plus roughly 1-in-24 sounds, not a
 publication rebuild or deferred next-mutation copy. The separate tick-only
 measurement is 3.6678 ms; effect draining itself is below the run's noise.
 
+The following ambient-particle stage shares one narrow implementation between
+`EnderMan.aiStep` and `Endermite.aiStep` without introducing a hand-written
+family table. Each entity owns a client-local Java-LCG cursor, and each tick
+consumes the exact six doubles per particle for two `portal` particles. The
+position calculation uses generated dimensions times the canonical SCALE
+attribute; only Enderman applies Vanilla's `-0.25` Y offset. One typed batch
+owns both exact positions and velocities, so the lossless FIFO and native
+resolver preserve particle order while performing one sprite-template lookup.
+The cursor is cloned with immutable publications and reset with the entity
+incarnation, while stable probes continue to omit this presentation-only
+state.
+
+Before adding the missing effects, a heterogeneous 1,000-Enderman plus
+1,000-Endermite fixture measured 3.2399 ms for tick/effect drain and 4.7202 ms
+with a retained publication. The implemented path measures 3.3377 ms and
+4.9143 ms: +3.02% and +4.11% by the centers, while Criterion found no
+statistically significant retained-publication change. The bounded delta is
+the exact RNG and 4,000 required particle payloads; the benchmark drains the
+FIFO before publication, so the result does not hide retained-generation or
+next-mutation work. The maximum pending logical payload still scales with the
+number of ambient entities until the runtime drains the lossless effect FIFO;
+batching two particles per entity halves owner/template overhead but does not
+remove that explicit peak-memory boundary.
+
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.

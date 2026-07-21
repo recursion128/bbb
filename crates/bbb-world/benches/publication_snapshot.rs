@@ -23,6 +23,7 @@ use bbb_protocol::{
     },
     entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -361,6 +362,16 @@ fn build_fueled_furnace_minecart_world(count: usize) -> WorldStore {
 
 fn build_blaze_world(count: usize) -> WorldStore {
     build_entity_world_with(count, |_| VANILLA_ENTITY_TYPE_BLAZE_ID)
+}
+
+fn build_ender_ambient_world(count: usize) -> WorldStore {
+    build_entity_world_with(count, |index| {
+        if index % 2 == 0 {
+            VANILLA_ENTITY_TYPE_ENDERMAN_ID
+        } else {
+            VANILLA_ENTITY_TYPE_ENDERMITE_ID
+        }
+    })
 }
 
 fn build_session_static_world() -> WorldStore {
@@ -941,6 +952,33 @@ fn bench_entity_effect_generation(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let world = blazes.publication_snapshot();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+                black_box(Arc::new(world.publication_snapshot()));
+                black_box(held);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    let ender_ambient = build_ender_ambient_world(ENTITY_COUNT);
+    group.bench_function("2000_ender_ambient", |b| {
+        b.iter_batched(
+            || ender_ambient.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_function("2000_ender_ambient_then_publish_retained", |b| {
+        b.iter_batched(
+            || {
+                let world = ender_ambient.publication_snapshot();
                 let held = Arc::new(world.publication_snapshot());
                 (world, held)
             },

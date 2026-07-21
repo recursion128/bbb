@@ -20,7 +20,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use bbb_protocol::entity_types::{
-    vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
+    vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
     VANILLA_ENTITY_TYPE_WITHER_ID,
@@ -74,13 +74,14 @@ use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_can_wear_horse_armor_type,
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
-    BlazeAmbientParticleState, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
-    EntityCameraHurtState, EntityCameraPoseState, EntityClientAnimationState,
-    EntityClientAnimations, EntityClientMovementEffectState, EntityClientMovementParticleState,
-    EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState, EntityDamage,
-    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    BlazeAmbientParticleState, EnderAmbientParticleState, EntityAttachmentFace, EntityAttributes,
+    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
+    EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
+    EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
+    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
+    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FoxEatParticleState, HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState,
@@ -6066,6 +6067,32 @@ fn append_client_tick_particle_triggers(
                     y: transform.position.y + offset.y_unit * height,
                     z: transform.position.z + offset.z_unit * width,
                 }),
+            }),
+        ));
+    }
+    if let Some(offsets) = triggers.ender_portal {
+        let Some([base_width, base_height]) =
+            vanilla_entity_type_dimensions(identity.entity_type_id)
+        else {
+            return;
+        };
+        let scale = vanilla_render_scale(identity.entity_type_id, attributes);
+        let width = f64::from(base_width * scale);
+        let height = f64::from(base_height * scale);
+        let y_offset = if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDERMAN_ID {
+            -0.25
+        } else {
+            0.0
+        };
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::EnderAmbient(EnderAmbientParticleState {
+                entity_id: identity.id,
+                positions: offsets.map(|offset| super::EntityVec3 {
+                    x: transform.position.x + offset.x_unit * width,
+                    y: transform.position.y + offset.y_unit * height + y_offset,
+                    z: transform.position.z + offset.z_unit * width,
+                }),
+                velocities: offsets.map(|offset| offset.velocity),
             }),
         ));
     }
