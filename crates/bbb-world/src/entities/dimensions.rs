@@ -316,10 +316,77 @@ pub(crate) fn vanilla_eye_height_for_entity_data(
         painting_variant,
     )?;
     let height = bounds_height(bounds);
-    let base_eye_height = vanilla_eye_height_override_for_type(entity_type_id)
-        .and_then(|eye_height| scaled_eye_height_for_bounds(entity_type_id, eye_height, height))
-        .unwrap_or(height * DEFAULT_ENTITY_EYE_HEIGHT_RATIO);
+    let base_eye_height = match vanilla_variant_eye_height_basis(entity_type_id, data_values) {
+        Some((declared_eye, declared_height)) if declared_height > 0.0 => {
+            declared_eye * height / declared_height
+        }
+        _ => vanilla_eye_height_override_for_type(entity_type_id)
+            .and_then(|eye_height| scaled_eye_height_for_bounds(entity_type_id, eye_height, height))
+            .unwrap_or(height * DEFAULT_ENTITY_EYE_HEIGHT_RATIO),
+    };
     Some(base_eye_height)
+}
+
+/// Variant dimensions that vanilla declares with an explicit `withEyeHeight` decouple the eye
+/// ratio from the base type table, so the proportional projection substitutes the declared
+/// (eye height, height) pair. Age and scale-attribute factors still flow through the
+/// actual-to-declared height ratio because vanilla `EntityDimensions.scale` multiplies the eye
+/// height by the same height factor; variants without an explicit eye height (goat long-jump,
+/// warden digging, plain baby scaling) keep the base ratio and need no entry here.
+fn vanilla_variant_eye_height_basis(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<(f32, f32)> {
+    if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID
+    {
+        return Some(match entity_data_pose(data_values) {
+            VANILLA_ENTITY_POSE_SLEEPING_ID => (0.2, 0.2),
+            // Vanilla `Avatar.POSES` keeps the standing eye height on the dying fixed box.
+            VANILLA_ENTITY_POSE_DYING_ID => (1.62, 0.2),
+            VANILLA_ENTITY_POSE_FALL_FLYING_ID
+            | VANILLA_ENTITY_POSE_SWIMMING_ID
+            | VANILLA_ENTITY_POSE_SPIN_ATTACK_ID => (0.4, 0.6),
+            VANILLA_ENTITY_POSE_CROUCHING_ID => (1.27, 1.5),
+            _ => (1.62, 1.8),
+        });
+    }
+    if is_living_sleeping(entity_type_id, data_values) {
+        // `LivingEntity.SLEEPING_DIMENSIONS = fixed(0.2, 0.2).withEyeHeight(0.2)`.
+        return Some((0.2, 0.2));
+    }
+    if vanilla_entity_metadata_type_is_camel(entity_type_id)
+        && entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SITTING_ID
+    {
+        return Some((0.845, 2.375 - CAMEL_SITTING_HEIGHT_DIFFERENCE));
+    }
+    if entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID && sniffer_is_digging(data_values) {
+        return Some((0.81, 1.75 - SNIFFER_DIGGING_HEIGHT_OFFSET));
+    }
+    if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+        && armor_stand_is_marker(entity_type_id, data_values)
+    {
+        // Marker stands use `fixed(0, 0)`; the proportional path already collapses to zero.
+        return None;
+    }
+    if !vanilla_is_baby(entity_type_id, data_values) {
+        return None;
+    }
+    Some(match entity_type_id {
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => (0.9875, 0.9875),
+        VANILLA_ENTITY_TYPE_CHICKEN_ID => (0.28, 0.4),
+        VANILLA_ENTITY_TYPE_VILLAGER_ID => (0.63, 0.99),
+        VANILLA_ENTITY_TYPE_DROWNED_ID | VANILLA_ENTITY_TYPE_ZOMBIE_ID => (0.775, 0.99),
+        VANILLA_ENTITY_TYPE_HUSK_ID => (0.825, 0.99),
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => (0.67, 0.99),
+        VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => (0.78, 0.99),
+        VANILLA_ENTITY_TYPE_RABBIT_ID => (0.39, 0.4),
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID => (0.2, 0.25),
+        VANILLA_ENTITY_TYPE_FOX_ID => (0.2975, 0.42),
+        VANILLA_ENTITY_TYPE_COW_ID | VANILLA_ENTITY_TYPE_MOOSHROOM_ID => (0.665, 0.7),
+        _ if vanilla_entity_type_is_squid(entity_type_id) => (0.37, 0.63),
+        _ => return None,
+    })
 }
 
 pub(crate) fn vanilla_client_position_for_entity_data(
@@ -1077,11 +1144,8 @@ fn goat_pick_bounds(entity_type_id: i32, data_values: &[EntityDataValue]) -> Ent
     }
 }
 
-fn sniffer_pick_bounds(
-    entity_type_id: i32,
-    data_values: &[EntityDataValue],
-) -> EntityPickBoundsState {
-    let digging = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(entity_type_id)
+fn sniffer_is_digging(data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(VANILLA_ENTITY_TYPE_SNIFFER_ID)
         .is_some_and(|(data_id, default)| {
             entity_data_enum_id(
                 data_values,
@@ -1089,7 +1153,15 @@ fn sniffer_pick_bounds(
                 EntityDataEnumSerializer::SnifferState,
                 default,
             ) == SNIFFER_STATE_DIGGING_ID
-        });
+        })
+}
+
+fn sniffer_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> EntityPickBoundsState {
+    let digging =
+        entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID && sniffer_is_digging(data_values);
     let height = if digging {
         1.75 - SNIFFER_DIGGING_HEIGHT_OFFSET
     } else {

@@ -1567,3 +1567,91 @@ fn debug_hitboxes_cover_non_pickable_entities_and_skip_invisible_ones() {
         .iter()
         .any(|target| target.entity_id == 42));
 }
+
+fn probe_eye_height(store: &WorldStore, id: i32) -> f32 {
+    store
+        .probe_entity_camera_pose(id)
+        .expect("entity camera pose must resolve")
+        .eye_height
+}
+
+#[test]
+fn variant_eye_heights_use_vanilla_with_eye_height_declarations() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        50,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        51,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        52,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    // Adult chicken keeps the type-table eye height.
+    assert!((probe_eye_height(&store, 50) - 0.644).abs() < 1.0e-6);
+    // Vanilla `Chicken.BABY_DIMENSIONS = scalable(0.3, 0.4).withEyeHeight(0.28)`;
+    // the proportional ratio would give 0.644 * 0.4 / 0.7 = 0.368.
+    let (chicken_baby_id, _) = vanilla_entity_metadata_baby_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    )
+    .expect("chicken baby accessor");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 50,
+        values: vec![protocol_bool_data(chicken_baby_id, true)],
+    }));
+    assert!((probe_eye_height(&store, 50) - 0.28).abs() < 1.0e-6);
+
+    // Vanilla camel `SITTING_DIMENSIONS.withEyeHeight(0.845)`; proportional
+    // from the 2.275 standing eye would give 0.905.
+    assert!((probe_eye_height(&store, 51) - 2.275).abs() < 1.0e-6);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 51,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID)],
+    }));
+    assert!((probe_eye_height(&store, 51) - 0.845).abs() < 1.0e-6);
+
+    // Vanilla `AbstractCow.BABY_DIMENSIONS = scale(0.5).withEyeHeight(0.665)`;
+    // the plain half-scale ratio would give 0.65.
+    let (cow_baby_id, _) = vanilla_entity_metadata_baby_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+    )
+    .expect("cow baby accessor");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 52,
+        values: vec![protocol_bool_data(cow_baby_id, true)],
+    }));
+    assert!((probe_eye_height(&store, 52) - 0.665).abs() < 1.0e-6);
+}
+
+#[test]
+fn avatar_pose_eye_heights_follow_vanilla_pose_map() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        53,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    assert!((probe_eye_height(&store, 53) - 1.62).abs() < 1.0e-6);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 53,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID)],
+    }));
+    // Vanilla crouching eye height is the declared 1.27, not the
+    // height-proportional 1.62 * 1.5 / 1.8 = 1.35.
+    assert!((probe_eye_height(&store, 53) - 1.27).abs() < 1.0e-6);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 53,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SWIMMING_ID)],
+    }));
+    assert!((probe_eye_height(&store, 53) - 0.4).abs() < 1.0e-6);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 53,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_DYING_ID)],
+    }));
+    // The dying fixed box keeps the standing eye height in vanilla's pose map.
+    assert!((probe_eye_height(&store, 53) - 1.62).abs() < 1.0e-6);
+}

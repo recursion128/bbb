@@ -1370,8 +1370,14 @@ back into a todo. Do not delete these.
   ageable fallback, ender-dragon multipart targets, and the scale attribute
   are covered, and aligned the debug-hitbox projection with vanilla
   `EntityHitboxDebugRenderer` (every non-invisible entity draws its box;
-  pickability only gates pick targeting). Still open: the remaining collision
-  and pushability exceptions and per-family eye-height/attachment audit.
+  pickability only gates pick targeting). The same-day eye-height sweep of
+  every vanilla `withEyeHeight` declaration replaced the proportional
+  approximation with the declared (eye, height) pairs — avatar pose map,
+  living sleeping, camel sitting, sniffer digging, and the thirteen explicit
+  baby tables — while pure-`scale` variants (goat long-jump, warden digging,
+  slime/phantom, scale attribute) stay proportional because vanilla scales
+  the eye height by the same factor. Still open: the remaining collision and
+  pushability exceptions and the per-family attachment-point audit.
 
 ### Entity coverage matrix model texture and layers
 
