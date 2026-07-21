@@ -492,3 +492,153 @@ fn dry_grounded_guardian_jump_updates_only_live_generation_and_resets_on_recreat
         "active-target final body-yaw branch follows the random dry jump"
     );
 }
+
+fn guardian_attack_effect(
+    effects: &[EntityClientMovementEffectState],
+    entity_id: i32,
+) -> GuardianAttackParticleState {
+    effects
+        .iter()
+        .find_map(|effect| match effect {
+            EntityClientMovementEffectState::Particle(
+                EntityClientMovementParticleState::GuardianAttack(state),
+            ) if state.entity_id == entity_id => Some(state.clone()),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("missing Guardian attack state for {entity_id}: {effects:?}"))
+}
+
+#[test]
+fn guardian_active_living_target_updates_look_and_emits_ordered_beam_bubbles() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(guardian_packet(149, VANILLA_ENTITY_TYPE_GUARDIAN_ID));
+    let mut cow = protocol_add_entity_with_type(150, VANILLA_ENTITY_TYPE_COW_ID);
+    cow.position = ProtocolVec3d {
+        x: 16.0,
+        y: 2.0,
+        z: 8.5,
+    };
+    store.apply_add_entity(cow);
+    let accessors =
+        vanilla_entity_metadata_guardian_accessors_for_entity_type(VANILLA_ENTITY_TYPE_GUARDIAN_ID)
+            .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 149,
+        values: vec![protocol_int_data(accessors.attack_target_data_id, 150)],
+    }));
+    let mut retained = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let attack = guardian_attack_effect(&effects, 149);
+    assert!(!attack.positions.is_empty());
+    assert!(attack.positions.iter().all(|position| {
+        position.x > 8.5 && (position.z - 8.5).abs() < 1.0e-12 && position.y.is_finite()
+    }));
+    let guardian = store.probe_entity(149).unwrap();
+    assert_eq!(guardian.y_head_rot, -60.0);
+    assert_eq!(guardian.y_rot, guardian.y_head_rot);
+    assert_ne!(
+        guardian.x_rot, -10.0,
+        "LookControl resets then pitches toward target"
+    );
+    assert_eq!(
+        retained.probe_entity(149).unwrap().y_head_rot,
+        30.0,
+        "the retained generation keeps its pre-look transform"
+    );
+
+    retained.advance_entity_client_animations(1);
+    let retained_effects = retained
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(guardian_attack_effect(&retained_effects, 149), attack);
+    assert_eq!(
+        retained.probe_entity(149).unwrap().y_head_rot,
+        guardian.y_head_rot
+    );
+}
+
+#[test]
+fn guardian_attack_requires_living_target_and_follows_ambient_effect_order() {
+    let accessors =
+        vanilla_entity_metadata_guardian_accessors_for_entity_type(VANILLA_ENTITY_TYPE_GUARDIAN_ID)
+            .unwrap();
+    let mut missing_living = WorldStore::new();
+    missing_living.apply_add_entity(guardian_packet(151, VANILLA_ENTITY_TYPE_GUARDIAN_ID));
+    missing_living.apply_add_entity(protocol_add_entity_with_type(
+        152,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    assert!(missing_living.apply_set_entity_data(ProtocolSetEntityData {
+        id: 151,
+        values: vec![protocol_int_data(accessors.attack_target_data_id, 152)],
+    }));
+    missing_living.advance_entity_client_animations(1);
+    assert!(missing_living
+        .drain_entity_client_movement_effect_states()
+        .all(|effect| !matches!(
+            effect,
+            EntityClientMovementEffectState::Particle(
+                EntityClientMovementParticleState::GuardianAttack(_)
+            )
+        )));
+    assert_eq!(missing_living.probe_entity(151).unwrap().y_head_rot, 30.0);
+
+    let mut wet = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    wet.insert_decoded_chunk(empty_test_chunk());
+    wet.apply_add_entity(guardian_packet(153, VANILLA_ENTITY_TYPE_GUARDIAN_ID));
+    let mut cow = protocol_add_entity_with_type(154, VANILLA_ENTITY_TYPE_COW_ID);
+    cow.position = ProtocolVec3d {
+        x: 12.0,
+        y: 2.0,
+        z: 8.5,
+    };
+    wet.apply_add_entity(cow);
+    assert!(wet.apply_set_entity_data(ProtocolSetEntityData {
+        id: 153,
+        values: vec![
+            protocol_bool_data(accessors.moving_data_id, true),
+            protocol_int_data(accessors.attack_target_data_id, 154),
+        ],
+    }));
+    let source_water = vanilla_block_state_id("minecraft:water", [("level", "0")]);
+    for y in 1..=4 {
+        assert!(wet.apply_block_update(ProtocolBlockUpdate {
+            pos: ProtocolBlockPos { x: 8, y, z: 8 },
+            block_state_id: source_water,
+        }));
+    }
+    wet.advance_entity_client_animations(1);
+    let effects = wet
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let ambient_index = effects
+        .iter()
+        .position(|effect| {
+            matches!(
+                effect,
+                EntityClientMovementEffectState::Particle(
+                    EntityClientMovementParticleState::GuardianAmbient(_)
+                )
+            )
+        })
+        .unwrap();
+    let attack_index = effects
+        .iter()
+        .position(|effect| {
+            matches!(
+                effect,
+                EntityClientMovementEffectState::Particle(
+                    EntityClientMovementParticleState::GuardianAttack(_)
+                )
+            )
+        })
+        .unwrap();
+    assert!(ambient_index < attack_index);
+}

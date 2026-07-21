@@ -15,6 +15,9 @@ impl ParticleCommandResolver {
             EntityClientMovementParticleState::GuardianAmbient(state) => {
                 self.guardian_ambient_particle_batch(state)
             }
+            EntityClientMovementParticleState::GuardianAttack(state) => {
+                self.guardian_attack_particle_batch(state)
+            }
             EntityClientMovementParticleState::FireworkRocket(state) => {
                 self.firework_rocket_trail_particle_batch(state)
             }
@@ -99,14 +102,27 @@ impl ParticleCommandResolver {
         &mut self,
         state: GuardianAmbientParticleState,
     ) -> ParticleSpawnBatch {
+        self.guardian_bubble_particle_batch(state.positions)
+    }
+
+    fn guardian_attack_particle_batch(
+        &mut self,
+        state: GuardianAttackParticleState,
+    ) -> ParticleSpawnBatch {
+        self.guardian_bubble_particle_batch(state.positions)
+    }
+
+    fn guardian_bubble_particle_batch(
+        &mut self,
+        positions: impl IntoIterator<Item = bbb_world::EntityVec3>,
+    ) -> ParticleSpawnBatch {
         let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_BUBBLE_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
         ParticleSpawnBatch {
             missing_sprite_count: template.missing_sprite_count,
-            commands: state
-                .positions
+            commands: positions
                 .into_iter()
                 .map(|position| {
                     self.command_from_template(

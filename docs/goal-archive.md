@@ -20166,3 +20166,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   5.6563/5.7317 ms 变为 6.1862/6.0928 ms（+9.4%/+6.3%）。新增成本是必要 RNG、world fact
   与最多 4,000 bubble commands，FIFO 在 publication 前 drain；target look/beam bubbles 保留为
   下一 Guardian 边界。
+
+## 2026-07-20：Guardian active-target look/beam client tick
+
+- [x] Guardian/ElderGuardian 的 synced attack target 在 direct-movement 后按 unique protocol id
+  解析；generated LivingEntity family 先过滤非 living target，多个 Guardian 共用一次 narrow
+  transform/dimensions lookup，不执行完整 `EntityState` projection 或逐 Guardian 全表搜索。
+- [x] 对照 `Guardian.aiStep`/`LookControl.tick`，客户端 navigation path 保持 null/done（path
+  只由被 ClientLevel 跳过的 `serverAiStep` 推进），因此精确执行 pitch reset、90 度 pitch/head-yaw
+  旋转、target-mid-height beam bubble Java-LCG loop，最后 active id 无论是否解析成功都令 body yaw
+  跟随 head yaw。ambient/attack FIFO 顺序、retained generation RNG/transform 隔离、same-id reset
+  和 native variable bubble batch 均有专项测试。
+- [x] 2,000 Guardian 64×32 shared-target fixture 的 tick/effect drain 从 4.7374 ms 变为
+  6.4886 ms，retained publication 从 6.0928 ms 变为 7.7427 ms（+37.0%/+27.1%）。fixture 每 tick
+  生成数万条 required beam positions；精确容量上界预留只回收约 1--3%，证明主要成本是 RNG/
+  三角计算/particle payload，而非 realloc 或 snapshot，未把工作转移到 resolver/下一次 mutation。
+  peak pending logical memory 仍随同 tick beam 总长度线性增长。

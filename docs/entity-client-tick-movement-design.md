@@ -578,8 +578,32 @@ stage and short-circuit audit, centers are 4.7186/5.0540/4.7374 ms and
 6.1862/6.0928 ms respectively (+6.7%/+10.7%/+6.8% and +9.4%/+6.3%). The delta
 is the newly required RNG, collision fact and up to 4,000 bubble commands; the
 effect FIFO is drained before snapshotting, so it is not deferred publication
-or retained-generation work. The active-target beam bubble loop and look-
-control update remain the next Guardian boundary.
+or retained-generation work.
+
+The following active-target stage resolves the synced target through one
+protocol-id lookup per unique id after direct movement, then rejects non-living
+targets through the generated LivingEntity family before reading narrow
+transform/dimensions. Guardians sharing one target therefore do not repeat the
+lookup or project a full `EntityState`. The client-side Guardian path has a
+fresh `PathNavigation` whose path remains null because `serverAiStep` (the only
+navigation tick/path owner) is skipped in a `ClientLevel`; consequently the
+explicit `LookControl.tick` takes its `navigation.isDone()` branch without the
+server path clamp. The implementation resets pitch, rotates pitch/head yaw by
+at most 90 degrees, emits the exact Java-LCG beam-bubble sequence from eye to
+target mid-height, and finally copies head yaw to body yaw even when the target
+id names a missing/non-living entity. Ambient bubbles precede beam bubbles in
+the same lossless FIFO.
+
+Immediately before that stage, the 2,000-Guardian shared-target fixture measured
+4.7374 ms for tick plus effect drain and 6.0928 ms with a retained publication.
+The exact look/beam path measures 6.4886 ms and 7.7427 ms after reserving the
+mathematical upper bound for each beam owner (+37.0%/+27.1%). This deliberately
+wide 64-by-32 fixture generates tens of thousands of required bubble positions
+per tick; the delta is inside tick-side target math, RNG and payload generation,
+not the snapshot. Upper-bound reservation removes repeated growth but only
+recovers roughly 1--3%, confirming that moving generation to the particle
+resolver would merely transfer the dominant work. Peak pending logical memory
+remains linear in total same-tick beam length until the effect gate drains it.
 
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its

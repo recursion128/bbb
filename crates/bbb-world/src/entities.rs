@@ -727,11 +727,18 @@ pub struct GuardianAmbientParticleState {
     pub positions: [EntityVec3; 2],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GuardianAttackParticleState {
+    pub entity_id: i32,
+    pub positions: Vec<EntityVec3>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EntityClientMovementParticleState {
     BlazeAmbient(BlazeAmbientParticleState),
     EnderAmbient(EnderAmbientParticleState),
     GuardianAmbient(GuardianAmbientParticleState),
+    GuardianAttack(GuardianAttackParticleState),
     FireworkRocket(FireworkRocketTrailParticleState),
     EyeOfEnder(EyeOfEnderTrailParticleState),
     ShulkerBullet(ShulkerBulletTrailParticleState),
@@ -759,7 +766,7 @@ pub struct EntityClientMovementSoundState {
 /// Client-owned particle and sound effects emitted by entity movement in exact
 /// vanilla tick order. The queue is drained into the lossless simulation effect
 /// batch before the corresponding immutable publication becomes visible.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EntityClientMovementEffectState {
     Particle(EntityClientMovementParticleState),
     Sound(EntityClientMovementSoundState),

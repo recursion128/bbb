@@ -271,7 +271,7 @@ const CREAKING_INVULNERABLE_DURATION: i32 = 8;
 /// `fuse - partialTicks + 1.0`.
 const TNT_MINECART_FUSE_TICKS: i32 = 80;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct EntityClientTickParticleTriggers {
     /// Vanilla `MinecartTNT.tick` decrements a positive fuse and then emits one
     /// smoke particle at `y + 0.5` on both client and server.
@@ -291,6 +291,10 @@ pub(crate) struct EntityClientTickParticleTriggers {
     pub(crate) guardian_flop_sound: bool,
     /// Vanilla dry, grounded Guardian random impulse applied after particles.
     pub(crate) guardian_dry_jump: Option<GuardianDryJumpUpdate>,
+    /// Vanilla active-target LookControl result, applied after ambient bubbles.
+    pub(crate) guardian_look_update: Option<GuardianLookUpdate>,
+    /// Vanilla active-target beam bubbles in exact entity RNG order.
+    pub(crate) guardian_attack_bubbles: Option<Vec<EntityVec3>>,
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
@@ -332,6 +336,19 @@ pub(crate) struct GuardianDryJumpUpdate {
     pub(crate) x_impulse: f64,
     pub(crate) z_impulse: f64,
     pub(crate) y_rot: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct GuardianLookUpdate {
+    pub(crate) x_rot: f32,
+    pub(crate) y_head_rot: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct GuardianAttackTargetTickInput {
+    pub(crate) position: EntityVec3,
+    pub(crate) eye_height: f32,
+    pub(crate) half_height: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -5619,6 +5636,10 @@ impl EntityClientAnimationState {
         // metadata in the tick loop ([`guardian_attack_target_id`]). `0` (no target) for entities that
         // do not consume it.
         guardian_attack_target_id: i32,
+        // Narrow live target dimensions resolved once per unique protocol id
+        // after the direct-movement pass. `None` for missing/non-living targets.
+        guardian_attack_target: Option<GuardianAttackTargetTickInput>,
+        guardian_eye_height: Option<f32>,
         // Vanilla `WitherBoss.aiStep` side-head targets, pre-resolved by `EntityStore` because the
         // tick needs other entities' current positions and eye heights. `None` for non-withers.
         wither_head_targets: Option<[WitherHeadTargetRotations; 2]>,
@@ -5822,12 +5843,71 @@ impl EntityClientAnimationState {
                         z_unit: java_random_next_double(random_seed) - 0.5,
                     }));
             }
-            self.guardian_attack
-                .get_or_insert_with(GuardianAttackAnimationState::default)
-                .advance_client_tick(
-                    guardian_attack_target_id,
-                    guardian_attack_duration(entity_type_id),
-                );
+            let attack_duration = guardian_attack_duration(entity_type_id);
+            let attack_scale = {
+                let attack = self
+                    .guardian_attack
+                    .get_or_insert_with(GuardianAttackAnimationState::default);
+                attack.advance_client_tick(guardian_attack_target_id, attack_duration);
+                attack.attack_scale(0.0, attack_duration)
+            };
+            if let (Some(target), Some(eye_height)) = (guardian_attack_target, guardian_eye_height)
+            {
+                let guardian_eye_y = transform.position.y + f64::from(eye_height);
+                let look_x = target.position.x - transform.position.x;
+                let look_y = target.position.y + f64::from(target.eye_height) - guardian_eye_y;
+                let look_z = target.position.z - transform.position.z;
+                let look_horizontal = (look_x * look_x + look_z * look_z).sqrt();
+                let desired_y_head_rot = if look_x.abs() <= f64::from(1.0e-5_f32)
+                    && look_z.abs() <= f64::from(1.0e-5_f32)
+                {
+                    transform.y_head_rot
+                } else {
+                    (look_z.atan2(look_x).to_degrees() as f32) - 90.0
+                };
+                let desired_x_rot = if look_y.abs() <= f64::from(1.0e-5_f32)
+                    && look_horizontal.abs() <= f64::from(1.0e-5_f32)
+                {
+                    0.0
+                } else {
+                    -(look_y.atan2(look_horizontal).to_degrees() as f32)
+                };
+                particle_triggers.guardian_look_update = Some(GuardianLookUpdate {
+                    // `LookControl.tick` resets xRot before applying the target.
+                    x_rot: rotlerp(0.0, desired_x_rot, 90.0),
+                    y_head_rot: rotlerp(transform.y_head_rot, desired_y_head_rot, 90.0),
+                });
+
+                let beam_x = target.position.x - transform.position.x;
+                let beam_y = target.position.y + f64::from(target.half_height) - guardian_eye_y;
+                let beam_z = target.position.z - transform.position.z;
+                let beam_distance = (beam_x * beam_x + beam_y * beam_y + beam_z * beam_z).sqrt();
+                let mut distance = java_random_next_double(random_seed);
+                // Each loop advances by at least `1.8 - attack_scale` before
+                // emitting. Reserve that exact upper bound up front so a long
+                // beam does not repeatedly reallocate its particle owner. The
+                // loop and RNG consumption remain byte-for-byte ordered like
+                // Guardian.aiStep.
+                let minimum_step = 1.8 - f64::from(attack_scale);
+                let position_capacity = if distance < beam_distance {
+                    ((beam_distance - distance) / minimum_step).ceil() as usize
+                } else {
+                    0
+                };
+                let mut positions = Vec::with_capacity(position_capacity);
+                while distance < beam_distance {
+                    distance += 1.8 - f64::from(attack_scale)
+                        + java_random_next_double(random_seed) * (1.7 - f64::from(attack_scale));
+                    positions.push(EntityVec3 {
+                        x: transform.position.x + beam_x / beam_distance * distance,
+                        y: guardian_eye_y + beam_y / beam_distance * distance,
+                        z: transform.position.z + beam_z / beam_distance * distance,
+                    });
+                }
+                if !positions.is_empty() {
+                    particle_triggers.guardian_attack_bubbles = Some(positions);
+                }
+            }
             if !in_water && transform.on_ground.unwrap_or(false) {
                 particle_triggers.guardian_dry_jump = Some(GuardianDryJumpUpdate {
                     x_impulse: f64::from((java_random_next_float(random_seed) * 2.0 - 1.0) * 0.4),
@@ -6615,14 +6695,18 @@ impl WorldStore {
         let in_water_inputs = self.entities.in_water_aabb_inputs();
         let mut in_water_by_id = std::collections::HashMap::with_capacity(in_water_inputs.len());
         let mut guardian_can_stand_on_below_by_id = std::collections::HashMap::new();
-        for (id, aabb_min, aabb_max, guardian_below_pos) in in_water_inputs {
-            let in_water = crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max);
-            in_water_by_id.insert(id, in_water);
-            if let Some(pos) = guardian_below_pos.filter(|_| !in_water) {
+        let mut guardian_attack_target_ids = std::collections::HashSet::new();
+        for input in in_water_inputs {
+            let in_water = crate::fluid::world_aabb_in_water(self, input.aabb_min, input.aabb_max);
+            in_water_by_id.insert(input.entity_id, in_water);
+            if let Some(pos) = input.guardian_below_pos.filter(|_| !in_water) {
                 let can_stand = self.probe_block(pos).is_some_and(|block| {
                     crate::client::block_collision_shape_has_full_up_face(&block, pos)
                 });
-                guardian_can_stand_on_below_by_id.insert(id, can_stand);
+                guardian_can_stand_on_below_by_id.insert(input.entity_id, can_stand);
+            }
+            if input.guardian_attack_target_id != 0 {
+                guardian_attack_target_ids.insert(input.guardian_attack_target_id);
             }
         }
         let client_movement_fluid_by_id = client_movement_fluid_inputs
@@ -6854,6 +6938,7 @@ impl WorldStore {
             &spectator_player_uuids,
             &in_water_by_id,
             &guardian_can_stand_on_below_by_id,
+            &guardian_attack_target_ids,
             &client_movement_collisions_by_id,
             minecart_improvements_enabled,
             death_tick_player_chunk,

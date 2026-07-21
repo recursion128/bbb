@@ -84,17 +84,18 @@ use super::{
     EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FoxEatParticleState, GuardianAmbientParticleState, HappyGhastHarnessColor,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
-    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
-    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
+    FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
+    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
+    WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -105,7 +106,7 @@ use crate::entities::animations::{
     piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
     sniffer_can_play_digging_sound, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
-    WitherHeadTargetRotations,
+    GuardianAttackTargetTickInput, WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -339,6 +340,14 @@ pub struct EntityClientTickWork {
     pub projectile_duration: Duration,
     pub interpolation_duration: Duration,
     pub animation_duration: Duration,
+}
+
+pub(crate) struct EntityInWaterTickInput {
+    pub(crate) entity_id: i32,
+    pub(crate) aabb_min: [f64; 3],
+    pub(crate) aabb_max: [f64; 3],
+    pub(crate) guardian_below_pos: Option<crate::BlockPos>,
+    pub(crate) guardian_attack_target_id: i32,
 }
 
 impl EntityClientTickWork {
@@ -4778,14 +4787,12 @@ impl EntityStore {
 
     /// Gathers the world AABBs the per-entity `in_water` map is built from, for the
     /// entity types whose client-tick animation reads `isInWater()`
-    /// ([`entity_animation_uses_in_water`]). Each tuple is `(entity_id, aabb_min,
-    /// aabb_max, guardian_below_pos)` with the AABB resolved from the SAME bounds source the projection
+    /// ([`entity_animation_uses_in_water`]). Each input carries the entity id,
+    /// AABB, and narrow Guardian-only support/target facts. The AABB is resolved from the SAME bounds source the projection
     /// uses ([`Self::pick_bounds`] → `vanilla_pick_bounds_for_entity_data`), so the
     /// fluid overlap matches the projected `in_water`. `WorldStore` (which holds the
     /// chunk/fluid data) turns each AABB into a `bool`.
-    pub(crate) fn in_water_aabb_inputs(
-        &self,
-    ) -> Vec<(i32, [f64; 3], [f64; 3], Option<crate::BlockPos>)> {
+    pub(crate) fn in_water_aabb_inputs(&self) -> Vec<EntityInWaterTickInput> {
         let mut inputs = Vec::new();
         let mut query = self.ecs.query::<(
             &EntityIdentity,
@@ -4828,9 +4835,77 @@ impl EntityStore {
                         y: transform.position.y.floor() as i32 - 1,
                         z: transform.position.z.floor() as i32,
                     });
-            inputs.push((identity.id, aabb_min, aabb_max, guardian_below_pos));
+            let guardian_attack_target_id =
+                if vanilla_entity_metadata_type_is_guardian(identity.entity_type_id) {
+                    guardian_attack_target_id(identity.entity_type_id, &metadata.data_values)
+                } else {
+                    0
+                };
+            inputs.push(EntityInWaterTickInput {
+                entity_id: identity.id,
+                aabb_min,
+                aabb_max,
+                guardian_below_pos,
+                guardian_attack_target_id,
+            });
         }
         inputs
+    }
+
+    /// Resolves only unique active Guardian targets collected by the existing
+    /// water-input query. Guardians sharing a target reuse one protocol-id and
+    /// component lookup; unrelated living entities are never projected.
+    fn guardian_attack_target_facts(
+        &self,
+        target_ids: &HashSet<i32>,
+    ) -> HashMap<i32, GuardianAttackTargetTickInput> {
+        let mut targets = HashMap::with_capacity(target_ids.len());
+        for &target_id in target_ids {
+            let Some(&entity) = self.by_protocol_id.get(&target_id) else {
+                continue;
+            };
+            let (Ok(identity), Ok(transform), Ok(metadata), Ok(attributes), Ok(animations)) = (
+                self.ecs.get::<&EntityIdentity>(entity),
+                self.ecs.get::<&EntityTransform>(entity),
+                self.ecs.get::<&EntityMetadata>(entity),
+                self.ecs.get::<&EntityAttributes>(entity),
+                self.ecs.get::<&EntityClientAnimations>(entity),
+            ) else {
+                continue;
+            };
+            if !vanilla_living_entity_type(identity.entity_type_id) {
+                continue;
+            }
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            let Some(eye_height) = vanilla_eye_height_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            targets.insert(
+                target_id,
+                GuardianAttackTargetTickInput {
+                    position: transform.position,
+                    eye_height,
+                    half_height: (bounds.max[1] - bounds.min[1]) * 0.5,
+                },
+            );
+        }
+        targets
     }
 
     pub(crate) fn client_movement_fluid_inputs(
@@ -4969,6 +5044,7 @@ impl EntityStore {
         spectator_player_uuids: &HashSet<Uuid>,
         in_water_by_id: &HashMap<i32, bool>,
         guardian_can_stand_on_below_by_id: &HashMap<i32, bool>,
+        guardian_attack_target_ids: &HashSet<i32>,
         client_movement_collisions_by_id: &HashMap<
             i32,
             super::client_movement::EntityClientMovementCollisionResult,
@@ -5028,6 +5104,8 @@ impl EntityStore {
             );
             work.projectile_duration += movement_started_at.elapsed();
             let animation_started_at = Instant::now();
+            let guardian_attack_targets_by_id =
+                self.guardian_attack_target_facts(guardian_attack_target_ids);
             work.scanned_entities = work
                 .scanned_entities
                 .saturating_add(self.by_protocol_id.len());
@@ -5115,6 +5193,19 @@ impl EntityStore {
                 } else {
                     0
                 };
+                let guardian_attack_target = guardian_attack_targets_by_id
+                    .get(&guardian_attack_target_id)
+                    .copied();
+                let guardian_eye_height = guardian_attack_target.and_then(|_| {
+                    vanilla_eye_height_for_entity_data(
+                        identity.entity_type_id,
+                        identity.data,
+                        &metadata.data_values,
+                        &attributes.attributes,
+                        Some(animations.animations),
+                        metadata.painting_variant_projection.as_ref(),
+                    )
+                });
                 let wither_head_targets = (entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID)
                     .then(|| wither_head_targets_by_id.get(&identity.id).copied())
                     .flatten();
@@ -5189,7 +5280,7 @@ impl EntityStore {
                     .animations
                     .needs_particle_trigger_bounds_snapshot()
                     .then_some(animations.animations);
-                let particle_triggers = animations.animations.advance_client_tick(
+                let mut particle_triggers = animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
                     *transform,
@@ -5204,6 +5295,8 @@ impl EntityStore {
                     guardian_can_stand_on_below,
                     warden_heartbeat_delay,
                     guardian_attack_target_id,
+                    guardian_attack_target,
+                    guardian_eye_height,
                     wither_head_targets,
                     camel_is_standing,
                     camel_is_dashing,
@@ -5239,21 +5332,24 @@ impl EntityStore {
                     &metadata.data_values,
                     &attributes.attributes,
                     client_animations_before_tick,
-                    particle_triggers,
+                    &mut particle_triggers,
                 );
+                if let Some(update) = particle_triggers.guardian_look_update {
+                    transform.x_rot = update.x_rot;
+                    transform.y_head_rot = update.y_head_rot;
+                }
                 if let Some(update) = particle_triggers.guardian_dry_jump {
                     transform.delta_movement.x += update.x_impulse;
                     transform.delta_movement.y += 0.5;
                     transform.delta_movement.z += update.z_impulse;
-                    transform.y_rot = if guardian_attack_target_id != 0 {
-                        // Guardian's final `hasActiveAttackTarget` branch runs
-                        // after the dry jump's random body yaw.
-                        transform.y_head_rot
-                    } else {
-                        update.y_rot
-                    };
+                    transform.y_rot = update.y_rot;
                     transform.on_ground = Some(false);
                     tick_scratch.guardian_dry_jump_entities.push(identity.id);
+                }
+                if guardian_attack_target_id != 0 {
+                    // Guardian's final `hasActiveAttackTarget` branch follows
+                    // both LookControl and the optional dry random body yaw.
+                    transform.y_rot = transform.y_head_rot;
                 }
                 // `advance_client_tick` always advances `age_ticks`, including
                 // entities without a specialized animation family.
@@ -6043,7 +6139,7 @@ fn append_client_tick_particle_triggers(
     data_values: &[bbb_protocol::packets::EntityDataValue],
     attributes: &[ProtocolAttributeSnapshot],
     client_animations: Option<EntityClientAnimationState>,
-    triggers: EntityClientTickParticleTriggers,
+    triggers: &mut EntityClientTickParticleTriggers,
 ) {
     if triggers.minecart_tnt_smoke {
         pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
@@ -6172,6 +6268,14 @@ fn append_client_tick_particle_triggers(
                     y: transform.position.y + offset.y_unit * height - view.y * 1.5,
                     z: transform.position.z + offset.z_unit * width - view.z * 1.5,
                 }),
+            }),
+        ));
+    }
+    if let Some(positions) = triggers.guardian_attack_bubbles.take() {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::GuardianAttack(GuardianAttackParticleState {
+                entity_id: identity.id,
+                positions,
             }),
         ));
     }
