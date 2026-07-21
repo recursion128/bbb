@@ -28,10 +28,11 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     input::{
         queue_block_entity_tag_query_command, queue_change_difficulty_command,
-        queue_change_game_mode_command, queue_chat_command, queue_command_suggestion_request,
-        queue_container_button_click_command, queue_container_click_command,
-        queue_container_close_request_command, queue_container_slot_state_changed_command,
-        queue_edit_book_command, queue_entity_tag_query_command, queue_lock_difficulty_command,
+        queue_change_game_mode_command, queue_chat_command, queue_chat_message_command,
+        queue_command_suggestion_request, queue_container_button_click_command,
+        queue_container_click_command, queue_container_close_request_command,
+        queue_container_slot_state_changed_command, queue_edit_book_command,
+        queue_entity_tag_query_command, queue_lock_difficulty_command,
         queue_perform_respawn_command, queue_place_recipe_command, queue_player_abilities_command,
         queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
         queue_rename_item_command, queue_request_game_rule_values_command,
@@ -428,6 +429,9 @@ pub(crate) fn pump_control_net_requests(
             NetControlRequest::ChatCommand { command } => {
                 queue_chat_command(counters, world, net_commands, command);
             }
+            NetControlRequest::ChatMessage { message } => {
+                queue_chat_message_command(counters, world, net_commands, message);
+            }
             NetControlRequest::CommandSuggestionRequest { id, command } => {
                 queue_command_suggestion_request(counters, net_commands, id, command);
             }
@@ -720,6 +724,30 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::ChatCommand(OutboundChatCommand::unsigned("give @p minecraft:stone"))
         );
+        assert!(requests.lock().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_chat_message() {
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::ChatMessage {
+                message: "hello from the gate".to_string(),
+            });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.chat_message_commands_queued, 1);
+        let Ok(NetCommand::ChatMessage(message)) = rx.try_recv() else {
+            panic!("expected a queued outbound chat message");
+        };
+        assert_eq!(message.message, "hello from the gate");
         assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 

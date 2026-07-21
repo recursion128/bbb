@@ -90,6 +90,9 @@ pub enum NetControlRequest {
     ChatCommand {
         command: String,
     },
+    ChatMessage {
+        message: String,
+    },
     CommandSuggestionRequest {
         id: i32,
         command: String,

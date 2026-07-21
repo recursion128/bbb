@@ -229,6 +229,40 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_missing_chat_interaction_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["chat_interaction"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "chat_interaction"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_unechoed_chat_message_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["chat_interaction"]["message_echoed"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "chat_interaction.message_echoed"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_server_unlogged_emote_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["chat_interaction"]["server_logged_emote"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "chat_interaction.server_logged_emote"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_zero_chat_message_commands_fail(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["chat_interaction"]["chat_message_commands_delta"] = 0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "chat_message_commands_delta"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
 
 class PlayableGateLifecycleTests(unittest.TestCase):
     def setUp(self):

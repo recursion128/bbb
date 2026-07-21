@@ -148,6 +148,32 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         };
     }
 
+    if request.method == "net.send_chat_message" {
+        let Some(message) = non_empty_string_param(&request.params, "message") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.send_chat_message requires non-empty string param message".to_string(),
+                ),
+            };
+        };
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Net(NetControlRequest::ChatMessage {
+                    message: message.to_string(),
+                }));
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": pending
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.send_chat_command" {
         let Some(command) = non_empty_string_param(&request.params, "command") else {
             return ControlResponse {

@@ -105,4 +105,6 @@
   基础游玩新增实体攻击场景（summon→pick 面→瞄准攻击→canonical/呈现双移除，
   evidence schema 3，live 实跑全绿）与容器场景（setblock+server 填箱→右键
   开箱→quick-move→关箱→server console 权威确认箱空，evidence schema 4，
-  live 实跑全绿）。
+  live 实跑全绿）与 chat 场景（新 `net.send_chat_message` RPC 走既有
+  last-seen ack 出站管线；消息+emote 命令双 round-trip：server 落日志且
+  广播回 canonical chat 状态，evidence schema 5，live 实跑全绿）。

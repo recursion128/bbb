@@ -136,8 +136,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 4:
-        raise GateFailure(f"playable evidence schema must be 4, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 5:
+        raise GateFailure(f"playable evidence schema must be 5, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -225,6 +225,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_block_interaction(evidence.get("block_interaction"))
     _validate_entity_interaction(evidence.get("entity_interaction"))
     _validate_container_interaction(evidence.get("container_interaction"))
+    _validate_chat_interaction(evidence.get("chat_interaction"))
     _validate_lifecycle(evidence.get("lifecycle"))
 
 
@@ -486,6 +487,38 @@ def _validate_container_interaction(container_interaction: Any) -> None:
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             raise GateFailure(
                 f"container_interaction.{key} must record at least one observed "
+                f"command, got {value!r}"
+            )
+
+
+CHAT_INTERACTION_COMMAND_DELTAS = (
+    "chat_message_commands_delta",
+    "chat_command_commands_delta",
+)
+
+
+def _validate_chat_interaction(chat_interaction: Any) -> None:
+    """The chat smoke must observe the full round trip, not queued commands:
+    the server logging the message and the emote, and both broadcasts coming
+    back into the canonical chat state."""
+
+    chat_interaction = _object(chat_interaction, "chat_interaction")
+    message = chat_interaction.get("message")
+    if not isinstance(message, str) or not message:
+        raise GateFailure("chat_interaction.message must record the probe text")
+    for key in (
+        "message_echoed",
+        "command_echoed",
+        "server_logged_message",
+        "server_logged_emote",
+    ):
+        if chat_interaction.get(key) is not True:
+            raise GateFailure(f"chat_interaction.{key} must be true")
+    for key in CHAT_INTERACTION_COMMAND_DELTAS:
+        value = chat_interaction.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise GateFailure(
+                f"chat_interaction.{key} must record at least one observed "
                 f"command, got {value!r}"
             )
 
@@ -1626,6 +1659,90 @@ def drive_container_interaction(
     }
 
 
+CHAT_PROBE_MESSAGE = "bbb gate chat probe"
+CHAT_PROBE_EMOTE = "proves the gate"
+
+
+def _chat_message_contents(address: tuple[str, int]) -> list[str]:
+    chat = _control_request(address, "world.client_chat")
+    if not isinstance(chat, dict):
+        return []
+    messages = chat.get("messages")
+    if not isinstance(messages, list):
+        return []
+    return [
+        str(message.get("content", ""))
+        for message in messages
+        if isinstance(message, dict)
+    ]
+
+
+def drive_chat_interaction(
+    address: tuple[str, int], server_log: Path, timeout_seconds: float
+) -> dict[str, Any]:
+    """Send a player chat message and a chat command through the outbound
+    chat pipeline (timestamps, salts, and last-seen acknowledgements) and
+    require the full round trip: the server logging both, and the broadcast
+    coming back into the canonical chat state the HUD renders from."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before chat interaction")
+
+    _control_request(address, "net.send_chat_message", {"message": CHAT_PROBE_MESSAGE})
+    _await_value(
+        deadline,
+        "the chat message queue acknowledgement",
+        lambda: _net_counter(address, "chat_message_commands_queued"),
+        lambda value: value > int(net_before.get("chat_message_commands_queued", 0)),
+    )
+    _await_value(
+        deadline,
+        "the player chat broadcast to return into the canonical chat state",
+        lambda: _chat_message_contents(address),
+        lambda contents: any(CHAT_PROBE_MESSAGE in content for content in contents),
+    )
+    _await_value(
+        deadline,
+        "the server log to record the player chat message",
+        lambda: _log_occurrences(server_log, f"<bbb-playablegate> {CHAT_PROBE_MESSAGE}"),
+        lambda count: count >= 1,
+    )
+
+    _send_chat_command(address, f"me {CHAT_PROBE_EMOTE}", deadline)
+    _await_value(
+        deadline,
+        "the emote broadcast to return into the canonical chat state",
+        lambda: _chat_message_contents(address),
+        lambda contents: any(CHAT_PROBE_EMOTE in content for content in contents),
+    )
+    _await_value(
+        deadline,
+        "the server log to record the emote command",
+        lambda: _log_occurrences(server_log, f"* bbb-playablegate {CHAT_PROBE_EMOTE}"),
+        lambda count: count >= 1,
+    )
+
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_after, "after chat interaction")
+
+    def _delta(key: str) -> int:
+        return int(net_after.get(key, 0)) - int(net_before.get(key, 0))
+
+    return {
+        "message": CHAT_PROBE_MESSAGE,
+        "message_echoed": True,
+        "command_echoed": True,
+        "server_logged_message": True,
+        "server_logged_emote": True,
+        "chat_message_commands_delta": _delta("chat_message_commands_queued"),
+        "chat_command_commands_delta": _delta("chat_command_commands_queued"),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def _await_value(
     deadline: float,
     description: str,
@@ -2199,7 +2316,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 4,
+            "schema": 5,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2209,6 +2326,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "block_interaction": None,
             "entity_interaction": None,
             "container_interaction": None,
+            "chat_interaction": None,
             "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
@@ -2225,6 +2343,7 @@ def collect_live(args: argparse.Namespace) -> None:
     block_interaction: dict[str, Any] | None = None
     entity_interaction: dict[str, Any] | None = None
     container_interaction: dict[str, Any] | None = None
+    chat_interaction: dict[str, Any] | None = None
     lifecycle: dict[str, Any] | None = None
     try:
         _await_control_stability(address, deadline)
@@ -2239,6 +2358,9 @@ def collect_live(args: argparse.Namespace) -> None:
         )
         container_interaction = drive_container_interaction(
             address, args.server_command, args.server_log, min(90.0, float(args.timeout))
+        )
+        chat_interaction = drive_chat_interaction(
+            address, args.server_log, min(60.0, float(args.timeout))
         )
         lifecycle = {}
         lifecycle = drive_session_lifecycle(
@@ -2260,7 +2382,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 4,
+            "schema": 5,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2270,6 +2392,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "block_interaction": block_interaction,
             "entity_interaction": entity_interaction,
             "container_interaction": container_interaction,
+            "chat_interaction": chat_interaction,
             "lifecycle": lifecycle,
             "failure": failure,
             "artifacts": {
@@ -2287,7 +2410,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 4,
+            "schema": 5,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2297,6 +2420,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "block_interaction": block_interaction,
             "entity_interaction": entity_interaction,
             "container_interaction": container_interaction,
+            "chat_interaction": chat_interaction,
             "lifecycle": lifecycle,
             "failure": str(error),
             "artifacts": {
@@ -2309,7 +2433,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 4,
+        "schema": 5,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -2319,6 +2443,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "block_interaction": block_interaction,
         "entity_interaction": entity_interaction,
         "container_interaction": container_interaction,
+        "chat_interaction": chat_interaction,
         "lifecycle": lifecycle,
         "artifacts": {
             "timeline": str(args.client_log),
