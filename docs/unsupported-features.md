@@ -1362,7 +1362,16 @@ back into a todo. Do not delete these.
 
 - Close the remaining family-specific pose/dimension changes, collision
   exceptions, multipart hit targets, scale caps, and pickability rules against
-  the generated entity type and metadata catalogs.
+  the generated entity type and metadata catalogs. The 2026-07-21 sweep of
+  every vanilla `getDimensions`/`getDefaultDimensions` override confirmed the
+  pose maps (avatar/camel/goat/sniffer/warden/polar-bear/shulker/sleeping),
+  metadata-driven sizes (slime, phantom, pufferfish, salmon, interaction, and
+  the newly wired area-effect-cloud radius), the baby-dimension table with its
+  ageable fallback, ender-dragon multipart targets, and the scale attribute
+  are covered, and aligned the debug-hitbox projection with vanilla
+  `EntityHitboxDebugRenderer` (every non-invisible entity draws its box;
+  pickability only gates pick targeting). Still open: the remaining collision
+  and pushability exceptions and per-family eye-height/attachment audit.
 
 ### Entity coverage matrix model texture and layers
 

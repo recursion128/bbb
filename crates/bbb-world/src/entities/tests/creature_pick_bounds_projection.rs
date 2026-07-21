@@ -1467,3 +1467,103 @@ fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale() {
         ))
     );
 }
+
+fn area_effect_cloud_radius_data(radius: f32) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type(
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+        )
+        .expect("generated AreaEffectCloud radius accessor must resolve");
+    assert_eq!(default, 3.0);
+    protocol_float_data(data_id, radius)
+}
+
+#[test]
+fn area_effect_cloud_debug_bounds_follow_synced_radius_without_pickability() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        40,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+    ));
+
+    // Vanilla `Entity.isPickable` stays false for the cloud, so it never
+    // becomes a pick target.
+    assert_eq!(store.probe_entity_pick_bounds(40), None);
+    assert!(store
+        .entity_pick_targets_at_partial_tick(1.0)
+        .iter()
+        .all(|target| target.entity_id != 40));
+
+    // The debug hitbox still shows the vanilla default radius 3.0 as a
+    // 6.0 x 0.5 box.
+    let debug_targets = store.entity_debug_hitbox_targets_at_partial_tick(1.0);
+    let cloud = debug_targets
+        .iter()
+        .find(|target| target.entity_id == 40)
+        .expect("area effect cloud must keep a debug hitbox");
+    assert_eq!(
+        cloud.bounds,
+        EntityPickBoundsState::from_base_size(6.0, 0.5, 0.0)
+    );
+
+    // Server-side decay shrinks the synced radius and the client refreshes
+    // dimensions from the metadata update.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 40,
+        values: vec![area_effect_cloud_radius_data(1.25)],
+    }));
+    let debug_targets = store.entity_debug_hitbox_targets_at_partial_tick(1.0);
+    let cloud = debug_targets
+        .iter()
+        .find(|target| target.entity_id == 40)
+        .expect("area effect cloud must keep a debug hitbox");
+    assert_eq!(
+        cloud.bounds,
+        EntityPickBoundsState::from_base_size(2.5, 0.5, 0.0)
+    );
+}
+
+#[test]
+fn debug_hitboxes_cover_non_pickable_entities_and_skip_invisible_ones() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        41,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        42,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+
+    // Dropped items are not pickable in vanilla but still draw their white
+    // debug box.
+    assert_eq!(store.probe_entity_pick_bounds(41), None);
+    let debug_ids: Vec<i32> = store
+        .entity_debug_hitbox_targets_at_partial_tick(1.0)
+        .iter()
+        .map(|target| target.entity_id)
+        .collect();
+    assert_eq!(debug_ids, vec![41, 42]);
+
+    // Vanilla `EntityHitboxDebugRenderer` skips `entity.isInvisible()` while
+    // pick targeting keeps working for invisible entities.
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 42,
+        values: vec![protocol_byte_data(
+            accessors.shared_flags_data_id,
+            accessors.invisible_mask,
+        )],
+    }));
+    let debug_ids: Vec<i32> = store
+        .entity_debug_hitbox_targets_at_partial_tick(1.0)
+        .iter()
+        .map(|target| target.entity_id)
+        .collect();
+    assert_eq!(debug_ids, vec![41]);
+    assert!(store
+        .entity_pick_targets_at_partial_tick(1.0)
+        .iter()
+        .any(|target| target.entity_id == 42));
+}

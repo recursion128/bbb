@@ -2170,10 +2170,15 @@ impl EntityStore {
         targets
     }
 
+    /// Vanilla `EntityHitboxDebugRenderer.emitGizmos` walks every rendered entity and draws its
+    /// bounding box unless `entity.isInvisible()`; the pickability gate only applies to actual
+    /// pick targeting, so non-pickable entities (dropped items, experience orbs, area effect
+    /// clouds) still show their boxes here.
     pub(crate) fn debug_hitbox_targets_at_partial_tick(
         &self,
         partial_ticks: f32,
     ) -> Vec<super::EntityPickTargetState> {
+        let entity_accessors = vanilla_entity_metadata_entity_accessors();
         let mut targets = Vec::new();
         for id in &self.order {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
@@ -2189,6 +2194,20 @@ impl EntityStore {
             let Some((identity, transform, client_animations)) = query.get() else {
                 continue;
             };
+            if let Some(accessors) = entity_accessors {
+                let invisible = self
+                    .metadata_byte(
+                        identity.id,
+                        accessors.shared_flags_data_id,
+                        accessors.shared_flags_default,
+                    )
+                    .unwrap_or(accessors.shared_flags_default)
+                    & accessors.invisible_mask
+                    != 0;
+                if invisible {
+                    continue;
+                }
+            }
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
                 targets.push(ender_dragon_parent_pick_target(
                     identity.id,
@@ -2203,7 +2222,7 @@ impl EntityStore {
                     dragon_animation,
                     partial_ticks,
                 ));
-            } else if let Some(bounds) = self.pick_bounds(identity.id) {
+            } else if let Some(bounds) = self.debug_hitbox_bounds(identity.id) {
                 targets.push(super::EntityPickTargetState {
                     entity_id: identity.id,
                     position: transform.render_position(partial_ticks),
@@ -2212,6 +2231,23 @@ impl EntityStore {
             }
         }
         targets
+    }
+
+    /// The debug-hitbox bounds skip the `isPickable` gate that `pick_bounds` applies.
+    pub(crate) fn debug_hitbox_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        vanilla_bounds_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(client_animations.animations),
+            metadata.painting_variant_projection.as_ref(),
+        )
     }
 
     pub(crate) fn fill_model_candidates_at_partial_tick(

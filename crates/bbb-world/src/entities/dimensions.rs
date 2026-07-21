@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
+    vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_baby_behavior_and_age_scale,
@@ -240,6 +241,8 @@ pub(crate) fn vanilla_bounds_for_entity_data(
     } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
     } else if let Some(bounds) = slime_pick_bounds(entity_type_id, data_values) {
+        bounds
+    } else if let Some(bounds) = area_effect_cloud_bounds(entity_type_id, data_values) {
         bounds
     } else if let Some(bounds) = pufferfish_pick_bounds(entity_type_id, data_values) {
         bounds
@@ -1189,6 +1192,23 @@ fn baby_pick_bounds(
         _ => vanilla_pick_bounds_for_type(entity_type_id)?
             .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE),
     })
+}
+
+/// Vanilla `AreaEffectCloud.getDimensions` is `EntityDimensions.scalable(getRadius() * 2.0F,
+/// 0.5F)`, refreshed client-side whenever the synced `DATA_RADIUS` value changes. The cloud is
+/// not pickable, so these bounds only reach the debug-hitbox and model-source projections.
+fn area_effect_cloud_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    let (data_id, default) =
+        vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type(entity_type_id)?;
+    let radius = entity_data_float(data_values, data_id, default);
+    Some(EntityPickBoundsState::from_base_size(
+        radius * 2.0,
+        0.5,
+        0.0,
+    ))
 }
 
 fn slime_pick_bounds(
