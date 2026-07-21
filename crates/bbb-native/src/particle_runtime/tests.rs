@@ -165,6 +165,11 @@ fn entity_client_movement_simple_particles_resolve_typed_commands() {
             "minecraft:smoke",
         ),
         (
+            EntityClientMovementSimpleParticleKind::LargeSmoke,
+            VANILLA_PARTICLE_TYPE_LARGE_SMOKE_ID,
+            "minecraft:large_smoke",
+        ),
+        (
             EntityClientMovementSimpleParticleKind::DragonBreath,
             VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID,
             "minecraft:dragon_breath",

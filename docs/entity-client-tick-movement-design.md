@@ -488,6 +488,20 @@ path from 3.4485 to 3.4937 ms (+0.52%/+1.31%); Criterion detected no significant
 change in either case. Thus the 2,000 required effects are bounded and do not
 become retained snapshot payload.
 
+`MinecartFurnace.tick` is now closed at the same subclass boundary. The server
+continues to own fuel countdown, push and rail slowdown; the client reads only
+the generated `DATA_ID_FUEL` accessor and, while fueled, advances one narrow
+client-local Java-LCG cursor for `nextInt(4)`. A zero result emits typed
+`large_smoke` at the post-behavior cart position plus `y + 0.8`. The cursor is
+initialized per fresh UUID/incarnation, cloned with immutable generations,
+cleared by normal entity replacement/reset, and excluded from JSON/probe
+shape. Unfueled ticks do not consume it. With 2,000 fueled carts, the
+repo-native tick/effect-drain benchmark changed from 1.4128 to 1.4642 ms
+(+3.64% for roughly 500 required effects per tick); retained publication
+changed from 3.4939 to 3.4689 ms and had no statistically significant change.
+This localizes the cost to effect generation rather than publication or the
+next mutation.
+
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.

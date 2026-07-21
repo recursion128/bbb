@@ -24,17 +24,17 @@ use bbb_protocol::{
     entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     game_types::{VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
 };
 use bbb_world::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_entity_accessors,
-    ChunkColumn, ChunkPos, ChunkSection, ChunkState, EntityClientMovementEffectState,
-    HeightmapData, LightData, LocalPlayerInputState, PaletteDomain, PaletteKind,
-    PalettedContainerData, WorldStore,
+    vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type, ChunkColumn, ChunkPos,
+    ChunkSection, ChunkState, EntityClientMovementEffectState, HeightmapData, LightData,
+    LocalPlayerInputState, PaletteDomain, PaletteKind, PalettedContainerData, WorldStore,
 };
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
@@ -333,6 +333,27 @@ fn build_primed_tnt_minecart_world(count: usize) -> WorldStore {
         assert!(world.apply_entity_event(EntityEvent {
             entity_id: id,
             event_id: 10,
+        }));
+    }
+    world
+}
+
+fn build_fueled_furnace_minecart_world(count: usize) -> WorldStore {
+    let mut world = build_entity_world_with(count, |_| VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID);
+    let (data_id, default) =
+        vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        )
+        .expect("generated MinecartFurnace fuel accessor");
+    assert!(!default);
+    for id in 1..=i32::try_from(count).expect("benchmark count fits i32") {
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![EntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
         }));
     }
     world
@@ -852,6 +873,33 @@ fn bench_entity_effect_generation(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let world = primed_tnt_minecarts.publication_snapshot();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+                black_box(Arc::new(world.publication_snapshot()));
+                black_box(held);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    let fueled_furnace_minecarts = build_fueled_furnace_minecart_world(ENTITY_COUNT);
+    group.bench_function("2000_fueled_furnace_minecarts", |b| {
+        b.iter_batched(
+            || fueled_furnace_minecarts.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_function("2000_fueled_furnace_minecarts_then_publish_retained", |b| {
+        b.iter_batched(
+            || {
+                let world = fueled_furnace_minecarts.publication_snapshot();
                 let held = Arc::new(world.publication_snapshot());
                 (world, held)
             },

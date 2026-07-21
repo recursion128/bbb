@@ -29,6 +29,9 @@ impl ParticleCommandResolver {
             EntityClientMovementSimpleParticleKind::Bubble => VANILLA_PARTICLE_TYPE_BUBBLE_ID,
             EntityClientMovementSimpleParticleKind::Crit => VANILLA_PARTICLE_TYPE_CRIT_ID,
             EntityClientMovementSimpleParticleKind::Smoke => VANILLA_PARTICLE_TYPE_SMOKE_ID,
+            EntityClientMovementSimpleParticleKind::LargeSmoke => {
+                VANILLA_PARTICLE_TYPE_LARGE_SMOKE_ID
+            }
             EntityClientMovementSimpleParticleKind::DragonBreath => {
                 VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID
             }

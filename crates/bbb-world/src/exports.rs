@@ -91,6 +91,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_variant_accessor_for_entity_type,
     vanilla_entity_metadata_frog_variant_accessor_for_entity_type,
+    vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
     vanilla_entity_metadata_ghast_charging_accessor_for_entity_type,
     vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type,
     vanilla_entity_metadata_goat_accessors_for_entity_type,

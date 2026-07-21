@@ -2669,7 +2669,7 @@ pub fn vanilla_entity_metadata_vehicle_accessors_for_entity_type(
 ///
 /// The owner also supplies the furnace-minecart membership, so display projection does not need a
 /// parallel type predicate or fixed data-id import.
-pub(crate) fn vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+pub fn vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, bool)> {
     let accessor =

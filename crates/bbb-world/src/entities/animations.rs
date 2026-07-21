@@ -270,6 +270,9 @@ pub(crate) struct EntityClientTickParticleTriggers {
     /// Vanilla `MinecartTNT.tick` decrements a positive fuse and then emits one
     /// smoke particle at `y + 0.5` on both client and server.
     pub(crate) minecart_tnt_smoke: bool,
+    /// Vanilla `MinecartFurnace.tick` emits one large-smoke particle when the
+    /// synced fuel bit is set and the entity RNG's `nextInt(4)` returns zero.
+    pub(crate) minecart_furnace_large_smoke: bool,
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
@@ -456,6 +459,11 @@ pub struct EntityClientAnimationState {
     pub minecart_tnt_fuse: Option<MinecartTntFuseAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub minecart_spawner: Option<MinecartSpawnerClientState>,
+    /// Client-local `MinecartFurnace.random` cursor used only by its fueled
+    /// large-smoke branch. It is cloned into immutable publications but stays
+    /// out of the stable JSON/probe shape, like other non-wire runtime cursors.
+    #[serde(skip)]
+    pub(crate) minecart_furnace_smoke_random_seed: Option<u64>,
 }
 
 /// The client-observable `BaseSpawner` state owned by `MinecartSpawner`. Vanilla constructs it
@@ -3862,6 +3870,9 @@ impl EntityClientAnimationState {
                 0x6775_6172_6469_616e,
             ))
         });
+        self.minecart_furnace_smoke_random_seed = (entity_type_id
+            == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID)
+            .then(|| java_random_seed(spawn_random_bits(uuid, 0x6675_726e_6163_655f) as i64));
     }
 
     pub(crate) fn item_bob_offset(&self) -> f32 {
@@ -5572,6 +5583,9 @@ impl EntityClientAnimationState {
         // Vanilla `AbstractBoat.DATA_ID_BUBBLE_TIME`, read each client tick by
         // `tickBubbleColumn()` to ease the wobble multiplier.
         boat_bubble_time: i32,
+        // Vanilla `MinecartFurnace.DATA_ID_FUEL`. The server owns fuel/push;
+        // the client reads only this synced bit for its presentation smoke.
+        furnace_minecart_has_fuel: bool,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
     ) -> EntityClientTickParticleTriggers {
@@ -5616,6 +5630,15 @@ impl EntityClientAnimationState {
                 particle_triggers.minecart_tnt_smoke = fuse.fuse_remaining_ticks > 0;
                 fuse.advance_client_tick();
             }
+        }
+        if entity_type_id == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID && furnace_minecart_has_fuel {
+            let random_seed = self
+                .minecart_furnace_smoke_random_seed
+                .get_or_insert_with(|| {
+                    java_random_seed(i64::from(entity_id).wrapping_add(0x6675_726e))
+                });
+            particle_triggers.minecart_furnace_large_smoke =
+                java_random_next_int_bound(random_seed, 4) == 0;
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
             if self.ender_dragon.is_some_and(|dragon| dragon.dragon_dying) {

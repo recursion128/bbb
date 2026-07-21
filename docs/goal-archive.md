@@ -20120,3 +20120,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 2,000 primed TNT-minecart batched Criterion 排除 fixture rebuild：tick/effect drain 从
   1.4323 ms 变为 1.4398 ms，retained publication 从 3.4485 ms 变为 3.4937 ms
   （+0.52%/+1.31%），两项均未检出显著变化；effects 每 tick drain/recycle，不进入 retained snapshot。
+
+## 2026-07-20：fueled furnace-minecart client smoke
+
+- [x] 对照 `MinecartFurnace.tick`，只从 generated `DATA_ID_FUEL` 读取客户端可见条件；fuel
+  countdown、push 与 rail slowdown 仍归 server authority。fueled tick 使用 instance-local
+  Java-LCG `nextInt(4)`，命中时把 post-behavior `(x, y + 0.8, z)` `large_smoke` 写入既有 typed
+  movement-effect FIFO。
+- [x] RNG cursor 随 fresh UUID 初始化、随 immutable publication clone、在 replace/reset 时清空，
+  且不改变 JSON/probe shape；专项测试锁定 unfueled 不消费 RNG、固定序列、effect payload 和
+  retained generation 隔离。native resolver 覆盖 `large_smoke` typed mapping。
+- [x] 2,000 fueled carts 的 repo-native tick/effect drain 从 1.4128 ms 变为 1.4642 ms（+3.64%，
+  每 tick 约 500 个 Vanilla-required effects）；retained publication 从 3.4939 ms 变为
+  3.4689 ms，未检出显著变化，因此新增成本没有转移到 snapshot 或下一次 mutation。

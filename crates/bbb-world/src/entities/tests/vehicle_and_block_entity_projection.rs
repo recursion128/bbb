@@ -389,6 +389,84 @@ fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
 }
 
 #[test]
+fn fueled_furnace_minecart_emits_deterministic_client_large_smoke() {
+    fn smoke_ticks(store: &mut WorldStore, ticks: u32) -> Vec<u32> {
+        let mut emitted = Vec::new();
+        for tick in 1..=ticks {
+            store.advance_entity_client_animations(1);
+            let effects = store
+                .drain_entity_client_movement_effect_states()
+                .collect::<Vec<_>>();
+            if effects.is_empty() {
+                continue;
+            }
+            assert_eq!(
+                effects,
+                vec![EntityClientMovementEffectState::Particle(
+                    EntityClientMovementParticleState::Simple(
+                        EntityClientMovementSimpleParticleState {
+                            entity_id: 25,
+                            kind: EntityClientMovementSimpleParticleKind::LargeSmoke,
+                            position: EntityVec3 {
+                                x: 1.0,
+                                y: 64.8,
+                                z: -2.0,
+                            },
+                            velocity: EntityVec3::default(),
+                        }
+                    )
+                )]
+            );
+            emitted.push(tick);
+        }
+        emitted
+    }
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        25,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 25,
+        values: vec![furnace_minecart_fuel_data(true)],
+    }));
+    let mut retained = store.publication_snapshot();
+
+    let expected = vec![6, 10, 11, 17, 18, 23, 24, 34, 38, 40, 53, 54, 57, 58];
+    assert_eq!(smoke_ticks(&mut store, 64), expected);
+    assert_eq!(
+        smoke_ticks(&mut retained, 64),
+        expected,
+        "advancing the live furnace cart must not mutate a retained RNG cursor"
+    );
+
+    let mut initially_unfueled = WorldStore::new();
+    initially_unfueled.apply_add_entity(protocol_add_entity_with_type(
+        25,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    ));
+    initially_unfueled.advance_entity_client_animations(20);
+    assert_eq!(
+        initially_unfueled
+            .drain_entity_client_movement_effect_states()
+            .count(),
+        0
+    );
+    assert!(
+        initially_unfueled.apply_set_entity_data(ProtocolSetEntityData {
+            id: 25,
+            values: vec![furnace_minecart_fuel_data(true)],
+        })
+    );
+    assert_eq!(
+        smoke_ticks(&mut initially_unfueled, 11),
+        vec![6, 10, 11],
+        "the short-circuited unfueled branch must not consume entity RNG"
+    );
+}
+
+#[test]
 fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
     let accessors = vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
         VANILLA_ENTITY_TYPE_MINECART_ID,

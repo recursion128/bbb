@@ -5141,6 +5141,14 @@ impl EntityStore {
                 } else {
                     0
                 };
+                let furnace_minecart_has_fuel = entity_type_id
+                    == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
+                    && vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+                        entity_type_id,
+                    )
+                    .is_some_and(|(data_id, default)| {
+                        entity_data_bool(&metadata.data_values, data_id, default)
+                    });
                 let client_animations_before_tick = animations
                     .animations
                     .needs_particle_trigger_bounds_snapshot()
@@ -5181,6 +5189,7 @@ impl EntityStore {
                     boat_paddles[0],
                     boat_paddles[1],
                     boat_bubble_time_value,
+                    furnace_minecart_has_fuel,
                     is_swimming,
                 );
                 append_client_tick_particle_triggers(
@@ -5983,6 +5992,20 @@ fn append_client_tick_particle_triggers(
                 position: super::EntityVec3 {
                     x: transform.position.x,
                     y: transform.position.y + 0.5,
+                    z: transform.position.z,
+                },
+                velocity: super::EntityVec3::default(),
+            }),
+        ));
+    }
+    if triggers.minecart_furnace_large_smoke {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
+                entity_id: identity.id,
+                kind: EntityClientMovementSimpleParticleKind::LargeSmoke,
+                position: super::EntityVec3 {
+                    x: transform.position.x,
+                    y: transform.position.y + 0.8,
                     z: transform.position.z,
                 },
                 velocity: super::EntityVec3::default(),
