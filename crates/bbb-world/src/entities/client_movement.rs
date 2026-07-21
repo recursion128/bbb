@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -9,15 +9,19 @@ use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use hecs::Entity;
 
+use super::animations::{java_random_next_float, java_random_seed, spawn_random_bits};
 use super::components::{
-    EntityAttributes, EntityClientAnimations, EntityEquipment, EntityHurtingProjectile,
-    EntityIdentity, EntityMetadata, EntityProjectileLifecycle, EntityTransform,
+    EntityAttributes, EntityClientAnimations, EntityClientMovementCollisionFacts, EntityEquipment,
+    EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityHurtingProjectile,
+    EntityIdentity, EntityMetadata, EntityProjectileLifecycle, EntitySupportingBlock,
+    EntityTransform,
 };
-use super::dimensions::vanilla_eye_height_for_entity_data;
+use super::dimensions::{vanilla_bounds_for_entity_data, vanilla_eye_height_for_entity_data};
 use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
@@ -36,21 +40,64 @@ use super::{
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityClientMovementCollisionInput {
     pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
     pub(crate) position: EntityVec3,
+    pub(crate) pre_move_delta: EntityVec3,
     pub(crate) requested_movement: EntityVec3,
     pub(crate) bounds: EntityPickBoundsState,
+    pub(crate) previous_supporting_block: EntitySupportingBlock,
+    pub(crate) movement_skipped: bool,
+    pub(crate) experience_orb_update: Option<EntityExperienceOrbMovementUpdate>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityClientMovementCollisionResult {
+    pub(crate) pre_move_delta: EntityVec3,
     pub(crate) requested_movement: EntityVec3,
     pub(crate) clipped_movement: EntityVec3,
+    pub(crate) supporting_block: Option<crate::BlockPos>,
+    pub(crate) ground_friction: f32,
+    pub(crate) movement_skipped: bool,
+    pub(crate) experience_orb_update: Option<EntityExperienceOrbMovementUpdate>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EntityExperienceOrbMovementUpdate {
+    pub(crate) following_player_uuid: Option<uuid::Uuid>,
+    pub(crate) random_seed: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityClientMovementFluidInput {
+    pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
+    pub(crate) position: EntityVec3,
+    pub(crate) bounds: EntityPickBoundsState,
+    pub(crate) aabb_min: [f64; 3],
+    pub(crate) aabb_max: [f64; 3],
+    pub(crate) eye_position: [f64; 3],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct EntityClientMovementTridentReturnTarget {
     eye_position: EntityVec3,
     loyalty: i8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct EntityExperienceOrbPlayerTarget {
+    entity_id: i32,
+    uuid: uuid::Uuid,
+    position: EntityVec3,
+    attraction_position: EntityVec3,
+    is_dead_or_dying: bool,
+}
+
+pub(super) fn experience_orb_movement_from_uuid(uuid: uuid::Uuid) -> EntityExperienceOrbMovement {
+    EntityExperienceOrbMovement {
+        following_player_uuid: None,
+        random_seed: java_random_seed(spawn_random_bits(uuid, 0x6578_7065_7269_656e) as i64),
+    }
 }
 
 pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
@@ -70,62 +117,269 @@ pub(super) fn client_movement_uses_in_water(entity_type_id: i32) -> bool {
     )
 }
 
+pub(super) fn client_movement_uses_fluid_contact(entity_type_id: i32) -> bool {
+    matches!(
+        vanilla_entity_metadata_type_client_movement_policy(entity_type_id),
+        Some(
+            VanillaEntityClientMovementPolicy::Item
+                | VanillaEntityClientMovementPolicy::ExperienceOrb
+                | VanillaEntityClientMovementPolicy::FishingHook
+        )
+    )
+}
+
+pub(super) fn client_movement_uses_collision_facts(entity_type_id: i32) -> bool {
+    matches!(
+        vanilla_entity_metadata_type_client_movement_policy(entity_type_id),
+        Some(
+            VanillaEntityClientMovementPolicy::FallingBlock
+                | VanillaEntityClientMovementPolicy::PrimedTnt
+                | VanillaEntityClientMovementPolicy::Item
+                | VanillaEntityClientMovementPolicy::ExperienceOrb
+        )
+    )
+}
+
 impl EntityStore {
     pub(crate) fn client_movement_collision_inputs(
         &self,
+        fluid_by_id: &HashMap<i32, crate::client::EntityFluidContactState>,
+        collision_free_by_id: &HashMap<i32, bool>,
+        spectator_player_uuids: &HashSet<uuid::Uuid>,
+        lava_current_scale: f64,
     ) -> Vec<EntityClientMovementCollisionInput> {
+        let mut experience_orb_player_targets = None;
         let mut inputs = Vec::new();
-        for id in &self.order {
-            let Some(entity) = self.by_protocol_id.get(id).copied() else {
-                continue;
-            };
-            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
-                continue;
-            };
+        let mut facts_query = self.ecs.query::<(
+            &EntityClientMovementCollisionFacts,
+            &EntityIdentity,
+            &EntityMetadata,
+            &EntityTransform,
+            &EntitySupportingBlock,
+            &EntityAttributes,
+            &EntityClientAnimations,
+            Option<&EntityExperienceOrbMovement>,
+        )>();
+        for (
+            _,
+            (
+                _,
+                identity,
+                metadata,
+                transform,
+                supporting_block,
+                attributes,
+                animations,
+                orb_movement,
+            ),
+        ) in facts_query.iter()
+        {
             let entity_type_id = identity.entity_type_id;
             let Some(policy) = vanilla_entity_metadata_type_client_movement_policy(entity_type_id)
             else {
                 continue;
             };
-            if !matches!(
+            debug_assert!(matches!(
                 policy,
                 VanillaEntityClientMovementPolicy::FallingBlock
                     | VanillaEntityClientMovementPolicy::PrimedTnt
-            ) {
+                    | VanillaEntityClientMovementPolicy::Item
+                    | VanillaEntityClientMovementPolicy::ExperienceOrb
+            ));
+            let identity_data = identity.data;
+            if policy == VanillaEntityClientMovementPolicy::ExperienceOrb
+                && animations.animations.age_ticks == 0
+            {
                 continue;
             }
-            drop(identity);
-            let Ok(mut query) = self
-                .ecs
-                .query_one::<(&EntityMetadata, &EntityTransform)>(entity)
-            else {
-                continue;
-            };
-            let Some((metadata, transform)) = query.get() else {
-                continue;
-            };
             let position = transform.position;
-            let requested_movement =
-                nonliving_gravity_movement(metadata, transform.delta_movement, 0.04);
-            drop(query);
-            let Some(bounds) = self.pick_bounds(*id) else {
+            let previous_supporting_block = *supporting_block;
+            let fluid = fluid_by_id.get(&identity.id).copied().unwrap_or_default();
+            let mut pre_move_delta = match policy {
+                VanillaEntityClientMovementPolicy::FallingBlock
+                | VanillaEntityClientMovementPolicy::PrimedTnt => {
+                    nonliving_gravity_movement(metadata, transform.delta_movement, 0.04)
+                }
+                VanillaEntityClientMovementPolicy::Item
+                | VanillaEntityClientMovementPolicy::ExperienceOrb => {
+                    apply_entity_fluid_currents(transform.delta_movement, fluid, lava_current_scale)
+                }
+                _ => unreachable!("filtered client movement collision policy"),
+            };
+            let mut movement_skipped = false;
+            let mut experience_orb_update = None;
+            match policy {
+                VanillaEntityClientMovementPolicy::Item => {
+                    if !item_entity_has_stack(entity_type_id, &metadata.data_values) {
+                        continue;
+                    }
+                    if fluid.water_height > 0.1 {
+                        pre_move_delta.x *= f64::from(0.99_f32);
+                        if pre_move_delta.y < f64::from(0.06_f32) {
+                            pre_move_delta.y += f64::from(0.0005_f32);
+                        }
+                        pre_move_delta.z *= f64::from(0.99_f32);
+                    } else if fluid.lava_height > 0.1 {
+                        pre_move_delta.x *= f64::from(0.95_f32);
+                        if pre_move_delta.y < f64::from(0.06_f32) {
+                            pre_move_delta.y += f64::from(0.0005_f32);
+                        }
+                        pre_move_delta.z *= f64::from(0.95_f32);
+                    } else {
+                        pre_move_delta = nonliving_gravity_movement(metadata, pre_move_delta, 0.04);
+                    }
+                    let next_tick = animations.animations.age_ticks.saturating_add(1);
+                    movement_skipped = transform.on_ground.unwrap_or(false)
+                        && horizontal_length_squared(pre_move_delta) <= f64::from(1.0e-5_f32)
+                        && (i64::from(next_tick) + i64::from(identity.id)).rem_euclid(4) != 0;
+                }
+                VanillaEntityClientMovementPolicy::ExperienceOrb => {
+                    let Some(orb_movement) = orb_movement.copied() else {
+                        continue;
+                    };
+                    if fluid.eye_in_water {
+                        pre_move_delta.x *= f64::from(0.99_f32);
+                        pre_move_delta.y =
+                            (pre_move_delta.y + f64::from(0.0005_f32)).min(f64::from(0.06_f32));
+                        pre_move_delta.z *= f64::from(0.99_f32);
+                    } else if collision_free_by_id
+                        .get(&identity.id)
+                        .copied()
+                        .unwrap_or(true)
+                    {
+                        pre_move_delta.y -= 0.03;
+                    }
+                    let mut random_seed = orb_movement.random_seed;
+                    if fluid.block_fluid_kind == Some(crate::TerrainFluidKind::Lava) {
+                        pre_move_delta = EntityVec3 {
+                            x: f64::from(
+                                (java_random_next_float(&mut random_seed)
+                                    - java_random_next_float(&mut random_seed))
+                                    * 0.2,
+                            ),
+                            y: f64::from(0.2_f32),
+                            z: f64::from(
+                                (java_random_next_float(&mut random_seed)
+                                    - java_random_next_float(&mut random_seed))
+                                    * 0.2,
+                            ),
+                        };
+                    }
+                    let player_targets = experience_orb_player_targets.get_or_insert_with(|| {
+                        self.experience_orb_player_targets(spectator_player_uuids)
+                    });
+                    let target = select_experience_orb_player_target(
+                        position,
+                        orb_movement.following_player_uuid,
+                        player_targets,
+                    );
+                    if let Some(target) = target {
+                        let delta = subtract(target.attraction_position, position);
+                        let length_squared = length_squared(delta);
+                        let power = 1.0 - length_squared.sqrt() / 8.0;
+                        pre_move_delta =
+                            add(pre_move_delta, scale(normalize(delta), power * power * 0.1));
+                    }
+                    experience_orb_update = Some(EntityExperienceOrbMovementUpdate {
+                        following_player_uuid: target.map(|target| target.uuid),
+                        random_seed,
+                    });
+                }
+                _ => {}
+            }
+            let requested_movement = if movement_skipped {
+                EntityVec3::default()
+            } else {
+                pre_move_delta
+            };
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                entity_type_id,
+                identity_data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
                 continue;
             };
-            debug_assert!(matches!(
-                vanilla_entity_metadata_type_client_movement_policy(entity_type_id),
-                Some(
-                    VanillaEntityClientMovementPolicy::FallingBlock
-                        | VanillaEntityClientMovementPolicy::PrimedTnt
-                )
-            ));
             inputs.push(EntityClientMovementCollisionInput {
-                entity_id: *id,
+                entity_id: identity.id,
+                entity_type_id,
                 position,
+                pre_move_delta,
                 requested_movement,
                 bounds,
+                previous_supporting_block,
+                movement_skipped,
+                experience_orb_update,
             });
         }
         inputs
+    }
+
+    fn experience_orb_player_targets(
+        &self,
+        spectator_player_uuids: &HashSet<uuid::Uuid>,
+    ) -> Vec<EntityExperienceOrbPlayerTarget> {
+        let mut targets = Vec::new();
+        let mut query = self.ecs.query::<(
+            &EntityExperienceOrbPlayerTargetFacts,
+            &EntityIdentity,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+            &EntityTransform,
+        )>();
+        for (_, (_, identity, metadata, attributes, animations, transform)) in query.iter() {
+            debug_assert_eq!(identity.entity_type_id, VANILLA_ENTITY_TYPE_PLAYER_ID);
+            if spectator_player_uuids.contains(&identity.uuid) {
+                continue;
+            }
+            let Some(living_accessors) =
+                vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                    identity.entity_type_id,
+                )
+            else {
+                continue;
+            };
+            let is_dead_or_dying = entity_data_float(
+                &metadata.data_values,
+                living_accessors.health_data_id,
+                living_accessors.health_default,
+            ) <= 0.0;
+            let Some(eye_height) = vanilla_eye_height_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            targets.push(EntityExperienceOrbPlayerTarget {
+                entity_id: identity.id,
+                uuid: identity.uuid,
+                position: transform.position,
+                attraction_position: EntityVec3 {
+                    x: transform.position.x,
+                    y: transform.position.y + f64::from(eye_height) * 0.5,
+                    z: transform.position.z,
+                },
+                is_dead_or_dying,
+            });
+        }
+        drop(query);
+        // `EntityGetter.getNearestPlayer` resolves equal distances by player
+        // list order. Hecs archetype order may change after removal, so restore
+        // the canonical spawn/re-add order before the strict-distance fold.
+        targets.sort_by_key(|target| {
+            self.order
+                .iter()
+                .position(|id| *id == target.entity_id)
+                .unwrap_or(usize::MAX)
+        });
+        targets
     }
 
     /// Advances client-owned projectile and nonliving movement in the frozen
@@ -301,6 +555,35 @@ impl EntityStore {
                         in_water_by_id.get(&entity_id).copied().unwrap_or(false),
                         &mut effects,
                     );
+                }
+                VanillaEntityClientMovementPolicy::Item => {
+                    let Some(collision) = collisions_by_id.get(&entity_id).copied() else {
+                        continue;
+                    };
+                    let Ok((transform, supporting_block)) = self
+                        .ecs
+                        .query_one_mut::<(&mut EntityTransform, &mut EntitySupportingBlock)>(
+                            entity,
+                        )
+                    else {
+                        continue;
+                    };
+                    advance_item_entity(transform, supporting_block, collision);
+                }
+                VanillaEntityClientMovementPolicy::ExperienceOrb => {
+                    let Some(collision) = collisions_by_id.get(&entity_id).copied() else {
+                        continue;
+                    };
+                    let Ok((movement, transform, supporting_block)) =
+                        self.ecs.query_one_mut::<(
+                            &mut EntityExperienceOrbMovement,
+                            &mut EntityTransform,
+                            &mut EntitySupportingBlock,
+                        )>(entity)
+                    else {
+                        continue;
+                    };
+                    advance_experience_orb(movement, transform, supporting_block, collision);
                 }
                 VanillaEntityClientMovementPolicy::FallingBlock => {
                     let Ok((metadata, transform)) = self
@@ -820,6 +1103,84 @@ fn advance_falling_block(
     transform.delta_movement = scale(requested, f64::from(0.98_f32));
 }
 
+fn advance_item_entity(
+    transform: &mut EntityTransform,
+    supporting_block: &mut EntitySupportingBlock,
+    collision: EntityClientMovementCollisionResult,
+) {
+    transform.delta_movement = collision.pre_move_delta;
+    if collision.movement_skipped {
+        return;
+    }
+    apply_client_collision_movement(transform, supporting_block, collision);
+    let on_ground = transform.on_ground.unwrap_or(false);
+    let friction = if on_ground {
+        collision.ground_friction * 0.98_f32
+    } else {
+        0.98_f32
+    };
+    transform.delta_movement.x *= f64::from(friction);
+    transform.delta_movement.y *= f64::from(0.98_f32);
+    transform.delta_movement.z *= f64::from(friction);
+    if on_ground && transform.delta_movement.y < 0.0 {
+        transform.delta_movement.y *= -0.5;
+    }
+}
+
+fn advance_experience_orb(
+    movement: &mut EntityExperienceOrbMovement,
+    transform: &mut EntityTransform,
+    supporting_block: &mut EntitySupportingBlock,
+    collision: EntityClientMovementCollisionResult,
+) {
+    if let Some(update) = collision.experience_orb_update {
+        movement.following_player_uuid = update.following_player_uuid;
+        movement.random_seed = update.random_seed;
+    }
+    let fall_speed = collision.pre_move_delta.y;
+    transform.delta_movement = collision.pre_move_delta;
+    apply_client_collision_movement(transform, supporting_block, collision);
+    let on_ground = transform.on_ground.unwrap_or(false);
+    let friction = if on_ground {
+        collision.ground_friction * 0.98_f32
+    } else {
+        0.98_f32
+    };
+    transform.delta_movement = scale(transform.delta_movement, f64::from(friction));
+    if on_ground && fall_speed < -0.03 {
+        transform.delta_movement.y = -fall_speed * 0.4;
+    }
+}
+
+fn apply_client_collision_movement(
+    transform: &mut EntityTransform,
+    supporting_block: &mut EntitySupportingBlock,
+    collision: EntityClientMovementCollisionResult,
+) {
+    transform.position = add(transform.position, collision.clipped_movement);
+    // `Entity.move` uses `!Mth.equal` for horizontal collision, not exact
+    // floating-point inequality. Vertical collision intentionally remains exact.
+    let x_collision =
+        (collision.requested_movement.x - collision.clipped_movement.x).abs() >= 1.0e-5;
+    let z_collision =
+        (collision.requested_movement.z - collision.clipped_movement.z).abs() >= 1.0e-5;
+    if x_collision {
+        transform.delta_movement.x = 0.0;
+    }
+    if z_collision {
+        transform.delta_movement.z = 0.0;
+    }
+    let on_ground = collision.requested_movement.y < 0.0
+        && collision.requested_movement.y != collision.clipped_movement.y;
+    transform.on_ground = Some(on_ground);
+    if on_ground {
+        supporting_block.main = collision.supporting_block;
+        supporting_block.on_ground_no_blocks = collision.supporting_block.is_none();
+    } else {
+        *supporting_block = EntitySupportingBlock::default();
+    }
+}
+
 fn advance_primed_tnt(
     metadata: &mut EntityMetadata,
     transform: &mut EntityTransform,
@@ -1019,6 +1380,90 @@ fn entity_data_float(
         .unwrap_or(default)
 }
 
+fn item_entity_has_stack(
+    entity_type_id: i32,
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    let Some(data_id) =
+        vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
+    data_values.iter().any(|value| {
+        value.data_id == data_id
+            && matches!(
+                &value.value,
+                EntityDataValueKind::ItemStack(stack)
+                    if stack.item_id.is_some() && stack.count > 0
+            )
+    })
+}
+
+fn apply_entity_fluid_currents(
+    mut movement: EntityVec3,
+    contact: crate::client::EntityFluidContactState,
+    lava_current_scale: f64,
+) -> EntityVec3 {
+    for (current, count, current_scale) in [
+        (contact.water_current, contact.water_current_count, 0.014),
+        (
+            contact.lava_current,
+            contact.lava_current_count,
+            lava_current_scale,
+        ),
+    ] {
+        if count == 0 {
+            continue;
+        }
+        let mut impulse = EntityVec3 {
+            x: current.x,
+            y: current.y,
+            z: current.z,
+        };
+        if length_squared(impulse) < 1.0e-5 {
+            continue;
+        }
+        impulse = scale(normalize(impulse), current_scale);
+        if movement.x.abs() < 0.003
+            && movement.z.abs() < 0.003
+            && length_squared(impulse).sqrt() < 0.0045
+        {
+            impulse = scale(normalize(impulse), 0.0045);
+        }
+        movement = add(movement, impulse);
+    }
+    movement
+}
+
+fn select_experience_orb_player_target(
+    orb_position: EntityVec3,
+    following_player_uuid: Option<uuid::Uuid>,
+    targets: &[EntityExperienceOrbPlayerTarget],
+) -> Option<EntityExperienceOrbPlayerTarget> {
+    if let Some(current) = following_player_uuid
+        .and_then(|uuid| targets.iter().copied().find(|target| target.uuid == uuid))
+    {
+        if length_squared(subtract(current.position, orb_position)) <= 64.0 {
+            return Some(current);
+        }
+    }
+    let mut nearest = None;
+    let mut nearest_distance = f64::INFINITY;
+    for target in targets.iter().copied() {
+        if target.is_dead_or_dying {
+            continue;
+        }
+        let distance = length_squared(subtract(target.position, orb_position));
+        // `EntityGetter.getNearestPlayer` uses strict comparisons, preserving
+        // the first player at an equal distance and excluding exactly 8 blocks.
+        if distance < 64.0 && distance < nearest_distance {
+            nearest = Some(target);
+            nearest_distance = distance;
+        }
+    }
+    nearest
+}
+
 fn set_entity_data_byte(metadata: &mut EntityMetadata, data_id: u8, value: i8) {
     let value = bbb_protocol::packets::EntityDataValue {
         data_id,
@@ -1076,6 +1521,14 @@ fn add(left: EntityVec3, right: EntityVec3) -> EntityVec3 {
         y: left.y + right.y,
         z: left.z + right.z,
     }
+}
+
+fn horizontal_length_squared(value: EntityVec3) -> f64 {
+    value.x * value.x + value.z * value.z
+}
+
+fn length_squared(value: EntityVec3) -> f64 {
+    horizontal_length_squared(value) + value.y * value.y
 }
 
 fn subtract(left: EntityVec3, right: EntityVec3) -> EntityVec3 {
@@ -1184,18 +1637,20 @@ fn lerp(alpha: f32, start: f32, end: f32) -> f32 {
 mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
-        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
-        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, EntityDataValue, SetEntityData as ProtocolSetEntityData,
-        Vec3d as ProtocolVec3d,
+        AddEntity as ProtocolAddEntity, EntityDataValue, ItemStackSummary,
+        SetEntityData as ProtocolSetEntityData, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -1941,6 +2396,491 @@ mod tests {
     }
 
     #[test]
+    fn item_entity_applies_client_gravity_drag_and_retained_generation_isolation() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            63,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            ProtocolVec3d {
+                x: 0.5,
+                y: 0.2,
+                z: -0.25,
+            },
+        ));
+        set_nonempty_item_stack(&mut store, 63);
+        assert_eq!(store.entities.client_movement_fluid_inputs().len(), 1);
+        assert_eq!(
+            store
+                .entities
+                .client_movement_collision_inputs(
+                    &HashMap::new(),
+                    &HashMap::new(),
+                    &HashSet::new(),
+                    0.0023333333333333335,
+                )
+                .len(),
+            1
+        );
+        let generation_a = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+
+        let requested = EntityVec3 {
+            x: 0.5,
+            y: 0.16,
+            z: -0.25,
+        };
+        let transform = store.probe_entity_transform(63).unwrap();
+        assert_vec3_near(
+            transform.position,
+            EntityVec3 {
+                x: 1.5,
+                y: 64.16,
+                z: -2.25,
+            },
+        );
+        assert_vec3_near(
+            transform.delta_movement,
+            EntityVec3 {
+                x: requested.x * f64::from(0.98_f32),
+                y: requested.y * f64::from(0.98_f32),
+                z: requested.z * f64::from(0.98_f32),
+            },
+        );
+        assert_eq!(
+            generation_a.probe_entity_transform(63).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            "the retained item generation keeps its pre-tick transform"
+        );
+    }
+
+    #[test]
+    fn experience_orb_skips_first_client_tick_then_follows_nearby_player() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            64,
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut player = projectile(65, VANILLA_ENTITY_TYPE_PLAYER_ID, ProtocolVec3d::default());
+        player.position.x = 5.0;
+        store.apply_add_entity(player);
+
+        store.advance_entity_client_animations(1);
+        assert_eq!(
+            store.probe_entity_transform(64).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            "Vanilla clears firstTick without running ExperienceOrb base motion"
+        );
+        assert_eq!(
+            store
+                .entities
+                .client_movement_collision_inputs(
+                    &HashMap::new(),
+                    &HashMap::new(),
+                    &HashSet::new(),
+                    0.0023333333333333335,
+                )
+                .len(),
+            1,
+            "the second orb tick must enter collision/world-fact extraction"
+        );
+        let generation_a = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+
+        let attraction = EntityVec3 {
+            x: 4.0,
+            y: f64::from(1.62_f32) * 0.5,
+            z: 0.0,
+        };
+        let power = 1.0 - length_squared(attraction).sqrt() / 8.0;
+        let requested = add(
+            EntityVec3 {
+                x: 0.0,
+                y: -0.03,
+                z: 0.0,
+            },
+            scale(normalize(attraction), power * power * 0.1),
+        );
+        let transform = store.probe_entity_transform(64).unwrap();
+        assert_vec3_near(
+            transform.position,
+            add(
+                generation_a.probe_entity_transform(64).unwrap().position,
+                requested,
+            ),
+        );
+        assert_vec3_near(
+            transform.delta_movement,
+            scale(requested, f64::from(0.98_f32)),
+        );
+        assert_eq!(
+            generation_a.probe_entity_transform(64).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            "the retained orb generation remains isolated from follow motion"
+        );
+        assert_eq!(
+            generation_a
+                .entities
+                .experience_orb_movement(64)
+                .unwrap()
+                .following_player_uuid,
+            None
+        );
+        assert_eq!(
+            store
+                .entities
+                .experience_orb_movement(64)
+                .unwrap()
+                .following_player_uuid,
+            Some(Uuid::from_u128(65)),
+            "the live generation alone retains the selected Player instance"
+        );
+    }
+
+    #[test]
+    fn experience_orb_target_selection_preserves_vanilla_retention_and_range_rules() {
+        let origin = EntityVec3::default();
+        let dead_current = EntityExperienceOrbPlayerTarget {
+            entity_id: 1,
+            uuid: Uuid::from_u128(1),
+            position: EntityVec3 {
+                x: 8.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            attraction_position: EntityVec3::default(),
+            is_dead_or_dying: true,
+        };
+        let first_nearest = EntityExperienceOrbPlayerTarget {
+            entity_id: 2,
+            uuid: Uuid::from_u128(2),
+            position: EntityVec3 {
+                x: 3.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            attraction_position: EntityVec3::default(),
+            is_dead_or_dying: false,
+        };
+        let equal_nearest = EntityExperienceOrbPlayerTarget {
+            entity_id: 3,
+            uuid: Uuid::from_u128(3),
+            ..first_nearest
+        };
+
+        assert_eq!(
+            select_experience_orb_player_target(
+                origin,
+                Some(dead_current.uuid),
+                &[dead_current, first_nearest],
+            ),
+            Some(dead_current),
+            "an existing non-spectator target remains retained at exactly 8 blocks, even if dead"
+        );
+        assert_eq!(
+            select_experience_orb_player_target(
+                origin,
+                None,
+                &[dead_current, first_nearest, equal_nearest],
+            ),
+            Some(first_nearest),
+            "a new target excludes dead/exact-range players and preserves first-player ties"
+        );
+    }
+
+    #[test]
+    fn item_and_orb_collision_responses_use_block_friction_and_vertical_bounce() {
+        let collision = EntityClientMovementCollisionResult {
+            pre_move_delta: EntityVec3 {
+                x: 0.25,
+                y: -0.1,
+                z: -0.5,
+            },
+            requested_movement: EntityVec3 {
+                x: 0.25,
+                y: -0.1,
+                z: -0.5,
+            },
+            clipped_movement: EntityVec3 {
+                x: 0.25,
+                y: 0.0,
+                z: -0.5,
+            },
+            supporting_block: Some(BlockPos { x: 1, y: 63, z: -2 }),
+            ground_friction: 0.98,
+            movement_skipped: false,
+            experience_orb_update: None,
+        };
+        let mut support = EntitySupportingBlock::default();
+        let mut item = test_transform(EntityVec3::default());
+        advance_item_entity(&mut item, &mut support, collision);
+        assert_eq!(item.on_ground, Some(true));
+        assert_eq!(support.main, collision.supporting_block);
+        assert_vec3_near(
+            item.delta_movement,
+            EntityVec3 {
+                x: 0.25 * f64::from(0.98_f32 * 0.98_f32),
+                y: -0.1 * f64::from(0.98_f32) * -0.5,
+                z: -0.5 * f64::from(0.98_f32 * 0.98_f32),
+            },
+        );
+
+        let mut orb_movement = experience_orb_movement_from_uuid(Uuid::from_u128(4));
+        let mut orb_support = EntitySupportingBlock::default();
+        let mut orb = test_transform(EntityVec3::default());
+        advance_experience_orb(&mut orb_movement, &mut orb, &mut orb_support, collision);
+        assert_eq!(orb.on_ground, Some(true));
+        assert_vec3_near(
+            orb.delta_movement,
+            EntityVec3 {
+                x: 0.25 * f64::from(0.98_f32 * 0.98_f32),
+                y: 0.04,
+                z: -0.5 * f64::from(0.98_f32 * 0.98_f32),
+            },
+        );
+    }
+
+    #[test]
+    fn same_id_readd_regenerates_exact_world_fact_family_markers() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            66,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            ProtocolVec3d::default(),
+        ));
+        assert_eq!(store.entities.client_movement_fluid_inputs().len(), 1);
+
+        store.apply_add_entity(projectile(
+            66,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ProtocolVec3d::default(),
+        ));
+        assert!(store.entities.client_movement_fluid_inputs().is_empty());
+        assert!(store
+            .entities
+            .client_movement_collision_inputs(
+                &HashMap::new(),
+                &HashMap::new(),
+                &HashSet::new(),
+                0.0023333333333333335,
+            )
+            .is_empty());
+
+        store.apply_add_entity(projectile(
+            66,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        assert_eq!(
+            store
+                .entities
+                .experience_orb_player_targets(&HashSet::new())
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn item_water_and_experience_orb_lava_inputs_match_vanilla_float_paths() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            68,
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            ProtocolVec3d::default(),
+        ));
+        // Vanilla's first client orb tick only clears firstTick.
+        store.advance_entity_client_animations(1);
+
+        store.apply_add_entity(projectile(
+            67,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            ProtocolVec3d {
+                x: 0.5,
+                y: 0.2,
+                z: -0.25,
+            },
+        ));
+        set_nonempty_item_stack(&mut store, 67);
+
+        let mut fluid_by_id = HashMap::new();
+        fluid_by_id.insert(
+            67,
+            crate::client::EntityFluidContactState {
+                water_height: 0.2,
+                ..crate::client::EntityFluidContactState::default()
+            },
+        );
+        fluid_by_id.insert(
+            68,
+            crate::client::EntityFluidContactState {
+                block_fluid_kind: Some(crate::TerrainFluidKind::Lava),
+                ..crate::client::EntityFluidContactState::default()
+            },
+        );
+        let inputs = store.entities.client_movement_collision_inputs(
+            &fluid_by_id,
+            &HashMap::new(),
+            &HashSet::new(),
+            0.0023333333333333335,
+        );
+        let item = inputs.iter().find(|input| input.entity_id == 67).unwrap();
+        assert_vec3_near(
+            item.pre_move_delta,
+            EntityVec3 {
+                x: 0.5 * f64::from(0.99_f32),
+                y: 0.2,
+                z: -0.25 * f64::from(0.99_f32),
+            },
+        );
+
+        let mut expected_seed = experience_orb_movement_from_uuid(Uuid::from_u128(68)).random_seed;
+        let expected_orb = EntityVec3 {
+            x: f64::from(
+                (java_random_next_float(&mut expected_seed)
+                    - java_random_next_float(&mut expected_seed))
+                    * 0.2,
+            ),
+            y: f64::from(0.2_f32),
+            z: f64::from(
+                (java_random_next_float(&mut expected_seed)
+                    - java_random_next_float(&mut expected_seed))
+                    * 0.2,
+            ),
+        };
+        let orb = inputs.iter().find(|input| input.entity_id == 68).unwrap();
+        assert_eq!(orb.pre_move_delta, expected_orb);
+        assert_eq!(
+            orb.experience_orb_update.unwrap().random_seed,
+            expected_seed
+        );
+    }
+
+    #[test]
+    fn item_world_collision_uses_generated_ice_friction_only_for_ground_motion() {
+        let mut store = nonliving_collision_world();
+        let ice = crate::registries::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties("minecraft:ice", &Default::default())
+            .expect("vanilla ice block state")
+            .id;
+        assert!(
+            store.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: bbb_protocol::packets::BlockPos { x: 0, y: 0, z: 0 },
+                block_state_id: ice,
+            })
+        );
+        let mut item = projectile(
+            69,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            ProtocolVec3d {
+                x: 0.25,
+                y: -0.1,
+                z: 0.0,
+            },
+        );
+        item.position = ProtocolVec3d {
+            x: 0.5,
+            y: 1.05,
+            z: 0.5,
+        };
+        store.apply_add_entity(item);
+        set_nonempty_item_stack(&mut store, 69);
+
+        store.advance_entity_client_animations(1);
+
+        let transform = store.probe_entity_transform(69).unwrap();
+        assert_eq!(transform.on_ground, Some(true));
+        assert!((transform.position.y - 1.0).abs() <= 1.0e-9);
+        assert_vec3_near(
+            transform.delta_movement,
+            EntityVec3 {
+                x: 0.25 * f64::from(0.98_f32 * 0.98_f32),
+                y: -0.14 * f64::from(0.98_f32) * -0.5,
+                z: 0.0,
+            },
+        );
+    }
+
+    #[test]
+    fn settled_item_preserves_vanilla_four_tick_movement_skip_schedule() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            70,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            ProtocolVec3d::default(),
+        ));
+        set_nonempty_item_stack(&mut store, 70);
+        store
+            .entities
+            .with_transform_mut(70, |transform| transform.on_ground = Some(true));
+
+        store.advance_entity_client_animations(1);
+
+        let first = store.probe_entity_transform(70).unwrap();
+        assert_eq!(
+            first.position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            }
+        );
+        assert_eq!(
+            first.delta_movement,
+            EntityVec3 {
+                x: 0.0,
+                y: -0.04,
+                z: 0.0,
+            },
+            "the skipped tick retains gravity in deltaMovement without moving"
+        );
+
+        store.advance_entity_client_animations(1);
+        assert!(store.probe_entity_transform(70).unwrap().position.y < 64.0);
+    }
+
+    #[test]
+    fn experience_orb_no_collision_gate_includes_collidable_entities() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            71,
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            ProtocolVec3d::default(),
+        ));
+        store.apply_add_entity(projectile(
+            72,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            ProtocolVec3d::default(),
+        ));
+
+        store.advance_entity_client_animations(1);
+        store.advance_entity_client_animations(1);
+
+        assert_eq!(
+            store.probe_entity_transform(71).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            "an orb intersecting a collidable entity does not apply air gravity"
+        );
+    }
+
+    #[test]
     fn nonliving_collision_response_matches_falling_and_tnt_ground_branches() {
         let metadata = EntityMetadata::default();
         let requested = EntityVec3 {
@@ -1949,12 +2889,17 @@ mod tests {
             z: -0.25,
         };
         let collision = Some(EntityClientMovementCollisionResult {
+            pre_move_delta: requested,
             requested_movement: requested,
             clipped_movement: EntityVec3 {
                 x: 0.5,
                 y: 0.0,
                 z: -0.25,
             },
+            supporting_block: None,
+            ground_friction: 0.6,
+            movement_skipped: false,
+            experience_orb_update: None,
         });
 
         let mut falling = test_transform(EntityVec3 {
@@ -2335,6 +3280,25 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn set_nonempty_item_stack(store: &mut WorldStore, id: i32) {
+        let data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+        )
+        .expect("generated ItemEntity stack accessor");
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![EntityDataValue {
+                data_id,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+                value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                    item_id: Some(bbb_protocol::item_types::VANILLA_ITEM_STONE_ID),
+                    count: 1,
+                    component_patch: Default::default(),
+                }),
+            }],
+        }));
     }
 
     fn nonliving_collision_world() -> WorldStore {

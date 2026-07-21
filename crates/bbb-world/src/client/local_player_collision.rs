@@ -1063,6 +1063,50 @@ impl WorldStore {
         self.clip_collision_bounds_movement(bounds, movement)
     }
 
+    pub(crate) fn entity_supporting_block_after_collision(
+        &self,
+        entity_type_id: i32,
+        position: [f64; 3],
+        clipped_movement: [f64; 3],
+        relative_min: [f64; 3],
+        relative_max: [f64; 3],
+        previous: EntitySupportingBlock,
+    ) -> Option<BlockPos> {
+        let bounds = LocalPlayerBounds::from_min_max(
+            [
+                position[0] + relative_min[0] + clipped_movement[0],
+                position[1] + relative_min[1] + clipped_movement[1],
+                position[2] + relative_min[2] + clipped_movement[2],
+            ],
+            [
+                position[0] + relative_max[0] + clipped_movement[0],
+                position[1] + relative_max[1] + clipped_movement[1],
+                position[2] + relative_max[2] + clipped_movement[2],
+            ],
+        );
+        let entity_position = [
+            position[0] + clipped_movement[0],
+            position[1] + clipped_movement[1],
+            position[2] + clipped_movement[2],
+        ];
+        let context = LocalPlayerCollisionContext::for_remote_entity(
+            bounds.min_y,
+            clipped_movement[1] < 0.0,
+            false,
+            entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        );
+        let current = find_supporting_block(self, entity_position, bounds, context);
+        if current.is_some() || previous.on_ground_no_blocks {
+            return current;
+        }
+        find_supporting_block(
+            self,
+            entity_position,
+            bounds.moved(-clipped_movement[0], 0.0, -clipped_movement[2]),
+            context,
+        )
+    }
+
     fn clip_collision_bounds_movement(
         &self,
         bounds: LocalPlayerBounds,
@@ -2987,7 +3031,7 @@ impl LocalPlayerBounds {
         }
     }
 
-    fn from_min_max(min: [f64; 3], max: [f64; 3]) -> Self {
+    pub(super) fn from_min_max(min: [f64; 3], max: [f64; 3]) -> Self {
         Self {
             min_x: min[0],
             min_y: min[1],

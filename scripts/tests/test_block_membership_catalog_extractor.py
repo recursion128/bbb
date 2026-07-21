@@ -12,6 +12,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipCatalogExtractionError,
     BlockMembershipEntry,
     air_blocks,
+    block_friction_overrides,
     block_tag_membership,
     constructor_family_blocks,
     constructor_types_extending,
@@ -114,6 +115,32 @@ class Blocks {
             r"Blocks\.java: expected 2 noTerrainParticles blocks, extracted 1",
         ):
             no_terrain_particle_blocks(source)
+
+    def test_friction_overrides_preserve_registration_order_and_values(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block ICE = register(
+      "ice", Block::new, BlockBehaviour.Properties.of().friction(0.98F));
+  static final Block NORMAL = register(
+      "normal", Block::new, BlockBehaviour.Properties.of());
+  static final Block SLIME = register(
+      BlockIds.SLIME, Block::new, BlockBehaviour.Properties.of().friction(0.8f));
+}''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id, entry.value)
+                for entry in block_friction_overrides(
+                    source, {"SLIME": "slime_block"}, 2
+                )
+            ],
+            [
+                ("ICE", "minecraft:ice", 0.98),
+                ("SLIME", "minecraft:slime_block", 0.8),
+            ],
+        )
 
     def test_no_collision_membership_resolves_helpers_and_block_ids(self) -> None:
         source = parse_source(

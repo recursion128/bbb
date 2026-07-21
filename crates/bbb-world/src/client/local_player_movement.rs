@@ -29,6 +29,7 @@ mod fluid;
 mod tests;
 
 use self::fluid::advance_local_player_fluid_physics_step;
+pub(crate) use self::fluid::local_player_lava_current_push_per_tick;
 
 pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;

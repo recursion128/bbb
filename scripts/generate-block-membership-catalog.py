@@ -11,6 +11,7 @@ from pathlib import Path
 
 from block_membership_catalog_extractor import (
     air_blocks,
+    block_friction_overrides,
     block_tag_membership,
     constructor_family_blocks,
     constructor_types_extending,
@@ -206,6 +207,7 @@ def generate(source_root: Path) -> str:
     entries = no_terrain_particle_blocks(source)
     no_collision_entries = no_collision_blocks(source, block_id_constants)
     air_entries = air_blocks(source)
+    friction_entries = block_friction_overrides(source, block_id_constants)
     constructor_catalogs = [
         (
             name,
@@ -280,6 +282,13 @@ def generate(source_root: Path) -> str:
         *(f'    "{entry.resource_id}",' for entry in air_entries),
         "];",
         "",
+        "pub(super) const VANILLA_BLOCK_FRICTION_OVERRIDES: &[(&str, u32)] = &[",
+        *(
+            f'    ("{entry.resource_id}", {entry.value!r}_f32.to_bits()),'
+            for entry in friction_entries
+        ),
+        "];",
+        "",
     ]
     for name, values in constructor_catalogs:
         lines.extend(
@@ -312,6 +321,7 @@ def generate(source_root: Path) -> str:
             '        assert_eq!(VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, &["minecraft:barrier", "minecraft:structure_void"]);',
             "        assert_eq!(VANILLA_NO_COLLISION_BLOCKS.len(), 255);",
             '        assert_eq!(VANILLA_AIR_BLOCKS, &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]);',
+            "        assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);",
             '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
             "        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);",
@@ -380,6 +390,7 @@ def generate(source_root: Path) -> str:
             "                if production.contains(\"fn is_vanilla_rail_block_name(\") || production.contains(\"fn is_custom_head_skull_item_id(\") { violations.push(format!(\"{}: restored removed block membership lookup\", display)); }",
             "                for line in production.lines().filter(|line| line.contains(\"const \" ) || line.contains(\"static \")) {",
             "                    for name in [",
+            '                        "VANILLA_BLOCK_FRICTION_OVERRIDES",',
             *(f'                        "{name}",' for name in catalog_names),
             "                    ] {",
             "                        if line.contains(name) { violations.push(format!(\"{}: parallel block membership declaration `{}`\", display, line.trim())); }",

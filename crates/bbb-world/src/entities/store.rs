@@ -20,8 +20,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use bbb_protocol::entity_types::{
-    VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-    VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+    VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+    VANILLA_ENTITY_TYPE_WITHER_ID,
 };
 use bbb_protocol::item_types::VANILLA_ITEM_DRAGON_HEAD_ID;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
@@ -31,6 +32,10 @@ use bbb_protocol::packets::{
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
 };
 
+use super::components::{
+    EntityClientMovementCollisionFacts, EntityClientMovementFluidFacts,
+    EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts,
+};
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
@@ -53,11 +58,13 @@ use super::schema::{
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
-    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
+    vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_is_camel,
+    vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_uses_player_entity_event_handler,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
-    vanilla_entity_type_default_attribute, VanillaFireworkRocketMetadataAccessors,
+    vanilla_entity_type_default_attribute, VanillaEntityCollidabilityKind,
+    VanillaFireworkRocketMetadataAccessors,
 };
 
 use super::{
@@ -357,6 +364,21 @@ pub(crate) struct EntityPublicationPayloadSharing {
     pub(crate) damage: bool,
 }
 
+fn sync_derived_marker<T: hecs::Component + Default>(
+    ecs: &mut World,
+    entity: Entity,
+    enabled: bool,
+) {
+    if enabled {
+        let already_present = ecs.get::<&T>(entity).is_ok();
+        if !already_present {
+            let _ = ecs.insert_one(entity, T::default());
+        }
+    } else {
+        let _ = ecs.remove_one::<T>(entity);
+    }
+}
+
 impl EntityStore {
     #[cfg(test)]
     pub(crate) fn publication_payload_sharing(
@@ -431,6 +453,14 @@ impl EntityStore {
             None,
             self.uuid_for_protocol_id(identity.data),
         );
+        let fresh_experience_orb_movement = (entity_type_id
+            == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
+            .then(|| super::client_movement::experience_orb_movement_from_uuid(uuid));
+        let uses_collision_facts =
+            super::client_movement::client_movement_uses_collision_facts(entity_type_id);
+        let uses_fluid_facts =
+            super::client_movement::client_movement_uses_fluid_contact(entity_type_id);
+        let is_experience_orb_player_target = entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID;
         let fresh_client_animations = EntityClientAnimations {
             animations: {
                 let mut animations = EntityClientAnimationState {
@@ -523,6 +553,38 @@ impl EntityStore {
             } else {
                 let _ = self.ecs.remove_one::<EntityProjectileLifecycle>(entity);
             }
+            if let Some(movement) = fresh_experience_orb_movement {
+                let updated = {
+                    if let Ok(mut existing) =
+                        self.ecs.get::<&mut EntityExperienceOrbMovement>(entity)
+                    {
+                        *existing = movement;
+                        true
+                    } else {
+                        false
+                    }
+                };
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, movement);
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityExperienceOrbMovement>(entity);
+            }
+            sync_derived_marker::<EntityClientMovementCollisionFacts>(
+                &mut self.ecs,
+                entity,
+                uses_collision_facts,
+            );
+            sync_derived_marker::<EntityClientMovementFluidFacts>(
+                &mut self.ecs,
+                entity,
+                uses_fluid_facts,
+            );
+            sync_derived_marker::<EntityExperienceOrbPlayerTargetFacts>(
+                &mut self.ecs,
+                entity,
+                is_experience_orb_player_target,
+            );
             if let Some(previous_uuid) = previous_uuid.filter(|previous| *previous != uuid) {
                 if self.protocol_id_by_uuid.get(&previous_uuid) == Some(&id) {
                     self.protocol_id_by_uuid.remove(&previous_uuid);
@@ -558,6 +620,24 @@ impl EntityStore {
         if let Some(projectile) = fresh_projectile_lifecycle {
             let _ = self.ecs.insert_one(entity, projectile);
         }
+        if let Some(movement) = fresh_experience_orb_movement {
+            let _ = self.ecs.insert_one(entity, movement);
+        }
+        sync_derived_marker::<EntityClientMovementCollisionFacts>(
+            &mut self.ecs,
+            entity,
+            uses_collision_facts,
+        );
+        sync_derived_marker::<EntityClientMovementFluidFacts>(
+            &mut self.ecs,
+            entity,
+            uses_fluid_facts,
+        );
+        sync_derived_marker::<EntityExperienceOrbPlayerTargetFacts>(
+            &mut self.ecs,
+            entity,
+            is_experience_orb_player_target,
+        );
         self.by_protocol_id.insert(id, entity);
         self.protocol_id_by_uuid.insert(uuid, id);
     }
@@ -565,6 +645,7 @@ impl EntityStore {
     fn spawn_components(&mut self, state: EntityState) {
         let id = state.id;
         let uuid = state.uuid;
+        let entity_type_id = state.entity_type_id;
         let spawn_owner_uuid = self.uuid_for_protocol_id(state.data);
         let entity = self.ecs.spawn((
             EntityIdentity::from(&state),
@@ -600,6 +681,27 @@ impl EntityStore {
         ) {
             let _ = self.ecs.insert_one(entity, projectile);
         }
+        if state.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
+            let _ = self.ecs.insert_one(
+                entity,
+                super::client_movement::experience_orb_movement_from_uuid(uuid),
+            );
+        }
+        sync_derived_marker::<EntityClientMovementCollisionFacts>(
+            &mut self.ecs,
+            entity,
+            super::client_movement::client_movement_uses_collision_facts(entity_type_id),
+        );
+        sync_derived_marker::<EntityClientMovementFluidFacts>(
+            &mut self.ecs,
+            entity,
+            super::client_movement::client_movement_uses_fluid_contact(entity_type_id),
+        );
+        sync_derived_marker::<EntityExperienceOrbPlayerTargetFacts>(
+            &mut self.ecs,
+            entity,
+            entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID,
+        );
         self.by_protocol_id.insert(id, entity);
         self.protocol_id_by_uuid.insert(uuid, id);
     }
@@ -4038,6 +4140,15 @@ impl EntityStore {
             .map(|events| *events)
     }
 
+    #[cfg(test)]
+    pub(crate) fn experience_orb_movement(&self, id: i32) -> Option<EntityExperienceOrbMovement> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityExperienceOrbMovement>(entity)
+            .ok()
+            .map(|movement| *movement)
+    }
+
     pub(crate) fn with_transform_mut<R>(
         &mut self,
         id: i32,
@@ -4545,6 +4656,104 @@ impl EntityStore {
             inputs.push((identity.id, aabb_min, aabb_max));
         }
         inputs
+    }
+
+    pub(crate) fn client_movement_fluid_inputs(
+        &self,
+    ) -> Vec<super::client_movement::EntityClientMovementFluidInput> {
+        let mut inputs = Vec::new();
+        let mut query = self.ecs.query::<(
+            &EntityClientMovementFluidFacts,
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+        )>();
+        for (_, (_, identity, transform, metadata, attributes, animations)) in query.iter() {
+            debug_assert!(super::client_movement::client_movement_uses_fluid_contact(
+                identity.entity_type_id
+            ));
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            let Some(eye_height) = vanilla_eye_height_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            inputs.push(super::client_movement::EntityClientMovementFluidInput {
+                entity_id: identity.id,
+                entity_type_id: identity.entity_type_id,
+                position: transform.position,
+                bounds,
+                aabb_min: [
+                    transform.position.x + f64::from(bounds.min[0]),
+                    transform.position.y + f64::from(bounds.min[1]),
+                    transform.position.z + f64::from(bounds.min[2]),
+                ],
+                aabb_max: [
+                    transform.position.x + f64::from(bounds.max[0]),
+                    transform.position.y + f64::from(bounds.max[1]),
+                    transform.position.z + f64::from(bounds.max[2]),
+                ],
+                eye_position: [
+                    transform.position.x,
+                    transform.position.y + f64::from(eye_height),
+                    transform.position.z,
+                ],
+            });
+        }
+        inputs
+    }
+
+    pub(crate) fn client_movement_entity_collision_targets(
+        &self,
+    ) -> Vec<super::EntityPickTargetState> {
+        let mut targets = Vec::new();
+        let mut query = self.ecs.query::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+        )>();
+        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
+            if matches!(
+                vanilla_entity_metadata_type_collidability_kind(identity.entity_type_id),
+                None | Some(VanillaEntityCollidabilityKind::Never)
+            ) {
+                continue;
+            }
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            targets.push(super::EntityPickTargetState {
+                entity_id: identity.id,
+                position: transform.position,
+                bounds,
+            });
+        }
+        targets
     }
 
     pub(crate) fn advance_client_animations<F, G>(
@@ -5058,6 +5267,34 @@ impl EntityStore {
         }
         self.sync_hurting_projectile_from_state(entity, state);
         self.sync_projectile_lifecycle_from_state(entity, state);
+        if state.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
+            let movement = super::client_movement::experience_orb_movement_from_uuid(state.uuid);
+            let updated = self
+                .ecs
+                .get::<&mut EntityExperienceOrbMovement>(entity)
+                .map(|mut existing| *existing = movement)
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, movement);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityExperienceOrbMovement>(entity);
+        }
+        sync_derived_marker::<EntityClientMovementCollisionFacts>(
+            &mut self.ecs,
+            entity,
+            super::client_movement::client_movement_uses_collision_facts(state.entity_type_id),
+        );
+        sync_derived_marker::<EntityClientMovementFluidFacts>(
+            &mut self.ecs,
+            entity,
+            super::client_movement::client_movement_uses_fluid_contact(state.entity_type_id),
+        );
+        sync_derived_marker::<EntityExperienceOrbPlayerTargetFacts>(
+            &mut self.ecs,
+            entity,
+            state.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID,
+        );
     }
 
     fn sync_hurting_projectile_from_state(&mut self, entity: Entity, state: &EntityState) {
@@ -5250,6 +5487,7 @@ impl Clone for EntityStore {
                 (*damage).clone(),
                 *supporting_block,
             ));
+            let entity_type_id = identity.entity_type_id;
             if let Ok(lerp) = self.ecs.get::<&EntityMinecartLerp>(entity) {
                 let _ = store.ecs.insert_one(cloned, (*lerp).clone());
             }
@@ -5258,6 +5496,24 @@ impl Clone for EntityStore {
             }
             if let Ok(projectile) = self.ecs.get::<&EntityProjectileLifecycle>(entity) {
                 let _ = store.ecs.insert_one(cloned, *projectile);
+            }
+            if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
+                if let Ok(movement) = self.ecs.get::<&EntityExperienceOrbMovement>(entity) {
+                    let _ = store.ecs.insert_one(cloned, *movement);
+                }
+            }
+            if super::client_movement::client_movement_uses_collision_facts(entity_type_id) {
+                let _ = store
+                    .ecs
+                    .insert_one(cloned, EntityClientMovementCollisionFacts);
+            }
+            if super::client_movement::client_movement_uses_fluid_contact(entity_type_id) {
+                let _ = store.ecs.insert_one(cloned, EntityClientMovementFluidFacts);
+            }
+            if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                let _ = store
+                    .ecs
+                    .insert_one(cloned, EntityExperienceOrbPlayerTargetFacts);
             }
             store.by_protocol_id.insert(id, cloned);
         }

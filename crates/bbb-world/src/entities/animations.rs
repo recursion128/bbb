@@ -3121,11 +3121,11 @@ const JAVA_RANDOM_MULTIPLIER: u64 = 0x5DEEC_E66D;
 const JAVA_RANDOM_ADDEND: u64 = 0xB;
 const JAVA_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 
-fn java_random_seed(seed: i64) -> u64 {
+pub(super) fn java_random_seed(seed: i64) -> u64 {
     ((seed as u64) ^ JAVA_RANDOM_MULTIPLIER) & JAVA_RANDOM_MASK
 }
 
-fn java_random_next_bits(state: &mut u64, bits: u32) -> u32 {
+pub(super) fn java_random_next_bits(state: &mut u64, bits: u32) -> u32 {
     *state = state
         .wrapping_mul(JAVA_RANDOM_MULTIPLIER)
         .wrapping_add(JAVA_RANDOM_ADDEND)
@@ -3152,6 +3152,10 @@ fn java_random_next_double(state: &mut u64) -> f64 {
     let high = u64::from(java_random_next_bits(state, 26));
     let low = u64::from(java_random_next_bits(state, 27));
     ((high << 27) + low) as f64 / (1_u64 << 53) as f64
+}
+
+pub(super) fn java_random_next_float(state: &mut u64) -> f32 {
+    java_random_next_bits(state, 24) as f32 / ((1_u32 << 24) as f32)
 }
 
 /// Vanilla `AbstractHorse.tailCounter`, with the random idle start driven from a repo-local
@@ -6070,7 +6074,7 @@ fn spawn_random_unit_float(uuid: Uuid, salt: u64) -> f32 {
     ((bits >> 40) as u32) as f32 / (1_u32 << 24) as f32
 }
 
-fn spawn_random_bits(uuid: Uuid, salt: u64) -> u64 {
+pub(super) fn spawn_random_bits(uuid: Uuid, salt: u64) -> u64 {
     let value = uuid.as_u128();
     let mut mixed = (value as u64) ^ ((value >> 64) as u64) ^ salt;
     // SplitMix64's finalizer gives stable, well-distributed client-local values
@@ -6334,10 +6338,16 @@ impl WorldStore {
     ) -> crate::EntityClientTickWork {
         let preparation_started_at = std::time::Instant::now();
         let interpolation_collision_inputs = self.entities.interpolation_collision_inputs();
-        let entity_collision_targets = if interpolation_collision_inputs.is_empty() {
+        let client_movement_fluid_inputs = self.entities.client_movement_fluid_inputs();
+        let experience_orb_needs_entity_collision = client_movement_fluid_inputs
+            .iter()
+            .any(|input| input.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID);
+        let entity_collision_targets = if interpolation_collision_inputs.is_empty()
+            && !experience_orb_needs_entity_collision
+        {
             Vec::new()
         } else {
-            self.entity_pick_targets()
+            self.entities.client_movement_entity_collision_targets()
         };
         let collision_free_interpolation_targets: std::collections::HashSet<i32> =
             interpolation_collision_inputs
@@ -6364,9 +6374,55 @@ impl WorldStore {
                 )
             })
             .collect();
+        let client_movement_fluid_by_id = client_movement_fluid_inputs
+            .iter()
+            .map(|input| {
+                (
+                    input.entity_id,
+                    crate::client::entity_fluid_contact(
+                        self,
+                        input.aabb_min,
+                        input.aabb_max,
+                        input.position.y,
+                        input.eye_position,
+                    ),
+                )
+            })
+            .collect::<std::collections::HashMap<_, _>>();
+        let client_movement_collision_free_by_id = client_movement_fluid_inputs
+            .iter()
+            .filter(|input| input.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
+            .map(|input| {
+                (
+                    input.entity_id,
+                    self.entity_interpolation_target_is_collision_free(
+                        super::EntityInterpolationCollisionInput {
+                            entity_id: input.entity_id,
+                            entity_type_id: input.entity_type_id,
+                            current_position: input.position,
+                            target_position: input.position,
+                            bounds: input.bounds,
+                        },
+                        &entity_collision_targets,
+                    ),
+                )
+            })
+            .collect::<std::collections::HashMap<_, _>>();
+        let spectator_player_uuids: std::collections::HashSet<_> = self
+            .player_info()
+            .entries
+            .iter()
+            .filter_map(|(uuid, info)| info.is_spectator().then_some(*uuid))
+            .collect();
+        let lava_current_scale = crate::client::local_player_lava_current_push_per_tick(self);
         let client_movement_collisions_by_id = self
             .entities
-            .client_movement_collision_inputs()
+            .client_movement_collision_inputs(
+                &client_movement_fluid_by_id,
+                &client_movement_collision_free_by_id,
+                &spectator_player_uuids,
+                lava_current_scale,
+            )
             .into_iter()
             .map(|input| {
                 let clipped = self.clip_entity_collision_movement(
@@ -6379,25 +6435,53 @@ impl WorldStore {
                     input.bounds.min.map(f64::from),
                     input.bounds.max.map(f64::from),
                 );
+                let on_ground =
+                    input.requested_movement.y < 0.0 && clipped[1] != input.requested_movement.y;
+                let supporting_block = on_ground
+                    .then(|| {
+                        self.entity_supporting_block_after_collision(
+                            input.entity_type_id,
+                            [input.position.x, input.position.y, input.position.z],
+                            clipped,
+                            input.bounds.min.map(f64::from),
+                            input.bounds.max.map(f64::from),
+                            input.previous_supporting_block,
+                        )
+                    })
+                    .flatten();
+                let new_position = [
+                    input.position.x + clipped[0],
+                    input.position.y + clipped[1],
+                    input.position.z + clipped[2],
+                ];
+                let friction_pos = crate::BlockPos {
+                    x: supporting_block.map_or_else(|| new_position[0].floor() as i32, |pos| pos.x),
+                    y: (new_position[1] - f64::from(0.999999_f32)).floor() as i32,
+                    z: supporting_block.map_or_else(|| new_position[2].floor() as i32, |pos| pos.z),
+                };
+                let ground_friction = crate::terrain::vanilla_block_friction(
+                    self.probe_block(friction_pos)
+                        .as_ref()
+                        .and_then(|block| block.block_name.as_deref()),
+                );
                 (
                     input.entity_id,
                     super::client_movement::EntityClientMovementCollisionResult {
+                        pre_move_delta: input.pre_move_delta,
                         requested_movement: input.requested_movement,
                         clipped_movement: EntityVec3 {
                             x: clipped[0],
                             y: clipped[1],
                             z: clipped[2],
                         },
+                        supporting_block,
+                        ground_friction,
+                        movement_skipped: input.movement_skipped,
+                        experience_orb_update: input.experience_orb_update,
                     },
                 )
             })
             .collect::<std::collections::HashMap<_, _>>();
-        let spectator_player_uuids: std::collections::HashSet<_> = self
-            .player_info()
-            .entries
-            .iter()
-            .filter_map(|(uuid, info)| info.is_spectator().then_some(*uuid))
-            .collect();
         let death_tick_player_chunk = self.local_player.pose.map(|pose| {
             (
                 entity_chunk_coordinate(pose.position.x),

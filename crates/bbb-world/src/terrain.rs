@@ -8,10 +8,11 @@ mod generated_26_1;
 
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_AMETHYST_CLUSTER_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS,
-    VANILLA_BED_BLOCKS, VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS,
-    VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS,
-    VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
-    VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
+    VANILLA_BED_BLOCKS, VANILLA_BLOCK_FRICTION_OVERRIDES, VANILLA_BUTTON_BLOCKS,
+    VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS, VANILLA_CANDLE_CAKE_BLOCKS,
+    VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_CHEST_BLOCKS,
+    VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS, VANILLA_CROP_BLOCKS,
+    VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
     VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS, VANILLA_FLOOR_TORCH_BLOCKS,
     VANILLA_FLOWER_POT_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
     VANILLA_HANGING_SIGN_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
@@ -322,6 +323,18 @@ pub fn block_name_is_air(name: &str) -> bool {
     VANILLA_AIR_BLOCKS.contains(&name)
 }
 
+/// Vanilla `BlockBehaviour.Properties.friction`: `0.6F` unless the generated
+/// `Blocks.java` registration declares an exact override.
+pub(crate) fn vanilla_block_friction(block_name: Option<&str>) -> f32 {
+    block_name
+        .and_then(|name| {
+            VANILLA_BLOCK_FRICTION_OVERRIDES
+                .iter()
+                .find_map(|(candidate, bits)| (*candidate == name).then(|| f32::from_bits(*bits)))
+        })
+        .unwrap_or(0.6)
+}
+
 pub fn block_name_should_spawn_terrain_particles(name: &str) -> bool {
     !VANILLA_NO_TERRAIN_PARTICLE_BLOCKS.contains(&name)
 }
@@ -620,6 +633,15 @@ mod tests {
         ] {
             assert!(!block_name_has_invisible_render_shape(name), "{name}");
         }
+    }
+
+    #[test]
+    fn block_friction_uses_generated_overrides_and_vanilla_default() {
+        assert_eq!(vanilla_block_friction(Some("minecraft:stone")), 0.6);
+        assert_eq!(vanilla_block_friction(Some("minecraft:ice")), 0.98);
+        assert_eq!(vanilla_block_friction(Some("minecraft:slime_block")), 0.8);
+        assert_eq!(vanilla_block_friction(Some("minecraft:blue_ice")), 0.989);
+        assert_eq!(vanilla_block_friction(None), 0.6);
     }
 
     #[test]

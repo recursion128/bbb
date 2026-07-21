@@ -30,3 +30,5 @@ pub(crate) use dialog::{
 };
 pub(crate) use local_player::game_type_player_abilities;
 pub(crate) use local_player_collision::block_collision_shape_is_full_block;
+pub(crate) use local_player_fluid::{entity_fluid_contact, EntityFluidContactState};
+pub(crate) use local_player_movement::local_player_lava_current_push_per_tick;

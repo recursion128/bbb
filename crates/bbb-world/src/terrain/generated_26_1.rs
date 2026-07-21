@@ -267,6 +267,14 @@ pub(super) const VANILLA_NO_COLLISION_BLOCKS: &[&str] = &[
 pub(super) const VANILLA_AIR_BLOCKS: &[&str] =
     &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"];
 
+pub(super) const VANILLA_BLOCK_FRICTION_OVERRIDES: &[(&str, u32)] = &[
+    ("minecraft:ice", 0.98_f32.to_bits()),
+    ("minecraft:slime_block", 0.8_f32.to_bits()),
+    ("minecraft:packed_ice", 0.98_f32.to_bits()),
+    ("minecraft:frosted_ice", 0.98_f32.to_bits()),
+    ("minecraft:blue_ice", 0.989_f32.to_bits()),
+];
+
 pub(super) const VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
     &["minecraft:powder_snow"];
 
@@ -1116,6 +1124,7 @@ mod tests {
             VANILLA_AIR_BLOCKS,
             &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
         );
+        assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);
         assert_eq!(
             VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
             &["minecraft:powder_snow"]
@@ -1215,6 +1224,7 @@ mod tests {
                     .filter(|line| line.contains("const ") || line.contains("static "))
                 {
                     for name in [
+                        "VANILLA_BLOCK_FRICTION_OVERRIDES",
                         "VANILLA_NO_TERRAIN_PARTICLE_BLOCKS",
                         "VANILLA_NO_COLLISION_BLOCKS",
                         "VANILLA_AIR_BLOCKS",

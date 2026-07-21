@@ -24,6 +24,13 @@ class BlockMembershipEntry:
     resource_id: str
 
 
+@dataclass(frozen=True)
+class BlockFloatPropertyEntry:
+    constant_name: str
+    resource_id: str
+    value: float
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise BlockMembershipCatalogExtractionError(
@@ -191,6 +198,48 @@ def air_blocks(
     source: JavaSource, expected_count: int = 3
 ) -> list[BlockMembershipEntry]:
     return _builder_property_blocks(source, "air", expected_count)
+
+
+def block_friction_overrides(
+    source: JavaSource,
+    block_id_constants: dict[str, str],
+    expected_count: int = 5,
+) -> list[BlockFloatPropertyEntry]:
+    """Extract the non-default ``BlockBehaviour.Properties.friction`` values."""
+
+    entries = _builder_property_blocks(
+        source, "friction", expected_count, block_id_constants
+    )
+    by_constant = {entry.constant_name: entry for entry in entries}
+    values: list[BlockFloatPropertyEntry] = []
+    for field in source.fields_for("net.minecraft.world.level.block.Blocks"):
+        entry = by_constant.get(field.name)
+        if entry is None or field.initializer is None:
+            continue
+        calls = [
+            call
+            for call in source.calls
+            if field.initializer.span.start_byte <= call.span.start_byte
+            and call.span.end_byte <= field.initializer.span.end_byte
+            and call.name == "friction"
+        ]
+        if len(calls) != 1 or len(calls[0].arguments) != 1:
+            _fail(source, field.initializer, "friction block lacks one literal value")
+        literal = calls[0].arguments[0].canonical
+        if not literal.endswith(("F", "f")):
+            _fail(source, calls[0].arguments[0], "friction value is not a float literal")
+        try:
+            value = float(literal[:-1])
+        except ValueError:
+            _fail(source, calls[0].arguments[0], "friction value is not a float literal")
+        values.append(BlockFloatPropertyEntry(field.name, entry.resource_id, value))
+
+    if len(values) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} friction values, "
+            f"extracted {len(values)}"
+        )
+    return values
 
 
 def _constructed_type_name(source: JavaSource, node) -> str | None:

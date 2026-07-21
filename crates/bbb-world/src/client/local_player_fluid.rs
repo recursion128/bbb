@@ -11,23 +11,25 @@ const FLUID_DOWNWARD_FLOW_WEIGHT: f64 = 6.0;
 const FLUID_FALLING_HEIGHT_OFFSET: f64 = 8.0 / 9.0;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub(super) struct LocalPlayerFluidContactState {
-    pub(super) water_height: f64,
-    pub(super) lava_height: f64,
-    pub(super) eye_in_water: bool,
-    pub(super) eye_in_lava: bool,
-    pub(super) water_current: ProtocolVec3d,
-    pub(super) water_current_count: u32,
-    pub(super) lava_current: ProtocolVec3d,
-    pub(super) lava_current_count: u32,
+pub(crate) struct EntityFluidContactState {
+    pub(crate) water_height: f64,
+    pub(crate) lava_height: f64,
+    pub(crate) eye_in_water: bool,
+    pub(crate) eye_in_lava: bool,
+    pub(crate) water_current: ProtocolVec3d,
+    pub(crate) water_current_count: u32,
+    pub(crate) lava_current: ProtocolVec3d,
+    pub(crate) lava_current_count: u32,
+    pub(crate) block_fluid_kind: Option<TerrainFluidKind>,
+    pub(crate) block_fluid_height: f64,
 }
 
-impl LocalPlayerFluidContactState {
-    pub(super) fn in_water(self) -> bool {
+impl EntityFluidContactState {
+    pub(crate) fn in_water(self) -> bool {
         self.water_height > 0.0
     }
 
-    pub(super) fn in_lava(self) -> bool {
+    pub(crate) fn in_lava(self) -> bool {
         self.lava_height > 0.0
     }
 }
@@ -35,7 +37,7 @@ impl LocalPlayerFluidContactState {
 pub(super) fn local_player_fluid_contact(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
-) -> LocalPlayerFluidContactState {
+) -> EntityFluidContactState {
     let bounds = LocalPlayerBounds::for_pose(pose).deflated(FLUID_INTERACTION_BOX_DEFLATE);
     let eye_y = pose.position.y + pose.eye_height();
     let eye_block_x = block_floor(pose.position.x);
@@ -48,6 +50,38 @@ pub(super) fn local_player_fluid_contact(
         eye_block_x,
         eye_block_z,
     )
+}
+
+/// Runs the same `EntityFluidInteraction.update` projection for a remote
+/// entity AABB. The caller supplies the canonical feet/origin Y and eye
+/// position because both differ from the deflated interaction box.
+pub(crate) fn entity_fluid_contact(
+    world: &WorldStore,
+    aabb_min: [f64; 3],
+    aabb_max: [f64; 3],
+    entity_y: f64,
+    eye_position: [f64; 3],
+) -> EntityFluidContactState {
+    let bounds =
+        LocalPlayerBounds::from_min_max(aabb_min, aabb_max).deflated(FLUID_INTERACTION_BOX_DEFLATE);
+    let mut contact = local_player_fluid_contact_in_bounds(
+        world,
+        bounds,
+        entity_y,
+        eye_position[1],
+        block_floor(eye_position[0]),
+        block_floor(eye_position[2]),
+    );
+    let block_pos = BlockPos {
+        x: block_floor(eye_position[0]),
+        y: block_floor(entity_y),
+        z: block_floor(eye_position[2]),
+    };
+    if let Some((fluid, height)) = world.fluid_state_and_height_at(block_pos) {
+        contact.block_fluid_kind = Some(fluid.kind);
+        contact.block_fluid_height = height;
+    }
+    contact
 }
 
 pub(super) fn local_player_eye_in_water(world: &WorldStore) -> bool {
@@ -92,8 +126,8 @@ fn local_player_fluid_contact_in_bounds(
     eye_y: f64,
     eye_block_x: i32,
     eye_block_z: i32,
-) -> LocalPlayerFluidContactState {
-    let mut contact = LocalPlayerFluidContactState::default();
+) -> EntityFluidContactState {
+    let mut contact = EntityFluidContactState::default();
     let min_x = block_floor(bounds.min_x());
     let max_x = block_ceil(bounds.max_x()) - 1;
     let min_y = block_floor(bounds.min_y());
@@ -407,6 +441,29 @@ mod tests {
         assert!(contact.eye_in_water);
         assert_eq!(contact.lava_height, 0.0);
         assert!(!contact.eye_in_lava);
+    }
+
+    #[test]
+    fn remote_entity_fluid_contact_reports_body_eye_and_block_fluid() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+
+        let contact = entity_fluid_contact(
+            &world,
+            [0.25, 0.0, 0.25],
+            [0.75, 0.5, 0.75],
+            0.0,
+            [0.5, 0.25, 0.5],
+        );
+
+        assert_eq!(contact.water_height, 8.0 / 9.0);
+        assert!(contact.eye_in_water);
+        assert_eq!(contact.block_fluid_kind, Some(TerrainFluidKind::Water));
+        assert_eq!(contact.block_fluid_height, 8.0 / 9.0);
     }
 
     #[test]

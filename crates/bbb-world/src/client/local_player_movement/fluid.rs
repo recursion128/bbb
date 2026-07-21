@@ -1,6 +1,6 @@
 use super::super::local_player_collision::local_player_block_collision_is_empty;
 use super::super::local_player_fluid::{
-    local_player_bounds_contains_any_fluid, LocalPlayerFluidContactState,
+    local_player_bounds_contains_any_fluid, EntityFluidContactState,
 };
 use super::*;
 
@@ -11,7 +11,7 @@ pub(super) fn advance_local_player_fluid_physics_step(
     step_seconds: f64,
     move_x: f64,
     move_z: f64,
-    initial_fluid_contact: LocalPlayerFluidContactState,
+    initial_fluid_contact: EntityFluidContactState,
 ) -> LocalPlayerPoseState {
     let input = local_player_effective_movement_input(world, input);
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
@@ -145,7 +145,7 @@ fn local_player_swimming_vertical_velocity(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
-    fluid_contact: LocalPlayerFluidContactState,
+    fluid_contact: EntityFluidContactState,
     mut velocity: ProtocolVec3d,
 ) -> ProtocolVec3d {
     if !pose.swimming || !fluid_contact.in_water() {
@@ -317,7 +317,7 @@ fn bubble_column_has_open_above(world: &WorldStore, pos: BlockPos) -> bool {
         .is_some_and(|block| block.fluid.is_none() && local_player_block_collision_is_empty(&block))
 }
 
-fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {
+pub(crate) fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {
     let fast_lava = world
         .sampled_client_environment_attributes()
         .ok()

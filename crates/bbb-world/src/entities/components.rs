@@ -132,6 +132,28 @@ pub(crate) struct EntityProjectileLifecycle {
     pub(crate) trident_return_ticks: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct EntityExperienceOrbMovement {
+    pub(crate) following_player_uuid: Option<Uuid>,
+    pub(crate) random_seed: u64,
+}
+
+/// Derived family membership for entities whose client tick samples a
+/// collision shape and supporting block. Spawn/re-add regenerates it from the
+/// generated Vanilla movement policy; the marker owns no canonical state.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct EntityClientMovementCollisionFacts;
+
+/// Derived family membership for entities whose client tick samples the
+/// canonical fluid interaction box, excluding unrelated ECS archetypes.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct EntityClientMovementFluidFacts;
+
+/// Exact Player-family marker used by ExperienceOrb's once-per-tick nearest
+/// target batch. The projected targets are restored to canonical spawn order.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct EntityExperienceOrbPlayerTargetFacts;
+
 impl From<&EntityState> for EntityIdentity {
     fn from(state: &EntityState) -> Self {
         Self {

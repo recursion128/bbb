@@ -286,6 +286,51 @@ mutation. The retained schedule stores hecs handles only in simulation-owned
 scratch, clears semantic contents every tick, and is excluded from immutable
 publication clones.
 
+## Phase 3 Item and Experience-Orb Milestone
+
+The Item/ExperienceOrb world-fact owner now follows the local Vanilla 26.1
+`ItemEntity.tick`, `ExperienceOrb.tick`, `Entity.baseTick`,
+`EntityFluidInteraction`, `Entity.move`, and `EntityGetter.getNearestPlayer`
+sources. One immutable preparation pass samples deflated fluid boxes, eye/block
+fluid, block/entity/border collision, supporting blocks, and generated block
+friction before the mutable ECS pass. Item movement preserves water/lava float
+math, gravity, the `(tickCount + id) % 4` settled-item gate, horizontal
+`Mth.equal`, ground drag, and bounce. Experience orbs preserve the first-client-
+tick exception, eye-water motion, collision-gated gravity, deterministic Java-
+float lava impulses, retained nearest-player identity/order, attraction, drag,
+and vertical-collision bounce. Server merge, expiry, pickup, damage, and
+authoritative removal remain outside this client owner.
+
+Block friction is no longer approximated: the block membership generator reads
+the five non-default `Blocks.java` `.friction(float)` registrations and world
+code defaults every other block to `0.6F`. Fluid/collision and exact Player
+target membership are zero-state hecs family markers derived on spawn/re-add
+from the generated movement policy or Player identity. Same-id type reuse
+regenerates them; publication clone derives them from the already-borrowed
+identity rather than probing each marker on every entity. The only new
+canonical payload is an orb's retained player UUID and deterministic random
+cursor, both cloned into an old immutable generation.
+
+The entity `noCollision` path first projects only generated non-`Never`
+collidability families, then reuses the existing generated instance predicate
+and world-border owner. This replaced an initially measured 7.245 ms
+heterogeneous tick+publication prototype that rebuilt full pick targets. The
+same-machine Criterion result after the narrow target correction is:
+
+| 2,000 heterogeneous case | start-of-milestone | Item/Orb milestone |
+| --- | ---: | ---: |
+| tick only | 2.8151 ms | 3.3150 ms |
+| tick + immutable publication | 4.0668 ms | 4.6342 ms |
+
+The added roughly 0.5 ms is real client behavior rather than a publication or
+next-mutation transfer. Against the slice baseline it remains a 3.04x tick-only
+and 2.40x tick+publication improvement. The preparation average is now about
+0.54 ms; its remaining hotspot is collidable-target projection plus temporary
+fluid/collision maps for worlds containing experience orbs. FishingHook still
+needs its separate state machine and this preparation data before phase 3 can
+close. Retained scratch/spatial narrowing may optimize that cost, but cannot
+drop entity collision or change equal-distance Player ordering.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:
