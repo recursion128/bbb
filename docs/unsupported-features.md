@@ -1415,10 +1415,11 @@ back into a todo. Do not delete these.
   the adult roll defs.
 - **Baby axolotl swim/walk/idle keyframe animations.** Vanilla `BabyAxolotlModel`
   is a separate keyframe model.
-- **`EnderDragonModel.setupAnim` procedural animation**: neck/tail re-placement
-  from `DragonFlightHistory`, wing flap (`flapTime`), jaw open, and the root
-  `bounce` y / `z = -48` / `xRot` adjustments. The model renders at the straight
-  bind layout, pitch and bounce deferred to identity at rest.
+- **Ender-dragon egg-distance heightmap stand-in.** The landing/takeoff head
+  droop divides by the podium heightmap distance; the synced `MOTION_BLOCKING`
+  column stands in for the client-primed `MOTION_BLOCKING_NO_LEAVES` probe. The
+  two only diverge when leaf blocks sit above the End podium column
+  (player-built; the End generates none).
 - **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves
   from synced `DATA_VARIANT_ID` by bootstrap order.
 - **Rabbit `IDLE_HEAD_TILT` keyframe.** `shouldPlayIdleAnimation` is gated on a

@@ -473,5 +473,110 @@ impl EntityModel for EnderDragonModel {
         &mut self.root
     }
 
-    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+    // Vanilla `EnderDragonModel.setupAnim`, formula for formula: the jaw opens and the root
+    // bounces with the wing-beat phase, every neck/tail segment is re-placed along the
+    // `DragonFlightHistory` path (rotating each segment and chaining the next pivot 10 units
+    // down the rotated spine), the wings flap, and the legs sway with the bounce. Sources
+    // without the projected animation state (older fixtures) keep the bind layout.
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let Some(dragon) = instance.render_state.ender_dragon_animation else {
+            return;
+        };
+        const DEG: f32 = std::f32::consts::PI / 180.0;
+        let flap_time = dragon.flap_time * std::f32::consts::TAU;
+        let mut bounce = (flap_time - 1.0).sin() + 1.0;
+        bounce = (bounce * bounce + bounce * 2.0) * 0.05;
+        self.root.pose.offset[1] = (bounce - 2.0) * 16.0;
+        self.root.pose.offset[2] = -48.0;
+        self.root.pose.rotation[0] = bounce * 2.0 * DEG;
+        self.root.child_mut("0").child_mut("0").pose.rotation[0] = (flap_time.sin() + 1.0) * 0.2;
+
+        let start = dragon.historical_pos(6);
+        let rot2 = wrap_degrees(dragon.historical_pos(5).y_rot - dragon.historical_pos(10).y_rot);
+        let rot = wrap_degrees(dragon.historical_pos(5).y_rot + rot2 / 2.0);
+
+        let [mut xx, mut yy, mut zz] = self.root.child_mut("1").pose.offset;
+        for (i, name) in DRAGON_NECK_CHILD_NAMES.iter().enumerate() {
+            let point = dragon.historical_pos(5 - i);
+            let wave = (i as f32 * 0.45 + flap_time).cos() * 0.15;
+            let neck = self.root.child_mut(name);
+            neck.pose.rotation[1] = wrap_degrees(point.y_rot - start.y_rot) * DEG * 1.5;
+            neck.pose.rotation[0] =
+                wave + dragon.head_part_y_offset(i as i32, start, point) * DEG * 1.5 * 5.0;
+            neck.pose.rotation[2] = -wrap_degrees(point.y_rot - rot) * DEG * 1.5;
+            neck.pose.offset = [xx, yy, zz];
+            xx -= neck.pose.rotation[1].sin() * neck.pose.rotation[0].cos() * 10.0;
+            yy += neck.pose.rotation[0].sin() * 10.0;
+            zz -= neck.pose.rotation[1].cos() * neck.pose.rotation[0].cos() * 10.0;
+        }
+
+        let current = dragon.historical_pos(0);
+        let head = self.root.child_mut("0");
+        head.pose.offset = [xx, yy, zz];
+        head.pose.rotation[1] = wrap_degrees(current.y_rot - start.y_rot) * DEG;
+        head.pose.rotation[0] =
+            wrap_degrees(dragon.head_part_y_offset(6, start, current)) * DEG * 1.5 * 5.0;
+        head.pose.rotation[2] = -wrap_degrees(current.y_rot - rot) * DEG;
+
+        let body = self.root.child_mut("18");
+        body.pose.rotation[2] = -rot2 * 1.5 * DEG;
+        let wing_x_rot = 0.125 - flap_time.cos() * 0.2;
+        let wing_y_rot = -0.25;
+        let wing_z_rot = -(flap_time.sin() + 0.125) * 0.8;
+        let wing_tip_z_rot = ((flap_time + 2.0).sin() + 0.5) * 0.75;
+        let left_wing = body.child_mut("0");
+        left_wing.pose.rotation = [wing_x_rot, wing_y_rot, wing_z_rot];
+        left_wing.child_mut("0").pose.rotation[2] = wing_tip_z_rot;
+        let right_wing = body.child_mut("3");
+        right_wing.pose.rotation = [wing_x_rot, -wing_y_rot, -wing_z_rot];
+        right_wing.child_mut("0").pose.rotation[2] = -wing_tip_z_rot;
+        for (front_name, hind_name) in [("1", "2"), ("4", "5")] {
+            let front_leg = body.child_mut(front_name);
+            front_leg.pose.rotation[0] = 1.3 + bounce * 0.1;
+            let front_tip = front_leg.child_mut("0");
+            front_tip.pose.rotation[0] = -0.5 - bounce * 0.1;
+            front_tip.child_mut("0").pose.rotation[0] = 0.75 + bounce * 0.1;
+            let hind_leg = body.child_mut(hind_name);
+            hind_leg.pose.rotation[0] = 1.0 + bounce * 0.1;
+            let hind_tip = hind_leg.child_mut("0");
+            hind_tip.pose.rotation[0] = 0.5 + bounce * 0.1;
+            hind_tip.child_mut("0").pose.rotation[0] = 0.75 + bounce * 0.1;
+        }
+
+        let mut tail_x_rot = 0.0_f32;
+        let tail_start = dragon.historical_pos(11);
+        let [mut xx, mut yy, mut zz] = self.root.child_mut("6").pose.offset;
+        for (i, name) in DRAGON_TAIL_CHILD_NAMES.iter().enumerate() {
+            let point = dragon.historical_pos(12 + i);
+            tail_x_rot += (i as f32 * 0.45 + flap_time).sin() * 0.05;
+            let tail = self.root.child_mut(name);
+            tail.pose.rotation[1] =
+                (wrap_degrees(point.y_rot - tail_start.y_rot) * 1.5 + 180.0) * DEG;
+            tail.pose.rotation[0] = tail_x_rot + (point.y - tail_start.y) as f32 * DEG * 1.5 * 5.0;
+            tail.pose.rotation[2] = wrap_degrees(point.y_rot - rot) * DEG * 1.5;
+            tail.pose.offset = [xx, yy, zz];
+            yy += tail.pose.rotation[0].sin() * 10.0;
+            zz -= tail.pose.rotation[1].cos() * tail.pose.rotation[0].cos() * 10.0;
+            xx -= tail.pose.rotation[1].sin() * tail.pose.rotation[0].cos() * 10.0;
+        }
+    }
+}
+
+/// Root child names of the five neck segments (`neck0..neck4`) in vanilla order.
+const DRAGON_NECK_CHILD_NAMES: [&str; 5] = ["1", "2", "3", "4", "5"];
+/// Root child names of the twelve tail segments (`tail0..tail11`) in vanilla order.
+const DRAGON_TAIL_CHILD_NAMES: [&str; 12] = [
+    "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17",
+];
+
+/// Vanilla `Mth.wrapDegrees`.
+fn wrap_degrees(value: f32) -> f32 {
+    let mut wrapped = value % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }

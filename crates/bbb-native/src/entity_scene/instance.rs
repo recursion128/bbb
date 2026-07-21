@@ -688,6 +688,9 @@ pub(super) fn entity_model_instance(
         .with_leash_ropes(leash_ropes(&source.leash_ropes))
         .with_end_crystal_beam(end_crystal_beam(source.end_crystal_beam))
         .with_ender_dragon_beam(ender_dragon_beam(source.ender_dragon_beam))
+        .with_ender_dragon_animation(ender_dragon_animation(
+            source.ender_dragon_animation.as_ref(),
+        ))
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,

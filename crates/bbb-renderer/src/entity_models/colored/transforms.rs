@@ -579,17 +579,26 @@ pub(in crate::entity_models) fn entity_flip_degrees(kind: EntityModelKind) -> f3
 }
 
 /// Vanilla `EnderDragonRenderer.submit`: a plain `EntityRenderer` that applies the flight-history
-/// yaw `Axis.YP.rotationDegrees(-yr)`, a flight-history pitch `Axis.XP.rotationDegrees(rot2 * 10)`, a
-/// fixed `translate(0, 0, 1)`, then the standard flip and `-1.501` y-offset. The whole
-/// `EnderDragonModel.setupAnim` is procedural (the neck/tail segments are re-placed from the flight
-/// history, the wings flap, the jaw opens, plus the `root.y/z/xRot` bounce), so it is deferred and
-/// the model renders at its `createBodyLayer` bind layout. The pitch (`rot2`) and the bounce are
-/// deferred (identity at rest); the yaw is projected through `body_rot`.
+/// yaw `Axis.YP.rotationDegrees(-getHistoricalPos(7).yRot())`, the flight-history pitch
+/// `Axis.XP.rotationDegrees((getHistoricalPos(5).y − getHistoricalPos(10).y) · 10)`, a fixed
+/// `translate(0, 0, 1)`, then the standard flip and `-1.501` y-offset. The projected animation
+/// state supplies both history samples; a source without it (older fixtures) keeps the body-yaw
+/// stand-in at zero pitch.
 pub(in crate::entity_models) fn ender_dragon_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
+    let (yaw, pitch) = instance.render_state.ender_dragon_animation.map_or(
+        (instance.render_state.body_rot, 0.0),
+        |dragon| {
+            (
+                dragon.historical_pos(7).y_rot,
+                (dragon.historical_pos(5).y - dragon.historical_pos(10).y) as f32 * 10.0,
+            )
+        },
+    );
     entity_root_position_transform(instance)
-        * Mat4::from_rotation_y((-instance.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_y((-yaw).to_radians())
+        * Mat4::from_rotation_x(pitch.to_radians())
         * Mat4::from_translation(Vec3::new(0.0, 0.0, 1.0))
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))

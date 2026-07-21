@@ -188,6 +188,23 @@ pub(super) fn end_crystal_beam(
     })
 }
 
+/// Maps the projected ender-dragon procedural-animation inputs onto the renderer's
+/// `EnderDragonAnimationRenderState` (1:1; both mirror vanilla `EnderDragonRenderState`).
+pub(super) fn ender_dragon_animation(
+    source: Option<&WorldEnderDragonAnimationSource>,
+) -> Option<EnderDragonAnimationRenderState> {
+    source.map(|animation| EnderDragonAnimationRenderState {
+        flap_time: animation.flap_time,
+        is_landing_or_taking_off: animation.is_landing_or_taking_off,
+        is_sitting: animation.is_sitting,
+        distance_to_egg: animation.distance_to_egg,
+        historical: animation.historical.map(|sample| EnderDragonFlightSample {
+            y: sample.y,
+            y_rot: sample.y_rot,
+        }),
+    })
+}
+
 /// Maps a projected ender-dragon healing beam onto the renderer's `EnderDragonBeamRenderState`.
 pub(super) fn ender_dragon_beam(
     beam: Option<WorldEnderDragonBeamSource>,

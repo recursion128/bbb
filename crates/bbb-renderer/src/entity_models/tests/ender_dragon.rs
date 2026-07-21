@@ -1051,3 +1051,186 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
         "tint.a 1.0 keeps every fragment, got left {full_left:?} right {full_right:?}"
     );
 }
+
+fn dragon_animation_fixture() -> EnderDragonAnimationRenderState {
+    // Sample fixture: `yRot(delay) = 2·delay` degrees, `y(delay) = 100 − delay`, so every history
+    // difference the model consumes has a clean closed form.
+    let mut historical = [EnderDragonFlightSample { y: 0.0, y_rot: 0.0 }; 24];
+    for (delay, sample) in historical.iter_mut().enumerate() {
+        *sample = EnderDragonFlightSample {
+            y: 100.0 - delay as f64,
+            y_rot: 2.0 * delay as f32,
+        };
+    }
+    EnderDragonAnimationRenderState {
+        flap_time: 0.25,
+        is_landing_or_taking_off: false,
+        is_sitting: false,
+        distance_to_egg: 100.0,
+        historical,
+    }
+}
+
+#[test]
+fn ender_dragon_setup_anim_replays_vanilla_flight_history() {
+    // Vanilla `EnderDragonModel.setupAnim` with `flapTime = 0.25` (phase `π/2`) and the linear
+    // fixture history: `start = hist(6)` (yRot 12), `rot2 = hist(5).yRot − hist(10).yRot = −10`,
+    // `rot = hist(5).yRot + rot2/2 = 5`.
+    const DEG: f32 = std::f32::consts::PI / 180.0;
+    let instance = EntityModelInstance::ender_dragon(950, [0.0, 64.0, 0.0], 0.0)
+        .with_ender_dragon_animation(Some(dragon_animation_fixture()));
+    let mut model = EnderDragonModel::new();
+    model.setup_anim(&instance);
+
+    // Jaw: `(sin(π/2) + 1) · 0.2 = 0.4`. Root bounce: `b = sin(π/2 − 1) + 1 = cos(1) + 1`,
+    // `bounce = (b² + 2b) · 0.05`, `root.y = (bounce − 2) · 16`, `root.xRot = bounce·2°`.
+    let bounce = {
+        let b = 1.0_f32 + 1.0_f32.cos();
+        (b * b + b * 2.0) * 0.05
+    };
+    let root_pose = model.root().pose;
+    assert!((root_pose.offset[1] - (bounce - 2.0) * 16.0).abs() < 1.0e-5);
+    assert_eq!(root_pose.offset[2], -48.0);
+    assert!((root_pose.rotation[0] - bounce * 2.0 * DEG).abs() < 1.0e-6);
+    let jaw_x_rot = model.root_mut().child_mut("0").child_mut("0").pose.rotation[0];
+    assert!((jaw_x_rot - 0.4).abs() < 1.0e-6);
+
+    // Neck 0 samples `hist(5)` (yRot 10, y 95): `yRot = wrap(10 − 12)·1.5°`, `xRot = cos(π/2)·0.15
+    // + (95 − 94)·1.5·5°`, `zRot = −wrap(10 − 5)·1.5°`, at the bind pivot (0, 20, −12).
+    let neck0 = model.root_mut().child_mut("1").pose;
+    assert!(
+        (neck0.rotation[1] - (-3.0 * DEG)).abs() < 1.0e-6,
+        "{neck0:?}"
+    );
+    assert!((neck0.rotation[0] - 7.5 * DEG).abs() < 1.0e-6);
+    assert!((neck0.rotation[2] - (-7.5 * DEG)).abs() < 1.0e-6);
+    assert_eq!(neck0.offset, [0.0, 20.0, -12.0]);
+
+    // Neck 1 chains 10 units along neck 0's rotated spine.
+    let neck1 = model.root_mut().child_mut("2").pose;
+    let expected_neck1 = [
+        0.0 - neck0.rotation[1].sin() * neck0.rotation[0].cos() * 10.0,
+        20.0 + neck0.rotation[0].sin() * 10.0,
+        -12.0 - neck0.rotation[1].cos() * neck0.rotation[0].cos() * 10.0,
+    ];
+    assert_close3(neck1.offset, expected_neck1);
+
+    // Head samples `hist(0)` (yRot 0): `yRot = wrap(0 − 12)°`, level-flight `xRot = 0` (part 6),
+    // `zRot = −wrap(0 − 5)°`; its pivot continues the chain off neck 4.
+    let neck4 = model.root_mut().child_mut("5").pose;
+    let head = model.root_mut().child_mut("0").pose;
+    assert!((head.rotation[1] - (-12.0 * DEG)).abs() < 1.0e-6);
+    assert!(head.rotation[0].abs() < 1.0e-6);
+    assert!((head.rotation[2] - 5.0 * DEG).abs() < 1.0e-6);
+    let expected_head = [
+        neck4.offset[0] - neck4.rotation[1].sin() * neck4.rotation[0].cos() * 10.0,
+        neck4.offset[1] + neck4.rotation[0].sin() * 10.0,
+        neck4.offset[2] - neck4.rotation[1].cos() * neck4.rotation[0].cos() * 10.0,
+    ];
+    assert_close3(head.offset, expected_head);
+
+    // Body roll `−rot2·1.5°`; wings flap at phase `π/2`; limbs sway with the bounce.
+    let body = model.root_mut().child_mut("18");
+    assert!((body.pose.rotation[2] - 15.0 * DEG).abs() < 1.0e-6);
+    let left_wing = body.child_mut("0").pose;
+    assert!((left_wing.rotation[0] - (0.125 - 0.25_f32.cos() * 0.0)).abs() < 1.0);
+    assert!(
+        (left_wing.rotation[0] - 0.125).abs() < 1.0e-5,
+        "cos(π/2) ≈ 0"
+    );
+    assert_eq!(left_wing.rotation[1], -0.25);
+    assert!((left_wing.rotation[2] - (-(1.0 + 0.125) * 0.8)).abs() < 1.0e-5);
+    let left_wing_tip = body.child_mut("0").child_mut("0").pose;
+    let expected_tip = ((std::f32::consts::FRAC_PI_2 + 2.0).sin() + 0.5) * 0.75;
+    assert!((left_wing_tip.rotation[2] - expected_tip).abs() < 1.0e-6);
+    let right_wing = body.child_mut("3").pose;
+    assert_eq!(right_wing.rotation[1], 0.25);
+    assert!((right_wing.rotation[2] + left_wing.rotation[2]).abs() < 1.0e-6);
+    let front_leg = body.child_mut("1");
+    assert!((front_leg.pose.rotation[0] - (1.3 + bounce * 0.1)).abs() < 1.0e-6);
+    let front_tip_rot = front_leg.child_mut("0").pose.rotation[0];
+    assert!((front_tip_rot - (-0.5 - bounce * 0.1)).abs() < 1.0e-6);
+    let hind_leg = body.child_mut("2");
+    assert!((hind_leg.pose.rotation[0] - (1.0 + bounce * 0.1)).abs() < 1.0e-6);
+
+    // Tail 0 samples `hist(12)` (yRot 24, y 88) against `hist(11)` (yRot 22, y 89):
+    // `yRot = (wrap(24 − 22)·1.5 + 180)°`, `xRot = sin(π/2)·0.05 + (88 − 89)·1.5·5°`,
+    // `zRot = wrap(24 − 5)·1.5°`, at the bind pivot (0, 10, 60).
+    let tail0 = model.root_mut().child_mut("6").pose;
+    assert!(
+        (tail0.rotation[1] - 183.0 * DEG).abs() < 1.0e-5,
+        "{tail0:?}"
+    );
+    assert!((tail0.rotation[0] - (0.05 - 7.5 * DEG)).abs() < 1.0e-6);
+    assert!((tail0.rotation[2] - 28.5 * DEG).abs() < 1.0e-6);
+    assert_eq!(tail0.offset, [0.0, 10.0, 60.0]);
+    let tail1 = model.root_mut().child_mut("7").pose;
+    let expected_tail1 = [
+        0.0 - tail0.rotation[1].sin() * tail0.rotation[0].cos() * 10.0,
+        10.0 + tail0.rotation[0].sin() * 10.0,
+        60.0 - tail0.rotation[1].cos() * tail0.rotation[0].cos() * 10.0,
+    ];
+    assert_close3(tail1.offset, expected_tail1);
+}
+
+#[test]
+fn ender_dragon_head_droop_uses_landing_and_sitting_branches() {
+    // Vanilla `EnderDragonRenderState.getHeadPartYOffset`: landing/takeoff droops by
+    // `part / max(distanceToEgg / 4, 1)`; sitting droops linearly by the part index.
+    const DEG: f32 = std::f32::consts::PI / 180.0;
+    let landing = EnderDragonAnimationRenderState {
+        is_landing_or_taking_off: true,
+        distance_to_egg: 16.0,
+        ..dragon_animation_fixture()
+    };
+    let instance = EntityModelInstance::ender_dragon(951, [0.0, 64.0, 0.0], 0.0)
+        .with_ender_dragon_animation(Some(landing));
+    let mut model = EnderDragonModel::new();
+    model.setup_anim(&instance);
+    // Head part 6 with egg distance 16: `wrap(6 / 4) · 1.5 · 5°`.
+    let head_x_rot = model.root_mut().child_mut("0").pose.rotation[0];
+    assert!(
+        (head_x_rot - 1.5 * 7.5 * DEG).abs() < 1.0e-6,
+        "{head_x_rot}"
+    );
+
+    let sitting = EnderDragonAnimationRenderState {
+        is_sitting: true,
+        ..dragon_animation_fixture()
+    };
+    let instance = EntityModelInstance::ender_dragon(952, [0.0, 64.0, 0.0], 0.0)
+        .with_ender_dragon_animation(Some(sitting));
+    let mut model = EnderDragonModel::new();
+    model.setup_anim(&instance);
+    let head_x_rot = model.root_mut().child_mut("0").pose.rotation[0];
+    assert!(
+        (head_x_rot - 6.0 * 7.5 * DEG).abs() < 1.0e-6,
+        "{head_x_rot}"
+    );
+}
+
+#[test]
+fn ender_dragon_root_transform_uses_flight_history_yaw_and_pitch() {
+    // Vanilla `EnderDragonRenderer.submit`: yaw `-hist(7).yRot()` (14° here) and pitch
+    // `(hist(5).y − hist(10).y) · 10 = 50°` ahead of the fixed translate/flip/offset chain.
+    let instance = EntityModelInstance::ender_dragon(953, [4.0, 80.0, -3.0], 30.0)
+        .with_ender_dragon_animation(Some(dragon_animation_fixture()));
+    let expected = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_rotation_y((-14.0_f32).to_radians())
+        * Mat4::from_rotation_x(50.0_f32.to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, 1.0))
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+    assert_eq!(ender_dragon_model_root_transform(instance), expected);
+
+    // A source without the projected animation keeps the body-yaw stand-in at zero pitch.
+    let plain = EntityModelInstance::ender_dragon(954, [4.0, 80.0, -3.0], 30.0);
+    assert_eq!(
+        ender_dragon_model_root_transform(plain),
+        Mat4::from_translation(Vec3::from_array(plain.position))
+            * Mat4::from_rotation_y((-30.0_f32).to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, 1.0))
+            * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+            * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0))
+    );
+}

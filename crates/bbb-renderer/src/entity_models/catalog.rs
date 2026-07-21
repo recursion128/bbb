@@ -1025,6 +1025,54 @@ pub struct EnderDragonBeamRenderState {
     pub beam_offset: [f32; 3],
 }
 
+/// One interpolated `DragonFlightHistory.Sample` (`y` world height, `y_rot` body yaw degrees).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EnderDragonFlightSample {
+    pub y: f64,
+    pub y_rot: f32,
+}
+
+/// Vanilla `EnderDragonRenderState`'s procedural-animation inputs for `EnderDragonModel.setupAnim`
+/// and the renderer's flight-history root yaw/pitch. `historical` carries `getHistoricalPos(delay)`
+/// pre-interpolated for every delay the model samples (`0..=23`), with the dead-dragon
+/// `partialTicks = 0` freeze already applied by the world projection.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EnderDragonAnimationRenderState {
+    pub flap_time: f32,
+    pub is_landing_or_taking_off: bool,
+    pub is_sitting: bool,
+    pub distance_to_egg: f64,
+    pub historical: [EnderDragonFlightSample; 24],
+}
+
+impl EnderDragonAnimationRenderState {
+    /// Vanilla `EnderDragonRenderState.getHistoricalPos(delay)` over the projected samples.
+    pub fn historical_pos(&self, delay: usize) -> EnderDragonFlightSample {
+        self.historical[delay]
+    }
+
+    /// Vanilla `EnderDragonRenderState.getHeadPartYOffset(part, bodyPos, partPos)`: the landing /
+    /// takeoff droop divides the part index by the egg distance, sitting droops linearly, the head
+    /// itself (`part == 6`) stays level, and free flight reads the sample height difference.
+    pub fn head_part_y_offset(
+        &self,
+        part: i32,
+        body_pos: EnderDragonFlightSample,
+        part_pos: EnderDragonFlightSample,
+    ) -> f32 {
+        let result = if self.is_landing_or_taking_off {
+            f64::from(part) / (self.distance_to_egg / 4.0).max(1.0)
+        } else if self.is_sitting {
+            f64::from(part)
+        } else if part == 6 {
+            0.0
+        } else {
+            part_pos.y - body_pos.y
+        };
+        result as f32
+    }
+}
+
 /// One rope of a leash connection (vanilla `EntityRenderState.LeashState`): `offset` is the rotated
 /// attach offset (the rope start relative to the entity render position), `delta` is the world-space
 /// `end − start` span (`LeashFeatureRenderer.renderLeash`'s `dx/dy/dz` after its `float` casts), the

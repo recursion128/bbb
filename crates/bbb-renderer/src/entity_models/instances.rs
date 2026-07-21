@@ -1428,6 +1428,11 @@ entity_render_state! {
     /// `clientSideAttackTime`, and attack scale. `None` (no beam) for a guardian with no active attack
     /// target and every other entity.
     (with_guardian_beam) guardian_beam: Option<GuardianBeamRenderState> = None;
+    /// Vanilla `EnderDragonRenderState`'s procedural-animation inputs (`flapTime`, phase flags, egg
+    /// distance, interpolated flight history), consumed by `EnderDragonModel.setupAnim` and the
+    /// renderer's flight-history root yaw/pitch. `None` for every non-dragon.
+    (with_ender_dragon_animation) ender_dragon_animation: Option<EnderDragonAnimationRenderState> =
+        None;
     /// Vanilla `EntityRenderState.leashStates`: the leash ropes attached to this entity (one for a
     /// normal leash, four for a ghast-to-boat quad connection), each carrying the rotated attach
     /// offset, rope span, endpoint lights, and sag flag. `None` for unleashed entities.
@@ -3261,6 +3266,7 @@ mod tests {
                 breeze_inhale_seconds: -1.0,
                 breeze_long_jump_seconds: -1.0,
                 guardian_beam: None,
+                ender_dragon_animation: None,
                 leash_ropes: None,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
