@@ -195,6 +195,40 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_missing_container_interaction_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["container_interaction"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "container_interaction"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_server_side_chest_not_emptied_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["container_interaction"]["server_chest_emptied"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "container_interaction.server_chest_emptied"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_player_inventory_container_id_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["container_interaction"]["container_id"] = 0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "container_interaction.container_id"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_zero_container_click_commands_fail(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["container_interaction"]["container_click_commands_delta"] = 0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "container_click_commands_delta"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
 
 class PlayableGateLifecycleTests(unittest.TestCase):
     def setUp(self):

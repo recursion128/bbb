@@ -103,4 +103,6 @@
   优先级刷新，已闭环 design doc 迁入 docs/archive/）；
   `Entity.applyEffectsFromBlocks` 边界全闭合（雪花粒子收尾）；live gate
   基础游玩新增实体攻击场景（summon→pick 面→瞄准攻击→canonical/呈现双移除，
-  evidence schema 3，live 实跑全绿）。
+  evidence schema 3，live 实跑全绿）与容器场景（setblock+server 填箱→右键
+  开箱→quick-move→关箱→server console 权威确认箱空，evidence schema 4，
+  live 实跑全绿）。

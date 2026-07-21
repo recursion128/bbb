@@ -136,8 +136,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 3:
-        raise GateFailure(f"playable evidence schema must be 3, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 4:
+        raise GateFailure(f"playable evidence schema must be 4, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -224,6 +224,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_movement(evidence.get("movement"))
     _validate_block_interaction(evidence.get("block_interaction"))
     _validate_entity_interaction(evidence.get("entity_interaction"))
+    _validate_container_interaction(evidence.get("container_interaction"))
     _validate_lifecycle(evidence.get("lifecycle"))
 
 
@@ -448,6 +449,43 @@ def _validate_entity_interaction(entity_interaction: Any) -> None:
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             raise GateFailure(
                 f"entity_interaction.{key} must record at least one observed "
+                f"command, got {value!r}"
+            )
+
+
+CONTAINER_INTERACTION_COMMAND_DELTAS = (
+    "use_item_on_commands_delta",
+    "container_click_commands_delta",
+    "container_close_commands_delta",
+)
+
+
+def _validate_container_interaction(container_interaction: Any) -> None:
+    """The chest smoke must observe server results, not queued commands: the
+    stocked menu reaching the canonical mirror, the quick-move landing in the
+    player section, and the server console reporting the chest emptied."""
+
+    container_interaction = _object(container_interaction, "container_interaction")
+    chest = _object(
+        container_interaction.get("chest_position"), "container_interaction.chest_position"
+    )
+    for axis in ("x", "y", "z"):
+        if not isinstance(chest.get(axis), int) or isinstance(chest.get(axis), bool):
+            raise GateFailure(f"container_interaction.chest_position.{axis} must be an integer")
+    container_id = container_interaction.get("container_id")
+    if not isinstance(container_id, int) or isinstance(container_id, bool) or container_id <= 0:
+        raise GateFailure(
+            "container_interaction.container_id must be a positive integer, "
+            f"got {container_id!r}"
+        )
+    for key in ("opened", "moved", "closed", "server_chest_emptied"):
+        if container_interaction.get(key) is not True:
+            raise GateFailure(f"container_interaction.{key} must be true")
+    for key in CONTAINER_INTERACTION_COMMAND_DELTAS:
+        value = container_interaction.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise GateFailure(
+                f"container_interaction.{key} must record at least one observed "
                 f"command, got {value!r}"
             )
 
@@ -1212,25 +1250,25 @@ def _entity_pick_target_ids(address: tuple[str, int]) -> set[int]:
     }
 
 
-def _look_to_entity(
-    address: tuple[str, int], entity_id: int, deadline: float
+def _steer_look_to_point(
+    address: tuple[str, int],
+    read_target: Any,
+    description: str,
+    deadline: float,
 ) -> None:
-    """Closed-loop yaw+pitch steering onto the entity's mid-body point,
-    re-reading both poses every round so a drifting player or entity cannot
-    invalidate a precomputed angle.  Same ~0.12 deg/px sensitivity model as
-    the pitch steering used by the block smoke."""
+    """Closed-loop yaw+pitch steering onto a world-space point, re-reading
+    the target and the player pose every round so a drifting player or a
+    moving target cannot invalidate a precomputed angle.  Same ~0.12 deg/px
+    sensitivity model as the pitch steering used by the block smoke."""
 
     while time.monotonic() < deadline:
-        entity = _control_request(address, "world.probe_entity_transform", {"id": entity_id})
-        if not isinstance(entity, dict):
-            raise GateFailure(f"entity {entity_id} vanished while steering onto it")
+        target = read_target()
         pose = _local_player_pose(address)
         position = _object(pose.get("position"), "local_player.pose.position")
-        target = _object(entity.get("position"), "entity.position")
-        dx = float(target["x"]) - float(position["x"])
-        dz = float(target["z"]) - float(position["z"])
-        # Standing eye height against the armor stand's mid-body point.
-        dy = float(target["y"]) + 1.2 - (float(position["y"]) + 1.62)
+        dx = float(target[0]) - float(position["x"])
+        dz = float(target[2]) - float(position["z"])
+        # Standing eye height for the synthetic driver's crosshair origin.
+        dy = float(target[1]) - (float(position["y"]) + 1.62)
         horizontal = math.hypot(dx, dz)
         target_yaw = math.degrees(math.atan2(-dx, dz))
         target_pitch = math.degrees(-math.atan2(dy, horizontal))
@@ -1247,7 +1285,23 @@ def _look_to_entity(
             },
         )
         time.sleep(0.1)
-    raise GateFailure(f"look steering did not converge onto entity {entity_id}")
+    raise GateFailure(f"look steering did not converge onto {description}")
+
+
+def _look_to_entity(
+    address: tuple[str, int], entity_id: int, deadline: float
+) -> None:
+    def read_target() -> tuple[float, float, float]:
+        entity = _control_request(
+            address, "world.probe_entity_transform", {"id": entity_id}
+        )
+        if not isinstance(entity, dict):
+            raise GateFailure(f"entity {entity_id} vanished while steering onto it")
+        target = _object(entity.get("position"), "entity.position")
+        # The armor stand's mid-body point above its feet position.
+        return float(target["x"]), float(target["y"]) + 1.2, float(target["z"])
+
+    _steer_look_to_point(address, read_target, f"entity {entity_id}", deadline)
 
 
 def drive_entity_interaction(
@@ -1373,6 +1427,201 @@ def drive_entity_interaction(
         "removed": True,
         "attack_entity_commands_delta": _delta("attack_entity_commands_queued"),
         "swing_commands_delta": _delta("swing_commands_queued"),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
+def _open_container(address: tuple[str, int]) -> dict[str, Any] | None:
+    inventory = _control_request(address, "world.client_inventory")
+    if not isinstance(inventory, dict):
+        return None
+    container = inventory.get("open_container")
+    return container if isinstance(container, dict) else None
+
+
+def _container_slot_item(
+    container: dict[str, Any], slot_num: int
+) -> dict[str, Any] | None:
+    # Container slots serialize as sparse (slot, item) rows, not a dense array.
+    slots = container.get("slots")
+    if not isinstance(slots, list):
+        return None
+    for slot in slots:
+        if isinstance(slot, dict) and slot.get("slot") == slot_num:
+            item = slot.get("item")
+            if isinstance(item, dict) and int(item.get("count") or 0) > 0:
+                return item
+    return None
+
+
+def drive_container_interaction(
+    address: tuple[str, int],
+    server_command: Path,
+    server_log: Path,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    """Open a server-stocked chest with a synthetic right-click, quick-move
+    its item into the player inventory through the container click path, and
+    close it.  The assertions observe server results (the open menu and its
+    stocked slot reaching the canonical mirror, the server console reporting
+    the chest emptied) and the canonical menu movement, not queued commands."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    _control_request(address, "input.focus", {"focused": True})
+
+    pose = _await_settled_player(address, deadline)
+    position = _object(pose.get("position"), "local_player.pose.position")
+    feet_y = math.floor(float(position["y"]))
+    chest = None
+    for dx, dz in ((2, 0), (-2, 0), (0, 2), (0, -2)):
+        column_x = math.floor(float(position["x"])) + dx
+        column_z = math.floor(float(position["z"])) + dz
+        body = _probe_block(address, column_x, feet_y, column_z)
+        head = _probe_block(address, column_x, feet_y + 1, column_z)
+        if _block_is_air(body) and _block_is_air(head):
+            chest = {"x": column_x, "y": feet_y, "z": column_z}
+            break
+    if chest is None:
+        raise GateFailure("no clear two-block column near the player for the chest")
+
+    _server_console_command(
+        server_command,
+        f"setblock {chest['x']} {chest['y']} {chest['z']} minecraft:chest",
+    )
+    _await_value(
+        deadline,
+        "the placed chest to reach the canonical terrain",
+        lambda: _probe_block(address, chest["x"], chest["y"], chest["z"]),
+        lambda block: isinstance(block, dict)
+        and str(block.get("block_name", "")).startswith("minecraft:chest"),
+    )
+    _server_console_command(
+        server_command,
+        f"item replace block {chest['x']} {chest['y']} {chest['z']} "
+        "container.0 with minecraft:diamond 3",
+    )
+
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before container interaction")
+
+    # Right-click open loop: steer onto the chest face, tap, and require the
+    # canonical open-container mirror (not the queued command) to appear.
+    opened = None
+    while opened is None and time.monotonic() < deadline:
+        _steer_look_to_point(
+            address,
+            lambda: (chest["x"] + 0.5, chest["y"] + 0.5, chest["z"] + 0.5),
+            "the placed chest",
+            deadline,
+        )
+        _await_input_pipeline(address, deadline)
+        uses_before = _net_counter(address, "use_item_on_commands_queued")
+        _press_mouse(address, "right", True)
+        _press_mouse(address, "right", False)
+        consume_deadline = min(deadline, time.monotonic() + 10.0)
+        while time.monotonic() < consume_deadline:
+            if _net_counter(address, "use_item_on_commands_queued") > uses_before:
+                break
+            time.sleep(0.1)
+        settle_deadline = min(deadline, time.monotonic() + 3.0)
+        while time.monotonic() < settle_deadline:
+            container = _open_container(address)
+            if container is not None and _container_slot_item(container, 0) is not None:
+                opened = container
+                break
+            time.sleep(0.1)
+    if opened is None:
+        raise GateFailure("right-clicking the chest never opened a stocked container menu")
+
+    container_id = int(opened.get("container_id", 0))
+    stocked = _container_slot_item(opened, 0)
+    if stocked is None or int(stocked.get("count") or 0) != 3:
+        raise GateFailure(f"chest slot 0 was not stocked with the expected count: {stocked!r}")
+    stocked_item_id = stocked.get("item_id")
+
+    # Quick-move the stack: chest slot 0 empties and the same item lands in
+    # the player section of the same menu (slots 27+ for a single chest).
+    _control_request(
+        address,
+        "net.container_click_slot",
+        {"slot_num": 0, "button_num": 0, "input": "quick_move"},
+    )
+
+    def _moved() -> bool:
+        container = _open_container(address)
+        if container is None or _container_slot_item(container, 0) is not None:
+            return False
+        slots = container.get("slots")
+        if not isinstance(slots, list):
+            return False
+        for slot in slots:
+            if not isinstance(slot, dict) or int(slot.get("slot", -1)) < 27:
+                continue
+            item = slot.get("item")
+            if (
+                isinstance(item, dict)
+                and item.get("item_id") == stocked_item_id
+                and int(item.get("count") or 0) == 3
+            ):
+                return True
+        return False
+
+    _await_value(
+        deadline,
+        "the quick-moved stack to land in the player section of the menu",
+        _moved,
+        lambda value: value is True,
+    )
+
+    _control_request(address, "net.container_close", {"container_id": container_id})
+    _await_value(
+        deadline,
+        "the container menu to close",
+        lambda: _open_container(address),
+        lambda container: container is None,
+    )
+
+    # Server-authoritative result: the console reports the chest block now
+    # holds no items, so the move was applied server-side, not just locally.
+    marker = "has the following block data"
+    occurrences_before = _log_occurrences(server_log, marker)
+    _server_console_command(
+        server_command,
+        f"data get block {chest['x']} {chest['y']} {chest['z']} Items",
+    )
+
+    def _chest_emptied() -> bool:
+        text = server_log.read_text(encoding="utf-8", errors="replace")
+        lines = [line for line in text.splitlines() if marker in line]
+        if len(lines) <= occurrences_before:
+            return False
+        return "diamond" not in lines[-1]
+
+    _await_value(
+        deadline,
+        "the server console to report the chest emptied",
+        _chest_emptied,
+        lambda value: value is True,
+    )
+
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_after, "after container interaction")
+
+    def _delta(key: str) -> int:
+        return int(net_after.get(key, 0)) - int(net_before.get(key, 0))
+
+    return {
+        "chest_position": chest,
+        "container_id": container_id,
+        "menu_type_id": opened.get("menu_type_id"),
+        "opened": True,
+        "moved": True,
+        "closed": True,
+        "server_chest_emptied": True,
+        "use_item_on_commands_delta": _delta("use_item_on_commands_queued"),
+        "container_click_commands_delta": _delta("container_click_commands_queued"),
+        "container_close_commands_delta": _delta("container_close_commands_queued"),
         "duration_seconds": time.monotonic() - started_at,
     }
 
@@ -1950,7 +2199,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 3,
+            "schema": 4,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -1959,6 +2208,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "movement": None,
             "block_interaction": None,
             "entity_interaction": None,
+            "container_interaction": None,
             "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
@@ -1974,6 +2224,7 @@ def collect_live(args: argparse.Namespace) -> None:
     movement: dict[str, Any] | None = None
     block_interaction: dict[str, Any] | None = None
     entity_interaction: dict[str, Any] | None = None
+    container_interaction: dict[str, Any] | None = None
     lifecycle: dict[str, Any] | None = None
     try:
         _await_control_stability(address, deadline)
@@ -1985,6 +2236,9 @@ def collect_live(args: argparse.Namespace) -> None:
         )
         entity_interaction = drive_entity_interaction(
             address, args.server_command, min(90.0, float(args.timeout))
+        )
+        container_interaction = drive_container_interaction(
+            address, args.server_command, args.server_log, min(90.0, float(args.timeout))
         )
         lifecycle = {}
         lifecycle = drive_session_lifecycle(
@@ -2006,7 +2260,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 3,
+            "schema": 4,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2015,6 +2269,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "movement": movement,
             "block_interaction": block_interaction,
             "entity_interaction": entity_interaction,
+            "container_interaction": container_interaction,
             "lifecycle": lifecycle,
             "failure": failure,
             "artifacts": {
@@ -2032,7 +2287,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 3,
+            "schema": 4,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2041,6 +2296,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "movement": movement,
             "block_interaction": block_interaction,
             "entity_interaction": entity_interaction,
+            "container_interaction": container_interaction,
             "lifecycle": lifecycle,
             "failure": str(error),
             "artifacts": {
@@ -2053,7 +2309,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 3,
+        "schema": 4,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -2062,6 +2318,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "movement": movement,
         "block_interaction": block_interaction,
         "entity_interaction": entity_interaction,
+        "container_interaction": container_interaction,
         "lifecycle": lifecycle,
         "artifacts": {
             "timeline": str(args.client_log),
