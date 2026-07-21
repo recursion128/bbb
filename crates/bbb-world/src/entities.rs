@@ -45,8 +45,9 @@ pub(crate) use bbb_protocol::item_types::{VANILLA_ITEM_EGG_ID, VANILLA_ITEM_SNOW
 #[cfg(test)]
 pub(crate) use block_effects::EntityBlockEffectsDebugState;
 pub(crate) use block_effects::{
-    EntityBlockEffectEvaluation, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
-    EntityBlockEffectMovements, EntityBlockEffectQuery, EntityBlockEffects,
+    EntityBlockEffectBaseTickReset, EntityBlockEffectEvaluation, EntityBlockEffectMovement,
+    EntityBlockEffectMovementIter, EntityBlockEffectMovements, EntityBlockEffectQuery,
+    EntityBlockEffects,
 };
 pub(crate) use client_movement::calculate_view_vector;
 pub(crate) use components::{
@@ -948,6 +949,11 @@ pub struct ProjectileLifecycleState {
     pub trident_dealt_damage: bool,
     #[serde(default, skip_serializing_if = "u32_is_zero")]
     pub trident_return_ticks: u32,
+    /// Client-side `Entity.noPhysics` field mirror: only `ThrownTrident.tick`
+    /// sets it via `setNoPhysics(true)`, and no client path ever clears it.
+    /// `isAffectedByBlocks` reads this field, not the synced arrow flag.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub arrow_no_physics: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

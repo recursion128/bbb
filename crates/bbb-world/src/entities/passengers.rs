@@ -1669,6 +1669,7 @@ impl WorldStore {
             self.dimension,
             &self.registries,
             &self.chunks,
+            self.entity_block_effect_weather(),
         );
         let empty_collisions = std::collections::HashMap::new();
         let _ = self.entities.apply_local_vehicle_block_effect_tick(

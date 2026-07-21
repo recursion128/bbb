@@ -26,7 +26,7 @@ pub struct ChunkHeightmapSampler<'a> {
 }
 
 impl<'a> ChunkHeightmapSampler<'a> {
-    fn new(chunk: &'a ChunkColumn, dimension: WorldDimension) -> Self {
+    pub(crate) fn new(chunk: &'a ChunkColumn, dimension: WorldDimension) -> Self {
         let mut heightmaps = [None; VANILLA_HEIGHTMAP_KIND_COUNT];
         for heightmap in &chunk.heightmaps {
             let Ok(kind_index) = usize::try_from(heightmap.kind_id) else {

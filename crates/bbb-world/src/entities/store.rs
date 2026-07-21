@@ -89,8 +89,8 @@ use super::{
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
     BlazeAmbientParticleState, EnderAmbientParticleState, EntityAttachmentFace, EntityAttributes,
-    EntityBlockEffectMovement, EntityBlockEffectMovementIter, EntityBlockEffectQuery,
-    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    EntityBlockEffectBaseTickReset, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
+    EntityBlockEffectQuery, EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
     EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
@@ -355,6 +355,17 @@ struct EntityClientTickScratch {
     /// same-call `applyEffectsFromBlocks` takes it. Never retained across
     /// ticks or publications.
     local_vehicle_move: Option<(i32, EntityBlockEffectMovement)>,
+}
+
+/// Block-effect work performed inside the direct client movement pass (the
+/// explicit arrow callback slot), folded into the tick observation beside the
+/// ordered common-pass counters.
+#[derive(Debug, Default, Clone, Copy)]
+pub(super) struct EntityBlockEffectWork {
+    pub(super) entities: usize,
+    pub(super) blocks: usize,
+    pub(super) callbacks: usize,
+    pub(super) duration: std::time::Duration,
 }
 
 impl EntityClientTickScratch {
@@ -5548,14 +5559,20 @@ impl EntityStore {
         >,
         block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
         local_movement: Option<EntityBlockEffectMovement>,
+        base_tick_reset: EntityBlockEffectBaseTickReset,
     ) -> (usize, usize, usize) {
         // `LocalAuthoritativeLiving` never runs from the ordered remote pass;
         // it is reachable only through the local-vehicle entry point, which
         // supplies the exact travel movement recorded by `Entity.move`.
+        // `AbstractArrowSegments` likewise arrives only from the arrow
+        // movement slot with its explicit per-tick flight segment.
         debug_assert!(
             policy != VanillaEntityBlockEffectTickPolicy::None
-                && (policy != VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
-                    || local_movement.is_some())
+                && (!matches!(
+                    policy,
+                    VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
+                        | VanillaEntityBlockEffectTickPolicy::AbstractArrowSegments
+                ) || local_movement.is_some())
         );
         debug_assert!(block_effect_world.has_loaded_chunks());
 
@@ -5607,10 +5624,14 @@ impl EntityStore {
 
         let apply_count = usize::from(policy == VanillaEntityBlockEffectTickPolicy::BoatTwice) + 1;
         // Client-side `Entity.baseTick` clears a private positive fire timer
-        // before any subclass callback and resets the powder-snow marker. A
-        // boat's two callback passes still share the resulting same-tick state.
-        block_effects.remaining_fire_ticks = block_effects.remaining_fire_ticks.min(0);
-        block_effects.in_powder_snow = false;
+        // and resets the powder-snow marker. Most policies run it before any
+        // subclass callback (a boat's two callback passes still share the
+        // resulting same-tick state); a flying arrow runs `super.tick()` after
+        // its effects, and an in-ground arrow never reaches it.
+        if base_tick_reset == EntityBlockEffectBaseTickReset::BeforeCallbacks {
+            block_effects.remaining_fire_ticks = block_effects.remaining_fire_ticks.min(0);
+            block_effects.in_powder_snow = false;
+        }
         let mut entities = 0usize;
         let mut blocks = 0usize;
         let mut callbacks = 0usize;
@@ -5714,6 +5735,10 @@ impl EntityStore {
             blocks = blocks.saturating_add(evaluation.visited_blocks);
             callbacks = callbacks.saturating_add(evaluation.applied_callbacks);
         }
+        if base_tick_reset == EntityBlockEffectBaseTickReset::AfterCallbacks {
+            block_effects.remaining_fire_ticks = block_effects.remaining_fire_ticks.min(0);
+            block_effects.in_powder_snow = false;
+        }
         if policy != VanillaEntityBlockEffectTickPolicy::ItemWithLastMovements {
             if let Some(collision_facts) = collision_facts.as_deref_mut() {
                 collision_facts.block_effect_movements.clear_final();
@@ -5797,7 +5822,79 @@ impl EntityStore {
             client_movement_collisions_by_id,
             block_effect_world,
             Some(movement),
+            EntityBlockEffectBaseTickReset::BeforeCallbacks,
         )
+    }
+
+    /// Explicit `AbstractArrow` callback from the arrow movement slot:
+    /// Vanilla applies `applyEffectsFromBlocks(initialPosition, nextLocation)`
+    /// between `setPos` and the post-move inertia (flight) or the no-arg
+    /// degenerate segment while stuck in ground. The caller supplies the
+    /// `Entity.baseTick` reset placement for its branch.
+    pub(super) fn apply_arrow_block_effect_tick(
+        &mut self,
+        entity: Entity,
+        segment: EntityBlockEffectMovement,
+        base_tick_reset: EntityBlockEffectBaseTickReset,
+        client_movement_collisions_by_id: &HashMap<
+            i32,
+            super::client_movement::EntityClientMovementCollisionResult,
+        >,
+        block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
+    ) -> (usize, usize, usize) {
+        if !block_effect_world.has_loaded_chunks() {
+            return (0, 0, 0);
+        }
+        self.apply_block_effect_tick_for_entity(
+            entity,
+            VanillaEntityBlockEffectTickPolicy::AbstractArrowSegments,
+            client_movement_collisions_by_id,
+            block_effect_world,
+            Some(segment),
+            base_tick_reset,
+        )
+    }
+
+    /// `AbstractArrow.tick` head: `if (this.isInWaterOrRain()) this.clearFire();`
+    /// runs before the in-ground/flight branches and is not gated by
+    /// `isAffectedByBlocks`, so a no-physics returning trident still clears.
+    pub(super) fn apply_arrow_water_or_rain_fire_clear(
+        &mut self,
+        entity: Entity,
+        in_water: bool,
+        block_effect_world: &crate::client::EntityBlockEffectWorld<'_>,
+    ) {
+        let Ok((identity, transform, metadata, attributes, animations, supporting_block)) =
+            self.ecs.query_one_mut::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &EntityMetadata,
+                &EntityAttributes,
+                &EntityClientAnimations,
+                &mut EntitySupportingBlock,
+            )>(entity)
+        else {
+            return;
+        };
+        if supporting_block.block_effects.remaining_fire_ticks == 0 {
+            return;
+        }
+        let clears = in_water
+            || (block_effect_world.has_loaded_chunks()
+                && vanilla_bounds_for_entity_data(
+                    identity.entity_type_id,
+                    identity.data,
+                    &metadata.data_values,
+                    &attributes.attributes,
+                    Some(animations.animations),
+                    metadata.painting_variant_projection.as_ref(),
+                )
+                .is_some_and(|bounds| {
+                    block_effect_world.is_in_rain(transform.position, f64::from(bounds.max[1]))
+                }));
+        if clears {
+            supporting_block.block_effects.remaining_fire_ticks = 0;
+        }
     }
 
     pub(crate) fn advance_client_animations<G>(
@@ -5874,13 +5971,24 @@ impl EntityStore {
             }
             work.interpolation_duration += interpolation_started_at.elapsed();
             let movement_started_at = Instant::now();
-            self.advance_direct_client_movement(
+            let arrow_block_effect_work = self.advance_direct_client_movement(
                 &tick_scratch.scheduled_entities,
                 fluid_facts_by_id,
                 client_movement_collisions_by_id,
-                block_effect_world.has_loaded_chunks(),
+                block_effect_world,
             );
-            work.projectile_duration += movement_started_at.elapsed();
+            work.projectile_duration +=
+                movement_started_at.elapsed() - arrow_block_effect_work.duration;
+            work.block_effect_duration += arrow_block_effect_work.duration;
+            work.block_effect_entities = work
+                .block_effect_entities
+                .saturating_add(arrow_block_effect_work.entities);
+            work.block_effect_blocks_visited = work
+                .block_effect_blocks_visited
+                .saturating_add(arrow_block_effect_work.blocks);
+            work.block_effect_callbacks_applied = work
+                .block_effect_callbacks_applied
+                .saturating_add(arrow_block_effect_work.callbacks);
             let animation_started_at = Instant::now();
             let block_effect_duration_before = work.block_effect_duration;
             let guardian_attack_targets_by_id =
@@ -5965,6 +6073,7 @@ impl EntityStore {
                     block_effect_policy,
                     VanillaEntityBlockEffectTickPolicy::None
                         | VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
+                        | VanillaEntityBlockEffectTickPolicy::AbstractArrowSegments
                 ) && !(block_effect_policy
                     == VanillaEntityBlockEffectTickPolicy::BoatTwice
                     && deferred_boat_paddle_entity_id == Some(entity_id));
@@ -5977,6 +6086,7 @@ impl EntityStore {
                             client_movement_collisions_by_id,
                             block_effect_world,
                             None,
+                            EntityBlockEffectBaseTickReset::BeforeCallbacks,
                         );
                     work.block_effect_duration += block_effect_started_at.elapsed();
                     work.block_effect_entities =

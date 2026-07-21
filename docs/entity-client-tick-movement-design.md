@@ -950,10 +950,30 @@ friction and gravity to the zeroed vector; the boat's retained
 the physical supporting-block fields — the private block-effect runtime
 survives until the incarnation resets, matching Vanilla state ownership.
 Focused tests cover cobweb stuck set-then-consume on a ridden horse and the
-boat's double freeze pass in powder snow. Still open on this boundary: the
-local player's own `aiStep` callback, explicit `AbstractArrow` multi-hit
-segments, `isInRain` fire clearing, and client snowflake/extinguish
-presentation.
+boat's double freeze pass in powder snow.
+
+### Arrow segments and rain checkpoint
+
+`AbstractArrowSegments` now runs explicitly from the arrow movement slot
+instead of the ordered common pass: the flight branch applies its recorded
+`initialPosition → nextLocation` segment between `setPos` and the
+`applyInertia(0.99)`/gravity tail (which now scales the post-callback delta,
+so bubble/honey delta edits compose like Vanilla), the in-ground branch
+applies the degenerate no-arg segment, and the `Entity.baseTick` reset
+(positive-fire clear plus powder marker) is placed per branch —
+before callbacks for common policies, after callbacks for flight, never for
+in-ground. The tick head applies `isInWaterOrRain → clearFire` for every
+branch, and the trident return branch mirrors `setNoPhysics(true)` into a
+persistent client `noPhysics` field that `isAffectedByBlocks` reads to skip
+the callback entirely. `Entity.isInRain` is evaluated inside the evaluator
+after `applyAndClear` for all policies: `Level.isRainingAt` over synced sky
+light (`canSeeSky` needs 15), the packet `MOTION_BLOCKING` heightmap
+(missing final maps behave zero-filled), and registry biome climate through
+the world-owned `Biome.getHeightAdjustedTemperature` stack moved from the
+renderer glue. Arrows collapse to one segment per tick because the client
+does not simulate `stepMoveAndHit` entity-hit stepping. Still open on this
+boundary: the local player's own `aiStep` callback and client
+snowflake/extinguish presentation.
 
 ## Required Tests
 

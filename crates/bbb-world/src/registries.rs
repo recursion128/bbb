@@ -42,6 +42,8 @@ pub use banner_patterns::{
     direct_banner_pattern_presentation, BannerPatternPresentation, BannerPatternProjectionError,
     BANNER_PATTERN_REGISTRY,
 };
+#[cfg(test)]
+pub(crate) use biomes::test_biome_element_nbt;
 pub use biomes::{
     BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,
 };

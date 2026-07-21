@@ -1013,8 +1013,10 @@ impl EntityStore {
         scheduled: &[Entity],
         fluid_facts_by_id: &HashMap<i32, super::store::EntityClientTickFluidFacts>,
         collisions_by_id: &HashMap<i32, EntityClientMovementCollisionResult>,
-        record_block_effect_movements: bool,
-    ) {
+        block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
+    ) -> super::store::EntityBlockEffectWork {
+        let record_block_effect_movements = block_effect_world.has_loaded_chunks();
+        let mut block_effect_work = super::store::EntityBlockEffectWork::default();
         let mut effects = Vec::new();
         for &entity in scheduled {
             let (entity_id, entity_type_id) = {
@@ -1148,40 +1150,88 @@ impl EntityStore {
                     let return_target = (entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID)
                         .then(|| self.trident_return_target(entity))
                         .flatten();
-                    let Ok((metadata, projectile, transform)) =
-                        self.ecs.query_one_mut::<(
-                            &mut EntityMetadata,
-                            Option<&mut EntityProjectileLifecycle>,
-                            &mut EntityTransform,
-                        )>(entity)
-                    else {
-                        continue;
+                    let in_water = fluid_facts_by_id
+                        .get(&entity_id)
+                        .is_some_and(|facts| facts.in_water);
+                    // `ThrownTrident.tick` runs its loyalty return before
+                    // `super.tick()`; the arrow head, movement, effects, and
+                    // inertia all follow it within the same tick.
+                    let affected_by_blocks = {
+                        let Ok((metadata, mut projectile, transform)) =
+                            self.ecs.query_one_mut::<(
+                                &mut EntityMetadata,
+                                Option<&mut EntityProjectileLifecycle>,
+                                &mut EntityTransform,
+                            )>(entity)
+                        else {
+                            continue;
+                        };
+                        if entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+                            if let (Some(projectile), Some(return_target)) =
+                                (projectile.as_deref_mut(), return_target)
+                            {
+                                advance_returning_trident(
+                                    entity_id,
+                                    metadata,
+                                    projectile,
+                                    transform,
+                                    accessors,
+                                    return_target,
+                                    &mut effects,
+                                );
+                            }
+                        }
+                        // `isAffectedByBlocks` reads the client `noPhysics`
+                        // field that only the trident return above ever sets.
+                        !projectile
+                            .as_deref()
+                            .is_some_and(|projectile| projectile.arrow_no_physics)
                     };
-                    if entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
-                        if let (Some(projectile), Some(return_target)) = (projectile, return_target)
-                        {
-                            advance_returning_trident(
-                                entity_id,
-                                metadata,
-                                projectile,
-                                transform,
-                                accessors,
-                                return_target,
-                                &mut effects,
-                            );
+                    self.apply_arrow_water_or_rain_fire_clear(entity, in_water, block_effect_world);
+                    let step = {
+                        let Ok((metadata, transform)) = self
+                            .ecs
+                            .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
+                        else {
+                            continue;
+                        };
+                        advance_abstract_arrow(
+                            entity_id,
+                            entity_type_id,
+                            metadata,
+                            transform,
+                            accessors,
+                            in_water,
+                            &mut effects,
+                        )
+                    };
+                    if affected_by_blocks {
+                        if let Some((segment, base_tick_reset)) = step.effects {
+                            let started_at = std::time::Instant::now();
+                            let (effect_entities, effect_blocks, effect_callbacks) = self
+                                .apply_arrow_block_effect_tick(
+                                    entity,
+                                    segment,
+                                    base_tick_reset,
+                                    collisions_by_id,
+                                    block_effect_world,
+                                );
+                            block_effect_work.duration += started_at.elapsed();
+                            block_effect_work.entities += effect_entities;
+                            block_effect_work.blocks =
+                                block_effect_work.blocks.saturating_add(effect_blocks);
+                            block_effect_work.callbacks =
+                                block_effect_work.callbacks.saturating_add(effect_callbacks);
                         }
                     }
-                    advance_abstract_arrow(
-                        entity_id,
-                        entity_type_id,
-                        metadata,
-                        transform,
-                        accessors,
-                        fluid_facts_by_id
-                            .get(&entity_id)
-                            .is_some_and(|facts| facts.in_water),
-                        &mut effects,
-                    );
+                    if let Some(finish) = step.finish {
+                        if let Ok((metadata, transform)) = self
+                            .ecs
+                            .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
+                        {
+                            finish_abstract_arrow(metadata, transform, finish);
+                        }
+                    }
                 }
                 VanillaEntityClientMovementPolicy::Item => {
                     let Some(collision) = collisions_by_id.get(&entity_id).copied() else {
@@ -1319,6 +1369,7 @@ impl EntityStore {
             }
         }
         self.pending_entity_client_movement_effects.extend(effects);
+        block_effect_work
     }
 
     fn trident_return_target(
@@ -1688,11 +1739,14 @@ fn advance_returning_trident(
         return;
     }
 
+    // Vanilla `setNoPhysics(true)` writes the synced flag and the private
+    // `Entity.noPhysics` field together; `isAffectedByBlocks` reads the field.
     set_entity_data_byte(
         metadata,
         arrow_accessors.flags_data_id,
         flags | arrow_accessors.no_physics_mask,
     );
+    projectile.arrow_no_physics = true;
     let to_owner = subtract(target.eye_position, transform.position);
     transform.position.y += to_owner.y * 0.015 * f64::from(loyalty);
     transform.delta_movement = add(
@@ -1720,6 +1774,22 @@ fn advance_returning_trident(
     projectile.trident_return_ticks = projectile.trident_return_ticks.saturating_add(1);
 }
 
+/// One arrow tick's movement outcome: the vanilla `applyEffectsFromBlocks`
+/// slot with its `Entity.baseTick` reset placement, plus the deferred
+/// inertia/gravity tail that runs after the effects callback.
+struct ArrowMoveStep {
+    effects: Option<(
+        EntityBlockEffectMovement,
+        super::EntityBlockEffectBaseTickReset,
+    )>,
+    finish: Option<ArrowMoveFinish>,
+}
+
+struct ArrowMoveFinish {
+    in_water: bool,
+    physics_enabled: bool,
+}
+
 fn advance_abstract_arrow(
     entity_id: i32,
     entity_type_id: i32,
@@ -1728,7 +1798,7 @@ fn advance_abstract_arrow(
     accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
     in_water: bool,
     effects: &mut Vec<EntityClientMovementEffectState>,
-) {
+) -> ArrowMoveStep {
     let flags = entity_data_byte(
         &metadata.data_values,
         accessors.flags_data_id,
@@ -1741,7 +1811,15 @@ fn advance_abstract_arrow(
         accessors.in_ground_default,
     );
     if in_ground && physics_enabled {
-        return;
+        // The stuck branch still calls the no-arg `applyEffectsFromBlocks`
+        // (a degenerate old-to-current segment) but never `super.tick()`.
+        return ArrowMoveStep {
+            effects: Some((
+                EntityBlockEffectMovement::direct(transform.position, transform.position),
+                super::EntityBlockEffectBaseTickReset::Skip,
+            )),
+            finish: None,
+        };
     }
 
     let original_position = transform.position;
@@ -1766,8 +1844,28 @@ fn advance_abstract_arrow(
 
     update_arrow_rotation(transform, movement, physics_enabled);
     transform.position = add(original_position, movement);
-    if !in_water {
-        transform.delta_movement = scale(movement, f64::from(0.99_f32));
+    ArrowMoveStep {
+        effects: Some((
+            EntityBlockEffectMovement::direct(original_position, transform.position),
+            super::EntityBlockEffectBaseTickReset::AfterCallbacks,
+        )),
+        finish: Some(ArrowMoveFinish {
+            in_water,
+            physics_enabled,
+        }),
+    }
+}
+
+/// `AbstractArrow.tick` tail after the effects slot: `applyInertia(0.99F)`
+/// multiplies the current delta (which block callbacks may have changed),
+/// then `applyGravity`.
+fn finish_abstract_arrow(
+    metadata: &EntityMetadata,
+    transform: &mut EntityTransform,
+    finish: ArrowMoveFinish,
+) {
+    if !finish.in_water {
+        transform.delta_movement = scale(transform.delta_movement, f64::from(0.99_f32));
     }
     let no_gravity = vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
         entity_data_bool(
@@ -1776,7 +1874,7 @@ fn advance_abstract_arrow(
             accessors.no_gravity_default,
         )
     });
-    if physics_enabled && !no_gravity {
+    if finish.physics_enabled && !no_gravity {
         transform.delta_movement.y -= 0.05;
     }
 }
@@ -2846,7 +2944,7 @@ mod tests {
                 vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
                     .unwrap();
 
-            advance_abstract_arrow(
+            let step = advance_abstract_arrow(
                 entity_id,
                 entity_type_id,
                 &metadata,
@@ -2854,6 +2952,25 @@ mod tests {
                 accessors,
                 true,
                 &mut effects,
+            );
+            let (segment, base_tick_reset) = step.effects.expect("flight applies block effects");
+            assert_eq!(
+                base_tick_reset,
+                super::super::EntityBlockEffectBaseTickReset::AfterCallbacks
+            );
+            assert_vec3_near(
+                segment.from,
+                EntityVec3 {
+                    x: 1.0,
+                    y: 64.0,
+                    z: -2.0,
+                },
+            );
+            assert_vec3_near(segment.to, transform.position);
+            finish_abstract_arrow(
+                &metadata,
+                &mut transform,
+                step.finish.expect("flight runs the inertia tail"),
             );
 
             let water_movement = scale(

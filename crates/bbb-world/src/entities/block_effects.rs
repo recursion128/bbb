@@ -17,6 +17,18 @@ pub(crate) struct EntityBlockEffectMovement {
     pub(crate) axis_dependent_original: Option<EntityVec3>,
 }
 
+/// Where the client `Entity.baseTick` reset (clear the private positive fire
+/// timer, drop the powder-snow marker) sits relative to one entity's
+/// `applyEffectsFromBlocks` callbacks. Most remote entities run `baseTick`
+/// before their effects; `AbstractArrow.tick` runs `super.tick()` after its
+/// flight effects and skips it entirely while stuck in ground.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum EntityBlockEffectBaseTickReset {
+    BeforeCallbacks,
+    AfterCallbacks,
+    Skip,
+}
+
 impl EntityBlockEffectMovement {
     pub(crate) fn direct(from: EntityVec3, to: EntityVec3) -> Self {
         Self {

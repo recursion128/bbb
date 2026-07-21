@@ -200,6 +200,38 @@ fn error(field: impl Into<String>, reason: &'static str) -> BiomeProjectionError
     }
 }
 
+/// Minimal network-NBT biome element for precipitation-focused fixtures:
+/// exactly the required projection fields plus the climate knobs under test.
+#[cfg(test)]
+pub(crate) fn test_biome_element_nbt(temperature: f32, has_precipitation: bool) -> Vec<u8> {
+    fn write_utf(out: &mut Vec<u8>, value: &str) {
+        out.extend(
+            u16::try_from(value.len())
+                .expect("short name")
+                .to_be_bytes(),
+        );
+        out.extend(value.as_bytes());
+    }
+    let mut out = vec![10];
+    out.push(1);
+    write_utf(&mut out, "has_precipitation");
+    out.push(u8::from(has_precipitation));
+    out.push(5);
+    write_utf(&mut out, "temperature");
+    out.extend(temperature.to_be_bytes());
+    out.push(5);
+    write_utf(&mut out, "downfall");
+    out.extend(0.4_f32.to_be_bytes());
+    out.push(10);
+    write_utf(&mut out, "effects");
+    out.push(3);
+    write_utf(&mut out, "water_color");
+    out.extend(0x3f_76_e4_i32.to_be_bytes());
+    out.push(0);
+    out.push(0);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,6 +1,9 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
+use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID;
+
+use crate::chunks::ChunkHeightmapSampler;
 use crate::entities::{
     EntityBlockEffectEvaluation, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
     EntityBlockEffectQuery,
@@ -20,6 +23,14 @@ const FAR_MOVEMENT_THRESHOLD_SQUARED: f64 = 0.999_980_000_100_505_2;
 const MAX_MOVEMENT_ITERATIONS: i32 = 16;
 const CHUNK_LOOKUP_CACHE_SLOTS: usize = 16;
 
+/// `Level.isRaining()` plus the sea level `Level.precipitationAt` feeds into
+/// `Biome.getPrecipitationAt`, resolved once per pass by the store owner.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct EntityBlockEffectWeather {
+    pub(crate) raining: bool,
+    pub(crate) sea_level: i32,
+}
+
 /// Borrowed terrain reader for one entity tick pass.
 ///
 /// The canonical chunk and registry owners remain in `WorldStore`; this view
@@ -30,6 +41,7 @@ pub(crate) struct EntityBlockEffectWorld<'a> {
     dimension: WorldDimension,
     registries: &'a RegistrySet,
     chunks: &'a [PublicationShared<ChunkColumn>],
+    weather: EntityBlockEffectWeather,
     // Vanilla uses primitive hash sets here. The client-side bounds exercised
     // by this policy visit only a handful of cells in the common case; reused
     // linear scratch avoids hashing and still grows for long swept segments.
@@ -43,11 +55,13 @@ impl<'a> EntityBlockEffectWorld<'a> {
         dimension: WorldDimension,
         registries: &'a RegistrySet,
         chunks: &'a [PublicationShared<ChunkColumn>],
+        weather: EntityBlockEffectWeather,
     ) -> Self {
         Self {
             dimension,
             registries,
             chunks,
+            weather,
             visited_blocks: Vec::new(),
             travel_blocks: Vec::new(),
             chunk_lookup_cache: std::array::from_fn(|_| Cell::new(None)),
@@ -70,12 +84,116 @@ impl<'a> EntityBlockEffectWorld<'a> {
             self.check_movement(&query, movement, &mut collector, &mut evaluation);
         }
         collector.flush(&query, &mut evaluation);
+        // Vanilla `applyEffectsFromBlocks` follows `applyAndClear` with
+        // `if (this.isInRain()) this.clearFire();`. The extinguish sound
+        // compares the shared on-fire flag, which local simulation never
+        // flips, so only the private timer changes client-side.
+        if evaluation.remaining_fire_ticks != 0
+            && self.is_in_rain(query.position, f64::from(query.bounds.max[1]))
+        {
+            evaluation.remaining_fire_ticks = 0;
+        }
         evaluation.visited_blocks = self.visited_blocks.len();
         evaluation
     }
 
     pub(crate) fn has_loaded_chunks(&self) -> bool {
         !self.chunks.is_empty()
+    }
+
+    /// Vanilla `Entity.isInRain`: `Level.isRainingAt` at the entity's block
+    /// position and at that column sampled at the bounding-box top.
+    pub(crate) fn is_in_rain(&self, position: EntityVec3, bounds_max_y: f64) -> bool {
+        if !self.weather.raining {
+            return false;
+        }
+        let block_pos = BlockPos {
+            x: floor_i32(position.x),
+            y: floor_i32(position.y),
+            z: floor_i32(position.z),
+        };
+        self.is_raining_at(block_pos)
+            || self.is_raining_at(BlockPos {
+                y: floor_i32(position.y + bounds_max_y),
+                ..block_pos
+            })
+    }
+
+    /// Vanilla `Level.precipitationAt == Biome.Precipitation.RAIN` with the
+    /// `isRaining` gate hoisted into [`Self::is_in_rain`]. Sky exposure uses
+    /// the synced sky-light data (`canSeeSky` needs full brightness) and the
+    /// packet `MOTION_BLOCKING` heightmap; positions above the build height
+    /// stay exposed like vanilla's light engine padding.
+    fn is_raining_at(&self, pos: BlockPos) -> bool {
+        let top_y = self.dimension.min_y + self.dimension.height;
+        if pos.y < self.dimension.min_y {
+            return false;
+        }
+        let chunk_pos = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let Some(chunk) = self.column(chunk_pos) else {
+            return false;
+        };
+        let local_x = pos.x.rem_euclid(16);
+        let local_z = pos.z.rem_euclid(16);
+        if pos.y < top_y {
+            let light = crate::chunks::sample_terrain_light(
+                &chunk.light,
+                self.dimension,
+                local_x as usize,
+                pos.y,
+                local_z as usize,
+            );
+            if light.sky < 15 {
+                return false;
+            }
+        }
+        let motion_blocking_height = ChunkHeightmapSampler::new(chunk, self.dimension)
+            .first_available(
+                VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+                local_x as u8,
+                local_z as u8,
+            );
+        match motion_blocking_height {
+            Some(height) if height > pos.y => return false,
+            Some(_) => {}
+            None => return false,
+        }
+        let biome_y = pos.y.clamp(self.dimension.min_y, top_y - 1);
+        let section_index =
+            usize::try_from(biome_y.div_euclid(16) - self.dimension.min_section_y()).ok();
+        let biome_id = section_index
+            .and_then(|section_index| chunk.sections.get(section_index))
+            .and_then(|section| {
+                section
+                    .biomes
+                    .value_at(crate::section_biome_index(
+                        local_x as u8 / 4,
+                        biome_y.rem_euclid(16) as u8 / 4,
+                        local_z as u8 / 4,
+                    ))
+                    .map(|value| value.global_id)
+            });
+        let Some(biome_id) = biome_id else {
+            return false;
+        };
+        let Ok(Some(projection)) = self.registries.biome_client_projection(biome_id) else {
+            return false;
+        };
+        if !projection.has_precipitation {
+            return false;
+        }
+        // `Biome.getPrecipitationAt` returns RAIN exactly when the
+        // height-adjusted temperature stays at or above `warmEnoughToRain`'s
+        // 0.15 threshold.
+        crate::climate::biome_height_adjusted_temperature(
+            projection.temperature,
+            projection.temperature_modifier,
+            pos,
+            self.weather.sea_level,
+        ) >= 0.15
     }
 
     fn apply_step_on(
@@ -348,14 +466,7 @@ impl<'a> EntityBlockEffectWorld<'a> {
         Some(iterations)
     }
 
-    fn cell(&self, pos: BlockPos) -> Option<BlockEffectCell> {
-        if !self.dimension.contains_y(pos.y) {
-            return None;
-        }
-        let chunk_pos = ChunkPos {
-            x: pos.x.div_euclid(16),
-            z: pos.z.div_euclid(16),
-        };
+    fn column(&self, chunk_pos: ChunkPos) -> Option<&ChunkColumn> {
         let cache_slot = chunk_lookup_cache_slot(chunk_pos);
         let chunk_index = self.chunk_lookup_cache[cache_slot]
             .get()
@@ -369,7 +480,18 @@ impl<'a> EntityBlockEffectWorld<'a> {
                 self.chunk_lookup_cache[cache_slot].set(Some((chunk_pos, index)));
                 Some(index)
             })?;
-        let chunk = self.chunks.get(chunk_index)?;
+        self.chunks.get(chunk_index).map(|chunk| &**chunk)
+    }
+
+    fn cell(&self, pos: BlockPos) -> Option<BlockEffectCell> {
+        if !self.dimension.contains_y(pos.y) {
+            return None;
+        }
+        let chunk_pos = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let chunk = self.column(chunk_pos)?;
         let section_index =
             usize::try_from(pos.y.div_euclid(16) - self.dimension.min_section_y()).ok()?;
         let section = chunk.sections.get(section_index)?;
@@ -1181,8 +1303,12 @@ mod tests {
                 z: 0.5,
             },
         );
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         let result = evaluator.evaluate(test_query(
             EntityVec3 {
                 x: 0.5,
@@ -1226,8 +1352,12 @@ mod tests {
             y: 0.05,
             z: 1.0,
         };
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
 
         let result = evaluator.evaluate(query);
 
@@ -1264,8 +1394,12 @@ mod tests {
         };
         movements.record_movement(EntityBlockEffectMovement::direct(from, to));
         let movement_iter = movements.prepare_current(from, to);
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         let result = evaluator.evaluate(test_query(to, movement_iter));
         assert_eq!(result.ticks_frozen, 0);
         assert_eq!(result.remaining_fire_ticks, 160);
@@ -1288,8 +1422,12 @@ mod tests {
             z: 0.5,
         };
         let movement_iter = movements.prepare_current(position, position);
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         let result = evaluator.evaluate(test_query(position, movement_iter));
         assert!((result.delta_movement.y - 0.1).abs() <= f64::EPSILON);
 
@@ -1301,8 +1439,12 @@ mod tests {
             [],
         );
         let mut movements = crate::entities::EntityBlockEffectMovements::default();
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         let result = evaluator.evaluate(test_query(
             position,
             movements.prepare_current(position, position),
@@ -1317,8 +1459,12 @@ mod tests {
             [],
         );
         let mut movements = crate::entities::EntityBlockEffectMovements::default();
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         let result = evaluator.evaluate(test_query(
             position,
             movements.prepare_current(position, position),
@@ -1345,8 +1491,12 @@ mod tests {
         let mut query = test_query(position, movement_iter);
         query.freeze_immune = true;
         query.ticks_frozen = 17;
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
 
         let result = evaluator.evaluate(query);
 
@@ -1359,8 +1509,12 @@ mod tests {
         let mut world = test_world();
         let lower = BlockPos { x: 0, y: 0, z: 0 };
         set_block(&mut world, lower, "minecraft:water", [("level", "0")]);
-        let evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         let lower_fluid = evaluator
             .cell(lower)
             .and_then(|cell| cell.fluid)
@@ -1376,8 +1530,12 @@ mod tests {
             "minecraft:water",
             [("level", "0")],
         );
-        let evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         assert!((evaluator.fluid_box(lower, lower_fluid).max.y - 1.0).abs() < 1e-12);
     }
 
@@ -1398,8 +1556,12 @@ mod tests {
         let mut movements = crate::entities::EntityBlockEffectMovements::default();
         let mut query = test_query(position, movements.prepare_current(position, position));
         query.delta_movement.y = (-0.2 - 0.08) * f64::from(0.98_f32);
-        let mut evaluator =
-            EntityBlockEffectWorld::new(world.dimension, &world.registries, &world.chunks);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
         let sliding = evaluator.evaluate(query);
         assert!((sliding.delta_movement.y - (-0.05 - 0.08) * f64::from(0.98_f32)).abs() < 1e-12);
 
@@ -1440,6 +1602,125 @@ mod tests {
             remaining_fire_ticks: 0,
             fall_distance: 4.0,
         }
+    }
+
+    #[test]
+    fn rain_clears_private_fire_only_for_exposed_columns() {
+        let world = rain_world(0.8, true, None, false);
+        assert_eq!(evaluate_fire_in_rain(&world, 100), 0);
+
+        let negative_fire_immune_offset = rain_world(0.8, true, None, false);
+        assert_eq!(evaluate_fire_in_rain(&negative_fire_immune_offset, -20), 0);
+
+        let covered = rain_world(0.8, true, Some(10), false);
+        assert_eq!(evaluate_fire_in_rain(&covered, 100), 100);
+
+        let dark_sky = rain_world(0.8, true, None, true);
+        assert_eq!(evaluate_fire_in_rain(&dark_sky, 100), 100);
+    }
+
+    #[test]
+    fn snow_and_dry_biomes_keep_private_fire_in_rain() {
+        let snow = rain_world(-0.5, true, None, false);
+        assert_eq!(evaluate_fire_in_rain(&snow, 100), 100);
+
+        let dry = rain_world(0.8, false, None, false);
+        assert_eq!(evaluate_fire_in_rain(&dry, 100), 100);
+    }
+
+    fn evaluate_fire_in_rain(world: &WorldStore, remaining_fire_ticks: i32) -> i32 {
+        let mut block_effect_world = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            EntityBlockEffectWeather {
+                raining: true,
+                sea_level: 63,
+            },
+        );
+        let evaluation = block_effect_world.evaluate(EntityBlockEffectQuery {
+            position: EntityVec3 {
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+            },
+            bounds: crate::EntityPickBoundsState {
+                min: [-0.3, 0.0, -0.3],
+                max: [0.3, 1.8, 0.3],
+                pick_radius: 0.0,
+            },
+            movements: EntityBlockEffectMovementIter::Empty,
+            supporting_block: None,
+            on_ground: false,
+            stepping_carefully: false,
+            is_living: true,
+            is_fox_or_bee: false,
+            has_weaving: false,
+            fire_immune: false,
+            freeze_immune: false,
+            ticks_frozen: 0,
+            delta_movement: EntityVec3::default(),
+            stuck_speed_multiplier: EntityVec3::default(),
+            remaining_fire_ticks,
+            fall_distance: 0.0,
+        });
+        evaluation.remaining_fire_ticks
+    }
+
+    /// A one-chunk world whose biome 0 decodes with the given climate, with an
+    /// optional `MOTION_BLOCKING` first-available height for column (0, 0) and
+    /// an optional empty sky-light section over the whole build height.
+    fn rain_world(
+        temperature: f32,
+        has_precipitation: bool,
+        motion_blocking_height: Option<i32>,
+        empty_sky: bool,
+    ) -> WorldStore {
+        let mut world = test_world();
+        if motion_blocking_height.is_some() || empty_sky {
+            let mut heightmaps = Vec::new();
+            if let Some(height) = motion_blocking_height {
+                // 5 bits per entry for a 16-block build height, 12 entries per
+                // long: entry 0 is column (0, 0).
+                let mut data = vec![0_i64; 22];
+                data[0] = i64::from(height);
+                heightmaps.push(crate::HeightmapData {
+                    kind_id: bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+                    data,
+                });
+            }
+            let mut light = LightData::default();
+            if empty_sky {
+                // The single block section maps to light section bit 1.
+                light.empty_sky_y_mask = vec![0b10];
+            }
+            world.insert_decoded_chunk(ChunkColumn {
+                pos: ChunkPos { x: 0, z: 0 },
+                state: ChunkState::Decoded,
+                heightmaps,
+                sections: vec![ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: single_value_container(
+                        PaletteDomain::BlockStates,
+                        4096,
+                        crate::vanilla_air_block_state_id(),
+                    ),
+                    biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+                }],
+                block_entities: Vec::new(),
+                light,
+            });
+        }
+        world.record_registry_entries(
+            "minecraft:worldgen/biome",
+            0,
+            vec![crate::registries::RegistryPacketEntry::with_raw_data(
+                "minecraft:plains",
+                crate::registries::test_biome_element_nbt(temperature, has_precipitation),
+            )],
+        );
+        world
     }
 
     fn test_world() -> WorldStore {

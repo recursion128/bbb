@@ -7437,6 +7437,7 @@ impl WorldStore {
             self.dimension,
             &self.registries,
             &self.chunks,
+            self.entity_block_effect_weather(),
         );
         let preparation_duration = preparation_started_at.elapsed();
         let mut work = self.entities.advance_client_animations(

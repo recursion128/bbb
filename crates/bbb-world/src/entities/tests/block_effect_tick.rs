@@ -184,6 +184,203 @@ fn powder_snow_freeze_mutation_is_visible_only_in_next_generation() {
     );
 }
 
+#[test]
+fn in_ground_arrow_keeps_private_fire_without_base_tick() {
+    let mut world = world_with_entity_and_block(VANILLA_ENTITY_TYPE_ARROW_ID, "minecraft:fire");
+    set_arrow_in_ground(&mut world, ENTITY_ID);
+
+    let work = world.advance_entity_client_animations_with_observation(1);
+    assert!(work.block_effect_callbacks_applied >= 1);
+    let ignited = world
+        .entities
+        .block_effects_debug_state(ENTITY_ID)
+        .expect("stuck arrow state")
+        .remaining_fire_ticks;
+    assert!(ignited > 0);
+
+    // The stuck branch never reaches `super.tick()`, so the private timer
+    // survives the tick boundary instead of being cleared by `baseTick`.
+    world.advance_entity_client_animations(1);
+    assert!(
+        world
+            .entities
+            .block_effects_debug_state(ENTITY_ID)
+            .expect("stuck arrow state")
+            .remaining_fire_ticks
+            > 0
+    );
+}
+
+#[test]
+fn flight_arrow_base_tick_clears_ignited_fire_after_callbacks() {
+    let mut world = world_with_entity_and_block(VANILLA_ENTITY_TYPE_ARROW_ID, "minecraft:fire");
+
+    let work = world.advance_entity_client_animations_with_observation(1);
+
+    // The fire callback ran against the explicit flight segment, and the
+    // end-of-tick `super.tick()` client `baseTick` then cleared the timer.
+    assert!(work.block_effect_callbacks_applied >= 1);
+    assert_eq!(
+        world
+            .entities
+            .block_effects_debug_state(ENTITY_ID)
+            .expect("flying arrow state")
+            .remaining_fire_ticks,
+        0
+    );
+}
+
+#[test]
+fn returning_trident_no_physics_field_skips_block_effects() {
+    // The fixture trident (ENTITY_ID) is the stuck control; the returning
+    // trident spawns beside it in the same fire column with its owner link.
+    let mut world = world_with_entity_and_block(VANILLA_ENTITY_TYPE_TRIDENT_ID, "minecraft:fire");
+    set_arrow_in_ground(&mut world, ENTITY_ID);
+    let owner_id = ENTITY_ID + 1;
+    world.apply_add_entity(ProtocolAddEntity {
+        id: owner_id,
+        uuid: Uuid::from_u128(0xa11ce),
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: ProtocolVec3d {
+            x: 12.0,
+            y: 2.0,
+            z: 8.5,
+        },
+        ..item_packet()
+    });
+    let returning_id = ENTITY_ID + 2;
+    world.apply_add_entity(ProtocolAddEntity {
+        id: returning_id,
+        uuid: Uuid::from_u128(0xc0117501),
+        entity_type_id: VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        data: owner_id,
+        ..item_packet()
+    });
+    let arrow_accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .expect("generated abstract arrow accessors");
+    let trident_accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .expect("generated trident accessors");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: returning_id,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: arrow_accessors.flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(arrow_accessors.no_physics_mask),
+            },
+            ProtocolEntityDataValue {
+                data_id: trident_accessors.loyalty_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(2),
+            },
+        ],
+    }));
+
+    let work = world.advance_entity_client_animations_with_observation(1);
+
+    // The returning trident set the client `noPhysics` field this tick, so
+    // `isAffectedByBlocks` skipped its callback while the stuck control
+    // trident in the same fire column still ignited.
+    assert!(work.block_effect_callbacks_applied >= 1);
+    assert_eq!(
+        world
+            .entities
+            .block_effects_debug_state(returning_id)
+            .expect("returning trident state")
+            .remaining_fire_ticks,
+        0
+    );
+    assert!(
+        world
+            .entities
+            .block_effects_debug_state(ENTITY_ID)
+            .expect("stuck control trident state")
+            .remaining_fire_ticks
+            > 0
+    );
+}
+
+#[test]
+fn rain_clears_stuck_arrow_fire_at_the_arrow_tick_head() {
+    let mut world = world_with_entity_and_block(VANILLA_ENTITY_TYPE_ARROW_ID, "minecraft:fire");
+    set_arrow_in_ground(&mut world, ENTITY_ID);
+    world.advance_entity_client_animations(1);
+    assert!(
+        world
+            .entities
+            .block_effects_debug_state(ENTITY_ID)
+            .expect("stuck arrow state")
+            .remaining_fire_ticks
+            > 0
+    );
+
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 8, y: 2, z: 8 },
+        block_state_id: crate::vanilla_air_block_state_id(),
+    }));
+    world.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![crate::registries::RegistryPacketEntry::with_raw_data(
+            "minecraft:plains",
+            crate::registries::test_biome_element_nbt(0.8, true),
+        )],
+    );
+    world.level = Some(crate::WorldLevelInfo {
+        dimension: "minecraft:overworld".to_string(),
+        dimension_type_id: 0,
+        dimension_type_name: Some("minecraft:overworld".to_string()),
+        biome_zoom_seed: 0,
+        default_clock_resource_id: None,
+        timeline_resource_ids: Vec::new(),
+        has_sky_light: true,
+        has_ceiling: false,
+        cardinal_lighting: crate::WorldCardinalLighting::Default,
+        skybox: crate::WorldSkybox::Overworld,
+        ambient_light: 0.0,
+        environment_attributes: crate::ClientEnvironmentAttributes::default(),
+        last_death_location: None,
+        sea_level: 63,
+        is_debug: false,
+        is_flat: false,
+    });
+    world.weather.rain_level = 1.0;
+
+    // `AbstractArrow.tick` head: `if (this.isInWaterOrRain()) this.clearFire();`
+    // runs even for the stuck branch that never reaches `baseTick`.
+    world.advance_entity_client_animations(1);
+    assert_eq!(
+        world
+            .entities
+            .block_effects_debug_state(ENTITY_ID)
+            .expect("rained-on arrow state")
+            .remaining_fire_ticks,
+        0
+    );
+}
+
+fn set_arrow_in_ground(world: &mut WorldStore, entity_id: i32) {
+    let entity_type_id = world
+        .entities
+        .entity_type_id(entity_id)
+        .expect("arrow entity type");
+    let accessors =
+        vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+            .expect("generated abstract arrow accessors");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: entity_id,
+        values: vec![ProtocolEntityDataValue {
+            data_id: accessors.in_ground_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+}
+
 fn item_world_with_block(block_name: &str) -> WorldStore {
     world_with_entity_and_block(VANILLA_ENTITY_TYPE_ITEM_ID, block_name)
 }

@@ -122,6 +122,7 @@ pub(crate) fn entity_projectile_lifecycle_from_state(
             trident_in_ground_time: 0,
             trident_dealt_damage: false,
             trident_return_ticks: 0,
+            arrow_no_physics: false,
         },
     )))
 }
@@ -655,6 +656,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_no_physics: false,
             })
         );
         store.advance_entity_client_animations(1);
@@ -667,6 +669,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_no_physics: false,
             })
         );
 
@@ -738,6 +741,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_no_physics: false,
             })
         );
     }
@@ -767,6 +771,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_no_physics: false,
             })
         );
         store.advance_entity_client_animations(1);
@@ -779,6 +784,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_no_physics: false,
             })
         );
     }

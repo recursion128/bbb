@@ -151,6 +151,7 @@ pub(crate) struct EntityProjectileLifecycle {
     pub(crate) trident_in_ground_time: u32,
     pub(crate) trident_dealt_damage: bool,
     pub(crate) trident_return_ticks: u32,
+    pub(crate) arrow_no_physics: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -543,6 +544,7 @@ impl From<ProjectileLifecycleState> for EntityProjectileLifecycle {
             trident_in_ground_time: state.trident_in_ground_time,
             trident_dealt_damage: state.trident_dealt_damage,
             trident_return_ticks: state.trident_return_ticks,
+            arrow_no_physics: state.arrow_no_physics,
         }
     }
 }
@@ -556,6 +558,7 @@ impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
             trident_in_ground_time: projectile.trident_in_ground_time,
             trident_dealt_damage: projectile.trident_dealt_damage,
             trident_return_ticks: projectile.trident_return_ticks,
+            arrow_no_physics: projectile.arrow_no_physics,
         }
     }
 }

@@ -195,4 +195,17 @@ impl WorldStore {
             ..Self::default()
         }
     }
+
+    /// `Level.isRaining()` (`canHaveWeather && getRainLevel(1.0F) > 0.2`) plus
+    /// the level sea level, resolved once per entity block-effect pass.
+    pub(crate) fn entity_block_effect_weather(&self) -> crate::client::EntityBlockEffectWeather {
+        crate::client::EntityBlockEffectWeather {
+            raining: self
+                .level
+                .as_ref()
+                .is_some_and(crate::WorldLevelInfo::can_have_weather)
+                && self.weather.rain_level > 0.2,
+            sea_level: self.level.as_ref().map_or(63, |level| level.sea_level),
+        }
+    }
 }
