@@ -1358,23 +1358,6 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
-### Entity coverage matrix client tick and movement
-
-- Audit every fixed entity family for the subclass ticks, locally controlled
-  movement, remote interpolation, projectile motion/trails, and client-only
-  timers that the multiplayer client actually advances. Keep AI, pathfinding,
-  authoritative combat, drops, spawning, and server RNG outside the client
-  implementation. The frozen owner/evidence/phase contract is
-  `docs/entity-client-tick-movement-design.md`.
-- `Entity.applyEffectsFromBlocks` is closed end-to-end (swept runtime, locally
-  controlled vehicles, the explicit `AbstractArrow` slot, `isInRain` fire
-  clearing, the local player `aiStep` step callback, powder-snow snowflake
-  chances, and the `!isClientSide()`-gated extinguish sound verified as
-  server-only) except one deliberate collapse: arrows run one movement segment
-  per tick because the client does not simulate `stepMoveAndHit` entity-hit
-  stepping (pierce hops stay server-authoritative); revisit the multi-segment
-  loop only if client arrow hit simulation lands.
-
 ### Entity coverage matrix dimensions collision and pick
 
 - Close the remaining family-specific pose/dimension changes, collision

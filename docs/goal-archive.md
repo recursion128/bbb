@@ -128,4 +128,12 @@
   presentation 五档分类并标注场景，失败时刻 best-effort 采集同代
   renderer/audio/net/world counters、pending 写探针双采样与最终
   screenshot，四处 evidence 组装收敛为单一 `_write_live_evidence`。
-  **playable 门禁阶段队列清空，转入维护态**。
+  **playable 门禁阶段队列清空，转入维护态**。entity 矩阵第四类目
+  **client tick/movement 全量 157 行 complete**：四个 runtime checkpoint
+  （生成 policy/免疫、swept 移动求值、nonliving 家族、local
+  Living/vehicle+arrow/rain/player aiStep）已全部落地门禁，本轮 phase 5
+  coverage closeout 把 base cell 翻 complete（`client_tick_audit` 证据集：
+  调度/求值/policy/动画推进 + 五个语义测试）、退役 Turtle not-applicable
+  试点（server MoveControl 权威、无客户端可观察差异，通用 remote-Living
+  行覆盖）、arrow 单段折叠记录为 vanilla-faithful；合同归档
+  `docs/archive/entity-client-tick-movement-design.md`。

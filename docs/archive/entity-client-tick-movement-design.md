@@ -1082,3 +1082,23 @@ invalidates this owner contract; size, benchmark cost, or an actionable gate
 failure is not a blocker. Live failures retain their artifact directory and
 are classified as environment, stale binary, client exit, control disconnect,
 timeout, or semantic assertion before a current-HEAD rebuild and full rerun.
+
+## Phase 5 Coverage Closeout (2026-07-21)
+
+All four runtime checkpoints (generated policy/immunity facts, canonical
+movement history plus swept traversal, directly moving nonliving families,
+locally authoritative Living/vehicle integration with the arrow slot, rain
+clearing and the local player `aiStep` step callback) are committed and gated.
+The `client tick/movement` base cell flipped to `complete` for all 157 rows
+with the consolidated `client_tick_audit` evidence set (tick scheduler, swept
+movement evaluator, generated block-effect policy accessor, animation advance;
+schedule/rideTick/policy-partition/block-effect semantic tests). The Turtle
+`not-applicable` pilot override was retired: its subclass movement is server
+`MoveControl` authority with no client-observable tick difference, so the
+generic remote-Living row covers it. The single deliberate collapse remains
+vanilla-faithful and is recorded here: arrows run one movement segment per
+tick because the client does not simulate `stepMoveAndHit` entity-hit
+stepping (pierce hops stay server-authoritative); revisit only if client
+arrow hit simulation ever lands. Before/after cost data lives in the phase
+tables above; retained scratch stays outside immutable publication
+(`retained_publication_keeps_private_block_effect_generation_isolated`).

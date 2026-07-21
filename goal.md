@@ -247,7 +247,9 @@ effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域�
 foundation、entity matrix+schema+spawn/transform、playable session lifecycle 四个
 foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺序调整为：
 
-1. entity 矩阵 client tick/movement 与其余开放类目的 family closure；
+1. entity 矩阵其余开放类目（dimensions/pick、model/layers、animation、
+   equipment/passenger/leash、event/particle/audio、save/debug）的 family
+   closure；
 2. play packet family 与 registry consumer 长尾——优先随上述垂直 slice 顺带
    关闭；独立立项仅当其阻塞前两者或本身构成 hardest-ready 工程；
 3. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。
@@ -304,11 +306,11 @@ required unknown packet 或状态泄漏；每个核心用户动作同时有 serv
 AI/寻路/刷怪/战利品/权威战斗。矩阵入口 `docs/entity-coverage-26.1.json`（经
 `scripts/generate-entity-coverage.py` 更新/检查，分类输入在
 `scripts/data/entity-coverage-overrides-26.1.json`）。十类目中
-metadata/schema、spawn/default、transform/interpolation 已全量 complete；
-开放类目为：client tick/movement（当前工程，合同见
-`docs/entity-client-tick-movement-design.md`）、dimensions/collision/pick、
-model/texture/layers、animation、equipment/passenger/leash、
-event/particle/audio、save/debug。
+metadata/schema、spawn/default、transform/interpolation、client tick/movement
+已全量 complete（tick/movement 工程合同已闭环归档至
+`docs/archive/entity-client-tick-movement-design.md`）；开放类目为：
+dimensions/collision/pick、model/texture/layers、animation、
+equipment/passenger/leash、event/particle/audio、save/debug。
 
 规则：
 

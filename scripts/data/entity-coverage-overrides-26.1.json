@@ -99,13 +99,23 @@
     },
     "client_tick_audit": {
       "implementation": [
-        "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animations"
+        "crates/bbb-world/src/entities/store.rs#fn advance_client_animations",
+        "crates/bbb-world/src/entities/client_movement.rs#fn advance_direct_client_movement",
+        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_type_block_effect_tick_policy",
+        "crates/bbb-world/src/entities/animations.rs#fn advance_entity_client_animations"
       ],
       "tests": [
-        "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#tracks_entity_transient_events"
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#fn client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#fn passenger_ride_tick_clears_motion_before_client_entity_tick",
+        "crates/bbb-world/src/entities/schema.rs#fn generated_client_movement_policy_partitions_all_fixed_entity_types_once",
+        "crates/bbb-world/src/entities/tests/block_effect_tick.rs#fn boat_runs_the_two_vanilla_callback_passes",
+        "crates/bbb-world/src/entities/tests/block_effect_tick.rs#fn powder_snow_movement_emits_snowflake_chances"
       ],
       "vanilla": [
-        "vanilla:net/minecraft/world/entity/Entity.java#public void tick()"
+        "vanilla:net/minecraft/world/entity/Entity.java#public void tick()",
+        "vanilla:net/minecraft/world/entity/Entity.java#protected void applyEffectsFromBlocks()",
+        "vanilla:net/minecraft/world/entity/Entity.java#public void rideTick()",
+        "vanilla:net/minecraft/world/entity/LivingEntity.java#public void aiStep()"
       ]
     },
     "dimensions_pick_audit": {
@@ -184,14 +194,6 @@
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public EntityDimensions getDefaultDimensions",
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPickable()",
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPushable()"
-      ]
-    },
-    "turtle_server_authoritative_movement": {
-      "vanilla": [
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public void aiStep()",
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void travelInWater",
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static class TurtleMoveControl",
-        "vanilla:net/minecraft/client/renderer/entity/TurtleRenderer.java#public void extractRenderState"
       ]
     },
     "turtle_event_particle_audio": {
@@ -304,9 +306,8 @@
       "evidence_ref": "entity_transform_interpolation"
     },
     "client tick/movement": {
-      "status": "partial",
-      "evidence_ref": "client_tick_audit",
-      "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement"
+      "status": "complete",
+      "evidence_ref": "client_tick_audit"
     },
     "dimensions/collision/pick": {
       "status": "partial",
@@ -362,11 +363,6 @@
       }
     },
     "minecraft:turtle": {
-      "client tick/movement": {
-        "status": "not-applicable",
-        "evidence_ref": "turtle_server_authoritative_movement",
-        "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement"
-      },
       "dimensions/collision/pick": {
         "status": "complete",
         "evidence_ref": "turtle_dimensions_collision_pick"

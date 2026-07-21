@@ -33,8 +33,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -87,8 +86,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -141,8 +139,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -195,8 +192,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -249,8 +245,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -303,8 +298,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -357,8 +351,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -411,8 +404,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -465,8 +457,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -519,8 +510,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -573,8 +563,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -627,8 +616,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -681,8 +669,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -735,8 +722,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -789,8 +775,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -843,8 +828,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -897,8 +881,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -951,8 +934,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1005,8 +987,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1059,8 +1040,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1113,8 +1093,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1167,8 +1146,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1221,8 +1199,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1275,8 +1252,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1329,8 +1305,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1383,8 +1358,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1437,8 +1411,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1491,8 +1464,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1545,8 +1517,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1599,8 +1570,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1653,8 +1623,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1707,8 +1676,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1761,8 +1729,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1815,8 +1782,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1869,8 +1835,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1923,8 +1888,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -1977,8 +1941,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2031,8 +1994,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2085,8 +2047,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2139,8 +2100,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2193,8 +2153,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2247,8 +2206,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2301,8 +2259,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2355,8 +2312,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2409,8 +2365,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2463,8 +2418,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2517,8 +2471,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2571,8 +2524,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2625,8 +2577,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2679,8 +2630,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2733,8 +2683,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2787,8 +2736,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2841,8 +2789,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2895,8 +2842,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -2949,8 +2895,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3003,8 +2948,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3057,8 +3001,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3111,8 +3054,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3165,8 +3107,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3219,8 +3160,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3273,8 +3213,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3327,8 +3266,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3381,8 +3319,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3435,8 +3372,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3489,8 +3425,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3543,8 +3478,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3597,8 +3531,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3651,8 +3584,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3705,8 +3637,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3759,8 +3690,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3813,8 +3743,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3867,8 +3796,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3921,8 +3849,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -3975,8 +3902,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4029,8 +3955,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4083,8 +4008,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4137,8 +4061,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4191,8 +4114,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4245,8 +4167,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4299,8 +4220,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4353,8 +4273,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4407,8 +4326,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4461,8 +4379,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4515,8 +4432,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4569,8 +4485,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4623,8 +4538,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4677,8 +4591,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4731,8 +4644,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4785,8 +4697,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4839,8 +4750,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4893,8 +4803,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -4947,8 +4856,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5001,8 +4909,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5055,8 +4962,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5109,8 +5015,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5163,8 +5068,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5217,8 +5121,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5271,8 +5174,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5325,8 +5227,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5379,8 +5280,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5433,8 +5333,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5487,8 +5386,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5541,8 +5439,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5595,8 +5492,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5649,8 +5545,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5703,8 +5598,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5757,8 +5651,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5811,8 +5704,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5865,8 +5757,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5919,8 +5810,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -5973,8 +5863,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6027,8 +5916,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6081,8 +5969,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6135,8 +6022,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6189,8 +6075,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6243,8 +6128,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6297,8 +6181,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6351,8 +6234,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6405,8 +6287,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6459,8 +6340,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6513,8 +6393,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6567,8 +6446,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6621,8 +6499,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6675,8 +6552,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6729,8 +6605,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6783,8 +6658,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6837,8 +6711,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6891,8 +6764,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6945,8 +6817,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -6999,8 +6870,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7053,8 +6923,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7107,8 +6976,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7161,8 +7029,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7215,8 +7082,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7269,8 +7135,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7323,8 +7188,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7377,8 +7241,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7429,9 +7292,8 @@
           "status": "complete"
         },
         "client tick/movement": {
-          "evidence_ref": "turtle_server_authoritative_movement",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "not-applicable"
+          "evidence_ref": "client_tick_audit",
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "turtle_dimensions_collision_pick",
@@ -7481,8 +7343,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7535,8 +7396,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7589,8 +7449,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7643,8 +7502,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7697,8 +7555,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7751,8 +7608,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7805,8 +7661,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7859,8 +7714,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7913,8 +7767,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -7967,8 +7820,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8021,8 +7873,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8075,8 +7926,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8129,8 +7979,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8183,8 +8032,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8237,8 +8085,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8291,8 +8138,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8345,8 +8191,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8399,8 +8244,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8453,8 +8297,7 @@
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "complete"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "dimensions_pick_audit",
@@ -8512,13 +8355,23 @@
     },
     "client_tick_audit": {
       "implementation": [
-        "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animations"
+        "crates/bbb-world/src/entities/store.rs#fn advance_client_animations",
+        "crates/bbb-world/src/entities/client_movement.rs#fn advance_direct_client_movement",
+        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_type_block_effect_tick_policy",
+        "crates/bbb-world/src/entities/animations.rs#fn advance_entity_client_animations"
       ],
       "tests": [
-        "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#tracks_entity_transient_events"
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#fn client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#fn passenger_ride_tick_clears_motion_before_client_entity_tick",
+        "crates/bbb-world/src/entities/schema.rs#fn generated_client_movement_policy_partitions_all_fixed_entity_types_once",
+        "crates/bbb-world/src/entities/tests/block_effect_tick.rs#fn boat_runs_the_two_vanilla_callback_passes",
+        "crates/bbb-world/src/entities/tests/block_effect_tick.rs#fn powder_snow_movement_emits_snowflake_chances"
       ],
       "vanilla": [
-        "vanilla:net/minecraft/world/entity/Entity.java#public void tick()"
+        "vanilla:net/minecraft/world/entity/Entity.java#public void tick()",
+        "vanilla:net/minecraft/world/entity/Entity.java#protected void applyEffectsFromBlocks()",
+        "vanilla:net/minecraft/world/entity/Entity.java#public void rideTick()",
+        "vanilla:net/minecraft/world/entity/LivingEntity.java#public void aiStep()"
       ]
     },
     "dimensions_pick_audit": {
@@ -8768,16 +8621,6 @@
         "vanilla:net/minecraft/client/KeyboardHandler.java#private void copyRecreateCommand",
         "vanilla:net/minecraft/client/KeyboardHandler.java#private void copyCreateEntityCommand",
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void addAdditionalSaveData"
-      ]
-    },
-    "turtle_server_authoritative_movement": {
-      "implementation": [],
-      "tests": [],
-      "vanilla": [
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public void aiStep()",
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void travelInWater",
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static class TurtleMoveControl",
-        "vanilla:net/minecraft/client/renderer/entity/TurtleRenderer.java#public void extractRenderState"
       ]
     }
   },
