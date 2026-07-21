@@ -26,6 +26,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
+    game_types::{VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
 };
 use bbb_world::{
@@ -294,8 +295,10 @@ fn build_local_boat_world() -> WorldStore {
             dimension_type_id: 0,
             dimension: "minecraft:overworld".to_owned(),
             seed: 0,
-            game_type: 0,
-            previous_game_type: -1,
+            game_type: i8::try_from(VANILLA_GAME_TYPE_SURVIVAL_ID)
+                .expect("survival game type fits the PlayLogin field"),
+            previous_game_type: i8::try_from(VANILLA_GAME_TYPE_NOT_SET_ID)
+                .expect("unset game type fits the PlayLogin field"),
             is_debug: false,
             is_flat: false,
             last_death_location: None,
