@@ -13,8 +13,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
-        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
-        VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAT_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
         VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
@@ -32,14 +33,14 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+        VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -50,10 +51,10 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
         VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-        VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID,
+        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
@@ -4879,6 +4880,15 @@ fn debug_push_entity_additional_save_data(
                 fields,
             );
         }
+        VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID => {
+            debug_push_block_display_additional_save_data(world, entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
+            debug_push_item_display_additional_save_data(world, entity, item_runtime, fields);
+        }
+        VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
+            debug_push_text_display_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_CREEPER_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_creeper_additional_save_data(entity, fields);
@@ -8249,6 +8259,275 @@ fn debug_push_ominous_item_spawner_additional_save_data(
     // Vanilla only stores a non-empty spawner stack, and the spawn delay is
     // server-private.
     debug_push_item_stack_field(world, entity, item_runtime, stack_id, "item", fields);
+}
+
+fn debug_display_int_field(entity: &EntityState, java_name: &str) -> Option<i32> {
+    let entry = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        java_name,
+    )?;
+    let default = match entry.typed_default {
+        Some(bbb_world::VanillaEntityMetadataDefault::Int(value)) => value,
+        _ => 0,
+    };
+    Some(debug_entity_data_int_present(entity, entry.data_id).unwrap_or(default))
+}
+
+fn debug_display_float_field(entity: &EntityState, java_name: &str) -> Option<f32> {
+    let entry = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        java_name,
+    )?;
+    let default = match entry.typed_default {
+        Some(bbb_world::VanillaEntityMetadataDefault::Float(value)) => value,
+        _ => 0.0,
+    };
+    Some(debug_entity_data_float_present(entity, entry.data_id).unwrap_or(default))
+}
+
+fn debug_display_byte_field(entity: &EntityState, java_name: &str) -> Option<i8> {
+    let entry = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        java_name,
+    )?;
+    let default = match entry.typed_default {
+        Some(bbb_world::VanillaEntityMetadataDefault::Byte(value)) => value,
+        _ => 0,
+    };
+    Some(debug_entity_data_byte_present(entity, entry.data_id).unwrap_or(default))
+}
+
+fn debug_entity_data_vector3f_present(entity: &EntityState, data_id: u8) -> Option<[f32; 3]> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Vector3f { x, y, z } => Some([*x, *y, *z]),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_quaternionf_present(entity: &EntityState, data_id: u8) -> Option<[f32; 4]> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Quaternionf { x, y, z, w } => Some([*x, *y, *z, *w]),
+            _ => None,
+        })
+}
+
+fn debug_snbt_float_list(values: &[f32]) -> Option<String> {
+    let rendered: Option<Vec<String>> = values
+        .iter()
+        .map(|value| debug_snbt_float(*value))
+        .collect();
+    Some(format!("[{}]", rendered?.join(", ")))
+}
+
+fn debug_push_display_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let vector = |java_name: &str, default: [f32; 3]| -> Option<[f32; 3]> {
+        let entry = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+            entity.entity_type_id,
+            java_name,
+        )?;
+        Some(debug_entity_data_vector3f_present(entity, entry.data_id).unwrap_or(default))
+    };
+    let quaternion = |java_name: &str| -> Option<[f32; 4]> {
+        let entry = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+            entity.entity_type_id,
+            java_name,
+        )?;
+        // Vanilla defines both rotations as the identity quaternion.
+        Some(
+            debug_entity_data_quaternionf_present(entity, entry.data_id)
+                .unwrap_or([0.0, 0.0, 0.0, 1.0]),
+        )
+    };
+    if let (Some(translation), Some(left_rotation), Some(scale), Some(right_rotation)) = (
+        vector("DATA_TRANSLATION_ID", [0.0, 0.0, 0.0]),
+        quaternion("DATA_LEFT_ROTATION_ID"),
+        vector("DATA_SCALE_ID", [1.0, 1.0, 1.0]),
+        quaternion("DATA_RIGHT_ROTATION_ID"),
+    ) {
+        if let (Some(translation), Some(left_rotation), Some(scale), Some(right_rotation)) = (
+            debug_snbt_float_list(&translation),
+            debug_snbt_float_list(&left_rotation),
+            debug_snbt_float_list(&scale),
+            debug_snbt_float_list(&right_rotation),
+        ) {
+            fields.push(format!(
+                "transformation: {{translation: {translation}, left_rotation: {left_rotation}, \
+                 scale: {scale}, right_rotation: {right_rotation}}}"
+            ));
+        }
+    }
+    if let Some(billboard) =
+        debug_display_byte_field(entity, "DATA_BILLBOARD_RENDER_CONSTRAINTS_ID")
+    {
+        let name = match billboard {
+            1 => "vertical",
+            2 => "horizontal",
+            3 => "center",
+            _ => "fixed",
+        };
+        fields.push(format!("billboard: {}", debug_snbt_string(name)));
+    }
+    if let Some(duration) =
+        debug_display_int_field(entity, "DATA_TRANSFORMATION_INTERPOLATION_DURATION_ID")
+    {
+        fields.push(format!("interpolation_duration: {duration}"));
+    }
+    if let Some(duration) =
+        debug_display_int_field(entity, "DATA_POS_ROT_INTERPOLATION_DURATION_ID")
+    {
+        fields.push(format!("teleport_duration: {duration}"));
+    }
+    for (field_name, java_name) in [
+        ("view_range", "DATA_VIEW_RANGE_ID"),
+        ("shadow_radius", "DATA_SHADOW_RADIUS_ID"),
+        ("shadow_strength", "DATA_SHADOW_STRENGTH_ID"),
+        ("width", "DATA_WIDTH_ID"),
+        ("height", "DATA_HEIGHT_ID"),
+    ] {
+        if let Some(rendered) =
+            debug_display_float_field(entity, java_name).and_then(debug_snbt_float)
+        {
+            fields.push(format!("{field_name}: {rendered}"));
+        }
+    }
+    if let Some(glow_color_override) =
+        debug_display_int_field(entity, "DATA_GLOW_COLOR_OVERRIDE_ID")
+    {
+        fields.push(format!("glow_color_override: {glow_color_override}"));
+    }
+    // Vanilla stores the nullable brightness override only when set; the
+    // packed value mirrors LightCoordsUtil (block << 4 | sky << 20).
+    if let Some(packed) = debug_display_int_field(entity, "DATA_BRIGHTNESS_OVERRIDE_ID") {
+        if packed >= 0 {
+            fields.push(format!(
+                "brightness: {{block: {}, sky: {}}}",
+                (packed >> 4) & 0xF,
+                (packed >> 20) & 0xF
+            ));
+        }
+    }
+}
+
+fn debug_push_block_display_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    debug_push_display_additional_save_data(entity, fields);
+    let Some(entry) = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_BLOCK_STATE_ID",
+    ) else {
+        return;
+    };
+    let state_id = entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == entry.data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::BlockState(id) => Some(*id),
+            _ => None,
+        })
+        // Vanilla defines the synced state as the air default.
+        .unwrap_or(0);
+    let Some(state) = world.registries().block_state(state_id) else {
+        return;
+    };
+    let mut block_state = format!("{{Name: {}", debug_snbt_string(&state.name));
+    if !state.properties.is_empty() {
+        let properties: Vec<String> = state
+            .properties
+            .iter()
+            .map(|(key, value)| format!("{key}: {}", debug_snbt_string(value)))
+            .collect();
+        block_state.push_str(&format!(", Properties: {{{}}}", properties.join(", ")));
+    }
+    block_state.push('}');
+    fields.push(format!("block_state: {block_state}"));
+}
+
+fn debug_push_item_display_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    fields: &mut Vec<String>,
+) {
+    debug_push_display_additional_save_data(entity, fields);
+    if let Some(entry) = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_ITEM_STACK_ID",
+    ) {
+        // Vanilla only stores a non-empty display stack.
+        debug_push_item_stack_field(world, entity, item_runtime, entry.data_id, "item", fields);
+    }
+    if let Some(context) = debug_display_byte_field(entity, "DATA_ITEM_DISPLAY_ID") {
+        let name = match context {
+            1 => "thirdperson_lefthand",
+            2 => "thirdperson_righthand",
+            3 => "firstperson_lefthand",
+            4 => "firstperson_righthand",
+            5 => "head",
+            6 => "gui",
+            7 => "ground",
+            8 => "fixed",
+            9 => "on_shelf",
+            _ => "none",
+        };
+        fields.push(format!("item_display: {}", debug_snbt_string(name)));
+    }
+}
+
+fn debug_push_text_display_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    debug_push_display_additional_save_data(entity, fields);
+    let text = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_TEXT_ID",
+    )
+    .and_then(|entry| {
+        entity
+            .data_values
+            .iter()
+            .find(|value| value.data_id == entry.data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::Component(component) => Some(component.text()),
+                _ => None,
+            })
+    })
+    .unwrap_or("");
+    fields.push(format!("text: {}", debug_snbt_string(text)));
+    if let Some(line_width) = debug_display_int_field(entity, "DATA_LINE_WIDTH_ID") {
+        fields.push(format!("line_width: {line_width}"));
+    }
+    if let Some(background) = debug_display_int_field(entity, "DATA_BACKGROUND_COLOR_ID") {
+        fields.push(format!("background: {background}"));
+    }
+    if let Some(text_opacity) = debug_display_byte_field(entity, "DATA_TEXT_OPACITY_ID") {
+        fields.push(format!("text_opacity: {text_opacity}b"));
+    }
+    if let Some(flags) = debug_display_byte_field(entity, "DATA_STYLE_FLAGS_ID") {
+        fields.push(format!("shadow: {}", debug_snbt_bool(flags & 1 != 0)));
+        fields.push(format!("see_through: {}", debug_snbt_bool(flags & 2 != 0)));
+        fields.push(format!(
+            "default_background: {}",
+            debug_snbt_bool(flags & 4 != 0)
+        ));
+        let alignment = if flags & 8 != 0 {
+            "left"
+        } else if flags & 16 != 0 {
+            "right"
+        } else {
+            "center"
+        };
+        fields.push(format!("alignment: {}", debug_snbt_string(alignment)));
+    }
 }
 
 fn debug_push_zoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

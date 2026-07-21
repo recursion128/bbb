@@ -1394,11 +1394,17 @@ back into a todo. Do not delete these.
   targets, timers, RNG, AI, and authoritative save fields must remain absent or
   carry a narrow vanilla-backed not-applicable decision. The 2026-07-21 audit
   of the generated dispatch closed the villager/zombie-villager, warden,
-  ender-dragon, area-effect-cloud, eye-of-ender, item-entity and
-  ominous-item-spawner families and verified the FishingHook, LeashKnot,
-  LightningBolt and Marker vanilla bodies are empty; the remaining default-arm
-  gaps are the Display trio (block/item/text), Mannequin and probed Player
-  projections.
+  ender-dragon, area-effect-cloud, eye-of-ender, item-entity,
+  ominous-item-spawner and Display trio (block/item/text — shared Display
+  transformation/billboard/interpolation/shadow/brightness fields plus the
+  per-subtype block_state, item + item_display context, and
+  text/line_width/background/opacity/style-flag projections) families,
+  verified the FishingHook, LeashKnot, LightningBolt and Marker vanilla bodies
+  are empty, and verified probed Player `addAdditionalSaveData` is entirely
+  server-private (abilities/inventory/xp/stats never sync to remote clients),
+  so the Player default arm is vanilla-faithful as-is; the remaining
+  default-arm gap is the Mannequin projection (profile, immovable,
+  description, hidden layers, main hand).
 
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the

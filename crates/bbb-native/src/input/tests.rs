@@ -26,7 +26,8 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
     VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
     VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
-    VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+    VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+    VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
     VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
@@ -48,13 +49,13 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
     VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
     VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
-    VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
-    VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-    VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-    VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+    VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+    VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+    VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+    VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
     VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
     VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
@@ -67,10 +68,11 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
     VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
     VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-    VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+    VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID,
+    VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+    VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
     VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
     VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
     VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
@@ -24097,4 +24099,159 @@ fn ominous_item_spawner_local_save_projects_lowercase_item_field() {
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
     assert!(snbt.contains("item: {id: \"minecraft:diamond\"}"));
     assert!(!snbt.contains("spawn_item_after_ticks"));
+}
+
+fn display_data_id(entity_type_id: i32, java_name: &str) -> u8 {
+    bbb_world::vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, java_name)
+        .unwrap_or_else(|| panic!("missing {java_name} accessor"))
+        .data_id
+}
+
+#[test]
+fn block_display_local_save_projects_display_defaults_and_synced_block_state() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 308, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID);
+
+    let entity = world.probe_entity(308).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains(
+        "transformation: {translation: [0.0f, 0.0f, 0.0f], left_rotation: [0.0f, 0.0f, 0.0f, \
+         1.0f], scale: [1.0f, 1.0f, 1.0f], right_rotation: [0.0f, 0.0f, 0.0f, 1.0f]}"
+    ));
+    assert!(snbt.contains("billboard: \"fixed\""));
+    assert!(snbt.contains("interpolation_duration: 0, teleport_duration: 0"));
+    assert!(snbt.contains(
+        "view_range: 1.0f, shadow_radius: 0.0f, shadow_strength: 1.0f, width: 0.0f, height: 0.0f"
+    ));
+    assert!(snbt.contains("glow_color_override: -1"));
+    assert!(!snbt.contains("brightness"));
+    assert!(snbt.contains("block_state: {Name: \"minecraft:air\"}"));
+
+    let slab_properties: BTreeMap<String, String> = [
+        ("type".to_string(), "top".to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ]
+    .into_iter()
+    .collect();
+    let slab_state_id = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:oak_slab", &slab_properties)
+        .expect("oak slab state");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 308,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: display_data_id(VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID, "DATA_BLOCK_STATE_ID"),
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID,
+                value: EntityDataValueKind::BlockState(slab_state_id),
+            },
+            ProtocolEntityDataValue {
+                data_id: display_data_id(VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID, "DATA_TRANSLATION_ID"),
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_VECTOR3_ID,
+                value: EntityDataValueKind::Vector3f {
+                    x: 0.5,
+                    y: -1.0,
+                    z: 0.25,
+                },
+            },
+            ProtocolEntityDataValue {
+                data_id: display_data_id(
+                    VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+                    "DATA_BRIGHTNESS_OVERRIDE_ID",
+                ),
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                // LightCoordsUtil packing: block << 4 | sky << 20.
+                value: EntityDataValueKind::Int((7 << 4) | (15 << 20)),
+            },
+        ],
+    }));
+    let entity = world.probe_entity(308).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("translation: [0.5f, -1.0f, 0.25f]"));
+    assert!(snbt.contains("brightness: {block: 7, sky: 15}"));
+    assert!(snbt.contains(
+        "block_state: {Name: \"minecraft:oak_slab\", Properties: {type: \"top\", waterlogged: \
+         \"false\"}}"
+    ));
+}
+
+#[test]
+fn item_display_local_save_projects_synced_stack_and_display_context() {
+    let item_runtime = diamond_item_runtime();
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 309, VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID);
+
+    let entity = world.probe_entity(309).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    // Vanilla omits the empty display stack but always stores the context.
+    assert!(!snbt.contains("item: {"));
+    assert!(snbt.contains("item_display: \"none\""));
+
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 309,
+        values: vec![
+            synced_item_stack_value(
+                display_data_id(VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, "DATA_ITEM_STACK_ID"),
+                1,
+            ),
+            ProtocolEntityDataValue {
+                data_id: display_data_id(
+                    VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID,
+                    "DATA_ITEM_DISPLAY_ID"
+                ),
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                // ItemDisplayContext GUI = 6.
+                value: EntityDataValueKind::Byte(6),
+            },
+        ],
+    }));
+    let entity = world.probe_entity(309).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains("item: {id: \"minecraft:diamond\"}"));
+    assert!(snbt.contains("item_display: \"gui\""));
+}
+
+#[test]
+fn text_display_local_save_projects_text_and_style_flags() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 310, VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID);
+
+    let entity = world.probe_entity(310).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("text: \"\""));
+    assert!(snbt.contains("line_width: 200"));
+    assert!(snbt.contains("background: 1073741824"));
+    assert!(snbt.contains("text_opacity: -1b"));
+    assert!(snbt.contains("shadow: 0b, see_through: 0b, default_background: 0b"));
+    assert!(snbt.contains("alignment: \"center\""));
+
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 310,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: display_data_id(VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID, "DATA_TEXT_ID"),
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COMPONENT_ID,
+                value: EntityDataValueKind::Component(bbb_protocol::RichTextComponent::plain(
+                    "hello display",
+                )),
+            },
+            ProtocolEntityDataValue {
+                data_id: display_data_id(VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID, "DATA_STYLE_FLAGS_ID"),
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                // Vanilla style flags: shadow = 1, align-left = 8.
+                value: EntityDataValueKind::Byte(1 | 8),
+            },
+        ],
+    }));
+    let entity = world.probe_entity(310).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("text: \"hello display\""));
+    assert!(snbt.contains("shadow: 1b, see_through: 0b, default_background: 0b"));
+    assert!(snbt.contains("alignment: \"left\""));
 }
