@@ -1320,8 +1320,8 @@ fn chat_deletion_timer_uses_raw_gui_ticks() {
     // ticks beside the other GUI timers, not running level ticks.
     let source = include_str!("../runtime.rs");
     let running_tick = source
-        .find("world.advance_client_time(running_ticks);")
-        .expect("pump should tick the level clock with running ticks");
+        .find("let running_ticks = client_animation_ticks.last_running_level_ticks;")
+        .expect("the completed client-level batch should expose its running tick count");
     let hud_tick = source
         .find("world.advance_hud_text_ticks(advanced_ticks);")
         .expect("pump should tick GUI text with raw ticks");
@@ -4867,8 +4867,8 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
         .expect("pump should compute the render partial tick");
     let client_time = source
-        .find("world.advance_client_time(running_ticks);")
-        .expect("pump should advance client time before item model extraction");
+        .find("let running_ticks = client_animation_ticks.last_running_level_ticks;")
+        .expect("pump should complete the client-level tick before item model extraction");
     let cooldown_tick = source
         .find("world.advance_item_cooldowns(advanced_ticks);")
         .expect("pump should advance item cooldowns before item model extraction");
@@ -5232,8 +5232,8 @@ fn renderer_frame_cloud_frame_extracts_after_client_time_camera_and_partial_tick
         .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
         .expect("pump should compute the render partial tick before cloud frame extraction");
     let client_time = source
-        .find("world.advance_client_time(running_ticks);")
-        .expect("pump should advance client time before cloud frame extraction");
+        .find("let running_ticks = client_animation_ticks.last_running_level_ticks;")
+        .expect("pump should complete the client-level tick before cloud frame extraction");
     let camera_pose = source
         .find(
             "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
@@ -5265,8 +5265,8 @@ fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
         .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
         .expect("pump should compute the render partial tick before weather extraction");
     let client_time = source
-        .find("world.advance_client_time(running_ticks);")
-        .expect("pump should advance client time before weather extraction");
+        .find("let running_ticks = client_animation_ticks.last_running_level_ticks;")
+        .expect("pump should complete the client-level tick before weather extraction");
     let camera_pose = source
         .find(
             "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
@@ -6228,12 +6228,9 @@ fn world_border_render_state_interpolates_lerping_bounds_and_uses_shrinking_tint
 #[test]
 fn renderer_frame_world_border_extracts_after_border_tick_and_weather() {
     let source = include_str!("../runtime.rs");
-    let border_tick = source
-        .find("world.advance_world_border(running_ticks);")
-        .expect("pump should tick the world border");
-    let client_time = source
-        .find("world.advance_client_time(running_ticks);")
-        .expect("pump should advance the client clock");
+    let client_level_tick = source
+        .find("let running_ticks = client_animation_ticks.last_running_level_ticks;")
+        .expect("pump should complete the ordered client-level tick batch");
     let weather_extract = source
         .find("let weather_render_state =")
         .expect("pump should extract the weather render state");
@@ -6241,17 +6238,11 @@ fn renderer_frame_world_border_extracts_after_border_tick_and_weather() {
         .find("let world_border_render_state = world_border_render_state_for_world(")
         .expect("pump should extract the world border render state");
 
-    // Vanilla ClientLevel.tick runs getWorldBorder().tick() right before
-    // tickTime() (ClientLevel.java:276-281).
-    assert!(
-        border_tick < client_time,
-        "world border ticks before the client clock, like vanilla ClientLevel.tick"
-    );
     // Vanilla LevelRenderer extraction runs worldBorderRenderer.extract in the
     // "border" profiler section after the weather extraction
     // (LevelRenderer.java:573-585).
     assert!(
-        client_time < border_extract && weather_extract < border_extract,
+        client_level_tick < border_extract && weather_extract < border_extract,
         "world border render state extracts after the client tick and weather extraction"
     );
 }
@@ -18240,8 +18231,7 @@ fn entity_client_tick_batch_shares_the_frozen_step_budget_with_world_time() {
         world.probe_entity(123).unwrap().client_animations.age_ticks,
         1
     );
-    assert_eq!(world.ticking().frozen_ticks_to_run, 1);
-    assert_eq!(world.consume_running_render_ticks(advanced_ticks), 1);
+    assert_eq!(ticks.last_running_level_ticks, 1);
     assert_eq!(world.ticking().frozen_ticks_to_run, 0);
 }
 

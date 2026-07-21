@@ -636,6 +636,7 @@ pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
     entity_animation_tick_residual: f64,
     last_entity_tick_work: EntityClientTickWork,
+    last_running_level_ticks: u32,
 }
 
 #[derive(Debug, Default)]
@@ -2252,14 +2253,7 @@ pub(crate) fn advance_simulation(
         );
     }
     let entity_partial_tick = client_animation_ticks.entity_partial_tick();
-    let running_ticks = world.consume_running_render_ticks(advanced_ticks);
-    // Vanilla `ClientLevel.tick` runs `this.getWorldBorder().tick()` right
-    // before `this.tickTime()` when the tick rate manager runs normally
-    // (ClientLevel.java:276-281); the border lerp therefore advances on the
-    // same running ticks as the client clock, before render extraction reads
-    // the interpolated border bounds.
-    world.advance_world_border(running_ticks);
-    world.advance_client_time(running_ticks);
+    let running_ticks = client_animation_ticks.last_running_level_ticks;
     world.advance_tickable_entity_sounds(advanced_ticks, running_ticks);
     // Vanilla `Minecraft.tick` calls `Gui.tick` once per client tick (Gui.java:
     // 1145-1166), outside the tick-rate manager's freeze gate, so the action
@@ -13040,6 +13034,7 @@ fn advance_entity_client_animations(
     now: Instant,
 ) -> u32 {
     ticks.last_entity_tick_work = EntityClientTickWork::default();
+    ticks.last_running_level_ticks = 0;
     let Some(last) = ticks.last_entity_animation_at else {
         ticks.last_entity_animation_at = Some(now);
         return 0;
@@ -13063,8 +13058,8 @@ fn advance_entity_client_animations(
     // mutation batch.
     let advanced_ticks = raw_ticks.min(f64::from(VANILLA_MAX_CLIENT_TICKS_PER_STEP)) as u32;
     ticks.entity_animation_tick_residual -= f64::from(advanced_ticks);
-    ticks.last_entity_tick_work =
-        world.advance_entity_client_animations_with_observation(advanced_ticks);
+    (ticks.last_entity_tick_work, ticks.last_running_level_ticks) =
+        world.advance_client_level_entity_ticks_with_observation(advanced_ticks);
     advanced_ticks
 }
 

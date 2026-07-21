@@ -266,10 +266,15 @@ fn frozen_step_batch_only_runs_ordinary_entities_for_available_step_ticks() {
         frozen: true,
     });
     store.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 1 });
+    store.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 100,
+        clock_updates: Vec::new(),
+    });
 
-    let work = store.advance_entity_client_animations_with_observation(3);
+    let (work, running_ticks) = store.advance_client_level_entity_ticks_with_observation(3);
     assert_eq!(work.scanned_entities, 6);
     assert_eq!(work.mutated_entities, 4);
+    assert_eq!(running_ticks, 1);
     assert_eq!(
         store
             .probe_entity(ordinary_id)
@@ -286,13 +291,8 @@ fn frozen_step_batch_only_runs_ordinary_entities_for_available_step_ticks() {
             .age_ticks,
         3
     );
-    assert_eq!(
-        store.ticking().frozen_ticks_to_run,
-        1,
-        "the runtime clock owner consumes the shared frozen-step budget after entity ticks"
-    );
-    assert_eq!(store.consume_running_render_ticks(3), 1);
     assert_eq!(store.ticking().frozen_ticks_to_run, 0);
+    assert_eq!(store.world_time().unwrap().game_time, 101);
 }
 
 #[test]
@@ -1940,7 +1940,7 @@ fn remote_sitting_camel_in_water_stands_instantly() {
     );
     assert_eq!(
         store.entities.metadata_long(10, last_pose_data_id, 0),
-        Some(48)
+        Some(47)
     );
     assert!(store.take_entity_client_movement_effect_states().is_empty());
     assert_eq!(

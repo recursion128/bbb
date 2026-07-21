@@ -352,8 +352,9 @@ The tick follows local Vanilla 26.1 `FishingHook.tick`,
 `CollisionGetter.clipIncludingBorder`, `BlockGetter.traverseBlocks`, and
 `Entity.move`: interpolation precedes water sampling, hooked targets follow
 `getY(0.8)` only while alive/interactable, water entry and Bobbing keep float/RNG
-order, and batched catch-up predicts each running tick's post-`tickTime` value
-without taking clock ownership away from runtime. Collision runs before gravity,
+order, and the entity-only benchmark path predicts each successive tick's
+pre-`tickTime` value without taking clock ownership away from `WorldStore`.
+Collision runs before gravity,
 movement precedes rotation, and inertia is last. Block hits use collision-shape DDA rather than whole cells. The shared
 narrow target batch preserves owner-root/left-owner, generated pickability,
 marker/spectator/living gates, ItemEntity's override, age-scaled hit margin,
@@ -391,10 +392,19 @@ per hook; a retained spatial index is the next optimization boundary if valid
 hook density or entity count makes it material. Server fishing simulation
 (`catchingFish`, loot, open-water decisions, durability/pull results) and
 canonical removal stay with the server/packet authority contract rather than
-this client tick owner. The existing runtime still commits a batch's moving
-WorldBorder ticks after the batched entity call; static-border collision is
-exact here, while per-tick moving-border/entity interleaving remains a
-cross-system scheduler boundary for the final movement-slice closeout.
+this client tick owner.
+
+The closeout scheduler now executes every catch-up substep in Vanilla
+`Minecraft.tick` order: `ClientLevel.tickEntities` reads the current clock and
+border, then the same normally-running substep advances `WorldBorder.tick`
+followed by `ClientLevel.tickTime`. Frozen Player/passenger exceptions still
+receive raw entity ticks, while the frozen-step budget is consumed once by the
+combined `WorldStore` owner. This removes both the former first-tick +1 clock
+error in FishingHook synchronized RNG and the aggregate moving-border advance.
+An entity-only benchmark API retains the same per-tick inputs without mutating
+clock/border state; runtime cannot use that path. Focused tests pin a three-tick
+shrinking-border FishingHook collision and a frozen three-tick batch with one
+running level tick.
 
 ## Phase 4 Locally Controlled Boat Physics Stage
 
@@ -643,9 +653,10 @@ approximated here.
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.
-Remote persistent boat status, block inside/emission callbacks, the exact
-passenger push pass, and non-boat controlling-passenger travel remain for the
-subsequent stage. Vanilla's client bubble-column branch only advances the
+Remote persistent boat status, block inside/emission callbacks, and the exact
+passenger push pass remain for the subsequent stage. Non-boat
+controlling-passenger travel and the per-substep client-level scheduler are now
+implemented. Vanilla's client bubble-column branch only advances the
 already-modelled wobble multiplier/angle; ejection and velocity changes are
 server-only, so no separate client bubble motion remains.
 None of those server-authoritative consequences is synthesized here.

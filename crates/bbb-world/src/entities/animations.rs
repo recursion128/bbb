@@ -6971,12 +6971,12 @@ impl WorldStore {
             return crate::EntityClientTickWork::default();
         }
 
-        // `TickRateManager.tick` consumes frozen step ticks before
-        // `ClientLevel.tickEntities`. The runtime consumes the same count after
-        // this call for the clock/border owners, so derive the per-tick gate
-        // without mutating `WorldTickingState` here. Player roots and roots with
-        // indirect Player passengers still tick while `runs_normally` is false;
-        // `EntityStore` applies that entity-specific exception.
+        // The entity-only benchmark/test API leaves the frozen-step budget and
+        // level owners untouched, so derive the same per-tick gate without
+        // mutating `WorldTickingState`. The runtime uses the ordered client-level
+        // batch below, which consumes the budget and interleaves border/time.
+        // Player roots and roots with indirect Player passengers still tick
+        // while `runs_normally` is false; `EntityStore` applies that exception.
         let ticking = self.ticking();
         let running_ticks = if ticking.frozen {
             (ticking.frozen_ticks_to_run.max(0) as u32).min(ticks)
@@ -6987,16 +6987,50 @@ impl WorldStore {
         let mut work = crate::EntityClientTickWork::default();
         for tick_index in 0..ticks {
             let runs_normally = tick_index < running_ticks;
+            work.accumulate(self.advance_entity_client_animation_tick(runs_normally, game_time));
             if runs_normally {
-                // `ClientLevel.tick` advances game time before `tickEntities`.
-                // Runtime commits the same aggregate `running_ticks` after
-                // this batched call; predict only the per-tick value needed by
-                // entity RNG so catch-up ticks do not reuse the old clock.
+                // `Minecraft.tick` runs `ClientLevel.tickEntities` before
+                // `ClientLevel.tickTime`. Predict the next tick's clock only
+                // after this entity tick; the entity-only benchmark API does
+                // not mutate the canonical level clock.
                 game_time = game_time.saturating_add(1);
             }
-            work.accumulate(self.advance_entity_client_animation_tick(runs_normally, game_time));
         }
         work
+    }
+
+    /// Advances one native catch-up batch in Vanilla `Minecraft.tick` order.
+    ///
+    /// Each raw client tick first advances eligible entities against the current level clock and
+    /// world border. A normally-running tick then advances the border and clock before the next
+    /// entity tick. Frozen player exceptions still receive every raw entity tick, while the
+    /// frozen step budget is consumed exactly once for the whole batch.
+    pub fn advance_client_level_entity_ticks_with_observation(
+        &mut self,
+        ticks: u32,
+    ) -> (crate::EntityClientTickWork, u32) {
+        if ticks == 0 {
+            return (crate::EntityClientTickWork::default(), 0);
+        }
+
+        let running_ticks = self.consume_running_render_ticks(ticks);
+        let mut work = crate::EntityClientTickWork::default();
+        for tick_index in 0..ticks {
+            let runs_normally = tick_index < running_ticks;
+            if self.entity_count() != 0 {
+                let game_time = self.world_time().map_or(0, |time| time.game_time);
+                work.accumulate(
+                    self.advance_entity_client_animation_tick(runs_normally, game_time),
+                );
+            }
+            if runs_normally {
+                // Vanilla `ClientLevel.tick` advances these owners after
+                // `tickEntities`, in this order, for every catch-up tick.
+                self.advance_world_border(1);
+                self.advance_client_time(1);
+            }
+        }
+        (work, running_ticks)
     }
 
     fn advance_entity_client_animation_tick(

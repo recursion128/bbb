@@ -2331,8 +2331,8 @@ mod tests {
     };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue, ItemStackSummary, RemoveEntities,
-        SetBorderSize as ProtocolSetBorderSize, SetEntityData as ProtocolSetEntityData,
-        Vec3d as ProtocolVec3d,
+        SetBorderLerpSize as ProtocolSetBorderLerpSize, SetBorderSize as ProtocolSetBorderSize,
+        SetEntityData as ProtocolSetEntityData, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -3352,7 +3352,7 @@ mod tests {
     }
 
     #[test]
-    fn fishing_hook_batched_ticks_use_each_post_tick_game_time_for_synchronized_rng() {
+    fn fishing_hook_batched_entity_ticks_use_each_pre_level_tick_game_time_for_synchronized_rng() {
         let mut store = WorldStore::new();
         store.apply_add_entity(projectile(
             85,
@@ -3375,7 +3375,44 @@ mod tests {
                 .fishing_hook_movement(86)
                 .unwrap()
                 .synchronized_random_seed,
-            java_random_seed((86_u64 ^ 3_u64) as i64),
+            java_random_seed((86_u64 ^ 2_u64) as i64),
+        );
+    }
+
+    #[test]
+    fn client_level_catch_up_interleaves_entity_ticks_with_moving_world_border() {
+        let mut store = WorldStore::new();
+        store.apply_set_border_lerp_size(ProtocolSetBorderLerpSize {
+            old_size: 10.0,
+            new_size: 4.0,
+            lerp_time: 4,
+        });
+        store.apply_add_entity(projectile(
+            87,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut hook = projectile(
+            88,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            ProtocolVec3d {
+                x: 0.82,
+                y: 0.0,
+                z: 0.0,
+            },
+        );
+        hook.position.x = 2.0;
+        hook.data = 87;
+        store.apply_add_entity(hook);
+
+        let (_, running_ticks) = store.advance_client_level_entity_ticks_with_observation(3);
+
+        let transform = store.probe_entity_transform(88).unwrap();
+        assert_eq!(running_ticks, 3);
+        assert_eq!(store.world_border().current_size, 5.5);
+        assert!(
+            transform.position.x < 3.5744 && transform.delta_movement.x < 0.0,
+            "the third entity tick must collide with the border advanced after the first two ticks: {transform:?}"
         );
     }
 

@@ -20218,3 +20218,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   3.6957 us、retained publication 8.2662 us；Strider 3.9554/8.7258 us；fresh Pig boost +
   retained publication 22.190 us。约 4.57--4.77 us steady retained 增量在本次操作支付，
   没有转移到下一次 mutation。
+
+## 2026-07-20：Entity/client-level catch-up scheduler ordering
+
+- [x] 对照 26.1 `Minecraft.tick` 与 `ClientLevel.tick`，runtime catch-up 每个 substep 改为
+  `tickEntities -> WorldBorder.tick -> tickTime`；不再批次末聚合推进 border/time，也不再把
+  FishingHook 首 tick RNG clock 提前 +1。frozen Player/passenger exception 仍按 raw tick 运行，
+  frozen step budget 由组合 `WorldStore` owner 一次消费并向后续系统回报 running tick 数。
+- [x] entity-only Criterion/test API 保留不修改 canonical clock/border 的窄语义，同时按每个
+  running tick 的 pre-`tickTime` clock 递进；native runtime 只走组合入口。专项测试锁定三 tick
+  shrinking-border FishingHook collision、单 frozen-step 三 tick batch、clock 及 step-budget 结果。
