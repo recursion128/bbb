@@ -20149,3 +20149,20 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Vanilla-required particle payload 与 exact RNG；FIFO 每 tick drain，未转移到 snapshot 或
   下一次 mutation。峰值逻辑内存仍随同 tick ambient entity 数量线性增长，是后续
   effect-stream 优化边界。
+
+## 2026-07-20：Guardian ambient/dry client tick
+
+- [x] 对照 26.1 `Guardian.aiStep`，Guardian/ElderGuardian 复用 generated family：dry spike、
+  moving-water 两个 bubble、触地记忆/上升 flop sound，以及 dry grounded 随机 impulse/yaw 均按
+  Java 调用顺序推进；air supply、AI、pathing、damage 仍归 server authority。
+- [x] Guardian stand-on-face world fact 合并进既有 in-water narrow pass，且只在 dry downward
+  short-circuit 成立时查询 loaded block 的完整 UP collision face；没有第二次 ECS scan、完整
+  EntityState projection 或手写 entity-type membership。跳跃同时清除 canonical on-ground/
+  supporting-block，old publication 与 same-id recreation 的 RNG/触地/transform 隔离有专项测试；
+  powder-snow 的 remote fall-distance context 因 wire 不可恢复而显式保留为 conservative gap。
+- [x] bubble 使用一个两命令 typed FIFO owner/native template lookup；Guardian/Elder flop 分别映射
+  exact hostile sound。2,000 dry/wet-moving/active-target 基准从 4.4219/4.5640/4.4359 ms 变为
+  4.7186/5.0540/4.7374 ms（+6.7%/+10.7%/+6.8%）；dry/active retained-publication 从
+  5.6563/5.7317 ms 变为 6.1862/6.0928 ms（+9.4%/+6.3%）。新增成本是必要 RNG、world fact
+  与最多 4,000 bubble commands，FIFO 在 publication 前 drain；target look/beam bubbles 保留为
+  下一 Guardian 边界。

@@ -160,6 +160,43 @@ fn ender_ambient_batch_reuses_one_portal_template_for_two_commands() {
 }
 
 #[test]
+fn guardian_ambient_batch_reuses_one_bubble_template_for_two_commands() {
+    let mut resolver = test_resolver(0);
+    let positions = [
+        bbb_world::EntityVec3 {
+            x: 4.1,
+            y: 62.2,
+            z: -6.3,
+        },
+        bbb_world::EntityVec3 {
+            x: 3.8,
+            y: 63.4,
+            z: -5.9,
+        },
+    ];
+    let batch = resolver.entity_client_movement_particle_batch(
+        EntityClientMovementParticleState::GuardianAmbient(GuardianAmbientParticleState {
+            entity_id: 42,
+            positions,
+        }),
+    );
+
+    assert_eq!(batch.missing_definition_count, 0);
+    assert_eq!(batch.missing_sprite_count, 0);
+    assert_eq!(batch.commands.len(), 2);
+    for (command, position) in batch.commands.iter().zip(positions) {
+        assert_particle_command(
+            command,
+            VANILLA_PARTICLE_TYPE_BUBBLE_ID,
+            "minecraft:bubble",
+            [position.x, position.y, position.z],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+    }
+}
+
+#[test]
 fn eye_of_ender_trail_batch_matches_vanilla_water_and_portal_paths() {
     let state = EyeOfEnderTrailParticleState {
         entity_id: 8,

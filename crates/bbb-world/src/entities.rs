@@ -718,10 +718,20 @@ pub struct EnderAmbientParticleState {
     pub velocities: [EntityVec3; 2],
 }
 
+/// One moving, submerged Guardian `aiStep` bubble pair. Keeping the fixed pair
+/// under one FIFO owner preserves per-entity ordering and performs one particle
+/// template lookup in the native resolver.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct GuardianAmbientParticleState {
+    pub entity_id: i32,
+    pub positions: [EntityVec3; 2],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum EntityClientMovementParticleState {
     BlazeAmbient(BlazeAmbientParticleState),
     EnderAmbient(EnderAmbientParticleState),
+    GuardianAmbient(GuardianAmbientParticleState),
     FireworkRocket(FireworkRocketTrailParticleState),
     EyeOfEnder(EyeOfEnderTrailParticleState),
     ShulkerBullet(ShulkerBulletTrailParticleState),
@@ -733,6 +743,7 @@ pub enum EntityClientMovementSoundKind {
     BoatPaddleLeft,
     BoatPaddleRight,
     BlazeBurn { volume: f32, pitch: f32 },
+    GuardianFlop { elder: bool },
     BreezeDeflect,
     FireworkRocketLaunch,
     TridentReturn,

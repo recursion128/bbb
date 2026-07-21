@@ -12,6 +12,9 @@ impl ParticleCommandResolver {
             EntityClientMovementParticleState::EnderAmbient(state) => {
                 self.ender_ambient_particle_batch(state)
             }
+            EntityClientMovementParticleState::GuardianAmbient(state) => {
+                self.guardian_ambient_particle_batch(state)
+            }
             EntityClientMovementParticleState::FireworkRocket(state) => {
                 self.firework_rocket_trail_particle_batch(state)
             }
@@ -84,6 +87,36 @@ impl ParticleCommandResolver {
                             y: velocity.y,
                             z: velocity.z,
                         },
+                        false,
+                    )
+                })
+                .collect(),
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
+    fn guardian_ambient_particle_batch(
+        &mut self,
+        state: GuardianAmbientParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_BUBBLE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            commands: state
+                .positions
+                .into_iter()
+                .map(|position| {
+                    self.command_from_template(
+                        &template,
+                        Vec3d {
+                            x: position.x,
+                            y: position.y,
+                            z: position.z,
+                        },
+                        Vec3d::default(),
                         false,
                     )
                 })

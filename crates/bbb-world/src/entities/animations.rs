@@ -235,6 +235,7 @@ const RAVAGER_STUN_PARTICLE_RANDOM_SALT: i64 = 0x5A17;
 /// is cloned into immutable publications so retained generations cannot advance.
 const BLAZE_CLIENT_RANDOM_SALT: u64 = 0x626c_617a_655f_7469;
 const ENDER_AMBIENT_RANDOM_SALT: u64 = 0x656e_6465_725f_7469;
+const GUARDIAN_CLIENT_RANDOM_SALT: u64 = 0x6775_6172_6469_616e;
 /// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
 /// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
 const HOGLIN_ATTACK_TICKS: i32 = 10;
@@ -284,6 +285,12 @@ pub(crate) struct EntityClientTickParticleTriggers {
     pub(crate) blaze_burn_sound: Option<BlazeBurnSoundParameters>,
     /// Vanilla Enderman/Endermite `aiStep`: two portal particles per tick.
     pub(crate) ender_portal: Option<[EnderAmbientParticleOffset; 2]>,
+    /// Vanilla moving, submerged Guardian: two bubbles behind its view vector.
+    pub(crate) guardian_moving_bubbles: Option<[GuardianAmbientParticleOffset; 2]>,
+    /// Vanilla dry Guardian upward flop sound after a remembered supporting face.
+    pub(crate) guardian_flop_sound: bool,
+    /// Vanilla dry, grounded Guardian random impulse applied after particles.
+    pub(crate) guardian_dry_jump: Option<GuardianDryJumpUpdate>,
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
@@ -311,6 +318,20 @@ pub(crate) struct EnderAmbientParticleOffset {
     pub(crate) y_unit: f64,
     pub(crate) z_unit: f64,
     pub(crate) velocity: EntityVec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct GuardianAmbientParticleOffset {
+    pub(crate) x_unit: f64,
+    pub(crate) y_unit: f64,
+    pub(crate) z_unit: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct GuardianDryJumpUpdate {
+    pub(crate) x_impulse: f64,
+    pub(crate) z_impulse: f64,
+    pub(crate) y_rot: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -504,6 +525,10 @@ pub struct EntityClientAnimationState {
     /// portal-particle family. This is one cursor per canonical entity.
     #[serde(skip)]
     pub(crate) ender_ambient_random_seed: Option<u64>,
+    /// Shared client-local Guardian RNG cursor. It owns the constructor tail
+    /// phase, dry spike flicker, ambient bubbles, and dry jump in Java order.
+    #[serde(skip)]
+    pub(crate) guardian_client_random_seed: Option<u64>,
 }
 
 /// The client-observable `BaseSpawner` state owned by `MinecartSpawner`. Vanilla constructs it
@@ -2594,6 +2619,10 @@ pub struct GuardianTailAnimationState {
     /// Vanilla `Guardian.clientSideTailAnimationSpeed`.
     #[serde(default)]
     pub tail_animation_speed: f32,
+    /// Vanilla `clientSideTouchedGround`, updated only by the dry branch and
+    /// consumed on the following upward movement to gate the flop sound.
+    #[serde(skip)]
+    pub client_side_touched_ground: bool,
 }
 
 impl Default for GuardianTailAnimationState {
@@ -2602,6 +2631,7 @@ impl Default for GuardianTailAnimationState {
             tail_animation: 0.0,
             previous_tail_animation: 0.0,
             tail_animation_speed: 0.0,
+            client_side_touched_ground: false,
         }
     }
 }
@@ -2614,6 +2644,7 @@ impl GuardianTailAnimationState {
             tail_animation: phase,
             previous_tail_animation: phase,
             tail_animation_speed: 0.0,
+            client_side_touched_ground: false,
         }
     }
 
@@ -2624,12 +2655,24 @@ impl GuardianTailAnimationState {
     /// moving it jumps to `4.0` from a near-rest speed (`< 0.5`) else eases toward
     /// `0.5` by `0.1`; in water and idle it eases toward `0.125` by `0.2`. Finally
     /// it integrates `clientSideTailAnimation += clientSideTailAnimationSpeed`. The
-    /// out-of-water flop-sound / `clientSideTouchedGround` bookkeeping in the same
-    /// branch is server-adjacent audio and is intentionally not modelled here, and
-    /// the `clientSideSpikesAnimation` attack withdrawal (which needs a per-tick
-    /// `random.nextFloat()` out of water) stays deferred.
-    fn advance_client_tick(&mut self, in_water: bool, is_moving: bool) {
+    /// Returns whether Vanilla emits the dry upward flop sound before replacing
+    /// `clientSideTouchedGround` with this tick's downward/support-face result.
+    fn advance_client_tick(
+        &mut self,
+        in_water: bool,
+        is_moving: bool,
+        delta_y: f64,
+        can_stand_on_below: bool,
+        is_silent: bool,
+    ) -> bool {
         self.previous_tail_animation = self.tail_animation;
+        let flop_sound = if !in_water {
+            let sound = delta_y > 0.0 && self.client_side_touched_ground && !is_silent;
+            self.client_side_touched_ground = delta_y < 0.0 && can_stand_on_below;
+            sound
+        } else {
+            false
+        };
         if !in_water {
             self.tail_animation_speed = 2.0;
         } else if is_moving {
@@ -2642,6 +2685,7 @@ impl GuardianTailAnimationState {
             self.tail_animation_speed += (0.125 - self.tail_animation_speed) * 0.2;
         }
         self.tail_animation += self.tail_animation_speed;
+        flop_sound
     }
 
     /// Vanilla `GuardianRenderer.extractRenderState`: `state.tailAnimation =
@@ -2674,13 +2718,12 @@ pub struct GuardianSpikesAnimationState {
 
 impl GuardianSpikesAnimationState {
     /// Advances one client tick of `Guardian.aiStep`'s spike-withdrawal accumulator: save the lerp
-    /// endpoint, then ease toward `0` (moving) / `1` (idle) in water. Out of water vanilla randomizes
-    /// it each tick (`random.nextFloat()`) — not reconstructable, so the value is held steady.
-    fn advance_client_tick(&mut self, in_water: bool, is_moving: bool) {
+    /// endpoint, then ease toward `0` (moving) / `1` (idle) in water. Out of
+    /// water Vanilla uses the entity RNG value supplied by the common owner.
+    fn advance_client_tick(&mut self, in_water: bool, is_moving: bool, dry_random: Option<f32>) {
         self.previous_spikes_animation = self.spikes_animation;
         if !in_water {
-            // Deferred: vanilla `clientSideSpikesAnimation = random.nextFloat()` flickers the spikes
-            // with an unseeded client RNG. Hold the last value rather than fake the randomness.
+            self.spikes_animation = dry_random.expect("dry Guardian tick requires one RNG float");
         } else if is_moving {
             self.spikes_animation += (0.0 - self.spikes_animation) * 0.25;
         } else {
@@ -3904,12 +3947,19 @@ impl EntityClientAnimationState {
             .then(|| spawn_random_unit_float(uuid, 0x6974_656d) * std::f32::consts::TAU);
         self.end_crystal_time_offset = (entity_type_id == VANILLA_ENTITY_TYPE_END_CRYSTAL_ID)
             .then(|| (spawn_random_bits(uuid, 0x6372_7973_7461_6c) % 100_000) as u32);
-        self.guardian_tail = vanilla_entity_metadata_type_is_guardian(entity_type_id).then(|| {
-            GuardianTailAnimationState::with_initial_phase(spawn_random_unit_float(
+        if vanilla_entity_metadata_type_is_guardian(entity_type_id) {
+            let mut random_seed = java_random_seed(spawn_random_bits(
                 uuid,
-                0x6775_6172_6469_616e,
-            ))
-        });
+                GUARDIAN_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
+            ) as i64);
+            self.guardian_tail = Some(GuardianTailAnimationState::with_initial_phase(
+                java_random_next_float(&mut random_seed),
+            ));
+            self.guardian_client_random_seed = Some(random_seed);
+        } else {
+            self.guardian_tail = None;
+            self.guardian_client_random_seed = None;
+        }
         self.minecart_furnace_smoke_random_seed = (entity_type_id
             == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID)
             .then(|| java_random_seed(spawn_random_bits(uuid, 0x6675_726e_6163_655f) as i64));
@@ -5558,6 +5608,9 @@ impl EntityClientAnimationState {
         // entity metadata in the tick loop. `false` for entities that do not
         // consume it.
         is_moving: bool,
+        // Vanilla dry Guardian `loadedAndEntityCanStandOn(blockPosition().below())`,
+        // resolved by WorldStore before the mutable ECS pass.
+        guardian_can_stand_on_below: bool,
         // Vanilla `Warden.getHeartBeatDelay()` over the synced anger, read from the
         // entity metadata in the tick loop ([`warden_heartbeat_delay`]). The calm
         // `40` for entities that do not consume it.
@@ -5638,9 +5691,9 @@ impl EntityClientAnimationState {
         // Vanilla `MinecartFurnace.DATA_ID_FUEL`. The server owns fuel/push;
         // the client reads only this synced bit for its presentation smoke.
         furnace_minecart_has_fuel: bool,
-        // Vanilla `Entity.isSilent()`, used inside the Blaze random branch. The
-        // gate must be applied before drawing the two sound floats.
-        blaze_is_silent: bool,
+        // Vanilla `Entity.isSilent()`, used by Blaze and Guardian client-local
+        // sound branches. The Blaze gate must precede its two sound floats.
+        is_silent: bool,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
     ) -> EntityClientTickParticleTriggers {
@@ -5699,7 +5752,7 @@ impl EntityClientAnimationState {
             let random_seed = self.blaze_client_random_seed.get_or_insert_with(|| {
                 java_random_seed(i64::from(entity_id).wrapping_add(BLAZE_CLIENT_RANDOM_SALT as i64))
             });
-            if java_random_next_int_bound(random_seed, 24) == 0 && !blaze_is_silent {
+            if java_random_next_int_bound(random_seed, 24) == 0 && !is_silent {
                 particle_triggers.blaze_burn_sound = Some(BlazeBurnSoundParameters {
                     volume: 1.0 + java_random_next_float(random_seed),
                     pitch: java_random_next_float(random_seed) * 0.7 + 0.3,
@@ -5734,6 +5787,54 @@ impl EntityClientAnimationState {
                         z: (java_random_next_double(random_seed) - 0.5) * 2.0,
                     },
                 }));
+        }
+        if vanilla_entity_metadata_type_is_guardian(entity_type_id) {
+            let random_seed = self.guardian_client_random_seed.get_or_insert_with(|| {
+                let mut random_seed = java_random_seed(
+                    i64::from(entity_id)
+                        .wrapping_add(GUARDIAN_CLIENT_RANDOM_SALT as i64)
+                        .wrapping_add(i64::from(entity_type_id)),
+                );
+                // Guardian's constructor consumes the initial tail phase from
+                // the same entity RNG before the first `aiStep` draw.
+                java_random_next_float(&mut random_seed);
+                random_seed
+            });
+            particle_triggers.guardian_flop_sound = self
+                .guardian_tail
+                .get_or_insert_with(GuardianTailAnimationState::default)
+                .advance_client_tick(
+                    in_water,
+                    is_moving,
+                    transform.delta_movement.y,
+                    guardian_can_stand_on_below,
+                    is_silent,
+                );
+            let dry_spike_random = (!in_water).then(|| java_random_next_float(random_seed));
+            self.guardian_spikes
+                .get_or_insert_with(GuardianSpikesAnimationState::default)
+                .advance_client_tick(in_water, is_moving, dry_spike_random);
+            if is_moving && in_water {
+                particle_triggers.guardian_moving_bubbles =
+                    Some(std::array::from_fn(|_| GuardianAmbientParticleOffset {
+                        x_unit: java_random_next_double(random_seed) - 0.5,
+                        y_unit: java_random_next_double(random_seed),
+                        z_unit: java_random_next_double(random_seed) - 0.5,
+                    }));
+            }
+            self.guardian_attack
+                .get_or_insert_with(GuardianAttackAnimationState::default)
+                .advance_client_tick(
+                    guardian_attack_target_id,
+                    guardian_attack_duration(entity_type_id),
+                );
+            if !in_water && transform.on_ground.unwrap_or(false) {
+                particle_triggers.guardian_dry_jump = Some(GuardianDryJumpUpdate {
+                    x_impulse: f64::from((java_random_next_float(random_seed) * 2.0 - 1.0) * 0.4),
+                    z_impulse: f64::from((java_random_next_float(random_seed) * 2.0 - 1.0) * 0.4),
+                    y_rot: java_random_next_float(random_seed) * 360.0,
+                });
+            }
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
             if self.ender_dragon.is_some_and(|dragon| dragon.dragon_dying) {
@@ -5986,25 +6087,7 @@ impl EntityClientAnimationState {
                     pose.advance_client_tick();
                 }
             }
-            _ if vanilla_entity_metadata_type_is_guardian(entity_type_id) => {
-                // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
-                // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
-                self.guardian_tail
-                    .get_or_insert_with(GuardianTailAnimationState::default)
-                    .advance_client_tick(in_water, is_moving);
-                // The same `aiStep` eases the spike-withdrawal accumulator (retract while swimming,
-                // extend while idle); out of water it would randomize, which is deferred.
-                self.guardian_spikes
-                    .get_or_insert_with(GuardianSpikesAnimationState::default)
-                    .advance_client_tick(in_water, is_moving);
-                // The same `aiStep` ramps `clientSideAttackTime` while a target is locked.
-                self.guardian_attack
-                    .get_or_insert_with(GuardianAttackAnimationState::default)
-                    .advance_client_tick(
-                        guardian_attack_target_id,
-                        guardian_attack_duration(entity_type_id),
-                    );
-            }
+            _ if vanilla_entity_metadata_type_is_guardian(entity_type_id) => {}
             VANILLA_ENTITY_TYPE_FROG_ID => {
                 // Vanilla `Frog.tick` (client side): `swimIdleAnimationState.animateWhen(isInWater()
                 // && !walkAnimation.isMoving(), tickCount)`. `isInWater()` is the per-tick world fact
@@ -6530,15 +6613,18 @@ impl WorldStore {
         // AABBs and interpolation collision targets are sampled again after every
         // transform mutation. The immutable reads MUST precede the mutable advance.
         let in_water_inputs = self.entities.in_water_aabb_inputs();
-        let in_water_by_id: std::collections::HashMap<i32, bool> = in_water_inputs
-            .into_iter()
-            .map(|(id, aabb_min, aabb_max)| {
-                (
-                    id,
-                    crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max),
-                )
-            })
-            .collect();
+        let mut in_water_by_id = std::collections::HashMap::with_capacity(in_water_inputs.len());
+        let mut guardian_can_stand_on_below_by_id = std::collections::HashMap::new();
+        for (id, aabb_min, aabb_max, guardian_below_pos) in in_water_inputs {
+            let in_water = crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max);
+            in_water_by_id.insert(id, in_water);
+            if let Some(pos) = guardian_below_pos.filter(|_| !in_water) {
+                let can_stand = self.probe_block(pos).is_some_and(|block| {
+                    crate::client::block_collision_shape_has_full_up_face(&block, pos)
+                });
+                guardian_can_stand_on_below_by_id.insert(id, can_stand);
+            }
+        }
         let client_movement_fluid_by_id = client_movement_fluid_inputs
             .iter()
             .map(|input| {
@@ -6767,6 +6853,7 @@ impl WorldStore {
             deferred_boat_paddle_entity_id,
             &spectator_player_uuids,
             &in_water_by_id,
+            &guardian_can_stand_on_below_by_id,
             &client_movement_collisions_by_id,
             minecart_improvements_enabled,
             death_tick_player_chunk,

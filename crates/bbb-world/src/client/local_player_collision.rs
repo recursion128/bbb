@@ -1782,6 +1782,15 @@ fn block_collision_shape_empty_context(
     block_collision_shape(block, pos)
 }
 
+/// Mirrors `BlockState.entityCanStandOnFace(..., Direction.UP)` for a remote
+/// entity whose collision context does not add a block-specific walkability
+/// exception. Powder snow therefore fails closed; scaffolding's stable top
+/// shape is the same support face exposed to an entity above it.
+pub(crate) fn block_collision_shape_has_full_up_face(block: &BlockProbe, pos: BlockPos) -> bool {
+    block_collision_shape_empty_context(block, pos)
+        .is_some_and(|shape| shape.has_full_face(BlockDirection::Up))
+}
+
 fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockCollisionShape> {
     if is_slab_block(block) {
         return match block.block_properties.get("type").map(String::as_str) {
@@ -5278,6 +5287,49 @@ mod tests {
             scaffolding_pos,
         )
         .is_some());
+    }
+
+    #[test]
+    fn remote_guardian_stand_probe_requires_a_loaded_full_up_face() {
+        let mut world = empty_world();
+        let stone_pos = BlockPos { x: 0, y: 0, z: 0 };
+        let top_slab_pos = BlockPos { x: 1, y: 0, z: 0 };
+        let bottom_slab_pos = BlockPos { x: 2, y: 0, z: 0 };
+        set_block(
+            &mut world,
+            stone_pos,
+            vanilla_block_state_id("minecraft:stone", []),
+        );
+        set_block(
+            &mut world,
+            top_slab_pos,
+            vanilla_block_state_id(
+                "minecraft:stone_slab",
+                [("type", "top"), ("waterlogged", "false")],
+            ),
+        );
+        set_block(
+            &mut world,
+            bottom_slab_pos,
+            vanilla_block_state_id(
+                "minecraft:stone_slab",
+                [("type", "bottom"), ("waterlogged", "false")],
+            ),
+        );
+
+        assert!(block_collision_shape_has_full_up_face(
+            &world.probe_block(stone_pos).unwrap(),
+            stone_pos
+        ));
+        assert!(block_collision_shape_has_full_up_face(
+            &world.probe_block(top_slab_pos).unwrap(),
+            top_slab_pos
+        ));
+        assert!(!block_collision_shape_has_full_up_face(
+            &world.probe_block(bottom_slab_pos).unwrap(),
+            bottom_slab_pos
+        ));
+        assert!(world.probe_block(BlockPos { x: 16, y: 0, z: 0 }).is_none());
     }
 
     #[test]

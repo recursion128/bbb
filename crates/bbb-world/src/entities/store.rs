@@ -84,17 +84,17 @@ use super::{
     EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FoxEatParticleState, HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState,
-    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
-    OminousItemSpawnerItemState, OminousItemSpawnerParticleState, RavagerRoarParticleState,
-    RavagerStunParticleState, WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS,
+    FoxEatParticleState, GuardianAmbientParticleState, HappyGhastHarnessColor,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
+    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -307,6 +307,7 @@ struct EntityClientTickScratch {
     scheduled_set: HashSet<i32>,
     scheduled_entities: Vec<Entity>,
     player_passenger_ancestors: HashSet<i32>,
+    guardian_dry_jump_entities: Vec<i32>,
 }
 
 impl EntityClientTickScratch {
@@ -314,6 +315,7 @@ impl EntityClientTickScratch {
         self.scheduled_set.clear();
         self.scheduled_entities.clear();
         self.player_passenger_ancestors.clear();
+        self.guardian_dry_jump_entities.clear();
     }
 }
 
@@ -4777,11 +4779,13 @@ impl EntityStore {
     /// Gathers the world AABBs the per-entity `in_water` map is built from, for the
     /// entity types whose client-tick animation reads `isInWater()`
     /// ([`entity_animation_uses_in_water`]). Each tuple is `(entity_id, aabb_min,
-    /// aabb_max)` with the AABB resolved from the SAME bounds source the projection
+    /// aabb_max, guardian_below_pos)` with the AABB resolved from the SAME bounds source the projection
     /// uses ([`Self::pick_bounds`] → `vanilla_pick_bounds_for_entity_data`), so the
     /// fluid overlap matches the projected `in_water`. `WorldStore` (which holds the
     /// chunk/fluid data) turns each AABB into a `bool`.
-    pub(crate) fn in_water_aabb_inputs(&self) -> Vec<(i32, [f64; 3], [f64; 3])> {
+    pub(crate) fn in_water_aabb_inputs(
+        &self,
+    ) -> Vec<(i32, [f64; 3], [f64; 3], Option<crate::BlockPos>)> {
         let mut inputs = Vec::new();
         let mut query = self.ecs.query::<(
             &EntityIdentity,
@@ -4816,7 +4820,15 @@ impl EntityStore {
                 transform.position.y + f64::from(bounds.max[1]),
                 transform.position.z + f64::from(bounds.max[2]),
             ];
-            inputs.push((identity.id, aabb_min, aabb_max));
+            let guardian_below_pos =
+                (vanilla_entity_metadata_type_is_guardian(identity.entity_type_id)
+                    && transform.delta_movement.y < 0.0)
+                    .then_some(crate::BlockPos {
+                        x: transform.position.x.floor() as i32,
+                        y: transform.position.y.floor() as i32 - 1,
+                        z: transform.position.z.floor() as i32,
+                    });
+            inputs.push((identity.id, aabb_min, aabb_max, guardian_below_pos));
         }
         inputs
     }
@@ -4956,6 +4968,7 @@ impl EntityStore {
         deferred_boat_paddle_entity_id: Option<i32>,
         spectator_player_uuids: &HashSet<Uuid>,
         in_water_by_id: &HashMap<i32, bool>,
+        guardian_can_stand_on_below_by_id: &HashMap<i32, bool>,
         client_movement_collisions_by_id: &HashMap<
             i32,
             super::client_movement::EntityClientMovementCollisionResult,
@@ -5087,6 +5100,11 @@ impl EntityStore {
                 let is_guardian = vanilla_entity_metadata_type_is_guardian(entity_type_id);
                 let is_moving =
                     is_guardian && guardian_is_moving(entity_type_id, &metadata.data_values);
+                let guardian_can_stand_on_below = is_guardian
+                    && guardian_can_stand_on_below_by_id
+                        .get(&identity.id)
+                        .copied()
+                        .unwrap_or(false);
                 let warden_heartbeat_delay = if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID {
                     warden_heartbeat_delay(entity_type_id, &metadata.data_values)
                 } else {
@@ -5159,7 +5177,7 @@ impl EntityStore {
                     .is_some_and(|(data_id, default)| {
                         entity_data_bool(&metadata.data_values, data_id, default)
                     });
-                let blaze_is_silent = entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID
+                let is_silent = (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID || is_guardian)
                     && vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
                         entity_data_bool(
                             &metadata.data_values,
@@ -5183,6 +5201,7 @@ impl EntityStore {
                     bat_is_resting,
                     in_water,
                     is_moving,
+                    guardian_can_stand_on_below,
                     warden_heartbeat_delay,
                     guardian_attack_target_id,
                     wither_head_targets,
@@ -5208,7 +5227,7 @@ impl EntityStore {
                     boat_paddles[1],
                     boat_bubble_time_value,
                     furnace_minecart_has_fuel,
-                    blaze_is_silent,
+                    is_silent,
                     is_swimming,
                 );
                 append_client_tick_particle_triggers(
@@ -5222,9 +5241,32 @@ impl EntityStore {
                     client_animations_before_tick,
                     particle_triggers,
                 );
+                if let Some(update) = particle_triggers.guardian_dry_jump {
+                    transform.delta_movement.x += update.x_impulse;
+                    transform.delta_movement.y += 0.5;
+                    transform.delta_movement.z += update.z_impulse;
+                    transform.y_rot = if guardian_attack_target_id != 0 {
+                        // Guardian's final `hasActiveAttackTarget` branch runs
+                        // after the dry jump's random body yaw.
+                        transform.y_head_rot
+                    } else {
+                        update.y_rot
+                    };
+                    transform.on_ground = Some(false);
+                    tick_scratch.guardian_dry_jump_entities.push(identity.id);
+                }
                 // `advance_client_tick` always advances `age_ticks`, including
                 // entities without a specialized animation family.
                 work.mutated_entities = work.mutated_entities.saturating_add(1);
+            }
+            for entity_id in tick_scratch.guardian_dry_jump_entities.drain(..) {
+                if let Some(&entity) = self.by_protocol_id.get(&entity_id) {
+                    if let Ok(mut supporting_block) =
+                        self.ecs.get::<&mut EntitySupportingBlock>(entity)
+                    {
+                        *supporting_block = EntitySupportingBlock::default();
+                    }
+                }
             }
             work.animation_duration += animation_started_at.elapsed();
             self.client_tick_scratch = tick_scratch;
@@ -6093,6 +6135,43 @@ fn append_client_tick_particle_triggers(
                     z: transform.position.z + offset.z_unit * width,
                 }),
                 velocities: offsets.map(|offset| offset.velocity),
+            }),
+        ));
+    }
+    if triggers.guardian_flop_sound {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::GuardianFlop {
+                    elder: matches!(
+                        super::vanilla_entity_renderer_guardian_kind(identity.entity_type_id),
+                        Some(super::VanillaGuardianRendererKind::ElderGuardian)
+                    ),
+                },
+                position: transform.position,
+            },
+        ));
+    }
+    if let Some(offsets) = triggers.guardian_moving_bubbles {
+        let Some([base_width, base_height]) =
+            vanilla_entity_type_dimensions(identity.entity_type_id)
+        else {
+            return;
+        };
+        let scale = vanilla_render_scale(identity.entity_type_id, attributes);
+        let width = f64::from(base_width * scale);
+        let height = f64::from(base_height * scale);
+        // Guardian calls `getViewVector(0.0F)`: Vanilla samples the tick-start
+        // rotation endpoints, even if this tick advanced interpolation.
+        let view = super::calculate_view_vector(transform.old_x_rot, transform.old_y_rot);
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::GuardianAmbient(GuardianAmbientParticleState {
+                entity_id: identity.id,
+                positions: offsets.map(|offset| super::EntityVec3 {
+                    x: transform.position.x + offset.x_unit * width - view.x * 1.5,
+                    y: transform.position.y + offset.y_unit * height - view.y * 1.5,
+                    z: transform.position.z + offset.z_unit * width - view.z * 1.5,
+                }),
             }),
         ));
     }

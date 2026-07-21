@@ -77,6 +77,8 @@ const WOLF_ARMOR_DAMAGE_SOUND_EVENT: &str = "minecraft:entity.wolf_armor.damage"
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
+const GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.guardian.flop";
+const ELDER_GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.flop";
 const BREEZE_DEFLECT_SOUND_EVENT: &str = "minecraft:entity.breeze.deflect";
 const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
 const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
@@ -1403,6 +1405,15 @@ impl WorldStore {
                 };
                 return self.record_positioned_sound(event);
             }
+            EntityClientMovementSoundKind::GuardianFlop { elder } => (
+                if elder {
+                    ELDER_GUARDIAN_FLOP_SOUND_EVENT
+                } else {
+                    GUARDIAN_FLOP_SOUND_EVENT
+                },
+                "hostile",
+                1.0,
+            ),
             EntityClientMovementSoundKind::BreezeDeflect => {
                 (BREEZE_DEFLECT_SOUND_EVENT, "hostile", 1.0)
             }
@@ -3706,6 +3717,25 @@ mod tests {
                 z: 10.5,
             },
         });
+        let guardian = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+            entity_id: 11,
+            kind: EntityClientMovementSoundKind::GuardianFlop { elder: false },
+            position: crate::EntityVec3 {
+                x: 11.0,
+                y: 12.0,
+                z: 13.0,
+            },
+        });
+        let elder_guardian =
+            store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+                entity_id: 12,
+                kind: EntityClientMovementSoundKind::GuardianFlop { elder: true },
+                position: crate::EntityVec3 {
+                    x: 14.0,
+                    y: 15.0,
+                    z: 16.0,
+                },
+            });
         let breeze = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
             entity_id: 9,
             kind: EntityClientMovementSoundKind::BreezeDeflect,
@@ -3747,6 +3777,18 @@ mod tests {
             }
         );
         assert_eq!(
+            guardian.sound.location.as_deref(),
+            Some("minecraft:entity.guardian.flop")
+        );
+        assert_eq!(guardian.source, "hostile");
+        assert_eq!(guardian.volume, 1.0);
+        assert_eq!(guardian.pitch, 1.0);
+        assert_eq!(
+            elder_guardian.sound.location.as_deref(),
+            Some("minecraft:entity.elder_guardian.flop")
+        );
+        assert_eq!(elder_guardian.source, "hostile");
+        assert_eq!(
             breeze.sound.location.as_deref(),
             Some("minecraft:entity.breeze.deflect")
         );
@@ -3759,7 +3801,9 @@ mod tests {
         assert_eq!(trident.source, "neutral");
         assert_eq!(trident.volume, 10.0);
         assert_ne!(firework.seed, blaze.seed);
-        assert_ne!(blaze.seed, breeze.seed);
+        assert_ne!(blaze.seed, guardian.seed);
+        assert_ne!(guardian.seed, elder_guardian.seed);
+        assert_ne!(elder_guardian.seed, breeze.seed);
         assert_ne!(breeze.seed, trident.seed);
         assert_eq!(store.last_sound(), Some(&trident));
         assert_eq!(store.counters().sound_packets, 0);

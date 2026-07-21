@@ -549,6 +549,38 @@ number of ambient entities until the runtime drains the lossless effect FIFO;
 batching two particles per entity halves owner/template overhead but does not
 remove that explicit peak-memory boundary.
 
+The Guardian ambient/dry stage implements the common non-target half of
+`Guardian.aiStep` for Guardian and ElderGuardian from the generated family
+membership. The existing in-water projection now also carries an optional
+`blockPosition().below()` only while vertical velocity is negative; WorldStore
+resolves the loaded collision shape's full UP face before the mutable ECS pass.
+That preserves Java's short-circuit and avoids either a second ECS scan or
+unconditional chunk probes. One per-incarnation Java-LCG cursor owns the
+constructor tail draw, dry spike float, moving-water bubble doubles and dry
+ground jump floats in Vanilla order. The cursor and `clientSideTouchedGround`
+clone into immutable generations and reset on same-id recreation.
+
+Moving submerged Guardians submit one typed two-bubble FIFO owner behind the
+pre-tick view vector. Dry upward motion emits the Guardian/Elder flop sound only
+after a remembered full support face and honors the synced silent bit. A dry
+grounded tick then applies the three random draws to delta movement/body yaw,
+clears `onGround` and its canonical supporting-block component, after all
+earlier client effects for that entity. Water air supply is not published and
+server AI/pathing/damage remain outside the client owner.
+Powder snow's entity-context exception remains conservative because remote
+fall distance is not synchronized; that rare flop-arming edge is recorded in
+the unsupported ledger rather than guessed.
+
+The repo-native pre-change baseline was 4.4219 ms for 2,000 dry Guardians,
+4.5640 ms for 2,000 moving submerged Guardians, and 4.4359 ms for the active-
+target fixture; retained-publication variants were 5.6563/5.7317 ms. After the
+stage and short-circuit audit, centers are 4.7186/5.0540/4.7374 ms and
+6.1862/6.0928 ms respectively (+6.7%/+10.7%/+6.8% and +9.4%/+6.3%). The delta
+is the newly required RNG, collision fact and up to 4,000 bubble commands; the
+effect FIFO is drained before snapshotting, so it is not deferred publication
+or retained-generation work. The active-target beam bubble loop and look-
+control update remain the next Guardian boundary.
+
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.

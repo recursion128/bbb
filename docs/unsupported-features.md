@@ -1405,10 +1405,6 @@ back into a todo. Do not delete these.
 - **GPU outline presentation for `submitOnlyOutline` entity-attached block-model
   layers** (snow-golem carved pumpkin, mooshroom mushroom). Outline-only
   attachment metadata is recorded and ordinary block-quad baking is suppressed.
-- **Guardian out-of-water spike withdrawal.** The out-of-water branch
-  (`spikesAnimation = random.nextFloat()` each tick) uses unseeded client RNG and
-  is not reconstructable, so the value is held steady out of water rather than
-  faked.
 - **Frog tongue prey-targeting** (`DATA_TONGUE_TARGET_ID`). Not part of the model
   animation.
 - **Creaking tearing-down death-flicker** (`hasGlowingEyes`, a client-tick
@@ -1550,9 +1546,16 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `!state.isInvisible`.
 - **Separate glow-squid emissive overlay/texture.** 26.1 has none; the glow is
   purely a block-light override.
-- **Exact guardian tail starting phase.** Vanilla seeds it with a per-spawn
-  `random.nextFloat()`, which is non-deterministic. bbb starts at `0.0`; the sway
-  dynamics are exact.
+- **Exact guardian client RNG seed.** Vanilla seeds the per-spawn entity RNG
+  outside the protocol. bbb uses one deterministic UUID/type-derived Java-LCG
+  cursor for the constructor tail phase and subsequent spike/bubble/flop draws;
+  draw order and ranges are exact, but a particular official-client sample is
+  not reconstructable from wire state.
+- **Guardian powder-snow stand-on-face exception.** The normal loaded collision
+  UP-face path is exact. Vanilla can additionally expose powder snow as a full
+  collision shape from entity-local fall distance or leather-boots context;
+  remote Guardian fall distance is not synchronized, so bbb conservatively
+  fails that rare flop-sound arming probe closed.
 - **Exact enderman creepy root-jitter RNG seed.** Vanilla keeps that RNG inside
   the renderer and never exposes the seed over the protocol; bbb uses a
   deterministic Java-LCG-shaped seed from entity id + age while preserving the

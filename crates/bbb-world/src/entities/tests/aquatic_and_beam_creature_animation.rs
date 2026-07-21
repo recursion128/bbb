@@ -418,7 +418,7 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
     let accessors = guardian_metadata_accessors();
     // Vanilla `Guardian.aiStep` eases `clientSideSpikesAnimation` (spawn `0`): in water toward `1`
     // while idle (by `0.06`, spikes extend) or toward `0` while moving (by `0.25`, spikes retract);
-    // out of water it randomizes — deferred, so the value is HELD. `GuardianRenderState.spikesAnimation`
+    // out of water it draws one float from the entity RNG. `GuardianRenderState.spikesAnimation`
     // lerps it, and `setupAnim` turns it into `withdrawal = (1 - it) · 0.55`.
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
@@ -496,15 +496,15 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
         "in-water moving retracts the spikes toward 0 by 0.25: {retracting} vs {extended}"
     );
 
-    // Out of water (drain the column): vanilla randomizes, which is deferred, so the value is HELD at
-    // the last frame regardless of the still-set moving flag.
+    // Out of water (drain the column): vanilla replaces the value with one
+    // client-entity RNG float regardless of the still-set moving flag.
     fill(&mut store, crate::vanilla_air_block_state_id());
+    let retained = store.publication_snapshot();
     store.advance_entity_client_animations(1);
-    assert!(
-        (spikes(&store) - retracting).abs() < 1.0e-5,
-        "out of water the spikes hold their last value (random flicker deferred): {} vs {retracting}",
-        spikes(&store)
-    );
+    let dry = spikes(&store);
+    assert!((0.0..1.0).contains(&dry));
+    assert_ne!(dry, retracting);
+    assert_eq!(spikes(&retained), retracting);
 }
 
 #[test]

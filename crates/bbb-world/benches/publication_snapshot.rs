@@ -20,12 +20,14 @@ use bbb_protocol::{
     attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
     entity_data_serializers::{
         VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
     },
     entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     game_types::{VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
@@ -372,6 +374,69 @@ fn build_ender_ambient_world(count: usize) -> WorldStore {
             VANILLA_ENTITY_TYPE_ENDERMITE_ID
         }
     })
+}
+
+fn build_guardian_world(count: usize) -> WorldStore {
+    build_entity_world_with(count, |_| VANILLA_ENTITY_TYPE_GUARDIAN_ID)
+}
+
+fn build_wet_moving_guardian_world(count: usize) -> WorldStore {
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+    let mut world = build_chunk_world(1);
+    for index in 0..count {
+        let id = index as i32 + 1;
+        let mut packet = entity_packet(id, index, VANILLA_ENTITY_TYPE_GUARDIAN_ID);
+        packet.position = Vec3d {
+            x: 0.5,
+            y: 64.0,
+            z: 0.5,
+        };
+        world.apply_add_entity(packet);
+    }
+    assert!(world.apply_block_update(BlockUpdate {
+        pos: BlockPos { x: 0, y: 64, z: 0 },
+        block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+    }));
+    let moving_accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        "DATA_ID_MOVING",
+    )
+    .expect("generated Guardian moving accessor");
+    for id in 1..=i32::try_from(count).expect("benchmark count fits i32") {
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![EntityDataValue {
+                data_id: moving_accessor.data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+    }
+    world
+}
+
+fn build_guardian_attack_world(count: usize) -> WorldStore {
+    let mut world = build_guardian_world(count);
+    let target_id = i32::try_from(count).expect("benchmark count fits i32") + 1;
+    let mut target = entity_packet(target_id, count, VANILLA_ENTITY_TYPE_COW_ID);
+    target.position.x = 16.0;
+    world.apply_add_entity(target);
+    let target_accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        "DATA_ID_ATTACK_TARGET",
+    )
+    .expect("generated Guardian attack-target accessor");
+    for id in 1..=i32::try_from(count).expect("benchmark count fits i32") {
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![EntityDataValue {
+                data_id: target_accessor.data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                value: EntityDataValueKind::Int(target_id),
+            }],
+        }));
+    }
+    world
 }
 
 fn build_session_static_world() -> WorldStore {
@@ -979,6 +1044,71 @@ fn bench_entity_effect_generation(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let world = ender_ambient.publication_snapshot();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+                black_box(Arc::new(world.publication_snapshot()));
+                black_box(held);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    let guardians = build_guardian_world(ENTITY_COUNT);
+    group.bench_function("2000_guardians_dry", |b| {
+        b.iter_batched(
+            || guardians.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_function("2000_guardians_dry_then_publish_retained", |b| {
+        b.iter_batched(
+            || {
+                let world = guardians.publication_snapshot();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+                black_box(Arc::new(world.publication_snapshot()));
+                black_box(held);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    let wet_moving_guardians = build_wet_moving_guardian_world(ENTITY_COUNT);
+    group.bench_function("2000_guardians_wet_moving", |b| {
+        b.iter_batched(
+            || wet_moving_guardians.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    let guardian_attack = build_guardian_attack_world(ENTITY_COUNT);
+    group.bench_function("2000_guardians_active_target", |b| {
+        b.iter_batched(
+            || guardian_attack.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_function("2000_guardians_active_target_then_publish_retained", |b| {
+        b.iter_batched(
+            || {
+                let world = guardian_attack.publication_snapshot();
                 let held = Arc::new(world.publication_snapshot());
                 (world, held)
             },
