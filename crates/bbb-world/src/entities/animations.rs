@@ -7433,6 +7433,11 @@ impl WorldStore {
         );
         let can_carry_interpolation_target =
             |entity_id: i32| collision_free_interpolation_targets.contains(&entity_id);
+        let mut block_effect_world = crate::client::EntityBlockEffectWorld::new(
+            self.dimension,
+            &self.registries,
+            &self.chunks,
+        );
         let preparation_duration = preparation_started_at.elapsed();
         let mut work = self.entities.advance_client_animations(
             1,
@@ -7458,6 +7463,7 @@ impl WorldStore {
             death_tick_player_chunk,
             death_tick_simulation_distance,
             &can_carry_interpolation_target,
+            &mut block_effect_world,
         );
         work.preparation_duration += preparation_duration;
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();

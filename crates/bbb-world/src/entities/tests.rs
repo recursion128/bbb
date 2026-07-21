@@ -40,6 +40,7 @@ use bbb_protocol::packets::{
 
 mod ambient_client_tick_effects;
 mod aquatic_and_beam_creature_animation;
+mod block_effect_tick;
 mod combat_state_and_mob_flag_projection;
 mod creature_pick_bounds_projection;
 mod item_entity_and_pickup_projection;

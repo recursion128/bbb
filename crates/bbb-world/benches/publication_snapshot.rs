@@ -28,8 +28,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     game_types::{VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
@@ -38,10 +38,10 @@ use bbb_protocol::{
 };
 use bbb_world::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_entity_accessors,
-    vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type, ChunkColumn, ChunkPos,
-    ChunkSection, ChunkState, EntityClientMovementEffectState, HeightmapData, ItemEquipmentSlot,
-    LightData, LocalPlayerInputState, PaletteDomain, PaletteKind, PalettedContainerData,
-    WorldStore,
+    vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type, BlockStateRegistry,
+    ChunkColumn, ChunkPos, ChunkSection, ChunkState, EntityClientMovementEffectState,
+    HeightmapData, ItemEquipmentSlot, LightData, LocalPlayerInputState, PaletteDomain, PaletteKind,
+    PalettedContainerData, WorldStore,
 };
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
@@ -163,6 +163,40 @@ fn build_heterogeneous_entity_world(count: usize) -> WorldStore {
     build_entity_world_with(count, |index| {
         VANILLA_ENTITY_TYPES[index % VANILLA_ENTITY_TYPES.len()].id
     })
+}
+
+fn build_block_effect_item_world(count: usize, block_name: Option<&str>) -> WorldStore {
+    build_block_effect_item_world_with_chunks(count, block_name, 1)
+}
+
+fn build_block_effect_item_world_with_chunks(
+    count: usize,
+    block_name: Option<&str>,
+    chunk_count: usize,
+) -> WorldStore {
+    let mut world = build_chunk_world(chunk_count);
+    if let Some(block_name) = block_name {
+        let block_state_id = BlockStateRegistry::vanilla_26_1()
+            .iter()
+            .find(|state| state.name == block_name)
+            .unwrap_or_else(|| panic!("missing Vanilla block state {block_name}"))
+            .id;
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: BlockPos { x: 0, y: 64, z: 0 },
+            block_state_id,
+        }));
+    }
+    for index in 0..count {
+        let id = index as i32 + 1;
+        let mut packet = entity_packet(id, index, VANILLA_ENTITY_TYPE_ITEM_ID);
+        packet.position = Vec3d {
+            x: 0.5,
+            y: 64.0,
+            z: 0.5,
+        };
+        world.apply_add_entity(packet);
+    }
+    world
 }
 
 fn build_valid_fishing_hook_heterogeneous_world(count: usize) -> WorldStore {
@@ -781,6 +815,16 @@ fn bench_entity_tick_phase_observation(c: &mut Criterion) {
                 aggregate.schedule_duration += work.schedule_duration;
                 aggregate.projectile_duration += work.projectile_duration;
                 aggregate.interpolation_duration += work.interpolation_duration;
+                aggregate.block_effect_duration += work.block_effect_duration;
+                aggregate.block_effect_entities = aggregate
+                    .block_effect_entities
+                    .saturating_add(work.block_effect_entities);
+                aggregate.block_effect_blocks_visited = aggregate
+                    .block_effect_blocks_visited
+                    .saturating_add(work.block_effect_blocks_visited);
+                aggregate.block_effect_callbacks_applied = aggregate
+                    .block_effect_callbacks_applied
+                    .saturating_add(work.block_effect_callbacks_applied);
                 aggregate.animation_duration += work.animation_duration;
                 black_box(work);
             });
@@ -794,14 +838,71 @@ fn bench_entity_tick_phase_observation(c: &mut Criterion) {
         };
         if calls > 0 {
             eprintln!(
-                "entity tick phase average {name}: preparation={}ns schedule={}ns projectile={}ns interpolation={}ns animation={}ns samples={calls}",
+                "entity tick phase average {name}: preparation={}ns schedule={}ns projectile={}ns interpolation={}ns block_effect={}ns block_effect_entities={} block_effect_blocks={} block_effect_callbacks={} animation={}ns samples={calls}",
                 average_nanos(aggregate.preparation_duration),
                 average_nanos(aggregate.schedule_duration),
                 average_nanos(aggregate.projectile_duration),
                 average_nanos(aggregate.interpolation_duration),
+                average_nanos(aggregate.block_effect_duration),
+                aggregate.block_effect_entities / usize::try_from(calls).unwrap_or(usize::MAX),
+                aggregate.block_effect_blocks_visited
+                    / usize::try_from(calls).unwrap_or(usize::MAX),
+                aggregate.block_effect_callbacks_applied
+                    / usize::try_from(calls).unwrap_or(usize::MAX),
                 average_nanos(aggregate.animation_duration),
             );
         }
+    }
+    group.finish();
+}
+
+fn bench_entity_block_effects(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_tick/block_effects");
+    for count in ENTITY_COUNTS {
+        for (terrain, block_name) in [("loaded_air", None), ("cobweb", Some("minecraft:cobweb"))] {
+            let fixture = build_block_effect_item_world(count, block_name);
+            group.bench_with_input(BenchmarkId::new(terrain, count), &count, |b, _| {
+                b.iter_batched(
+                    || fixture.publication_snapshot(),
+                    |mut world| {
+                        black_box(world.advance_entity_client_animations_with_observation(1));
+                    },
+                    BatchSize::SmallInput,
+                );
+            });
+        }
+    }
+
+    let fixture = build_block_effect_item_world(ENTITY_COUNT, Some("minecraft:cobweb"));
+    group.bench_function("cobweb_then_publish_retained/2000", |b| {
+        b.iter_batched(
+            || {
+                let world = fixture.publication_snapshot();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                black_box(world.advance_entity_client_animations_with_observation(1));
+                black_box(Arc::new(world.publication_snapshot()));
+                black_box(held);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    for (terrain, block_name) in [
+        ("loaded_air_625_columns", None),
+        ("cobweb_625_columns", Some("minecraft:cobweb")),
+    ] {
+        let fixture = build_block_effect_item_world_with_chunks(ENTITY_COUNT, block_name, 625);
+        group.bench_function(format!("{terrain}/2000"), |b| {
+            b.iter_batched(
+                || fixture.publication_snapshot(),
+                |mut world| {
+                    black_box(world.advance_entity_client_animations_with_observation(1));
+                },
+                BatchSize::SmallInput,
+            );
+        });
     }
     group.finish();
 }
@@ -1673,6 +1774,7 @@ criterion_group! {
         bench_reused_world_arc,
         bench_entity_tick_only,
         bench_entity_tick_phase_observation,
+        bench_entity_block_effects,
         bench_entity_tick_schema_lookups,
         bench_entity_tick_and_publication,
         bench_entity_retained_snapshot,

@@ -29,13 +29,14 @@ use super::schema::{
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
+    vanilla_entity_metadata_type_block_effect_tick_policy,
     vanilla_entity_metadata_type_client_movement_policy, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     VanillaEntityClientMovementPolicy,
 };
 use super::{
-    EntityClientMovementEffectState, EntityClientMovementParticleState,
+    EntityBlockEffectMovement, EntityClientMovementEffectState, EntityClientMovementParticleState,
     EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState,
     EntityClientMovementSoundKind, EntityClientMovementSoundState, EntityPickBoundsState,
     EntityStore, EntityVec3, EyeOfEnderTrailParticleState, FireworkRocketTrailParticleState,
@@ -376,7 +377,7 @@ pub(super) fn client_movement_uses_collision_facts(entity_type_id: i32) -> bool 
 
 impl EntityStore {
     pub(crate) fn client_movement_collision_inputs(
-        &self,
+        &mut self,
         fluid_by_id: &HashMap<i32, crate::client::EntityFluidContactState>,
         world_fact_position_by_id: &HashMap<i32, EntityVec3>,
         collision_free_by_id: &HashMap<i32, bool>,
@@ -601,6 +602,32 @@ impl EntityStore {
                 fishing_hook_entity_hit,
                 fishing_hook_collision_delta,
             });
+        }
+        drop(facts_query);
+        for input in &mut inputs {
+            if input.movement_skipped {
+                continue;
+            }
+            let Some(&entity) = self.by_protocol_id.get(&input.entity_id) else {
+                continue;
+            };
+            let Ok(mut supporting_block) = self.ecs.get::<&mut EntitySupportingBlock>(entity)
+            else {
+                continue;
+            };
+            let Some(multiplier) = supporting_block
+                .block_effects
+                .consume_stuck_speed_multiplier()
+            else {
+                continue;
+            };
+            input.requested_movement.x *= multiplier.x;
+            input.requested_movement.y *= multiplier.y;
+            input.requested_movement.z *= multiplier.z;
+            // `Entity.move` clears the canonical velocity when it consumes
+            // `stuckSpeedMultiplier`; subclass post-move damping therefore
+            // starts from zero.
+            input.pre_move_delta = EntityVec3::default();
         }
         inputs
     }
@@ -986,6 +1013,7 @@ impl EntityStore {
         scheduled: &[Entity],
         fluid_facts_by_id: &HashMap<i32, super::store::EntityClientTickFluidFacts>,
         collisions_by_id: &HashMap<i32, EntityClientMovementCollisionResult>,
+        record_block_effect_movements: bool,
     ) {
         let mut effects = Vec::new();
         for &entity in scheduled {
@@ -1246,6 +1274,48 @@ impl EntityStore {
                     self.advance_firework_rocket(entity, entity_id, entity_type_id, &mut effects);
                 }
                 _ => {}
+            }
+            if record_block_effect_movements
+                && vanilla_entity_metadata_type_block_effect_tick_policy(entity_type_id)
+                    .is_some_and(|policy| policy != super::VanillaEntityBlockEffectTickPolicy::None)
+            {
+                let Some(collision) = collisions_by_id.get(&entity_id).copied() else {
+                    continue;
+                };
+                if collision.movement_skipped {
+                    continue;
+                }
+                let Some(position) = self
+                    .ecs
+                    .get::<&EntityTransform>(entity)
+                    .ok()
+                    .map(|transform| transform.position)
+                else {
+                    continue;
+                };
+                let from = EntityVec3 {
+                    x: position.x - collision.clipped_movement.x,
+                    y: position.y - collision.clipped_movement.y,
+                    z: position.z - collision.clipped_movement.z,
+                };
+                let moved = length_squared(collision.clipped_movement) > 1.0e-7
+                    || length_squared(collision.requested_movement)
+                        - length_squared(collision.clipped_movement)
+                        < 1.0e-7;
+                if moved {
+                    if let Ok(mut facts) = self
+                        .ecs
+                        .get::<&mut EntityClientMovementCollisionFacts>(entity)
+                    {
+                        facts.block_effect_movements.record_movement(
+                            EntityBlockEffectMovement::clipped(
+                                from,
+                                position,
+                                collision.requested_movement,
+                            ),
+                        );
+                    }
+                }
             }
         }
         self.pending_entity_client_movement_effects.extend(effects);

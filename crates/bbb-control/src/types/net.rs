@@ -217,6 +217,20 @@ pub struct NetCounters {
     pub simulation_entity_client_tick_interpolation_nanos: u64,
     #[serde(default)]
     pub simulation_entity_client_tick_interpolation_peak_nanos: u64,
+    /// Swept terrain intersection and ordered block callbacks for the most
+    /// recent entity client-tick batch.
+    #[serde(default)]
+    pub simulation_entity_client_tick_block_effect_nanos: u64,
+    #[serde(default)]
+    pub simulation_entity_client_tick_block_effect_peak_nanos: u64,
+    /// Entity callback invocations, distinct terrain cells, and callbacks
+    /// applied by the most recent swept block-effect pass.
+    #[serde(default)]
+    pub simulation_entity_client_tick_block_effect_entities: usize,
+    #[serde(default)]
+    pub simulation_entity_client_tick_block_effect_blocks_visited: usize,
+    #[serde(default)]
+    pub simulation_entity_client_tick_block_effect_callbacks_applied: usize,
     /// Common and family animation work for the most recent entity tick.
     #[serde(default)]
     pub simulation_entity_client_tick_animation_nanos: u64,
@@ -355,6 +369,11 @@ mod tests {
         object.remove("simulation_entity_client_tick_projectile_peak_nanos");
         object.remove("simulation_entity_client_tick_interpolation_nanos");
         object.remove("simulation_entity_client_tick_interpolation_peak_nanos");
+        object.remove("simulation_entity_client_tick_block_effect_nanos");
+        object.remove("simulation_entity_client_tick_block_effect_peak_nanos");
+        object.remove("simulation_entity_client_tick_block_effect_entities");
+        object.remove("simulation_entity_client_tick_block_effect_blocks_visited");
+        object.remove("simulation_entity_client_tick_block_effect_callbacks_applied");
         object.remove("simulation_entity_client_tick_animation_nanos");
         object.remove("simulation_entity_client_tick_animation_peak_nanos");
         object.remove("simulation_entity_client_tick_scanned_entities");
@@ -405,6 +424,23 @@ mod tests {
         );
         assert_eq!(
             counters.simulation_entity_client_tick_interpolation_peak_nanos,
+            0
+        );
+        assert_eq!(counters.simulation_entity_client_tick_block_effect_nanos, 0);
+        assert_eq!(
+            counters.simulation_entity_client_tick_block_effect_peak_nanos,
+            0
+        );
+        assert_eq!(
+            counters.simulation_entity_client_tick_block_effect_entities,
+            0
+        );
+        assert_eq!(
+            counters.simulation_entity_client_tick_block_effect_blocks_visited,
+            0
+        );
+        assert_eq!(
+            counters.simulation_entity_client_tick_block_effect_callbacks_applied,
             0
         );
         assert_eq!(counters.simulation_entity_client_tick_animation_nanos, 0);

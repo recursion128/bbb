@@ -6,6 +6,7 @@ mod debug_game;
 mod debug_query;
 mod dialog;
 mod effects;
+mod entity_block_effects;
 mod features;
 mod hud;
 mod inventory;
@@ -28,6 +29,7 @@ pub(crate) use dialog::{
     validate_command_item_predicate_value, validate_command_item_stack_template,
     validate_command_rich_text, validate_command_style, validate_rich_component_with_registry,
 };
+pub(crate) use entity_block_effects::EntityBlockEffectWorld;
 pub(crate) use local_player::game_type_player_abilities;
 pub(crate) use local_player_collision::{
     block_collision_shape_has_full_up_face, block_collision_shape_is_full_block,

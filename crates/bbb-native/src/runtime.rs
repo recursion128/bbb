@@ -13093,6 +13093,16 @@ fn record_entity_client_tick_observation(
     counters.simulation_entity_client_tick_interpolation_peak_nanos = counters
         .simulation_entity_client_tick_interpolation_peak_nanos
         .max(interpolation_nanos);
+    let block_effect_nanos = duration_nanos(work.block_effect_duration);
+    counters.simulation_entity_client_tick_block_effect_nanos = block_effect_nanos;
+    counters.simulation_entity_client_tick_block_effect_peak_nanos = counters
+        .simulation_entity_client_tick_block_effect_peak_nanos
+        .max(block_effect_nanos);
+    counters.simulation_entity_client_tick_block_effect_entities = work.block_effect_entities;
+    counters.simulation_entity_client_tick_block_effect_blocks_visited =
+        work.block_effect_blocks_visited;
+    counters.simulation_entity_client_tick_block_effect_callbacks_applied =
+        work.block_effect_callbacks_applied;
     let animation_nanos = duration_nanos(work.animation_duration);
     counters.simulation_entity_client_tick_animation_nanos = animation_nanos;
     counters.simulation_entity_client_tick_animation_peak_nanos = counters

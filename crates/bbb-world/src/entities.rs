@@ -17,6 +17,7 @@ use crate::terrain::{block_name_is_bed, block_name_is_rail};
 use crate::{ArmorTrimSprite, BlockPos, PaintingVariantClientProjection, TerrainLight, WorldStore};
 
 mod animations;
+mod block_effects;
 mod client_movement;
 mod components;
 pub(crate) use components::EntityBoatStatus;
@@ -41,6 +42,12 @@ pub(crate) use animations::{spawn_random_unit_float, ATTACK_SWING_DURATION};
 pub use animations::{EntityClientAnimationState, PolarBearStandingAnimationState};
 pub(crate) use bbb_protocol::entity_types::*;
 pub(crate) use bbb_protocol::item_types::{VANILLA_ITEM_EGG_ID, VANILLA_ITEM_SNOWBALL_ID};
+#[cfg(test)]
+pub(crate) use block_effects::EntityBlockEffectsDebugState;
+pub(crate) use block_effects::{
+    EntityBlockEffectEvaluation, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
+    EntityBlockEffectMovements, EntityBlockEffectQuery, EntityBlockEffects,
+};
 pub(crate) use client_movement::calculate_view_vector;
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,

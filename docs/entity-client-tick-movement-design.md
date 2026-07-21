@@ -862,14 +862,19 @@ freeze immunity comes from `#freeze_immune_entity_types`. No protocol-id table,
 raw type-id branch, or second metadata schema is permitted.
 
 Canonical per-incarnation block-effect runtime belongs to `EntityStore`.
-Movement history uses an inline empty/one-segment representation and only a
-publication-shared heap owner for the rare multi-segment case, so the ordinary
-moving entity allocates nothing and retained generations cannot force a whole
-history copy. `WorldStore` remains the only terrain probe owner and produces a
-narrow ordered evaluation at the exact callback point. The entity owner then
-applies stuck speed, bubble/honey velocity, fire/freeze/clear effects and typed
-client particles/audio before animation/effect publication. Reset, removal,
-same-id recreation and level change discard the incarnation state.
+The small callback state is nested beside the existing supporting-block
+physical owner. Movement history belongs to the already generated-policy
+`EntityClientMovementCollisionFacts` component, not a second membership
+component. One inline list changes role from current to final at the callback;
+a new move discards the previous Item final list because that tick cannot take
+the last-movements branch. Only rare multi-segment motion uses a
+publication-shared heap owner, so the ordinary moving entity allocates nothing
+and publication does not defer ECS component creation to the next mutation.
+`WorldStore` remains the only terrain probe owner and produces a narrow ordered
+evaluation at the exact callback point. The entity owner then applies stuck
+speed, bubble/honey velocity and fire/freeze/clear state before
+animation/effect publication. Reset, removal, same-id recreation and level
+change discard the incarnation state.
 
 The serial checkpoints are: generated policy/immunity facts and contract;
 canonical movement history plus precise swept traversal; directly moving
@@ -880,6 +885,52 @@ The generated-fact stage and the completed runtime boundary are milestone full
 gates. A safe stop is only a committed, fully gated milestone; an unexpected
 Vanilla call owner or an unrepresentable exact collision shape is a real
 blocker, while implementation size or an actionable test failure is not.
+
+### Swept callback runtime checkpoint
+
+The first runtime checkpoint keeps the immutable terrain owner borrowed while
+mutating only `EntityStore`. The supporting-block physical owner carries the
+next-move stuck multiplier and client-private fire/fall/powder state; the
+conditional direct-collision owner carries the single current-or-final
+movement list. Zero and one movement remain inline; only multiple movements
+use a publication-shared `Vec`, so an old generation cannot be changed and the
+normal path allocates no entity-owned payload. A terrain-free world neither
+records segments nor enters the callback query. A 50-sample rerun measured the
+existing 2,000 heterogeneous no-chunk tick at 3.6970 ms versus 3.7833 ms before
+the midpoint (2.3% faster), and retained publication at 1.0367 ms versus
+1.0426 ms. This also verifies that history preservation was not paid as a
+first-mutation component rebuild.
+
+The borrowed terrain evaluator ports Vanilla's axis-dependent movement split,
+16-step fallback, deflated target box, furthest-corner DDA, per-application
+cell dedupe and `InsideBlockEffectType` order. Reused small linear scratch is
+faster than hashing for normal entity bounds, while a 16-slot direct-mapped
+borrowed chunk cache prevents repeated scans of the up-to-625-column owner.
+Block lookup copies only callback, collision-emptiness and fluid facts; it does
+not clone `BlockProbe` strings/properties or construct another world. Fluid
+height observes same-fluid-above, and bubble-column surface selection accepts
+any empty collision shape rather than only air. Direct nonliving families,
+ItemEntity last-movement reuse, detached firework gating and the two boat
+passes now consume the generated policy. Locally authoritative Living and
+locally moved vehicles remain the next serial checkpoint; explicit Arrow
+multi-hit segments, rain clearing and client snowflake/extinguish effects
+remain open rather than being inferred complete by the generic fallback
+segment.
+
+A detached baseline worktree at `24434b87f` and the same Criterion shape
+(20 samples, one-second warm-up, two-second collection) measured 2,000 Item
+ticks at 2.0893 ms in one loaded air column, 2.0840 ms in cobweb, and 4.2962 ms
+for cobweb tick plus retained publication. The first correct runtime measured
+3.7724/3.8536/6.2190 ms. Replacing per-entity hash scratch with retained linear
+scratch and compacting current/final history produced final centres of
+3.7012/3.7590/6.0183 ms, 1.9%, 2.4% and 3.2% below that first correct version.
+With 625 retained columns the final loaded-air/cobweb centres are
+4.2682/4.1733 ms versus the old no-callback 2.6383/2.6054 ms. The remaining
+delta is the newly required swept callback work for all 2,000 applicable
+entities, not delayed component creation or publication work; production
+diagnostics now separate its recent/peak duration and entity/cell/callback
+counts. These results intentionally report the regression against the old
+missing-behavior baseline rather than presenting correctness work as a speedup.
 
 ## Required Tests
 

@@ -9,8 +9,9 @@ use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
 use super::{
-    EntityClientAnimationState, EntityInterpolationState, EntityPickBoundsState, EntityState,
-    EntityVec3, HurtingProjectileState, ProjectileLifecycleState,
+    EntityBlockEffectMovements, EntityBlockEffects, EntityClientAnimationState,
+    EntityInterpolationState, EntityPickBoundsState, EntityState, EntityVec3,
+    HurtingProjectileState, ProjectileLifecycleState,
 };
 use crate::{BlockPos, PaintingVariantClientProjection, PublicationShared};
 
@@ -61,10 +62,11 @@ pub(crate) struct EntityInterpolationCollisionInput {
 
 /// Client-side `Entity.mainSupportingBlockPos` plus the private
 /// `onGroundNoBlocks` transition bit used by `Entity.checkSupportingBlock`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) struct EntitySupportingBlock {
     pub(crate) main: Option<BlockPos>,
     pub(crate) on_ground_no_blocks: bool,
+    pub(crate) block_effects: EntityBlockEffects,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -208,10 +210,14 @@ pub(crate) struct EntityFishingHookMovement {
 }
 
 /// Derived family membership for entities whose client tick samples a
-/// collision shape and supporting block. Spawn/re-add regenerates it from the
-/// generated Vanilla movement policy; the marker owns no canonical state.
-#[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct EntityClientMovementCollisionFacts;
+/// collision shape and supporting block. Spawn/re-add regenerates membership
+/// from the generated Vanilla movement policy. The same conditional owner
+/// retains the exact swept-movement history consumed later in the tick, so no
+/// second component or parallel membership index is needed.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct EntityClientMovementCollisionFacts {
+    pub(crate) block_effect_movements: EntityBlockEffectMovements,
+}
 
 /// Derived family membership for entities whose client tick samples the
 /// canonical fluid interaction box, excluding unrelated ECS archetypes.
@@ -259,6 +265,7 @@ impl From<&EntityState> for EntitySupportingBlock {
         Self {
             main: state.main_supporting_block_pos,
             on_ground_no_blocks: state.on_ground_no_blocks,
+            block_effects: EntityBlockEffects::default(),
         }
     }
 }

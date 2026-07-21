@@ -11,7 +11,8 @@ use bbb_protocol::attribute_modifier_types::{
 use bbb_protocol::attribute_types::{vanilla_attribute_type, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID};
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
 };
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
@@ -88,28 +89,28 @@ use super::{
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
     BlazeAmbientParticleState, EnderAmbientParticleState, EntityAttachmentFace, EntityAttributes,
-    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
-    EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
-    EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
-    EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
-    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityBlockEffectMovementIter, EntityBlockEffectQuery, EntityBlockModelState,
+    EntityCameraHurtState, EntityCameraPoseState, EntityClientAnimationState,
+    EntityClientAnimations, EntityClientMovementEffectState, EntityClientMovementParticleState,
+    EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState, EntityDamage,
+    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
     HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
     LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
     OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
-    WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
-    VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS,
+    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
+    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -381,6 +382,10 @@ pub struct EntityClientTickWork {
     pub schedule_duration: Duration,
     pub projectile_duration: Duration,
     pub interpolation_duration: Duration,
+    pub block_effect_duration: Duration,
+    pub block_effect_entities: usize,
+    pub block_effect_blocks_visited: usize,
+    pub block_effect_callbacks_applied: usize,
     pub animation_duration: Duration,
 }
 
@@ -432,6 +437,16 @@ impl EntityClientTickWork {
         self.schedule_duration += other.schedule_duration;
         self.projectile_duration += other.projectile_duration;
         self.interpolation_duration += other.interpolation_duration;
+        self.block_effect_duration += other.block_effect_duration;
+        self.block_effect_entities = self
+            .block_effect_entities
+            .saturating_add(other.block_effect_entities);
+        self.block_effect_blocks_visited = self
+            .block_effect_blocks_visited
+            .saturating_add(other.block_effect_blocks_visited);
+        self.block_effect_callbacks_applied = self
+            .block_effect_callbacks_applied
+            .saturating_add(other.block_effect_callbacks_applied);
         self.animation_duration += other.animation_duration;
     }
 }
@@ -471,6 +486,26 @@ fn sync_derived_marker<T: hecs::Component + Default>(
 }
 
 impl EntityStore {
+    #[cfg(test)]
+    pub(crate) fn block_effects_debug_state(
+        &self,
+        id: i32,
+    ) -> Option<super::EntityBlockEffectsDebugState> {
+        let entity = *self.by_protocol_id.get(&id)?;
+        let supporting = self.ecs.get::<&EntitySupportingBlock>(entity).ok()?;
+        let collision_facts = self
+            .ecs
+            .get::<&EntityClientMovementCollisionFacts>(entity)
+            .ok();
+        Some(
+            supporting.block_effects.debug_state(
+                collision_facts
+                    .as_deref()
+                    .map(|facts| &facts.block_effect_movements),
+            ),
+        )
+    }
+
     fn allocate_incarnation(&mut self) -> EntityIncarnation {
         let incarnation = EntityIncarnation(self.next_incarnation);
         self.next_incarnation = self
@@ -613,6 +648,7 @@ impl EntityStore {
             }
             reset::<EntityDamage>(&mut self.ecs, entity);
             reset::<EntitySupportingBlock>(&mut self.ecs, entity);
+            reset::<EntityClientMovementCollisionFacts>(&mut self.ecs, entity);
             if is_vanilla_minecart_type(entity_type_id) {
                 let updated = {
                     if let Ok(mut lerp) = self.ecs.get::<&mut EntityMinecartLerp>(entity) {
@@ -5496,6 +5532,177 @@ impl EntityStore {
         targets
     }
 
+    fn apply_block_effect_tick_for_entity(
+        &mut self,
+        entity: Entity,
+        policy: VanillaEntityBlockEffectTickPolicy,
+        client_movement_collisions_by_id: &HashMap<
+            i32,
+            super::client_movement::EntityClientMovementCollisionResult,
+        >,
+        block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
+    ) -> (usize, usize, usize) {
+        debug_assert!(!matches!(
+            policy,
+            VanillaEntityBlockEffectTickPolicy::None
+                | VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
+        ));
+        debug_assert!(block_effect_world.has_loaded_chunks());
+
+        let Ok((
+            identity,
+            transform,
+            metadata,
+            attributes,
+            mob_effects,
+            supporting_block,
+            mut collision_facts,
+            animations,
+        )) = self.ecs.query_one_mut::<(
+            &EntityIdentity,
+            &mut EntityTransform,
+            &mut EntityMetadata,
+            &EntityAttributes,
+            &EntityMobEffects,
+            &mut EntitySupportingBlock,
+            Option<&mut EntityClientMovementCollisionFacts>,
+            &EntityClientAnimations,
+        )>(entity)
+        else {
+            return (0, 0, 0);
+        };
+        if policy == VanillaEntityBlockEffectTickPolicy::DetachedFirework {
+            let detached = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+                identity.entity_type_id,
+            )
+            .is_some_and(|accessors| {
+                metadata
+                    .data_values
+                    .iter()
+                    .find(|value| value.data_id == accessors.attached_to_target_data_id)
+                    .and_then(|value| match value.value {
+                        EntityDataValueKind::OptionalUnsignedInt(value) => Some(value),
+                        _ => None,
+                    })
+                    .unwrap_or(accessors.attached_to_target_default)
+                    .is_none()
+            });
+            if !detached {
+                return (0, 0, 0);
+            }
+        }
+
+        let supporting_block_position = supporting_block.main;
+        let block_effects = &mut supporting_block.block_effects;
+
+        let apply_count = usize::from(policy == VanillaEntityBlockEffectTickPolicy::BoatTwice) + 1;
+        // Client-side `Entity.baseTick` clears a private positive fire timer
+        // before any subclass callback and resets the powder-snow marker. A
+        // boat's two callback passes still share the resulting same-tick state.
+        block_effects.remaining_fire_ticks = block_effects.remaining_fire_ticks.min(0);
+        block_effects.in_powder_snow = false;
+        let mut entities = 0usize;
+        let mut blocks = 0usize;
+        let mut callbacks = 0usize;
+        for _ in 0..apply_count {
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                break;
+            };
+            let entity_accessors = vanilla_entity_metadata_entity_accessors();
+            let ticks_frozen = entity_accessors.map_or(0, |accessors| {
+                entity_data_int(
+                    &metadata.data_values,
+                    accessors.ticks_frozen_data_id,
+                    accessors.ticks_frozen_default,
+                )
+            });
+            let state = (
+                block_effects.stuck_speed_multiplier,
+                block_effects.remaining_fire_ticks,
+                block_effects.fall_distance,
+            );
+            let use_last_movements = policy
+                == VanillaEntityBlockEffectTickPolicy::ItemWithLastMovements
+                && client_movement_collisions_by_id
+                    .get(&identity.id)
+                    .is_some_and(|collision| collision.movement_skipped);
+            let movements = if let Some(collision_facts) = collision_facts.as_deref_mut() {
+                let movements = &mut collision_facts.block_effect_movements;
+                if use_last_movements {
+                    movements.last_movements()
+                } else {
+                    movements.prepare_current(transform.old_position, transform.position)
+                }
+            } else {
+                if use_last_movements {
+                    EntityBlockEffectMovementIter::Empty
+                } else {
+                    EntityBlockEffectMovementIter::direct(
+                        transform.old_position,
+                        transform.position,
+                    )
+                }
+            };
+            let evaluation = block_effect_world.evaluate(EntityBlockEffectQuery {
+                position: transform.position,
+                bounds,
+                movements,
+                supporting_block: supporting_block_position,
+                on_ground: transform.on_ground.unwrap_or(false),
+                stepping_carefully: entity_data_pose(&metadata.data_values)
+                    == VANILLA_ENTITY_POSE_CROUCHING_ID,
+                is_living: vanilla_entity_metadata_type_is_living(identity.entity_type_id),
+                is_fox_or_bee: matches!(
+                    identity.entity_type_id,
+                    VANILLA_ENTITY_TYPE_FOX_ID | VANILLA_ENTITY_TYPE_BEE_ID
+                ),
+                has_weaving: mob_effects
+                    .effects
+                    .contains_key(&bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_WEAVING_ID),
+                fire_immune: vanilla_entity_type_is_fire_immune(identity.entity_type_id),
+                freeze_immune: vanilla_entity_type_is_freeze_immune(identity.entity_type_id),
+                ticks_frozen,
+                delta_movement: transform.delta_movement,
+                stuck_speed_multiplier: state.0,
+                remaining_fire_ticks: state.1,
+                fall_distance: state.2,
+            });
+            transform.delta_movement = evaluation.delta_movement;
+            block_effects.stuck_speed_multiplier = evaluation.stuck_speed_multiplier;
+            block_effects.remaining_fire_ticks = evaluation.remaining_fire_ticks;
+            block_effects.fall_distance = evaluation.fall_distance;
+            block_effects.in_powder_snow |= evaluation.in_powder_snow;
+            if ticks_frozen != evaluation.ticks_frozen {
+                if let Some(accessors) = entity_accessors {
+                    upsert_metadata_value(
+                        metadata,
+                        ProtocolEntityDataValue {
+                            data_id: accessors.ticks_frozen_data_id,
+                            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                            value: EntityDataValueKind::Int(evaluation.ticks_frozen),
+                        },
+                    );
+                }
+            }
+            entities += 1;
+            blocks = blocks.saturating_add(evaluation.visited_blocks);
+            callbacks = callbacks.saturating_add(evaluation.applied_callbacks);
+        }
+        if policy != VanillaEntityBlockEffectTickPolicy::ItemWithLastMovements {
+            if let Some(collision_facts) = collision_facts.as_deref_mut() {
+                collision_facts.block_effect_movements.clear_final();
+            }
+        }
+        (entities, blocks, callbacks)
+    }
+
     pub(crate) fn advance_client_animations<G>(
         &mut self,
         ticks: u32,
@@ -5524,6 +5731,7 @@ impl EntityStore {
         death_tick_player_chunk: Option<(i32, i32)>,
         death_tick_simulation_distance: Option<i32>,
         can_carry_interpolation_target: &G,
+        block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
     ) -> EntityClientTickWork
     where
         G: Fn(i32) -> bool,
@@ -5573,9 +5781,11 @@ impl EntityStore {
                 &tick_scratch.scheduled_entities,
                 fluid_facts_by_id,
                 client_movement_collisions_by_id,
+                block_effect_world.has_loaded_chunks(),
             );
             work.projectile_duration += movement_started_at.elapsed();
             let animation_started_at = Instant::now();
+            let block_effect_duration_before = work.block_effect_duration;
             let guardian_attack_targets_by_id =
                 self.guardian_attack_target_facts(guardian_attack_target_ids);
             work.scanned_entities = work
@@ -5607,64 +5817,92 @@ impl EntityStore {
                             local_player_holds_warped_fungus_on_a_stick,
                         )
                     });
-                let Ok((
-                    identity,
-                    transform,
-                    mount,
-                    metadata,
-                    attributes,
-                    equipment,
-                    animations,
-                    minecart_lerp,
-                    boat_movement,
-                )) = self.ecs.query_one_mut::<(
-                    &EntityIdentity,
-                    &mut EntityTransform,
-                    &EntityMount,
-                    &EntityMetadata,
-                    &EntityAttributes,
-                    Option<&EntityEquipment>,
-                    &mut EntityClientAnimations,
-                    Option<&mut EntityMinecartLerp>,
-                    Option<&mut EntityBoatMovement>,
-                )>(entity)
-                else {
+                let Some((entity_id, entity_type_id)) = identity else {
                     continue;
                 };
                 // `AbstractMinecart.tick` runs `NewMinecartBehavior.tick`
                 // before any concrete minecart subclass work. TNT smoke and
                 // every later animation therefore observe the post-lerp pose.
-                if minecart_improvements_enabled {
-                    if let Some(minecart_lerp) = minecart_lerp {
+                if minecart_improvements_enabled && is_vanilla_minecart_type(entity_type_id) {
+                    if let Ok((transform, minecart_lerp)) = self
+                        .ecs
+                        .query_one_mut::<(&mut EntityTransform, &mut EntityMinecartLerp)>(entity)
+                    {
                         minecart_lerp.advance_client_tick(transform);
                     }
                 }
-                let is_boat = is_vanilla_boat_type(identity.entity_type_id);
+                let is_boat = is_vanilla_boat_type(entity_type_id);
                 let boat_facts = is_boat.then(|| boat_world_facts_iter.next()).flatten();
-                debug_assert!(boat_facts.is_none_or(|facts| facts.entity_id == identity.id));
-                if is_boat && deferred_boat_paddle_entity_id != Some(identity.id) {
-                    if let (Some(movement), Some(facts)) = (boat_movement, boat_facts) {
-                        movement.old_status = movement.status;
-                        movement.status = Some(facts.status);
-                        movement.water_level = facts.water_level;
-                        if let Some(land_friction) = facts.land_friction {
-                            movement.land_friction = land_friction;
+                debug_assert!(boat_facts.is_none_or(|facts| facts.entity_id == entity_id));
+                if is_boat && deferred_boat_paddle_entity_id != Some(entity_id) {
+                    if let Ok((transform, movement)) = self
+                        .ecs
+                        .query_one_mut::<(&mut EntityTransform, &mut EntityBoatMovement)>(entity)
+                    {
+                        if let Some(facts) = boat_facts {
+                            movement.old_status = movement.status;
+                            movement.status = Some(facts.status);
+                            movement.water_level = facts.water_level;
+                            if let Some(land_friction) = facts.land_friction {
+                                movement.land_friction = land_friction;
+                            }
+                            if matches!(
+                                facts.status,
+                                super::EntityBoatStatus::UnderWater
+                                    | super::EntityBoatStatus::UnderFlowingWater
+                            ) {
+                                movement.out_of_control_ticks += 1.0;
+                            } else {
+                                movement.out_of_control_ticks = 0.0;
+                            }
                         }
-                        if matches!(
-                            facts.status,
-                            super::EntityBoatStatus::UnderWater
-                                | super::EntityBoatStatus::UnderFlowingWater
-                        ) {
-                            movement.out_of_control_ticks += 1.0;
-                        } else {
-                            movement.out_of_control_ticks = 0.0;
-                        }
+                        // `AbstractBoat.tick` applies interpolation first,
+                        // then the remote branch discards packet velocity.
+                        transform.delta_movement = EntityVec3::default();
                     }
-                    // `AbstractBoat.tick` applies interpolation first, then the
-                    // remote branch discards packet velocity. A later client
-                    // push in this same tick may add a fresh impulse again.
-                    transform.delta_movement = EntityVec3::default();
                 }
+                let block_effect_policy =
+                    super::vanilla_entity_metadata_type_block_effect_tick_policy(entity_type_id)
+                        .unwrap_or(VanillaEntityBlockEffectTickPolicy::None);
+                let applies_block_effects = !matches!(
+                    block_effect_policy,
+                    VanillaEntityBlockEffectTickPolicy::None
+                        | VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
+                ) && !(block_effect_policy
+                    == VanillaEntityBlockEffectTickPolicy::BoatTwice
+                    && deferred_boat_paddle_entity_id == Some(entity_id));
+                if block_effect_world.has_loaded_chunks() && applies_block_effects {
+                    let block_effect_started_at = Instant::now();
+                    let (effect_entities, effect_blocks, effect_callbacks) = self
+                        .apply_block_effect_tick_for_entity(
+                            entity,
+                            block_effect_policy,
+                            client_movement_collisions_by_id,
+                            block_effect_world,
+                        );
+                    work.block_effect_duration += block_effect_started_at.elapsed();
+                    work.block_effect_entities =
+                        work.block_effect_entities.saturating_add(effect_entities);
+                    work.block_effect_blocks_visited = work
+                        .block_effect_blocks_visited
+                        .saturating_add(effect_blocks);
+                    work.block_effect_callbacks_applied = work
+                        .block_effect_callbacks_applied
+                        .saturating_add(effect_callbacks);
+                }
+                let Ok((identity, transform, mount, metadata, attributes, equipment, animations)) =
+                    self.ecs.query_one_mut::<(
+                        &EntityIdentity,
+                        &mut EntityTransform,
+                        &EntityMount,
+                        &EntityMetadata,
+                        &EntityAttributes,
+                        Option<&EntityEquipment>,
+                        &mut EntityClientAnimations,
+                    )>(entity)
+                else {
+                    continue;
+                };
                 animations
                     .animations
                     .advance_head_rotation_lerp(&mut transform.y_head_rot);
@@ -6064,7 +6302,12 @@ impl EntityStore {
                     );
                 }
             }
-            work.animation_duration += animation_started_at.elapsed();
+            let block_effect_duration_this_tick = work
+                .block_effect_duration
+                .saturating_sub(block_effect_duration_before);
+            work.animation_duration += animation_started_at
+                .elapsed()
+                .saturating_sub(block_effect_duration_this_tick);
             self.client_tick_scratch = tick_scratch;
         }
         work
@@ -6434,6 +6677,12 @@ impl EntityStore {
         } else {
             let _ = self.ecs.remove_one::<EntityFishingHookMovement>(entity);
         }
+        if let Ok(mut facts) = self
+            .ecs
+            .get::<&mut EntityClientMovementCollisionFacts>(entity)
+        {
+            *facts = EntityClientMovementCollisionFacts::default();
+        }
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
             entity,
@@ -6668,9 +6917,9 @@ impl Clone for EntityStore {
                 }
             }
             if super::client_movement::client_movement_uses_collision_facts(entity_type_id) {
-                let _ = store
-                    .ecs
-                    .insert_one(cloned, EntityClientMovementCollisionFacts);
+                if let Ok(facts) = self.ecs.get::<&EntityClientMovementCollisionFacts>(entity) {
+                    let _ = store.ecs.insert_one(cloned, (*facts).clone());
+                }
             }
             if super::client_movement::client_movement_uses_fluid_contact(entity_type_id) {
                 let _ = store.ecs.insert_one(cloned, EntityClientMovementFluidFacts);

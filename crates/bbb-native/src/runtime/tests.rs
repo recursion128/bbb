@@ -881,6 +881,10 @@ fn entity_client_tick_observation_reports_recent_work_and_running_peak() {
             schedule_duration: Duration::from_micros(4),
             projectile_duration: Duration::from_micros(3),
             interpolation_duration: Duration::from_micros(2),
+            block_effect_duration: Duration::from_micros(6),
+            block_effect_entities: 42,
+            block_effect_blocks_visited: 84,
+            block_effect_callbacks_applied: 21,
             animation_duration: Duration::from_micros(1),
         },
     );
@@ -894,6 +898,10 @@ fn entity_client_tick_observation_reports_recent_work_and_running_peak() {
             schedule_duration: Duration::from_micros(3),
             projectile_duration: Duration::from_micros(2),
             interpolation_duration: Duration::from_micros(1),
+            block_effect_duration: Duration::from_micros(4),
+            block_effect_entities: 11,
+            block_effect_blocks_visited: 22,
+            block_effect_callbacks_applied: 7,
             animation_duration: Duration::from_nanos(500),
         },
     );
@@ -928,6 +936,26 @@ fn entity_client_tick_observation_reports_recent_work_and_running_peak() {
     assert_eq!(
         counters.simulation_entity_client_tick_interpolation_peak_nanos,
         2_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_block_effect_nanos,
+        4_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_block_effect_peak_nanos,
+        6_000
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_block_effect_entities,
+        11
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_block_effect_blocks_visited,
+        22
+    );
+    assert_eq!(
+        counters.simulation_entity_client_tick_block_effect_callbacks_applied,
+        7
     );
     assert_eq!(counters.simulation_entity_client_tick_animation_nanos, 500);
     assert_eq!(
