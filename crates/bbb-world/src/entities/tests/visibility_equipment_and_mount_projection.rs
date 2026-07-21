@@ -1,5 +1,88 @@
 use super::*;
 
+#[test]
+fn fishing_hook_render_source_projects_owner_hand_inputs() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 10,
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: ProtocolVec3d {
+            x: 2.0,
+            y: 64.0,
+            z: 3.0,
+        },
+        y_rot: 90.0,
+        ..protocol_add_entity_with_type_data(10, VANILLA_ENTITY_TYPE_PLAYER_ID, 0)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 20,
+        entity_type_id: VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        position: ProtocolVec3d {
+            x: 6.0,
+            y: 62.0,
+            z: -1.0,
+        },
+        data: 10,
+        ..protocol_add_entity_with_type_data(20, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, 10)
+    });
+
+    let source = store
+        .fishing_hook_render_source_at_partial_tick(20, 1.0)
+        .expect("player-owned fishing hook source");
+    assert_entity_vec3_close(
+        source.hook_position,
+        EntityVec3 {
+            x: 6.0,
+            y: 62.0,
+            z: -1.0,
+        },
+    );
+    assert_eq!(source.owner_id, 10);
+    assert_entity_vec3_close(
+        source.owner_eye_position,
+        EntityVec3 {
+            x: 2.0,
+            y: 65.62,
+            z: 3.0,
+        },
+    );
+    assert_eq!(source.owner_body_y_rot, 90.0);
+    assert_eq!(source.owner_scale, 1.0);
+    assert!(!source.owner_is_crouching);
+    // No rod in the main hand: vanilla chooses the opposite of the main (right) arm.
+    assert!(source.holding_arm_left);
+    assert_eq!(source.owner_attack_anim, 0.0);
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 10,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item: ItemStackSummary {
+                item_id: Some(bbb_protocol::item_types::VANILLA_ITEM_FISHING_ROD_ID),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        }],
+    }));
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![protocol_pose_data(
+            accessors.pose_data_id,
+            bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_CROUCHING_ID,
+        )],
+    }));
+    let source = store
+        .fishing_hook_render_source_at_partial_tick(20, 1.0)
+        .unwrap();
+    assert!(!source.holding_arm_left);
+    assert!(source.owner_is_crouching);
+
+    assert!(store
+        .fishing_hook_render_source_at_partial_tick(10, 1.0)
+        .is_none());
+}
+
 fn entity_metadata_accessors() -> VanillaEntityMetadataAccessors {
     vanilla_entity_metadata_entity_accessors()
         .expect("generated base Entity metadata accessors must resolve")

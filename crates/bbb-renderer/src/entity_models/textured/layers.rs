@@ -247,6 +247,9 @@ pub(crate) enum EntityModelLayerRenderType {
     /// Vanilla `RenderTypes.leash()` (`RenderPipelines.LEASH`): untextured opaque
     /// position-color-lightmap geometry, used by the leash rope strips.
     Leash,
+    /// Vanilla `RenderTypes.lines()`, emitted by the fishing-hook parabola
+    /// through the renderer's dedicated screen-space line stream.
+    Lines,
     /// Vanilla `RenderTypes.waterMask()`, used by the boat water patch.
     WaterMask,
 }
@@ -279,7 +282,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 27] = [
+    pub(in crate::entity_models) const ALL: [Self; 28] = [
         Self::EntitySolid,
         Self::EntitySolidZOffsetForward,
         Self::ArmorCutoutNoCull,
@@ -306,6 +309,7 @@ impl EntityModelLayerRenderType {
         Self::DragonRays,
         Self::DragonRaysDepth,
         Self::Leash,
+        Self::Lines,
         Self::WaterMask,
     ];
 
@@ -335,7 +339,9 @@ impl EntityModelLayerRenderType {
             }
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
             Self::EndPortal | Self::EndGateway => EntityModelLayerRenderBucket::Portal,
-            Self::DragonRays | Self::Leash => EntityModelLayerRenderBucket::PositionColor,
+            Self::DragonRays | Self::Leash | Self::Lines => {
+                EntityModelLayerRenderBucket::PositionColor
+            }
             Self::WaterMask => EntityModelLayerRenderBucket::DepthOnly,
             Self::DragonRaysDepth => EntityModelLayerRenderBucket::DepthOnly,
         }
@@ -373,6 +379,7 @@ impl EntityModelLayerRenderType {
                 | Self::EnergySwirl
                 | Self::EndGatewayBeam
                 | Self::DragonRays
+                | Self::Lines
         )
     }
 
@@ -419,6 +426,7 @@ impl EntityModelLayerRenderType {
             Self::DragonRays => "dragonRays",
             Self::DragonRaysDepth => "dragonRaysDepth",
             Self::Leash => "leash",
+            Self::Lines => "lines",
             Self::WaterMask => "waterMask",
         }
     }

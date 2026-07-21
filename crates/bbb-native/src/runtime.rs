@@ -1098,7 +1098,7 @@ impl HudDebugTpsSampler {
     }
 }
 
-const VANILLA_BASE_CAMERA_FOV_DEGREES: f32 = 70.0;
+pub(crate) const VANILLA_BASE_CAMERA_FOV_DEGREES: f32 = 70.0;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CameraFovTickState {

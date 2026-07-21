@@ -532,6 +532,9 @@ pub(super) fn entity_model_instance(
     } else {
         0
     };
+    let fishing_line_origin_offset = world
+        .fishing_hook_render_source_at_partial_tick(source.entity_id, entity_partial_tick)
+        .map(fishing_hook_third_person_line_origin_offset);
     Some(entity_render_state_passthrough!(
         EntityModelInstance::new(
             source.entity_id,
@@ -550,6 +553,7 @@ pub(super) fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
+        .with_fishing_line_origin_offset(fishing_line_origin_offset)
         .with_invisible(entity_invisible(&source.data_values))
         .with_outline_color(outline_color)
         .with_light_coords(light_coords)
@@ -913,6 +917,108 @@ pub(super) fn entity_model_instance(
         with_axolotl_moving_factor axolotl_moving_factor,
         with_parrot_flap_angle parrot_flap_angle,
     ))
+}
+
+/// Vanilla `FishingHookRenderer.extractRenderState` third-person hand point.
+pub(super) fn fishing_hook_third_person_line_origin_offset(
+    source: FishingHookRenderSourceState,
+) -> [f32; 3] {
+    let arm = if source.holding_arm_left { -1.0 } else { 1.0 };
+    let yaw = source.owner_body_y_rot.to_radians();
+    let right_offset = arm * 0.35 * source.owner_scale;
+    let forward_offset = 0.8 * source.owner_scale;
+    let crouch_offset = if source.owner_is_crouching {
+        -0.1875
+    } else {
+        0.0
+    };
+    let hand = [
+        source.owner_eye_position.x as f32 - yaw.cos() * right_offset - yaw.sin() * forward_offset,
+        source.owner_eye_position.y as f32 + crouch_offset - 0.45 * source.owner_scale,
+        source.owner_eye_position.z as f32 - yaw.sin() * right_offset + yaw.cos() * forward_offset,
+    ];
+    fishing_hook_line_origin_offset(source, hand)
+}
+
+/// Vanilla `FishingHookRenderer.extractRenderState` first-person local-player
+/// hand point, including the attack-swing rotations around the current camera near plane.
+pub(super) fn fishing_hook_first_person_line_origin_offset(
+    source: FishingHookRenderSourceState,
+    camera_pose: CameraPose,
+    surface_size: [u32; 2],
+) -> [f32; 3] {
+    let arm = if source.holding_arm_left { -1.0 } else { 1.0 };
+    let swing = (source.owner_attack_anim.sqrt() * std::f32::consts::PI).sin();
+    let yaw = camera_pose.y_rot.to_radians();
+    let pitch = camera_pose.x_rot.to_radians();
+    let forward = [
+        -yaw.sin() * pitch.cos(),
+        -pitch.sin(),
+        yaw.cos() * pitch.cos(),
+    ];
+    let right_len = (forward[0] * forward[0] + forward[2] * forward[2]).sqrt();
+    let right = if right_len > f32::EPSILON {
+        [-forward[2] / right_len, 0.0, forward[0] / right_len]
+    } else {
+        [1.0, 0.0, 0.0]
+    };
+    let up = [
+        right[1] * forward[2] - right[2] * forward[1],
+        right[2] * forward[0] - right[0] * forward[2],
+        right[0] * forward[1] - right[1] * forward[0],
+    ];
+    let aspect = surface_size[0] as f32 / surface_size[1].max(1) as f32;
+    let options_fov = crate::runtime::VANILLA_BASE_CAMERA_FOV_DEGREES;
+    let near_height = (options_fov.to_radians() * 0.5).tan() * 0.05;
+    let near_width = near_height * aspect;
+    let x = arm * 0.525 * near_width;
+    let y = -0.1 * near_height;
+    let mut hand_offset = [
+        forward[0] * 0.05 + right[0] * x + up[0] * y,
+        forward[1] * 0.05 + right[1] * x + up[1] * y,
+        forward[2] * 0.05 + right[2] * x + up[2] * y,
+    ];
+    let view_bobbing_scale = 960.0 / options_fov;
+    for component in &mut hand_offset {
+        *component *= view_bobbing_scale;
+    }
+    hand_offset = rotate_y(hand_offset, swing * 0.5);
+    hand_offset = rotate_x(hand_offset, swing * 0.7);
+    let hand = [
+        source.owner_eye_position.x as f32 + hand_offset[0],
+        source.owner_eye_position.y as f32 + hand_offset[1],
+        source.owner_eye_position.z as f32 + hand_offset[2],
+    ];
+    fishing_hook_line_origin_offset(source, hand)
+}
+
+fn fishing_hook_line_origin_offset(
+    source: FishingHookRenderSourceState,
+    hand: [f32; 3],
+) -> [f32; 3] {
+    [
+        hand[0] - source.hook_position.x as f32,
+        hand[1] - (source.hook_position.y as f32 + 0.25),
+        hand[2] - source.hook_position.z as f32,
+    ]
+}
+
+fn rotate_y(value: [f32; 3], angle: f32) -> [f32; 3] {
+    let (sin, cos) = angle.sin_cos();
+    [
+        value[0] * cos + value[2] * sin,
+        value[1],
+        value[2] * cos - value[0] * sin,
+    ]
+}
+
+fn rotate_x(value: [f32; 3], angle: f32) -> [f32; 3] {
+    let (sin, cos) = angle.sin_cos();
+    [
+        value[0],
+        value[1] * cos - value[2] * sin,
+        value[1] * sin + value[2] * cos,
+    ]
 }
 
 /// Vanilla `LivingEntityRenderer.setupRotations` body shake, folded into the

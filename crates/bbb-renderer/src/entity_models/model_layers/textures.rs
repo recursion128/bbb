@@ -119,6 +119,19 @@ pub(in crate::entity_models) const DRAGON_FIREBALL_TEXTURE_REF: EntityModelTextu
         size: [16, 16],
     };
 
+pub(in crate::entity_models) const FISHING_HOOK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fishing/fishing_hook.png",
+        size: [16, 16],
+    };
+
+pub(in crate::entity_models) const FISHING_HOOK_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [FISHING_HOOK_TEXTURE_REF];
+
+pub fn fishing_hook_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &FISHING_HOOK_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) fn default_player_skin_texture_ref(
     skin: EntityDefaultPlayerSkin,
 ) -> EntityModelTextureRef {
@@ -1241,7 +1254,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 708] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 709] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1262,6 +1275,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PLAYER_WIDE_ZURI_TEXTURE_REF,
     EXPERIENCE_ORB_TEXTURE_REF,
     DRAGON_FIREBALL_TEXTURE_REF,
+    FISHING_HOOK_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
     SHEEP_BABY_TEXTURE_REF,
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,

@@ -10,6 +10,7 @@ pub use crate::entities::vanilla_entity_renderer_piglin_kind;
 pub use crate::entities::vanilla_entity_renderer_squid_kind;
 pub use crate::entities::EntityLeashRenderState;
 pub use crate::entities::EntityRenderCandidateState;
+pub use crate::entities::FishingHookRenderSourceState;
 pub use crate::entities::VanillaAbstractBoatMetadataAccessors;
 pub use crate::entities::VanillaAbstractHorseMetadataAccessors;
 pub use crate::entities::VanillaAbstractMinecartMetadataAccessors;

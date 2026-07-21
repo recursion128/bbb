@@ -1276,6 +1276,24 @@ pub struct EntityRenderCandidateState {
     pub wears_dragon_head: bool,
 }
 
+/// Per-frame world state consumed by vanilla `FishingHookRenderer.extractRenderState`.
+///
+/// The hook and owner transforms are sampled at one partial tick so native can derive
+/// the renderer's hand-to-hook offset without mixing generations. Item handedness,
+/// crouching, scale, eye height, and attack animation all remain owned by the canonical
+/// entity store.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FishingHookRenderSourceState {
+    pub hook_position: EntityVec3,
+    pub owner_id: i32,
+    pub owner_eye_position: EntityVec3,
+    pub owner_body_y_rot: f32,
+    pub owner_scale: f32,
+    pub owner_is_crouching: bool,
+    pub holding_arm_left: bool,
+    pub owner_attack_anim: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MinecartRailShape {
     NorthSouth,
@@ -4262,6 +4280,17 @@ impl WorldStore {
             VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
             local_player_id,
         )
+    }
+
+    /// Vanilla `FishingHookRenderer.extractRenderState` inputs for one tracked
+    /// fishing bobber and its player owner, sampled at the same partial tick.
+    pub fn fishing_hook_render_source_at_partial_tick(
+        &self,
+        hook_id: i32,
+        partial_ticks: f32,
+    ) -> Option<FishingHookRenderSourceState> {
+        self.entities
+            .fishing_hook_render_source_at_partial_tick(hook_id, partial_ticks.clamp(0.0, 1.0))
     }
 
     pub fn local_player_vehicle_id(&self) -> Option<i32> {

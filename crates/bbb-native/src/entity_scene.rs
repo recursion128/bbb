@@ -105,7 +105,7 @@ use bbb_world::{
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, EntityRenderCandidateState, FarmAnimalVariantModel,
-    FarmAnimalVariantPresentation, FrogVariantPresentation,
+    FarmAnimalVariantPresentation, FishingHookRenderSourceState, FrogVariantPresentation,
     GuardianBeamSource as WorldGuardianBeamSource,
     HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemFrameFacing as WorldItemFrameFacing,
     LeashRopeSource as WorldLeashRopeSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
@@ -493,6 +493,31 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
         scratch.sources.drain(..),
         &mut scratch.instances,
     );
+    // bbb's active camera type is currently first-person; like vanilla's
+    // `owner == Minecraft.player` branch, this is keyed to hook ownership rather
+    // than the entity a server-directed camera happens to follow.
+    if let Some(camera_pose) = visibility.camera_pose {
+        for instance in &mut scratch.instances {
+            if !matches!(instance.kind, EntityModelKind::FishingHook) {
+                continue;
+            }
+            let Some(source) = world.fishing_hook_render_source_at_partial_tick(
+                instance.entity_id,
+                entity_partial_tick,
+            ) else {
+                continue;
+            };
+            if Some(source.owner_id) != world.local_player_id() {
+                continue;
+            }
+            instance.render_state.fishing_line_origin_offset =
+                Some(fishing_hook_first_person_line_origin_offset(
+                    source,
+                    camera_pose,
+                    visibility.surface_size,
+                ));
+        }
+    }
     let model_duration = model_started_at.elapsed();
     let current_capacities = [
         scratch.candidates.capacity(),

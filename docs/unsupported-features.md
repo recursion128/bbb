@@ -1437,9 +1437,6 @@ back into a todo. Do not delete these.
   and exact once the canonical projectile box separates; completing per-subclass
   client motion will make that separation occur at vanilla's intermediate tick
   instead of the next authoritative transform update.
-- **Dedicated fishing-hook renderer**: its textured camera quad, 16-step parabola
-  line to the rod, and world-side line-origin extraction (the experience-orb and
-  dragon-fireball billboard quads are done).
 - **Minecart spawner animated block-entity display content.** Classified as
   block-entity special renderer presentation.
 ## GPU and resources

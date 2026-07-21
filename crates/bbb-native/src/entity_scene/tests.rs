@@ -13103,6 +13103,102 @@ fn assert_selection_box_close(actual: [f32; 3], expected: [f32; 3]) {
     }
 }
 
+fn fishing_hook_render_source() -> FishingHookRenderSourceState {
+    FishingHookRenderSourceState {
+        hook_position: EntityVec3 {
+            x: 10.0,
+            y: 20.0,
+            z: 30.0,
+        },
+        owner_id: 4,
+        owner_eye_position: EntityVec3 {
+            x: 12.0,
+            y: 22.0,
+            z: 34.0,
+        },
+        owner_body_y_rot: 0.0,
+        owner_scale: 1.0,
+        owner_is_crouching: false,
+        holding_arm_left: false,
+        owner_attack_anim: 0.0,
+    }
+}
+
+#[test]
+fn fishing_hook_third_person_hand_offset_matches_vanilla_projection() {
+    assert_selection_box_close(
+        fishing_hook_third_person_line_origin_offset(fishing_hook_render_source()),
+        [1.65, 1.3, 4.8],
+    );
+
+    let mut source = fishing_hook_render_source();
+    source.holding_arm_left = true;
+    source.owner_is_crouching = true;
+    assert_selection_box_close(
+        fishing_hook_third_person_line_origin_offset(source),
+        [2.35, 1.1125, 4.8],
+    );
+}
+
+#[test]
+fn fishing_hook_world_source_reaches_dedicated_instance_state() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        4,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [2.0, 64.0, 3.0],
+    ));
+    let mut hook = protocol_add_entity(5, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, [6.0, 62.0, -1.0]);
+    hook.data = 4;
+    world.apply_add_entity(hook);
+
+    let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 5)
+        .expect("dedicated fishing-hook instance");
+    assert_eq!(instance.kind, EntityModelKind::FishingHook);
+    assert_selection_box_close(
+        instance
+            .render_state
+            .fishing_line_origin_offset
+            .expect("player-owner hand offset"),
+        [-3.65, 2.92, 4.8],
+    );
+}
+
+#[test]
+fn fishing_hook_first_person_hand_offset_uses_camera_near_plane() {
+    let pose = CameraPose {
+        position: [10.0, 20.0, 30.0],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: CameraPose::STANDING_EYE_HEIGHT,
+    };
+    assert_selection_box_close(
+        fishing_hook_first_person_line_origin_offset(
+            fishing_hook_render_source(),
+            pose,
+            [1920, 1080],
+        ),
+        [1.5518672, 1.7019858, 4.6857147],
+    );
+
+    let mut source = fishing_hook_render_source();
+    source.holding_arm_left = true;
+    assert_selection_box_close(
+        fishing_hook_first_person_line_origin_offset(source, pose, [1920, 1080]),
+        [2.4481325, 1.7019858, 4.6857147],
+    );
+}
+
+#[test]
+fn entity_model_kind_uses_dedicated_fishing_hook_renderer() {
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, &[]),
+        EntityModelKind::FishingHook
+    );
+}
+
 const VANILLA_PICK_TARGET_RENDER_MODEL_ENTITY_TYPE_IDS: &[i32] = &[
     0, 1, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
     29, 30, 31, 32, 33, 34, 35, 36, 38, 40, 41, 42, 45, 46, 51, 52, 54, 55, 56, 57, 58, 59, 61, 62,

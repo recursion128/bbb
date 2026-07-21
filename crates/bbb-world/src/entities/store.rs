@@ -33,7 +33,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
 use bbb_protocol::item_types::{
-    VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_DRAGON_HEAD_ID,
+    VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_DRAGON_HEAD_ID, VANILLA_ITEM_FISHING_ROD_ID,
     VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
@@ -99,11 +99,12 @@ use super::{
     EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
-    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
-    RavagerStunParticleState, VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
+    FishingHookRenderSourceState, FoxEatParticleState, GuardianAmbientParticleState,
+    GuardianAttackParticleState, HappyGhastHarnessColor, ItemEntityStackState,
+    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
+    PowderSnowFlakeParticleState, RavagerRoarParticleState, RavagerStunParticleState,
+    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
     VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
@@ -2321,6 +2322,68 @@ impl EntityStore {
                 }),
             });
         }
+    }
+
+    pub(crate) fn fishing_hook_render_source_at_partial_tick(
+        &self,
+        hook_id: i32,
+        partial_ticks: f32,
+    ) -> Option<FishingHookRenderSourceState> {
+        let hook = self.by_protocol_id.get(&hook_id).copied()?;
+        let hook_identity = self.ecs.get::<&EntityIdentity>(hook).ok()?;
+        if hook_identity.entity_type_id != VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
+            return None;
+        }
+        let owner_id = hook_identity.data;
+        let hook_transform = self.ecs.get::<&EntityTransform>(hook).ok()?;
+
+        let owner = self.by_protocol_id.get(&owner_id).copied()?;
+        let owner_identity = self.ecs.get::<&EntityIdentity>(owner).ok()?;
+        if owner_identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return None;
+        }
+        let owner_transform = self.ecs.get::<&EntityTransform>(owner).ok()?;
+        let owner_metadata = self.ecs.get::<&EntityMetadata>(owner).ok()?;
+        let owner_attributes = self.ecs.get::<&EntityAttributes>(owner).ok()?;
+        let owner_animations = self.ecs.get::<&EntityClientAnimations>(owner).ok()?;
+        let owner_equipment = self.ecs.get::<&EntityEquipment>(owner).ok()?;
+
+        let owner_position = owner_transform.render_position(partial_ticks);
+        let eye_height = vanilla_eye_height_for_entity_data(
+            owner_identity.entity_type_id,
+            owner_identity.data,
+            &owner_metadata.data_values,
+            &owner_attributes.attributes,
+            Some(owner_animations.animations),
+            owner_metadata.painting_variant_projection.as_ref(),
+        )?;
+        let owner_eye_position = EntityVec3 {
+            y: owner_position.y + f64::from(eye_height),
+            ..owner_position
+        };
+        let owner_scale =
+            vanilla_render_scale(owner_identity.entity_type_id, &owner_attributes.attributes);
+        let main_arm_left = self.entity_main_arm_left(owner_id, owner_identity.entity_type_id);
+        let main_hand_holds_rod = owner_equipment.equipment.iter().any(|update| {
+            update.slot == ProtocolEquipmentSlot::MainHand
+                && update.item.item_id == Some(VANILLA_ITEM_FISHING_ROD_ID)
+        });
+
+        Some(FishingHookRenderSourceState {
+            hook_position: hook_transform.render_position(partial_ticks),
+            owner_id,
+            owner_eye_position,
+            owner_body_y_rot: owner_transform.render_body_y_rot(partial_ticks),
+            owner_scale,
+            owner_is_crouching: entity_data_pose(&owner_metadata.data_values)
+                == VANILLA_ENTITY_POSE_CROUCHING_ID,
+            holding_arm_left: if main_hand_holds_rod {
+                main_arm_left
+            } else {
+                !main_arm_left
+            },
+            owner_attack_anim: owner_animations.animations.attack_anim(partial_ticks),
+        })
     }
 
     pub(crate) fn restore_protocol_order_for_model_candidates(

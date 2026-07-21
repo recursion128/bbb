@@ -40,6 +40,7 @@ mod equine;
 mod evoker_fangs;
 mod experience_orb;
 mod feline;
+mod fishing_hook;
 mod fox;
 mod frog;
 mod ghast;
@@ -371,6 +372,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             false,
             false,
             false,
+        ),
+        (
+            EntityModelLayerRenderType::Lines,
+            "lines",
+            EntityModelLayerRenderBucket::PositionColor,
+            false,
+            false,
+            true,
         ),
         (
             EntityModelLayerRenderType::WaterMask,

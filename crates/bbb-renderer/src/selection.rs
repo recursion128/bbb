@@ -579,6 +579,14 @@ fn selection_line_vertices(line: SelectionLine) -> [SelectionVertex; 6] {
     selection_line_vertices_with_width(line.from, line.to, line.color, line.width)
 }
 
+pub(super) fn selection_lines_vertices(lines: &[SelectionLine]) -> Vec<SelectionVertex> {
+    let mut vertices = Vec::with_capacity(lines.len() * 6);
+    for line in lines {
+        vertices.extend(selection_line_vertices(*line));
+    }
+    vertices
+}
+
 fn selection_line_vertices_with_width(
     from: [f32; 3],
     to: [f32; 3],

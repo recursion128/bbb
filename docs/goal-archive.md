@@ -176,3 +176,6 @@
   `dimensions_pick_audit` 证据集扩为 6 实现 + 6 语义测试 + 3 vanilla 锚点。
   开放类目余 4：model/layers、animation、equipment/passenger/leash、
   event/particle/audio。
+- **2026-07-21（FishingHook renderer 工程切片）**：闭环 world 同帧 owner/持竿手
+  状态、第一/第三人称手部起点、专用裁剪纹理四边形与 16 段屏幕宽度抛物线；
+  commit "Render dedicated fishing hook and line"，语义测试覆盖三层边界。

@@ -392,6 +392,11 @@ pub enum EntityModelKind {
     /// `RenderTypes.entityCutout`. Its constant `getBlockLightLevel` = 15 rides the generated
     /// static-full-bright renderer catalog.
     DragonFireball,
+    /// Vanilla 26.1 `FishingHookRenderer`: a camera-facing half-scale quad on
+    /// `entity/fishing/fishing_hook.png`, plus the 16-segment black parabola from
+    /// the hook to its owning player's rendered hand. The line origin offset is
+    /// carried by `EntityRenderState.fishing_line_origin_offset`.
+    FishingHook,
     /// Vanilla 26.1 `BookModel` (`ModelLayers.BOOK`) submitted by the
     /// `EnchantTableRenderer` block-entity renderer — the enchanting table's
     /// hovering, page-flipping book on the `entity/enchantment/

@@ -296,6 +296,7 @@ pub struct Renderer {
     pub(super) frame_debug_text_indices: FrameDataBuffer,
     pub(super) frame_debug_line_opaque_vertices: FrameDataBuffer,
     pub(super) frame_debug_line_translucent_vertices: FrameDataBuffer,
+    pub(super) frame_entity_model_line_vertices: FrameDataBuffer,
     pub(super) frame_item_entity_vertices: FrameDataBuffer,
     pub(super) frame_hud_vertices: FrameDataBuffer,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
@@ -1552,6 +1553,9 @@ impl Renderer {
             ),
             frame_debug_line_translucent_vertices: FrameDataBuffer::vertex(
                 "bbb-debug-line-translucent-frame-vertices",
+            ),
+            frame_entity_model_line_vertices: FrameDataBuffer::vertex(
+                "bbb-entity-model-line-frame-vertices",
             ),
             frame_item_entity_vertices: FrameDataBuffer::vertex("bbb-item-entity-frame-vertices"),
             frame_hud_vertices: FrameDataBuffer::vertex("bbb-hud-frame-vertices"),

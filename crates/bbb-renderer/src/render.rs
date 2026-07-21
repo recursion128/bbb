@@ -11,7 +11,7 @@ use crate::{
     debug_filled_boxes::build_debug_filled_mesh,
     debug_text_billboards::build_debug_text_mesh,
     entity_models::{
-        upload_elder_guardian_particle_textured_mesh,
+        fishing_hook_line_segments, upload_elder_guardian_particle_textured_mesh,
         upload_experience_orb_pickup_particle_textured_mesh,
         upload_projectile_pickup_particle_textured_mesh, EntityModelLayerRenderType,
         EntityModelMeshGpu, EntityModelPortalDrawRange, EntityModelPortalMeshGpu,
@@ -24,7 +24,7 @@ use crate::{
         ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind,
         ParticleVertexBatches,
     },
-    selection::debug_line_vertex_batches,
+    selection::{debug_line_vertex_batches, selection_lines_vertices},
     weather::{build_lightning_mesh, build_weather_mesh},
     world_border::build_world_border_mesh,
     Renderer,
@@ -1326,6 +1326,20 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
+        let fishing_line_width = (self.config.width as f32 / 1920.0 * 2.5).max(2.5);
+        let fishing_lines = self.camera_pose.map_or_else(Vec::new, |_| {
+            self.entity_model_instances
+                .iter()
+                .filter_map(|instance| fishing_hook_line_segments(*instance, fishing_line_width))
+                .flatten()
+                .collect::<Vec<_>>()
+        });
+        let fishing_line_vertices = selection_lines_vertices(&fishing_lines);
+        let has_fishing_lines = self.frame_entity_model_line_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&fishing_line_vertices),
+        );
         let debug_line_batches = self
             .camera_pose
             .map_or_else(Default::default, |camera_pose| {
@@ -1346,6 +1360,7 @@ impl Renderer {
             || self.chunk_border_outline.is_some()
             || self.entity_scene_outline.is_some()
             || self.entity_target_outline.is_some()
+            || has_fishing_lines
             || has_opaque_debug_lines
             || has_translucent_debug_lines
         {
@@ -1379,6 +1394,7 @@ impl Renderer {
                 || chunk_border_has_standard_vertices
                 || self.entity_scene_outline.is_some()
                 || self.entity_target_outline.is_some()
+                || has_fishing_lines
                 || has_opaque_debug_lines
             {
                 pass.set_pipeline(&self.selection_pipeline);
@@ -1404,6 +1420,15 @@ impl Renderer {
                     pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
                     pass.draw(0..outline.vertex_count, 0..1);
                     stats.entity_target_draw_calls += 1;
+                }
+                if has_fishing_lines {
+                    let buffer = self
+                        .frame_entity_model_line_vertices
+                        .buffer()
+                        .expect("fishing-hook line vertices uploaded");
+                    pass.set_vertex_buffer(0, buffer.slice(..));
+                    pass.draw(0..fishing_line_vertices.len() as u32, 0..1);
+                    stats.entity_model_draw_calls += 1;
                 }
                 if has_opaque_debug_lines {
                     let buffer = self
@@ -5289,6 +5314,9 @@ mod tests {
     #[test]
     fn item_entity_target_copies_main_depth_and_splits_item_features_from_line_draws() {
         let source = include_str!("render.rs");
+        let line_fn = source
+            .find("fn item_entity_line_target_pass")
+            .expect("item-entity line target step is defined");
         let entity_translucent_features = source
             .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
             .expect("entity translucent feature pass label is used");
@@ -5325,6 +5353,14 @@ mod tests {
             .find("pass.set_pipeline(&self.selection_pipeline)")
             .map(|index| line_target + index)
             .expect("selection line pipeline appends into the item-entity target");
+        let fishing_line_upload = source[line_fn..line_target]
+            .find("self.frame_entity_model_line_vertices.upload")
+            .map(|index| line_fn + index)
+            .expect("fishing-hook lines upload through a persistent frame buffer");
+        let fishing_line_draw = source[selection_pipeline..]
+            .find(".frame_entity_model_line_vertices")
+            .map(|index| selection_pipeline + index)
+            .expect("fishing-hook lines draw through the selection line pipeline");
         let particle = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
@@ -5373,6 +5409,22 @@ mod tests {
                 && source[line_target..particle]
                     .contains("view: &self.item_entity_target.depth.view"),
             "line geometry appends to the existing item_entity color/depth target before particles"
+        );
+        assert!(
+            !source[line_fn..particle].contains("create_buffer_init"),
+            "item-entity line streams must reuse FrameDataBuffer"
+        );
+        assert!(
+            fishing_line_upload < line_target,
+            "fishing-hook line vertices upload before the line pass"
+        );
+        assert!(
+            selection_pipeline < fishing_line_draw,
+            "fishing-hook lines select their frame buffer after binding the line pipeline"
+        );
+        assert!(
+            fishing_line_draw < particle,
+            "fishing-hook lines draw before the particle target"
         );
     }
 

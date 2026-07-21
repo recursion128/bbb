@@ -62,7 +62,7 @@ use super::{
         ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
         ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_PORTAL_TEXTURE_REF,
         END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
-        EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        EXPERIENCE_ORB_TEXTURE_REF, FISHING_HOOK_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -1508,6 +1508,107 @@ pub(in crate::entity_models) fn render_dragon_fireball(
             entry.uv,
         );
     });
+}
+
+/// Vanilla 26.1 `FishingHookRenderer.submit`: scale by one half, face the camera,
+/// submit the full fishing-hook sheet through `entityCutoutCull`, then submit the
+/// owner-dependent parabola through `RenderTypes.lines()`.
+pub(in crate::entity_models) fn render_fishing_hook(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::FishingHook)
+        || instance.render_state.fishing_line_origin_offset.is_none()
+    {
+        return;
+    }
+    let Some(pose) = meshes.camera_pose else {
+        return;
+    };
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_scale(Vec3::splat(0.5))
+        * camera_billboard_orientation(pose);
+    let light = instance.render_state.shader_light();
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::EntityCutoutCull,
+        FISHING_HOOK_TEXTURE_REF,
+        [1.0; 4],
+        transform,
+        0,
+        0,
+    )
+    .with_light(light);
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        append_fishing_hook_quad(mesh, transform, light, entry.uv);
+    });
+    meshes.record_custom_submission_with_index(EntityModelCustomGeometrySubmission {
+        render_type: EntityModelLayerRenderType::Lines,
+        transform: Mat4::from_translation(Vec3::from_array(instance.position)),
+        order: 0,
+        submit_sequence: 1,
+    });
+}
+
+fn append_fishing_hook_quad(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    light: [f32; 2],
+    texture_uv: EntityModelUvRect,
+) {
+    let normal = transform
+        .transform_vector3(Vec3::Y)
+        .normalize_or_zero()
+        .to_array();
+    let corners = [
+        (Vec3::new(-0.5, -0.5, 0.0), [0.0, 1.0]),
+        (Vec3::new(0.5, -0.5, 0.0), [1.0, 1.0]),
+        (Vec3::new(0.5, 0.5, 0.0), [1.0, 0.0]),
+        (Vec3::new(-0.5, 0.5, 0.0), [0.0, 0.0]),
+    ];
+    let base = mesh.vertices.len() as u32;
+    mesh.vertices
+        .extend(corners.map(|(corner, uv)| EntityModelTexturedVertex {
+            position: (transform * corner.extend(1.0)).truncate().to_array(),
+            uv: normalized_entity_texture_uv(uv, texture_uv),
+            tint: [1.0; 4],
+            light,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
+            normal,
+        }));
+    mesh.indices
+        .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    mesh.cutout_faces += 1;
+}
+
+/// Vanilla `FishingHookRenderer.stringVertex` sampled over its fixed 16-step
+/// parabola. The state offset ends at the rendered hand because its Y component
+/// is measured from `(hookPosition + (0, 0.25, 0))`.
+pub(crate) fn fishing_hook_line_segments(
+    instance: EntityModelInstance,
+    line_width: f32,
+) -> Option<[crate::SelectionLine; 16]> {
+    if !matches!(instance.kind, EntityModelKind::FishingHook) {
+        return None;
+    }
+    let [x, y, z] = instance.render_state.fishing_line_origin_offset?;
+    let point = |fraction: f32| {
+        [
+            instance.position[0] + x * fraction,
+            instance.position[1] + y * (fraction * fraction + fraction) * 0.5 + 0.25,
+            instance.position[2] + z * fraction,
+        ]
+    };
+    Some(std::array::from_fn(|step| {
+        let from = step as f32 / 16.0;
+        let to = (step + 1) as f32 / 16.0;
+        crate::SelectionLine {
+            from: point(from),
+            to: point(to),
+            color: [0.0, 0.0, 0.0, 1.0],
+            width: line_width,
+        }
+    }))
 }
 
 fn experience_orb_pickup_particle_tint(age_ticks: f32) -> [f32; 4] {

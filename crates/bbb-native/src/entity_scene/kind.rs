@@ -345,9 +345,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                 icon: bbb_world::experience_orb_icon(value),
             }
         }
-        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
-            entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)
-        }
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => EntityModelKind::FishingHook,
         VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, variant_registries),
         VANILLA_ENTITY_TYPE_GHAST_ID => {
             let charging =
