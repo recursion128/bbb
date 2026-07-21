@@ -267,6 +267,9 @@ const TNT_MINECART_FUSE_TICKS: i32 = 80;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct EntityClientTickParticleTriggers {
+    /// Vanilla `MinecartTNT.tick` decrements a positive fuse and then emits one
+    /// smoke particle at `y + 0.5` on both client and server.
+    pub(crate) minecart_tnt_smoke: bool,
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
@@ -5610,6 +5613,7 @@ impl EntityClientAnimationState {
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_TNT_MINECART_ID {
             if let Some(fuse) = self.minecart_tnt_fuse.as_mut() {
+                particle_triggers.minecart_tnt_smoke = fuse.fuse_remaining_ticks > 0;
                 fuse.advance_client_tick();
             }
         }

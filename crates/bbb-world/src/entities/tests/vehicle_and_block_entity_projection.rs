@@ -330,6 +330,7 @@ fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
         entity_id: 28,
         event_id: 10,
     }));
+    let retained = store.publication_snapshot();
     // Vanilla `MinecartTNT.handleEntityEvent(10)` primes `fuse = 80`, and
     // `TntMinecartRenderer.extractRenderState` consumes `fuse - partialTick + 1.0`.
     assert_eq!(fuse(&store, 28, 0.0), 81.0);
@@ -348,12 +349,43 @@ fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
     store.advance_entity_client_animations(1);
     assert_eq!(fuse(&store, 28, 0.0), 80.0);
     assert_eq!(fuse(&store, 28, 0.5), 79.5);
+    assert_eq!(
+        store
+            .drain_entity_client_movement_effect_states()
+            .collect::<Vec<_>>(),
+        vec![EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
+                entity_id: 28,
+                kind: EntityClientMovementSimpleParticleKind::Smoke,
+                position: EntityVec3 {
+                    x: 1.0,
+                    y: 64.5,
+                    z: -2.0,
+                },
+                velocity: EntityVec3::default(),
+            })
+        )]
+    );
     store.advance_entity_client_animations(75);
     assert_eq!(fuse(&store, 28, 0.0), 5.0);
     assert_eq!(fuse(&store, 28, 0.5), 4.5);
+    assert_eq!(
+        store.drain_entity_client_movement_effect_states().count(),
+        75
+    );
     store.advance_entity_client_animations(10);
     assert_eq!(fuse(&store, 28, 0.0), 1.0);
     assert_eq!(fuse(&store, 28, 1.0), 0.0);
+    assert_eq!(
+        store.drain_entity_client_movement_effect_states().count(),
+        4,
+        "only the four positive pre-decrement fuse ticks emit smoke"
+    );
+    assert_eq!(
+        fuse(&retained, 28, 0.0),
+        81.0,
+        "the retained pre-tick generation keeps its primed fuse"
+    );
 }
 
 #[test]

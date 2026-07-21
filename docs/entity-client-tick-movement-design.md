@@ -475,6 +475,19 @@ ever-growing publication payload nor deferred to the next mutation. A wider
 four-component hecs mutation prototype measured 1.7618/6.6617 us and was
 discarded; combining borrow syntax did not reduce the end-to-end owner cost.
 
+The same phase also closes the client-owned part of `MinecartTNT.tick`. Event
+10 already seeds the canonical 80-tick fuse; every tick whose pre-decrement fuse
+is positive now decrements it and emits one typed smoke effect at the cart's
+post-behavior position plus `y + 0.5`. The existing lossless movement-effect
+FIFO drains before publication and resolves the smoke through the common
+particle owner. Fuse-zero explosion, horizontal-collision ignition, removal,
+damage, and game-rule outcomes remain server-only. A repo-native batched
+Criterion keeps all 2,000 carts primed without measuring fixture recreation:
+tick/effect drain changed from 1.4323 to 1.4398 ms and the retained-publication
+path from 3.4485 to 3.4937 ms (+0.52%/+1.31%); Criterion detected no significant
+change in either case. Thus the 2,000 required effects are bounded and do not
+become retained snapshot payload.
+
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.

@@ -75,10 +75,11 @@ use super::{
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
     EntityAttachmentFace, EntityAttributes, EntityBlockModelState, EntityCameraHurtState,
     EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations,
-    EntityClientMovementEffectState, EntityDamage, EntityEquipment, EntityHurtingProjectile,
-    EntityIdentity, EntityInterpolationCollisionInput, EntityLeash, EntityMetadata,
-    EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
-    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityClientMovementEffectState, EntityClientMovementParticleState,
+    EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState, EntityDamage,
+    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FoxEatParticleState, HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState,
@@ -5038,6 +5039,14 @@ impl EntityStore {
                 else {
                     continue;
                 };
+                // `AbstractMinecart.tick` runs `NewMinecartBehavior.tick`
+                // before any concrete minecart subclass work. TNT smoke and
+                // every later animation therefore observe the post-lerp pose.
+                if minecart_improvements_enabled {
+                    if let Some(minecart_lerp) = minecart_lerp {
+                        minecart_lerp.advance_client_tick(transform);
+                    }
+                }
                 animations
                     .animations
                     .advance_head_rotation_lerp(&mut transform.y_head_rot);
@@ -5188,11 +5197,6 @@ impl EntityStore {
                 // `advance_client_tick` always advances `age_ticks`, including
                 // entities without a specialized animation family.
                 work.mutated_entities = work.mutated_entities.saturating_add(1);
-                if minecart_improvements_enabled {
-                    if let Some(minecart_lerp) = minecart_lerp {
-                        minecart_lerp.advance_client_tick(transform);
-                    }
-                }
             }
             work.animation_duration += animation_started_at.elapsed();
             self.client_tick_scratch = tick_scratch;
@@ -5971,6 +5975,20 @@ fn append_client_tick_particle_triggers(
     client_animations: Option<EntityClientAnimationState>,
     triggers: EntityClientTickParticleTriggers,
 ) {
+    if triggers.minecart_tnt_smoke {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {
+                entity_id: identity.id,
+                kind: EntityClientMovementSimpleParticleKind::Smoke,
+                position: super::EntityVec3 {
+                    x: transform.position.x,
+                    y: transform.position.y + 0.5,
+                    z: transform.position.z,
+                },
+                velocity: super::EntityVec3::default(),
+            }),
+        ));
+    }
     append_boat_paddle_sound_triggers(
         pending_entity_client_movement_effects,
         identity,

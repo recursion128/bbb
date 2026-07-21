@@ -24,7 +24,8 @@ use bbb_protocol::{
     entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     game_types::{VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
@@ -35,7 +36,7 @@ use bbb_world::{
     HeightmapData, LightData, LocalPlayerInputState, PaletteDomain, PaletteKind,
     PalettedContainerData, WorldStore,
 };
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
 const CHUNK_COUNTS: [usize; 3] = [81, 289, 625];
 const ENTITY_COUNTS: [usize; 3] = [100, 500, 2_000];
@@ -323,6 +324,17 @@ fn build_local_boat_world() -> WorldStore {
         vehicle_id: 1,
         passenger_ids: vec![99],
     }));
+    world
+}
+
+fn build_primed_tnt_minecart_world(count: usize) -> WorldStore {
+    let mut world = build_entity_world_with(count, |_| VANILLA_ENTITY_TYPE_TNT_MINECART_ID);
+    for id in 1..=i32::try_from(count).expect("benchmark count fits i32") {
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: id,
+            event_id: 10,
+        }));
+    }
     world
 }
 
@@ -824,6 +836,33 @@ fn bench_entity_effect_generation(c: &mut Criterion) {
             world.advance_entity_client_animations(black_box(1));
             black_box(world.drain_entity_client_movement_effect_states().count());
         });
+    });
+    let primed_tnt_minecarts = build_primed_tnt_minecart_world(ENTITY_COUNT);
+    group.bench_function("2000_tnt_minecart_fuses", |b| {
+        b.iter_batched(
+            || primed_tnt_minecarts.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_function("2000_tnt_minecart_fuses_then_publish_retained", |b| {
+        b.iter_batched(
+            || {
+                let world = primed_tnt_minecarts.publication_snapshot();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+                black_box(Arc::new(world.publication_snapshot()));
+                black_box(held);
+            },
+            BatchSize::SmallInput,
+        );
     });
     group.finish();
 }

@@ -20108,3 +20108,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   physics+effect 1.5319 us、再加 retained publication 6.2547 us（+11.0%/+2.27%）；新增成本是
   有界的 Vanilla paddle/effect 工作，没有转移到 publication 或下一次 mutation。remote persistent
   status、bubble column、passenger push、block callback 与非 boat local travel 仍保持开放。
+
+## 2026-07-20：TNT minecart fuse smoke tick
+
+- [x] 复用 entity event 10 已建立的 canonical 80-tick fuse owner；每个 pre-decrement fuse > 0
+  的 `MinecartTNT.tick` 先减 fuse，再把 post-behavior `(x, y + 0.5, z)` smoke 写入既有 typed
+  movement-effect FIFO。最后四个正 fuse tick、停止边界和 retained publication A/B 均有专项测试。
+- [x] smoke 在 immutable publication 前 drain，并复用 common particle resolver；没有引入第二份
+  fuse、额外 entity table 或 renderer live-world read。fuse-zero/horizontal-collision explosion、伤害、
+  removal 与 game-rule 结果继续严格留在 server authority。
+- [x] 2,000 primed TNT-minecart batched Criterion 排除 fixture rebuild：tick/effect drain 从
+  1.4323 ms 变为 1.4398 ms，retained publication 从 3.4485 ms 变为 3.4937 ms
+  （+0.52%/+1.31%），两项均未检出显著变化；effects 每 tick drain/recycle，不进入 retained snapshot。

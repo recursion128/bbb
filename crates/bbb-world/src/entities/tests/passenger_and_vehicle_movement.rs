@@ -2740,6 +2740,43 @@ fn minecart_along_track_queues_then_advances_on_client_ticks() {
 }
 
 #[test]
+fn tnt_minecart_smoke_uses_post_new_behavior_lerp_pose() {
+    let mut store = WorldStore::new();
+    enable_minecart_improvements(&mut store);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        28,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    ));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 28,
+        event_id: 10,
+    }));
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 28,
+            lerp_steps: vec![minecart_step(4.0, 67.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,)],
+        })
+    );
+
+    store.advance_entity_client_animations(1);
+
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let [EntityClientMovementEffectState::Particle(EntityClientMovementParticleState::Simple(smoke))] =
+        effects.as_slice()
+    else {
+        panic!("expected one TNT-minecart smoke effect, got {effects:?}");
+    };
+    assert_eq!(smoke.entity_id, 28);
+    assert_eq!(smoke.kind, EntityClientMovementSimpleParticleKind::Smoke);
+    assert_eq!(smoke.velocity, EntityVec3::default());
+    assert!((smoke.position.x - 2.0).abs() < 1.0e-6);
+    assert!((smoke.position.y - 65.5).abs() < 1.0e-6);
+    assert!((smoke.position.z + 1.0).abs() < 1.0e-6);
+}
+
+#[test]
 fn minecart_along_track_appends_pending_steps_behind_active_batch() {
     let mut store = WorldStore::new();
     enable_minecart_improvements(&mut store);
