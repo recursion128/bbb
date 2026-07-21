@@ -73,6 +73,43 @@ fn firework_rocket_trail_batch_matches_vanilla_client_tick_particle() {
 }
 
 #[test]
+fn blaze_ambient_batch_reuses_one_large_smoke_template_for_two_positions() {
+    let mut resolver = test_resolver(0);
+    let positions = [
+        bbb_world::EntityVec3 {
+            x: 1.1,
+            y: 64.2,
+            z: -2.3,
+        },
+        bbb_world::EntityVec3 {
+            x: 0.8,
+            y: 65.4,
+            z: -1.9,
+        },
+    ];
+    let batch = resolver.entity_client_movement_particle_batch(
+        EntityClientMovementParticleState::BlazeAmbient(BlazeAmbientParticleState {
+            entity_id: 14,
+            positions,
+        }),
+    );
+
+    assert_eq!(batch.missing_definition_count, 0);
+    assert_eq!(batch.missing_sprite_count, 0);
+    assert_eq!(batch.commands.len(), 2);
+    for (command, position) in batch.commands.iter().zip(positions) {
+        assert_particle_command(
+            command,
+            VANILLA_PARTICLE_TYPE_LARGE_SMOKE_ID,
+            "minecraft:large_smoke",
+            [position.x, position.y, position.z],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+    }
+}
+
+#[test]
 fn eye_of_ender_trail_batch_matches_vanilla_water_and_portal_paths() {
     let state = EyeOfEnderTrailParticleState {
         entity_id: 8,

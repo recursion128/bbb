@@ -502,12 +502,37 @@ changed from 3.4939 to 3.4689 ms and had no statistically significant change.
 This localizes the cost to effect generation rather than publication or the
 next mutation.
 
+The next living-subclass stage closes the client-observable part of
+`Blaze.aiStep`. An airborne Blaze now applies the exact downward-velocity
+`0.6` damping before its ambient effects. Its canonical client-local Java-LCG
+cursor performs `nextInt(24)` first, consumes the two sound floats only when
+that branch succeeds and the synced silent bit is clear, and then consumes
+three doubles for each of the two mandatory `large_smoke` positions. The burn
+sound is queued before one typed two-particle batch, preserving Vanilla order
+while avoiding two maximum-sized FIFO owners and two renderer template
+lookups. The RNG cursor is cloned with immutable publications, cleared by the
+normal incarnation/reset path, and omitted from stable probe serialization.
+
+This stage also records why a narrow family query matters. Before the missing
+effects were added, the 2,000-Blaze benchmark measured 3.1674 ms for
+tick/effect drain and 4.6844 ms with a retained publication. A first exact but
+general implementation called the complete model-bounds projection for every
+Blaze and measured 4.8453/6.5781 ms. Replacing that unrelated family ladder
+with generated Blaze dimensions times the canonical SCALE attribute reduced
+the implemented path to 3.6326/5.2198 ms (25.0%/20.6% below the prototype).
+Relative to the behavior-free baseline, the remaining 14.7%/11.4% is the cost
+of generating 4,000 required particles plus roughly 1-in-24 sounds, not a
+publication rebuild or deferred next-mutation copy. The separate tick-only
+measurement is 3.6678 ms; effect draining itself is below the run's noise.
+
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.
 Remote persistent boat status, block inside/emission callbacks, the exact
-passenger push pass, bubble-column motion, and non-boat controlling-passenger
-travel remain for the subsequent stage.
+passenger push pass, and non-boat controlling-passenger travel remain for the
+subsequent stage. Vanilla's client bubble-column branch only advances the
+already-modelled wobble multiplier/angle; ejection and velocity changes are
+server-only, so no separate client bubble motion remains.
 None of those server-authoritative consequences is synthesized here.
 
 ## Required Tests

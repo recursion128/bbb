@@ -38,6 +38,7 @@ use bbb_protocol::packets::{
     PLAYER_RELATIVE_Y_ROT,
 };
 
+mod ambient_client_tick_effects;
 mod aquatic_and_beam_creature_animation;
 mod combat_state_and_mob_flag_projection;
 mod creature_pick_bounds_projection;

@@ -20,6 +20,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use bbb_protocol::entity_types::{
+    vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
     VANILLA_ENTITY_TYPE_WITHER_ID,
@@ -73,9 +74,9 @@ use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_can_wear_horse_armor_type,
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
-    EntityAttachmentFace, EntityAttributes, EntityBlockModelState, EntityCameraHurtState,
-    EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations,
-    EntityClientMovementEffectState, EntityClientMovementParticleState,
+    BlazeAmbientParticleState, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
+    EntityCameraHurtState, EntityCameraPoseState, EntityClientAnimationState,
+    EntityClientAnimations, EntityClientMovementEffectState, EntityClientMovementParticleState,
     EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState, EntityDamage,
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
@@ -5060,6 +5061,14 @@ impl EntityStore {
                     death_tick_simulation_distance,
                 );
                 let entity_type_id = identity.entity_type_id;
+                // Vanilla `Blaze.aiStep` damps only downward airborne velocity
+                // before its client ambient effects and `super.aiStep`.
+                if entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID
+                    && !transform.on_ground.unwrap_or(false)
+                    && transform.delta_movement.y < 0.0
+                {
+                    transform.delta_movement.y *= 0.6;
+                }
                 let is_living = vanilla_entity_metadata_type_is_living(entity_type_id);
                 let is_baby = is_living && vanilla_is_baby(entity_type_id, &metadata.data_values);
                 let pose = is_living.then(|| entity_data_pose(&metadata.data_values));
@@ -5149,6 +5158,14 @@ impl EntityStore {
                     .is_some_and(|(data_id, default)| {
                         entity_data_bool(&metadata.data_values, data_id, default)
                     });
+                let blaze_is_silent = entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID
+                    && vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+                        entity_data_bool(
+                            &metadata.data_values,
+                            accessors.silent_data_id,
+                            accessors.silent_default,
+                        )
+                    });
                 let client_animations_before_tick = animations
                     .animations
                     .needs_particle_trigger_bounds_snapshot()
@@ -5190,6 +5207,7 @@ impl EntityStore {
                     boat_paddles[1],
                     boat_bubble_time_value,
                     furnace_minecart_has_fuel,
+                    blaze_is_silent,
                     is_swimming,
                 );
                 append_client_tick_particle_triggers(
@@ -6009,6 +6027,45 @@ fn append_client_tick_particle_triggers(
                     z: transform.position.z,
                 },
                 velocity: super::EntityVec3::default(),
+            }),
+        ));
+    }
+    if let Some(sound) = triggers.blaze_burn_sound {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::BlazeBurn {
+                    volume: sound.volume,
+                    pitch: sound.pitch,
+                },
+                position: super::EntityVec3 {
+                    x: transform.position.x + 0.5,
+                    y: transform.position.y + 0.5,
+                    z: transform.position.z + 0.5,
+                },
+            },
+        ));
+    }
+    if let Some(offsets) = triggers.blaze_large_smoke {
+        // Blaze has no pose/baby-specific dimensions. Avoid the general model
+        // projection ladder in this every-tick path: generated type dimensions
+        // times the canonical LivingEntity SCALE attribute are its exact box.
+        let Some([base_width, base_height]) =
+            vanilla_entity_type_dimensions(identity.entity_type_id)
+        else {
+            return;
+        };
+        let scale = vanilla_render_scale(identity.entity_type_id, attributes);
+        let width = f64::from(base_width * scale);
+        let height = f64::from(base_height * scale);
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::BlazeAmbient(BlazeAmbientParticleState {
+                entity_id: identity.id,
+                positions: offsets.map(|offset| super::EntityVec3 {
+                    x: transform.position.x + offset.x_unit * width,
+                    y: transform.position.y + offset.y_unit * height,
+                    z: transform.position.z + offset.z_unit * width,
+                }),
             }),
         ));
     }

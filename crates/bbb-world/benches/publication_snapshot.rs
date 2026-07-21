@@ -22,7 +22,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
     },
     entity_types::{
-        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID,
+        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -357,6 +357,10 @@ fn build_fueled_furnace_minecart_world(count: usize) -> WorldStore {
         }));
     }
     world
+}
+
+fn build_blaze_world(count: usize) -> WorldStore {
+    build_entity_world_with(count, |_| VANILLA_ENTITY_TYPE_BLAZE_ID)
 }
 
 fn build_session_static_world() -> WorldStore {
@@ -900,6 +904,43 @@ fn bench_entity_effect_generation(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let world = fueled_furnace_minecarts.publication_snapshot();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+                black_box(Arc::new(world.publication_snapshot()));
+                black_box(held);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    let blazes = build_blaze_world(ENTITY_COUNT);
+    group.bench_function("2000_blazes_tick_only", |b| {
+        b.iter_batched(
+            || blazes.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(world);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_function("2000_blazes", |b| {
+        b.iter_batched(
+            || blazes.publication_snapshot(),
+            |mut world| {
+                world.advance_entity_client_animations(black_box(1));
+                black_box(submit_entity_client_movement_effects(&mut world));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_function("2000_blazes_then_publish_retained", |b| {
+        b.iter_batched(
+            || {
+                let world = blazes.publication_snapshot();
                 let held = Arc::new(world.publication_snapshot());
                 (world, held)
             },

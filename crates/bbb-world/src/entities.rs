@@ -702,18 +702,29 @@ pub struct EntityClientMovementSimpleParticleState {
     pub velocity: EntityVec3,
 }
 
+/// One Blaze `aiStep` particle submission. Keeping both smoke positions in one
+/// typed owner preserves the Vanilla per-entity ordering while avoiding two
+/// maximum-sized FIFO entries and duplicate renderer template lookup.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BlazeAmbientParticleState {
+    pub entity_id: i32,
+    pub positions: [EntityVec3; 2],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum EntityClientMovementParticleState {
+    BlazeAmbient(BlazeAmbientParticleState),
     FireworkRocket(FireworkRocketTrailParticleState),
     EyeOfEnder(EyeOfEnderTrailParticleState),
     ShulkerBullet(ShulkerBulletTrailParticleState),
     Simple(EntityClientMovementSimpleParticleState),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum EntityClientMovementSoundKind {
     BoatPaddleLeft,
     BoatPaddleRight,
+    BlazeBurn { volume: f32, pitch: f32 },
     BreezeDeflect,
     FireworkRocketLaunch,
     TridentReturn,

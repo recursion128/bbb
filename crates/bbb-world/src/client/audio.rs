@@ -76,6 +76,7 @@ const PLAYER_HURT_FREEZE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_freez
 const WOLF_ARMOR_DAMAGE_SOUND_EVENT: &str = "minecraft:entity.wolf_armor.damage";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
+const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
 const BREEZE_DEFLECT_SOUND_EVENT: &str = "minecraft:entity.breeze.deflect";
 const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
 const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
@@ -1385,6 +1386,22 @@ impl WorldStore {
             EntityClientMovementSoundKind::BoatPaddleLeft
             | EntityClientMovementSoundKind::BoatPaddleRight => {
                 unreachable!("boat paddle sounds require post-move world resolution")
+            }
+            EntityClientMovementSoundKind::BlazeBurn { volume, pitch } => {
+                let event = SoundEventState {
+                    sound: direct_sound_holder(BLAZE_BURN_SOUND_EVENT),
+                    source: "hostile".to_string(),
+                    position: ProtocolVec3d {
+                        x: state.position.x,
+                        y: state.position.y,
+                        z: state.position.z,
+                    },
+                    volume,
+                    pitch,
+                    seed: self.next_sound_seed(),
+                    distance_delay: false,
+                };
+                return self.record_positioned_sound(event);
             }
             EntityClientMovementSoundKind::BreezeDeflect => {
                 (BREEZE_DEFLECT_SOUND_EVENT, "hostile", 1.0)
@@ -3677,6 +3694,18 @@ mod tests {
                 z: 3.0,
             },
         });
+        let blaze = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+            entity_id: 10,
+            kind: EntityClientMovementSoundKind::BlazeBurn {
+                volume: 1.75,
+                pitch: 0.65,
+            },
+            position: crate::EntityVec3 {
+                x: 8.5,
+                y: 9.5,
+                z: 10.5,
+            },
+        });
         let breeze = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
             entity_id: 9,
             kind: EntityClientMovementSoundKind::BreezeDeflect,
@@ -3703,6 +3732,21 @@ mod tests {
         assert_eq!(firework.source, "ambient");
         assert_eq!(firework.volume, 3.0);
         assert_eq!(
+            blaze.sound.location.as_deref(),
+            Some("minecraft:entity.blaze.burn")
+        );
+        assert_eq!(blaze.source, "hostile");
+        assert_eq!(blaze.volume, 1.75);
+        assert_eq!(blaze.pitch, 0.65);
+        assert_eq!(
+            blaze.position,
+            ProtocolVec3d {
+                x: 8.5,
+                y: 9.5,
+                z: 10.5
+            }
+        );
+        assert_eq!(
             breeze.sound.location.as_deref(),
             Some("minecraft:entity.breeze.deflect")
         );
@@ -3714,7 +3758,8 @@ mod tests {
         );
         assert_eq!(trident.source, "neutral");
         assert_eq!(trident.volume, 10.0);
-        assert_ne!(firework.seed, breeze.seed);
+        assert_ne!(firework.seed, blaze.seed);
+        assert_ne!(blaze.seed, breeze.seed);
         assert_ne!(breeze.seed, trident.seed);
         assert_eq!(store.last_sound(), Some(&trident));
         assert_eq!(store.counters().sound_packets, 0);

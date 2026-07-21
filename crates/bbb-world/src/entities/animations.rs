@@ -230,6 +230,10 @@ const RAVAGER_ATTACK_TICKS: i32 = 10;
 const RAVAGER_STUN_TICKS: i32 = 40;
 const RAVAGER_ROAR_TICKS: i32 = 20;
 const RAVAGER_STUN_PARTICLE_RANDOM_SALT: i64 = 0x5A17;
+/// Client-local RNG salt for `Blaze.aiStep`. Vanilla does not synchronize the
+/// entity `RandomSource`; the cursor still belongs to the canonical entity and
+/// is cloned into immutable publications so retained generations cannot advance.
+const BLAZE_CLIENT_RANDOM_SALT: u64 = 0x626c_617a_655f_7469;
 /// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
 /// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
 const HOGLIN_ATTACK_TICKS: i32 = 10;
@@ -273,12 +277,29 @@ pub(crate) struct EntityClientTickParticleTriggers {
     /// Vanilla `MinecartFurnace.tick` emits one large-smoke particle when the
     /// synced fuel bit is set and the entity RNG's `nextInt(4)` returns zero.
     pub(crate) minecart_furnace_large_smoke: bool,
+    /// Vanilla `Blaze.aiStep` emits two large-smoke particles every client tick.
+    pub(crate) blaze_large_smoke: Option<[BlazeSmokeParticleOffset; 2]>,
+    /// The optional burn sound is ordered before the two smoke particles.
+    pub(crate) blaze_burn_sound: Option<BlazeBurnSoundParameters>,
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
     /// Vanilla `AbstractBoat.tick` tests the pre-increment paddle position for
     /// the `PI / 4` sound crossing, then advances the corresponding paddle.
     pub(crate) boat_paddle_sounds: [bool; 2],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct BlazeSmokeParticleOffset {
+    pub(crate) x_unit: f64,
+    pub(crate) y_unit: f64,
+    pub(crate) z_unit: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct BlazeBurnSoundParameters {
+    pub(crate) volume: f32,
+    pub(crate) pitch: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -464,6 +485,10 @@ pub struct EntityClientAnimationState {
     /// out of the stable JSON/probe shape, like other non-wire runtime cursors.
     #[serde(skip)]
     pub(crate) minecart_furnace_smoke_random_seed: Option<u64>,
+    /// Client-local `Blaze.random` cursor for its ambient burn sound and smoke
+    /// positions. Cloned for publication isolation, omitted from stable probes.
+    #[serde(skip)]
+    pub(crate) blaze_client_random_seed: Option<u64>,
 }
 
 /// The client-observable `BaseSpawner` state owned by `MinecartSpawner`. Vanilla constructs it
@@ -3873,6 +3898,8 @@ impl EntityClientAnimationState {
         self.minecart_furnace_smoke_random_seed = (entity_type_id
             == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID)
             .then(|| java_random_seed(spawn_random_bits(uuid, 0x6675_726e_6163_655f) as i64));
+        self.blaze_client_random_seed = (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID)
+            .then(|| java_random_seed(spawn_random_bits(uuid, BLAZE_CLIENT_RANDOM_SALT) as i64));
     }
 
     pub(crate) fn item_bob_offset(&self) -> f32 {
@@ -5586,6 +5613,9 @@ impl EntityClientAnimationState {
         // Vanilla `MinecartFurnace.DATA_ID_FUEL`. The server owns fuel/push;
         // the client reads only this synced bit for its presentation smoke.
         furnace_minecart_has_fuel: bool,
+        // Vanilla `Entity.isSilent()`, used inside the Blaze random branch. The
+        // gate must be applied before drawing the two sound floats.
+        blaze_is_silent: bool,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
     ) -> EntityClientTickParticleTriggers {
@@ -5639,6 +5669,23 @@ impl EntityClientAnimationState {
                 });
             particle_triggers.minecart_furnace_large_smoke =
                 java_random_next_int_bound(random_seed, 4) == 0;
+        }
+        if entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID {
+            let random_seed = self.blaze_client_random_seed.get_or_insert_with(|| {
+                java_random_seed(i64::from(entity_id).wrapping_add(BLAZE_CLIENT_RANDOM_SALT as i64))
+            });
+            if java_random_next_int_bound(random_seed, 24) == 0 && !blaze_is_silent {
+                particle_triggers.blaze_burn_sound = Some(BlazeBurnSoundParameters {
+                    volume: 1.0 + java_random_next_float(random_seed),
+                    pitch: java_random_next_float(random_seed) * 0.7 + 0.3,
+                });
+            }
+            particle_triggers.blaze_large_smoke =
+                Some(std::array::from_fn(|_| BlazeSmokeParticleOffset {
+                    x_unit: java_random_next_double(random_seed) - 0.5,
+                    y_unit: java_random_next_double(random_seed),
+                    z_unit: java_random_next_double(random_seed) - 0.5,
+                }));
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
             if self.ender_dragon.is_some_and(|dragon| dragon.dragon_dying) {
