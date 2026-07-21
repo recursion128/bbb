@@ -136,8 +136,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 6:
-        raise GateFailure(f"playable evidence schema must be 6, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 7:
+        raise GateFailure(f"playable evidence schema must be 7, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -227,6 +227,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_container_interaction(evidence.get("container_interaction"))
     _validate_chat_interaction(evidence.get("chat_interaction"))
     _validate_hotbar_interaction(evidence.get("hotbar_interaction"))
+    _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_lifecycle(evidence.get("lifecycle"))
 
 
@@ -546,6 +547,38 @@ def _validate_hotbar_interaction(hotbar_interaction: Any) -> None:
             "hotbar_interaction.held_slot_commands_delta must record at least "
             f"one observed command, got {delta!r}"
         )
+
+
+def _validate_sound_particle_push(sound_particle_push: Any) -> None:
+    """The push smoke must observe the canonical presentation inputs: the
+    positioned sound with its exact volume/pitch and the particle batch."""
+
+    sound_particle_push = _object(sound_particle_push, "sound_particle_push")
+    volume = sound_particle_push.get("sound_volume")
+    pitch = sound_particle_push.get("sound_pitch")
+    for name, value, expected in (("sound_volume", volume, 0.8), ("sound_pitch", pitch, 1.3)):
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or abs(
+            float(value) - expected
+        ) > 1.0e-3:
+            raise GateFailure(
+                f"sound_particle_push.{name} must be {expected}, got {value!r}"
+            )
+    if sound_particle_push.get("sound_position_matched") is not True:
+        raise GateFailure("sound_particle_push.sound_position_matched must be true")
+    if (
+        sound_particle_push.get("sound_registry_id") is None
+        and not sound_particle_push.get("sound_location")
+    ):
+        raise GateFailure(
+            "sound_particle_push must record the sound holder id or location"
+        )
+    for key in ("sound_packets_delta", "level_particles_packets_delta"):
+        value = sound_particle_push.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise GateFailure(
+                f"sound_particle_push.{key} must record at least one observed "
+                f"packet, got {value!r}"
+            )
 
 
 MOVEMENT_MIN_HORIZONTAL_DISTANCE = 1.0
@@ -1849,6 +1882,99 @@ def drive_hotbar_interaction(
     }
 
 
+def _world_counter(address: tuple[str, int], key: str) -> int:
+    counters = _control_request(address, "world.counters")
+    if not isinstance(counters, dict):
+        return 0
+    value = counters.get(key)
+    return int(value) if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def drive_sound_particle_push(
+    address: tuple[str, int], server_command: Path, timeout_seconds: float
+) -> dict[str, Any]:
+    """Push a positioned sound and a particle batch from the server console
+    and require both to land in the canonical presentation inputs: the sound
+    packet counter and last-sound record (with the exact volume, pitch, and
+    position), and the level-particles packet counter."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+
+    pose = _local_player_pose(address)
+    position = _object(pose.get("position"), "local_player.pose.position")
+    x = math.floor(float(position["x"])) + 0.5
+    y = math.floor(float(position["y"])) + 1.0
+    z = math.floor(float(position["z"])) + 0.5
+
+    sound_packets_before = _world_counter(address, "sound_packets")
+    particle_packets_before = _world_counter(address, "level_particles_packets")
+
+    _server_console_command(
+        server_command,
+        "playsound minecraft:block.note_block.pling master bbb-playablegate "
+        f"{x:.1f} {y:.1f} {z:.1f} 0.8 1.3",
+    )
+
+    def _last_sound() -> dict[str, Any] | None:
+        if _world_counter(address, "sound_packets") <= sound_packets_before:
+            return None
+        audio = _control_request(address, "world.client_audio")
+        if not isinstance(audio, dict):
+            return None
+        last_sound = audio.get("last_sound")
+        return last_sound if isinstance(last_sound, dict) else None
+
+    def _sound_matches(last_sound: dict[str, Any] | None) -> bool:
+        if last_sound is None:
+            return False
+        sound_position = last_sound.get("position")
+        if not isinstance(sound_position, dict):
+            return False
+        return (
+            abs(float(last_sound.get("volume", 0.0)) - 0.8) < 1.0e-3
+            and abs(float(last_sound.get("pitch", 0.0)) - 1.3) < 1.0e-3
+            and abs(float(sound_position.get("x", 0.0)) - x) <= 0.51
+            and abs(float(sound_position.get("y", 0.0)) - y) <= 0.51
+            and abs(float(sound_position.get("z", 0.0)) - z) <= 0.51
+        )
+
+    last_sound = _await_value(
+        deadline,
+        "the pushed sound to land in the canonical last-sound record",
+        _last_sound,
+        _sound_matches,
+    )
+
+    _server_console_command(
+        server_command,
+        f"particle minecraft:flame {x:.1f} {y:.1f} {z:.1f} 0.1 0.1 0.1 0.01 5 "
+        "force bbb-playablegate",
+    )
+    _await_value(
+        deadline,
+        "the pushed particle batch to land in the level-particles counter",
+        lambda: _world_counter(address, "level_particles_packets"),
+        lambda value: value > particle_packets_before,
+    )
+
+    sound = last_sound.get("sound") if isinstance(last_sound.get("sound"), dict) else {}
+    return {
+        "sound_volume": last_sound.get("volume"),
+        "sound_pitch": last_sound.get("pitch"),
+        "sound_position_matched": True,
+        "sound_registry_id": sound.get("registry_id"),
+        "sound_location": sound.get("location"),
+        "sound_packets_delta": _world_counter(address, "sound_packets")
+        - sound_packets_before,
+        "level_particles_packets_delta": _world_counter(
+            address, "level_particles_packets"
+        )
+        - particle_packets_before,
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def _await_value(
     deadline: float,
     description: str,
@@ -2422,7 +2548,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 6,
+            "schema": 7,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2434,6 +2560,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "container_interaction": None,
             "chat_interaction": None,
             "hotbar_interaction": None,
+            "sound_particle_push": None,
             "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
@@ -2452,6 +2579,7 @@ def collect_live(args: argparse.Namespace) -> None:
     container_interaction: dict[str, Any] | None = None
     chat_interaction: dict[str, Any] | None = None
     hotbar_interaction: dict[str, Any] | None = None
+    sound_particle_push: dict[str, Any] | None = None
     lifecycle: dict[str, Any] | None = None
     try:
         _await_control_stability(address, deadline)
@@ -2473,6 +2601,9 @@ def collect_live(args: argparse.Namespace) -> None:
         hotbar_interaction = drive_hotbar_interaction(
             address, args.server_command, args.server_log, min(60.0, float(args.timeout))
         )
+        sound_particle_push = drive_sound_particle_push(
+            address, args.server_command, min(60.0, float(args.timeout))
+        )
         lifecycle = {}
         lifecycle = drive_session_lifecycle(
             address,
@@ -2493,7 +2624,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 6,
+            "schema": 7,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2505,6 +2636,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "container_interaction": container_interaction,
             "chat_interaction": chat_interaction,
             "hotbar_interaction": hotbar_interaction,
+            "sound_particle_push": sound_particle_push,
             "lifecycle": lifecycle,
             "failure": failure,
             "artifacts": {
@@ -2522,7 +2654,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 6,
+            "schema": 7,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2534,6 +2666,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "container_interaction": container_interaction,
             "chat_interaction": chat_interaction,
             "hotbar_interaction": hotbar_interaction,
+            "sound_particle_push": sound_particle_push,
             "lifecycle": lifecycle,
             "failure": str(error),
             "artifacts": {
@@ -2546,7 +2679,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 6,
+        "schema": 7,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -2558,6 +2691,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "container_interaction": container_interaction,
         "chat_interaction": chat_interaction,
         "hotbar_interaction": hotbar_interaction,
+        "sound_particle_push": sound_particle_push,
         "lifecycle": lifecycle,
         "artifacts": {
             "timeline": str(args.client_log),

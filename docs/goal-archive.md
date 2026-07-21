@@ -110,4 +110,7 @@
   广播回 canonical chat 状态，evidence schema 5，live 实跑全绿）与 hotbar
   场景（input.key 扩展 hotbar1-9 数字键走真实键盘 handler；canonical
   selected_hotbar_slot + server `data get entity SelectedItemSlot` 双确认，
-  evidence schema 6，live 实跑全绿）。
+  evidence schema 6，live 实跑全绿）与声音/粒子推送场景（server console
+  playsound/particle → canonical sound_packets+last_sound 精确
+  volume/pitch/位置 + level_particles_packets 计数，evidence schema 7，
+  live 实跑全绿）。

@@ -290,6 +290,41 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_missing_sound_particle_push_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["sound_particle_push"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "sound_particle_push"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_wrong_sound_pitch_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["sound_particle_push"]["sound_pitch"] = 1.0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "sound_particle_push.sound_pitch"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_missing_sound_holder_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["sound_particle_push"]["sound_registry_id"] = None
+        evidence["sound_particle_push"]["sound_location"] = None
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "sound holder id or location"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_zero_particle_packets_fail(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["sound_particle_push"]["level_particles_packets_delta"] = 0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "level_particles_packets_delta"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
 
 class PlayableGateLifecycleTests(unittest.TestCase):
     def setUp(self):

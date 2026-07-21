@@ -185,7 +185,17 @@
    "z": -1.5
   }
  },
- "schema": 6,
+ "schema": 7,
+ "sound_particle_push": {
+  "duration_seconds": 0.6,
+  "level_particles_packets_delta": 1,
+  "sound_location": null,
+  "sound_packets_delta": 1,
+  "sound_pitch": 1.3,
+  "sound_position_matched": true,
+  "sound_registry_id": 812,
+  "sound_volume": 0.8
+ },
  "source": {
   "authority": [
    "crates/bbb-net/src/status.rs#status_ping",
