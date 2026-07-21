@@ -27,8 +27,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     game_types::{VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
@@ -327,6 +328,34 @@ fn build_local_boat_world() -> WorldStore {
         vehicle_id: 1,
         passenger_ids: vec![99],
     }));
+    world
+}
+
+fn build_local_happy_ghast_world() -> WorldStore {
+    let mut world = build_local_boat_world();
+    assert_eq!(
+        world.apply_remove_entities(RemoveEntities {
+            entity_ids: vec![1],
+        }),
+        1
+    );
+    world.apply_add_entity(entity_packet(2, 0, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID));
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: 2,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: ItemStackSummary {
+                item_id: Some(1),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        }],
+    }));
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 2,
+        passenger_ids: vec![99],
+    }));
+    world.set_local_player_pose(Default::default());
     world
 }
 
@@ -909,6 +938,40 @@ fn bench_local_boat_physics(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_local_happy_ghast_physics(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_tick/local_happy_ghast");
+    let input = LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        right: true,
+        ..LocalPlayerInputState::default()
+    };
+    let mut physics = build_local_happy_ghast_world();
+    group.bench_function("physics_only", |b| {
+        b.iter(|| {
+            black_box(
+                physics
+                    .advance_local_happy_ghast_vehicle_input(black_box(input), black_box(1))
+                    .expect("locally controlled Happy Ghast"),
+            );
+        });
+    });
+    let mut publish = build_local_happy_ghast_world();
+    let mut held = Arc::new(publish.publication_snapshot());
+    group.bench_function("physics_then_publish_retained", |b| {
+        b.iter(|| {
+            black_box(
+                publish
+                    .advance_local_happy_ghast_vehicle_input(black_box(input), black_box(1))
+                    .expect("locally controlled Happy Ghast"),
+            );
+            held = black_box(Arc::new(publish.publication_snapshot()));
+        });
+    });
+    black_box(held);
+    group.finish();
+}
+
 fn submit_entity_client_movement_effects(world: &mut WorldStore) -> usize {
     let mut effects = world.take_entity_client_movement_effect_states();
     let mut submitted = 0;
@@ -1218,6 +1281,7 @@ criterion_group! {
         bench_entity_spawn_remove_churn,
         bench_entity_interpolation_and_passengers,
         bench_local_boat_physics,
+        bench_local_happy_ghast_physics,
         bench_entity_effect_generation,
         bench_entity_projection,
         bench_entity_protocol_lookup_mutation,

@@ -3,6 +3,7 @@ use bbb_protocol::packets::{
     MoveVehicle as ProtocolMoveVehicle, SetPassengers as ProtocolSetPassengers,
 };
 use bbb_protocol::{
+    attribute_types::{VANILLA_ATTRIBUTE_FLYING_SPEED_ID, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID},
     entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
     entity_types::{
         vanilla_entity_type_is_non_controlling_rider, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
@@ -254,7 +255,7 @@ impl WorldStore {
             );
             control_boat(controls, &mut movement, &mut next_transform);
             let requested = next_transform.delta_movement;
-            let clipped = self.clip_boat_collision_movement(
+            let clipped = self.clip_locally_authoritative_entity_collision_movement(
                 vehicle_id,
                 entity_type_id,
                 [
@@ -305,7 +306,7 @@ impl WorldStore {
             if z_collision {
                 next_transform.delta_movement.z = 0.0;
             }
-            let speed_factor = boat_block_speed_factor(
+            let speed_factor = entity_block_speed_factor(
                 self,
                 [
                     next_transform.position.x,
@@ -341,6 +342,172 @@ impl WorldStore {
                 set_metadata_bool(metadata, accessors.paddle_left_data_id, paddle_left);
                 set_metadata_bool(metadata, accessors.paddle_right_data_id, paddle_right);
             })?;
+        }
+
+        let transform = self.entities.transform(vehicle_id)?;
+        Some(VehicleMoveReport {
+            vehicle_id,
+            position: transform.position,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            on_ground: transform.on_ground.unwrap_or(false),
+            snapped: false,
+        })
+    }
+
+    /// Advances the locally controlled Happy Ghast through Vanilla's
+    /// `LivingEntity.travelRidden` -> `HappyGhast.travelFlying` path. The
+    /// canonical ECS remains the only mutable owner; publications receive the
+    /// resulting transform through the normal immutable snapshot boundary.
+    pub fn advance_local_happy_ghast_vehicle_input(
+        &mut self,
+        input: LocalPlayerInputState,
+        ticks: u32,
+    ) -> Option<VehicleMoveReport> {
+        let vehicle_id = self.local_player_first_passenger_root_vehicle_id()?;
+        if self.entities.entity_type_id(vehicle_id)? != VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            || self.entity_controlling_passenger(vehicle_id) != self.local_player_id
+        {
+            return None;
+        }
+        let bounds = self.entities.pick_bounds(vehicle_id)?;
+        let flying_speed = self
+            .entities
+            .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_FLYING_SPEED_ID)?;
+        let controller = self.local_player.pose?;
+        let controller_is_camera = self.local_player.camera.follows_player;
+        let slow_factor = if controller.sneaking || controller.swimming {
+            self.local_player_id
+                .and_then(|id| {
+                    self.entities
+                        .attribute_value(id, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID)
+                })
+                .unwrap_or(0.3)
+        } else {
+            1.0
+        };
+        let ridden_input = HappyGhastInput::from_local_input(
+            input,
+            controller.x_rot,
+            flying_speed,
+            controller_is_camera,
+            slow_factor,
+        );
+        let travel_speed = (flying_speed as f32 * 5.0_f32 / 3.0_f32) as f64;
+        let relative_min = bounds.min.map(f64::from);
+        let relative_max = bounds.max.map(f64::from);
+        let entity_collision_targets = (ticks > 0)
+            .then(|| self.entities.vehicle_entity_collision_targets())
+            .unwrap_or_default();
+
+        for _ in 0..ticks {
+            let transform = self.entities.transform(vehicle_id)?;
+            let previous_supporting_block = self.entities.supporting_block(vehicle_id)?;
+            let mut next_transform = transform;
+            let next_y_rot = wrap_degrees_f32(
+                transform.y_rot + wrap_degrees_f32(controller.y_rot - transform.y_rot) * 0.08_f32,
+            );
+            next_transform.y_rot = next_y_rot;
+            next_transform.old_y_rot = next_y_rot;
+            next_transform.x_rot = (controller.x_rot * 0.5_f32).clamp(-90.0, 90.0);
+            next_transform.y_head_rot = next_y_rot;
+
+            add_relative_movement(&mut next_transform, ridden_input, travel_speed);
+            let position = [
+                next_transform.position.x,
+                next_transform.position.y,
+                next_transform.position.z,
+            ];
+            let aabb_min = std::array::from_fn(|axis| position[axis] + relative_min[axis]);
+            let aabb_max = std::array::from_fn(|axis| position[axis] + relative_max[axis]);
+            let eye_y = position[1] + f64::from(self.entities.standing_eye_height(vehicle_id)?);
+            let fluid_contact = crate::client::entity_fluid_contact(
+                self,
+                aabb_min,
+                aabb_max,
+                position[1],
+                [position[0], eye_y, position[2]],
+            );
+            let requested = next_transform.delta_movement;
+            let clipped = self.clip_locally_authoritative_entity_collision_movement(
+                vehicle_id,
+                VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+                position,
+                [requested.x, requested.y, requested.z],
+                relative_min,
+                relative_max,
+                &entity_collision_targets,
+            );
+            next_transform.position.x += clipped[0];
+            next_transform.position.y += clipped[1];
+            next_transform.position.z += clipped[2];
+            let x_collision = (requested.x - clipped[0]).abs() >= f64::from(1.0e-5_f32);
+            let y_collision = requested.y != clipped[1];
+            let z_collision = (requested.z - clipped[2]).abs() >= f64::from(1.0e-5_f32);
+            let on_ground = y_collision && requested.y < 0.0;
+            next_transform.on_ground = Some(on_ground);
+            let supporting_block = on_ground
+                .then(|| {
+                    self.entity_supporting_block_after_collision(
+                        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+                        position,
+                        clipped,
+                        relative_min,
+                        relative_max,
+                        previous_supporting_block,
+                    )
+                })
+                .flatten();
+            if x_collision {
+                next_transform.delta_movement.x = 0.0;
+            }
+            if y_collision {
+                next_transform.delta_movement.y = living_vertical_collision_response(
+                    self,
+                    [
+                        next_transform.position.x,
+                        next_transform.position.y,
+                        next_transform.position.z,
+                    ],
+                    supporting_block,
+                    requested.y,
+                    self.entities.is_descending(vehicle_id).unwrap_or(false),
+                );
+            }
+            if z_collision {
+                next_transform.delta_movement.z = 0.0;
+            }
+            let speed_factor = entity_block_speed_factor(
+                self,
+                [
+                    next_transform.position.x,
+                    next_transform.position.y,
+                    next_transform.position.z,
+                ],
+            );
+            next_transform.delta_movement.x *= speed_factor;
+            next_transform.delta_movement.z *= speed_factor;
+            let drag = if fluid_contact.in_water() {
+                f64::from(0.8_f32)
+            } else if fluid_contact.in_lava() {
+                0.5
+            } else {
+                f64::from(0.91_f32)
+            };
+            next_transform.delta_movement.x *= drag;
+            next_transform.delta_movement.y *= drag;
+            next_transform.delta_movement.z *= drag;
+
+            self.entities
+                .with_transform_and_support_mut(vehicle_id, |canonical, support| {
+                    *canonical = next_transform;
+                    if on_ground {
+                        support.main = supporting_block;
+                        support.on_ground_no_blocks = supporting_block.is_none();
+                    } else {
+                        *support = super::components::EntitySupportingBlock::default();
+                    }
+                })?;
         }
 
         let transform = self.entities.transform(vehicle_id)?;
@@ -691,6 +858,50 @@ struct BoatInput {
     backward: bool,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct HappyGhastInput {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+impl HappyGhastInput {
+    fn from_local_input(
+        input: LocalPlayerInputState,
+        controller_x_rot: f32,
+        flying_speed: f64,
+        controller_is_camera: bool,
+        slow_factor: f64,
+    ) -> Self {
+        let accepts_input = input.focused && controller_is_camera;
+        let (strafe, forward_axis) = if accepts_input {
+            local_player_move_vector(input, slow_factor)
+        } else {
+            (0.0, 0.0)
+        };
+        let mut forward = 0.0_f32;
+        let mut up = 0.0_f32;
+        if forward_axis != 0.0 {
+            let pitch = controller_x_rot * (std::f64::consts::PI / 180.0) as f32;
+            forward = super::client_movement::vanilla_mth_cos(f64::from(pitch));
+            up = -super::client_movement::vanilla_mth_sin(f64::from(pitch));
+            if forward_axis < 0.0 {
+                forward *= -0.5;
+                up *= -0.5;
+            }
+        }
+        if accepts_input && input.jump {
+            up += 0.5;
+        }
+        let scale = f64::from(3.9_f32) * flying_speed;
+        Self {
+            x: f64::from(strafe) * scale,
+            y: f64::from(up) * scale,
+            z: f64::from(forward) * scale,
+        }
+    }
+}
+
 impl BoatInput {
     fn from_local_input(input: LocalPlayerInputState) -> Self {
         Self {
@@ -700,6 +911,70 @@ impl BoatInput {
             backward: input.focused && input.backward,
         }
     }
+}
+
+fn bool_axis(positive: bool, negative: bool) -> f32 {
+    match (positive, negative) {
+        (true, false) => 1.0,
+        (false, true) => -1.0,
+        _ => 0.0,
+    }
+}
+
+fn local_player_move_vector(input: LocalPlayerInputState, slow_factor: f64) -> (f32, f32) {
+    let mut x = bool_axis(input.left, input.right);
+    let mut y = bool_axis(input.forward, input.backward);
+    let raw_length = (x * x + y * y).sqrt();
+    if raw_length < 1.0e-4_f32 {
+        return (0.0, 0.0);
+    }
+    x /= raw_length;
+    y /= raw_length;
+    let scale = 0.98_f32 * slow_factor as f32;
+    x *= scale;
+    y *= scale;
+
+    let length = (x * x + y * y).sqrt();
+    if length <= 0.0 {
+        return (x, y);
+    }
+    let direction_x = x / length;
+    let direction_y = y / length;
+    let abs_x = direction_x.abs();
+    let abs_y = direction_y.abs();
+    let tan = if abs_y > abs_x {
+        abs_x / abs_y
+    } else {
+        abs_y / abs_x
+    };
+    let distance_to_square = (1.0_f32 + tan * tan).sqrt();
+    let modified_length = (length * distance_to_square).min(1.0);
+    (direction_x * modified_length, direction_y * modified_length)
+}
+
+fn add_relative_movement(
+    transform: &mut super::components::EntityTransform,
+    input: HappyGhastInput,
+    speed: f64,
+) {
+    let length_squared = input.x * input.x + input.y * input.y + input.z * input.z;
+    if length_squared < 1.0e-7 {
+        return;
+    }
+    let normalizer = if length_squared > 1.0 {
+        length_squared.sqrt().recip()
+    } else {
+        1.0
+    };
+    let movement_x = input.x * normalizer * speed;
+    let movement_y = input.y * normalizer * speed;
+    let movement_z = input.z * normalizer * speed;
+    let yaw = transform.y_rot * (std::f64::consts::PI / 180.0) as f32;
+    let sin = super::client_movement::vanilla_mth_sin(f64::from(yaw));
+    let cos = super::client_movement::vanilla_mth_cos(f64::from(yaw));
+    transform.delta_movement.x += movement_x * f64::from(cos) - movement_z * f64::from(sin);
+    transform.delta_movement.y += movement_y;
+    transform.delta_movement.z += movement_z * f64::from(cos) + movement_x * f64::from(sin);
 }
 
 fn float_boat(
@@ -847,7 +1122,36 @@ fn boat_vertical_collision_response(
     }
 }
 
-fn boat_block_speed_factor(world: &WorldStore, position: [f64; 3]) -> f64 {
+fn living_vertical_collision_response(
+    world: &WorldStore,
+    position: [f64; 3],
+    supporting_block: Option<crate::BlockPos>,
+    requested_y: f64,
+    suppressing_bounce: bool,
+) -> f64 {
+    let effect_pos = crate::BlockPos {
+        x: supporting_block.map_or(position[0].floor() as i32, |pos| pos.x),
+        y: (position[1] - 0.2).floor() as i32,
+        z: supporting_block.map_or(position[2].floor() as i32, |pos| pos.z),
+    };
+    let block_name = world
+        .probe_block(effect_pos)
+        .and_then(|block| block.block_name);
+    if suppressing_bounce {
+        return 0.0;
+    }
+    match block_name.as_deref() {
+        Some("minecraft:slime_block") if requested_y < 0.0 => -requested_y,
+        Some(name) if crate::terrain::block_name_is_bed(name) && requested_y < 0.0 => {
+            -requested_y * f64::from(0.66_f32)
+        }
+        Some("minecraft:slime_block") => requested_y,
+        Some(name) if crate::terrain::block_name_is_bed(name) => requested_y,
+        _ => 0.0,
+    }
+}
+
+fn entity_block_speed_factor(world: &WorldStore, position: [f64; 3]) -> f64 {
     let block_pos = crate::BlockPos {
         x: position[0].floor() as i32,
         y: position[1].floor() as i32,

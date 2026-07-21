@@ -1070,12 +1070,12 @@ impl WorldStore {
         self.clip_collision_bounds_movement(bounds, movement)
     }
 
-    /// Vanilla `Entity.collideBoundingBox` for a locally authoritative boat:
+    /// Vanilla `Entity.collideBoundingBox` for a locally authoritative entity:
     /// resolve generated entity colliders and the nearby world-border shape in
     /// the same axis pass as block collision. The caller supplies one narrow
     /// collision-target batch for the whole client-tick catch-up instead of
-    /// rebuilding full `EntityState` payloads for every boat substep.
-    pub(crate) fn clip_boat_collision_movement(
+    /// rebuilding full `EntityState` payloads for every movement substep.
+    pub(crate) fn clip_locally_authoritative_entity_collision_movement(
         &self,
         entity_id: i32,
         entity_type_id: i32,

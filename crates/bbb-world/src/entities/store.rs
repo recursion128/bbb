@@ -4276,6 +4276,19 @@ impl EntityStore {
         Some(update(movement, transform, support))
     }
 
+    pub(crate) fn with_transform_and_support_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityTransform, &mut EntitySupportingBlock) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let (transform, support) = self
+            .ecs
+            .query_one_mut::<(&mut EntityTransform, &mut EntitySupportingBlock)>(entity)
+            .ok()?;
+        Some(update(transform, support))
+    }
+
     fn with_client_animations_mut<R>(
         &mut self,
         id: i32,

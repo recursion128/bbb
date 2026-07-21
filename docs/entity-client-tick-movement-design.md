@@ -605,6 +605,32 @@ recovers roughly 1--3%, confirming that moving generation to the particle
 resolver would merely transfer the dominant work. Peak pending logical memory
 remains linear in total same-tick beam length until the effect gate drains it.
 
+The first non-boat local-authority stage implements the directly controlled
+Happy Ghast branch without widening the owner model. The generated Happy Ghast
+metadata accessor, Body equipment and first-passenger relation decide control;
+the generated `flying_speed` and local-player `sneaking_speed` attributes feed
+the narrow movement calculation. `LocalPlayer.applyInput` is reproduced with
+float cardinal/diagonal normalization, its `0.98` scale and square-movement
+correction before `HappyGhast.getRiddenInput`. Each client tick then applies
+the exact `0.08` wrapped yaw approach, half controller pitch, Java-table trig,
+`moveRelative`, water/lava/air drag and the existing block/entity/world-border
+collision owner. The transform and supporting block are written through one
+two-component hecs borrow. No full `EntityState` projection, parallel vehicle
+table or persistent derived owner is introduced.
+
+Native input preserves passenger-rotation-before-vehicle-report ordering and
+uses the existing bounded `ServerboundMoveVehicle` queue; Happy Ghasts never
+emit boat paddle packets. A retained A/B publication test covers transform
+isolation, and controller-gate tests cover missing harness, still timeout,
+focus and backward-pitch input. The repo-native benchmark measures 4.1985 us
+for one physics tick and 7.9715 us for physics plus a retained publication on
+the same machine (30 samples, one-second warm-up, three-second measurement).
+This is a newly implemented semantic path rather than a before/after speedup;
+the measurement fixes its mutation-plus-publication budget and shows the
+retained snapshot adds about 3.77 us instead of hiding work in the next tick.
+Candidate-height step-up, block-inside/emission callbacks and the other living
+rideable families remain part of phase 4 rather than being approximated here.
+
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.

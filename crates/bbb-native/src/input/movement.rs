@@ -97,15 +97,20 @@ pub(crate) fn advance_player_input_for_client_ticks(
             }
         }
         maybe_queue_riding_jump_command(input, world, counters, net_commands, dt_seconds);
-        let boat_report = world.advance_local_boat_vehicle_input(input_state, client_ticks);
-        if client_ticks > 0 || input.last_paddle_boat_command_at.is_none() {
-            maybe_queue_boat_commands(input, world, counters, net_commands, now, boat_report);
+        let boat_vehicle = world
+            .local_player_first_passenger_root_boat_vehicle_id()
+            .is_some();
+        let vehicle_report = world
+            .advance_local_boat_vehicle_input(input_state, client_ticks)
+            .or_else(|| world.advance_local_happy_ghast_vehicle_input(input_state, client_ticks));
+        if client_ticks > 0 || boat_vehicle && input.last_vehicle_command_at.is_none() {
+            maybe_queue_vehicle_commands(input, world, counters, net_commands, now, vehicle_report);
         }
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
     }
-    input.last_paddle_boat_command_at = None;
+    input.last_vehicle_command_at = None;
     input.riding_jump_charge_seconds = None;
 
     let Some(pose) = advance_unmounted_local_player_input(input, world, client_ticks) else {
@@ -228,35 +233,37 @@ pub(super) fn queue_released_riding_jump_command(
     }
 }
 
-fn maybe_queue_boat_commands(
+fn maybe_queue_vehicle_commands(
     input: &mut ClientInputState,
     world: &WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     now: Instant,
-    boat_report: Option<bbb_world::VehicleMoveReport>,
+    vehicle_report: Option<bbb_world::VehicleMoveReport>,
 ) {
-    if world
+    let boat_vehicle = world
         .local_player_first_passenger_root_boat_vehicle_id()
-        .is_none()
-    {
-        input.last_paddle_boat_command_at = None;
+        .is_some();
+    if !boat_vehicle && vehicle_report.is_none() {
+        input.last_vehicle_command_at = None;
         return;
     }
     let elapsed_since_last = input
-        .last_paddle_boat_command_at
+        .last_vehicle_command_at
         .and_then(|last| now.checked_duration_since(last));
     let command_due = elapsed_since_last.map_or(true, |elapsed| elapsed >= MOVE_COMMAND_INTERVAL);
     if !command_due {
         return;
     }
 
-    let (left, right) = paddle_boat_state_from_input(input);
-    queue_paddle_boat_command(counters, net_commands, left, right);
-    if let Some(report) = boat_report {
+    if boat_vehicle {
+        let (left, right) = paddle_boat_state_from_input(input);
+        queue_paddle_boat_command(counters, net_commands, left, right);
+    }
+    if let Some(report) = vehicle_report {
         queue_vehicle_move_command(counters, net_commands, report);
     }
-    input.last_paddle_boat_command_at = Some(now);
+    input.last_vehicle_command_at = Some(now);
 }
 
 fn maybe_queue_passenger_rotation_command(
@@ -414,8 +421,8 @@ mod tests {
 
     use super::*;
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, CommonPlayerSpawnInfo, EquipmentSlot, EquipmentSlotUpdate,
@@ -1202,6 +1209,41 @@ mod tests {
     }
 
     #[test]
+    fn controlled_happy_ghast_queues_vehicle_move_without_boat_paddles() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let now = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID);
+        let initial = world.probe_entity(10).unwrap();
+        let mut counters = NetCounters::default();
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            now,
+            1,
+        );
+
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
+        let vehicle = match rx.try_recv().unwrap() {
+            NetCommand::MoveVehicle(command) => command,
+            other => panic!("expected Happy Ghast move command, got {other:?}"),
+        };
+        assert!(vehicle.position.z > initial.position.z);
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_move_commands_queued, 1);
+        assert_eq!(counters.move_vehicle_commands_queued, 1);
+        assert_eq!(counters.paddle_boat_commands_queued, 0);
+    }
+
+    #[test]
     fn riding_jump_scale_matches_vanilla_local_player_curve() {
         let assert_scale = |actual: f32, expected: f32| {
             assert!(
@@ -1332,6 +1374,18 @@ mod tests {
                 entity_id: 10,
                 slots: vec![EquipmentSlotUpdate {
                     slot: EquipmentSlot::Saddle,
+                    item: ItemStackSummary {
+                        item_id: Some(SADDLE_ITEM_ID),
+                        count: 1,
+                        component_patch: Default::default(),
+                    },
+                }],
+            }));
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
+            assert!(world.apply_set_equipment(SetEquipment {
+                entity_id: 10,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Body,
                     item: ItemStackSummary {
                         item_id: Some(SADDLE_ITEM_ID),
                         count: 1,

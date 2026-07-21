@@ -660,7 +660,7 @@ pub(crate) struct ClientInputState {
     last_move_command_at: Option<Instant>,
     move_position_reminder_ticks: u32,
     last_move_command_pose: Option<LocalPlayerPoseState>,
-    last_paddle_boat_command_at: Option<Instant>,
+    last_vehicle_command_at: Option<Instant>,
     riding_jump_charge_seconds: Option<f64>,
     sprint_trigger_ticks: u8,
     sprint_trigger_elapsed_seconds: f64,
@@ -1196,7 +1196,7 @@ impl ClientInputState {
         {
             self.local_player_movement_tick_accumulator_seconds = 0.0;
         }
-        self.last_paddle_boat_command_at = None;
+        self.last_vehicle_command_at = None;
         self.riding_jump_charge_seconds = None;
         self.clear_sprint_trigger();
         self.creative_flight_jump_trigger_ticks = 0;
