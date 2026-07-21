@@ -763,9 +763,41 @@ case (20 samples, one-second warm-up, two-second measurement) measures
 publication, and 21.112 us for a fresh dash plus retained publication. The
 roughly 4.13 us steady retained-snapshot increment is paid in the current
 operation rather than deferred to the following mutation. These are absolute
-costs for newly implemented client work, not a speedup claim. Pig/Strider
-`ItemBasedSteering` boost and the remaining subclass inventory still precede
-phase-4 closure.
+costs for newly implemented client work, not a speedup claim.
+
+The Pig/Strider stage keeps synchronized boost duration in generated metadata
+and retains only Vanilla `ItemBasedSteering`'s private boosting flag and
+post-increment elapsed cursor in the canonical entity animation owner. Pig and
+Strider membership, accessor index and default come from the generated nearest
+field schema; the controller gate uses the existing saddle profile, first
+Player passenger and exact held steering item. Remote controllers are resolved
+from the stable protocol-id/hecs index. The check is fused into the existing
+ordered scheduled-entity loop, so this stage adds no second ECS scan, full
+`EntityState` projection, temporary owner `Vec`, or per-tick controller map.
+Direct local control remains deferred to the native input owner and reports
+the resulting root transform through the established MoveVehicle ordering.
+
+Both families use the fixed `(0, 0, 1)` ridden input and controller yaw/half
+pitch. Pig applies `movement_speed * 0.225 * boost`; Strider applies
+`movement_speed * (0.35 cold | 0.55 warm) * boost`, with the named
+`minecraft:suffocating` transient attribute modifier and synchronized render
+flag updated as one COW-isolated canonical mutation. The Strider path also
+uses exact lava contact, source-lava half-block collision context, and
+post-`super.tick` floating without making the renderer or input thread another
+world owner. Server AI, temptation/panic, breeding, damage and boost initiation
+remain server-authoritative.
+
+Focused tests cover generated membership, local Pig boost boundaries, remote
+hand/controller loss, local and remote Strider suffocation order, source-lava
+surface collision, packet-before-MoveVehicle behavior, same-id recreation and
+retained A/B generations. On the same machine, the repo Criterion case (20
+samples, one-second warm-up, two-second measurement) measures Pig at 3.6957 us
+physics-only and 8.2662 us with retained publication, Strider at 3.9554 us and
+8.7258 us, and a fresh Pig boost plus retained publication at 22.190 us. These
+are absolute costs for newly implemented Vanilla work. The steady retained
+snapshot adds about 4.57--4.77 us in the current operation rather than shifting
+it to the next mutation. Remaining phase-4 subclass work is limited to the
+separately listed inventory/callback edges before coverage closeout.
 
 ## Required Tests
 

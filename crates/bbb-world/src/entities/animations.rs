@@ -34,6 +34,7 @@ use super::schema::{
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
+    vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type,
     vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type,
     vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type,
@@ -468,6 +469,10 @@ pub struct EntityClientAnimationState {
     /// of the stable probe/renderer shape; immutable publications still clone it for isolation.
     #[serde(skip)]
     pub(crate) nautilus_dash_cooldown: Option<NautilusDashCooldownState>,
+    /// Vanilla `ItemBasedSteering` client-only `boosting`/`boostTime` owner for
+    /// Pig and Strider. The synchronized total remains in canonical metadata.
+    #[serde(skip)]
+    pub(crate) item_based_steering: Option<ItemBasedSteeringClientState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copper_golem_idle: Option<CopperGolemIdleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1473,6 +1478,43 @@ impl CamelDashCooldownState {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct NautilusDashCooldownState {
     cooldown_ticks: i32,
+}
+
+/// Vanilla `ItemBasedSteering` keeps the elapsed boost cursor outside
+/// synchronized entity data. It is retained with the canonical entity so
+/// publication A cannot observe generation B's ridden tick.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct ItemBasedSteeringClientState {
+    boosting: bool,
+    boost_time: i32,
+}
+
+impl ItemBasedSteeringClientState {
+    fn on_synced(&mut self) {
+        self.boosting = true;
+        self.boost_time = 0;
+    }
+
+    fn tick_and_factor(&mut self, boost_time_total: i32) -> f32 {
+        if self.boosting {
+            let previous = self.boost_time;
+            self.boost_time = self.boost_time.wrapping_add(1);
+            if previous > boost_time_total {
+                self.boosting = false;
+            }
+        }
+        if self.boosting {
+            let phase = self.boost_time as f32 / boost_time_total as f32 * std::f32::consts::PI;
+            1.0 + 1.15 * super::client_movement::vanilla_mth_sin(f64::from(phase))
+        } else {
+            1.0
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn debug_state(self) -> (bool, i32) {
+        (self.boosting, self.boost_time)
+    }
 }
 
 impl NautilusDashCooldownState {
@@ -4127,6 +4169,12 @@ impl EntityClientAnimationState {
             .start_local_dash();
     }
 
+    pub(crate) fn advance_item_based_steering_tick(&mut self, boost_time_total: i32) -> f32 {
+        self.item_based_steering
+            .as_mut()
+            .map_or(1.0, |steering| steering.tick_and_factor(boost_time_total))
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn advance_nautilus_subclass_tick(
         &mut self,
@@ -4243,6 +4291,11 @@ impl EntityClientAnimationState {
                 ) as i64)
             });
         self.nautilus_dash_cooldown = None;
+        self.item_based_steering =
+            vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+                entity_type_id,
+            )
+            .map(|_| ItemBasedSteeringClientState::default());
         self.ridden_jump = vanilla_entity_metadata_type_is_player_rideable_jumping(entity_type_id)
             .then(RiddenJumpState::default);
     }
@@ -4314,6 +4367,20 @@ impl EntityClientAnimationState {
             self.nautilus_dash_cooldown
                 .get_or_insert_with(Default::default)
                 .seed_from_synced_update();
+        }
+        if let Some((boost_time_data_id, _)) =
+            vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+                entity_type_id,
+            )
+        {
+            if updated_values
+                .iter()
+                .any(|value| value.data_id == boost_time_data_id)
+            {
+                self.item_based_steering
+                    .get_or_insert_with(Default::default)
+                    .on_synced();
+            }
         }
     }
 
@@ -6971,7 +7038,8 @@ impl WorldStore {
         let mut guardian_can_stand_on_below_by_id = std::collections::HashMap::new();
         let mut guardian_attack_target_ids = std::collections::HashSet::new();
         for input in in_water_inputs {
-            let nautilus_fluid_contact = is_vanilla_abstract_nautilus_type(input.entity_type_id)
+            let exact_fluid_contact = (is_vanilla_abstract_nautilus_type(input.entity_type_id)
+                || input.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID)
                 .then(|| {
                     crate::client::entity_fluid_contact(
                         self,
@@ -6981,7 +7049,7 @@ impl WorldStore {
                         input.eye_position,
                     )
                 });
-            let in_water = nautilus_fluid_contact.map_or_else(
+            let in_water = exact_fluid_contact.map_or_else(
                 || crate::fluid::world_aabb_in_water(self, input.aabb_min, input.aabb_max),
                 |contact| contact.in_water(),
             );
@@ -6995,9 +7063,9 @@ impl WorldStore {
                 input.entity_id,
                 super::store::EntityClientTickFluidFacts {
                     in_water,
+                    in_lava: exact_fluid_contact.is_some_and(|contact| contact.in_lava()),
                     in_liquid,
-                    eye_in_water: nautilus_fluid_contact
-                        .is_some_and(|contact| contact.eye_in_water),
+                    eye_in_water: exact_fluid_contact.is_some_and(|contact| contact.eye_in_water),
                 },
             );
             if let Some(pos) = input.guardian_below_pos.filter(|_| !in_water) {
@@ -7231,6 +7299,23 @@ impl WorldStore {
                     .is_some_and(is_vanilla_abstract_nautilus_type)
                     && self.entity_controlling_passenger(*entity_id) == self.local_player_id
             });
+        let deferred_local_item_based_steering_vehicle_id = self
+            .local_player_first_passenger_root_vehicle_id()
+            .filter(|entity_id| {
+                self.entities
+                    .entity_type_id(*entity_id)
+                    .and_then(
+                        vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type,
+                    )
+                    .is_some()
+                    && self.entity_controlling_passenger(*entity_id) == self.local_player_id
+            });
+        let local_player_rotation = self.local_player.pose.map(|pose| (pose.x_rot, pose.y_rot));
+        let local_player_holds_carrot_on_a_stick = self
+            .local_player_holds_item(bbb_protocol::item_types::VANILLA_ITEM_CARROT_ON_A_STICK_ID);
+        let local_player_holds_warped_fungus_on_a_stick = self.local_player_holds_item(
+            bbb_protocol::item_types::VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+        );
         let has_client_level = self.level.is_some();
         let chunks = &self.chunks;
         let is_ticking_entity = |_: i32, entity_type_id: i32, position: EntityVec3| {
@@ -7254,6 +7339,12 @@ impl WorldStore {
             deferred_boat_paddle_entity_id,
             deferred_local_camel_vehicle_id,
             deferred_local_nautilus_vehicle_id,
+            deferred_local_item_based_steering_vehicle_id,
+            &self.items.default_item_equipment_slots,
+            self.local_player_id,
+            local_player_rotation,
+            local_player_holds_carrot_on_a_stick,
+            local_player_holds_warped_fungus_on_a_stick,
             &spectator_player_uuids,
             &fluid_facts_by_id,
             &guardian_can_stand_on_below_by_id,
@@ -7482,7 +7573,7 @@ fn entity_data_float(data_values: &[EntityDataValue], data_id: u8) -> Option<f32
         })
 }
 
-fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {
+pub(crate) fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {
     data_values
         .iter()
         .find(|value| value.data_id == data_id)

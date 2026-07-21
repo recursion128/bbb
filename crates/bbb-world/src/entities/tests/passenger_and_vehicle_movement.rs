@@ -8,6 +8,7 @@ use bbb_protocol::item_types::{
 use crate::{ItemEquipmentSlot, LocalPlayerPoseState};
 
 use super::*;
+use crate::entities::schema::vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type;
 
 const TEST_SADDLE_ITEM_ID: i32 = 8_901;
 
@@ -2375,6 +2376,317 @@ fn recreated_nautilus_id_does_not_retain_dash_or_rng_owner() {
 }
 
 #[test]
+fn local_pig_boost_uses_vanilla_post_increment_and_isolates_old_generation() {
+    let (boost_data_id, _) =
+        vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PIG_ID,
+        )
+        .unwrap();
+    let mut boosted = locally_controlled_item_based_steering(
+        VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ITEM_CARROT_ON_A_STICK_ID,
+    );
+    assert!(boosted.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![protocol_int_data(boost_data_id, 4)],
+    }));
+    assert_eq!(
+        boosted.entities.item_based_steering_debug_state(10),
+        Some((true, 0))
+    );
+    let generation_a = boosted.publication_snapshot();
+    let before = boosted.entities.transform(10).unwrap();
+
+    let mut steady = locally_controlled_item_based_steering(
+        VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ITEM_CARROT_ON_A_STICK_ID,
+    );
+    boosted
+        .advance_local_item_based_steering_vehicle_input(1)
+        .unwrap();
+    steady
+        .advance_local_item_based_steering_vehicle_input(1)
+        .unwrap();
+    let after_boosted = boosted.entities.transform(10).unwrap();
+    let after_steady = steady.entities.transform(10).unwrap();
+    assert!(after_boosted.position.z > after_steady.position.z);
+    assert_eq!(
+        boosted.entities.item_based_steering_debug_state(10),
+        Some((true, 1))
+    );
+
+    boosted
+        .advance_local_item_based_steering_vehicle_input(4)
+        .unwrap();
+    assert_eq!(
+        boosted.entities.item_based_steering_debug_state(10),
+        Some((true, 5))
+    );
+    boosted
+        .advance_local_item_based_steering_vehicle_input(1)
+        .unwrap();
+    assert_eq!(
+        boosted.entities.item_based_steering_debug_state(10),
+        Some((false, 6))
+    );
+
+    assert_eq!(generation_a.entities.transform(10), Some(before));
+    assert_eq!(
+        generation_a.entities.item_based_steering_debug_state(10),
+        Some((true, 0))
+    );
+}
+
+#[test]
+fn local_strider_tick_recomputes_suffocating_modifier_from_lava() {
+    let mut cold = locally_controlled_item_based_steering(
+        VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+    );
+    let (suffocating_data_id, _) =
+        vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+        )
+        .unwrap();
+    let generation_a = cold.publication_snapshot();
+    let warm_speed = cold
+        .entities
+        .attribute_value(
+            10,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        )
+        .unwrap();
+
+    cold.advance_local_item_based_steering_vehicle_input(1)
+        .unwrap();
+    assert!(cold
+        .entities
+        .metadata_bool_for_entity(10, suffocating_data_id, false)
+        .unwrap());
+    let cold_speed = cold
+        .entities
+        .attribute_value(
+            10,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        )
+        .unwrap();
+    assert!((cold_speed - warm_speed * 0.66).abs() < 1.0e-6);
+    assert!(!generation_a
+        .entities
+        .metadata_bool_for_entity(10, suffocating_data_id, false)
+        .unwrap());
+
+    let mut warm = locally_controlled_item_based_steering(
+        VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+    );
+    warm.insert_decoded_chunk(empty_test_chunk());
+    assert!(warm.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 1, y: -63, z: 1 },
+        block_state_id: vanilla_block_state_id("minecraft:lava", [("level", "0")]),
+    }));
+    warm.entities.with_transform_mut(10, |transform| {
+        transform.position = EntityVec3 {
+            x: 1.0,
+            y: -63.0,
+            z: 1.0,
+        };
+        transform.old_position = transform.position;
+        transform.on_ground = Some(false);
+    });
+    assert!(warm.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![protocol_bool_data(suffocating_data_id, true)],
+    }));
+    warm.advance_local_item_based_steering_vehicle_input(1)
+        .unwrap();
+    assert!(!warm
+        .entities
+        .metadata_bool_for_entity(10, suffocating_data_id, false)
+        .unwrap());
+    assert!(warm.entities.transform(10).unwrap().delta_movement.y > 0.0);
+    assert!(
+        (warm
+            .entities
+            .attribute_value(
+                10,
+                bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+            )
+            .unwrap()
+            - warm_speed)
+            .abs()
+            < 1.0e-6
+    );
+}
+
+#[test]
+fn local_strider_source_lava_surface_is_a_stable_half_block_collision() {
+    let mut store = locally_controlled_item_based_steering(
+        VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+    );
+    store.insert_decoded_chunk(empty_test_chunk());
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 1, y: -64, z: 1 },
+        block_state_id: vanilla_block_state_id("minecraft:lava", [("level", "0")]),
+    }));
+    store.entities.with_transform_mut(10, |transform| {
+        transform.position = EntityVec3 {
+            x: 1.0,
+            y: -63.5,
+            z: 1.0,
+        };
+        transform.old_position = transform.position;
+        transform.delta_movement = EntityVec3::default();
+        transform.on_ground = Some(true);
+    });
+
+    let initial_y = store.entities.transform(10).unwrap().position.y;
+    store
+        .advance_local_item_based_steering_vehicle_input(20)
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+    assert!((after.position.y - initial_y).abs() < 1.0e-9);
+    assert!(after.on_ground.unwrap_or(false));
+    assert!(after.delta_movement.y < 0.0);
+}
+
+#[test]
+fn remote_pig_boost_uses_equipped_controller_hand_and_rotation() {
+    let mut store = WorldStore::new();
+    let mut pig = protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_PIG_ID);
+    pig.uuid = Uuid::from_u128(10);
+    store.apply_add_entity(pig);
+    let mut controller = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    controller.uuid = Uuid::from_u128(20);
+    controller.x_rot = 24.0;
+    controller.y_rot = 70.0;
+    store.apply_add_entity(controller);
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    equip_test_saddle(&mut store, 10);
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 20,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item: item_stack(VANILLA_ITEM_CARROT_ON_A_STICK_ID, 1),
+        }],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    let (boost_data_id, _) =
+        vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PIG_ID,
+        )
+        .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![protocol_int_data(boost_data_id, 4)],
+    }));
+
+    store.advance_entity_client_animations(1);
+    let transform = store.entities.transform(10).unwrap();
+    assert!((transform.x_rot - 12.0).abs() < 1.0e-6);
+    assert!((transform.y_rot - 70.0).abs() < 1.0e-6);
+    assert!((transform.old_y_rot - 70.0).abs() < 1.0e-6);
+    assert!((transform.y_head_rot - 70.0).abs() < 1.0e-6);
+    assert_eq!(
+        store.entities.item_based_steering_debug_state(10),
+        Some((true, 1))
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 20,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item: item_stack(0, 0),
+        }],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.entities.item_based_steering_debug_state(10),
+        Some((true, 1))
+    );
+}
+
+#[test]
+fn remote_strider_tick_updates_suffocation_before_passenger_tick() {
+    let mut store = WorldStore::new();
+    for id in [10, 20] {
+        let mut strider = protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_STRIDER_ID);
+        strider.uuid = Uuid::from_u128(id as u128);
+        store.apply_add_entity(strider);
+    }
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    let (suffocating_data_id, _) =
+        vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+        )
+        .unwrap();
+    let generation_a = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+
+    for id in [10, 20] {
+        assert!(store
+            .entities
+            .metadata_bool_for_entity(id, suffocating_data_id, false)
+            .unwrap());
+        assert!(!generation_a
+            .entities
+            .metadata_bool_for_entity(id, suffocating_data_id, false)
+            .unwrap());
+    }
+}
+
+#[test]
+fn recreated_item_based_steering_id_does_not_retain_boost_cursor() {
+    let mut store = locally_controlled_item_based_steering(
+        VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ITEM_CARROT_ON_A_STICK_ID,
+    );
+    let (boost_data_id, _) =
+        vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PIG_ID,
+        )
+        .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![protocol_int_data(boost_data_id, 4)],
+    }));
+    store
+        .advance_local_item_based_steering_vehicle_input(1)
+        .unwrap();
+    let generation_a = store.publication_snapshot();
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![10],
+        }),
+        1
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_PIG_ID,
+    ));
+    assert_eq!(
+        store.entities.item_based_steering_debug_state(10),
+        Some((false, 0))
+    );
+    assert_eq!(
+        generation_a.entities.item_based_steering_debug_state(10),
+        Some((true, 1))
+    );
+}
+
+#[test]
 fn local_abstract_horse_water_travel_uses_generated_ridden_float_tag() {
     let mut store = locally_controlled_horse();
     store.insert_decoded_chunk(empty_test_chunk());
@@ -2505,6 +2817,35 @@ fn locally_controlled_nautilus(entity_type_id: i32) -> WorldStore {
         vehicle_id: 10,
         passenger_ids: vec![99],
     }));
+    store.set_local_player_pose(LocalPlayerPoseState::default());
+    store
+}
+
+fn locally_controlled_item_based_steering(
+    entity_type_id: i32,
+    steering_item_id: i32,
+) -> WorldStore {
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
+    equip_test_saddle(&mut store, 10);
+    assert!(
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(steering_item_id, 1),
+        })
+    );
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    store.entities.with_transform_mut(10, |transform| {
+        transform.on_ground = Some(true);
+    });
     store.set_local_player_pose(LocalPlayerPoseState::default());
     store
 }

@@ -4,6 +4,7 @@ use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_
 use bbb_protocol::entity_types::{
     vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
@@ -139,6 +140,7 @@ pub(super) fn local_player_collides_with_context(
                     continue;
                 };
                 if block_collides_with_local_player_bounds(
+                    world,
                     &block,
                     BlockPos { x, y, z },
                     bounds,
@@ -187,7 +189,8 @@ fn find_supporting_block(
                 let Some(block) = world.probe_block(pos) else {
                     continue;
                 };
-                let Some(shape) = block_collision_shape_with_context(&block, pos, context) else {
+                let Some(shape) = block_collision_shape_with_context(world, &block, pos, context)
+                else {
                     continue;
                 };
                 if !bounds_intersects_block_shape(test_bounds, pos, shape) {
@@ -244,7 +247,8 @@ impl WorldStore {
                 .unwrap_or(false),
             self.remote_entity_can_walk_on_powder_snow(input.entity_id),
             input.entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-        );
+        )
+        .with_can_stand_on_lava(input.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
         if local_player_collides_with_context(self, target_bounds, context) {
             return false;
         }
@@ -536,6 +540,9 @@ impl WorldStore {
                 self.entities.is_descending(entity_id).unwrap_or(false),
                 self.remote_entity_can_walk_on_powder_snow(entity_id),
                 self.entity_type_id(entity_id) == Some(VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID),
+            )
+            .with_can_stand_on_lava(
+                self.entity_type_id(entity_id) == Some(VANILLA_ENTITY_TYPE_STRIDER_ID),
             ),
         );
         let main = if current.is_some() || previous.on_ground_no_blocks {
@@ -686,7 +693,7 @@ impl WorldStore {
                         continue;
                     };
                     let Some(shape) =
-                        block_collision_shape_with_context(&block, pos, camera.block_context)
+                        block_collision_shape_with_context(self, &block, pos, camera.block_context)
                     else {
                         continue;
                     };
@@ -982,6 +989,7 @@ impl WorldStore {
         };
         let bounds = LocalPlayerBounds::for_pose(pose);
         block_collides_with_local_player_bounds(
+            self,
             &block,
             pos,
             bounds,
@@ -1103,7 +1111,8 @@ impl WorldStore {
             self.entities.is_descending(entity_id).unwrap_or(false),
             self.remote_entity_can_walk_on_powder_snow(entity_id),
             entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-        );
+        )
+        .with_can_stand_on_lava(entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
         let query = EntityCollisionQuery {
             source_entity_id: Some(entity_id),
             source_entity_type_id: entity_type_id,
@@ -1193,7 +1202,8 @@ impl WorldStore {
                     let Some(block) = self.probe_block(pos) else {
                         continue;
                     };
-                    let Some(shape) = block_collision_shape_with_context(&block, pos, context)
+                    let Some(shape) =
+                        block_collision_shape_with_context(self, &block, pos, context)
                     else {
                         continue;
                     };
@@ -1292,7 +1302,8 @@ impl WorldStore {
             on_ground,
             false,
             entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-        );
+        )
+        .with_can_stand_on_lava(entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
         if local_player_collides_with_context(self, bounds, block_context) {
             return false;
         }
@@ -1424,7 +1435,8 @@ impl WorldStore {
             on_ground,
             false,
             entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-        );
+        )
+        .with_can_stand_on_lava(entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
         let block_scale = projectile_block_hit_scale(self, position, to, context).unwrap_or(1.0);
         let block_hit: [f64; 3] =
             std::array::from_fn(|axis| position[axis] + movement[axis] * block_scale);
@@ -1498,7 +1510,8 @@ impl WorldStore {
             clipped_movement[1] < 0.0,
             false,
             entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-        );
+        )
+        .with_can_stand_on_lava(entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
         let current = find_supporting_block(self, entity_position, bounds, context);
         if current.is_some() || previous.on_ground_no_blocks {
             return current;
@@ -1646,7 +1659,8 @@ impl WorldStore {
                     let Some(block) = self.probe_block(pos) else {
                         continue;
                     };
-                    let Some(shape) = block_collision_shape_with_context(&block, pos, context)
+                    let Some(shape) =
+                        block_collision_shape_with_context(self, &block, pos, context)
                     else {
                         continue;
                     };
@@ -1763,7 +1777,7 @@ fn projectile_block_shape_hit_scale(
         z: cell[2],
     };
     let block = world.probe_block(pos)?;
-    let shape = block_collision_shape_with_context(&block, pos, context)?;
+    let shape = block_collision_shape_with_context(world, &block, pos, context)?;
     let delta = std::array::from_fn::<_, 3, _>(|axis| to[axis] - from[axis]);
     let test_point = std::array::from_fn::<_, 3, _>(|axis| from[axis] + delta[axis] * 0.001);
     shape
@@ -1924,22 +1938,39 @@ fn clipped_axis_against_world_box(
 }
 
 fn block_collides_with_local_player_bounds(
+    world: &WorldStore,
     block: &BlockProbe,
     pos: BlockPos,
     bounds: LocalPlayerBounds,
     context: LocalPlayerCollisionContext,
 ) -> bool {
-    if let Some(shape) = block_collision_shape_with_context(block, pos, context) {
+    if let Some(shape) = block_collision_shape_with_context(world, block, pos, context) {
         return bounds_intersects_block_shape(bounds, pos, shape);
     }
     false
 }
 
 fn block_collision_shape_with_context(
+    world: &WorldStore,
     block: &BlockProbe,
     pos: BlockPos,
     context: LocalPlayerCollisionContext,
 ) -> Option<BlockCollisionShape> {
+    if context.can_stand_on_lava
+        && block.fluid.is_some_and(|fluid| {
+            fluid.kind == TerrainFluidKind::Lava && fluid.amount == 8 && !fluid.falling
+        })
+        && context.is_above(pos, 0.5)
+        && !world
+            .probe_block(BlockPos {
+                y: pos.y.saturating_add(1),
+                ..pos
+            })
+            .and_then(|above| above.fluid)
+            .is_some_and(|fluid| fluid.kind == TerrainFluidKind::Lava)
+    {
+        return Some(BlockCollisionShape::single(BlockCollisionBox::BOTTOM_SLAB));
+    }
     if block.block_name.as_deref() == Some("minecraft:powder_snow") {
         return powder_snow_collision_shape(pos, context);
     }
@@ -3660,6 +3691,7 @@ pub(super) struct LocalPlayerCollisionContext {
     descending: bool,
     fall_distance: f64,
     can_walk_on_powder_snow: bool,
+    can_stand_on_lava: bool,
     is_falling_block: bool,
 }
 
@@ -3670,6 +3702,7 @@ impl LocalPlayerCollisionContext {
             descending,
             fall_distance: 0.0,
             can_walk_on_powder_snow: false,
+            can_stand_on_lava: false,
             is_falling_block: false,
         }
     }
@@ -3684,6 +3717,7 @@ impl LocalPlayerCollisionContext {
             descending,
             fall_distance: pose.fall_distance,
             can_walk_on_powder_snow: world.local_player_can_walk_on_powder_snow(),
+            can_stand_on_lava: false,
             is_falling_block: false,
         }
     }
@@ -3699,8 +3733,14 @@ impl LocalPlayerCollisionContext {
             descending,
             fall_distance: 0.0,
             can_walk_on_powder_snow,
+            can_stand_on_lava: false,
             is_falling_block,
         }
+    }
+
+    fn with_can_stand_on_lava(mut self, can_stand_on_lava: bool) -> Self {
+        self.can_stand_on_lava = can_stand_on_lava;
+        self
     }
 
     fn for_bounds(bounds: LocalPlayerBounds) -> Self {

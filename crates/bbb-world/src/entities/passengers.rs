@@ -36,7 +36,9 @@ use super::schema::{
     vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
+    vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
+    vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_type_has_custom_inventory_screen,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_type_is_mob, vanilla_entity_metadata_type_is_player_rideable_jumping,
@@ -1249,6 +1251,341 @@ impl WorldStore {
         })
     }
 
+    /// Advances a directly controlled Pig or Strider through
+    /// `ItemBasedSteering.tickBoost`, its fixed forward ridden input, and the
+    /// shared `LivingEntity.travel` path. The synchronized metadata owns the
+    /// total boost duration; the canonical entity animation owner retains only
+    /// the client-local elapsed cursor.
+    pub fn advance_local_item_based_steering_vehicle_input(
+        &mut self,
+        ticks: u32,
+    ) -> Option<VehicleMoveReport> {
+        let vehicle_id = self.local_player_first_passenger_root_vehicle_id()?;
+        let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
+        if vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .is_none()
+            || self.entity_controlling_passenger(vehicle_id) != self.local_player_id
+        {
+            return None;
+        }
+        let controller = self.local_player.pose?;
+        let max_up_step =
+            self.entities
+                .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_STEP_HEIGHT_ID)? as f32;
+        let gravity = if self.entities.no_gravity(vehicle_id).unwrap_or(false) {
+            0.0
+        } else {
+            self.entities
+                .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_GRAVITY_ID)?
+        };
+        let water_movement_efficiency = self
+            .entities
+            .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID)?
+            as f32;
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+        let shared_flags = self.entities.metadata_byte(
+            vehicle_id,
+            entity_accessors.shared_flags_data_id,
+            entity_accessors.shared_flags_default,
+        )?;
+        let sprinting = shared_flags & entity_accessors.sprinting_mask != 0;
+        let levitation = self
+            .entities
+            .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_LEVITATION_ID);
+        let slow_falling = self
+            .entities
+            .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_SLOW_FALLING_ID)
+            .is_some();
+        let dolphins_grace = self
+            .entities
+            .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID)
+            .is_some();
+        let strider_suffocating =
+            vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(entity_type_id);
+        let entity_collision_targets = (ticks > 0)
+            .then(|| self.entities.vehicle_entity_collision_targets())
+            .unwrap_or_default();
+        let ridden_input = HappyGhastInput {
+            x: 0.0,
+            y: 0.0,
+            z: 1.0,
+        };
+
+        for _ in 0..ticks {
+            let transform = self.entities.transform(vehicle_id)?;
+            let previous_supporting_block = self.entities.supporting_block(vehicle_id)?;
+            let mut next_transform = transform;
+            next_transform.y_rot = controller.y_rot;
+            next_transform.old_y_rot = controller.y_rot;
+            next_transform.x_rot = controller.x_rot * 0.5;
+            next_transform.y_head_rot = controller.y_rot;
+
+            let bounds = self.entities.pick_bounds(vehicle_id)?;
+            let relative_min = bounds.min.map(f64::from);
+            let relative_max = bounds.max.map(f64::from);
+            let position = [
+                next_transform.position.x,
+                next_transform.position.y,
+                next_transform.position.z,
+            ];
+            let aabb_min = std::array::from_fn(|axis| position[axis] + relative_min[axis]);
+            let aabb_max = std::array::from_fn(|axis| position[axis] + relative_max[axis]);
+            let eye_y = position[1] + f64::from(self.entities.standing_eye_height(vehicle_id)?);
+            let fluid_contact = crate::client::entity_fluid_contact(
+                self,
+                aabb_min,
+                aabb_max,
+                position[1],
+                [position[0], eye_y, position[2]],
+            );
+            if strider_suffocating.is_some() {
+                let mob_accessors =
+                    vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)?;
+                let mob_flags = self.entities.metadata_byte(
+                    vehicle_id,
+                    mob_accessors.flags_data_id,
+                    mob_accessors.flags_default,
+                )?;
+                if mob_flags & mob_accessors.no_ai_mask == 0 {
+                    self.entities
+                        .set_strider_suffocating(vehicle_id, !fluid_contact.in_lava())?;
+                }
+            }
+            let base_movement_speed = self
+                .entities
+                .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)?;
+            let boost_factor = self.entities.advance_item_based_steering_tick(vehicle_id)?;
+            let steering_modifier = if let Some((data_id, default)) = strider_suffocating {
+                if self
+                    .entities
+                    .metadata_bool_for_entity(vehicle_id, data_id, default)?
+                {
+                    0.35_f32
+                } else {
+                    0.55_f32
+                }
+            } else {
+                0.225_f32
+            };
+            let movement_speed = (base_movement_speed
+                * f64::from(steering_modifier)
+                * f64::from(boost_factor)) as f32 as f64;
+            next_transform.delta_movement = super::client_movement::apply_entity_fluid_currents(
+                next_transform.delta_movement,
+                fluid_contact,
+                crate::client::local_player_lava_current_push_per_tick(self),
+            );
+            let is_falling = next_transform.delta_movement.y <= 0.0;
+            let effective_gravity = if is_falling && slow_falling {
+                gravity.min(0.01)
+            } else {
+                gravity
+            };
+            let old_y = next_transform.position.y;
+            let old_on_ground = transform.on_ground.unwrap_or(false);
+            if fluid_contact.in_water() {
+                let mut slow_down = if sprinting { 0.9_f32 } else { 0.8_f32 };
+                let mut speed = 0.02_f32;
+                let efficiency = if old_on_ground {
+                    water_movement_efficiency
+                } else {
+                    water_movement_efficiency * 0.5
+                };
+                if efficiency > 0.0 {
+                    slow_down += (0.54600006_f32 - slow_down) * efficiency;
+                    speed += (movement_speed as f32 - speed) * efficiency;
+                }
+                if dolphins_grace {
+                    slow_down = 0.96;
+                }
+                add_relative_movement(&mut next_transform, ridden_input, f64::from(speed));
+                let outcome = move_local_living_entity(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    max_up_step,
+                    previous_supporting_block,
+                    &entity_collision_targets,
+                    next_transform,
+                );
+                next_transform = outcome.transform;
+                next_transform.delta_movement.x *= f64::from(slow_down);
+                next_transform.delta_movement.y *= f64::from(0.8_f32);
+                next_transform.delta_movement.z *= f64::from(slow_down);
+                next_transform.delta_movement.y = fluid_falling_adjusted_velocity(
+                    next_transform.delta_movement.y,
+                    effective_gravity,
+                    is_falling,
+                    sprinting,
+                );
+                jump_out_of_fluid_if_free(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    &entity_collision_targets,
+                    old_y,
+                    outcome.horizontal_collision,
+                    &mut next_transform,
+                );
+                store_living_move(
+                    &mut self.entities,
+                    vehicle_id,
+                    next_transform,
+                    outcome.supporting_block,
+                )?;
+            } else if fluid_contact.in_lava() {
+                add_relative_movement(&mut next_transform, ridden_input, f64::from(0.02_f32));
+                let outcome = move_local_living_entity(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    max_up_step,
+                    previous_supporting_block,
+                    &entity_collision_targets,
+                    next_transform,
+                );
+                next_transform = outcome.transform;
+                if fluid_contact.lava_height <= 0.4 {
+                    next_transform.delta_movement.x *= 0.5;
+                    next_transform.delta_movement.y *= f64::from(0.8_f32);
+                    next_transform.delta_movement.z *= 0.5;
+                    next_transform.delta_movement.y = fluid_falling_adjusted_velocity(
+                        next_transform.delta_movement.y,
+                        effective_gravity,
+                        is_falling,
+                        sprinting,
+                    );
+                } else {
+                    next_transform.delta_movement.x *= 0.5;
+                    next_transform.delta_movement.y *= 0.5;
+                    next_transform.delta_movement.z *= 0.5;
+                }
+                if effective_gravity != 0.0 {
+                    next_transform.delta_movement.y -= effective_gravity / 4.0;
+                }
+                jump_out_of_fluid_if_free(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    &entity_collision_targets,
+                    old_y,
+                    outcome.horizontal_collision,
+                    &mut next_transform,
+                );
+                store_living_move(
+                    &mut self.entities,
+                    vehicle_id,
+                    next_transform,
+                    outcome.supporting_block,
+                )?;
+            } else {
+                let block_friction = if old_on_ground {
+                    entity_movement_block_friction(self, position, previous_supporting_block.main)
+                } else {
+                    1.0
+                };
+                let friction = block_friction * 0.91_f32;
+                let speed = if old_on_ground {
+                    movement_speed
+                        * f64::from(
+                            0.21600002_f32 / (block_friction * block_friction * block_friction),
+                        )
+                } else {
+                    movement_speed * f64::from(0.1_f32)
+                };
+                add_relative_movement(&mut next_transform, ridden_input, speed);
+                let outcome = move_local_living_entity(
+                    self,
+                    vehicle_id,
+                    entity_type_id,
+                    relative_min,
+                    relative_max,
+                    max_up_step,
+                    previous_supporting_block,
+                    &entity_collision_targets,
+                    next_transform,
+                );
+                next_transform = outcome.transform;
+                next_transform.delta_movement.y = if let Some(amplifier) = levitation {
+                    next_transform.delta_movement.y
+                        + (0.05 * f64::from(amplifier + 1) - next_transform.delta_movement.y) * 0.2
+                } else {
+                    next_transform.delta_movement.y - effective_gravity
+                };
+                next_transform.delta_movement.x *= f64::from(friction);
+                next_transform.delta_movement.y *= f64::from(0.98_f32);
+                next_transform.delta_movement.z *= f64::from(friction);
+                store_living_move(
+                    &mut self.entities,
+                    vehicle_id,
+                    next_transform,
+                    outcome.supporting_block,
+                )?;
+            }
+
+            if strider_suffocating.is_some() && fluid_contact.in_lava() {
+                self.advance_local_strider_float_after_tick(
+                    vehicle_id,
+                    relative_min,
+                    fluid_contact,
+                )?;
+            }
+        }
+
+        let transform = self.entities.transform(vehicle_id)?;
+        Some(VehicleMoveReport {
+            vehicle_id,
+            position: transform.position,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            on_ground: transform.on_ground.unwrap_or(false),
+            snapped: false,
+        })
+    }
+
+    fn advance_local_strider_float_after_tick(
+        &mut self,
+        vehicle_id: i32,
+        relative_min: [f64; 3],
+        fluid_contact: crate::client::EntityFluidContactState,
+    ) -> Option<()> {
+        debug_assert!(fluid_contact.in_lava());
+        let mut transform = self.entities.transform(vehicle_id)?;
+        let block_pos = crate::BlockPos {
+            x: transform.position.x.floor() as i32,
+            y: transform.position.y.floor() as i32,
+            z: transform.position.z.floor() as i32,
+        };
+        let entity_bottom = transform.position.y + relative_min[1];
+        let above_lava = block_pos.y.checked_add(1).is_some_and(|y| {
+            self.fluid_state_and_height_at(crate::BlockPos {
+                x: block_pos.x,
+                y,
+                z: block_pos.z,
+            })
+            .is_some_and(|(fluid, _)| fluid.kind == crate::TerrainFluidKind::Lava)
+        });
+        if entity_bottom > f64::from(block_pos.y) + 0.5 - f64::from(1.0e-5_f32) && !above_lava {
+            transform.on_ground = Some(true);
+        } else {
+            transform.delta_movement.x *= 0.5;
+            transform.delta_movement.y = transform.delta_movement.y * 0.5 + 0.05;
+            transform.delta_movement.z *= 0.5;
+        }
+        self.entities
+            .with_transform_mut(vehicle_id, |canonical| *canonical = transform)
+    }
+
     pub fn local_player_root_vehicle_id(&self) -> Option<i32> {
         self.resolve_root_vehicle_id(self.local_player_vehicle_id?)
     }
@@ -1605,16 +1942,15 @@ impl WorldStore {
         } else if entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID {
             if has_saddle
                 && self.entity_id_is_player(first_passenger_id)
-                && first_passenger_id == self.local_player_id?
-                && self.local_player_holds_item(VANILLA_ITEM_CARROT_ON_A_STICK_ID)
+                && self.player_holds_item(first_passenger_id, VANILLA_ITEM_CARROT_ON_A_STICK_ID)
             {
                 return Some(first_passenger_id);
             }
         } else if entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID {
             if has_saddle
                 && self.entity_id_is_player(first_passenger_id)
-                && first_passenger_id == self.local_player_id?
-                && self.local_player_holds_item(VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID)
+                && self
+                    .player_holds_item(first_passenger_id, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID)
             {
                 return Some(first_passenger_id);
             }
@@ -1665,12 +2001,24 @@ impl WorldStore {
             || self.entities.entity_type_id(entity_id) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
     }
 
-    fn local_player_holds_item(&self, item_id: i32) -> bool {
+    pub(crate) fn local_player_holds_item(&self, item_id: i32) -> bool {
         [InteractionHand::MainHand, InteractionHand::OffHand]
             .into_iter()
             .any(|hand| {
                 self.local_item_in_hand(hand).and_then(|item| item.item_id) == Some(item_id)
             })
+    }
+
+    fn player_holds_item(&self, player_id: i32, item_id: i32) -> bool {
+        if self.local_player_id == Some(player_id) {
+            return self.local_player_holds_item(item_id);
+        }
+        [false, true].into_iter().any(|off_hand| {
+            self.entities
+                .held_item(player_id, off_hand)
+                .and_then(|item| item.item_id)
+                == Some(item_id)
+        })
     }
 
     pub(super) fn correct_local_player_passenger_after_entity_snap(

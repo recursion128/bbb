@@ -104,6 +104,7 @@ pub(crate) fn advance_player_input_for_client_ticks(
             .advance_local_boat_vehicle_input(input_state, client_ticks)
             .or_else(|| world.advance_local_abstract_horse_vehicle_input(input_state, client_ticks))
             .or_else(|| world.advance_local_nautilus_vehicle_input(input_state, client_ticks))
+            .or_else(|| world.advance_local_item_based_steering_vehicle_input(client_ticks))
             .or_else(|| world.advance_local_happy_ghast_vehicle_input(input_state, client_ticks));
         if client_ticks > 0 || boat_vehicle && input.last_vehicle_command_at.is_none() {
             maybe_queue_vehicle_commands(input, world, counters, net_commands, now, vehicle_report);
@@ -433,12 +434,16 @@ mod tests {
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    };
+    use bbb_protocol::item_types::{
+        VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, CommonPlayerSpawnInfo, EntityMove, EquipmentSlot, EquipmentSlotUpdate,
         GameEvent as ProtocolGameEvent, ItemStackSummary, PaddleBoat, PlayLogin, PlayTime,
         PlayerAbilities, PlayerAbilitiesCommand, SetCamera, SetEquipment, SetPassengers,
-        Vec3d as ProtocolVec3d,
+        SetPlayerInventory, Vec3d as ProtocolVec3d,
     };
     use bbb_world::ItemEquipmentSlot;
     use uuid::Uuid;
@@ -1290,6 +1295,42 @@ mod tests {
     }
 
     #[test]
+    fn controlled_item_based_steering_mounts_queue_predicted_vehicle_moves() {
+        for entity_type_id in [VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_STRIDER_ID] {
+            let (tx, mut rx) = mpsc::channel(3);
+            let commands = Some(tx);
+            let now = Instant::now();
+            let mut input = ClientInputState::new(true);
+            let mut world = world_with_local_vehicle(entity_type_id);
+            let initial = world.probe_entity(10).unwrap();
+            let mut counters = NetCounters::default();
+
+            advance_player_input_for_client_ticks(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                now,
+                1,
+            );
+
+            assert!(matches!(
+                rx.try_recv().unwrap(),
+                NetCommand::MovePlayer(command) if command.force_rotation_only
+            ));
+            let vehicle = match rx.try_recv().unwrap() {
+                NetCommand::MoveVehicle(command) => command,
+                other => panic!("expected item-steered move command, got {other:?}"),
+            };
+            assert!(vehicle.position.z > initial.position.z);
+            assert!(rx.try_recv().is_err());
+            assert_eq!(counters.player_move_commands_queued, 1);
+            assert_eq!(counters.move_vehicle_commands_queued, 1);
+            assert_eq!(counters.paddle_boat_commands_queued, 0);
+        }
+    }
+
+    #[test]
     fn riding_jump_scale_matches_vanilla_local_player_curve() {
         let assert_scale = |actual: f32, expected: f32| {
             assert!(
@@ -1517,6 +1558,8 @@ mod tests {
             VANILLA_ENTITY_TYPE_HORSE_ID
                 | VANILLA_ENTITY_TYPE_CAMEL_ID
                 | VANILLA_ENTITY_TYPE_NAUTILUS_ID
+                | VANILLA_ENTITY_TYPE_PIG_ID
+                | VANILLA_ENTITY_TYPE_STRIDER_ID
         ) {
             world.set_default_item_equipment_slots(BTreeMap::from([(
                 SADDLE_ITEM_ID,
@@ -1543,6 +1586,21 @@ mod tests {
                     y_rot: None,
                     x_rot: None,
                     on_ground: true,
+                }));
+            }
+            let steering_item_id = match entity_type_id {
+                VANILLA_ENTITY_TYPE_PIG_ID => Some(VANILLA_ITEM_CARROT_ON_A_STICK_ID),
+                VANILLA_ENTITY_TYPE_STRIDER_ID => Some(VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID),
+                _ => None,
+            };
+            if let Some(item_id) = steering_item_id {
+                assert!(world.apply_set_player_inventory(SetPlayerInventory {
+                    slot: 0,
+                    item: ItemStackSummary {
+                        item_id: Some(item_id),
+                        count: 1,
+                        component_patch: Default::default(),
+                    },
                 }));
             }
         } else if entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {

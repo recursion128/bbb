@@ -8,7 +8,7 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
-use bbb_protocol::attribute_types::vanilla_attribute_type;
+use bbb_protocol::attribute_types::{vanilla_attribute_type, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID};
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
@@ -17,7 +17,9 @@ use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
     VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
 };
-use bbb_protocol::packets::AttributeSnapshot as ProtocolAttributeSnapshot;
+use bbb_protocol::packets::{
+    AttributeModifier as ProtocolAttributeModifier, AttributeSnapshot as ProtocolAttributeSnapshot,
+};
 use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
@@ -26,10 +28,13 @@ use bbb_protocol::entity_types::{
     vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
     VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
-use bbb_protocol::item_types::VANILLA_ITEM_DRAGON_HEAD_ID;
+use bbb_protocol::item_types::{
+    VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_DRAGON_HEAD_ID,
+    VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+};
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{
@@ -57,6 +62,7 @@ use super::schema::{
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
+    vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type,
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type,
@@ -65,6 +71,7 @@ use super::schema::{
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
+    vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_pushability_kind,
@@ -108,12 +115,13 @@ use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
     boat_paddle_states, camel_is_dashing, cat_is_lying, cat_relax_state_one,
     copper_golem_animation_flags, creaking_can_move, creaking_is_tearing_down,
-    entity_animation_uses_in_water, entity_chunk_coordinate, entity_data_bool, entity_data_long,
-    entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
-    piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
-    sniffer_can_play_digging_sound, warden_heartbeat_delay, wither_side_head_target_ids,
-    wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
-    GuardianAttackTargetTickInput, RiddenJumpState, WitherHeadTargetRotations,
+    entity_animation_uses_in_water, entity_chunk_coordinate, entity_data_bool, entity_data_int,
+    entity_data_long, entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id,
+    guardian_is_moving, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
+    player_is_using_item, sniffer_can_play_digging_sound, warden_heartbeat_delay,
+    wither_side_head_target_ids, wither_side_head_target_rotation, wolf_is_interested,
+    EntityClientTickParticleTriggers, GuardianAttackTargetTickInput, RiddenJumpState,
+    WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -389,6 +397,7 @@ pub(crate) struct EntityInWaterTickInput {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct EntityClientTickFluidFacts {
     pub(crate) in_water: bool,
+    pub(crate) in_lava: bool,
     pub(crate) in_liquid: bool,
     pub(crate) eye_in_water: bool,
 }
@@ -921,6 +930,195 @@ impl EntityStore {
                 .map(|cooldown| cooldown.cooldown_ticks())
                 .unwrap_or(0),
         )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn item_based_steering_controller_rotation(
+        &self,
+        vehicle_id: i32,
+        entity_type_id: i32,
+        default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+        local_player_id: Option<i32>,
+        local_player_rotation: Option<(f32, f32)>,
+        local_player_holds_carrot_on_a_stick: bool,
+        local_player_holds_warped_fungus_on_a_stick: bool,
+    ) -> Option<(f32, f32)> {
+        vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+            entity_type_id,
+        )?;
+        if !self.saddle_slot_contains_saddle_item(vehicle_id, default_item_equipment_slots) {
+            return None;
+        }
+        let controller_id = self.mount(vehicle_id)?.passengers.first().copied()?;
+        let required_item_id = match entity_type_id {
+            VANILLA_ENTITY_TYPE_PIG_ID => VANILLA_ITEM_CARROT_ON_A_STICK_ID,
+            VANILLA_ENTITY_TYPE_STRIDER_ID => VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
+            _ => return None,
+        };
+        if local_player_id == Some(controller_id) {
+            let holds_required_item = match entity_type_id {
+                VANILLA_ENTITY_TYPE_PIG_ID => local_player_holds_carrot_on_a_stick,
+                VANILLA_ENTITY_TYPE_STRIDER_ID => local_player_holds_warped_fungus_on_a_stick,
+                _ => false,
+            };
+            if !holds_required_item {
+                return None;
+            }
+            return local_player_rotation;
+        }
+        if self.entity_type_id(controller_id) != Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
+            || ![false, true].into_iter().any(|off_hand| {
+                self.held_item(controller_id, off_hand)
+                    .and_then(|item| item.item_id)
+                    == Some(required_item_id)
+            })
+        {
+            return None;
+        }
+        let transform = self.transform(controller_id)?;
+        Some((transform.x_rot, transform.y_rot))
+    }
+
+    fn strider_suffocating_for_client_tick(
+        &self,
+        id: i32,
+        fluid_facts_by_id: &HashMap<i32, EntityClientTickFluidFacts>,
+    ) -> Option<bool> {
+        if self.entity_type_id(id)? != VANILLA_ENTITY_TYPE_STRIDER_ID {
+            return None;
+        }
+        let mob_accessors =
+            vanilla_entity_metadata_mob_accessors_for_entity_type(VANILLA_ENTITY_TYPE_STRIDER_ID)?;
+        let mob_flags =
+            self.metadata_byte(id, mob_accessors.flags_data_id, mob_accessors.flags_default)?;
+        if mob_flags & mob_accessors.no_ai_mask != 0 {
+            return None;
+        }
+        let on_warm_strider = self.mount(id)?.vehicle_id.is_some_and(|vehicle_id| {
+            self.entity_type_id(vehicle_id) == Some(VANILLA_ENTITY_TYPE_STRIDER_ID)
+                && vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
+                    VANILLA_ENTITY_TYPE_STRIDER_ID,
+                )
+                .is_some_and(|(data_id, default)| {
+                    !self
+                        .metadata_bool_for_entity(vehicle_id, data_id, default)
+                        .unwrap_or(default)
+                })
+        });
+        Some(
+            !fluid_facts_by_id
+                .get(&id)
+                .is_some_and(|facts| facts.in_lava)
+                && !on_warm_strider,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn item_based_steering_debug_state(&self, id: i32) -> Option<(bool, i32)> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        animations
+            .animations
+            .item_based_steering
+            .map(|steering| steering.debug_state())
+    }
+
+    pub(crate) fn advance_item_based_steering_tick(&mut self, id: i32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let (identity, metadata, animations) = self
+            .ecs
+            .query_one_mut::<(
+                &EntityIdentity,
+                &EntityMetadata,
+                &mut EntityClientAnimations,
+            )>(entity)
+            .ok()?;
+        let (data_id, default) =
+            vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+                identity.entity_type_id,
+            )?;
+        let total = entity_data_int(&metadata.data_values, data_id, default);
+        Some(
+            animations
+                .animations
+                .advance_item_based_steering_tick(total),
+        )
+    }
+
+    /// Mirrors `Strider.setSuffocating`: the synced render flag and the
+    /// transient movement-speed modifier are one canonical client-side update.
+    /// A server attribute snapshot may already contain the named modifier, so
+    /// replace by semantic id instead of stacking a second copy.
+    pub(crate) fn set_strider_suffocating(&mut self, id: i32, suffocating: bool) -> Option<()> {
+        const MODIFIER_ID: &str = "minecraft:suffocating";
+        const MODIFIER_AMOUNT: f64 = -0.34_f32 as f64;
+
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let (data_id, default) =
+            vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(entity_type_id)?;
+        let default_base =
+            vanilla_default_attribute_base(entity_type_id, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)?;
+        let current_flag = self.metadata_bool_for_entity(id, data_id, default)?;
+        let current_modifier = self
+            .ecs
+            .get::<&EntityAttributes>(entity)
+            .ok()?
+            .attributes
+            .iter()
+            .find(|attribute| attribute.attribute_id == VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)
+            .and_then(|attribute| {
+                attribute
+                    .modifiers
+                    .iter()
+                    .find(|modifier| modifier.id == MODIFIER_ID)
+            })
+            .map(|modifier| (modifier.amount, modifier.operation_id));
+        let expected_modifier = suffocating.then_some((
+            MODIFIER_AMOUNT,
+            VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+        ));
+        if current_flag == suffocating && current_modifier == expected_modifier {
+            return Some(());
+        }
+        let (metadata, attributes) = self
+            .ecs
+            .query_one_mut::<(&mut EntityMetadata, &mut EntityAttributes)>(entity)
+            .ok()?;
+        upsert_metadata_value(
+            metadata,
+            ProtocolEntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(suffocating),
+            },
+        );
+        let attributes = &mut *attributes.attributes;
+        let movement = if let Some(movement) = attributes
+            .iter_mut()
+            .find(|attribute| attribute.attribute_id == VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)
+        {
+            movement
+        } else {
+            attributes.push(ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                base: default_base,
+                modifiers: Vec::new(),
+            });
+            attributes.last_mut()?
+        };
+        movement
+            .modifiers
+            .retain(|modifier| modifier.id != MODIFIER_ID);
+        if suffocating {
+            movement.modifiers.push(ProtocolAttributeModifier {
+                id: MODIFIER_ID.to_string(),
+                amount: MODIFIER_AMOUNT,
+                operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+            });
+        }
+        attributes.sort_by_key(|attribute| attribute.attribute_id);
+        Some(())
     }
 
     pub(crate) fn start_local_nautilus_dash(&mut self, id: i32) -> Option<()> {
@@ -5000,6 +5198,7 @@ impl EntityStore {
         for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
             if !entity_animation_uses_in_water(identity.entity_type_id)
                 && !super::client_movement::client_movement_uses_in_water(identity.entity_type_id)
+                && identity.entity_type_id != VANILLA_ENTITY_TYPE_STRIDER_ID
             {
                 continue;
             }
@@ -5260,6 +5459,12 @@ impl EntityStore {
         deferred_boat_paddle_entity_id: Option<i32>,
         deferred_local_camel_vehicle_id: Option<i32>,
         deferred_local_nautilus_vehicle_id: Option<i32>,
+        deferred_local_item_based_steering_vehicle_id: Option<i32>,
+        default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+        local_player_id: Option<i32>,
+        local_player_rotation: Option<(f32, f32)>,
+        local_player_holds_carrot_on_a_stick: bool,
+        local_player_holds_warped_fungus_on_a_stick: bool,
         spectator_player_uuids: &HashSet<Uuid>,
         fluid_facts_by_id: &HashMap<i32, EntityClientTickFluidFacts>,
         guardian_can_stand_on_below_by_id: &HashMap<i32, bool>,
@@ -5329,6 +5534,30 @@ impl EntityStore {
                 .scanned_entities
                 .saturating_add(self.by_protocol_id.len());
             for &entity in &tick_scratch.scheduled_entities {
+                let identity = self
+                    .ecs
+                    .get::<&EntityIdentity>(entity)
+                    .ok()
+                    .map(|identity| (identity.id, identity.entity_type_id));
+                let strider_suffocating_update = identity.and_then(|(entity_id, _)| {
+                    self.strider_suffocating_for_client_tick(entity_id, fluid_facts_by_id)
+                        .map(|suffocating| (entity_id, suffocating))
+                });
+                if let Some((entity_id, suffocating)) = strider_suffocating_update {
+                    let _ = self.set_strider_suffocating(entity_id, suffocating);
+                }
+                let item_based_steering_controller_rotation =
+                    identity.and_then(|(entity_id, entity_type_id)| {
+                        self.item_based_steering_controller_rotation(
+                            entity_id,
+                            entity_type_id,
+                            default_item_equipment_slots,
+                            local_player_id,
+                            local_player_rotation,
+                            local_player_holds_carrot_on_a_stick,
+                            local_player_holds_warped_fungus_on_a_stick,
+                        )
+                    });
                 let Ok((
                     identity,
                     transform,
@@ -5531,6 +5760,30 @@ impl EntityStore {
                                 accessors.silent_default,
                             )
                         });
+                if deferred_local_item_based_steering_vehicle_id != Some(identity.id) {
+                    if let Some((controller_x_rot, controller_y_rot)) =
+                        item_based_steering_controller_rotation
+                    {
+                        if let Some((boost_time_data_id, boost_time_default)) =
+                            vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+                                entity_type_id,
+                            )
+                        {
+                            transform.x_rot = controller_x_rot * 0.5;
+                            transform.y_rot = controller_y_rot;
+                            transform.old_y_rot = controller_y_rot;
+                            transform.y_head_rot = controller_y_rot;
+                            let boost_time_total = entity_data_int(
+                                &metadata.data_values,
+                                boost_time_data_id,
+                                boost_time_default,
+                            );
+                            let _ = animations
+                                .animations
+                                .advance_item_based_steering_tick(boost_time_total);
+                        }
+                    }
+                }
                 let client_animations_before_tick = animations
                     .animations
                     .needs_particle_trigger_bounds_snapshot()

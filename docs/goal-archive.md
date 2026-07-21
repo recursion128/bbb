@@ -20198,3 +20198,23 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   same-id recreation 与 retained A/B 均有专项测试。同机 Criterion 为 steady physics
   3.8731 us、physics + retained publication 8.0037 us、fresh dash + retained publication
   21.112 us；约 4.13 us retained 增量在当前操作支付，没有转移到下一次 mutation。
+
+## 2026-07-20：Pig/Strider item-based ridden client tick
+
+- [x] Pig/Strider 的 generated `DATA_BOOST_TIME` owner/index/default 选择唯一 family；canonical
+  animation owner 只保留 Vanilla private boosting flag 与 post-increment cursor。saddle、first
+  Player passenger、carrot/warped-fungus-on-a-stick gate 同时覆盖 local/remote controller，
+  same-id recreation 与 retained publication 不复用旧 cursor。
+- [x] steering probe 融入既有 ordered scheduled-entity pass，不新增全 ECS scan、完整
+  `EntityState` projection、临时 owner `Vec` 或 controller `HashMap`。local owner 在 native input
+  阶段执行 fixed-forward ridden travel 并沿既有 rotation-before-MoveVehicle 顺序回送；remote
+  owner 只推进 Vanilla tickRidden rotation/boost，继续由 server interpolation 驱动位置。
+- [x] Pig `0.225`、Strider warm/cold `0.55/0.35` ridden speed，`minecraft:suffocating`
+  transient modifier、同步 render flag、lava contact、source-lava half-block collision 与
+  post-tick float 进入同一 canonical COW owner；AI/寻路/伤害/繁殖/boost initiation 不移入客户端。
+  focused tests 覆盖 boost 边界、controller loss、Strider parent-before-passenger order、lava
+  surface、packet order、id reuse 与 A/B 隔离。
+- [x] 同机 Criterion（20 samples、1 s warm-up、2 s measurement）：Pig physics-only
+  3.6957 us、retained publication 8.2662 us；Strider 3.9554/8.7258 us；fresh Pig boost +
+  retained publication 22.190 us。约 4.57--4.77 us steady retained 增量在本次操作支付，
+  没有转移到下一次 mutation。

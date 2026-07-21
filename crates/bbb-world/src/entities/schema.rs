@@ -974,6 +974,30 @@ pub fn vanilla_entity_metadata_strider_boost_time_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated `ItemBasedSteering` boost-time accessor for the two
+/// Vanilla owners that compose it. The generated nearest-field lookup owns
+/// membership and wire index; this helper only gives the shared client tick a
+/// typed semantic surface.
+pub(crate) fn vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_BOOST_TIME")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.pig.Pig"
+            | "net.minecraft.world.entity.monster.Strider",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Strider suffocating accessor and its typed default.
 pub fn vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
     entity_type_id: i32,
@@ -7298,6 +7322,48 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_COW_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_strider_boost_time_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_item_based_steering_accessor_composes_only_pig_and_strider() {
+        let pig = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Pig);
+        let pig_boost = pig
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_BOOST_TIME")
+            .expect("generated Pig boost-time field");
+        let VanillaEntityMetadataDefault::Int(pig_default) = pig_boost.default else {
+            panic!("generated Pig boost-time default must be INT");
+        };
+        assert_eq!(
+            vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIG_ID
+            ),
+            Some((pig_boost.data_id, pig_default))
+        );
+        let strider = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Strider);
+        let strider_boost = strider
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_BOOST_TIME")
+            .expect("generated Strider boost-time field");
+        let VanillaEntityMetadataDefault::Int(strider_default) = strider_boost.default else {
+            panic!("generated Strider boost-time default must be INT");
+        };
+        assert_eq!(
+            vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_STRIDER_ID
+            ),
+            Some((strider_boost.data_id, strider_default))
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_COW_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type(
+                    entity_type_id
+                ),
                 None
             );
         }

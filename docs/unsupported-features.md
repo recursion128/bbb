@@ -683,10 +683,12 @@ Movement:
   inside/emission callbacks and exact scheduler integration. Complete the
   remaining locally controlled vehicle subclasses and controller gates after
   the generated saddle/first-passenger AbstractHorse, Camel, HappyGhast and
-  AbstractNautilus foundations; Pig/Strider still need exact held-item control
-  and `ItemBasedSteering` boost. Do not treat first passenger as universally
-  sufficient, and cancel active interpolation on accepted corrections. Remote
-  vehicles remain server-transform/interpolation driven.
+  AbstractNautilus foundations. Pig/Strider exact held-item control,
+  `ItemBasedSteering` boost, Strider suffocation speed and source-lava surface
+  are implemented; remaining subclass inventory/callback edges stay explicit.
+  Do not treat first passenger as universally sufficient, and cancel active
+  interpolation on accepted corrections. Remote vehicles remain
+  server-transform/interpolation driven.
 
 Block destroy:
 
