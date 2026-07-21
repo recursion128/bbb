@@ -34,7 +34,7 @@ pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_FALL_DISTANCE: f64 = 2.5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT: f64 = 0.9;
-const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
+pub(super) const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const SUPPORTING_BLOCK_PROBE_DEPTH: f64 = 1.0e-6;
 const MAX_COLLISION_BOXES: usize = 16;
 const PX: f64 = 1.0 / 16.0;
@@ -212,10 +212,6 @@ fn find_supporting_block(
         }
     }
     main_support
-}
-
-pub(super) fn local_player_block_collision_is_empty(block: &BlockProbe) -> bool {
-    block_collision_shape(block, BlockPos { x: 0, y: 0, z: 0 }).is_none()
 }
 
 pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: BlockPos) -> bool {

@@ -29214,7 +29214,6 @@ mod generated_catalog_guards {
         let dimensions = include_str!("../dimensions.rs");
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
-        let local_player_movement = include_str!("../../client/local_player_movement.rs");
         let local_player_collision = include_str!("../../client/local_player_collision.rs");
         let play_apply = include_str!("../../play_apply.rs");
         let input = include_str!("../../../../bbb-native/src/input.rs");
@@ -29256,7 +29255,6 @@ mod generated_catalog_guards {
             dimensions,
             animations,
             store,
-            local_player_movement,
             local_player_collision,
             play_apply,
             input,

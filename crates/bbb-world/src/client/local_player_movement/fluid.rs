@@ -1,4 +1,3 @@
-use super::super::local_player_collision::local_player_block_collision_is_empty;
 use super::super::local_player_fluid::{
     local_player_bounds_contains_any_fluid, EntityFluidContactState,
 };
@@ -12,7 +11,8 @@ pub(super) fn advance_local_player_fluid_physics_step(
     move_x: f64,
     move_z: f64,
     initial_fluid_contact: EntityFluidContactState,
-) -> LocalPlayerPoseState {
+    stuck_multiplier: Option<EntityVec3>,
+) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
     let input = local_player_effective_movement_input(world, input);
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
     let old_y = pose.position.y;
@@ -53,9 +53,16 @@ pub(super) fn advance_local_player_fluid_physics_step(
     pose.delta_movement.x += move_x * fluid_relative_speed * step_ticks;
     pose.delta_movement.z += move_z * fluid_relative_speed * step_ticks;
     let is_falling = pose.delta_movement.y <= 0.0;
-    let requested_x = pose.delta_movement.x * step_ticks;
-    let requested_y = pose.delta_movement.y * step_ticks;
-    let requested_z = pose.delta_movement.z * step_ticks;
+    let mut requested_x = pose.delta_movement.x * step_ticks;
+    let mut requested_y = pose.delta_movement.y * step_ticks;
+    let mut requested_z = pose.delta_movement.z * step_ticks;
+    // Vanilla `Entity.move` multiplies the requested vector by the consumed
+    // stuck-speed multiplier inside fluids too.
+    if let Some(stuck) = stuck_multiplier {
+        requested_x *= stuck.x;
+        requested_y *= stuck.y;
+        requested_z *= stuck.z;
+    }
     let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, input.sneak);
     let movement = clip_local_player_movement_without_step(
         world,
@@ -64,6 +71,23 @@ pub(super) fn advance_local_player_fluid_physics_step(
         requested_y,
         requested_z,
         collision_context,
+    );
+    let step_move = EntityBlockEffectMovement::clipped(
+        EntityVec3 {
+            x: pose.position.x,
+            y: pose.position.y,
+            z: pose.position.z,
+        },
+        EntityVec3 {
+            x: pose.position.x + movement.x,
+            y: pose.position.y + movement.y,
+            z: pose.position.z + movement.z,
+        },
+        EntityVec3 {
+            x: requested_x,
+            y: requested_y,
+            z: requested_z,
+        },
     );
     pose.position.x += movement.x;
     pose.position.y += movement.y;
@@ -98,6 +122,11 @@ pub(super) fn advance_local_player_fluid_physics_step(
     if vertical_collision {
         pose.delta_movement.y = 0.0;
     }
+    // Vanilla zeroes the delta right after consuming the multiplier; the
+    // drag and gravity tail below rebuilds from that zero vector.
+    if stuck_multiplier.is_some() {
+        pose.delta_movement = ProtocolVec3d::default();
+    }
 
     if initial_fluid_contact.in_water() {
         let horizontal_drag = water_horizontal_drag(world, input, pose.on_ground);
@@ -128,17 +157,9 @@ pub(super) fn advance_local_player_fluid_physics_step(
         pose.delta_movement,
         horizontal_collision,
     );
-    if let Some(contact) = local_player_bubble_column_contact(world, pose) {
-        pose.delta_movement =
-            local_player_bubble_column_velocity(pose.delta_movement, contact, step_ticks);
-        if matches!(contact, BubbleColumnContact::Inside { .. }) {
-            pose.fall_distance = 0.0;
-        }
-    }
-
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
-    pose
+    (pose, step_move)
 }
 
 fn local_player_swimming_vertical_velocity(
@@ -240,81 +261,6 @@ fn local_player_jump_out_of_fluid_velocity(
     } else {
         velocity
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BubbleColumnContact {
-    Inside { drag_down: bool },
-    Above { drag_down: bool },
-}
-
-fn local_player_bubble_column_velocity(
-    mut velocity: ProtocolVec3d,
-    contact: BubbleColumnContact,
-    step_ticks: f64,
-) -> ProtocolVec3d {
-    velocity.y = match contact {
-        BubbleColumnContact::Inside { drag_down: true } => (velocity.y
-            - LOCAL_INPUT_BUBBLE_COLUMN_DRAG_DOWN_PER_TICK * step_ticks)
-            .max(LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_DRAG_DOWN_LIMIT),
-        BubbleColumnContact::Inside { drag_down: false } => (velocity.y
-            + LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_PER_TICK * step_ticks)
-            .min(LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_LIMIT),
-        BubbleColumnContact::Above { drag_down: true } => (velocity.y
-            - LOCAL_INPUT_BUBBLE_COLUMN_DRAG_DOWN_PER_TICK * step_ticks)
-            .max(LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_DRAG_DOWN_LIMIT),
-        BubbleColumnContact::Above { drag_down: false } => (velocity.y
-            + LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_PER_TICK * step_ticks)
-            .min(LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_LIMIT),
-    };
-    velocity
-}
-
-fn local_player_bubble_column_contact(
-    world: &WorldStore,
-    pose: LocalPlayerPoseState,
-) -> Option<BubbleColumnContact> {
-    let bounds = LocalPlayerBounds::for_pose(pose);
-    let min_x = bounds.min_x().floor() as i32;
-    let max_x = bounds.max_x().ceil() as i32;
-    let min_y = bounds.min_y().floor() as i32;
-    let max_y = bounds.max_y().ceil() as i32;
-    let min_z = bounds.min_z().floor() as i32;
-    let max_z = bounds.max_z().ceil() as i32;
-    let mut inside = None;
-
-    for y in min_y..max_y {
-        for z in min_z..max_z {
-            for x in min_x..max_x {
-                let pos = BlockPos { x, y, z };
-                let Some(block) = world.probe_block(pos) else {
-                    continue;
-                };
-                if block.block_name.as_deref() != Some("minecraft:bubble_column") {
-                    continue;
-                }
-                let drag_down = block
-                    .block_properties
-                    .get("drag")
-                    .map_or(true, |value| value == "true");
-                if bubble_column_has_open_above(world, pos) {
-                    return Some(BubbleColumnContact::Above { drag_down });
-                }
-                inside = Some(BubbleColumnContact::Inside { drag_down });
-            }
-        }
-    }
-
-    inside
-}
-
-fn bubble_column_has_open_above(world: &WorldStore, pos: BlockPos) -> bool {
-    let Some(y) = pos.y.checked_add(1) else {
-        return false;
-    };
-    world
-        .probe_block(BlockPos { y, ..pos })
-        .is_some_and(|block| block.fluid.is_none() && local_player_block_collision_is_empty(&block))
 }
 
 pub(crate) fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {

@@ -357,6 +357,31 @@ struct EntityClientTickScratch {
     local_vehicle_move: Option<(i32, EntityBlockEffectMovement)>,
 }
 
+/// One local-player physics step's `applyEffectsFromBlocks` inputs: the pose
+/// integrator owns position/delta/fall distance and the step's recorded
+/// clipped move, while the entity store owns the private effect state.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct LocalPlayerBlockEffectStep {
+    pub(crate) player_id: i32,
+    pub(crate) position: EntityVec3,
+    pub(crate) delta_movement: EntityVec3,
+    pub(crate) fall_distance: f64,
+    pub(crate) bounds: crate::EntityPickBoundsState,
+    pub(crate) on_ground: bool,
+    pub(crate) stepping_carefully: bool,
+    /// `LivingEntity.canFreeze` extras beyond the type tag: spectator mode
+    /// and freeze-immune wearables, both resolved by the local-player owner.
+    pub(crate) extra_freeze_immune: bool,
+    pub(crate) movement: EntityBlockEffectMovement,
+}
+
+/// Pose write-backs from one local-player block-effect callback.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct LocalPlayerBlockEffectOutcome {
+    pub(crate) delta_movement: EntityVec3,
+    pub(crate) fall_distance: f64,
+}
+
 /// Block-effect work performed inside the direct client movement pass (the
 /// explicit arrow callback slot), folded into the tick observation beside the
 /// ordered common-pass counters.
@@ -5824,6 +5849,87 @@ impl EntityStore {
             Some(movement),
             EntityBlockEffectBaseTickReset::BeforeCallbacks,
         )
+    }
+
+    /// Locally authoritative `applyEffectsFromBlocks` for the local player's
+    /// `aiStep` slot, driven per physics step from the pose integrator with
+    /// the step's recorded clipped move. The pose owns position, delta, and
+    /// fall distance, so those flow through the query as overrides while the
+    /// private block-effect state and `ticksFrozen` live on the player
+    /// entity; the returned delta and fall distance are the pose write-backs.
+    pub(crate) fn apply_local_player_block_effect_step(
+        &mut self,
+        step: LocalPlayerBlockEffectStep,
+        block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
+    ) -> Option<LocalPlayerBlockEffectOutcome> {
+        if !block_effect_world.has_loaded_chunks() {
+            return None;
+        }
+        let &entity = self.by_protocol_id.get(&step.player_id)?;
+        let (identity, metadata, mob_effects, supporting_block) = self
+            .ecs
+            .query_one_mut::<(
+                &EntityIdentity,
+                &mut EntityMetadata,
+                &EntityMobEffects,
+                &mut EntitySupportingBlock,
+            )>(entity)
+            .ok()?;
+        let supporting_block_position = supporting_block.main;
+        let block_effects = &mut supporting_block.block_effects;
+        // The local player's client `Entity.baseTick` runs at tick start,
+        // before the `aiStep` travel that precedes this callback.
+        block_effects.remaining_fire_ticks = block_effects.remaining_fire_ticks.min(0);
+        block_effects.in_powder_snow = false;
+        let entity_accessors = vanilla_entity_metadata_entity_accessors();
+        let ticks_frozen = entity_accessors.map_or(0, |accessors| {
+            entity_data_int(
+                &metadata.data_values,
+                accessors.ticks_frozen_data_id,
+                accessors.ticks_frozen_default,
+            )
+        });
+        let evaluation = block_effect_world.evaluate(EntityBlockEffectQuery {
+            position: step.position,
+            bounds: step.bounds,
+            movements: EntityBlockEffectMovementIter::OneOwned(Some(step.movement)),
+            supporting_block: supporting_block_position,
+            on_ground: step.on_ground,
+            stepping_carefully: step.stepping_carefully,
+            is_living: true,
+            is_fox_or_bee: false,
+            has_weaving: mob_effects
+                .effects
+                .contains_key(&bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_WEAVING_ID),
+            fire_immune: vanilla_entity_type_is_fire_immune(identity.entity_type_id),
+            freeze_immune: step.extra_freeze_immune
+                || vanilla_entity_type_is_freeze_immune(identity.entity_type_id),
+            ticks_frozen,
+            delta_movement: step.delta_movement,
+            stuck_speed_multiplier: block_effects.stuck_speed_multiplier,
+            remaining_fire_ticks: block_effects.remaining_fire_ticks,
+            fall_distance: step.fall_distance,
+        });
+        block_effects.stuck_speed_multiplier = evaluation.stuck_speed_multiplier;
+        block_effects.remaining_fire_ticks = evaluation.remaining_fire_ticks;
+        block_effects.fall_distance = evaluation.fall_distance;
+        block_effects.in_powder_snow |= evaluation.in_powder_snow;
+        if ticks_frozen != evaluation.ticks_frozen {
+            if let Some(accessors) = entity_accessors {
+                upsert_metadata_value(
+                    metadata,
+                    ProtocolEntityDataValue {
+                        data_id: accessors.ticks_frozen_data_id,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                        value: EntityDataValueKind::Int(evaluation.ticks_frozen),
+                    },
+                );
+            }
+        }
+        Some(LocalPlayerBlockEffectOutcome {
+            delta_movement: evaluation.delta_movement,
+            fall_distance: evaluation.fall_distance,
+        })
     }
 
     /// Explicit `AbstractArrow` callback from the arrow movement slot:

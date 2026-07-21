@@ -972,8 +972,29 @@ light (`canSeeSky` needs 15), the packet `MOTION_BLOCKING` heightmap
 the world-owned `Biome.getHeightAdjustedTemperature` stack moved from the
 renderer glue. Arrows collapse to one segment per tick because the client
 does not simulate `stepMoveAndHit` entity-hit stepping. Still open on this
-boundary: the local player's own `aiStep` callback and client
-snowflake/extinguish presentation.
+boundary: client snowflake/extinguish presentation.
+
+### Local player aiStep checkpoint
+
+The locally authoritative player now runs `applyEffectsFromBlocks` per pose
+physics step (the driver advances exactly one 0.05s step per client tick):
+each step consumes the entity-recorded stuck-speed multiplier at its
+`Entity.move` point (multiplying the requested vector and zeroing the
+post-move delta, replacing the old current-position probe and its
+fall-distance reset — the reset now comes from the block callback), then the
+post-travel slot evaluates the swept callback with the step's recorded
+clipped move against the player entity's private effect state, pose-derived
+bounds, and pose-owned position/delta/fall distance. The evaluator owns
+freeze (+1 with cap; thaw is `ServerLevel`-gated so the old local −2 decay is
+gone), private fire/rain state, powder-snow marker, and the bubble-column and
+honey delta edits (the fluid step's local bubble implementation was removed
+to avoid double application). `canFreeze` extras (spectator mode,
+freeze-immune wearables) fold into the query's freeze immunity, and a
+spectator skips the whole callback (`noPhysics` ⇒ `isAffectedByBlocks`
+false). Because the pose pipeline derives its delta from moved distance per
+step, the post-consumption delta is explicitly zeroed and gravity rebuilds
+from zero in the vertical branch, matching vanilla's zeroed
+`setDeltaMovement` at consumption.
 
 ## Required Tests
 

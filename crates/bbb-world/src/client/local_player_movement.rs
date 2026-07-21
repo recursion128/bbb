@@ -3,26 +3,22 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_MOVEMENT_EFFICIENCY_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
     VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID, VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID,
 };
-use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_BLINDNESS_ID, VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID,
     VANILLA_MOB_EFFECT_JUMP_BOOST_ID, VANILLA_MOB_EFFECT_LEVITATION_ID,
     VANILLA_MOB_EFFECT_SLOWNESS_ID, VANILLA_MOB_EFFECT_SLOW_FALLING_ID,
-    VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_WEAVING_ID,
+    VANILLA_MOB_EFFECT_SPEED_ID,
 };
-use bbb_protocol::packets::{
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind as ProtocolEntityDataValueKind,
-    Vec3d as ProtocolVec3d,
-};
+use bbb_protocol::packets::Vec3d as ProtocolVec3d;
 
 use super::local_player::{LocalPlayerAbilitiesState, LocalPlayerInputState, LocalPlayerPoseState};
 use super::local_player_collision::{
     local_player_collides, local_player_collides_with_context, CollisionAxis as Axis,
-    LocalPlayerBounds, LocalPlayerCollisionContext, COLLISION_EPSILON,
+    LocalPlayerBounds, LocalPlayerCollisionContext, COLLISION_EPSILON, LOCAL_PLAYER_HALF_WIDTH,
 };
 use super::local_player_fluid::local_player_fluid_contact;
-use crate::entities::vanilla_entity_metadata_entity_accessors;
-use crate::{block_name_is_trapdoor, BlockPos, BlockProbe, WorldStore};
+use crate::entities::{EntityBlockEffectMovement, LocalPlayerBlockEffectStep};
+use crate::{block_name_is_trapdoor, BlockPos, BlockProbe, EntityVec3, WorldStore};
 
 mod fluid;
 #[cfg(test)]
@@ -72,13 +68,6 @@ const LOCAL_INPUT_SWIM_LOOK_DOWN_VERTICAL_APPROACH: f64 = 0.085;
 const LOCAL_INPUT_SWIM_VERTICAL_APPROACH: f64 = 0.06;
 const LOCAL_INPUT_SWIM_LOOK_DOWN_THRESHOLD: f64 = -0.2;
 const LOCAL_INPUT_SWIM_HEAD_FLUID_OFFSET: f64 = 0.9;
-const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_PER_TICK: f64 = 0.06;
-const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_LIMIT: f64 = 0.7;
-const LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_PER_TICK: f64 = 0.1;
-const LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_LIMIT: f64 = 1.8;
-const LOCAL_INPUT_BUBBLE_COLUMN_DRAG_DOWN_PER_TICK: f64 = 0.03;
-const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_DRAG_DOWN_LIMIT: f64 = -0.3;
-const LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_DRAG_DOWN_LIMIT: f64 = -0.9;
 const LOCAL_PLAYER_FLUID_JUMP_THRESHOLD: f64 = 0.4;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
@@ -103,7 +92,6 @@ const SPRINT_JUMP_HORIZONTAL_IMPULSE: f64 = 0.2;
 const LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.15;
 const LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK: f64 = -0.15;
 const LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK: f64 = 0.2;
-const LOCAL_PLAYER_ENTITY_INSIDE_BLOCK_EPSILON: f64 = 1.0e-5;
 
 pub(super) fn integrate_local_player_input_pose_with_world_effects(
     world: &mut WorldStore,
@@ -116,8 +104,19 @@ pub(super) fn integrate_local_player_input_pose_with_world_effects(
     let mut remaining_seconds = dt_seconds.max(0.0);
     while remaining_seconds > COLLISION_EPSILON {
         let step_seconds = remaining_seconds.min(LOCAL_PHYSICS_TICK_SECONDS);
-        pose = advance_local_player_physics_step(world, pose, input, step_seconds);
-        local_player_update_powder_snow_freezing(world, pose);
+        // Vanilla `Entity.move` consumes the stuck-speed multiplier the
+        // previous tick's `applyEffectsFromBlocks` recorded on the player
+        // entity, then the post-travel `aiStep` slot runs the callback with
+        // this step's recorded move.
+        let stuck_multiplier = world.local_player_id.and_then(|id| {
+            world
+                .entities
+                .consume_block_effect_stuck_speed_multiplier(id)
+        });
+        let (next_pose, step_move) =
+            advance_local_player_physics_step(world, pose, input, step_seconds, stuck_multiplier);
+        pose = next_pose;
+        world.apply_local_player_block_effects(&mut pose, step_move);
         remaining_seconds -= step_seconds;
     }
 
@@ -151,7 +150,8 @@ fn advance_local_player_physics_step(
     mut pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
     step_seconds: f64,
-) -> LocalPlayerPoseState {
+    stuck_multiplier: Option<EntityVec3>,
+) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
     let input = local_player_effective_movement_input(world, input);
     let forward_input = if input.focused {
         axis(input.forward, input.backward)
@@ -189,6 +189,7 @@ fn advance_local_player_physics_step(
             move_x,
             move_z,
             initial_fluid_contact,
+            stuck_multiplier,
         );
     }
     let climbable_before = if flying.is_none() {
@@ -265,13 +266,13 @@ fn advance_local_player_physics_step(
         }
         None => pose.delta_movement.y * step_ticks,
     };
-    if flying.is_none() {
-        if let Some(stuck_multiplier) = local_player_stuck_speed_multiplier(world, pose) {
-            pose.fall_distance = 0.0;
-            requested_x *= stuck_multiplier.x;
-            requested_y *= stuck_multiplier.y;
-            requested_z *= stuck_multiplier.z;
-        }
+    // Vanilla `Entity.move` multiplies the requested vector by the consumed
+    // stuck-speed multiplier; the fall-distance reset belongs to the block
+    // callback (`makeStuckInBlock`), not to consumption.
+    if let Some(stuck) = stuck_multiplier {
+        requested_x *= stuck.x;
+        requested_y *= stuck.y;
+        requested_z *= stuck.z;
     }
     if should_back_off_from_edge(world, pose, input, requested_y) {
         (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
@@ -285,6 +286,23 @@ fn advance_local_player_physics_step(
         requested_z,
         pose.on_ground,
         collision_context,
+    );
+    let step_move = EntityBlockEffectMovement::clipped(
+        EntityVec3 {
+            x: pose.position.x,
+            y: pose.position.y,
+            z: pose.position.z,
+        },
+        EntityVec3 {
+            x: pose.position.x + movement.x,
+            y: pose.position.y + movement.y,
+            z: pose.position.z + movement.z,
+        },
+        EntityVec3 {
+            x: requested_x,
+            y: requested_y,
+            z: requested_z,
+        },
     );
     pose.position.x += movement.x;
     pose.position.y += movement.y;
@@ -325,6 +343,11 @@ fn advance_local_player_physics_step(
     if z_collision {
         pose.delta_movement.z = 0.0;
     }
+    // Vanilla zeroes the delta right after consuming the multiplier; the
+    // vertical branch below then rebuilds gravity from that zero vector.
+    if stuck_multiplier.is_some() {
+        pose.delta_movement = ProtocolVec3d::default();
+    }
     if flying.is_some() {
         if let Some((next_velocity_x, next_velocity_z)) = flying_horizontal_velocity {
             if !x_collision {
@@ -356,7 +379,7 @@ fn advance_local_player_physics_step(
     }
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
-    pose
+    (pose, step_move)
 }
 
 fn local_player_block_floor(value: f64) -> i32 {
@@ -723,61 +746,6 @@ fn local_player_raw_block_speed_factor(world: &WorldStore, pose: LocalPlayerPose
         .unwrap_or(DEFAULT_BLOCK_SPEED_FACTOR)
 }
 
-fn local_player_stuck_speed_multiplier(
-    world: &WorldStore,
-    pose: LocalPlayerPoseState,
-) -> Option<ProtocolVec3d> {
-    let bounds =
-        LocalPlayerBounds::for_pose(pose).deflated(LOCAL_PLAYER_ENTITY_INSIDE_BLOCK_EPSILON);
-    let min_x = local_player_block_floor(bounds.min_x());
-    let max_x = local_player_block_floor(bounds.max_x());
-    let min_y = local_player_block_floor(bounds.min_y());
-    let max_y = local_player_block_floor(bounds.max_y());
-    let min_z = local_player_block_floor(bounds.min_z());
-    let max_z = local_player_block_floor(bounds.max_z());
-
-    let mut berry_bush = false;
-    for y in min_y..=max_y {
-        for z in min_z..=max_z {
-            for x in min_x..=max_x {
-                let Some(block_name) = world
-                    .probe_block(BlockPos { x, y, z })
-                    .and_then(|block| block.block_name)
-                else {
-                    continue;
-                };
-                match block_name.as_str() {
-                    "minecraft:cobweb" => return Some(local_player_cobweb_stuck_multiplier(world)),
-                    "minecraft:sweet_berry_bush" => berry_bush = true,
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    berry_bush.then_some(ProtocolVec3d {
-        x: 0.8,
-        y: 0.75,
-        z: 0.8,
-    })
-}
-
-fn local_player_cobweb_stuck_multiplier(world: &WorldStore) -> ProtocolVec3d {
-    if local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_WEAVING_ID).is_some() {
-        ProtocolVec3d {
-            x: 0.5,
-            y: 0.25,
-            z: 0.5,
-        }
-    } else {
-        ProtocolVec3d {
-            x: 0.25,
-            y: 0.05,
-            z: 0.25,
-        }
-    }
-}
-
 fn local_player_movement_speed_attribute_value(world: &WorldStore) -> f64 {
     let mut speed = local_player_attribute_value(world, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)
         .unwrap_or(LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE);
@@ -827,6 +795,66 @@ impl WorldStore {
             1.0
         }
     }
+
+    /// Vanilla `LivingEntity.aiStep` for the locally authoritative player:
+    /// after travel, `applyEffectsFromBlocks()` runs with the step's recorded
+    /// clipped move. A spectator has `noPhysics`, so `isAffectedByBlocks`
+    /// skips the callback entirely; `canFreeze` extras (spectator mode and
+    /// freeze-immune wearables) fold into the query's freeze immunity.
+    pub(super) fn apply_local_player_block_effects(
+        &mut self,
+        pose: &mut LocalPlayerPoseState,
+        movement: EntityBlockEffectMovement,
+    ) {
+        if self.chunks.is_empty() || self.local_player_is_spectator() {
+            return;
+        }
+        let Some(player_id) = self.local_player_id else {
+            return;
+        };
+        let half_width = LOCAL_PLAYER_HALF_WIDTH as f32;
+        let step = LocalPlayerBlockEffectStep {
+            player_id,
+            position: EntityVec3 {
+                x: pose.position.x,
+                y: pose.position.y,
+                z: pose.position.z,
+            },
+            delta_movement: EntityVec3 {
+                x: pose.delta_movement.x,
+                y: pose.delta_movement.y,
+                z: pose.delta_movement.z,
+            },
+            fall_distance: pose.fall_distance,
+            bounds: crate::EntityPickBoundsState {
+                min: [-half_width, 0.0, -half_width],
+                max: [half_width, pose.body_height() as f32, half_width],
+                pick_radius: 0.0,
+            },
+            on_ground: pose.on_ground,
+            stepping_carefully: pose.sneaking,
+            extra_freeze_immune: !local_player_can_freeze(self),
+            movement,
+        };
+        let mut block_effect_world = crate::client::EntityBlockEffectWorld::new(
+            self.dimension,
+            &self.registries,
+            &self.chunks,
+            self.entity_block_effect_weather(),
+        );
+        let Some(outcome) = self
+            .entities
+            .apply_local_player_block_effect_step(step, &mut block_effect_world)
+        else {
+            return;
+        };
+        pose.delta_movement = ProtocolVec3d {
+            x: outcome.delta_movement.x,
+            y: outcome.delta_movement.y,
+            z: outcome.delta_movement.z,
+        };
+        pose.fall_distance = outcome.fall_distance;
+    }
 }
 
 fn local_player_powder_snow_speed_modifier(world: &WorldStore) -> f64 {
@@ -847,48 +875,6 @@ fn local_player_powder_snow_speed_modifier(world: &WorldStore) -> f64 {
         / f64::from(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE))
     .clamp(0.0, 1.0);
     POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE * frozen_percent
-}
-
-fn local_player_update_powder_snow_freezing(world: &mut WorldStore, pose: LocalPlayerPoseState) {
-    let Some(local_player_id) = world.local_player_id else {
-        return;
-    };
-    let Some(current_ticks) = world.entities.ticks_frozen(local_player_id) else {
-        return;
-    };
-
-    let next_ticks =
-        if local_player_inside_powder_snow(world, pose) && local_player_can_freeze(world) {
-            (current_ticks + 1).min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
-        } else {
-            (current_ticks - 2).max(0)
-        };
-    if next_ticks == current_ticks {
-        return;
-    }
-    let Some(accessors) = vanilla_entity_metadata_entity_accessors() else {
-        return;
-    };
-
-    let _ = world
-        .entities
-        .with_metadata_mut(local_player_id, |metadata| {
-            if let Some(value) = metadata
-                .data_values
-                .iter_mut()
-                .find(|value| value.data_id == accessors.ticks_frozen_data_id)
-            {
-                value.serializer_id = VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
-                value.value = ProtocolEntityDataValueKind::Int(next_ticks);
-            } else {
-                metadata.data_values.push(ProtocolEntityDataValue {
-                    data_id: accessors.ticks_frozen_data_id,
-                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                    value: ProtocolEntityDataValueKind::Int(next_ticks),
-                });
-            }
-            metadata.data_values.sort_by_key(|value| value.data_id);
-        });
 }
 
 fn local_player_inside_powder_snow(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {

@@ -509,6 +509,7 @@ pub use sound_variants::{
 };
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;
+pub(crate) use store::LocalPlayerBlockEffectStep;
 pub use store::{EntityClientTickWork, EntityPublicationSnapshotObservation};
 
 // IDs are the vanilla 26.1 EntityType registry order from EntityType.java.

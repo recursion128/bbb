@@ -1373,9 +1373,12 @@ back into a todo. Do not delete these.
   inertia tail, in-ground degenerate segment without `baseTick`, the
   `isInWaterOrRain` head clear, and the trident `noPhysics`-field
   `isAffectedByBlocks` skip), and `isInRain` fire clearing over synced sky
-  light, `MOTION_BLOCKING` heightmaps, and registry biome climate: the locally
-  authoritative Living local-player callback in its `aiStep` slot and the
-  client-side powder-snow snowflake particles plus extinguish presentation.
+  light, `MOTION_BLOCKING` heightmaps, and registry biome climate, and the
+  local player's own `aiStep` callback (per physics step with the recorded
+  clipped move: swept freeze/fire/rain state, stuck-speed set-then-consume
+  replacing the probe, bubble/honey delta edits, spectator `noPhysics` skip):
+  the client-side powder-snow snowflake particles plus extinguish
+  presentation.
   Arrows collapse to one segment per tick because the client does not simulate
   `stepMoveAndHit` entity-hit stepping (pierce hops stay server-authoritative);
   revisit the multi-segment loop only if client arrow hit simulation lands.
