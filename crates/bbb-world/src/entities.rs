@@ -14,7 +14,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::terrain::{block_name_is_bed, block_name_is_rail};
-use crate::{ArmorTrimSprite, BlockPos, PaintingVariantClientProjection, TerrainLight, WorldStore};
+use crate::{
+    ArmorTrimSprite, BlockPos, ChunkPos, PaintingVariantClientProjection, TerrainLight, WorldStore,
+};
 
 mod animations;
 mod block_effects;
@@ -2475,6 +2477,10 @@ entity_model_source_state! {
     /// for a normal leash, four for a ghast-to-boat quad connection). Empty for unleashed entities.
     #[serde(default)]
     pub leash_ropes: Vec<LeashRopeSource>,
+    /// Vanilla `EnderDragonRenderState` procedural-animation inputs (`flapTime`, phase flags, egg
+    /// distance, interpolated flight history). `None` for every non-dragon.
+    #[serde(default)]
+    pub ender_dragon_animation: Option<EnderDragonAnimationSource>,
     /// Vanilla `LlamaRenderState.bodyItem`: the carpet color from an adult llama/trader-llama body
     /// equipment item. Baby llamas ignore body items for the decor layer; trader llamas still get their
     /// built-in trader decor in the renderer when this is `None`.
@@ -2531,6 +2537,21 @@ pub struct EndCrystalBeamSource {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EnderDragonBeamSource {
     pub beam_offset: [f32; 3],
+}
+
+/// Vanilla `EnderDragonRenderState`'s procedural-animation inputs for `EnderDragonModel.setupAnim`.
+/// `flap_time` is the lerped `oFlapTime → flapTime` wing-beat phase; the two phase flags mirror
+/// `isLandingOrTakingOff` (`LANDING`/`TAKEOFF`) and `phase.isSitting()`; `distance_to_egg` is the
+/// squared center distance to the podium heightmap position (`getHeadPartYOffset`'s landing droop
+/// divisor); `historical` carries `getHistoricalPos(delay)` pre-interpolated for delays `0..=23`
+/// (every delay `setupAnim` samples), with the dead-dragon `partialTicks = 0` freeze applied.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EnderDragonAnimationSource {
+    pub flap_time: f32,
+    pub is_landing_or_taking_off: bool,
+    pub is_sitting: bool,
+    pub distance_to_egg: f64,
+    pub historical: [DragonFlightHistorySample; 24],
 }
 
 /// One rope of a leash connection, projected for the renderer from
@@ -2953,6 +2974,30 @@ impl WorldStore {
     /// Vanilla `EntityRenderer.extractRenderState` leash branch: the rope states for a
     /// leashed entity — one per rope, four for a quad connection — with the light levels
     /// sampled at both endpoints' eye positions (burning entities read block light 15).
+    /// Vanilla `EnderDragonRenderState.distanceToEgg`: the squared center distance from the dragon
+    /// to `getHeightmapPos(MOTION_BLOCKING_NO_LEAVES, EndPodiumFeature.getLocation(fightOrigin))`.
+    /// A remote client's `fightOrigin` is never synced and keeps its `BlockPos.ZERO` default
+    /// (`EnderDragon.setFightOrigin` only runs server-side), so the probe column is always `(0, 0)`.
+    /// Vanilla primes `MOTION_BLOCKING_NO_LEAVES` on demand from loaded client blocks; the End has
+    /// no leaf blocks, so the synced `MOTION_BLOCKING` map is column-identical and stands in
+    /// exactly. Outside loaded chunks vanilla `Level.getHeight` degrades to the dimension floor.
+    fn ender_dragon_distance_to_egg_sqr(&self, position: EntityVec3) -> f64 {
+        let egg_y = self
+            .chunk_heightmap_sampler(ChunkPos { x: 0, z: 0 })
+            .and_then(|sampler| {
+                sampler.first_available(
+                    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+                    0,
+                    0,
+                )
+            })
+            .unwrap_or(self.dimension.min_y);
+        let dx = 0.5 - position.x;
+        let dy = f64::from(egg_y) + 0.5 - position.y;
+        let dz = 0.5 - position.z;
+        dx * dx + dy * dy + dz * dz
+    }
+
     pub fn entity_leash_render_states_at_partial_tick(
         &self,
         entity_id: i32,
@@ -3659,6 +3704,9 @@ impl WorldStore {
         source.light = self
             .sample_block_light(entity_light_block_pos(target.position))
             .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        if let Some(dragon) = source.ender_dragon_animation.as_mut() {
+            dragon.distance_to_egg = self.ender_dragon_distance_to_egg_sqr(target.position);
+        }
         // The rope states need world light samples at both endpoints, so the leash
         // projection lives here on the store-and-light layer rather than in `model_source`.
         source.leash_ropes = self

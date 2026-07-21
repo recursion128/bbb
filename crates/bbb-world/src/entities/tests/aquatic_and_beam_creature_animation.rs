@@ -1,5 +1,7 @@
 use super::super::schema::{
+    vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type, VanillaGuardianMetadataAccessors,
+    VANILLA_ENDER_DRAGON_PHASES_26_1,
 };
 use super::*;
 use bbb_protocol::entity_poses::{
@@ -749,6 +751,88 @@ fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
 
     // Non-dragons do not project the dragon-owned healing beam even when crystals are tracked.
     assert!(dragon_beam(&store, 194, 0.25).is_none());
+}
+
+#[test]
+fn entity_model_sources_project_ender_dragon_procedural_animation_inputs() {
+    // Vanilla `EnderDragonRenderer.extractRenderState`: `flapTime` lerps `oFlapTime → flapTime`,
+    // the phase flags mirror LANDING/TAKEOFF and `isSitting`, the flight samples interpolate at
+    // the (dead-frozen) partial tick, and `distanceToEgg` probes the podium heightmap column.
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 70.0,
+            z: -3.0,
+        },
+        y_rot: 0.0,
+        ..protocol_add_entity_with_type(200, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID)
+    });
+    let (phase_data_id, _) = vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    )
+    .expect("generated EnderDragon phase accessor must resolve");
+    let landing = VANILLA_ENDER_DRAGON_PHASES_26_1
+        .iter()
+        .find(|phase| phase.java_field_name == "LANDING")
+        .expect("generated LANDING phase registration");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 200,
+        values: vec![protocol_int_data(phase_data_id, landing.phase_id)],
+    }));
+    store.advance_entity_client_animations(2);
+
+    let source = store
+        .entity_model_source_at_partial_tick(200, 0.5)
+        .expect("dragon must project a model source");
+    let dragon = source
+        .ender_dragon_animation
+        .expect("dragon procedural animation inputs");
+    assert!(dragon.is_landing_or_taking_off);
+    assert!(!dragon.is_sitting);
+    // Zero delta movement: `flapSpeed = 0.2/(0·10+1)·2^0 = 0.2` per tick; after two ticks
+    // `flapTime = 0.4`, `oFlapTime = 0.2`, so the half-tick lerp reads `0.3`.
+    assert!(
+        (dragon.flap_time - 0.3).abs() < 1.0e-6,
+        "{}",
+        dragon.flap_time
+    );
+    // The stationary dragon's history is flat at the spawn transform for every sampled delay.
+    assert_eq!(
+        dragon.historical[0],
+        DragonFlightHistorySample {
+            y: 70.0,
+            y_rot: 0.0
+        }
+    );
+    assert_eq!(
+        dragon.historical[23],
+        DragonFlightHistorySample {
+            y: 70.0,
+            y_rot: 0.0
+        }
+    );
+    // No chunk is loaded, so the egg probe degrades to the dimension floor at the podium
+    // column center (0.5, min_y + 0.5, 0.5), squared against the dragon position.
+    let dx: f64 = 0.5 - 10.0;
+    let dy: f64 = -64.0 + 0.5 - 70.0;
+    let dz: f64 = 0.5 + 3.0;
+    let expected = dx * dx + dy * dy + dz * dz;
+    assert!(
+        (dragon.distance_to_egg - expected).abs() < 1.0e-9,
+        "{} vs {expected}",
+        dragon.distance_to_egg
+    );
+
+    // Non-dragons project no dragon animation inputs.
+    store.apply_add_entity(ProtocolAddEntity {
+        ..protocol_add_entity_with_type(201, VANILLA_ENTITY_TYPE_GUARDIAN_ID)
+    });
+    assert!(store
+        .entity_model_source_at_partial_tick(201, 0.5)
+        .expect("guardian must project a model source")
+        .ender_dragon_animation
+        .is_none());
 }
 
 #[test]

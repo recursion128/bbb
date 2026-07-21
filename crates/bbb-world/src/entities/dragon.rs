@@ -6,6 +6,7 @@ use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID;
 use super::schema::{
     vanilla_ender_dragon_phase_is_sitting,
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
+    VANILLA_ENDER_DRAGON_PHASES_26_1,
 };
 use super::{EntityPickBoundsState, EntityPickTargetState, EntityTransform, EntityVec3};
 
@@ -90,6 +91,16 @@ pub struct EnderDragonAnimationState {
     pub dragon_death_time: i32,
     #[serde(default)]
     pub y_rot_a: f32,
+    /// Vanilla `EnderDragon.oFlapTime` / `flapTime`: the wing-beat phase `EnderDragonModel.setupAnim`
+    /// scales by `2π`, advanced every client tick from the delta movement (or `+0.1` while sitting).
+    #[serde(default)]
+    pub o_flap_time: f32,
+    #[serde(default)]
+    pub flap_time: f32,
+    /// Vanilla `Mob.isNoAi()` from the shared mob-flags metadata: a no-AI dragon pins
+    /// `flapTime = 0.5` and stops recording flight history.
+    #[serde(default)]
+    pub no_ai: bool,
     #[serde(default)]
     pub flight_history: DragonFlightHistoryState,
 }
@@ -121,6 +132,9 @@ impl Default for EnderDragonAnimationState {
             dragon_dying: false,
             dragon_death_time: 0,
             y_rot_a: 0.0,
+            o_flap_time: 0.0,
+            flap_time: 0.0,
+            no_ai: false,
             flight_history: DragonFlightHistoryState::default(),
         }
     }
@@ -206,14 +220,52 @@ impl EnderDragonAnimationState {
         }
     }
 
+    /// Vanilla `EnderDragon.aiStep`'s client-side flap/history block: `oFlapTime` saves before the
+    /// dead gate; a dead-or-dying dragon advances neither the flap phase nor the history; the flap
+    /// rate comes from the delta movement (`0.2 / (horizontal·10 + 1) · 2^Δy`, or a flat `0.1` while
+    /// sitting); a no-AI dragon pins `flapTime = 0.5` instead of recording. The halved in-wall rate
+    /// cannot occur here: `EnderDragon.inWall` is only ever assigned inside the `ServerLevel` phase
+    /// branch, so a remote client always reads its `false` default.
     pub(crate) fn advance_client_tick(&mut self, transform: EntityTransform) {
-        self.flight_history
-            .record(transform.position.y, transform.y_rot);
+        self.o_flap_time = self.flap_time;
+        if self.dragon_dying {
+            return;
+        }
+        let delta = transform.delta_movement;
+        let horizontal = ((delta.x * delta.x + delta.z * delta.z).sqrt()) as f32;
+        let flap_speed = 0.2 / (horizontal * 10.0 + 1.0) * (2.0f64.powf(delta.y)) as f32;
+        if self.is_sitting() {
+            self.flap_time += 0.1;
+        } else {
+            self.flap_time += flap_speed;
+        }
+        if self.no_ai {
+            self.flap_time = 0.5;
+        } else {
+            self.flight_history
+                .record(transform.position.y, transform.y_rot);
+        }
+    }
+
+    /// Vanilla `EnderDragonRenderer.extractRenderState`:
+    /// `state.flapTime = Mth.lerp(partialTicks, oFlapTime, flapTime)`.
+    pub(crate) fn flap_time(self, partial_ticks: f32) -> f32 {
+        self.o_flap_time + (self.flap_time - self.o_flap_time) * partial_ticks
     }
 
     fn is_sitting(self) -> bool {
         vanilla_ender_dragon_phase_is_sitting(self.phase_id)
     }
+}
+
+/// Vanilla `EnderDragonRenderState.isLandingOrTakingOff`:
+/// `phase == EnderDragonPhase.LANDING || phase == EnderDragonPhase.TAKEOFF`, resolved through the
+/// generated phase catalog by Java field name rather than a hand-written ordinal.
+pub(crate) fn vanilla_ender_dragon_phase_is_landing_or_takeoff(phase_id: i32) -> bool {
+    usize::try_from(phase_id)
+        .ok()
+        .and_then(|phase_id| VANILLA_ENDER_DRAGON_PHASES_26_1.get(phase_id))
+        .is_some_and(|phase| matches!(phase.java_field_name, "LANDING" | "TAKEOFF"))
 }
 
 impl DragonFlightHistoryState {
@@ -240,7 +292,11 @@ impl DragonFlightHistoryState {
         self.samples[index as usize]
     }
 
-    fn get_interpolated(self, delay: i32, partial_ticks: f32) -> DragonFlightHistorySample {
+    pub(crate) fn get_interpolated(
+        self,
+        delay: i32,
+        partial_ticks: f32,
+    ) -> DragonFlightHistorySample {
         let sample = self.get(delay);
         let sample_old = self.get(delay + 1);
         DragonFlightHistorySample {
@@ -447,5 +503,105 @@ mod tests {
             ..EnderDragonAnimationState::default()
         }
         .is_sitting());
+    }
+
+    fn transform_at(y: f64, y_rot: f32, delta: [f64; 3]) -> EntityTransform {
+        let position = EntityVec3 { x: 0.0, y, z: 0.0 };
+        EntityTransform {
+            position,
+            old_position: position,
+            position_base: position,
+            delta_movement: EntityVec3 {
+                x: delta[0],
+                y: delta[1],
+                z: delta[2],
+            },
+            y_rot,
+            old_y_rot: y_rot,
+            x_rot: 0.0,
+            old_x_rot: 0.0,
+            y_head_rot: y_rot,
+            old_y_head_rot: y_rot,
+            on_ground: None,
+            interpolation: None,
+        }
+    }
+
+    #[test]
+    fn dragon_client_flap_advance_matches_vanilla_ai_step() {
+        // Vanilla `EnderDragon.aiStep`: `flapSpeed = 0.2 / ((float)horizontalDistance · 10 + 1) ·
+        // (float)2^Δy`, added to `flapTime` after `oFlapTime` saves the previous phase. The default
+        // client phase is HOVERING, whose `DragonHoverPhase.isSitting()` is true, so the
+        // movement-derived branch needs an explicitly non-sitting phase.
+        let flying = VANILLA_ENDER_DRAGON_PHASES_26_1
+            .iter()
+            .find(|phase| !phase.is_sitting)
+            .expect("generated non-sitting phase");
+        let mut dragon = EnderDragonAnimationState {
+            phase_id: flying.phase_id,
+            ..EnderDragonAnimationState::default()
+        };
+        dragon.advance_client_tick(transform_at(64.0, 30.0, [0.3, 0.1, 0.4]));
+        let expected = 0.2 / (0.5_f32 * 10.0 + 1.0) * (2.0_f64.powf(0.1)) as f32;
+        assert_eq!(dragon.o_flap_time, 0.0);
+        assert!((dragon.flap_time - expected).abs() < 1.0e-7, "{dragon:?}");
+        assert_eq!(
+            dragon.flight_history.get(0),
+            DragonFlightHistorySample {
+                y: 64.0,
+                y_rot: 30.0,
+            }
+        );
+        // `Mth.lerp(partial, oFlapTime, flapTime)` for the render-state extraction.
+        assert!((dragon.flap_time(0.5) - expected * 0.5).abs() < 1.0e-7);
+
+        // A sitting phase replaces the movement-derived rate with a flat `+0.1`.
+        let sitting = VANILLA_ENDER_DRAGON_PHASES_26_1
+            .iter()
+            .find(|phase| phase.is_sitting)
+            .expect("generated sitting phase");
+        let mut sitting_dragon = EnderDragonAnimationState {
+            phase_id: sitting.phase_id,
+            ..EnderDragonAnimationState::default()
+        };
+        sitting_dragon.advance_client_tick(transform_at(64.0, 0.0, [0.3, 0.1, 0.4]));
+        assert!((sitting_dragon.flap_time - 0.1).abs() < 1.0e-7);
+
+        // A no-AI dragon pins `flapTime = 0.5` and records no flight history.
+        let mut no_ai = EnderDragonAnimationState {
+            no_ai: true,
+            ..EnderDragonAnimationState::default()
+        };
+        no_ai.advance_client_tick(transform_at(70.0, 45.0, [0.0, 0.0, 0.0]));
+        assert_eq!(no_ai.flap_time, 0.5);
+        assert_eq!(no_ai.flight_history.head, -1);
+
+        // A dead-or-dying dragon saves `oFlapTime` but advances neither flap nor history.
+        let mut dying = EnderDragonAnimationState {
+            dragon_dying: true,
+            flap_time: 0.75,
+            o_flap_time: 0.5,
+            ..EnderDragonAnimationState::default()
+        };
+        dying.advance_client_tick(transform_at(70.0, 45.0, [0.0, 0.2, 0.0]));
+        assert_eq!((dying.o_flap_time, dying.flap_time), (0.75, 0.75));
+        assert_eq!(dying.flight_history.head, -1);
+    }
+
+    #[test]
+    fn dragon_landing_or_takeoff_phases_match_generated_catalog() {
+        for phase in VANILLA_ENDER_DRAGON_PHASES_26_1 {
+            assert_eq!(
+                vanilla_ender_dragon_phase_is_landing_or_takeoff(phase.phase_id),
+                matches!(phase.java_field_name, "LANDING" | "TAKEOFF"),
+                "{}",
+                phase.java_field_name
+            );
+        }
+        // Pin the vanilla registration ordinals so catalog drift is loud.
+        assert!(vanilla_ender_dragon_phase_is_landing_or_takeoff(3));
+        assert!(vanilla_ender_dragon_phase_is_landing_or_takeoff(4));
+        assert!(!vanilla_ender_dragon_phase_is_landing_or_takeoff(0));
+        assert!(!vanilla_ender_dragon_phase_is_landing_or_takeoff(-1));
     }
 }

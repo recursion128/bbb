@@ -2271,9 +2271,6 @@ impl EntityStore {
         for (_, (identity, transform, metadata, equipment, attributes, animations, mount, leash)) in
             query.iter()
         {
-            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
-                continue;
-            }
             let Some(mut bounds) = vanilla_model_source_bounds_for_entity_data(
                 identity.entity_type_id,
                 identity.data,
@@ -3901,6 +3898,10 @@ impl EntityStore {
             // Filled by `WorldStore::project_entity_model_source`; the rope projection
             // needs the world light probe the store cannot reach.
             leash_ropes: Vec::new(),
+            // `distance_to_egg` is likewise finished by the projection layer's heightmap probe.
+            ender_dragon_animation: client_animations
+                .animations
+                .ender_dragon_animation_source(partial_ticks),
             llama_body_decor,
             llama_body_decor_trim,
             llama_body_decor_foil,

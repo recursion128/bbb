@@ -13,9 +13,13 @@ use uuid::Uuid;
 use crate::WorldStore;
 
 use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
-use super::dragon::EnderDragonAnimationState;
+use super::dragon::{
+    vanilla_ender_dragon_phase_is_landing_or_takeoff, DragonFlightHistorySample,
+    EnderDragonAnimationState,
+};
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
+    vanilla_ender_dragon_phase_is_sitting,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
@@ -35,6 +39,7 @@ use super::schema::{
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
     vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type,
+    vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type,
     vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type,
@@ -64,6 +69,7 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_SEARCHING_ID as SNIFFER_STATE_SEARCHING_ID,
     VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
 };
+use super::EnderDragonAnimationSource;
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_metadata_entity_accessors,
@@ -4648,11 +4654,25 @@ impl EntityClientAnimationState {
                     )
                 {
                     let phase_id = entity_data_int(data_values, data_id, default);
+                    // Vanilla `Mob.isNoAi()` reads the shared mob-flags bit; the client flap
+                    // advance pins `flapTime = 0.5` while it is set.
+                    let no_ai =
+                        vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
+                            .is_some_and(|accessors| {
+                                entity_data_byte(
+                                    data_values,
+                                    accessors.flags_data_id,
+                                    accessors.flags_default,
+                                ) & accessors.no_ai_mask
+                                    != 0
+                            });
                     if let Some(dragon) = self.ender_dragon.as_mut() {
                         dragon.set_phase(phase_id);
+                        dragon.no_ai = no_ai;
                     } else {
                         self.ender_dragon = Some(EnderDragonAnimationState {
                             phase_id,
+                            no_ai,
                             ..EnderDragonAnimationState::default()
                         });
                     }
@@ -5749,6 +5769,37 @@ impl EntityClientAnimationState {
     pub fn ender_dragon_death_time(&self, partial_tick: f32) -> f32 {
         self.ender_dragon
             .map_or(0.0, |dragon| dragon.death_time(partial_tick))
+    }
+
+    /// Vanilla `EnderDragonRenderer.extractRenderState`'s procedural-animation inputs. The flight
+    /// samples are pre-interpolated at `state.partialTicks`, which vanilla freezes to `0` for a
+    /// dead-or-dying dragon; `distance_to_egg` needs the world heightmap probe and is filled by the
+    /// store-and-light projection layer.
+    pub(crate) fn ender_dragon_animation_source(
+        &self,
+        partial_ticks: f32,
+    ) -> Option<EnderDragonAnimationSource> {
+        let dragon = self.ender_dragon?;
+        let sample_partial = if dragon.dragon_dying {
+            0.0
+        } else {
+            partial_ticks
+        };
+        let mut historical = [DragonFlightHistorySample::default(); 24];
+        for (delay, slot) in historical.iter_mut().enumerate() {
+            *slot = dragon
+                .flight_history
+                .get_interpolated(delay as i32, sample_partial);
+        }
+        Some(EnderDragonAnimationSource {
+            flap_time: dragon.flap_time(partial_ticks),
+            is_landing_or_taking_off: vanilla_ender_dragon_phase_is_landing_or_takeoff(
+                dragon.phase_id,
+            ),
+            is_sitting: vanilla_ender_dragon_phase_is_sitting(dragon.phase_id),
+            distance_to_egg: 0.0,
+            historical,
+        })
     }
 
     /// Vanilla `PolarBear.getStandingAnimationScale(partialTick)` projected for
