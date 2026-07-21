@@ -263,6 +263,33 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_missing_hotbar_interaction_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["hotbar_interaction"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "hotbar_interaction"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_unchanged_hotbar_slot_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["hotbar_interaction"]["to_slot"] = evidence["hotbar_interaction"][
+            "from_slot"
+        ]
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "must select a different slot"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_server_unconfirmed_hotbar_slot_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["hotbar_interaction"]["server_confirmed"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "hotbar_interaction.server_confirmed"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
 
 class PlayableGateLifecycleTests(unittest.TestCase):
     def setUp(self):

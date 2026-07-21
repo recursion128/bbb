@@ -280,10 +280,11 @@ Transfer）与基础游玩的 movement/破坏放置/连接活性均已闭环。
 
 剩余阶段：
 
-1. **基础游玩交互**：通过 control/CLI 驱动 hotbar、inventory、声音/粒子与
+1. **基础游玩交互**：通过 control/CLI 驱动 inventory 背包操作、声音/粒子与
    deterministic screenshot/readback，验证 server acknowledgement、world
    结果和呈现 side effect，而不只检查命令入队（movement、破坏/放置、实体
-   攻击、容器开箱/quick-move/关箱、chat 消息/命令 round-trip 已闭环）。
+   攻击、容器开箱/quick-move/关箱、chat 消息/命令 round-trip、hotbar 数字
+   键切槽已闭环）。
 2. **扩展失败证据**：在已有 packet/session timeline、world/control snapshot 与
    双 server log 基础上增加同 lifecycle generation 的 renderer/audio counters、
    pending request 断言和最后 screenshot；失败继续区分 server 启动、网络、

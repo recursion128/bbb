@@ -62,6 +62,13 @@
   },
   "swing_commands_delta": 1
  },
+ "hotbar_interaction": {
+  "duration_seconds": 0.8,
+  "from_slot": 0,
+  "held_slot_commands_delta": 1,
+  "server_confirmed": true,
+  "to_slot": 3
+ },
  "lifecycle": {
   "death_respawn": {
    "dead_health": 0.0,
@@ -178,7 +185,7 @@
    "z": -1.5
   }
  },
- "schema": 5,
+ "schema": 6,
  "source": {
   "authority": [
    "crates/bbb-net/src/status.rs#status_ping",

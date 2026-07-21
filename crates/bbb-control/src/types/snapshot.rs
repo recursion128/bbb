@@ -207,6 +207,15 @@ pub enum InputKeyControl {
     Jump,
     Sneak,
     Sprint,
+    Hotbar1,
+    Hotbar2,
+    Hotbar3,
+    Hotbar4,
+    Hotbar5,
+    Hotbar6,
+    Hotbar7,
+    Hotbar8,
+    Hotbar9,
 }
 
 impl InputKeyControl {
@@ -219,6 +228,15 @@ impl InputKeyControl {
             "jump" => Some(Self::Jump),
             "sneak" => Some(Self::Sneak),
             "sprint" => Some(Self::Sprint),
+            "hotbar1" => Some(Self::Hotbar1),
+            "hotbar2" => Some(Self::Hotbar2),
+            "hotbar3" => Some(Self::Hotbar3),
+            "hotbar4" => Some(Self::Hotbar4),
+            "hotbar5" => Some(Self::Hotbar5),
+            "hotbar6" => Some(Self::Hotbar6),
+            "hotbar7" => Some(Self::Hotbar7),
+            "hotbar8" => Some(Self::Hotbar8),
+            "hotbar9" => Some(Self::Hotbar9),
             _ => None,
         }
     }

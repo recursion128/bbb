@@ -151,6 +151,15 @@ fn input_key_code(key: InputKeyControl) -> KeyCode {
         InputKeyControl::Jump => KeyCode::Space,
         InputKeyControl::Sneak => KeyCode::ShiftLeft,
         InputKeyControl::Sprint => KeyCode::ControlLeft,
+        InputKeyControl::Hotbar1 => KeyCode::Digit1,
+        InputKeyControl::Hotbar2 => KeyCode::Digit2,
+        InputKeyControl::Hotbar3 => KeyCode::Digit3,
+        InputKeyControl::Hotbar4 => KeyCode::Digit4,
+        InputKeyControl::Hotbar5 => KeyCode::Digit5,
+        InputKeyControl::Hotbar6 => KeyCode::Digit6,
+        InputKeyControl::Hotbar7 => KeyCode::Digit7,
+        InputKeyControl::Hotbar8 => KeyCode::Digit8,
+        InputKeyControl::Hotbar9 => KeyCode::Digit9,
     }
 }
 
@@ -573,6 +582,43 @@ mod tests {
         VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
     };
     use uuid::Uuid;
+
+    #[test]
+    fn pump_control_input_requests_selects_hotbar_slot_through_the_real_key_handler() {
+        let requests = bbb_control::SharedControlRequests::default();
+        {
+            let mut guard = requests.lock().unwrap();
+            guard
+                .input_requests
+                .push(InputControlRequest::Focus { focused: true });
+            guard.input_requests.push(InputControlRequest::Key {
+                key: InputKeyControl::Hotbar7,
+                pressed: true,
+            });
+            guard.input_requests.push(InputControlRequest::Key {
+                key: InputKeyControl::Hotbar7,
+                pressed: false,
+            });
+        }
+        let mut input = ClientInputState::new(false);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+            1.0,
+        );
+
+        assert!(requests.lock().unwrap().input_requests.is_empty());
+        assert_eq!(world.client_local_player().selected_hotbar_slot, 6);
+    }
 
     #[test]
     fn pump_control_input_requests_replays_keys_through_the_real_key_handler() {

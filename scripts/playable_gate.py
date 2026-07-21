@@ -136,8 +136,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 5:
-        raise GateFailure(f"playable evidence schema must be 5, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 6:
+        raise GateFailure(f"playable evidence schema must be 6, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -226,6 +226,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_entity_interaction(evidence.get("entity_interaction"))
     _validate_container_interaction(evidence.get("container_interaction"))
     _validate_chat_interaction(evidence.get("chat_interaction"))
+    _validate_hotbar_interaction(evidence.get("hotbar_interaction"))
     _validate_lifecycle(evidence.get("lifecycle"))
 
 
@@ -521,6 +522,30 @@ def _validate_chat_interaction(chat_interaction: Any) -> None:
                 f"chat_interaction.{key} must record at least one observed "
                 f"command, got {value!r}"
             )
+
+
+def _validate_hotbar_interaction(hotbar_interaction: Any) -> None:
+    """The hotbar smoke must observe the server's own SelectedItemSlot, not
+    just the queued SetHeldSlot command, and the slot must actually change."""
+
+    hotbar_interaction = _object(hotbar_interaction, "hotbar_interaction")
+    from_slot = hotbar_interaction.get("from_slot")
+    to_slot = hotbar_interaction.get("to_slot")
+    for name, value in (("from_slot", from_slot), ("to_slot", to_slot)):
+        if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 8:
+            raise GateFailure(
+                f"hotbar_interaction.{name} must be a hotbar slot index, got {value!r}"
+            )
+    if from_slot == to_slot:
+        raise GateFailure("hotbar_interaction must select a different slot")
+    if hotbar_interaction.get("server_confirmed") is not True:
+        raise GateFailure("hotbar_interaction.server_confirmed must be true")
+    delta = hotbar_interaction.get("held_slot_commands_delta")
+    if not isinstance(delta, int) or isinstance(delta, bool) or delta < 1:
+        raise GateFailure(
+            "hotbar_interaction.held_slot_commands_delta must record at least "
+            f"one observed command, got {delta!r}"
+        )
 
 
 MOVEMENT_MIN_HORIZONTAL_DISTANCE = 1.0
@@ -1743,6 +1768,87 @@ def drive_chat_interaction(
     }
 
 
+def _selected_hotbar_slot(address: tuple[str, int]) -> int | None:
+    local_player = _control_request(address, "world.client_local_player")
+    if not isinstance(local_player, dict):
+        return None
+    slot = local_player.get("selected_hotbar_slot")
+    return int(slot) if isinstance(slot, int) and not isinstance(slot, bool) else None
+
+
+def drive_hotbar_interaction(
+    address: tuple[str, int],
+    server_command: Path,
+    server_log: Path,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    """Select a different hotbar slot through the synthetic digit-key path
+    (the real keyboard handler, not a direct packet) and require both the
+    canonical selected slot and the server's own SelectedItemSlot to move."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    _control_request(address, "input.focus", {"focused": True})
+
+    from_slot = _selected_hotbar_slot(address)
+    if from_slot is None:
+        raise GateFailure("canonical selected hotbar slot was not readable")
+    to_slot = (from_slot + 3) % 9
+
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before hotbar interaction")
+
+    _control_request(address, "input.key", {"key": f"hotbar{to_slot + 1}", "pressed": True})
+    _control_request(address, "input.key", {"key": f"hotbar{to_slot + 1}", "pressed": False})
+    _await_value(
+        deadline,
+        f"the canonical selected hotbar slot to become {to_slot}",
+        lambda: _selected_hotbar_slot(address),
+        lambda slot: slot == to_slot,
+    )
+    _await_value(
+        deadline,
+        "the held-slot command queue acknowledgement",
+        lambda: _net_counter(address, "held_slot_commands_queued"),
+        lambda value: value > int(net_before.get("held_slot_commands_queued", 0)),
+    )
+
+    # Server-authoritative result: the server's own player data must report
+    # the new selected slot, proving the SetHeldSlot packet was applied.
+    marker = "has the following entity data"
+    occurrences_before = _log_occurrences(server_log, marker)
+    _server_console_command(
+        server_command,
+        "data get entity bbb-playablegate SelectedItemSlot",
+    )
+
+    def _server_confirmed() -> bool:
+        text = server_log.read_text(encoding="utf-8", errors="replace")
+        lines = [line for line in text.splitlines() if marker in line]
+        if len(lines) <= occurrences_before:
+            return False
+        return lines[-1].rstrip().endswith(f"entity data: {to_slot}")
+
+    _await_value(
+        deadline,
+        "the server console to report the new selected hotbar slot",
+        _server_confirmed,
+        lambda value: value is True,
+    )
+
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_after, "after hotbar interaction")
+
+    return {
+        "from_slot": from_slot,
+        "to_slot": to_slot,
+        "server_confirmed": True,
+        "held_slot_commands_delta": int(net_after.get("held_slot_commands_queued", 0))
+        - int(net_before.get("held_slot_commands_queued", 0)),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def _await_value(
     deadline: float,
     description: str,
@@ -2316,7 +2422,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 5,
+            "schema": 6,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2327,6 +2433,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "entity_interaction": None,
             "container_interaction": None,
             "chat_interaction": None,
+            "hotbar_interaction": None,
             "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
@@ -2344,6 +2451,7 @@ def collect_live(args: argparse.Namespace) -> None:
     entity_interaction: dict[str, Any] | None = None
     container_interaction: dict[str, Any] | None = None
     chat_interaction: dict[str, Any] | None = None
+    hotbar_interaction: dict[str, Any] | None = None
     lifecycle: dict[str, Any] | None = None
     try:
         _await_control_stability(address, deadline)
@@ -2361,6 +2469,9 @@ def collect_live(args: argparse.Namespace) -> None:
         )
         chat_interaction = drive_chat_interaction(
             address, args.server_log, min(60.0, float(args.timeout))
+        )
+        hotbar_interaction = drive_hotbar_interaction(
+            address, args.server_command, args.server_log, min(60.0, float(args.timeout))
         )
         lifecycle = {}
         lifecycle = drive_session_lifecycle(
@@ -2382,7 +2493,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 5,
+            "schema": 6,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2393,6 +2504,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "entity_interaction": entity_interaction,
             "container_interaction": container_interaction,
             "chat_interaction": chat_interaction,
+            "hotbar_interaction": hotbar_interaction,
             "lifecycle": lifecycle,
             "failure": failure,
             "artifacts": {
@@ -2410,7 +2522,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 5,
+            "schema": 6,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2421,6 +2533,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "entity_interaction": entity_interaction,
             "container_interaction": container_interaction,
             "chat_interaction": chat_interaction,
+            "hotbar_interaction": hotbar_interaction,
             "lifecycle": lifecycle,
             "failure": str(error),
             "artifacts": {
@@ -2433,7 +2546,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 5,
+        "schema": 6,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -2444,6 +2557,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "entity_interaction": entity_interaction,
         "container_interaction": container_interaction,
         "chat_interaction": chat_interaction,
+        "hotbar_interaction": hotbar_interaction,
         "lifecycle": lifecycle,
         "artifacts": {
             "timeline": str(args.client_log),

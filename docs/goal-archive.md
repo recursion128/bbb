@@ -107,4 +107,7 @@
   开箱→quick-move→关箱→server console 权威确认箱空，evidence schema 4，
   live 实跑全绿）与 chat 场景（新 `net.send_chat_message` RPC 走既有
   last-seen ack 出站管线；消息+emote 命令双 round-trip：server 落日志且
-  广播回 canonical chat 状态，evidence schema 5，live 实跑全绿）。
+  广播回 canonical chat 状态，evidence schema 5，live 实跑全绿）与 hotbar
+  场景（input.key 扩展 hotbar1-9 数字键走真实键盘 handler；canonical
+  selected_hotbar_slot + server `data get entity SelectedItemSlot` 双确认，
+  evidence schema 6，live 实跑全绿）。
