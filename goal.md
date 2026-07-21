@@ -23,6 +23,8 @@
 - `docs/unsupported-features.md` 是纯 TODO list，不存任何完成史；其每个一级
   TODO 域必须映射到本文件一个开放 queue、结转项或带 vanilla 依据的
   `not-needed`；新增 ledger 域时在同一 slice 更新路由。
+- 本文件与开发流程本身是持续优化对象：流程摩擦在日常 slice 中随手记录，
+  改进按工作流第 8 步以专门 slice 落地，不在功能 slice 中顺手改流程。
 - 行数上限与完成史散文由 `scripts/docs-lint.sh` 机械 enforce。
 
 ## 硬性约束
@@ -189,6 +191,17 @@ unused/dead-code lint。
 7. **路线图维护**：P1～P4 记录依赖、里程碑、完成标准与裁决顺序，不是默认
    串行消化队列。新发现工作在账本立条目并参与下一轮候选；结转项只在重启
    判据满足后恢复为 ready 候选。
+8. **流程维护（持续优化 goal.md 与开发流程）**：
+   - 触发判据（日常 slice 中观察到即记录，不当场改流程）：每 slice 固定
+     开销上升（gate 步时、文档/叙述负担）；规则被误读、互相矛盾或反复
+     解释；同类失误重复出现；文档超限、指向失效或积累完成史；出现能缩短
+     闭环的新机制（脚本化、生成、批量门禁、subagent 分工）。
+   - 落地方式：积累到值得动手时立专门的工作流 slice（触及 scripts/ 按
+     高风险门禁）。改规则必须同 slice 改 enforce 机制（docs-lint / gate /
+     脚本）与 AGENTS.md 指针，删除被取代的条文，不留第二份表述。
+   - 验收判据可测：门禁耗时、goal.md 行数、每 slice 固定步骤数只许下降或
+     持平；新增或收紧规则须附真实事故依据。每次流程变更按 vN 版本号记入
+     `docs/goal-archive.md` 索引与 memory。
 
 ## P0 重新打开条件与 audit 分类
 
