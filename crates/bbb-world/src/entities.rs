@@ -24,6 +24,7 @@ pub(crate) use components::EntityBoatStatus;
 mod dimensions;
 mod dragon;
 mod events;
+mod leash;
 mod metadata;
 mod movement;
 mod passengers;
@@ -62,6 +63,7 @@ pub(crate) use dimensions::{
 };
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 pub(crate) use events::{vanilla_entity_event_kind, VanillaEntityEventKind};
+pub use leash::EntityLeashRenderState;
 use movement::entity_vec3;
 pub use renderer_catalog::{
     vanilla_entity_renderer_boat_kind, vanilla_entity_renderer_camel_kind,
@@ -2925,6 +2927,45 @@ impl WorldStore {
         let game_time = self.world_time().map(|time| time.game_time).unwrap_or(0);
         self.entities
             .debug_passenger_vehicle_target(passenger_id, game_time)
+    }
+
+    /// Vanilla `EntityRenderer.extractRenderState` leash branch: the rope states for a
+    /// leashed entity — one per rope, four for a quad connection — with the light levels
+    /// sampled at both endpoints' eye positions (burning entities read block light 15).
+    pub fn entity_leash_render_states_at_partial_tick(
+        &self,
+        entity_id: i32,
+        partial_ticks: f32,
+    ) -> Option<Vec<EntityLeashRenderState>> {
+        let partial_ticks = partial_ticks.clamp(0.0, 1.0);
+        let holder_id = self.entities.leash_holder_id(entity_id)?;
+        let leashed = self
+            .entities
+            .leash_endpoint_inputs(entity_id, partial_ticks)?;
+        let holder = self
+            .entities
+            .leash_endpoint_inputs(holder_id, partial_ticks)?;
+        let mut states = leash::leash_render_states(&leashed, &holder);
+        let eye_light = |inputs: &leash::LeashEndpointInputs| {
+            let light = self
+                .sample_block_light(entity_light_block_pos(EntityVec3 {
+                    x: inputs.position.x,
+                    y: inputs.position.y + f64::from(inputs.eye_height),
+                    z: inputs.position.z,
+                }))
+                .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+            let block = if inputs.on_fire { 15 } else { light.block };
+            (block, light.sky)
+        };
+        let (start_block, start_sky) = eye_light(&leashed);
+        let (end_block, end_sky) = eye_light(&holder);
+        for state in &mut states {
+            state.start_block_light = start_block;
+            state.end_block_light = end_block;
+            state.start_sky_light = start_sky;
+            state.end_sky_light = end_sky;
+        }
+        Some(states)
     }
 
     pub fn ender_dragon_part_parent_id(&self, part_id: i32) -> Option<i32> {

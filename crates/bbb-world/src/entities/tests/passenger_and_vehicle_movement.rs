@@ -5141,3 +5141,152 @@ fn baby_equine_and_panda_passenger_attachments_use_vanilla_declared_points() {
     );
     assert!((baby.z - adult.z).abs() < 1.0e-6);
 }
+
+#[test]
+fn pig_leash_render_state_projects_offset_rope_hold_and_slack() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 64.0,
+            z: -5.0,
+        },
+        y_rot: 0.0,
+        ..protocol_add_entity_with_type(60, VANILLA_ENTITY_TYPE_PIG_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 14.0,
+            y: 65.0,
+            z: -5.0,
+        },
+        ..protocol_add_entity_with_type(61, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID)
+    });
+
+    assert_eq!(
+        store.entity_leash_render_states_at_partial_tick(60, 1.0),
+        None
+    );
+    assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 60,
+        dest_id: 61,
+    }));
+
+    let states = store
+        .entity_leash_render_states_at_partial_tick(60, 1.0)
+        .expect("leashed pig must project a rope state");
+    assert_eq!(states.len(), 1);
+    let state = states[0];
+    // Vanilla `Pig.getLeashOffset` = (0, 0.6 * eyeHeight, 0.4 * width) with the
+    // pig's default 0.765 eye height and 0.9 width, unrotated at body yaw 0.
+    assert!((state.offset[0]).abs() < 1.0e-6, "state {state:?}");
+    assert!((state.offset[1] - 0.6 * 0.765).abs() < 1.0e-6);
+    assert!((state.offset[2] - 0.36).abs() < 1.0e-6);
+    assert!((state.start[0] - 10.0).abs() < 1.0e-6);
+    assert!((state.start[1] - (64.0 + 0.6 * 0.765)).abs() < 1.0e-6);
+    // Vanilla `LeashFenceKnotEntity.getRopeHoldPosition` = position + (0, 0.2, 0),
+    // on the knot's block-center snapped client position (x/z + 0.5, y + 0.375).
+    assert!((state.end[0] - 14.5).abs() < 1.0e-6);
+    assert!((state.end[1] - 65.575).abs() < 1.0e-6);
+    assert!((state.end[2] - -4.5).abs() < 1.0e-6);
+    assert!(state.slack);
+    // No chunk light is loaded, so both endpoints fall back to the entity
+    // full-bright probe default.
+    assert_eq!((state.start_block_light, state.start_sky_light), (15, 15));
+    assert_eq!((state.end_block_light, state.end_sky_light), (15, 15));
+}
+
+#[test]
+fn boat_leashed_to_happy_ghast_uses_four_taut_quad_ropes() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        62,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        0.0,
+    ));
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 80.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        ..protocol_add_entity_with_type(
+            63,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        )
+    });
+    assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 62,
+        dest_id: 63,
+    }));
+
+    let states = store
+        .entity_leash_render_states_at_partial_tick(62, 1.0)
+        .expect("quad-leashed boat must project rope states");
+    assert_eq!(states.len(), 4);
+    assert!(states.iter().all(|state| !state.slack));
+    // Boat quad offsets: `createQuadLeashOffsets(0, 0.64, 0.382, 0.88)` on the
+    // 1.375 x 0.5625 oak boat box.
+    let expected_y = 0.88 * 0.5625;
+    assert!((states[0].offset[0] - -0.382 * 1.375).abs() < 1.0e-6);
+    assert!((states[0].offset[1] - expected_y).abs() < 1.0e-6);
+    assert!((states[0].offset[2] - 0.64 * 1.375).abs() < 1.0e-6);
+    assert!((states[2].offset[0] - 0.382 * 1.375).abs() < 1.0e-6);
+    assert!((states[2].offset[2] - -0.64 * 1.375).abs() < 1.0e-6);
+    // Holder quad points: the `Entity.getQuadLeashHolderOffsets` default
+    // `(±0.5 w, 0, ±0.5 w)` on the 4 x 4 happy ghast.
+    assert!((states[0].end[0] - -2.0).abs() < 1.0e-6);
+    assert!((states[0].end[1] - 80.0).abs() < 1.0e-6);
+    assert!((states[0].end[2] - 2.0).abs() < 1.0e-6);
+    assert!((states[3].end[0] - 2.0).abs() < 1.0e-6);
+    assert!((states[3].end[2] - 2.0).abs() < 1.0e-6);
+}
+
+#[test]
+fn player_holder_rope_hold_uses_arm_and_crouch_offsets() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        64,
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+        0.0,
+    ));
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 5.0,
+            y: 64.0,
+            z: 5.0,
+        },
+        y_rot: 0.0,
+        ..protocol_add_entity_with_type(65, VANILLA_ENTITY_TYPE_PLAYER_ID)
+    });
+    assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 64,
+        dest_id: 65,
+    }));
+
+    let states = store
+        .entity_leash_render_states_at_partial_tick(64, 1.0)
+        .expect("player-held wolf must project a rope state");
+    // Standing right-handed player: `(xOff=-0.22, bbHeight - 1.0, 0.07)` at
+    // body yaw 0.
+    assert!((states[0].end[0] - (5.0 - 0.22)).abs() < 1.0e-6);
+    assert!((states[0].end[1] - (64.0 + 0.8)).abs() < 1.0e-6);
+    assert!((states[0].end[2] - 5.07).abs() < 1.0e-6);
+
+    // Crouching drops the z offset to -0.2.
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 65,
+        values: vec![protocol_pose_data(
+            accessors.pose_data_id,
+            bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_CROUCHING_ID,
+        )],
+    }));
+    let states = store
+        .entity_leash_render_states_at_partial_tick(64, 1.0)
+        .expect("player-held wolf must keep its rope state");
+    // The crouching pose also lowers the player box to 1.5.
+    assert!((states[0].end[1] - (64.0 + 0.5)).abs() < 1.0e-6);
+    assert!((states[0].end[2] - (5.0 - 0.2)).abs() < 1.0e-6);
+}

@@ -7,6 +7,7 @@ pub use crate::entities::vanilla_entity_renderer_guardian_kind;
 pub use crate::entities::vanilla_entity_renderer_hoglin_kind;
 pub use crate::entities::vanilla_entity_renderer_piglin_kind;
 pub use crate::entities::vanilla_entity_renderer_squid_kind;
+pub use crate::entities::EntityLeashRenderState;
 pub use crate::entities::EntityRenderCandidateState;
 pub use crate::entities::VanillaAbstractBoatMetadataAccessors;
 pub use crate::entities::VanillaAbstractHorseMetadataAccessors;

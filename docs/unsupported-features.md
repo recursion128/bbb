@@ -1377,9 +1377,16 @@ back into a todo. Do not delete these.
 - Audit equipment slot applicability and presentation, passenger attachment and
   controlling-passenger rules, vehicle recovery, and leash state/presentation
   for every applicable family.
-- Add leash render-state extraction and leash geometry submission for linkable mobs,
-  including Turtle packets forced by server state; retaining `SetEntityLink` state
-  without the visible rope does not close the presentation gap.
+- Add leash geometry submission for linkable mobs, including Turtle packets
+  forced by server state; retaining `SetEntityLink` state without the visible
+  rope does not close the presentation gap. The 2026-07-21 extraction slice
+  landed the world-side rope states (`entity_leash_render_states_at_partial_tick`:
+  vanilla `getLeashOffset` table with all eight subclass overrides, the
+  Player/LeashKnot `getRopeHoldPosition` overrides, ghast/happy-ghast-to-boat
+  quad connections, per-endpoint eye-position light with the on-fire override,
+  and the slack flag); the renderer's two-strip rope mesh remains open. The
+  gliding player's rope hand approximates the vanilla view vector with body
+  yaw and the rope-hold pitch.
 
 ### Deferred model and animation details
 

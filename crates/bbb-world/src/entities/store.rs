@@ -4297,6 +4297,77 @@ impl EntityStore {
             .map(|leash| *leash)
     }
 
+    pub(crate) fn leash_holder_id(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs.get::<&EntityLeash>(entity).ok()?.holder_id
+    }
+
+    pub(crate) fn leash_endpoint_inputs(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<super::leash::LeashEndpointInputs> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let transform = *self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let bounds = self.debug_hitbox_bounds(id)?;
+        let eye_height = self
+            .camera_pose_state_at_partial_tick(id, partial_ticks)?
+            .eye_height;
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+        let shared_flags = self
+            .metadata_byte(
+                id,
+                entity_accessors.shared_flags_data_id,
+                entity_accessors.shared_flags_default,
+            )
+            .unwrap_or(entity_accessors.shared_flags_default);
+        let pose = {
+            let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == entity_accessors.pose_data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::Pose(pose) => Some(*pose),
+                    _ => None,
+                })
+                .unwrap_or(entity_accessors.pose_default)
+        };
+        let is_auto_spin_attack =
+            vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+                .is_some_and(|accessors| {
+                    self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                        .unwrap_or(accessors.flags_default)
+                        & accessors.spin_attack_mask
+                        != 0
+                });
+        // Vanilla `Avatar.DEFAULT_MAIN_HAND` is right (id 1).
+        let main_arm_right = self
+            .metadata_humanoid_arm(id, VANILLA_AVATAR_MAIN_HAND_DATA_ID, 1)
+            .unwrap_or(1)
+            != 0;
+        Some(super::leash::LeashEndpointInputs {
+            entity_type_id,
+            position: transform.render_position(partial_ticks),
+            body_y_rot: transform.render_body_y_rot(partial_ticks),
+            // Vanilla `Player.getRopeHoldPosition` pitch is
+            // `Mth.lerp(partialTicks * 0.5, getXRot(), xRotO)` — the reversed
+            // half lerp equals the ordinary render lerp at `1 - 0.5 * t`.
+            rope_hold_x_rot: transform.render_x_rot(1.0 - 0.5 * partial_ticks.clamp(0.0, 1.0)),
+            bounds_width: bounds.max[0] - bounds.min[0],
+            bounds_height: bounds.max[1] - bounds.min[1],
+            eye_height,
+            on_fire: shared_flags & entity_accessors.on_fire_mask != 0,
+            fall_flying_or_spin: shared_flags & entity_accessors.fall_flying_mask != 0
+                || is_auto_spin_attack,
+            visually_swimming: pose == bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SWIMMING_ID,
+            crouching: pose == bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_CROUCHING_ID,
+            main_arm_right,
+            delta_movement: transform.delta_movement,
+        })
+    }
+
     pub(crate) fn mob_effects(&self, id: i32) -> Option<EntityMobEffects> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.ecs
