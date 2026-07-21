@@ -306,6 +306,7 @@ fn translucent_draw_plan_sorts_order_then_camera_distance_then_insertion() {
         None,
         None,
         Some([0.0, 64.0, 0.0]),
+        None,
     );
 
     assert_eq!(

@@ -229,6 +229,7 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
         None,
+        None,
     );
     let mut geometry = HudEntityPreviewPipGeometry::default();
 

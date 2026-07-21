@@ -8527,12 +8527,6 @@ fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placehol
             1.0,
         ),
         (
-            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-            "experience_orb_entity_type_bounds",
-            0.5,
-            0.5,
-        ),
-        (
             VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
             "fishing_bobber_entity_type_bounds",
             0.25,
@@ -8934,6 +8928,30 @@ fn entity_model_kind_maps_vex_to_real_model() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_VEX_ID, &charging_values),
         EntityModelKind::Vex { charging: true }
+    );
+}
+
+#[test]
+fn entity_model_kind_maps_experience_orb_to_billboard_quad() {
+    // The orb was a placeholder render box; it now resolves to the camera-facing
+    // `ExperienceOrbRenderer` icon quad. The generated `ExperienceOrb.DATA_VALUE` projects
+    // through vanilla `ExperienceOrb.getIcon()` thresholds to the 4×4 sheet cell.
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, &[]),
+        EntityModelKind::ExperienceOrb { icon: 0 }
+    );
+    let (value_data_id, default) =
+        bbb_world::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        )
+        .expect("generated ExperienceOrb value accessor must resolve");
+    assert_eq!(default, 0);
+    assert_eq!(
+        entity_model_kind(
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            &[protocol_int_data(value_data_id, 149)]
+        ),
+        EntityModelKind::ExperienceOrb { icon: 6 }
     );
 }
 

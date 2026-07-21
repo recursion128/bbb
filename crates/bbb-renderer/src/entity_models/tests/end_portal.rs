@@ -288,6 +288,7 @@ fn end_portal_portal_draws_sort_with_camera() {
         None,
         None,
         Some([0.0, 64.0, 0.0]),
+        None,
     );
 
     assert_eq!(meshes.sorted_main_translucent_draws.len(), 1);

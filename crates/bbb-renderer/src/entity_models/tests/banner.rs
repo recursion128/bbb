@@ -332,6 +332,7 @@ fn banner_runtime_pattern_uses_dynamic_atlas_without_replacing_static_layers() {
         None,
         Some(&dynamic_atlas),
         Some([0.0, 0.0, 0.0]),
+        None,
     );
 
     assert_eq!(meshes.submissions.len(), 4);

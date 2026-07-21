@@ -2757,7 +2757,8 @@ fn entity_model_source_full_bright_light() -> TerrainLight {
     ENTITY_LIGHT_PROBE_FULL_BRIGHT
 }
 
-pub(crate) fn experience_orb_icon(value: i32) -> i32 {
+/// Vanilla `ExperienceOrb.getIcon()`: the 4×4 sheet cell picked from the synced orb value.
+pub fn experience_orb_icon(value: i32) -> i32 {
     if value >= 2477 {
         10
     } else if value >= 1237 {
@@ -2783,7 +2784,10 @@ pub(crate) fn experience_orb_icon(value: i32) -> i32 {
     }
 }
 
-fn take_item_entity_pickup_light(entity_type_id: i32, light: TerrainLight) -> TerrainLight {
+/// Vanilla per-renderer `getBlockLightLevel` additive overrides applied to a sampled light
+/// probe: `ExperienceOrbRenderer` returns `clamp(super + 7, 0, 15)`. Shared by the entity
+/// model-source projection and the pickup-particle light capture.
+fn vanilla_entity_renderer_block_light(entity_type_id: i32, light: TerrainLight) -> TerrainLight {
     if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
         TerrainLight {
             block: light.block.saturating_add(7).min(15),
@@ -3105,7 +3109,7 @@ impl WorldStore {
             .map(|age| age as f32 + 1.0)
             .unwrap_or(1.0);
         let item_bob_offset = self.entities.item_bob_offset(item_entity_id).unwrap_or(0.0);
-        let item_light = take_item_entity_pickup_light(
+        let item_light = vanilla_entity_renderer_block_light(
             item.entity_type_id,
             self.sample_block_light(entity_light_block_pos(item.position))
                 .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT),
@@ -3701,9 +3705,11 @@ impl WorldStore {
             &self.items.default_horse_body_armor_materials,
             &self.items.default_wolf_body_armor_materials,
         )?;
-        source.light = self
-            .sample_block_light(entity_light_block_pos(target.position))
-            .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        source.light = vanilla_entity_renderer_block_light(
+            source.entity_type_id,
+            self.sample_block_light(entity_light_block_pos(target.position))
+                .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT),
+        );
         if let Some(dragon) = source.ender_dragon_animation.as_mut() {
             dragon.distance_to_egg = self.ender_dragon_distance_to_egg_sqr(target.position);
         }

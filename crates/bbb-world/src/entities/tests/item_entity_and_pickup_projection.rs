@@ -466,6 +466,44 @@ fn experience_orb_icon_thresholds_match_vanilla() {
 }
 
 #[test]
+fn experience_orb_model_source_light_adds_renderer_block_light() {
+    // Vanilla `ExperienceOrbRenderer.getBlockLightLevel`: `clamp(super + 7, 0, 15)` — the orb's
+    // projected model-source light rides the same override as the pickup-particle capture.
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    let in_chunk = ProtocolVec3d {
+        x: 1.0,
+        y: 5.0,
+        z: 3.0,
+    };
+    store.apply_add_entity(ProtocolAddEntity {
+        position: in_chunk,
+        ..protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: in_chunk,
+        ..protocol_add_entity_with_type(31, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID)
+    });
+
+    let orb = store
+        .entity_model_source_at_partial_tick(30, 0.0)
+        .expect("experience orb must project a model source");
+    let reference = store
+        .entity_model_source_at_partial_tick(31, 0.0)
+        .expect("armor stand must project a model source");
+    assert!(
+        reference.light.block <= 8,
+        "reference block light {} must keep the +7 offset unclamped",
+        reference.light.block
+    );
+    assert_eq!(orb.light.block, reference.light.block + 7);
+    assert_eq!(orb.light.sky, reference.light.sky);
+}
+
+#[test]
 fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
     let (value_data_id, _) = vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
@@ -502,21 +540,21 @@ fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
     assert_eq!(state.experience_orb_icon, Some(6));
     assert_eq!(state.projectile_model, None);
     assert_eq!(
-        take_item_entity_pickup_light(
+        vanilla_entity_renderer_block_light(
             VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
             TerrainLight { block: 6, sky: 12 }
         ),
         TerrainLight { block: 13, sky: 12 }
     );
     assert_eq!(
-        take_item_entity_pickup_light(
+        vanilla_entity_renderer_block_light(
             VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
             TerrainLight { block: 14, sky: 3 }
         ),
         TerrainLight { block: 15, sky: 3 }
     );
     assert_eq!(
-        take_item_entity_pickup_light(
+        vanilla_entity_renderer_block_light(
             VANILLA_ENTITY_TYPE_ITEM_ID,
             TerrainLight { block: 6, sky: 12 }
         ),

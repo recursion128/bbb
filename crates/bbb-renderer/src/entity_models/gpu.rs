@@ -2644,6 +2644,7 @@ impl Renderer {
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
                 self.camera_sort_position(),
+                self.camera_pose,
             );
             self.entity_model_sorted_main_translucent_draws =
                 meshes.sorted_main_translucent_draws.clone();

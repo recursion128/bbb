@@ -1437,8 +1437,9 @@ back into a todo. Do not delete these.
   and exact once the canonical projectile box separates; completing per-subclass
   client motion will make that separation occur at vanilla's intermediate tick
   instead of the next authoritative transform update.
-- **Dedicated dragon-fireball / fishing-hook / experience-orb renderers**: their
-  textured camera quads and renderer-specific lighting/tint/line behavior.
+- **Dedicated dragon-fireball / fishing-hook renderers**: their textured camera
+  quads and renderer-specific lighting/line behavior (the experience-orb billboard
+  quad, sine tint, and +7 block-light override are done).
 - **Minecart spawner animated block-entity display content.** Classified as
   block-entity special renderer presentation.
 ## GPU and resources

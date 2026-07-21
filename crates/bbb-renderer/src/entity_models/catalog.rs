@@ -380,6 +380,13 @@ pub enum EntityModelKind {
         front: EntityDynamicTexture,
         back: EntityDynamicTexture,
     },
+    /// Vanilla 26.1 `ExperienceOrbRenderer`: a camera-facing quad on the 4×4 icon sheet
+    /// `entity/experience/experience_orb.png`, submitted as
+    /// `RenderTypes.entityTranslucentCullItemTarget` with the red/blue sine tint cycling over the
+    /// orb's age. `icon` is `ExperienceOrb.getIcon()` derived from the synced orb value.
+    ExperienceOrb {
+        icon: i32,
+    },
     /// Vanilla 26.1 `BookModel` (`ModelLayers.BOOK`) submitted by the
     /// `EnchantTableRenderer` block-entity renderer — the enchanting table's
     /// hovering, page-flipping book on the `entity/enchantment/

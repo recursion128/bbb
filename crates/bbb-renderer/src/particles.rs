@@ -1211,6 +1211,7 @@ impl ParticleRuntimeState {
 mod instance;
 mod render;
 
+pub(crate) use render::camera_billboard_orientation;
 use render::*;
 
 #[cfg(test)]

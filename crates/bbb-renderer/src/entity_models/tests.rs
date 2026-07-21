@@ -416,6 +416,7 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         None,
         None,
         Some([0.0, 64.0, 0.0]),
+        None,
     );
     let far_only = entity_model_textured_meshes_with_dynamic_textures_for_camera(
         &[far],
@@ -423,6 +424,7 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         None,
         None,
         Some([0.0, 64.0, 0.0]),
+        None,
     );
     assert_eq!(
         near_only.item_entity_translucent_cull.vertices.len(),
@@ -435,6 +437,7 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         None,
         None,
         Some([0.0, 64.0, 0.0]),
+        None,
     );
     assert_eq!(sorted_from_origin.submissions.len(), 2);
     assert_eq!(
@@ -487,6 +490,7 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         None,
         None,
         Some([20.0, 64.0, 0.0]),
+        None,
     );
     let near_vertex_count = near_only.item_entity_translucent_cull.vertices.len();
     assert_eq!(
@@ -549,6 +553,7 @@ fn texture_backed_blended_draw_plan_preserves_cross_atlas_distance_order() {
         Some(&dynamic_atlas),
         None,
         Some([0.0, 64.0, 0.0]),
+        None,
     );
 
     assert_eq!(meshes.sorted_translucent_draws.len(), 2);

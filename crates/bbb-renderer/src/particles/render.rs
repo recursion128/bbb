@@ -633,6 +633,15 @@ fn experience_orb_pickup_particle_model_transform(
     pose: crate::CameraPose,
     position: [f32; 3],
 ) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(position) + Vec3::Y * 0.1)
+        * camera_billboard_orientation(pose)
+        * Mat4::from_scale(Vec3::splat(0.3))
+}
+
+/// Vanilla `mulPose(camera.orientation)`: the rotation that turns a quad in the local XY plane
+/// toward the camera, shared by billboard particles and the camera-facing entity quads
+/// (`ExperienceOrbRenderer`-style submits).
+pub(crate) fn camera_billboard_orientation(pose: crate::CameraPose) -> Mat4 {
     let axes = camera_billboard_axes(pose);
     let forward = axes.right.cross(axes.up).normalize_or_zero();
     let forward = if forward.length_squared() > 0.0 {
@@ -640,15 +649,12 @@ fn experience_orb_pickup_particle_model_transform(
     } else {
         Vec3::Z
     };
-    let orientation = Mat4::from_cols(
+    Mat4::from_cols(
         axes.right.extend(0.0),
         axes.up.extend(0.0),
         (-forward).extend(0.0),
         Vec3::ZERO.extend(1.0),
-    );
-    Mat4::from_translation(Vec3::from_array(position) + Vec3::Y * 0.1)
-        * orientation
-        * Mat4::from_scale(Vec3::splat(0.3))
+    )
 }
 
 pub(super) fn elder_guardian_particle_model_transform(

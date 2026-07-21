@@ -337,7 +337,15 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => EntityModelKind::EndCrystal,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => EntityModelKind::EvokerFangs,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
-            entity_type_bounds_placeholder("experience_orb_entity_type_bounds", 0.5, 0.5)
+            let value =
+                bbb_world::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+                    entity_type_id,
+                )
+                .map(|(data_id, default)| entity_data_int(data_values, data_id, default))
+                .unwrap_or_default();
+            EntityModelKind::ExperienceOrb {
+                icon: bbb_world::experience_orb_icon(value),
+            }
         }
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
             entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)

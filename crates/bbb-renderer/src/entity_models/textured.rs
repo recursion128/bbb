@@ -91,7 +91,7 @@ use super::{
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
-use crate::particles::ParticleItemPickupProjectileKind;
+use crate::particles::{camera_billboard_orientation, ParticleItemPickupProjectileKind};
 use glam::{Mat4, Quat, Vec3};
 use std::cmp::Ordering;
 
@@ -415,6 +415,10 @@ pub(super) struct EntityModelTexturedMeshes {
     pending_sorted_textured_uploads: Vec<PendingSortedTexturedUpload>,
     pending_sorted_scroll_uploads: Vec<PendingSortedScrollUpload>,
     sort_camera_position: Option<[f32; 3]>,
+    /// The camera pose at mesh-build time, consumed by camera-facing billboard renderers
+    /// (`ExperienceOrbRenderer`-style `mulPose(camera.orientation)` quads). The GPU path rebuilds
+    /// these meshes on every camera-pose change, so the baked orientation stays current.
+    camera_pose: Option<crate::CameraPose>,
     current_submission_light: [f32; 2],
     current_submission_overlay: [f32; 2],
     current_submission_outline_color: u32,
@@ -478,6 +482,7 @@ impl EntityModelTexturedMeshes {
             pending_sorted_textured_uploads: Vec::new(),
             pending_sorted_scroll_uploads: Vec::new(),
             sort_camera_position,
+            camera_pose: None,
             current_submission_light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             current_submission_overlay: ENTITY_VERTEX_NO_OVERLAY,
             current_submission_outline_color: 0,
@@ -1119,6 +1124,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
         None,
+        None,
     )
 }
 
@@ -1128,8 +1134,10 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     sort_camera_position: Option<[f32; 3]>,
+    camera_pose: Option<crate::CameraPose>,
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new(sort_camera_position);
+    meshes.camera_pose = camera_pose;
     for instance in instances {
         // Vanilla `EntityRenderer.submit` submits leash ropes before any model or layer work and
         // without the invisibility gates below, so the rope emits ahead of both dispatch branches.
@@ -1334,14 +1342,34 @@ fn append_experience_orb_pickup_particle_quad(
     instance: ExperienceOrbPickupParticleRenderInstance,
     texture_uv: EntityModelUvRect,
 ) {
-    let icon = instance.icon.clamp(0, 10);
+    let tint = experience_orb_pickup_particle_tint(instance.age_ticks);
+    append_experience_orb_quad(
+        mesh,
+        instance.transform,
+        instance.icon,
+        tint,
+        instance.light,
+        texture_uv,
+    );
+}
+
+/// Vanilla `ExperienceOrbRenderer.submit` quad: corners `(x - 0.5, y - 0.25, 0)` for x/y in
+/// {0, 1} on the 16px icon cell `icon = ExperienceOrb.getIcon()` of the 64×64
+/// `entity/experience/experience_orb.png` sheet.
+fn append_experience_orb_quad(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    icon: i32,
+    tint: [f32; 4],
+    light: [f32; 2],
+    texture_uv: EntityModelUvRect,
+) {
+    let icon = icon.clamp(0, 10);
     let icon_u0 = (icon % 4 * 16) as f32 / 64.0;
     let icon_u1 = (icon % 4 * 16 + 16) as f32 / 64.0;
     let icon_v0 = (icon / 4 * 16) as f32 / 64.0;
     let icon_v1 = (icon / 4 * 16 + 16) as f32 / 64.0;
-    let tint = experience_orb_pickup_particle_tint(instance.age_ticks);
-    let normal = instance
-        .transform
+    let normal = transform
         .transform_vector3(Vec3::Y)
         .normalize_or_zero()
         .to_array();
@@ -1364,12 +1392,10 @@ fn append_experience_orb_pickup_particle_quad(
             .copied()
             .zip(uvs.iter().copied())
             .map(|(corner, uv)| EntityModelTexturedVertex {
-                position: (instance.transform * corner.extend(1.0))
-                    .truncate()
-                    .to_array(),
+                position: (transform * corner.extend(1.0)).truncate().to_array(),
                 uv: normalized_entity_texture_uv(uv, texture_uv),
                 tint,
-                light: instance.light,
+                light,
                 overlay: ENTITY_VERTEX_NO_OVERLAY,
                 normal,
             }),
@@ -1384,6 +1410,41 @@ fn normalized_entity_texture_uv(uv: [f32; 2], rect: EntityModelUvRect) -> [f32; 
         rect.min[0] + uv[0] * (rect.max[0] - rect.min[0]),
         rect.min[1] + uv[1] * (rect.max[1] - rect.min[1]),
     ]
+}
+
+/// Vanilla 26.1 `ExperienceOrbRenderer.submit`: translate up 0.1, face the camera
+/// (`mulPose(camera.orientation)`), scale 0.3, and emit one icon quad as
+/// `RenderTypes.entityTranslucentCullItemTarget` with the age-driven red/blue sine tint at
+/// alpha 128. Without a camera pose (no frame rendered yet) the billboard has no orientation and
+/// is skipped; the mesh rebuild on the first camera update restores it.
+pub(in crate::entity_models) fn render_experience_orb(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let EntityModelKind::ExperienceOrb { icon } = instance.kind else {
+        return;
+    };
+    let Some(pose) = meshes.camera_pose else {
+        return;
+    };
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position) + Vec3::Y * 0.1)
+        * camera_billboard_orientation(pose)
+        * Mat4::from_scale(Vec3::splat(0.3));
+    let tint = experience_orb_pickup_particle_tint(instance.render_state.age_in_ticks);
+    let light = instance.render_state.shader_light();
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
+        EXPERIENCE_ORB_TEXTURE_REF,
+        tint,
+        transform,
+        0,
+        0,
+    )
+    .with_light(light);
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        append_experience_orb_quad(mesh, transform, icon, tint, light, entry.uv);
+    });
 }
 
 fn experience_orb_pickup_particle_tint(age_ticks: f32) -> [f32; 4] {

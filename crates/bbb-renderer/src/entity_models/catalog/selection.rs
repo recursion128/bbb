@@ -157,6 +157,7 @@ impl EntityModelKind {
             Self::DecoratedPot { .. } => "decorated_pot",
             Self::Banner { .. } => "banner",
             Self::PaintingTile { .. } => "painting_tile",
+            Self::ExperienceOrb { .. } => "experience_orb",
             Self::EnchantingBook => "enchanting_table_book",
             Self::LecternBook => "lectern_book",
             Self::Arrow { .. } => "arrow",
@@ -473,6 +474,7 @@ impl EntityModelKind {
             // `LecternRenderer` bind `EnchantTableRenderer.BOOK_TEXTURE`).
             Self::EnchantingBook | Self::LecternBook => Some(BOOK_TEXTURE_REF),
             Self::Trident => Some(TRIDENT_TEXTURE_REF),
+            Self::ExperienceOrb { .. } => Some(EXPERIENCE_ORB_TEXTURE_REF),
             Self::EvokerFangs => Some(EVOKER_FANGS_TEXTURE_REF),
             Self::Tadpole => Some(TADPOLE_TEXTURE_REF),
             Self::Creaking { .. } => Some(CREAKING_TEXTURE_REF),
