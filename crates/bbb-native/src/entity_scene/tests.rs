@@ -8519,20 +8519,12 @@ fn entity_model_kind_maps_all_vanilla_registry_ids() {
 
 #[test]
 fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placeholders() {
-    for (entity_type_id, name, width, height) in [
-        (
-            VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
-            "dragon_fireball_entity_type_bounds",
-            1.0,
-            1.0,
-        ),
-        (
-            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-            "fishing_bobber_entity_type_bounds",
-            0.25,
-            0.25,
-        ),
-    ] {
+    for (entity_type_id, name, width, height) in [(
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        "fishing_bobber_entity_type_bounds",
+        0.25,
+        0.25,
+    )] {
         assert_eq!(
             entity_model_kind(entity_type_id, &[]),
             EntityModelKind::Placeholder {
@@ -8928,6 +8920,22 @@ fn entity_model_kind_maps_vex_to_real_model() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_VEX_ID, &charging_values),
         EntityModelKind::Vex { charging: true }
+    );
+}
+
+#[test]
+fn entity_model_kind_maps_dragon_fireball_to_billboard_quad() {
+    // The dragon fireball was a placeholder render box; it now resolves to the camera-facing
+    // `DragonFireballRenderer` full-sheet quad. Its constant block light 15 already rides the
+    // generated static-full-bright renderer catalog.
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, &[]),
+        EntityModelKind::DragonFireball
+    );
+    assert!(
+        bbb_world::vanilla_entity_renderer_has_static_full_block_light(
+            VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID
+        )
     );
 }
 

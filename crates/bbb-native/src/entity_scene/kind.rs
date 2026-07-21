@@ -291,9 +291,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID => {
             placeholder("todo_block_display_bounds", 1.0, 1.0, 1.0)
         }
-        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => {
-            entity_type_bounds_placeholder("dragon_fireball_entity_type_bounds", 1.0, 1.0)
-        }
+        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => EntityModelKind::DragonFireball,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => EntityModelKind::EnderDragon,
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => EntityModelKind::Armadillo {

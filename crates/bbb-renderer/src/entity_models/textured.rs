@@ -58,10 +58,11 @@ use super::{
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
         BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
-        ENDER_DRAGON_EXPLODING_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        END_PORTAL_TEXTURE_REF, END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
-        EQUINE_STANDARD_LEG_STAND_CONFIG, EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, DRAGON_FIREBALL_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_PORTAL_TEXTURE_REF,
+        END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
+        EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -1353,9 +1354,9 @@ fn append_experience_orb_pickup_particle_quad(
     );
 }
 
-/// Vanilla `ExperienceOrbRenderer.submit` quad: corners `(x - 0.5, y - 0.25, 0)` for x/y in
-/// {0, 1} on the 16px icon cell `icon = ExperienceOrb.getIcon()` of the 64×64
-/// `entity/experience/experience_orb.png` sheet.
+/// Vanilla `ExperienceOrbRenderer.submit` quad: the shared billboard corners on the 16px icon
+/// cell `icon = ExperienceOrb.getIcon()` of the 64×64 `entity/experience/experience_orb.png`
+/// sheet.
 fn append_experience_orb_quad(
     mesh: &mut EntityModelTexturedMesh,
     transform: Mat4,
@@ -1369,6 +1370,32 @@ fn append_experience_orb_quad(
     let icon_u1 = (icon % 4 * 16 + 16) as f32 / 64.0;
     let icon_v0 = (icon / 4 * 16) as f32 / 64.0;
     let icon_v1 = (icon / 4 * 16 + 16) as f32 / 64.0;
+    append_camera_billboard_quad(
+        mesh,
+        transform,
+        [
+            [icon_u0, icon_v1],
+            [icon_u1, icon_v1],
+            [icon_u1, icon_v0],
+            [icon_u0, icon_v0],
+        ],
+        tint,
+        light,
+        texture_uv,
+    );
+}
+
+/// The camera-billboard quad shared by vanilla `ExperienceOrbRenderer` and
+/// `DragonFireballRenderer` `vertex` helpers: corners `(x - 0.5, y - 0.25, 0)` for x/y in
+/// {0, 1} with a +Y normal, UVs supplied per renderer.
+fn append_camera_billboard_quad(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    uvs: [[f32; 2]; 4],
+    tint: [f32; 4],
+    light: [f32; 2],
+    texture_uv: EntityModelUvRect,
+) {
     let normal = transform
         .transform_vector3(Vec3::Y)
         .normalize_or_zero()
@@ -1378,12 +1405,6 @@ fn append_experience_orb_quad(
         Vec3::new(0.5, -0.25, 0.0),
         Vec3::new(0.5, 0.75, 0.0),
         Vec3::new(-0.5, 0.75, 0.0),
-    ];
-    let uvs = [
-        [icon_u0, icon_v1],
-        [icon_u1, icon_v1],
-        [icon_u1, icon_v0],
-        [icon_u0, icon_v0],
     ];
     let base = mesh.vertices.len() as u32;
     mesh.vertices.extend(
@@ -1444,6 +1465,48 @@ pub(in crate::entity_models) fn render_experience_orb(
     .with_light(light);
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         append_experience_orb_quad(mesh, transform, icon, tint, light, entry.uv);
+    });
+}
+
+/// Vanilla 26.1 `DragonFireballRenderer.submit`: scale 2, face the camera
+/// (`mulPose(camera.orientation)`), and emit one full-sheet white quad as
+/// `RenderTypes.entityCutout`. The constant `getBlockLightLevel` = 15 arrives through the
+/// instance light coords (generated static-full-bright renderer catalog). Without a camera pose
+/// (no frame rendered yet) the billboard has no orientation and is skipped; the mesh rebuild on
+/// the first camera update restores it.
+pub(in crate::entity_models) fn render_dragon_fireball(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::DragonFireball) {
+        return;
+    }
+    let Some(pose) = meshes.camera_pose else {
+        return;
+    };
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_scale(Vec3::splat(2.0))
+        * camera_billboard_orientation(pose);
+    let light = instance.render_state.shader_light();
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::EntityCutout,
+        DRAGON_FIREBALL_TEXTURE_REF,
+        [1.0; 4],
+        transform,
+        0,
+        0,
+    )
+    .with_light(light);
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        append_camera_billboard_quad(
+            mesh,
+            transform,
+            [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+            submit.tint,
+            light,
+            entry.uv,
+        );
     });
 }
 

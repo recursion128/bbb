@@ -102,11 +102,11 @@ use super::textured::{
     render_breeze_wind_scroll_model, render_camel_saddle_layer,
     render_charged_creeper_energy_swirl, render_custom_head_skull_layer,
     render_custom_head_skull_layer_with_root_transform, render_donkey_textured_layers,
-    render_end_crystal_beam, render_end_crystal_textured_layers, render_end_portal_block_model,
-    render_ender_dragon_beam, render_ender_dragon_death_rays, render_equine_body_armor_layer,
-    render_equine_saddle_layer, render_experience_orb, render_guardian_beam,
-    render_happy_ghast_harness_layer, render_horse_textured_layers, render_llama_decor_layer,
-    render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
+    render_dragon_fireball, render_end_crystal_beam, render_end_crystal_textured_layers,
+    render_end_portal_block_model, render_ender_dragon_beam, render_ender_dragon_death_rays,
+    render_equine_body_armor_layer, render_equine_saddle_layer, render_experience_orb,
+    render_guardian_beam, render_happy_ghast_harness_layer, render_horse_textured_layers,
+    render_llama_decor_layer, render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
     render_no_overlay_scrolled_textured_layers, render_painting_tile, render_pig_saddle_layer,
     render_player_cape_layer, render_player_extra_ears_layer,
     render_player_parrot_on_shoulder_layer, render_player_spin_attack_effect_layer,
@@ -207,6 +207,10 @@ pub(in crate::entity_models) trait EntityModelSink {
     /// Vanilla `ExperienceOrbRenderer.submit`: a camera-facing textured quad; the colored debug
     /// path has no billboard surface, so only the textured sink renders it.
     fn experience_orb(&mut self, _instance: &EntityModelInstance) {}
+
+    /// Vanilla `DragonFireballRenderer.submit`: a camera-facing textured quad; like the orb,
+    /// only the textured sink renders it.
+    fn dragon_fireball(&mut self, _instance: &EntityModelInstance) {}
 
     fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
         let passes =
@@ -708,6 +712,10 @@ impl EntityModelSink for TexturedSink<'_> {
 
     fn experience_orb(&mut self, instance: &EntityModelInstance) {
         render_experience_orb(self.meshes, *instance, self.atlas);
+    }
+
+    fn dragon_fireball(&mut self, instance: &EntityModelInstance) {
+        render_dragon_fireball(self.meshes, *instance, self.atlas);
     }
 
     fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
@@ -1945,6 +1953,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         ),
         EntityModelKind::PaintingTile { .. } => sink.painting_tile(instance),
         EntityModelKind::ExperienceOrb { .. } => sink.experience_orb(instance),
+        EntityModelKind::DragonFireball => sink.dragon_fireball(instance),
         EntityModelKind::EnchantingBook => sink.model(
             BookModel::new(),
             enchanting_table_book_model_root_transform(*instance),

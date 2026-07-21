@@ -113,6 +113,12 @@ pub fn experience_orb_entity_texture_refs() -> &'static [EntityModelTextureRef] 
     &EXPERIENCE_ORB_ENTITY_TEXTURE_REFS
 }
 
+pub(in crate::entity_models) const DRAGON_FIREBALL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/enderdragon/dragon_fireball.png",
+        size: [16, 16],
+    };
+
 pub(in crate::entity_models) fn default_player_skin_texture_ref(
     skin: EntityDefaultPlayerSkin,
 ) -> EntityModelTextureRef {
@@ -1235,7 +1241,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 707] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 708] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1255,6 +1261,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PLAYER_WIDE_SUNNY_TEXTURE_REF,
     PLAYER_WIDE_ZURI_TEXTURE_REF,
     EXPERIENCE_ORB_TEXTURE_REF,
+    DRAGON_FIREBALL_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
     SHEEP_BABY_TEXTURE_REF,
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,

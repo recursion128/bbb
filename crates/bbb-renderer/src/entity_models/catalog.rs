@@ -387,6 +387,11 @@ pub enum EntityModelKind {
     ExperienceOrb {
         icon: i32,
     },
+    /// Vanilla 26.1 `DragonFireballRenderer`: a camera-facing quad over the full
+    /// `entity/enderdragon/dragon_fireball.png` sheet at scale 2, submitted as
+    /// `RenderTypes.entityCutout`. Its constant `getBlockLightLevel` = 15 rides the generated
+    /// static-full-bright renderer catalog.
+    DragonFireball,
     /// Vanilla 26.1 `BookModel` (`ModelLayers.BOOK`) submitted by the
     /// `EnchantTableRenderer` block-entity renderer — the enchanting table's
     /// hovering, page-flipping book on the `entity/enchantment/

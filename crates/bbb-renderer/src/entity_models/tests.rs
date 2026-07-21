@@ -30,6 +30,7 @@ mod custom_head_skull;
 mod death;
 mod decorated_pot;
 mod dolphin;
+mod dragon_fireball;
 mod end_crystal;
 mod end_portal;
 mod ender_dragon;
