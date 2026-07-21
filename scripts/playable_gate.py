@@ -18,6 +18,7 @@ import sys
 import time
 import uuid
 import zipfile
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -136,8 +137,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 7:
-        raise GateFailure(f"playable evidence schema must be 7, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 8:
+        raise GateFailure(f"playable evidence schema must be 8, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -228,6 +229,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_chat_interaction(evidence.get("chat_interaction"))
     _validate_hotbar_interaction(evidence.get("hotbar_interaction"))
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
+    _validate_screenshot_readback(evidence.get("screenshot_readback"))
     _validate_lifecycle(evidence.get("lifecycle"))
 
 
@@ -578,6 +580,22 @@ def _validate_sound_particle_push(sound_particle_push: Any) -> None:
             raise GateFailure(
                 f"sound_particle_push.{key} must record at least one observed "
                 f"packet, got {value!r}"
+            )
+
+
+def _validate_screenshot_readback(screenshot_readback: Any) -> None:
+    """The readback smoke must observe two byte-identical, non-trivial
+    renderer frames, proving the presentation surface is deterministic."""
+
+    screenshot_readback = _object(screenshot_readback, "screenshot_readback")
+    if screenshot_readback.get("deterministic") is not True:
+        raise GateFailure("screenshot_readback.deterministic must be true")
+    for key, minimum in (("byte_size", 10_000), ("width", 1), ("height", 1)):
+        value = screenshot_readback.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+            raise GateFailure(
+                f"screenshot_readback.{key} must be an integer >= {minimum}, "
+                f"got {value!r}"
             )
 
 
@@ -1416,11 +1434,12 @@ def drive_entity_interaction(
     for dx, dz in ((2, 0), (-2, 0), (0, 2), (0, -2)):
         column_x = math.floor(float(position["x"])) + dx
         column_z = math.floor(float(position["z"])) + dz
-        body = _probe_block(address, column_x, feet_y, column_z)
-        head = _probe_block(address, column_x, feet_y + 1, column_z)
-        if _block_is_air(body) and _block_is_air(head):
-            summon = {"x": column_x + 0.5, "y": float(feet_y), "z": column_z + 0.5}
-            break
+        if not _line_of_sight_columns_clear(
+            address, position, dx, dz, feet_y
+        ):
+            continue
+        summon = {"x": column_x + 0.5, "y": float(feet_y), "z": column_z + 0.5}
+        break
     if summon is None:
         raise GateFailure("no clear two-block column near the player to summon into")
 
@@ -1522,6 +1541,28 @@ def drive_entity_interaction(
     }
 
 
+def _line_of_sight_columns_clear(
+    address: tuple[str, int],
+    position: dict[str, Any],
+    dx: int,
+    dz: int,
+    feet_y: int,
+) -> bool:
+    """A target column two blocks out is only usable when the intermediate
+    column is clear too: the crosshair ray leaves the player's eye and passes
+    through the neighboring column on the way down, so uneven terrain there
+    silently eats the click."""
+
+    for step in (1, 2):
+        column_x = math.floor(float(position["x"])) + dx * step // 2
+        column_z = math.floor(float(position["z"])) + dz * step // 2
+        body = _probe_block(address, column_x, feet_y, column_z)
+        head = _probe_block(address, column_x, feet_y + 1, column_z)
+        if not (_block_is_air(body) and _block_is_air(head)):
+            return False
+    return True
+
+
 def _open_container(address: tuple[str, int]) -> dict[str, Any] | None:
     inventory = _control_request(address, "world.client_inventory")
     if not isinstance(inventory, dict):
@@ -1568,11 +1609,12 @@ def drive_container_interaction(
     for dx, dz in ((2, 0), (-2, 0), (0, 2), (0, -2)):
         column_x = math.floor(float(position["x"])) + dx
         column_z = math.floor(float(position["z"])) + dz
-        body = _probe_block(address, column_x, feet_y, column_z)
-        head = _probe_block(address, column_x, feet_y + 1, column_z)
-        if _block_is_air(body) and _block_is_air(head):
-            chest = {"x": column_x, "y": feet_y, "z": column_z}
-            break
+        if not _line_of_sight_columns_clear(
+            address, position, dx, dz, feet_y
+        ):
+            continue
+        chest = {"x": column_x, "y": feet_y, "z": column_z}
+        break
     if chest is None:
         raise GateFailure("no clear two-block column near the player for the chest")
 
@@ -1971,6 +2013,196 @@ def drive_sound_particle_push(
             address, "level_particles_packets"
         )
         - particle_packets_before,
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
+def _png_dimensions(data: bytes) -> tuple[int, int]:
+    if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+        raise GateFailure("screenshot readback did not produce a PNG file")
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    return width, height
+
+
+def _decode_png_rgba(data: bytes) -> tuple[int, int, bytes]:
+    """Minimal stdlib decoder for the renderer's 8-bit RGBA screenshots."""
+
+    width, height = _png_dimensions(data)
+    pos = 8
+    idat = b""
+    while pos + 12 <= len(data):
+        length = int.from_bytes(data[pos : pos + 4], "big")
+        chunk_type = data[pos + 4 : pos + 8]
+        if chunk_type == b"IHDR":
+            if data[pos + 16] != 8 or data[pos + 17] != 6:
+                raise GateFailure("screenshot PNG is not 8-bit RGBA")
+        elif chunk_type == b"IDAT":
+            idat += data[pos + 8 : pos + 8 + length]
+        pos += 12 + length
+    raw = zlib.decompress(idat)
+    stride = width * 4
+    out = bytearray(width * height * 4)
+    previous = bytearray(stride)
+    pos = 0
+    for y in range(height):
+        line_filter = raw[pos]
+        pos += 1
+        line = bytearray(raw[pos : pos + stride])
+        pos += stride
+        if line_filter == 1:
+            for i in range(4, stride):
+                line[i] = (line[i] + line[i - 4]) & 255
+        elif line_filter == 2:
+            for i in range(stride):
+                line[i] = (line[i] + previous[i]) & 255
+        elif line_filter == 3:
+            for i in range(stride):
+                left = line[i - 4] if i >= 4 else 0
+                line[i] = (line[i] + ((left + previous[i]) >> 1)) & 255
+        elif line_filter == 4:
+            for i in range(stride):
+                left = line[i - 4] if i >= 4 else 0
+                above = previous[i]
+                corner = previous[i - 4] if i >= 4 else 0
+                estimate = left + above - corner
+                d_left = abs(estimate - left)
+                d_above = abs(estimate - above)
+                d_corner = abs(estimate - corner)
+                if d_left <= d_above and d_left <= d_corner:
+                    predictor = left
+                elif d_above <= d_corner:
+                    predictor = above
+                else:
+                    predictor = corner
+                line[i] = (line[i] + predictor) & 255
+        out[y * stride : (y + 1) * stride] = line
+        previous = line
+    return width, height, bytes(out)
+
+
+def _frames_match_within_flicker(first: bytes, second: bytes) -> tuple[bool, int]:
+    """Vanilla's lightmap `blockLightFlicker` random-walks every tick, so a
+    frozen scene still jitters by one least-significant bit per channel.
+    Compare at 7-bit depth (any real change moves a channel by >= 2) and
+    report how many pixels differed only in that vanilla flicker bit."""
+
+    _, _, pixels_a = _decode_png_rgba(first)
+    width, height, pixels_b = _decode_png_rgba(second)
+    if len(pixels_a) != len(pixels_b):
+        return False, 0
+    flicker_pixels = 0
+    for offset in range(0, len(pixels_a), 4):
+        pixel_a = pixels_a[offset : offset + 4]
+        pixel_b = pixels_b[offset : offset + 4]
+        if pixel_a == pixel_b:
+            continue
+        for channel_a, channel_b in zip(pixel_a, pixel_b):
+            if abs(channel_a - channel_b) > 1:
+                return False, flicker_pixels
+        flicker_pixels += 1
+    _ = (width, height)
+    return True, flicker_pixels
+
+
+def _capture_screenshot(
+    address: tuple[str, int], path: Path, deadline: float
+) -> bytes:
+    path.unlink(missing_ok=True)
+    _control_request(address, "renderer.screenshot", {"path": str(path)})
+
+    def _settled_bytes() -> bytes | None:
+        if not path.exists():
+            return None
+        first = path.stat().st_size
+        if first == 0:
+            return None
+        time.sleep(0.2)
+        if path.stat().st_size != first:
+            return None
+        return path.read_bytes()
+
+    return _await_value(
+        deadline,
+        f"the screenshot at {path.name} to be written",
+        _settled_bytes,
+        lambda data: data is not None,
+    )
+
+
+def drive_screenshot_readback(
+    address: tuple[str, int],
+    server_command: Path,
+    artifact_dir: Path,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    """Freeze every server-driven animation source, aim the crosshair
+    straight down (clouds drift with game time even when the daylight cycle
+    is frozen, so the sky must stay out of frame), and require two spaced
+    renderer readbacks to be byte-identical and non-trivial."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    _control_request(address, "input.focus", {"focused": True})
+
+    for command in (
+        "kill @e[type=!minecraft:player]",
+        "gamerule doMobSpawning false",
+        "weather clear",
+        "gamerule doWeatherCycle false",
+        "time set noon",
+        "gamerule doDaylightCycle false",
+    ):
+        _server_console_command(server_command, command)
+
+    _look_to_pitch(address, 90.0, deadline)
+
+    attempts = 0
+    first = b""
+    deterministic = False
+    exact = False
+    flicker_pixels = 0
+    while time.monotonic() < deadline:
+        attempts += 1
+        first = _capture_screenshot(
+            address, artifact_dir / "screenshot-a.png", deadline
+        )
+        time.sleep(0.6)
+        second = _capture_screenshot(
+            address, artifact_dir / "screenshot-b.png", deadline
+        )
+        if first == second:
+            deterministic = True
+            exact = True
+            break
+        matched, flicker_pixels = _frames_match_within_flicker(first, second)
+        if matched:
+            deterministic = True
+            break
+        # Transient effects (chat fade, lingering particles, late terrain
+        # uploads) settle between rounds; keep re-shooting until stable.
+        time.sleep(1.0)
+    if not deterministic:
+        raise GateFailure(
+            f"renderer readbacks never converged to identical frames "
+            f"after {attempts} attempts"
+        )
+
+    width, height = _png_dimensions(first)
+    if len(first) < 10_000:
+        raise GateFailure(
+            "screenshot readback looks trivial: "
+            f"{len(first)} bytes for {width}x{height}"
+        )
+
+    return {
+        "deterministic": True,
+        "exact": exact,
+        "lightmap_flicker_pixels": flicker_pixels,
+        "attempts": attempts,
+        "byte_size": len(first),
+        "width": width,
+        "height": height,
         "duration_seconds": time.monotonic() - started_at,
     }
 
@@ -2548,7 +2780,7 @@ def collect_live(args: argparse.Namespace) -> None:
         time.sleep(0.1)
     else:
         evidence = {
-            "schema": 7,
+            "schema": 8,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2561,6 +2793,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "chat_interaction": None,
             "hotbar_interaction": None,
             "sound_particle_push": None,
+            "screenshot_readback": None,
             "lifecycle": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
@@ -2580,6 +2813,7 @@ def collect_live(args: argparse.Namespace) -> None:
     chat_interaction: dict[str, Any] | None = None
     hotbar_interaction: dict[str, Any] | None = None
     sound_particle_push: dict[str, Any] | None = None
+    screenshot_readback: dict[str, Any] | None = None
     lifecycle: dict[str, Any] | None = None
     try:
         _await_control_stability(address, deadline)
@@ -2604,6 +2838,9 @@ def collect_live(args: argparse.Namespace) -> None:
         sound_particle_push = drive_sound_particle_push(
             address, args.server_command, min(60.0, float(args.timeout))
         )
+        screenshot_readback = drive_screenshot_readback(
+            address, args.server_command, args.output.parent, min(90.0, float(args.timeout))
+        )
         lifecycle = {}
         lifecycle = drive_session_lifecycle(
             address,
@@ -2624,7 +2861,7 @@ def collect_live(args: argparse.Namespace) -> None:
             else f"control-driven gameplay failed: {error}"
         )
         evidence = {
-            "schema": 7,
+            "schema": 8,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2637,6 +2874,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "chat_interaction": chat_interaction,
             "hotbar_interaction": hotbar_interaction,
             "sound_particle_push": sound_particle_push,
+            "screenshot_readback": screenshot_readback,
             "lifecycle": lifecycle,
             "failure": failure,
             "artifacts": {
@@ -2654,7 +2892,7 @@ def collect_live(args: argparse.Namespace) -> None:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
         evidence = {
-            "schema": 7,
+            "schema": 8,
             "mode": "live",
             "vanilla_version": "26.1",
             "timeline": [],
@@ -2667,6 +2905,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "chat_interaction": chat_interaction,
             "hotbar_interaction": hotbar_interaction,
             "sound_particle_push": sound_particle_push,
+            "screenshot_readback": screenshot_readback,
             "lifecycle": lifecycle,
             "failure": str(error),
             "artifacts": {
@@ -2679,7 +2918,7 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise
     evidence = {
-        "schema": 7,
+        "schema": 8,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,
@@ -2692,6 +2931,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "chat_interaction": chat_interaction,
         "hotbar_interaction": hotbar_interaction,
         "sound_particle_push": sound_particle_push,
+        "screenshot_readback": screenshot_readback,
         "lifecycle": lifecycle,
         "artifacts": {
             "timeline": str(args.client_log),

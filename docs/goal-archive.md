@@ -113,4 +113,8 @@
   evidence schema 6，live 实跑全绿）与声音/粒子推送场景（server console
   playsound/particle → canonical sound_packets+last_sound 精确
   volume/pitch/位置 + level_particles_packets 计数，evidence schema 7，
-  live 实跑全绿）。
+  live 实跑全绿）与 deterministic screenshot 场景（冻结全部服务端动画源 +
+  pitch-90 排除云漂移，双帧 readback 按 7-bit 位深比较——vanilla lightmap
+  blockLightFlicker 每 tick 随机游走使 ±1 LSB 抖动成为语义本身；顺带修
+  场景列探测缺中间列视线检查的间歇失败，evidence schema 8，live 实跑
+  全绿）。

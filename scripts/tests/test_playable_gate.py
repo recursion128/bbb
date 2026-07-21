@@ -325,6 +325,96 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_missing_screenshot_readback_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["screenshot_readback"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "screenshot_readback"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_nondeterministic_screenshot_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["screenshot_readback"]["deterministic"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "screenshot_readback.deterministic"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_trivial_screenshot_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["screenshot_readback"]["byte_size"] = 500
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "screenshot_readback.byte_size"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_png_dimension_parser_rejects_non_png(self):
+        with self.assertRaisesRegex(playable_gate.GateFailure, "PNG"):
+            playable_gate._png_dimensions(b"not a png at all")
+
+    def test_png_dimension_parser_reads_ihdr(self):
+        header = (
+            b"\x89PNG\r\n\x1a\n"
+            + (13).to_bytes(4, "big")
+            + b"IHDR"
+            + (1280).to_bytes(4, "big")
+            + (720).to_bytes(4, "big")
+        )
+        self.assertEqual(playable_gate._png_dimensions(header), (1280, 720))
+
+    @staticmethod
+    def _encode_rgba_png(width, height, pixels):
+        import zlib
+
+        raw = b""
+        stride = width * 4
+        for y in range(height):
+            raw += b"\x00" + pixels[y * stride : (y + 1) * stride]
+        ihdr = (
+            width.to_bytes(4, "big")
+            + height.to_bytes(4, "big")
+            + bytes([8, 6, 0, 0, 0])
+        )
+        idat = zlib.compress(raw)
+
+        def chunk(chunk_type, body):
+            return (
+                len(body).to_bytes(4, "big")
+                + chunk_type
+                + body
+                + zlib.crc32(chunk_type + body).to_bytes(4, "big")
+            )
+
+        return (
+            b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", ihdr)
+            + chunk(b"IDAT", idat)
+            + chunk(b"IEND", b"")
+        )
+
+    def test_flicker_tolerance_accepts_one_bit_lightmap_jitter(self):
+        base = bytes([100, 120, 140, 255] * 4)
+        jittered = bytes([99, 120, 140, 255] + [100, 120, 140, 255] * 3)
+        first = self._encode_rgba_png(2, 2, base)
+        second = self._encode_rgba_png(2, 2, jittered)
+
+        matched, flicker_pixels = playable_gate._frames_match_within_flicker(
+            first, second
+        )
+        self.assertTrue(matched)
+        self.assertEqual(flicker_pixels, 1)
+
+    def test_flicker_tolerance_rejects_real_content_changes(self):
+        base = bytes([100, 120, 140, 255] * 4)
+        changed = bytes([100, 120, 140, 255] * 3 + [110, 120, 140, 255])
+        first = self._encode_rgba_png(2, 2, base)
+        second = self._encode_rgba_png(2, 2, changed)
+
+        matched, _ = playable_gate._frames_match_within_flicker(first, second)
+        self.assertFalse(matched)
+
 
 class PlayableGateLifecycleTests(unittest.TestCase):
     def setUp(self):

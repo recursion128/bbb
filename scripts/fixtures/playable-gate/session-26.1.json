@@ -185,7 +185,17 @@
    "z": -1.5
   }
  },
- "schema": 7,
+ "schema": 8,
+ "screenshot_readback": {
+  "attempts": 1,
+  "byte_size": 412345,
+  "deterministic": true,
+  "duration_seconds": 3.4,
+  "exact": false,
+  "height": 720,
+  "lightmap_flicker_pixels": 532,
+  "width": 1280
+ },
  "sound_particle_push": {
   "duration_seconds": 0.6,
   "level_particles_packets_delta": 1,
