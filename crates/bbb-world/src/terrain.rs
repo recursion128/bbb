@@ -347,6 +347,15 @@ pub(crate) fn vanilla_block_speed_factor(block_name: Option<&str>) -> f32 {
         .unwrap_or(1.0)
 }
 
+/// Vanilla `BlockBehaviour.Properties.jumpFactor`: `1.0F` except for the
+/// Honey Block registration's exact `0.5F` override in `Blocks.java`.
+pub(crate) fn vanilla_block_jump_factor(block_name: Option<&str>) -> f32 {
+    match block_name {
+        Some("minecraft:honey_block") => 0.5,
+        _ => 1.0,
+    }
+}
+
 pub fn block_name_should_spawn_terrain_particles(name: &str) -> bool {
     !VANILLA_NO_TERRAIN_PARTICLE_BLOCKS.contains(&name)
 }
@@ -665,6 +674,16 @@ mod tests {
             0.4
         );
         assert_eq!(vanilla_block_speed_factor(None), 1.0);
+    }
+
+    #[test]
+    fn block_jump_factor_matches_vanilla_honey_override_and_default() {
+        assert_eq!(
+            vanilla_block_jump_factor(Some("minecraft:honey_block")),
+            0.5
+        );
+        assert_eq!(vanilla_block_jump_factor(Some("minecraft:stone")), 1.0);
+        assert_eq!(vanilla_block_jump_factor(None), 1.0);
     }
 
     #[test]

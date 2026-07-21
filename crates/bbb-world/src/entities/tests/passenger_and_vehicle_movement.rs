@@ -1471,6 +1471,116 @@ fn local_abstract_horse_movement_isolates_retained_publication() {
 }
 
 #[test]
+fn local_abstract_horse_jump_release_is_retained_then_consumed_by_ridden_tick() {
+    let mut store = locally_controlled_horse();
+    store.set_local_player_pose(crate::LocalPlayerPoseState {
+        y_rot: 90.0,
+        ..crate::LocalPlayerPoseState::default()
+    });
+    store.entities.with_transform_mut(10, |transform| {
+        transform.on_ground = Some(true);
+    });
+    let generation_a = store.publication_snapshot();
+    let before = store.entities.transform(10).unwrap();
+
+    assert!(store.apply_local_player_riding_jump(45));
+    let pending = store.entities.ridden_jump_state(10).unwrap();
+    assert!((pending.player_jump_pending_scale - 0.6).abs() < 1.0e-6);
+    assert!(pending.allow_stand_sliding);
+    assert_eq!(pending.local_stand_ticks_remaining, 20);
+    let accessors = vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    )
+    .unwrap();
+    assert_ne!(
+        store
+            .entities
+            .metadata_byte(10, accessors.flags_data_id, accessors.flags_default)
+            .unwrap()
+            & accessors.standing_mask,
+        0
+    );
+
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+    let jump_strength = store
+        .entities
+        .attribute_value(
+            10,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID,
+        )
+        .unwrap();
+    let expected_impulse = jump_strength * 0.6;
+    assert!((after.position.y - (before.position.y + expected_impulse)).abs() < 1.0e-6);
+    assert!(after.position.x < before.position.x - 0.23);
+    assert_eq!(
+        store
+            .entities
+            .ridden_jump_state(10)
+            .unwrap()
+            .player_jump_pending_scale,
+        0.0
+    );
+
+    assert_eq!(
+        generation_a
+            .entities
+            .ridden_jump_state(10)
+            .unwrap()
+            .player_jump_pending_scale,
+        0.0
+    );
+    assert_eq!(generation_a.entities.transform(10).unwrap(), before);
+}
+
+#[test]
+fn zero_riding_jump_still_uses_vanilla_minimum_horse_scale() {
+    let mut store = locally_controlled_horse();
+    assert!(store.apply_local_player_riding_jump(0));
+    let state = store.entities.ridden_jump_state(10).unwrap();
+    assert_eq!(state.player_jump_pending_scale, 0.4);
+    assert!(state.allow_stand_sliding);
+}
+
+#[test]
+fn recreated_horse_id_does_not_retain_local_riding_jump_state() {
+    let mut store = locally_controlled_horse();
+    assert!(store.apply_local_player_riding_jump(90));
+    assert_eq!(
+        store
+            .entities
+            .ridden_jump_state(10)
+            .unwrap()
+            .player_jump_pending_scale,
+        1.0
+    );
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![10],
+        }),
+        1
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    assert_eq!(
+        store.entities.ridden_jump_state(10).unwrap(),
+        super::super::animations::RiddenJumpState::default()
+    );
+}
+
+#[test]
 fn local_abstract_horse_water_travel_uses_generated_ridden_float_tag() {
     let mut store = locally_controlled_horse();
     store.insert_decoded_chunk(empty_test_chunk());

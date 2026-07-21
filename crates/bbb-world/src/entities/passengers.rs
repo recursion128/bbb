@@ -5,10 +5,13 @@ use bbb_protocol::packets::{
 use bbb_protocol::{
     attribute_types::{
         VANILLA_ATTRIBUTE_FLYING_SPEED_ID, VANILLA_ATTRIBUTE_GRAVITY_ID,
-        VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID,
-        VANILLA_ATTRIBUTE_STEP_HEIGHT_ID, VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID,
+        VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID, VANILLA_ATTRIBUTE_STEP_HEIGHT_ID,
+        VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID,
     },
-    entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    entity_data_serializers::{
+        VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    },
     entity_types::{
         vanilla_entity_type_can_float_while_ridden, vanilla_entity_type_is_non_controlling_rider,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID,
@@ -17,8 +20,8 @@ use bbb_protocol::{
     },
     item_types::{VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID},
     mob_effect_types::{
-        VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID, VANILLA_MOB_EFFECT_LEVITATION_ID,
-        VANILLA_MOB_EFFECT_SLOW_FALLING_ID,
+        VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
+        VANILLA_MOB_EFFECT_LEVITATION_ID, VANILLA_MOB_EFFECT_SLOW_FALLING_ID,
     },
 };
 
@@ -537,10 +540,9 @@ impl WorldStore {
         })
     }
 
-    /// Advances a directly controlled non-Camel `AbstractHorse` through
-    /// `LivingEntity.travelRidden` and the shared air/fluid travel owner. Jump
-    /// charge and Camel dash remain separate canonical stages because Vanilla
-    /// retains those inputs across client ticks.
+    /// Advances a directly controlled non-Camel `AbstractHorse` through its
+    /// retained jump stage, `LivingEntity.travelRidden`, and the shared
+    /// air/fluid travel owner. Camel dash remains a separate subclass stage.
     pub fn advance_local_abstract_horse_vehicle_input(
         &mut self,
         input: LocalPlayerInputState,
@@ -598,12 +600,6 @@ impl WorldStore {
             as f32;
         let horse_accessors =
             vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)?;
-        let horse_flags = self.entities.metadata_byte(
-            vehicle_id,
-            horse_accessors.flags_data_id,
-            horse_accessors.flags_default,
-        )?;
-        let standing = horse_flags & horse_accessors.standing_mask != 0;
         let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
         let shared_flags = self.entities.metadata_byte(
             vehicle_id,
@@ -636,6 +632,82 @@ impl WorldStore {
             next_transform.old_y_rot = controller.y_rot;
             next_transform.x_rot = (controller.x_rot * 0.5).clamp(-90.0, 90.0);
             next_transform.y_head_rot = controller.y_rot;
+            let mut ridden_jump = self.entities.ridden_jump_state(vehicle_id)?;
+            let mut current_horse_flags = self.entities.metadata_byte(
+                vehicle_id,
+                horse_accessors.flags_data_id,
+                horse_accessors.flags_default,
+            )?;
+            let was_locally_standing = ridden_jump.local_stand_ticks_remaining > 0;
+            if was_locally_standing {
+                ridden_jump.local_stand_ticks_remaining -= 1;
+                if ridden_jump.local_stand_ticks_remaining == 0 {
+                    current_horse_flags &= !horse_accessors.standing_mask;
+                    let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
+                        set_metadata_byte(
+                            metadata,
+                            horse_accessors.flags_data_id,
+                            current_horse_flags,
+                        );
+                    });
+                }
+            }
+            let standing = current_horse_flags & horse_accessors.standing_mask != 0;
+            if !standing {
+                ridden_jump.allow_stand_sliding = false;
+                ridden_jump.local_stand_ticks_remaining = 0;
+            }
+            let on_ground = transform.on_ground.unwrap_or(false);
+            let input_this_tick = if on_ground
+                && ridden_jump.player_jump_pending_scale == 0.0
+                && standing
+                && !ridden_jump.allow_stand_sliding
+            {
+                HappyGhastInput {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                }
+            } else {
+                ridden_input
+            };
+            if on_ground {
+                if ridden_jump.player_jump_pending_scale > 0.0 {
+                    let amount = ridden_jump.player_jump_pending_scale;
+                    let mut impulse = self
+                        .entities
+                        .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID)?
+                        as f32
+                        * amount
+                        * entity_block_jump_factor(
+                            self,
+                            [
+                                next_transform.position.x,
+                                next_transform.position.y,
+                                next_transform.position.z,
+                            ],
+                            previous_supporting_block.main,
+                        );
+                    if let Some(amplifier) = self
+                        .entities
+                        .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_JUMP_BOOST_ID)
+                    {
+                        impulse += 0.1_f32 * (amplifier + 1) as f32;
+                    }
+                    next_transform.delta_movement.y = f64::from(impulse);
+                    if input_this_tick.z > 0.0 {
+                        let yaw = next_transform.y_rot * std::f32::consts::PI / 180.0;
+                        let sin = super::client_movement::vanilla_mth_sin(f64::from(yaw));
+                        let cos = super::client_movement::vanilla_mth_cos(f64::from(yaw));
+                        next_transform.delta_movement.x += f64::from(-0.4_f32 * sin * amount);
+                        next_transform.delta_movement.z += f64::from(0.4_f32 * cos * amount);
+                    }
+                }
+                ridden_jump.player_jump_pending_scale = 0.0;
+            }
+            let _ = self
+                .entities
+                .with_ridden_jump_state_mut(vehicle_id, |state| *state = ridden_jump);
             let position = [
                 next_transform.position.x,
                 next_transform.position.y,
@@ -656,15 +728,6 @@ impl WorldStore {
                 fluid_contact,
                 crate::client::local_player_lava_current_push_per_tick(self),
             );
-            let input_this_tick = if transform.on_ground.unwrap_or(false) && standing {
-                HappyGhastInput {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                }
-            } else {
-                ridden_input
-            };
             let is_falling = next_transform.delta_movement.y <= 0.0;
             let effective_gravity = if is_falling && slow_falling {
                 gravity.min(0.01)
@@ -912,6 +975,59 @@ impl WorldStore {
         self.entities
             .player_rideable_jumping_cooldown(vehicle_id, partial_ticks)
             .map(|cooldown| cooldown.max(0.0))
+    }
+
+    /// Applies the local `PlayerRideableJumping.onPlayerJump` call that
+    /// Vanilla performs immediately before sending `START_RIDING_JUMP`.
+    /// Horse-family state is retained canonically until its ridden tick;
+    /// Camel and Nautilus subclasses own their distinct dash stages.
+    pub fn apply_local_player_riding_jump(&mut self, jump_amount: i32) -> bool {
+        let Some(vehicle_id) = self.local_player_rideable_jumping_vehicle_id() else {
+            return false;
+        };
+        let Some(entity_type_id) = self.entities.entity_type_id(vehicle_id) else {
+            return false;
+        };
+        if !is_vanilla_abstract_horse_type(entity_type_id)
+            || vanilla_entity_metadata_type_is_camel(entity_type_id)
+        {
+            return false;
+        }
+        let Some(accessors) =
+            vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
+        else {
+            return false;
+        };
+        let should_stand = jump_amount >= 0;
+        let jump_amount = jump_amount.max(0);
+        let pending_scale = if jump_amount >= 90 {
+            1.0
+        } else {
+            0.4 + 0.4 * jump_amount as f32 / 90.0
+        };
+        let Some(()) = self
+            .entities
+            .with_ridden_jump_state_mut(vehicle_id, |state| {
+                state.player_jump_pending_scale = pending_scale;
+                if should_stand {
+                    state.allow_stand_sliding = true;
+                    state.local_stand_ticks_remaining = 20;
+                }
+            })
+        else {
+            return false;
+        };
+        let flags = self
+            .entities
+            .metadata_byte(vehicle_id, accessors.flags_data_id, accessors.flags_default)
+            .unwrap_or(accessors.flags_default);
+        if should_stand {
+            let flags = (flags & !accessors.eating_mask) | accessors.standing_mask;
+            let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
+                set_metadata_byte(metadata, accessors.flags_data_id, flags);
+            });
+        }
+        true
     }
 
     pub fn local_player_sprintable_vehicle_id(&self) -> Option<i32> {
@@ -1472,8 +1588,38 @@ fn entity_movement_block_friction(
     position: [f64; 3],
     supporting_block: Option<crate::BlockPos>,
 ) -> f32 {
+    let pos = entity_movement_effect_block_pos(world, position, supporting_block);
+    let block_name = world.probe_block(pos).and_then(|block| block.block_name);
+    crate::terrain::vanilla_block_friction(block_name.as_deref())
+}
+
+fn entity_block_jump_factor(
+    world: &WorldStore,
+    position: [f64; 3],
+    supporting_block: Option<crate::BlockPos>,
+) -> f32 {
+    let here = crate::BlockPos {
+        x: position[0].floor() as i32,
+        y: position[1].floor() as i32,
+        z: position[2].floor() as i32,
+    };
+    let here_name = world.probe_block(here).and_then(|block| block.block_name);
+    let here_factor = crate::terrain::vanilla_block_jump_factor(here_name.as_deref());
+    if here_factor != 1.0 {
+        return here_factor;
+    }
+    let below = entity_movement_effect_block_pos(world, position, supporting_block);
+    let below_name = world.probe_block(below).and_then(|block| block.block_name);
+    crate::terrain::vanilla_block_jump_factor(below_name.as_deref())
+}
+
+fn entity_movement_effect_block_pos(
+    world: &WorldStore,
+    position: [f64; 3],
+    supporting_block: Option<crate::BlockPos>,
+) -> crate::BlockPos {
     let position_y = (position[1] - f64::from(0.500001_f32)).floor() as i32;
-    let pos = if let Some(mut support) = supporting_block {
+    if let Some(mut support) = supporting_block {
         let keeps_support_y = world
             .probe_block(support)
             .and_then(|block| block.block_name)
@@ -1492,9 +1638,7 @@ fn entity_movement_block_friction(
             y: position_y,
             z: position[2].floor() as i32,
         }
-    };
-    let block_name = world.probe_block(pos).and_then(|block| block.block_name);
-    crate::terrain::vanilla_block_friction(block_name.as_deref())
+    }
 }
 
 fn float_boat(
@@ -1713,6 +1857,31 @@ fn set_metadata_bool(metadata: &mut super::components::EntityMetadata, data_id: 
         data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: EntityDataValueKind::Boolean(value),
+    };
+    if let Some(existing) = metadata
+        .data_values
+        .iter_mut()
+        .find(|existing| existing.data_id == data_id)
+    {
+        *existing = value;
+    } else {
+        metadata.data_values.push(value);
+        metadata.data_values.sort_by_key(|value| value.data_id);
+    }
+}
+
+fn set_metadata_byte(metadata: &mut super::components::EntityMetadata, data_id: u8, value: i8) {
+    if metadata.data_values.iter().any(|existing| {
+        existing.data_id == data_id
+            && existing.serializer_id == VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID
+            && existing.value == EntityDataValueKind::Byte(value)
+    }) {
+        return;
+    }
+    let value = EntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(value),
     };
     if let Some(existing) = metadata
         .data_values

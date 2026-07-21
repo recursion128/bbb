@@ -674,6 +674,28 @@ speedup over the absent path. Player jump-pending scale/stand sliding and Camel
 pose/dash cooldown remain retained-state stages; Pig/Strider boost and
 Nautilus travel also remain before phase-4 closure.
 
+The next ground-rideable stage adds the non-Camel `PlayerRideableJumping`
+release boundary without creating a vehicle-input side table. The existing
+canonical `EntityClientAnimationState` now owns the private pending jump
+scale, stand-sliding permission and locally started stand counter; immutable
+publications clone that state while its stable serde/probe shape remains
+unchanged. `LocalPlayer` release first applies `AbstractHorse.onPlayerJump`,
+including Vanilla's non-zero minimum `0.4` scale for command data `0`, and
+then queues `START_RIDING_JUMP` even for that zero value. The ridden tick
+consumes the scale only while grounded, uses the generated jump-strength
+attribute, shared exact Honey Block jump factor and narrow Jump Boost lookup,
+and applies Java-table yaw trig for the forward impulse before Living travel.
+The local stand flag/counter allows movement during the rearing window and is
+cleared after 20 ticks; a server-cleared flag cancels the local allowance.
+
+Focused tests cover same-tick release/consumption, packet-before-MoveVehicle
+ordering, zero-charge behavior, retained A/B publication isolation and same-id
+recreation. This keeps jump mutation in the canonical entity owner and adds
+no full `EntityState` projection or new publication payload. Camel's refusal,
+pose transition and dash/cooldown remain the immediate subclass stage; this
+commit is therefore a buildable phase-4 stage rather than the local-vehicle
+milestone boundary.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:

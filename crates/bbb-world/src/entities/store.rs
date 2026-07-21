@@ -106,7 +106,7 @@ use crate::entities::animations::{
     piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
     sniffer_can_play_digging_sound, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
-    GuardianAttackTargetTickInput, WitherHeadTargetRotations,
+    GuardianAttackTargetTickInput, RiddenJumpState, WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -841,6 +841,22 @@ impl EntityStore {
                 .animations
                 .camel_jump_cooldown(partial_ticks),
         )
+    }
+
+    pub(crate) fn ridden_jump_state(&self, id: i32) -> Option<RiddenJumpState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        animations.animations.ridden_jump
+    }
+
+    pub(crate) fn with_ridden_jump_state_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut RiddenJumpState) -> R,
+    ) -> Option<R> {
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.ridden_jump.as_mut().map(update)
+        })?
     }
 
     pub(crate) fn saddle_slot_contains_saddle_item(

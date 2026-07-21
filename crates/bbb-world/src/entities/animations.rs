@@ -41,7 +41,8 @@ use super::schema::{
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
-    vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
+    vanilla_entity_metadata_type_is_hoglin_base,
+    vanilla_entity_metadata_type_is_player_rideable_jumping, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
     vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type,
@@ -546,6 +547,22 @@ pub struct EntityClientAnimationState {
     /// phase, dry spike flicker, ambient bubbles, and dry jump in Java order.
     #[serde(skip)]
     pub(crate) guardian_client_random_seed: Option<u64>,
+    /// Client-local `PlayerRideableJumping` input retained between the local
+    /// player's release edge and the controlled vehicle's ridden tick. It is
+    /// cloned into immutable publications for old-generation isolation but is
+    /// omitted from the stable renderer/probe serialization shape.
+    #[serde(skip)]
+    pub(crate) ridden_jump: Option<RiddenJumpState>,
+}
+
+/// Vanilla `AbstractHorse.playerJumpPendingScale`, `allowStandSliding`, and
+/// the local `standCounter` started by `onPlayerJump`. This belongs to the
+/// canonical entity client-tick owner; it is not a parallel input cache.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct RiddenJumpState {
+    pub(crate) player_jump_pending_scale: f32,
+    pub(crate) allow_stand_sliding: bool,
+    pub(crate) local_stand_ticks_remaining: u8,
 }
 
 /// The client-observable `BaseSpawner` state owned by `MinecartSpawner`. Vanilla constructs it
@@ -3992,6 +4009,8 @@ impl EntityClientAnimationState {
                 ENDER_AMBIENT_RANDOM_SALT ^ entity_type_id as u64,
             ) as i64)
         });
+        self.ridden_jump = vanilla_entity_metadata_type_is_player_rideable_jumping(entity_type_id)
+            .then(RiddenJumpState::default);
     }
 
     pub(crate) fn item_bob_offset(&self) -> f32 {

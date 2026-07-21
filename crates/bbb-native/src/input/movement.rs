@@ -185,12 +185,16 @@ fn maybe_disable_grounded_flying(
 
 fn maybe_queue_riding_jump_command(
     input: &mut ClientInputState,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     dt_seconds: f64,
 ) {
-    if world.local_player_rideable_jumping_vehicle_id().is_none() {
+    if world.local_player_rideable_jumping_vehicle_id().is_none()
+        || world
+            .local_player_rideable_jumping_vehicle_cooldown(1.0)
+            .is_none_or(|cooldown| cooldown > 0.0)
+    {
         input.riding_jump_charge_seconds = None;
         return;
     }
@@ -212,26 +216,29 @@ fn maybe_queue_riding_jump_command(
 
 pub(super) fn queue_released_riding_jump_command(
     charge_seconds: Option<f64>,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
-    if world.local_player_rideable_jumping_vehicle_id().is_none() {
+    if world.local_player_rideable_jumping_vehicle_id().is_none()
+        || world
+            .local_player_rideable_jumping_vehicle_cooldown(1.0)
+            .is_none_or(|cooldown| cooldown > 0.0)
+    {
         return;
     }
     let Some(charge_seconds) = charge_seconds else {
         return;
     };
     let jump_data = riding_jump_command_data(charge_seconds);
-    if jump_data > 0 {
-        queue_player_command_action(
-            counters,
-            world,
-            net_commands,
-            PlayerCommandAction::StartRidingJump,
-            jump_data,
-        );
-    }
+    let _ = world.apply_local_player_riding_jump(jump_data);
+    queue_player_command_action(
+        counters,
+        world,
+        net_commands,
+        PlayerCommandAction::StartRidingJump,
+        jump_data,
+    );
 }
 
 fn maybe_queue_vehicle_commands(
@@ -1335,6 +1342,25 @@ mod tests {
         assert_eq!(command.action, PlayerCommandAction::StartRidingJump);
         assert_eq!(command.data, 20);
         assert!(matches!(rx.try_recv().unwrap(), NetCommand::MoveVehicle(_)));
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_command_commands_queued, 1);
+    }
+
+    #[test]
+    fn zero_charge_riding_jump_release_still_queues_vanilla_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_HORSE_ID);
+        let mut counters = NetCounters::default();
+
+        queue_released_riding_jump_command(Some(0.0), &mut world, &mut counters, &commands);
+
+        let command = match rx.try_recv().unwrap() {
+            NetCommand::PlayerCommand(command) => command,
+            other => panic!("expected zero-charge riding jump command, got {other:?}"),
+        };
+        assert_eq!(command.action, PlayerCommandAction::StartRidingJump);
+        assert_eq!(command.data, 0);
         assert!(rx.try_recv().is_err());
         assert_eq!(counters.player_command_commands_queued, 1);
     }

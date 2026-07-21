@@ -96,6 +96,7 @@ const LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME: &str = "minecraft:powder_snow";
 const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE: f64 = -0.05;
 const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
+#[cfg(test)]
 const HONEY_BLOCK_JUMP_FACTOR: f64 = 0.5;
 const DEFAULT_BLOCK_JUMP_FACTOR: f64 = 1.0;
 const SPRINT_JUMP_HORIZONTAL_IMPULSE: f64 = 0.2;
@@ -934,7 +935,12 @@ fn local_player_block_jump_factor(world: &WorldStore, pose: LocalPlayerPoseState
     };
     let here_factor = world
         .probe_block(here_pos)
-        .and_then(|block| block.block_name.as_deref().map(block_jump_factor))
+        .and_then(|block| {
+            block
+                .block_name
+                .as_deref()
+                .map(|name| f64::from(crate::terrain::vanilla_block_jump_factor(Some(name))))
+        })
         .unwrap_or(DEFAULT_BLOCK_JUMP_FACTOR);
     if (here_factor - DEFAULT_BLOCK_JUMP_FACTOR).abs() > f64::EPSILON {
         return here_factor;
@@ -946,15 +952,13 @@ fn local_player_block_jump_factor(world: &WorldStore, pose: LocalPlayerPoseState
     };
     world
         .probe_block(below_pos)
-        .and_then(|block| block.block_name.as_deref().map(block_jump_factor))
+        .and_then(|block| {
+            block
+                .block_name
+                .as_deref()
+                .map(|name| f64::from(crate::terrain::vanilla_block_jump_factor(Some(name))))
+        })
         .unwrap_or(DEFAULT_BLOCK_JUMP_FACTOR)
-}
-
-fn block_jump_factor(block_name: &str) -> f64 {
-    match block_name {
-        "minecraft:honey_block" => HONEY_BLOCK_JUMP_FACTOR,
-        _ => DEFAULT_BLOCK_JUMP_FACTOR,
-    }
 }
 
 fn local_player_standing_on_block(
