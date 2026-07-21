@@ -197,6 +197,9 @@ impl WorldStore {
             .and_then(|mount| mount.passengers.first().copied())
             .is_some_and(|passenger| self.entity_id_is_player(passenger));
         let controls = BoatInput::from_local_input(input);
+        let entity_collision_targets = (ticks > 0)
+            .then(|| self.entities.vehicle_entity_collision_targets())
+            .unwrap_or_default();
         for _ in 0..ticks {
             let transform = self.entities.transform(vehicle_id)?;
             let mut movement = self.entities.boat_movement(vehicle_id)?;
@@ -237,17 +240,21 @@ impl WorldStore {
             let mut next_transform = transform;
             float_boat(
                 self,
+                vehicle_id,
                 entity_type_id,
                 relative_min,
                 relative_max,
                 no_gravity,
                 first_passenger_is_player,
+                &entity_collision_targets,
                 &mut movement,
                 &mut next_transform,
             );
             control_boat(controls, &mut movement, &mut next_transform);
             let requested = next_transform.delta_movement;
-            let clipped = self.clip_entity_collision_movement(
+            let clipped = self.clip_boat_collision_movement(
+                vehicle_id,
+                entity_type_id,
                 [
                     next_transform.position.x,
                     next_transform.position.y,
@@ -256,6 +263,7 @@ impl WorldStore {
                 [requested.x, requested.y, requested.z],
                 relative_min,
                 relative_max,
+                &entity_collision_targets,
             );
             next_transform.position.x += clipped[0];
             next_transform.position.y += clipped[1];
@@ -700,11 +708,13 @@ impl BoatInput {
 
 fn float_boat(
     world: &WorldStore,
+    entity_id: i32,
     entity_type_id: i32,
     relative_min: [f64; 3],
     relative_max: [f64; 3],
     no_gravity: bool,
     first_passenger_is_player: bool,
+    entity_collision_targets: &[super::EntityPickTargetState],
     movement: &mut super::components::EntityBoatMovement,
     transform: &mut super::components::EntityTransform,
 ) {
@@ -728,11 +738,13 @@ fn float_boat(
                 + 0.101;
         let target_position = [transform.position.x, target_y, transform.position.z];
         if world.entity_collision_bounds_are_free(
+            entity_id,
             entity_type_id,
             target_position,
             relative_min,
             relative_max,
             transform.on_ground.unwrap_or(false),
+            entity_collision_targets,
         ) {
             transform.position.y = target_y;
             transform.delta_movement.y = 0.0;

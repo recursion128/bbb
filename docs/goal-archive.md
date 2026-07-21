@@ -20081,3 +20081,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   1,000 passenger + publication 3.6756 ms 且在 Criterion noise threshold 内。full run 的
   Zombie control 同步慢约 2-3%，因此最终 phase-4
   closeout 仍会在稳定负载下重采，不把机器漂移误归因于 boat component。
+
+## 2026-07-20：locally controlled boat exact collision
+
+- [x] local root boat 的 `Entity.move` 现在从一次 narrow hecs target batch 消费 generated
+  collidability/pushability catalog，并按 Vanilla 轴序共同裁剪 block、entity 与 world-border
+  collision shape；spectator 与 same-root-vehicle target 在大 payload 投影前排除。
+- [x] air-to-water snap 的 `noCollision` 同步覆盖 entity 与 border；专项测试锁定普通 collider、
+  spectator、同载具 passenger、border、snap guard，未引入 full `EntityState` 或平行 type 表。
+- [x] 同机 moving-boat Criterion 从 1.1205/5.8637 us 变为 physics-only 1.3802 us、
+  physics + retained publication 6.1161 us（+23.3%/+4.46%）。新增绝对成本归属 narrow collision
+  query，而非推迟到 publication；后续统一 local travel owner 时仍应复用 target scratch。

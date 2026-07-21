@@ -1560,6 +1560,146 @@ fn local_boat_first_water_tick_uses_buoyancy_without_air_transition_snap() {
 }
 
 #[test]
+fn local_boat_move_clips_against_generated_entity_colliders() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut boat = protocol_add_entity_with_type_y_rot(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID, 0.0);
+    boat.delta_movement.z = 0.6;
+    store.apply_add_entity(boat);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        99,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let mut cow = protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_COW_ID);
+    cow.position.z = -0.5;
+    store.apply_add_entity(cow);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let boat_before = store.entities.transform(20).unwrap();
+    let boat_bounds = store.entities.pick_bounds(20).unwrap();
+    let cow_transform = store.entities.transform(30).unwrap();
+    let cow_bounds = store.entities.pick_bounds(30).unwrap();
+    let expected_z = cow_transform.position.z + f64::from(cow_bounds.min[2])
+        - (boat_before.position.z + f64::from(boat_bounds.max[2]));
+
+    let report = store
+        .advance_local_boat_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    let transform = store.entities.transform(20).unwrap();
+
+    assert!((report.position.z - (boat_before.position.z + expected_z)).abs() < 1.0e-12);
+    assert_eq!(transform.delta_movement.z, 0.0);
+    assert!(
+        report.position.z + f64::from(boat_bounds.max[2])
+            <= cow_transform.position.z + f64::from(cow_bounds.min[2])
+    );
+}
+
+#[test]
+fn local_boat_collision_excludes_spectator_players_and_same_vehicle_passengers() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut boat = protocol_add_entity_with_type_y_rot(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID, 0.0);
+    boat.delta_movement.z = 0.6;
+    store.apply_add_entity(boat);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        99,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let spectator_uuid = Uuid::from_u128(0x7788);
+    let mut spectator = protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    spectator.uuid = spectator_uuid;
+    spectator.position.z = -0.5;
+    store.apply_add_entity(spectator);
+    store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+        actions: vec![
+            ProtocolPlayerInfoAction::AddPlayer,
+            ProtocolPlayerInfoAction::UpdateGameMode,
+        ],
+        entries: vec![protocol_player_info_entry_with_mode(
+            spectator_uuid,
+            ProtocolGameType::Spectator,
+        )],
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let before = store.entities.transform(20).unwrap();
+
+    let report = store
+        .advance_local_boat_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+
+    let expected_delta_z = 0.6 * f64::from(0.9_f32);
+    assert!((report.position.z - (before.position.z + expected_delta_z)).abs() < 1.0e-12);
+}
+
+#[test]
+fn local_boat_air_to_water_snap_no_collision_checks_entity_targets() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        30,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let transform = store.entities.transform(20).unwrap();
+    let bounds = store.entities.pick_bounds(20).unwrap();
+    let targets = store.entities.vehicle_entity_collision_targets();
+
+    assert!(!store.entity_collision_bounds_are_free(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        [
+            transform.position.x,
+            transform.position.y,
+            transform.position.z,
+        ],
+        bounds.min.map(f64::from),
+        bounds.max.map(f64::from),
+        false,
+        &targets,
+    ));
+}
+
+#[test]
+fn local_boat_move_clips_against_world_border_collision_shape() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_set_border_size(bbb_protocol::packets::SetBorderSize { size: 4.0 });
+    let mut boat = protocol_add_entity_with_type_y_rot(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID, 0.0);
+    boat.delta_movement.x = 1.0;
+    store.apply_add_entity(boat);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let before = store.entities.transform(20).unwrap();
+    let bounds = store.entities.pick_bounds(20).unwrap();
+    let expected_position_x = 2.0 - f64::from(bounds.max[0]);
+
+    let report = store
+        .advance_local_boat_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    let transform = store.entities.transform(20).unwrap();
+
+    assert!((report.position.x - expected_position_x).abs() < 1.0e-12);
+    assert!(report.position.x > before.position.x);
+    assert_eq!(transform.delta_movement.x, 0.0);
+    assert_eq!(report.position.x + f64::from(bounds.max[0]), 2.0);
+}
+
+#[test]
 fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
     let mut store = WorldStore::new();
     store.set_default_item_equipment_slots(BTreeMap::from([(

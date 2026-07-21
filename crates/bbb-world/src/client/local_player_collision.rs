@@ -85,7 +85,7 @@ pub struct DebugEntitySupportingBlocks {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct DebugCameraCollisionQuery {
+struct EntityCollisionQuery {
     source_entity_id: Option<i32>,
     source_entity_type_id: i32,
     source_position: [f64; 3],
@@ -249,7 +249,7 @@ impl WorldStore {
             return false;
         }
 
-        let query = DebugCameraCollisionQuery {
+        let query = EntityCollisionQuery {
             source_entity_id: Some(input.entity_id),
             source_entity_type_id: input.entity_type_id,
             source_position: [
@@ -262,6 +262,7 @@ impl WorldStore {
         };
         let collides_with_entity = entity_collision_targets.iter().any(|target| {
             if target.entity_id == input.entity_id
+                || !self.entity_passes_spectator_filter(target.entity_id)
                 || self.debug_entities_share_root_vehicle(Some(input.entity_id), target.entity_id)
             {
                 return false;
@@ -664,7 +665,7 @@ impl WorldStore {
 
     fn debug_camera_block_collision_boxes_for_query(
         &self,
-        camera: DebugCameraCollisionQuery,
+        camera: EntityCollisionQuery,
         radius: f64,
     ) -> Vec<WorldCollisionBox> {
         let query = camera.bounds.inflated(radius);
@@ -710,7 +711,7 @@ impl WorldStore {
 
     fn debug_camera_entity_collision_boxes_for_query(
         &self,
-        camera: DebugCameraCollisionQuery,
+        camera: EntityCollisionQuery,
         radius: f64,
     ) -> Vec<WorldCollisionBox> {
         let query = camera.bounds.inflated(radius + COLLISION_EPSILON);
@@ -755,7 +756,7 @@ impl WorldStore {
 
     fn debug_entities_can_collide(
         &self,
-        camera: DebugCameraCollisionQuery,
+        camera: EntityCollisionQuery,
         target_id: i32,
         target_type: i32,
         target_position: [f64; 3],
@@ -774,7 +775,7 @@ impl WorldStore {
 
     fn debug_entity_can_be_collided_with(
         &self,
-        camera: DebugCameraCollisionQuery,
+        camera: EntityCollisionQuery,
         target_id: i32,
         target_type: i32,
         target_box: WorldCollisionBox,
@@ -933,7 +934,7 @@ impl WorldStore {
         None
     }
 
-    fn debug_camera_collision_query(&self) -> Option<DebugCameraCollisionQuery> {
+    fn debug_camera_collision_query(&self) -> Option<EntityCollisionQuery> {
         let camera = self.local_player().camera;
         if !camera.follows_player {
             let camera_id = camera.entity_id?;
@@ -952,7 +953,7 @@ impl WorldStore {
                     pose.position.z + f64::from(bounds.max[2]),
                 ],
             );
-            return Some(DebugCameraCollisionQuery {
+            return Some(EntityCollisionQuery {
                 source_entity_id: Some(camera_id),
                 source_entity_type_id: entity_type_id,
                 source_position: [pose.position.x, pose.position.y, pose.position.z],
@@ -962,7 +963,7 @@ impl WorldStore {
         }
 
         let pose = self.local_player_pose()?;
-        Some(DebugCameraCollisionQuery {
+        Some(EntityCollisionQuery {
             source_entity_id: self.local_player_id(),
             source_entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
             source_position: [pose.position.x, pose.position.y, pose.position.z],
@@ -1069,6 +1070,53 @@ impl WorldStore {
         self.clip_collision_bounds_movement(bounds, movement)
     }
 
+    /// Vanilla `Entity.collideBoundingBox` for a locally authoritative boat:
+    /// resolve generated entity colliders and the nearby world-border shape in
+    /// the same axis pass as block collision. The caller supplies one narrow
+    /// collision-target batch for the whole client-tick catch-up instead of
+    /// rebuilding full `EntityState` payloads for every boat substep.
+    pub(crate) fn clip_boat_collision_movement(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        position: [f64; 3],
+        movement: [f64; 3],
+        relative_min: [f64; 3],
+        relative_max: [f64; 3],
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> [f64; 3] {
+        if !particle_collision_input_is_finite(position, movement) {
+            return movement;
+        }
+        let bounds = LocalPlayerBounds::from_min_max(
+            std::array::from_fn(|axis| position[axis] + relative_min[axis]),
+            std::array::from_fn(|axis| position[axis] + relative_max[axis]),
+        );
+        let swept = bounds
+            .swept_axis(CollisionAxis::X, movement[0])
+            .swept_axis(CollisionAxis::Y, movement[1])
+            .swept_axis(CollisionAxis::Z, movement[2]);
+        let query = EntityCollisionQuery {
+            source_entity_id: Some(entity_id),
+            source_entity_type_id: entity_type_id,
+            source_position: position,
+            bounds,
+            block_context: LocalPlayerCollisionContext::for_remote_entity(
+                bounds.min_y,
+                movement[1] < 0.0,
+                false,
+                false,
+            ),
+        };
+        let mut colliders = self.entity_collision_boxes_for_targets(
+            query,
+            swept.inflated(COLLISION_EPSILON),
+            entity_collision_targets,
+        );
+        colliders.extend(self.world_border_collision_boxes(query, swept));
+        self.clip_collision_bounds_movement_with_boxes(bounds, movement, &colliders)
+    }
+
     /// Vanilla `AbstractBoat.getGroundFriction`: average the friction of each
     /// non-lily-pad collision shape intersecting the one-millimetre slice
     /// directly below the boat.
@@ -1136,26 +1184,126 @@ impl WorldStore {
 
     pub(crate) fn entity_collision_bounds_are_free(
         &self,
+        entity_id: i32,
         entity_type_id: i32,
         position: [f64; 3],
         relative_min: [f64; 3],
         relative_max: [f64; 3],
         on_ground: bool,
+        entity_collision_targets: &[crate::EntityPickTargetState],
     ) -> bool {
         let bounds = LocalPlayerBounds::from_min_max(
             std::array::from_fn(|axis| position[axis] + relative_min[axis]),
             std::array::from_fn(|axis| position[axis] + relative_max[axis]),
         );
-        !local_player_collides_with_context(
-            self,
+        let block_context = LocalPlayerCollisionContext::for_remote_entity(
+            position[1],
+            on_ground,
+            false,
+            entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        );
+        if local_player_collides_with_context(self, bounds, block_context) {
+            return false;
+        }
+        let query = EntityCollisionQuery {
+            source_entity_id: Some(entity_id),
+            source_entity_type_id: entity_type_id,
+            source_position: position,
             bounds,
-            LocalPlayerCollisionContext::for_remote_entity(
-                position[1],
-                on_ground,
-                false,
-                entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-            ),
+            block_context,
+        };
+        self.entity_collision_boxes_for_targets(
+            query,
+            bounds.inflated(COLLISION_EPSILON),
+            entity_collision_targets,
         )
+        .is_empty()
+            && self.world_border_collision_boxes(query, bounds).is_empty()
+    }
+
+    fn entity_collision_boxes_for_targets(
+        &self,
+        query: EntityCollisionQuery,
+        test_bounds: LocalPlayerBounds,
+        targets: &[crate::EntityPickTargetState],
+    ) -> Vec<WorldCollisionBox> {
+        targets
+            .iter()
+            .filter_map(|target| {
+                if query.source_entity_id == Some(target.entity_id)
+                    || !self.entity_passes_spectator_filter(target.entity_id)
+                    || self
+                        .debug_entities_share_root_vehicle(query.source_entity_id, target.entity_id)
+                {
+                    return None;
+                }
+                let target_type = self.entity_type_id(target.entity_id)?;
+                let target_position = [target.position.x, target.position.y, target.position.z];
+                let target_box = WorldCollisionBox {
+                    min: std::array::from_fn(|axis| {
+                        target_position[axis] + f64::from(target.bounds.min[axis])
+                    }),
+                    max: std::array::from_fn(|axis| {
+                        target_position[axis] + f64::from(target.bounds.max[axis])
+                    }),
+                };
+                (self.debug_entities_can_collide(
+                    query,
+                    target.entity_id,
+                    target_type,
+                    target_position,
+                    target_box,
+                ) && world_collision_box_intersects_bounds(target_box, test_bounds))
+                .then_some(target_box)
+            })
+            .collect()
+    }
+
+    fn world_border_collision_boxes(
+        &self,
+        query: EntityCollisionQuery,
+        test_bounds: LocalPlayerBounds,
+    ) -> Vec<WorldCollisionBox> {
+        let horizontal_size = (test_bounds.max_x - test_bounds.min_x)
+            .abs()
+            .max((test_bounds.max_z - test_bounds.min_z).abs())
+            .max(1.0);
+        let border = self.world_border();
+        let source_is_close = border
+            .distance_to_border(query.source_position[0], query.source_position[2])
+            < horizontal_size * 2.0
+            && query.source_position[0] >= border.min_x_at(0.0) - horizontal_size
+            && query.source_position[0] < border.max_x_at(0.0) + horizontal_size
+            && query.source_position[2] >= border.min_z_at(0.0) - horizontal_size
+            && query.source_position[2] < border.max_z_at(0.0) + horizontal_size;
+        if !source_is_close {
+            return Vec::new();
+        }
+        let min_x = border.min_x_at(0.0).floor();
+        let min_z = border.min_z_at(0.0).floor();
+        let max_x = border.max_x_at(0.0).ceil();
+        let max_z = border.max_z_at(0.0).ceil();
+        [
+            WorldCollisionBox {
+                min: [f64::NEG_INFINITY; 3],
+                max: [min_x, f64::INFINITY, f64::INFINITY],
+            },
+            WorldCollisionBox {
+                min: [max_x, f64::NEG_INFINITY, f64::NEG_INFINITY],
+                max: [f64::INFINITY; 3],
+            },
+            WorldCollisionBox {
+                min: [f64::NEG_INFINITY; 3],
+                max: [f64::INFINITY, f64::INFINITY, min_z],
+            },
+            WorldCollisionBox {
+                min: [f64::NEG_INFINITY, f64::NEG_INFINITY, max_z],
+                max: [f64::INFINITY; 3],
+            },
+        ]
+        .into_iter()
+        .filter(|collision_box| world_collision_box_intersects_bounds(*collision_box, test_bounds))
+        .collect()
     }
 
     /// Vanilla `ProjectileUtil.getHitResultOnMoveVector` block phase for a
@@ -1277,6 +1425,15 @@ impl WorldStore {
         bounds: LocalPlayerBounds,
         movement: [f64; 3],
     ) -> [f64; 3] {
+        self.clip_collision_bounds_movement_with_boxes(bounds, movement, &[])
+    }
+
+    fn clip_collision_bounds_movement_with_boxes(
+        &self,
+        bounds: LocalPlayerBounds,
+        movement: [f64; 3],
+        collision_boxes: &[WorldCollisionBox],
+    ) -> [f64; 3] {
         let mut clipped = [0.0; 3];
         for axis in particle_collision_axis_order(movement) {
             let requested = particle_movement_component(movement, axis);
@@ -1284,7 +1441,19 @@ impl WorldStore {
                 continue;
             }
             let moved_bounds = bounds.moved(clipped[0], clipped[1], clipped[2]);
-            let axis_clipped = self.clip_particle_axis_collision(moved_bounds, axis, requested);
+            let mut axis_clipped = self.clip_particle_axis_collision(moved_bounds, axis, requested);
+            for collision_box in collision_boxes {
+                axis_clipped = clipped_axis_against_world_box(
+                    moved_bounds,
+                    axis,
+                    requested,
+                    axis_clipped,
+                    *collision_box,
+                );
+            }
+            if axis_clipped.abs() < COLLISION_EPSILON {
+                axis_clipped = 0.0;
+            }
             set_particle_movement_component(&mut clipped, axis, axis_clipped);
         }
         clipped
@@ -1529,6 +1698,40 @@ fn clipped_particle_axis_against_box(
     } else if requested < 0.0 {
         let shape_max = block_box_axis_max(pos, shape_box, axis);
         let distance = shape_max - bounds_axis_min(bounds, axis);
+        if distance <= COLLISION_EPSILON {
+            return current_clipped.max(distance);
+        }
+    }
+    current_clipped
+}
+
+fn clipped_axis_against_world_box(
+    bounds: LocalPlayerBounds,
+    axis: CollisionAxis,
+    requested: f64,
+    current_clipped: f64,
+    collision_box: WorldCollisionBox,
+) -> f64 {
+    let orthogonal_axes = match axis {
+        CollisionAxis::X => [CollisionAxis::Y, CollisionAxis::Z],
+        CollisionAxis::Y => [CollisionAxis::X, CollisionAxis::Z],
+        CollisionAxis::Z => [CollisionAxis::X, CollisionAxis::Y],
+    };
+    if !orthogonal_axes.into_iter().all(|orthogonal| {
+        bounds_axis_max(bounds, orthogonal)
+            > world_box_axis_min(collision_box, orthogonal) + COLLISION_EPSILON
+            && bounds_axis_min(bounds, orthogonal)
+                < world_box_axis_max(collision_box, orthogonal) - COLLISION_EPSILON
+    }) {
+        return current_clipped;
+    }
+    if requested > 0.0 {
+        let distance = world_box_axis_min(collision_box, axis) - bounds_axis_max(bounds, axis);
+        if distance >= -COLLISION_EPSILON {
+            return current_clipped.min(distance);
+        }
+    } else if requested < 0.0 {
+        let distance = world_box_axis_max(collision_box, axis) - bounds_axis_min(bounds, axis);
         if distance <= COLLISION_EPSILON {
             return current_clipped.max(distance);
         }
@@ -3065,6 +3268,22 @@ fn bounds_axis_max(bounds: LocalPlayerBounds, axis: CollisionAxis) -> f64 {
         CollisionAxis::X => bounds.max_x,
         CollisionAxis::Y => bounds.max_y,
         CollisionAxis::Z => bounds.max_z,
+    }
+}
+
+fn world_box_axis_min(bounds: WorldCollisionBox, axis: CollisionAxis) -> f64 {
+    match axis {
+        CollisionAxis::X => bounds.min[0],
+        CollisionAxis::Y => bounds.min[1],
+        CollisionAxis::Z => bounds.min[2],
+    }
+}
+
+fn world_box_axis_max(bounds: WorldCollisionBox, axis: CollisionAxis) -> f64 {
+    match axis {
+        CollisionAxis::X => bounds.max[0],
+        CollisionAxis::Y => bounds.max[1],
+        CollisionAxis::Z => bounds.max[2],
     }
 }
 

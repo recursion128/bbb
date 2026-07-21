@@ -3448,7 +3448,7 @@ impl WorldStore {
 
     /// Whether an entity should appear in the rendered model-source set. Vanilla hides spectator
     /// players from the entity render list; every non-player and every non-spectator player is kept.
-    fn entity_passes_spectator_filter(&self, entity_id: i32) -> bool {
+    pub(crate) fn entity_passes_spectator_filter(&self, entity_id: i32) -> bool {
         let Some(identity) = self.entities.identity(entity_id) else {
             return true;
         };

@@ -420,6 +420,15 @@ The block membership generator now derives both 26.1 speed-factor overrides;
 boat and local-player movement consume that single catalog instead of parallel
 Soul Sand/Honey Block lists.
 
+The next buildable stage extends that same `Entity.move` pass with the generated
+entity collidability/pushability catalog and the exact world-border collision
+shape. One narrow hecs batch is projected once per catch-up call; each substep
+filters spectators and entities sharing the boat's root vehicle before resolving
+entity, border, and block shapes in Vanilla axis order. The air-to-water
+`noCollision` guard uses the same entity and border facts, so the snap cannot
+cross a canonical collider. This does not add a parallel family table or a full
+`EntityState` projection.
+
 Publication cloning copies the narrow component into the immutable hecs shell.
 Same-id boat recreation resets it, type reuse removes it, and retained A/B
 tests cover transform plus private physics state. The standard 2,000-entity
@@ -427,6 +436,12 @@ benchmark remains the end-to-end guard; a dedicated repo-native benchmark now
 separates local boat physics from physics plus a retained publication. On the
 same machine, the new no-gravity moving-boat fixture measures 1.1205 us for
 physics only and 5.8637 us for physics plus retained immutable publication.
+After exact entity/world-border collision was added, the same fixture measured
+1.3802 us and 6.1161 us respectively: +23.3% for the isolated physics call but
+only +4.46% end to end. The absolute increase is the narrow collision-target
+query required by Vanilla semantics, not deferred publication work; a later
+phase should reuse collision scratch/candidates when the broader local travel
+pipeline has a single lifetime owner.
 Focused confirmation measured 3.2278 ms tick-only and 4.7282 ms
 tick+publication for 2,000 heterogeneous entities, while the 1,000-boat
 passenger case remained within Criterion's noise threshold at 3.6756 ms. The
@@ -438,9 +453,9 @@ machine load.
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.
-Remote boat status/paddle sounds, entity/world-border collision and block
-inside/emission callbacks, the exact passenger push pass, bubble-column motion,
-and non-boat controlling-passenger travel remain for the subsequent stage.
+Remote boat status/paddle sounds, block inside/emission callbacks, the exact
+passenger push pass, bubble-column motion, and non-boat controlling-passenger
+travel remain for the subsequent stage.
 None of those server-authoritative consequences is synthesized here.
 
 ## Required Tests

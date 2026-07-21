@@ -60,13 +60,13 @@ use super::schema::{
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_is_camel,
-    vanilla_entity_metadata_type_is_guardian,
+    vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_pushability_kind,
     vanilla_entity_metadata_type_uses_player_entity_event_handler,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_entity_type_default_attribute, VanillaEntityCollidabilityKind,
-    VanillaFireworkRocketMetadataAccessors, VANILLA_FISHING_HOOK_BITING_DATA_ID,
-    VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
+    VanillaEntityPushabilityKind, VanillaFireworkRocketMetadataAccessors,
+    VANILLA_FISHING_HOOK_BITING_DATA_ID, VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
 };
 
 use super::{
@@ -4896,6 +4896,17 @@ impl EntityStore {
     pub(crate) fn client_movement_entity_collision_targets(
         &self,
     ) -> Vec<super::EntityPickTargetState> {
+        self.entity_collision_targets(false)
+    }
+
+    pub(crate) fn vehicle_entity_collision_targets(&self) -> Vec<super::EntityPickTargetState> {
+        self.entity_collision_targets(true)
+    }
+
+    fn entity_collision_targets(
+        &self,
+        include_pushable: bool,
+    ) -> Vec<super::EntityPickTargetState> {
         let mut targets = Vec::new();
         let mut query = self.ecs.query::<(
             &EntityIdentity,
@@ -4905,10 +4916,15 @@ impl EntityStore {
             &EntityClientAnimations,
         )>();
         for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
-            if matches!(
+            let never_collidable = matches!(
                 vanilla_entity_metadata_type_collidability_kind(identity.entity_type_id),
                 None | Some(VanillaEntityCollidabilityKind::Never)
-            ) {
+            );
+            let never_pushable = matches!(
+                vanilla_entity_metadata_type_pushability_kind(identity.entity_type_id),
+                None | Some(VanillaEntityPushabilityKind::Never)
+            );
+            if never_collidable && (!include_pushable || never_pushable) {
                 continue;
             }
             let Some(bounds) = vanilla_bounds_for_entity_data(

@@ -678,9 +678,9 @@ Movement:
   projection, player effect-selected hurt audio, and the 10-tick overlay are
   implemented. Never infer health loss, death, or authoritative combat results.
 - Complete the remaining vanilla boat physics after the direct local root-boat
-  status/buoyancy/block-collision/control foundation: remote status and paddle
-  audio, entity/world-border collision, bubble-column motion, passenger push,
-  block inside/emission callbacks and exact scheduler integration. Implement
+  status/buoyancy/block/entity/world-border collision/control foundation: remote
+  status and paddle audio, bubble-column motion, passenger push, block
+  inside/emission callbacks and exact scheduler integration. Implement
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and
   related state) rather than treating first passenger as sufficient, and cancel
