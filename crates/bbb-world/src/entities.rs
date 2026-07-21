@@ -2471,6 +2471,10 @@ entity_model_source_state! {
     /// for dragons without a tracked nearby crystal and every non-dragon.
     #[serde(default)]
     pub ender_dragon_beam: Option<EnderDragonBeamSource>,
+    /// Vanilla `EntityRenderState.leashStates`: one rope per entry when this entity is leashed (one
+    /// for a normal leash, four for a ghast-to-boat quad connection). Empty for unleashed entities.
+    #[serde(default)]
+    pub leash_ropes: Vec<LeashRopeSource>,
     /// Vanilla `LlamaRenderState.bodyItem`: the carpet color from an adult llama/trader-llama body
     /// equipment item. Baby llamas ignore body items for the decor layer; trader llamas still get their
     /// built-in trader decor in the renderer when this is `None`.
@@ -2527,6 +2531,23 @@ pub struct EndCrystalBeamSource {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EnderDragonBeamSource {
     pub beam_offset: [f32; 3],
+}
+
+/// One rope of a leash connection, projected for the renderer from
+/// [`EntityLeashRenderState`]. `offset` is the rotated attach offset (the rope start relative to
+/// the entity render position) and `delta` is the world-space `end − start` span, both truncated
+/// to `f32` exactly where vanilla `LeashFeatureRenderer.renderLeash` casts its doubles. The
+/// endpoint block/sky lights feed the per-step light lerp and `slack` selects the sag curve over
+/// the taut quad-connection line.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LeashRopeSource {
+    pub offset: [f32; 3],
+    pub delta: [f32; 3],
+    pub start_block_light: u8,
+    pub start_sky_light: u8,
+    pub end_block_light: u8,
+    pub end_sky_light: u8,
+    pub slack: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -3638,6 +3659,29 @@ impl WorldStore {
         source.light = self
             .sample_block_light(entity_light_block_pos(target.position))
             .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        // The rope states need world light samples at both endpoints, so the leash
+        // projection lives here on the store-and-light layer rather than in `model_source`.
+        source.leash_ropes = self
+            .entity_leash_render_states_at_partial_tick(target.entity_id, partial_ticks)
+            .map(|states| {
+                states
+                    .iter()
+                    .map(|state| LeashRopeSource {
+                        offset: state.offset.map(|value| value as f32),
+                        delta: [
+                            (state.end[0] - state.start[0]) as f32,
+                            (state.end[1] - state.start[1]) as f32,
+                            (state.end[2] - state.start[2]) as f32,
+                        ],
+                        start_block_light: state.start_block_light,
+                        start_sky_light: state.start_sky_light,
+                        end_block_light: state.end_block_light,
+                        end_sky_light: state.end_sky_light,
+                        slack: state.slack,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         if source.invisible_to_player
             && vanilla_living_entity_type(source.entity_type_id)
             && (self.local_player_is_spectator()

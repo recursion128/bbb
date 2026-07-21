@@ -22,9 +22,9 @@ use super::{
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout, EntityDynamicTexture,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        FirstPersonPlayerArm, HorseColorVariant, HorseMarkings, LlamaModelFamily,
-        ParrotModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
-        UndeadHorseModelFamily, VillagerModelData, ZombieVariantModelFamily,
+        FirstPersonPlayerArm, HorseColorVariant, HorseMarkings, LeashRopeRenderState,
+        LlamaModelFamily, ParrotModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+        SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData, ZombieVariantModelFamily,
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     },
     entity_model_root_transform,
@@ -388,6 +388,9 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) dragon_rays: EntityModelMesh,
     /// Vanilla `RenderTypes.dragonRaysDepth()` replays the same ray shape into a depth-only pipeline.
     pub(super) dragon_rays_depth: EntityModelMesh,
+    /// Vanilla `RenderTypes.leash()` rope strips. Untextured opaque position-color-lightmap custom
+    /// geometry from `LeashFeatureRenderer.renderLeash`, one two-strip rope per leash state.
+    pub(super) leash: EntityModelMesh,
     /// Vanilla `RenderTypes.endPortal()` block-entity cube faces. The GPU shader owns the 15-layer
     /// portal sampler formula; the mesh only carries world positions and atlas sub-rect metadata.
     pub(super) end_portal: EntityModelPortalMesh,
@@ -463,6 +466,7 @@ impl EntityModelTexturedMeshes {
             water_mask: EntityModelMesh::new(),
             dragon_rays: EntityModelMesh::new(),
             dragon_rays_depth: EntityModelMesh::new(),
+            leash: EntityModelMesh::new(),
             end_portal: EntityModelPortalMesh::new(),
             end_gateway: EntityModelPortalMesh::new(),
             submissions: Vec::new(),
@@ -1127,6 +1131,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new(sort_camera_position);
     for instance in instances {
+        // Vanilla `EntityRenderer.submit` submits leash ropes before any model or layer work and
+        // without the invisibility gates below, so the rope emits ahead of both dispatch branches.
+        render_leash_ropes(&mut meshes, *instance);
         if instance.render_state.invisible
             && instance.render_state.invisible_to_player
             && !instance.render_state.appears_glowing
@@ -3110,6 +3117,159 @@ pub(in crate::entity_models) fn render_ender_dragon_death_rays(
         normalized_death_time,
         3,
     );
+}
+
+/// Vanilla `LeashFeatureRenderer.LEASH_RENDER_STEPS`.
+const LEASH_RENDER_STEPS: u32 = 24;
+/// Vanilla `LeashFeatureRenderer.LEASH_WIDTH`.
+const LEASH_WIDTH: f32 = 0.05;
+/// Vanilla `addVertexPair`'s constant rope colour before the alternating 0.7 modifier.
+const LEASH_COLOR: [f32; 3] = [0.5, 0.4, 0.3];
+
+/// Vanilla `EntityRenderer.submit` submits every extracted `LeashState` through
+/// `SubmitNodeCollector.submitLeash` before any model or layer work, with no invisibility or glow
+/// gate, so the rope emits for every instance that carries leash states.
+pub(in crate::entity_models) fn render_leash_ropes(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let Some(leash_ropes) = instance.render_state.leash_ropes else {
+        return;
+    };
+    for rope in leash_ropes.ropes() {
+        emit_leash_rope_custom_submission(meshes, instance.position, *rope);
+    }
+}
+
+fn emit_leash_rope_custom_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    entity_position: [f32; 3],
+    rope: LeashRopeRenderState,
+) {
+    let render_type = EntityModelLayerRenderType::Leash;
+    // Vanilla translates the entity render pose by `leashState.offset`, so the rope's local origin
+    // is the world-space rope start.
+    let transform =
+        Mat4::from_translation(Vec3::from_array(entity_position) + Vec3::from_array(rope.offset));
+    let (submission, insertion_index) =
+        meshes.record_custom_submission_with_index(EntityModelCustomGeometrySubmission {
+            render_type,
+            transform,
+            order: 0,
+            submit_sequence: 0,
+        });
+    let mut mesh = EntityModelMesh::new();
+    append_leash_rope_mesh(&mut mesh, submission.transform, rope);
+    let index_count = u32::try_from(mesh.indices.len()).expect("leash index count fits in u32");
+    let index_start = append_entity_model_mesh(&mut meshes.leash, mesh);
+    if let Some(sort_key) = meshes.custom_geometry_draw_key(submission, insertion_index) {
+        meshes.push_position_color_draw_range(render_type, sort_key, index_start, index_count);
+    }
+}
+
+/// Vanilla `LeashFeatureRenderer.renderLeash`: two 25-pair passes over the same vertex stream (the
+/// forward pass fudges the first vertex of each pair up by the rope width, the backward pass the
+/// second), submitted as one `TRIANGLE_STRIP`. The shared mesh is an indexed triangle list, so strip
+/// triangle `i` unrolls to vertices `(i, i+1, i+2)`; the LEASH pipeline never culls, which makes the
+/// strip's alternating winding irrelevant.
+fn append_leash_rope_mesh(mesh: &mut EntityModelMesh, transform: Mat4, rope: LeashRopeRenderState) {
+    let [dx, _, dz] = rope.delta;
+    let horizontal_sq = dx * dx + dz * dz;
+    // Vanilla `Mth.invSqrt(0)` would poison a perfectly vertical rope with NaN cross-section
+    // offsets; collapse the cross-section instead so the rope degenerates to a line.
+    let offset_factor = if horizontal_sq > 0.0 {
+        horizontal_sq.sqrt().recip() * LEASH_WIDTH / 2.0
+    } else {
+        0.0
+    };
+    let dx_off = dz * offset_factor;
+    let dz_off = dx * offset_factor;
+    let base_vertex = u32::try_from(mesh.vertices.len()).expect("leash vertex count fits in u32");
+    for step in 0..=LEASH_RENDER_STEPS {
+        append_leash_vertex_pair(
+            mesh,
+            transform,
+            rope,
+            LEASH_WIDTH,
+            dx_off,
+            dz_off,
+            step,
+            false,
+        );
+    }
+    for step in (0..=LEASH_RENDER_STEPS).rev() {
+        append_leash_vertex_pair(mesh, transform, rope, 0.0, dx_off, dz_off, step, true);
+    }
+    let vertex_count =
+        u32::try_from(mesh.vertices.len()).expect("leash vertex count fits in u32") - base_vertex;
+    for index in 0..vertex_count.saturating_sub(2) {
+        mesh.indices.extend_from_slice(&[
+            base_vertex + index,
+            base_vertex + index + 1,
+            base_vertex + index + 2,
+        ]);
+    }
+}
+
+/// Vanilla `LeashFeatureRenderer.addVertexPair` for one strip step.
+#[allow(clippy::too_many_arguments)]
+fn append_leash_vertex_pair(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    rope: LeashRopeRenderState,
+    fudge: f32,
+    dx_off: f32,
+    dz_off: f32,
+    step: u32,
+    backwards: bool,
+) {
+    let [dx, dy, dz] = rope.delta;
+    let progress = step as f32 / LEASH_RENDER_STEPS as f32;
+    let block = leash_lerped_light(progress, rope.start_block_light, rope.end_block_light);
+    let sky = leash_lerped_light(progress, rope.start_sky_light, rope.end_sky_light);
+    let light = [block / 15.0, sky / 15.0];
+    let color_modifier = if step % 2 == u32::from(backwards) {
+        0.7
+    } else {
+        1.0
+    };
+    let color = [
+        LEASH_COLOR[0] * color_modifier,
+        LEASH_COLOR[1] * color_modifier,
+        LEASH_COLOR[2] * color_modifier,
+        1.0,
+    ];
+    let x = dx * progress;
+    let y = if rope.slack {
+        // The sag curve leans toward the lower endpoint regardless of which side is higher.
+        if dy > 0.0 {
+            dy * progress * progress
+        } else {
+            dy - dy * (1.0 - progress) * (1.0 - progress)
+        }
+    } else {
+        dy * progress
+    };
+    let z = dz * progress;
+    for position in [
+        [x - dx_off, y + fudge, z + dz_off],
+        [x + dx_off, y + LEASH_WIDTH - fudge, z - dz_off],
+    ] {
+        let world = transform.transform_point3(Vec3::from_array(position));
+        mesh.vertices.push(EntityModelVertex {
+            position: world.to_array(),
+            color,
+            light,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
+            normal: [0.0, 1.0, 0.0],
+        });
+    }
+}
+
+/// Vanilla `(int)Mth.lerp(progress, start, end)`: the lerped light truncates to an integer level
+/// before packing into the light coords.
+fn leash_lerped_light(progress: f32, start: u8, end: u8) -> f32 {
+    (f32::from(start) + progress * (f32::from(end) - f32::from(start))).trunc()
 }
 
 pub(in crate::entity_models) fn render_end_portal_block_model(

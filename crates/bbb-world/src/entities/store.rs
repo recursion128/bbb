@@ -3898,6 +3898,9 @@ impl EntityStore {
                 position,
                 partial_ticks,
             ),
+            // Filled by `WorldStore::project_entity_model_source`; the rope projection
+            // needs the world light probe the store cannot reach.
+            leash_ropes: Vec::new(),
             llama_body_decor,
             llama_body_decor_trim,
             llama_body_decor_foil,

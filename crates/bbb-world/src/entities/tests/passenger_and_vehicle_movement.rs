@@ -5197,6 +5197,55 @@ fn pig_leash_render_state_projects_offset_rope_hold_and_slack() {
 }
 
 #[test]
+fn leashed_pig_model_source_carries_the_projected_rope() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 64.0,
+            z: -5.0,
+        },
+        y_rot: 0.0,
+        ..protocol_add_entity_with_type(60, VANILLA_ENTITY_TYPE_PIG_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 14.0,
+            y: 65.0,
+            z: -5.0,
+        },
+        ..protocol_add_entity_with_type(61, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID)
+    });
+    assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 60,
+        dest_id: 61,
+    }));
+
+    let source = store
+        .entity_model_source_at_partial_tick(60, 1.0)
+        .expect("leashed pig must project a model source");
+    assert_eq!(source.leash_ropes.len(), 1);
+    let rope = source.leash_ropes[0];
+    // The rotated pig attach offset and the span to the knot's snapped rope-hold
+    // point (start (10, 64.459, -4.64) -> end (14.5, 65.575, -4.5)), as f32.
+    assert!((rope.offset[0]).abs() < 1.0e-5, "rope {rope:?}");
+    assert!((rope.offset[1] - 0.459).abs() < 1.0e-5);
+    assert!((rope.offset[2] - 0.36).abs() < 1.0e-5);
+    assert!((rope.delta[0] - 4.5).abs() < 1.0e-5);
+    assert!((rope.delta[1] - 1.116).abs() < 1.0e-5);
+    assert!((rope.delta[2] - 0.14).abs() < 1.0e-5);
+    assert!(rope.slack);
+    assert_eq!((rope.start_block_light, rope.start_sky_light), (15, 15));
+    assert_eq!((rope.end_block_light, rope.end_sky_light), (15, 15));
+
+    // The holder side is not leashed itself: the knot's own source stays empty.
+    let knot_source = store
+        .entity_model_source_at_partial_tick(61, 1.0)
+        .expect("knot must project a model source");
+    assert!(knot_source.leash_ropes.is_empty());
+}
+
+#[test]
 fn boat_leashed_to_happy_ghast_uses_four_taut_quad_ropes() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(

@@ -1025,6 +1025,50 @@ pub struct EnderDragonBeamRenderState {
     pub beam_offset: [f32; 3],
 }
 
+/// One rope of a leash connection (vanilla `EntityRenderState.LeashState`): `offset` is the rotated
+/// attach offset (the rope start relative to the entity render position), `delta` is the world-space
+/// `end − start` span (`LeashFeatureRenderer.renderLeash`'s `dx/dy/dz` after its `float` casts), the
+/// endpoint block/sky lights feed the per-step light lerp, and `slack` selects the sag curve over
+/// the taut line a quad connection uses.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LeashRopeRenderState {
+    pub offset: [f32; 3],
+    pub delta: [f32; 3],
+    pub start_block_light: u8,
+    pub start_sky_light: u8,
+    pub end_block_light: u8,
+    pub end_sky_light: u8,
+    pub slack: bool,
+}
+
+/// Vanilla `EntityRenderState.leashStates`: the ropes attached to a leashed entity — one for a
+/// normal leash, four for a ghast-to-boat quad connection. Fixed-size because `EntityRenderState`
+/// is `Copy`; `count` bounds the live prefix of `ropes`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EntityLeashRopesRenderState {
+    pub ropes: [LeashRopeRenderState; 4],
+    pub count: u8,
+}
+
+impl EntityLeashRopesRenderState {
+    /// Packs up to four ropes; `None` for an empty slice (an unleashed entity).
+    pub fn from_ropes(source: &[LeashRopeRenderState]) -> Option<Self> {
+        let (&first, _) = source.split_first()?;
+        let count = source.len().min(4);
+        let mut ropes = [first; 4];
+        ropes[..count].copy_from_slice(&source[..count]);
+        Some(Self {
+            ropes,
+            count: count as u8,
+        })
+    }
+
+    /// The live ropes.
+    pub fn ropes(&self) -> &[LeashRopeRenderState] {
+        &self.ropes[..usize::from(self.count).min(self.ropes.len())]
+    }
+}
+
 /// Vanilla `TheEndGatewayRenderer` beam render state. `scale` is the
 /// `sin(percent * PI)` envelope, `height` is the positive block distance used
 /// to submit a beam from `-height` to `+height`, `color_argb` is magenta while

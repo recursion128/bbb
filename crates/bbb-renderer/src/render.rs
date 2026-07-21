@@ -3451,6 +3451,7 @@ impl Renderer {
                 || self.entity_model_eyes_mesh.is_some()
                 || self.entity_model_dragon_rays_mesh.is_some()
                 || self.entity_model_dragon_rays_depth_mesh.is_some()
+                || self.entity_model_leash_mesh.is_some()
                 || self.entity_model_end_portal_mesh.is_some()
                 || self.entity_model_end_gateway_mesh.is_some()
                 || self.entity_model_scroll_mesh.is_some()
@@ -3798,6 +3799,11 @@ impl Renderer {
         pass.set_pipeline(pipeline);
         *pipeline_switches += 1;
         pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+        if draw.render_type == EntityModelLayerRenderType::Leash {
+            // The leash pipeline is the only position-color state with a lightmap stage
+            // (vanilla `POSITION_COLOR_LIGHTMAP`).
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        }
         pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(draw.index_start..index_end, 0, 0..1);
@@ -3816,6 +3822,10 @@ impl Renderer {
             EntityModelLayerRenderType::DragonRaysDepth => Some((
                 self.entity_model_dragon_rays_depth_mesh.as_ref()?,
                 &self.entity_model_dragon_rays_depth_pipeline,
+            )),
+            EntityModelLayerRenderType::Leash => Some((
+                self.entity_model_leash_mesh.as_ref()?,
+                &self.entity_model_leash_pipeline,
             )),
             _ => None,
         }
@@ -3987,6 +3997,16 @@ impl Renderer {
             pass.set_pipeline(&self.entity_model_dragon_rays_depth_pipeline);
             *pipeline_switches += 1;
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let Some(mesh) = &self.entity_model_leash_mesh {
+            pass.set_pipeline(&self.entity_model_leash_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
             pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, 0..1);

@@ -947,6 +947,94 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+/// Vanilla `POSITION_COLOR_LIGHTMAP` (the LEASH pipeline's vertex format): the plain position-color
+/// stage plus a per-vertex lightmap sample multiplied into the colour — no overlay and no
+/// directional entity diffuse.
+pub(super) const ENTITY_MODEL_LEASH_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) light: vec2<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) light: vec2<f32>,
+    @location(2) spherical_distance: f32,
+    @location(3) cylindrical_distance: f32,
+};
+
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(
+        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(0.5 / 16.0),
+        vec2<f32>(15.5 / 16.0),
+    );
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.color = input.color;
+    out.light = input.light;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let light_color = sample_lightmap(input.light);
+    let color = vec4<f32>(input.color.rgb * light_color, input.color.a);
+    return apply_fog(color, input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
 fn entity_model_portal_shader(portal_layers: u32) -> String {
     let portal_layer_samples = (0..portal_layers)
         .map(|index| {
@@ -1921,6 +2009,31 @@ pub(crate) fn create_entity_model_dragon_rays_depth_pipeline(
     )
 }
 
+/// Vanilla `RenderPipelines.LEASH` (`RenderTypes.leash()`): `POSITION_COLOR_LIGHTMAP`, no cull, no
+/// blend, and the default depth state (write enabled, `LessEqual`).
+pub(crate) fn create_entity_model_leash_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-entity-model-leash-pipeline")
+        .shader("bbb-entity-model-leash-shader", ENTITY_MODEL_LEASH_SHADER)
+        .layout(
+            "bbb-entity-model-leash-pipeline-layout",
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_vertex_layout()])
+        .color_target(format, None)
+        .cull_mode(None)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            true,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
+}
+
 pub(crate) fn create_entity_model_end_portal_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2594,6 +2707,11 @@ impl Renderer {
                 meshes.dragon_rays_depth,
                 "bbb-entity-model-dragon-rays-depth",
             );
+            self.entity_model_leash_mesh = create_entity_model_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.leash,
+                "bbb-entity-model-leash",
+            );
             self.entity_model_end_portal_mesh = create_entity_model_portal_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.end_portal,
@@ -2786,6 +2904,7 @@ impl Renderer {
             self.entity_model_eyes_mesh = None;
             self.entity_model_dragon_rays_mesh = None;
             self.entity_model_dragon_rays_depth_mesh = None;
+            self.entity_model_leash_mesh = None;
             self.entity_model_end_portal_mesh = None;
             self.entity_model_end_gateway_mesh = None;
             self.entity_model_outline_mesh = None;

@@ -685,6 +685,7 @@ pub(super) fn entity_model_instance(
             variant_registries,
         ))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
+        .with_leash_ropes(leash_ropes(&source.leash_ropes))
         .with_end_crystal_beam(end_crystal_beam(source.end_crystal_beam))
         .with_ender_dragon_beam(ender_dragon_beam(source.ender_dragon_beam))
         .with_wolf_tail_angle(wolf_tail_angle(

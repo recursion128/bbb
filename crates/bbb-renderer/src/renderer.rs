@@ -41,9 +41,10 @@ use crate::{
         create_entity_model_dragon_rays_depth_pipeline, create_entity_model_dragon_rays_pipeline,
         create_entity_model_end_gateway_pipeline, create_entity_model_end_portal_pipeline,
         create_entity_model_entity_glint_pipeline, create_entity_model_eyes_pipeline,
-        create_entity_model_outline_cull_pipeline, create_entity_model_outline_pipeline,
-        create_entity_model_pipeline, create_entity_model_scroll_additive_pipeline,
-        create_entity_model_scroll_pipeline, create_entity_model_solid_z_offset_forward_pipeline,
+        create_entity_model_leash_pipeline, create_entity_model_outline_cull_pipeline,
+        create_entity_model_outline_pipeline, create_entity_model_pipeline,
+        create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
+        create_entity_model_solid_z_offset_forward_pipeline,
         create_entity_model_textured_cull_pipeline, create_entity_model_textured_pipeline,
         create_entity_model_translucent_cull_pipeline,
         create_entity_model_translucent_emissive_pipeline,
@@ -263,6 +264,7 @@ pub struct Renderer {
     pub(super) entity_model_eyes_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_dragon_rays_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_dragon_rays_depth_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_leash_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_end_portal_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_end_gateway_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_water_mask_pipeline: wgpu::RenderPipeline,
@@ -401,6 +403,7 @@ pub struct Renderer {
     pub(super) entity_model_eyes_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_dragon_rays_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_dragon_rays_depth_mesh: Option<EntityModelMeshGpu>,
+    pub(super) entity_model_leash_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_end_portal_mesh: Option<EntityModelPortalMeshGpu>,
     pub(super) entity_model_end_gateway_mesh: Option<EntityModelPortalMeshGpu>,
     pub(super) entity_model_outline_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -1182,6 +1185,12 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
             );
+        let entity_model_leash_pipeline = create_entity_model_leash_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let entity_model_end_portal_pipeline =
             create_entity_model_end_portal_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_end_gateway_pipeline =
@@ -1488,6 +1497,7 @@ impl Renderer {
             entity_model_eyes_pipeline,
             entity_model_dragon_rays_pipeline,
             entity_model_dragon_rays_depth_pipeline,
+            entity_model_leash_pipeline,
             entity_model_end_portal_pipeline,
             entity_model_end_gateway_pipeline,
             entity_model_water_mask_pipeline,
@@ -1643,6 +1653,7 @@ impl Renderer {
             entity_model_sorted_item_entity_draws: Vec::new(),
             entity_model_eyes_mesh: None,
             entity_model_dragon_rays_mesh: None,
+            entity_model_leash_mesh: None,
             entity_model_dragon_rays_depth_mesh: None,
             entity_model_end_portal_mesh: None,
             entity_model_end_gateway_mesh: None,

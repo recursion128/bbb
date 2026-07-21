@@ -160,6 +160,25 @@ pub(super) fn guardian_beam(
     })
 }
 
+/// Maps the projected leash ropes onto the renderer's fixed-size `EntityLeashRopesRenderState`
+/// (1:1 per rope; vanilla connections carry one rope, or four for a ghast-to-boat quad leash).
+/// `None` for an unleashed entity's empty projection.
+pub(super) fn leash_ropes(source: &[WorldLeashRopeSource]) -> Option<EntityLeashRopesRenderState> {
+    let ropes = source
+        .iter()
+        .map(|rope| LeashRopeRenderState {
+            offset: rope.offset,
+            delta: rope.delta,
+            start_block_light: rope.start_block_light,
+            start_sky_light: rope.start_sky_light,
+            end_block_light: rope.end_block_light,
+            end_sky_light: rope.end_sky_light,
+            slack: rope.slack,
+        })
+        .collect::<Vec<_>>();
+    EntityLeashRopesRenderState::from_ropes(&ropes)
+}
+
 /// Maps a projected end-crystal healing beam onto the renderer's `EndCrystalBeamRenderState`.
 pub(super) fn end_crystal_beam(
     beam: Option<WorldEndCrystalBeamSource>,

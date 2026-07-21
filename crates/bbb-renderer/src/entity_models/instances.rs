@@ -1428,6 +1428,10 @@ entity_render_state! {
     /// `clientSideAttackTime`, and attack scale. `None` (no beam) for a guardian with no active attack
     /// target and every other entity.
     (with_guardian_beam) guardian_beam: Option<GuardianBeamRenderState> = None;
+    /// Vanilla `EntityRenderState.leashStates`: the leash ropes attached to this entity (one for a
+    /// normal leash, four for a ghast-to-boat quad connection), each carrying the rotated attach
+    /// offset, rope span, endpoint lights, and sag flag. `None` for unleashed entities.
+    (with_leash_ropes) leash_ropes: Option<EntityLeashRopesRenderState> = None;
     /// Vanilla `ChickenRenderState.flap` (`Mth.lerp(partialTick, oFlap, flap)`): the
     /// wing-flap phase `ChickenModel.setupAnim` feeds to `flapAngle = (sin(flap) +
     /// 1) * flapSpeed`, written to `rightWing.zRot` / `-leftWing.zRot`. `0.0` for a
@@ -3257,6 +3261,7 @@ mod tests {
                 breeze_inhale_seconds: -1.0,
                 breeze_long_jump_seconds: -1.0,
                 guardian_beam: None,
+                leash_ropes: None,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
                 slime_squish: 0.0,

@@ -51,6 +51,7 @@ mod head_look;
 mod hoglin;
 mod illager;
 mod keyframe;
+mod leash;
 mod leash_knot;
 mod limb_swing;
 mod llama;
@@ -358,6 +359,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderType::DragonRaysDepth,
             "dragonRaysDepth",
             EntityModelLayerRenderBucket::DepthOnly,
+            false,
+            false,
+            false,
+        ),
+        (
+            EntityModelLayerRenderType::Leash,
+            "leash",
+            EntityModelLayerRenderBucket::PositionColor,
             false,
             false,
             false,

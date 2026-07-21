@@ -244,6 +244,9 @@ pub(crate) enum EntityModelLayerRenderType {
     DragonRays,
     /// Vanilla `RenderTypes.dragonRaysDepth()`.
     DragonRaysDepth,
+    /// Vanilla `RenderTypes.leash()` (`RenderPipelines.LEASH`): untextured opaque
+    /// position-color-lightmap geometry, used by the leash rope strips.
+    Leash,
     /// Vanilla `RenderTypes.waterMask()`, used by the boat water patch.
     WaterMask,
 }
@@ -276,7 +279,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 26] = [
+    pub(in crate::entity_models) const ALL: [Self; 27] = [
         Self::EntitySolid,
         Self::EntitySolidZOffsetForward,
         Self::ArmorCutoutNoCull,
@@ -302,6 +305,7 @@ impl EntityModelLayerRenderType {
         Self::EndGatewayBeam,
         Self::DragonRays,
         Self::DragonRaysDepth,
+        Self::Leash,
         Self::WaterMask,
     ];
 
@@ -331,7 +335,7 @@ impl EntityModelLayerRenderType {
             }
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
             Self::EndPortal | Self::EndGateway => EntityModelLayerRenderBucket::Portal,
-            Self::DragonRays => EntityModelLayerRenderBucket::PositionColor,
+            Self::DragonRays | Self::Leash => EntityModelLayerRenderBucket::PositionColor,
             Self::WaterMask => EntityModelLayerRenderBucket::DepthOnly,
             Self::DragonRaysDepth => EntityModelLayerRenderBucket::DepthOnly,
         }
@@ -414,6 +418,7 @@ impl EntityModelLayerRenderType {
             Self::EndGatewayBeam => "end_gateway_beam",
             Self::DragonRays => "dragonRays",
             Self::DragonRaysDepth => "dragonRaysDepth",
+            Self::Leash => "leash",
             Self::WaterMask => "waterMask",
         }
     }
