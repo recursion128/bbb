@@ -266,6 +266,8 @@ impl WorldStore {
                 [requested.x, requested.y, requested.z],
                 relative_min,
                 relative_max,
+                0.0,
+                next_transform.on_ground.unwrap_or(false),
                 &entity_collision_targets,
             );
             next_transform.position.x += clipped[0];
@@ -436,6 +438,8 @@ impl WorldStore {
                 [requested.x, requested.y, requested.z],
                 relative_min,
                 relative_max,
+                1.0,
+                transform.on_ground.unwrap_or(false),
                 &entity_collision_targets,
             );
             next_transform.position.x += clipped[0];

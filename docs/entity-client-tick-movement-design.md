@@ -628,8 +628,17 @@ the same machine (30 samples, one-second warm-up, three-second measurement).
 This is a newly implemented semantic path rather than a before/after speedup;
 the measurement fixes its mutation-plus-publication budget and shows the
 retained snapshot adds about 3.77 us instead of hiding work in the next tick.
-Candidate-height step-up, block-inside/emission callbacks and the other living
-rideable families remain part of phase 4 rather than being approximated here.
+The following collision-foundation stage extends the shared locally
+authoritative `Entity.collide` owner with source-aware block collision context
+and Vanilla's sorted candidate-height step-up search. It reuses the one narrow
+entity-collider batch, recollects only block/world-border shapes intersecting
+the step sweep, skips the already-clipped vertical height and returns the first
+candidate that improves horizontal distance. Boats pass a zero step height;
+controlled Living vehicles pass their exact maximum. A grounded Happy Ghast
+one-block test proves the new path while the existing wall, entity, border and
+boat suites guard the non-step cases. Block-inside/emission callbacks and the
+other living rideable families remain part of phase 4 rather than being
+approximated here.
 
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its

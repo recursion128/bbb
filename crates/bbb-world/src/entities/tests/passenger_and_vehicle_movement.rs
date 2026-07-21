@@ -1516,6 +1516,45 @@ fn local_happy_ghast_move_clips_against_world_collision() {
     assert_eq!(after.on_ground, Some(false));
 }
 
+#[test]
+fn local_happy_ghast_move_uses_vanilla_candidate_height_step_up() {
+    let mut store = locally_controlled_happy_ghast();
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.entities.with_transform_mut(10, |transform| {
+        transform.position.y = -63.0;
+        transform.old_position.y = -63.0;
+        transform.y_rot = 0.0;
+        transform.old_y_rot = 0.0;
+        transform.on_ground = Some(true);
+    });
+    let bounds = store.entities.pick_bounds(10).unwrap();
+    let before = store.entities.transform(10).unwrap();
+    let wall_z = (before.position.z + f64::from(bounds.max[2])).floor() as i32;
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: before.position.x.floor() as i32,
+            y: before.position.y.floor() as i32,
+            z: wall_z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+
+    store
+        .advance_local_happy_ghast_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+
+    assert!(after.position.z > before.position.z);
+    assert!((after.position.y - (before.position.y + 1.0)).abs() < 1.0e-12);
+}
+
 fn locally_controlled_happy_ghast() -> WorldStore {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

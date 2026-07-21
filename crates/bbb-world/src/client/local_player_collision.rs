@@ -1083,6 +1083,8 @@ impl WorldStore {
         movement: [f64; 3],
         relative_min: [f64; 3],
         relative_max: [f64; 3],
+        max_up_step: f32,
+        on_ground: bool,
         entity_collision_targets: &[crate::EntityPickTargetState],
     ) -> [f64; 3] {
         if !particle_collision_input_is_finite(position, movement) {
@@ -1096,25 +1098,114 @@ impl WorldStore {
             .swept_axis(CollisionAxis::X, movement[0])
             .swept_axis(CollisionAxis::Y, movement[1])
             .swept_axis(CollisionAxis::Z, movement[2]);
+        let block_context = LocalPlayerCollisionContext::for_remote_entity(
+            bounds.min_y,
+            self.entities.is_descending(entity_id).unwrap_or(false),
+            self.remote_entity_can_walk_on_powder_snow(entity_id),
+            entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        );
         let query = EntityCollisionQuery {
             source_entity_id: Some(entity_id),
             source_entity_type_id: entity_type_id,
             source_position: position,
             bounds,
-            block_context: LocalPlayerCollisionContext::for_remote_entity(
-                bounds.min_y,
-                movement[1] < 0.0,
-                false,
-                false,
-            ),
+            block_context,
         };
-        let mut colliders = self.entity_collision_boxes_for_targets(
+        let entity_colliders = self.entity_collision_boxes_for_targets(
             query,
             swept.inflated(COLLISION_EPSILON),
             entity_collision_targets,
         );
-        colliders.extend(self.world_border_collision_boxes(query, swept));
-        self.clip_collision_bounds_movement_with_boxes(bounds, movement, &colliders)
+        let mut base_colliders = entity_colliders.clone();
+        base_colliders.extend(self.world_border_collision_boxes(query, swept));
+        let clipped = self.clip_collision_bounds_movement_with_context_and_boxes(
+            bounds,
+            movement,
+            block_context,
+            &base_colliders,
+        );
+        let x_collision = movement[0] != clipped[0];
+        let y_collision = movement[1] != clipped[1];
+        let z_collision = movement[2] != clipped[2];
+        let on_ground_after_collision = y_collision && movement[1] < 0.0;
+        if max_up_step <= 0.0
+            || !(on_ground_after_collision || on_ground)
+            || !(x_collision || z_collision)
+        {
+            return clipped;
+        }
+
+        let grounded_bounds = if on_ground_after_collision {
+            bounds.moved(0.0, clipped[1], 0.0)
+        } else {
+            bounds
+        };
+        let mut step_bounds = grounded_bounds
+            .swept_axis(CollisionAxis::X, movement[0])
+            .swept_axis(CollisionAxis::Y, f64::from(max_up_step))
+            .swept_axis(CollisionAxis::Z, movement[2]);
+        if !on_ground_after_collision {
+            step_bounds = step_bounds.swept_axis(CollisionAxis::Y, -f64::from(1.0e-5_f32));
+        }
+        let mut step_colliders = entity_colliders;
+        step_colliders.extend(self.world_border_collision_boxes(query, step_bounds));
+        let block_colliders = self.block_collision_boxes_for_bounds(step_bounds, block_context);
+        let mut candidate_heights = step_candidate_heights(
+            grounded_bounds.min_y,
+            max_up_step,
+            clipped[1] as f32,
+            step_colliders.iter().chain(&block_colliders),
+        );
+        candidate_heights.sort_by(f32::total_cmp);
+        candidate_heights.dedup();
+        let clipped_horizontal_squared = clipped[0] * clipped[0] + clipped[2] * clipped[2];
+        for candidate_height in candidate_heights {
+            let stepped = self.clip_collision_bounds_movement_with_context_and_boxes(
+                grounded_bounds,
+                [movement[0], f64::from(candidate_height), movement[2]],
+                block_context,
+                &step_colliders,
+            );
+            if stepped[0] * stepped[0] + stepped[2] * stepped[2] > clipped_horizontal_squared {
+                let distance_to_ground = bounds.min_y - grounded_bounds.min_y;
+                return [stepped[0], stepped[1] - distance_to_ground, stepped[2]];
+            }
+        }
+        clipped
+    }
+
+    fn block_collision_boxes_for_bounds(
+        &self,
+        bounds: LocalPlayerBounds,
+        context: LocalPlayerCollisionContext,
+    ) -> Vec<WorldCollisionBox> {
+        let min_x = block_floor(bounds.min_x + COLLISION_EPSILON) - 1;
+        let max_x = block_floor(bounds.max_x - COLLISION_EPSILON) + 1;
+        let min_y = block_floor(bounds.min_y + COLLISION_EPSILON) - 1;
+        let max_y = block_floor(bounds.max_y - COLLISION_EPSILON) + 1;
+        let min_z = block_floor(bounds.min_z + COLLISION_EPSILON) - 1;
+        let max_z = block_floor(bounds.max_z - COLLISION_EPSILON) + 1;
+        let mut boxes = Vec::new();
+        for y in min_y..=max_y {
+            for z in min_z..=max_z {
+                for x in min_x..=max_x {
+                    let pos = BlockPos { x, y, z };
+                    let Some(block) = self.probe_block(pos) else {
+                        continue;
+                    };
+                    let Some(shape) = block_collision_shape_with_context(&block, pos, context)
+                    else {
+                        continue;
+                    };
+                    boxes.extend(shape.boxes().filter_map(|shape_box| {
+                        let collision_box = world_collision_box(pos, shape_box);
+                        world_collision_box_intersects_bounds(collision_box, bounds)
+                            .then_some(collision_box)
+                    }));
+                }
+            }
+        }
+        boxes
     }
 
     /// Vanilla `AbstractBoat.getGroundFriction`: average the friction of each
@@ -1498,6 +1589,99 @@ impl WorldStore {
             clipped
         }
     }
+
+    fn clip_collision_bounds_movement_with_context_and_boxes(
+        &self,
+        bounds: LocalPlayerBounds,
+        movement: [f64; 3],
+        context: LocalPlayerCollisionContext,
+        collision_boxes: &[WorldCollisionBox],
+    ) -> [f64; 3] {
+        let mut clipped = [0.0; 3];
+        for axis in particle_collision_axis_order(movement) {
+            let requested = particle_movement_component(movement, axis);
+            if requested == 0.0 {
+                continue;
+            }
+            let moved_bounds = bounds.moved(clipped[0], clipped[1], clipped[2]);
+            let mut axis_clipped =
+                self.clip_entity_axis_collision(moved_bounds, axis, requested, context);
+            for collision_box in collision_boxes {
+                axis_clipped = clipped_axis_against_world_box(
+                    moved_bounds,
+                    axis,
+                    requested,
+                    axis_clipped,
+                    *collision_box,
+                );
+            }
+            if axis_clipped.abs() < COLLISION_EPSILON {
+                axis_clipped = 0.0;
+            }
+            set_particle_movement_component(&mut clipped, axis, axis_clipped);
+        }
+        clipped
+    }
+
+    fn clip_entity_axis_collision(
+        &self,
+        bounds: LocalPlayerBounds,
+        axis: CollisionAxis,
+        requested: f64,
+        context: LocalPlayerCollisionContext,
+    ) -> f64 {
+        let swept = bounds.swept_axis(axis, requested);
+        let min_x = block_floor(swept.min_x + COLLISION_EPSILON) - 1;
+        let max_x = block_floor(swept.max_x - COLLISION_EPSILON) + 1;
+        let min_y = block_floor(swept.min_y + COLLISION_EPSILON) - 1;
+        let max_y = block_floor(swept.max_y - COLLISION_EPSILON) + 1;
+        let min_z = block_floor(swept.min_z + COLLISION_EPSILON) - 1;
+        let max_z = block_floor(swept.max_z - COLLISION_EPSILON) + 1;
+
+        let mut clipped = requested;
+        for y in min_y..=max_y {
+            for z in min_z..=max_z {
+                for x in min_x..=max_x {
+                    let pos = BlockPos { x, y, z };
+                    let Some(block) = self.probe_block(pos) else {
+                        continue;
+                    };
+                    let Some(shape) = block_collision_shape_with_context(&block, pos, context)
+                    else {
+                        continue;
+                    };
+                    for shape_box in shape.boxes() {
+                        clipped = clipped_particle_axis_against_box(
+                            bounds, axis, requested, clipped, pos, shape_box,
+                        );
+                    }
+                }
+            }
+        }
+        if clipped.abs() < COLLISION_EPSILON {
+            0.0
+        } else {
+            clipped
+        }
+    }
+}
+
+fn step_candidate_heights<'a>(
+    grounded_min_y: f64,
+    max_up_step: f32,
+    step_height_to_skip: f32,
+    colliders: impl Iterator<Item = &'a WorldCollisionBox>,
+) -> Vec<f32> {
+    let mut candidates = Vec::new();
+    for collider in colliders {
+        for coordinate in [collider.min[1], collider.max[1]] {
+            let relative = (coordinate - grounded_min_y) as f32;
+            if relative >= 0.0 && relative != step_height_to_skip && relative <= max_up_step {
+                candidates.push(relative);
+            }
+        }
+    }
+    candidates
 }
 
 fn projectile_block_hit_scale(
