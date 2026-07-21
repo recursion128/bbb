@@ -3727,6 +3727,177 @@ def render(result: ExtractionResult) -> str:
         }
         return exact_owners.get(runtime_class, "ServerSynchronized")
 
+    ai_step_reaches_living_cache: dict[str, bool] = {}
+
+    def ai_step_reaches_living_block_effect(runtime_class: str | None) -> bool:
+        if runtime_class is None:
+            return False
+        if runtime_class in ai_step_reaches_living_cache:
+            return ai_step_reaches_living_cache[runtime_class]
+        owner = class_nearest_method_owner(
+            result,
+            class_map,
+            runtime_class,
+            "aiStep",
+            0,
+            ai_step_owner_cache,
+        )
+        if owner == "net.minecraft.world.entity.LivingEntity":
+            ai_step_reaches_living_cache[runtime_class] = True
+            return True
+        source, method = method_for(result, owner, "aiStep", 0)
+        calls_super = any(
+            call.name == "aiStep"
+            and call.qualifier is not None
+            and call.qualifier.canonical == "super"
+            and method.body is not None
+            and method.body.start_byte <= call.span.start_byte
+            and call.span.end_byte <= method.body.end_byte
+            for call in source.calls
+        )
+        owner_type = class_map[owner]
+        reaches = calls_super and ai_step_reaches_living_block_effect(
+            owner_type.superclass
+        )
+        ai_step_reaches_living_cache[runtime_class] = reaches
+        return reaches
+
+    def block_effect_tick_policy(runtime_class: str | None) -> str:
+        if extends_class(
+            runtime_class, "net.minecraft.world.entity.vehicle.boat.AbstractBoat"
+        ):
+            return "BoatTwice"
+        if extends_class(
+            runtime_class, "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"
+        ):
+            # Both minecart behavior implementations move and apply effects on
+            # the server. Client tick only interpolates; piston movement is a
+            # separate block-entity callback owner.
+            return "None"
+        if extends_class(runtime_class, "net.minecraft.world.entity.LivingEntity"):
+            return (
+                "LocalAuthoritativeLiving"
+                if ai_step_reaches_living_block_effect(runtime_class)
+                else "None"
+            )
+        if extends_class(
+            runtime_class, "net.minecraft.world.entity.projectile.arrow.AbstractArrow"
+        ):
+            return "AbstractArrowSegments"
+        if extends_class(runtime_class, "net.minecraft.world.entity.item.ItemEntity"):
+            return "ItemWithLastMovements"
+        if runtime_class == "net.minecraft.world.entity.projectile.FireworkRocketEntity":
+            return "DetachedFirework"
+        if runtime_class == "net.minecraft.world.entity.boss.enderdragon.EndCrystal":
+            return "OnceAfterMovement"
+        movement_policy = client_movement_policy(runtime_class)
+        if movement_policy in {
+            "ExperienceOrb",
+            "FallingBlock",
+            "PrimedTnt",
+            "ThrowableProjectile",
+            "ThrownExperienceBottle",
+            "ThrownPotion",
+            "HurtingProjectile",
+            "WindCharge",
+            "DragonFireball",
+            "WitherSkull",
+            "FishingHook",
+            "ShulkerBullet",
+        }:
+            return "OnceAfterMovement"
+        return "None"
+
+    def method_call_count(owner: str, method_name: str, call_name: str) -> int:
+        source, method = method_for(result, owner, method_name, 0)
+        if method.body is None:
+            raise ExtractionError(f"{owner}.{method_name}: method lacks body")
+        return sum(
+            call.name == call_name
+            and method.body.start_byte <= call.span.start_byte
+            and call.span.end_byte <= method.body.end_byte
+            for call in source.calls
+        )
+
+    block_effect_call_contracts = {
+        ("net.minecraft.world.entity.LivingEntity", "aiStep"): 1,
+        ("net.minecraft.world.entity.vehicle.boat.AbstractBoat", "tick"): 2,
+        ("net.minecraft.world.entity.boss.enderdragon.EndCrystal", "tick"): 1,
+        ("net.minecraft.world.entity.item.FallingBlockEntity", "tick"): 1,
+        ("net.minecraft.world.entity.item.PrimedTnt", "tick"): 1,
+        ("net.minecraft.world.entity.ExperienceOrb", "tick"): 1,
+        ("net.minecraft.world.entity.projectile.ThrowableProjectile", "tick"): 1,
+        (
+            "net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile",
+            "tick",
+        ): 1,
+        ("net.minecraft.world.entity.projectile.ShulkerBullet", "tick"): 1,
+        ("net.minecraft.world.entity.projectile.FishingHook", "tick"): 1,
+        ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "tick"): 1,
+        ("net.minecraft.world.entity.projectile.arrow.AbstractArrow", "tick"): 2,
+        ("net.minecraft.world.entity.item.ItemEntity", "tick"): 1,
+        ("net.minecraft.world.entity.boss.enderdragon.EnderDragon", "aiStep"): 1,
+    }
+    for (owner, method_name), expected_count in block_effect_call_contracts.items():
+        actual_count = method_call_count(
+            owner, method_name, "applyEffectsFromBlocks"
+        )
+        if actual_count != expected_count:
+            raise ExtractionError(
+                f"{owner}.{method_name}: expected {expected_count} "
+                f"applyEffectsFromBlocks calls, found {actual_count}"
+            )
+    living_source, living_ai_step = method_for(
+        result, "net.minecraft.world.entity.LivingEntity", "aiStep", 0
+    )
+    if living_ai_step.body is None or (
+        "!this.level().isClientSide() || this.isLocalInstanceAuthoritative()"
+        not in living_source.text(living_ai_step.body)
+    ):
+        raise ExtractionError(
+            "LivingEntity.aiStep: missing local-authoritative block-effect guard"
+        )
+    firework_source, firework_tick = method_for(
+        result,
+        "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+        "tick",
+        0,
+    )
+    if firework_tick.body is None or (
+        "if (this.isAttachedToEntity())" not in firework_source.text(firework_tick.body)
+        or "this.applyEffectsFromBlocks();" not in firework_source.text(firework_tick.body)
+    ):
+        raise ExtractionError(
+            "FireworkRocketEntity.tick: missing attached/detached block-effect split"
+        )
+    arrow_source, arrow_step_move = method_for(
+        result,
+        "net.minecraft.world.entity.projectile.arrow.AbstractArrow",
+        "stepMoveAndHit",
+        1,
+    )
+    if arrow_step_move.body is None or sum(
+        call.name == "applyEffectsFromBlocks"
+        and arrow_step_move.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= arrow_step_move.body.end_byte
+        for call in arrow_source.calls
+    ) != 1:
+        raise ExtractionError(
+            "AbstractArrow.stepMoveAndHit: expected one explicit segment callback"
+        )
+    item_source, item_tick = method_for(
+        result, "net.minecraft.world.entity.item.ItemEntity", "tick", 0
+    )
+    if item_tick.body is None or not any(
+        call.name == "applyEffectsFromBlocksForLastMovements"
+        and item_tick.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= item_tick.body.end_byte
+        for call in item_source.calls
+    ):
+        raise ExtractionError(
+            "ItemEntity.tick: missing resting applyEffectsFromBlocksForLastMovements call"
+        )
+
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -4123,6 +4294,7 @@ def render(result: ExtractionResult) -> str:
                 f"        ai_step_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'aiStep', 0, ai_step_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
                 f"        ride_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'rideTick', 0, ride_tick_owner_cache) if item.runtime_class is not None else None)},",
                 f"        client_movement_policy: VanillaEntityClientMovementPolicy::{client_movement_policy(item.runtime_class)},",
+                f"        block_effect_tick_policy: VanillaEntityBlockEffectTickPolicy::{block_effect_tick_policy(item.runtime_class)},",
                 f"        interpolation_policy: VanillaEntityInterpolationPolicy::{interpolation_policy(item.runtime_class)},",
                 f"        baby_behavior: VanillaEntityBabyBehavior::{class_baby_behavior(result, class_map, item.runtime_class, baby_behavior_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'Never'},",
                 f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
@@ -4312,6 +4484,14 @@ def render(result: ExtractionResult) -> str:
             "        assert_eq!(owner(\"minecraft:dragon_fireball\").client_movement_policy, super::VanillaEntityClientMovementPolicy::DragonFireball);",
             "        assert_eq!(owner(\"minecraft:wither_skull\").client_movement_policy, super::VanillaEntityClientMovementPolicy::WitherSkull);",
             "        assert_eq!(owner(\"minecraft:zombie\").client_movement_policy, super::VanillaEntityClientMovementPolicy::ServerSynchronized);",
+            "        assert_eq!(owner(\"minecraft:cow\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving);",
+            "        assert_eq!(owner(\"minecraft:ender_dragon\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::None);",
+            "        assert_eq!(owner(\"minecraft:oak_boat\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::BoatTwice);",
+            "        assert_eq!(owner(\"minecraft:minecart\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::None);",
+            "        assert_eq!(owner(\"minecraft:item\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::ItemWithLastMovements);",
+            "        assert_eq!(owner(\"minecraft:arrow\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::AbstractArrowSegments);",
+            "        assert_eq!(owner(\"minecraft:firework_rocket\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::DetachedFirework);",
+            "        assert_eq!(owner(\"minecraft:end_crystal\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::OnceAfterMovement);",
             "    }",
             "",
             "    #[test]",

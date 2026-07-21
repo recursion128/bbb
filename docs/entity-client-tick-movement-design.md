@@ -836,6 +836,51 @@ snapshot adds about 4.57--4.77 us in the current operation rather than shifting
 it to the next mutation. Remaining phase-4 subclass work is limited to the
 separately listed inventory/callback edges before coverage closeout.
 
+## Precise Block-Effect Boundary Follow-up Contract (2026-07-21)
+
+The final common client-tick boundary is Vanilla 26.1
+`Entity.applyEffectsFromBlocks`. This follow-up remains part of the existing
+high-risk movement engineering slice; it adds no visible feature and does not
+move server damage, AI, block mutation, portal outcomes, advancement triggers,
+or authoritative removal into the client. On gated HEAD `378299e89`, the same
+machine measures the existing 2,000 heterogeneous repo Criterion cases at
+3.7833 ms tick-only and 5.3010 ms for tick plus retained publication (midpoint,
+10 samples, 500 ms warm-up and two-second collection). These are the before
+numbers for the boundary itself; terrain traversal, callback apply and
+publication remain separately observed after implementation.
+
+The generated entity metadata row is the sole family dispatch owner. It now
+records a source-verified client callback policy: remote Living entities do
+not run the `LivingEntity.aiStep` callback, locally authoritative Living
+instances do, EnderDragon's non-super `aiStep` remains excluded, boats call
+twice, interpolated client minecarts do not call, ItemEntity can reuse its last
+movement list, AbstractArrow owns explicit hit segments, detached fireworks
+call once, and the remaining directly moving nonliving families call once.
+The generator checks the corresponding Vanilla method call counts and super
+chain. Fire immunity comes from each `EntityType.Builder.fireImmune()` call;
+freeze immunity comes from `#freeze_immune_entity_types`. No protocol-id table,
+raw type-id branch, or second metadata schema is permitted.
+
+Canonical per-incarnation block-effect runtime belongs to `EntityStore`.
+Movement history uses an inline empty/one-segment representation and only a
+publication-shared heap owner for the rare multi-segment case, so the ordinary
+moving entity allocates nothing and retained generations cannot force a whole
+history copy. `WorldStore` remains the only terrain probe owner and produces a
+narrow ordered evaluation at the exact callback point. The entity owner then
+applies stuck speed, bubble/honey velocity, fire/freeze/clear effects and typed
+client particles/audio before animation/effect publication. Reset, removal,
+same-id recreation and level change discard the incarnation state.
+
+The serial checkpoints are: generated policy/immunity facts and contract;
+canonical movement history plus precise swept traversal; directly moving
+nonliving families; locally authoritative Living/vehicle integration and
+typed effects; then coverage/performance closeout. Each stage is buildable and
+uses world/native focused tests, formatting, diff/docs checks and full review.
+The generated-fact stage and the completed runtime boundary are milestone full
+gates. A safe stop is only a committed, fully gated milestone; an unexpected
+Vanilla call owner or an unrepresentable exact collision shape is a real
+blocker, while implementation size or an actionable test failure is not.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:

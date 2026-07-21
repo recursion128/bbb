@@ -723,6 +723,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     /// This is a semantic dispatch policy, not permission to run server-side
     /// collision consequences, damage, AI, spawning, or removal locally.
     pub client_movement_policy: VanillaEntityClientMovementPolicy,
+    /// Source-verified `applyEffectsFromBlocks` call contract for one vanilla
+    /// client entity tick. This is kept on the generated runtime-class row so
+    /// the canonical tick owner never grows a parallel entity-type table.
+    pub block_effect_tick_policy: VanillaEntityBlockEffectTickPolicy,
     /// Generated runtime-class policy for client movement interpolation.
     /// Keeping this fact on the fixed EntityType row avoids walking the Java
     /// class graph for every entity on every client tick.
@@ -4449,11 +4453,36 @@ pub enum VanillaEntityClientMovementPolicy {
     ShulkerBullet,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityBlockEffectTickPolicy {
+    /// No client tick callback. Server movement/interpolation remains authoritative.
+    None,
+    /// `LivingEntity.aiStep`: only the local authoritative instance executes it.
+    LocalAuthoritativeLiving,
+    /// One ordinary callback after this entity's client-owned movement.
+    OnceAfterMovement,
+    /// `ItemEntity` may reuse the last applied movement list while resting.
+    ItemWithLastMovements,
+    /// `AbstractArrow` can apply once at rest or once per explicit hit segment.
+    AbstractArrowSegments,
+    /// `FireworkRocketEntity` applies only while it is not attached to an entity.
+    DetachedFirework,
+    /// `AbstractBoat.tick` deliberately invokes the callback twice.
+    BoatTwice,
+}
+
 pub(crate) fn vanilla_entity_metadata_type_client_movement_policy(
     entity_type_id: i32,
 ) -> Option<VanillaEntityClientMovementPolicy> {
     let entry = VANILLA_ENTITY_TYPE_METADATA_26_1.get(usize::try_from(entity_type_id).ok()?)?;
     Some(entry.client_movement_policy)
+}
+
+pub fn vanilla_entity_metadata_type_block_effect_tick_policy(
+    entity_type_id: i32,
+) -> Option<VanillaEntityBlockEffectTickPolicy> {
+    let entry = VANILLA_ENTITY_TYPE_METADATA_26_1.get(usize::try_from(entity_type_id).ok()?)?;
+    Some(entry.block_effect_tick_policy)
 }
 
 pub(crate) fn vanilla_entity_metadata_type_interpolation_policy(

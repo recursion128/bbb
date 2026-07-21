@@ -202,6 +202,7 @@ def render_entity_types(
     redirectable_projectiles: frozenset[str],
     deflects_projectiles: frozenset[str],
     powder_snow_walkable_mobs: frozenset[str],
+    freeze_immune_entity_types: frozenset[str],
     non_controlling_riders: frozenset[str],
     can_float_while_ridden: frozenset[str],
     can_equip_saddle: frozenset[str],
@@ -235,6 +236,7 @@ def render_entity_types(
         "    pub only_op_can_set_nbt: bool,",
         "    pub serializable: bool,",
         "    pub can_summon: bool,",
+        "    pub fire_immune: bool,",
         "    pub width: f32,",
         "    pub height: f32,",
         "    pub eye_height: Option<f32>,",
@@ -244,6 +246,7 @@ def render_entity_types(
         "    pub redirectable_projectile: bool,",
         "    pub deflects_projectiles: bool,",
         "    pub powder_snow_walkable: bool,",
+        "    pub freeze_immune: bool,",
         "    pub non_controlling_rider: bool,",
         "    pub can_float_while_ridden: bool,",
         "    pub can_equip_saddle: bool,",
@@ -268,6 +271,7 @@ def render_entity_types(
                 f"        only_op_can_set_nbt: {str(entry.only_op_can_set_nbt).lower()},",
                 f"        serializable: {str(entry.serializable).lower()},",
                 f"        can_summon: {str(entry.can_summon).lower()},",
+                f"        fire_immune: {str(entry.fire_immune).lower()},",
                 f"        width: {repr(entry.width)},",
                 f"        height: {repr(entry.height)},",
                 f"        eye_height: {'Some(' + repr(entry.eye_height) + ')' if entry.eye_height is not None else 'None'},",
@@ -284,6 +288,7 @@ def render_entity_types(
                 f"        redirectable_projectile: {str(entry.resource_id in redirectable_projectiles).lower()},",
                 f"        deflects_projectiles: {str(entry.resource_id in deflects_projectiles).lower()},",
                 f"        powder_snow_walkable: {str(entry.resource_id in powder_snow_walkable_mobs).lower()},",
+                f"        freeze_immune: {str(entry.resource_id in freeze_immune_entity_types).lower()},",
                 f"        non_controlling_rider: {str(entry.resource_id in non_controlling_riders).lower()},",
                 f"        can_float_while_ridden: {str(entry.resource_id in can_float_while_ridden).lower()},",
                 f"        can_equip_saddle: {str(entry.resource_id in can_equip_saddle).lower()},",
@@ -395,6 +400,18 @@ def render_entity_types(
             "        .unwrap_or(false)",
             "}",
             "",
+            "pub fn vanilla_entity_type_is_fire_immune(entity_type_id: i32) -> bool {",
+            "    vanilla_entity_type(entity_type_id)",
+            "        .map(|entry| entry.fire_immune)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
+            "pub fn vanilla_entity_type_is_freeze_immune(entity_type_id: i32) -> bool {",
+            "    vanilla_entity_type(entity_type_id)",
+            "        .map(|entry| entry.freeze_immune)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
             "pub fn vanilla_entity_type_is_non_controlling_rider(entity_type_id: i32) -> bool {",
             "    vanilla_entity_type(entity_type_id)",
             "        .map(|entry| entry.non_controlling_rider)",
@@ -435,6 +452,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.only_op_can_set_nbt).count(), 3);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| !entry.serializable).count(), 4);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| !entry.can_summon).count(), 2);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.fire_immune).count(), 15);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.eye_height.is_some()).count(), 101);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.width >= 0.0 && entry.height >= 0.0).count(), 157);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| !entry.passenger_attachments.is_empty()).count(), 57);",
@@ -443,6 +461,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.redirectable_projectile).count(), 3);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.deflects_projectiles).count(), 1);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.powder_snow_walkable).count(), 4);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.freeze_immune).count(), 4);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.non_controlling_rider).count(), 2);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_float_while_ridden).count(), 6);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_equip_saddle).count(), 11);",
@@ -558,6 +577,20 @@ def render_entity_types(
             "        assert!(vanilla_entity_type_is_powder_snow_walkable(VANILLA_ENTITY_TYPE_FOX_ID));",
             "        assert!(!vanilla_entity_type_is_powder_snow_walkable(VANILLA_ENTITY_TYPE_COW_ID));",
             "        assert!(!vanilla_entity_type_is_powder_snow_walkable(-1));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn block_effect_immunity_facts_come_from_builder_and_vanilla_tag() {",
+            "        assert!(vanilla_entity_type_is_fire_immune(VANILLA_ENTITY_TYPE_BLAZE_ID));",
+            "        assert!(vanilla_entity_type_is_fire_immune(VANILLA_ENTITY_TYPE_STRIDER_ID));",
+            "        assert!(!vanilla_entity_type_is_fire_immune(VANILLA_ENTITY_TYPE_COW_ID));",
+            "        assert!(vanilla_entity_type_is_freeze_immune(VANILLA_ENTITY_TYPE_STRAY_ID));",
+            "        assert!(vanilla_entity_type_is_freeze_immune(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID));",
+            "        assert!(vanilla_entity_type_is_freeze_immune(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID));",
+            "        assert!(vanilla_entity_type_is_freeze_immune(VANILLA_ENTITY_TYPE_WITHER_ID));",
+            "        assert!(!vanilla_entity_type_is_freeze_immune(VANILLA_ENTITY_TYPE_COW_ID));",
+            "        assert!(!vanilla_entity_type_is_fire_immune(-1));",
+            "        assert!(!vanilla_entity_type_is_freeze_immune(-1));",
             "    }",
             "",
             "    #[test]",
@@ -1719,6 +1752,14 @@ def generated_files(
             registry_name="entity type",
         )
     )
+    freeze_immune_entity_types = frozenset(
+        resolve_tag_values(
+            entity_type_tags,
+            "minecraft:freeze_immune_entity_types",
+            4,
+            registry_name="entity type",
+        )
+    )
     non_controlling_riders = frozenset(
         resolve_tag_values(
             entity_type_tags,
@@ -1756,6 +1797,7 @@ def generated_files(
         | redirectable_projectiles
         | deflects_projectiles
         | powder_snow_walkable_mobs
+        | freeze_immune_entity_types
         | non_controlling_riders
         | can_float_while_ridden
         | can_equip_saddle
@@ -1792,6 +1834,7 @@ def generated_files(
                 redirectable_projectiles,
                 deflects_projectiles,
                 powder_snow_walkable_mobs,
+                freeze_immune_entity_types,
                 non_controlling_riders,
                 can_float_while_ridden,
                 can_equip_saddle,

@@ -284,6 +284,9 @@ pub use schema::{
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type, VanillaPrimedTntMetadataAccessors,
 };
 pub use schema::{
+    vanilla_entity_metadata_type_block_effect_tick_policy, VanillaEntityBlockEffectTickPolicy,
+};
+pub use schema::{
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
     vanilla_entity_metadata_type_sound_source_kind, VanillaEntityCollidabilityKind,
     VanillaEntityPushabilityKind, VanillaEntitySoundSourceKind,

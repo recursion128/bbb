@@ -29,6 +29,7 @@ class EntityTypeEntry:
     only_op_can_set_nbt: bool
     serializable: bool
     can_summon: bool
+    fire_immune: bool
     width: float
     height: float
     eye_height: float | None
@@ -456,6 +457,7 @@ def entity_type_entries(
                 field.name in op_only_constants,
                 not _calls_in_expression(source, field.initializer, "noSave"),
                 not _calls_in_expression(source, field.initializer, "noSummon"),
+                bool(_calls_in_expression(source, field.initializer, "fireImmune")),
                 width,
                 height,
                 eye_height,
