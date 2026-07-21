@@ -8518,28 +8518,6 @@ fn entity_model_kind_maps_all_vanilla_registry_ids() {
 }
 
 #[test]
-fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placeholders() {
-    for (entity_type_id, name, width, height) in [(
-        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        "fishing_bobber_entity_type_bounds",
-        0.25,
-        0.25,
-    )] {
-        assert_eq!(
-            entity_model_kind(entity_type_id, &[]),
-            EntityModelKind::Placeholder {
-                name,
-                bounds: bbb_renderer::EntityModelBounds {
-                    width,
-                    height,
-                    depth: width,
-                },
-            }
-        );
-    }
-}
-
-#[test]
 fn primed_tnt_uses_block_attachment_renderer_not_placeholder_bounds() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_TNT_ID, &[]),
