@@ -302,11 +302,11 @@ fn passenger_ride_tick_clears_motion_before_client_entity_tick() {
     let passenger_id = 20;
     store.apply_add_entity(protocol_add_entity_with_type(
         vehicle_id,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_COW_ID,
     ));
     store.apply_add_entity(protocol_add_entity_with_type(
         passenger_id,
-        VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
     assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
         id: vehicle_id,
@@ -3317,6 +3317,104 @@ fn remote_boat_paddle_sound_uses_post_move_land_status() {
             }),
         EntityClientMovementEffectState::Particle(_) => false,
     }));
+}
+
+#[test]
+fn remote_boat_tick_updates_status_and_discards_server_velocity() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 1,
+            y: -64,
+            z: -2,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+    let mut boat = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
+    boat.position.y = -63.0;
+    boat.delta_movement.x = 0.4;
+    store.apply_add_entity(boat);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: -63.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let generation_a = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+
+    let transform = store.entities.transform(20).unwrap();
+    let movement = store.entities.boat_movement(20).unwrap();
+    assert_eq!(transform.delta_movement, EntityVec3::default());
+    assert_eq!(movement.old_status, None);
+    assert_eq!(
+        movement.status,
+        Some(super::super::EntityBoatStatus::OnLand)
+    );
+    assert!(movement.land_friction > 0.0);
+    assert_eq!(
+        generation_a.entities.boat_movement(20),
+        Some(super::super::components::EntityBoatMovement::default())
+    );
+    assert_eq!(generation_a.probe_entity(20).unwrap().delta_movement.x, 0.4);
+}
+
+#[test]
+fn remote_boat_pushes_only_the_live_local_player_generation() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    let mut local_player = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    local_player.uuid = Uuid::from_u128(0x99);
+    local_player.position.x = 1.5;
+    store.apply_add_entity(local_player);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.5,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let generation_a = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+
+    let distance = 0.5_f64.sqrt();
+    let expected_push = (0.5 / distance) * f64::from(0.05_f32);
+    let live_pose = store.local_player_pose().unwrap();
+    let live_boat = store.entities.transform(20).unwrap();
+    assert!((live_pose.delta_movement.x - expected_push).abs() < 1.0e-12);
+    assert!((live_boat.delta_movement.x + expected_push).abs() < 1.0e-12);
+    assert_eq!(live_pose.delta_movement.z, 0.0);
+    assert_eq!(live_boat.delta_movement.z, 0.0);
+    assert_eq!(
+        generation_a.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d::default()
+    );
+    assert_eq!(
+        generation_a.probe_entity(20).unwrap().delta_movement,
+        EntityVec3::default()
+    );
+    let generation_b = store.publication_snapshot();
+    assert_eq!(generation_b.local_player_pose(), Some(live_pose));
+    assert_eq!(
+        generation_b.probe_entity(20).unwrap().delta_movement.x,
+        live_boat.delta_movement.x
+    );
 }
 
 #[test]

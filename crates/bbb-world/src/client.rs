@@ -35,4 +35,6 @@ pub(crate) use local_player_collision::{
 pub(crate) use local_player_fluid::{
     entity_bounds_contains_any_fluid, entity_fluid_contact, EntityFluidContactState,
 };
-pub(crate) use local_player_movement::local_player_lava_current_push_per_tick;
+pub(crate) use local_player_movement::{
+    local_player_is_on_climbable, local_player_lava_current_push_per_tick,
+};

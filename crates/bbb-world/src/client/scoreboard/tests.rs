@@ -317,6 +317,74 @@ fn scoreboard_teams_add_change_join_leave_and_remove() {
 }
 
 #[test]
+fn scoreboard_collision_rules_match_entity_selector_pushable_by() {
+    let mut store = WorldStore::new();
+    assert!(store
+        .scoreboard()
+        .entity_can_push_scoreboard_target("boat", Some("player")));
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "boat-team",
+        PlayerTeamMethod::Add,
+        Some(protocol_team_parameters(
+            "boat-team",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::PushOtherTeams,
+            ChatFormatting::White,
+            "",
+            "",
+        )),
+        &["boat", "ally"],
+    )));
+    assert!(!store
+        .scoreboard()
+        .entity_can_push_scoreboard_target("boat", Some("player")));
+    assert!(store
+        .scoreboard()
+        .entity_can_push_scoreboard_target("boat", Some("ally")));
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "boat-team",
+        PlayerTeamMethod::Change,
+        Some(protocol_team_parameters(
+            "boat-team",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::PushOwnTeam,
+            ChatFormatting::White,
+            "",
+            "",
+        )),
+        &[],
+    )));
+    assert!(!store
+        .scoreboard()
+        .entity_can_push_scoreboard_target("boat", Some("ally")));
+    assert!(store
+        .scoreboard()
+        .entity_can_push_scoreboard_target("boat", Some("player")));
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "boat-team",
+        PlayerTeamMethod::Change,
+        Some(protocol_team_parameters(
+            "boat-team",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::Never,
+            ChatFormatting::White,
+            "",
+            "",
+        )),
+        &[],
+    )));
+    assert!(!store
+        .scoreboard()
+        .entity_can_push_scoreboard_target("boat", Some("player")));
+}
+
+#[test]
 fn scoreboard_team_color_rgb_matches_vanilla_chat_formatting() {
     let mut store = WorldStore::new();
 

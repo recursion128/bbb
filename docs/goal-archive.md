@@ -20228,3 +20228,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] entity-only Criterion/test API 保留不修改 canonical clock/border 的窄语义，同时按每个
   running tick 的 pre-`tickTime` clock 递进；native runtime 只走组合入口。专项测试锁定三 tick
   shrinking-border FishingHook collision、单 frozen-step 三 tick batch、clock 及 step-budget 结果。
+
+## 2026-07-20：remote boat status 与 client-local push
+
+- [x] `AbstractBoat.tick` 的 remote owner 在 interpolation 后按 pre-interpolation hull world fact
+  更新 nullable old/current water/land status、water level、land friction 与 out-of-control clock，
+  并清除 server-authoritative packet velocity；paddle/effect 后再按 `ClientLevel` 唯一 local-player
+  target 执行 exact bounds/vertical/team/spectator/climbable/shared-root/vehicle push gate。
+- [x] boat hull 输入融合进唯一 root/passenger schedule；`WorldStore` 在 mutable ECS pass 前解析
+  terrain 与 scoreboard fact，ordered fact vector 取代第二次 schedule 和逐 boat HashMap lookup。
+  retained A/B 测试同时锁定 private boat state、boat transform impulse 与 separate local-player pose，
+  id/root/team 语义不进入第二套 canonical owner。
+- [x] 首版重复 schedule 的 1,000 boat + 1,000 passenger retained-publication 约 4.46 ms；融合后
+  为 3.9589--4.1157 ms（center 4.0588 ms），相对历史 3.6756 ms 的剩余约 10% 是 1,000 个
+  Vanilla-required persistent status/velocity mutation。最终同轮 2,000 generated heterogeneous
+  tick-only 为 3.7690 ms，adjacent comparison +1.67%。generic `applyEffectsFromBlocks` 的 precise
+  intersection、stuck/bubble/fire/freeze 仍是独立开放边界，未以本阶段提前涂绿。

@@ -3818,7 +3818,7 @@ impl WorldStore {
             .same_team_can_see_friendly_invisibles(&local_player_name, &target_name)
     }
 
-    fn local_player_scoreboard_name(&self) -> Option<String> {
+    pub(crate) fn local_player_scoreboard_name(&self) -> Option<String> {
         let local_player_id = self.local_player_id?;
         let identity = self.entities.identity(local_player_id)?;
         Some(self.scoreboard_name_for_identity(identity.entity_type_id, identity.uuid))
@@ -3828,7 +3828,11 @@ impl WorldStore {
         self.scoreboard_name_for_identity(source.entity_type_id, source.uuid)
     }
 
-    fn scoreboard_name_for_identity(&self, entity_type_id: i32, uuid: uuid::Uuid) -> String {
+    pub(crate) fn scoreboard_name_for_identity(
+        &self,
+        entity_type_id: i32,
+        uuid: uuid::Uuid,
+    ) -> String {
         if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
             if let Some(player) = self.player_info_entry(uuid) {
                 return player.profile.name.clone();

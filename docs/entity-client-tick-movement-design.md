@@ -485,6 +485,32 @@ ever-growing publication payload nor deferred to the next mutation. A wider
 four-component hecs mutation prototype measured 1.7618/6.6617 us and was
 discarded; combining borrow syntax did not reduce the end-to-end owner cost.
 
+The following boat stage closes the remaining remote status and local-client
+push ownership without adding another entity scan. The one schedule builder now
+collects fixed boat hull inputs in root/passenger order; `WorldStore` resolves
+water/land status and scoreboard collision facts before the mutable ECS pass.
+The ordered pass applies status before animation, clears remote packet velocity
+after interpolation, advances paddles, then applies `ClientLevel`'s sole local-
+player push target with exact inflated bounds, vertical, team, spectator,
+climbable, shared-root and vehicle gates. Terrain-free fixtures short-circuit to
+`IN_AIR`; loaded terrain still performs the required per-boat water/friction
+query. Retained A/B tests cover the private boat state, transform impulse and
+separate local-player pose owner.
+
+An initial correct prototype rebuilt the schedule and raised the existing 1,000
+boat + 1,000 passenger retained-publication case from its historical 3.6756 ms
+to about 4.46 ms. Folding hull collection into the existing schedule and using
+an ordered fact vector instead of a hash lookup reduced the same-machine result
+to 3.9589--4.1157 ms; the latest center was 4.0588 ms. The remaining roughly
+10% over the historical pre-status baseline is the newly required mutation of
+1,000 persistent boat status/velocity owners, not a second scan or deferred
+publication work. The standard 2,000 generated heterogeneous mix measured
+3.7690 ms tick-only in the same final run; its latest adjacent comparison was
++1.67%, with only the generated boat rows paying status work. Generic
+`applyEffectsFromBlocks` ordering, including bubble-column velocity and
+stuck/fire/freeze callbacks, remains the final common base-class boundary and
+is not implied complete by this boat stage.
+
 The same phase also closes the client-owned part of `MinecartTNT.tick`. Event
 10 already seeds the canonical 80-tick fuse; every tick whose pre-decrement fuse
 is positive now decrements it and emits one typed smoke effect at the cart's

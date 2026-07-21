@@ -163,6 +163,7 @@ use crate::entities::schema::{
 };
 use crate::registries::{armor_trim_sprite, ArmorTrimLayer, RegistrySet};
 use crate::ItemEquipmentSlot;
+use crate::LocalPlayerPoseState;
 use bbb_protocol::entity_types::*;
 
 fn within_death_tick_distance(
@@ -392,6 +393,27 @@ pub(crate) struct EntityInWaterTickInput {
     pub(crate) eye_position: [f64; 3],
     pub(crate) guardian_below_pos: Option<crate::BlockPos>,
     pub(crate) guardian_attack_target_id: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct EntityBoatClientTickInput {
+    pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
+    pub(crate) uuid: Uuid,
+    pub(crate) position: EntityVec3,
+    pub(crate) relative_min: [f64; 3],
+    pub(crate) relative_max: [f64; 3],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityBoatClientTickWorldFacts {
+    pub(crate) entity_id: i32,
+    pub(crate) status: super::EntityBoatStatus,
+    pub(crate) water_level: f64,
+    pub(crate) land_friction: Option<f32>,
+    pub(crate) can_push_local_player: bool,
+    pub(crate) relative_min: [f64; 3],
+    pub(crate) relative_max: [f64; 3],
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -5267,6 +5289,29 @@ impl EntityStore {
         inputs
     }
 
+    /// Gathers the fixed hull facts required by `AbstractBoat.tick` before the
+    /// mutable ordered entity pass. Boat dimensions come from the generated
+    /// Vanilla entity catalog and do not depend on entity metadata.
+    pub(crate) fn prepare_client_tick_schedule<F>(
+        &mut self,
+        runs_normally: bool,
+        is_ticking_entity: &F,
+    ) -> Vec<EntityBoatClientTickInput>
+    where
+        F: Fn(i32, i32, EntityVec3) -> bool,
+    {
+        let mut schedule = std::mem::take(&mut self.client_tick_scratch);
+        let mut inputs = Vec::new();
+        self.fill_client_tick_schedule(
+            &mut schedule,
+            runs_normally,
+            is_ticking_entity,
+            Some(&mut inputs),
+        );
+        self.client_tick_scratch = schedule;
+        inputs
+    }
+
     /// Resolves only unique active Guardian targets collected by the existing
     /// water-input query. Guardians sharing a target reuse one protocol-id and
     /// component lookup; unrelated living entities are never projected.
@@ -5451,11 +5496,10 @@ impl EntityStore {
         targets
     }
 
-    pub(crate) fn advance_client_animations<F, G>(
+    pub(crate) fn advance_client_animations<G>(
         &mut self,
         ticks: u32,
         game_time: i64,
-        runs_normally: bool,
         deferred_boat_paddle_entity_id: Option<i32>,
         deferred_local_camel_vehicle_id: Option<i32>,
         deferred_local_nautilus_vehicle_id: Option<i32>,
@@ -5467,6 +5511,9 @@ impl EntityStore {
         local_player_holds_warped_fungus_on_a_stick: bool,
         spectator_player_uuids: &HashSet<Uuid>,
         fluid_facts_by_id: &HashMap<i32, EntityClientTickFluidFacts>,
+        boat_world_facts: &[EntityBoatClientTickWorldFacts],
+        mut local_player_pose: Option<&mut LocalPlayerPoseState>,
+        local_player_is_vehicle: bool,
         guardian_can_stand_on_below_by_id: &HashMap<i32, bool>,
         guardian_attack_target_ids: &HashSet<i32>,
         client_movement_collisions_by_id: &HashMap<
@@ -5476,21 +5523,22 @@ impl EntityStore {
         minecart_improvements_enabled: bool,
         death_tick_player_chunk: Option<(i32, i32)>,
         death_tick_simulation_distance: Option<i32>,
-        is_ticking_entity: &F,
         can_carry_interpolation_target: &G,
     ) -> EntityClientTickWork
     where
-        F: Fn(i32, i32, EntityVec3) -> bool,
         G: Fn(i32) -> bool,
     {
         let mut work = EntityClientTickWork::default();
         let preparation_started_at = Instant::now();
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         work.preparation_duration += preparation_started_at.elapsed();
+        // WorldStore resolves terrain and local-player facts from this exact
+        // schedule before entering the mutable pass. Its public batched API
+        // normalizes catch-up to one call per raw tick.
+        debug_assert_eq!(ticks, 1);
         for _ in 0..ticks {
             let mut tick_scratch = std::mem::take(&mut self.client_tick_scratch);
             let schedule_started_at = Instant::now();
-            self.fill_client_tick_schedule(&mut tick_scratch, runs_normally, is_ticking_entity);
             self.prepare_scheduled_passengers_for_ride_tick(&tick_scratch.scheduled_entities);
             work.schedule_duration += schedule_started_at.elapsed();
             let scheduled = &tick_scratch.scheduled_set;
@@ -5533,6 +5581,7 @@ impl EntityStore {
             work.scanned_entities = work
                 .scanned_entities
                 .saturating_add(self.by_protocol_id.len());
+            let mut boat_world_facts_iter = boat_world_facts.iter();
             for &entity in &tick_scratch.scheduled_entities {
                 let identity = self
                     .ecs
@@ -5567,6 +5616,7 @@ impl EntityStore {
                     equipment,
                     animations,
                     minecart_lerp,
+                    boat_movement,
                 )) = self.ecs.query_one_mut::<(
                     &EntityIdentity,
                     &mut EntityTransform,
@@ -5576,6 +5626,7 @@ impl EntityStore {
                     Option<&EntityEquipment>,
                     &mut EntityClientAnimations,
                     Option<&mut EntityMinecartLerp>,
+                    Option<&mut EntityBoatMovement>,
                 )>(entity)
                 else {
                     continue;
@@ -5587,6 +5638,32 @@ impl EntityStore {
                     if let Some(minecart_lerp) = minecart_lerp {
                         minecart_lerp.advance_client_tick(transform);
                     }
+                }
+                let is_boat = is_vanilla_boat_type(identity.entity_type_id);
+                let boat_facts = is_boat.then(|| boat_world_facts_iter.next()).flatten();
+                debug_assert!(boat_facts.is_none_or(|facts| facts.entity_id == identity.id));
+                if is_boat && deferred_boat_paddle_entity_id != Some(identity.id) {
+                    if let (Some(movement), Some(facts)) = (boat_movement, boat_facts) {
+                        movement.old_status = movement.status;
+                        movement.status = Some(facts.status);
+                        movement.water_level = facts.water_level;
+                        if let Some(land_friction) = facts.land_friction {
+                            movement.land_friction = land_friction;
+                        }
+                        if matches!(
+                            facts.status,
+                            super::EntityBoatStatus::UnderWater
+                                | super::EntityBoatStatus::UnderFlowingWater
+                        ) {
+                            movement.out_of_control_ticks += 1.0;
+                        } else {
+                            movement.out_of_control_ticks = 0.0;
+                        }
+                    }
+                    // `AbstractBoat.tick` applies interpolation first, then the
+                    // remote branch discards packet velocity. A later client
+                    // push in this same tick may add a fresh impulse again.
+                    transform.delta_movement = EntityVec3::default();
                 }
                 animations
                     .animations
@@ -5728,7 +5805,6 @@ impl EntityStore {
                     && cat_is_lying(entity_type_id, &metadata.data_values);
                 let cat_relax_state_one = entity_type_id == VANILLA_ENTITY_TYPE_CAT_ID
                     && cat_relax_state_one(entity_type_id, &metadata.data_values);
-                let is_boat = is_vanilla_boat_type(entity_type_id);
                 let boat_paddles = if is_boat {
                     boat_paddle_states(
                         entity_type_id,
@@ -5863,6 +5939,19 @@ impl EntityStore {
                     client_animations_before_tick,
                     &mut particle_triggers,
                 );
+                if is_boat && deferred_boat_paddle_entity_id != Some(identity.id) {
+                    if let (Some(facts), Some(pose)) =
+                        (boat_facts, local_player_pose.as_deref_mut())
+                    {
+                        apply_boat_push_to_local_player(
+                            transform,
+                            mount,
+                            facts,
+                            pose,
+                            local_player_is_vehicle,
+                        );
+                    }
+                }
                 if let Some(update) = particle_triggers.guardian_look_update {
                     transform.x_rot = update.x_rot;
                     transform.y_head_rot = update.y_head_rot;
@@ -6017,6 +6106,7 @@ impl EntityStore {
         scratch: &mut EntityClientTickScratch,
         runs_normally: bool,
         is_ticking_entity: &F,
+        mut boat_inputs: Option<&mut Vec<EntityBoatClientTickInput>>,
     ) where
         F: Fn(i32, i32, EntityVec3) -> bool,
     {
@@ -6043,7 +6133,12 @@ impl EntityStore {
             {
                 continue;
             }
-            self.append_client_tick_passenger_tree(id, scratch, is_ticking_entity);
+            self.append_client_tick_passenger_tree(
+                id,
+                scratch,
+                is_ticking_entity,
+                &mut boat_inputs,
+            );
         }
     }
 
@@ -6100,6 +6195,7 @@ impl EntityStore {
         id: i32,
         scratch: &mut EntityClientTickScratch,
         is_ticking_entity: &F,
+        boat_inputs: &mut Option<&mut Vec<EntityBoatClientTickInput>>,
     ) where
         F: Fn(i32, i32, EntityVec3) -> bool,
     {
@@ -6110,9 +6206,29 @@ impl EntityStore {
             return;
         }
         scratch.scheduled_entities.push(entity);
-        let Ok(mount) = self.ecs.get::<&EntityMount>(entity) else {
+        let (Ok(identity), Ok(transform), Ok(mount)) = (
+            self.ecs.get::<&EntityIdentity>(entity),
+            self.ecs.get::<&EntityTransform>(entity),
+            self.ecs.get::<&EntityMount>(entity),
+        ) else {
             return;
         };
+        if is_vanilla_boat_type(identity.entity_type_id) {
+            if let (Some(inputs), Some([width, height])) = (
+                boat_inputs.as_deref_mut(),
+                vanilla_entity_type_dimensions(identity.entity_type_id),
+            ) {
+                let half_width = f64::from(width) * 0.5;
+                inputs.push(EntityBoatClientTickInput {
+                    entity_id: identity.id,
+                    entity_type_id: identity.entity_type_id,
+                    uuid: identity.uuid,
+                    position: transform.position,
+                    relative_min: [-half_width, 0.0, -half_width],
+                    relative_max: [half_width, f64::from(height), half_width],
+                });
+            }
+        }
 
         for &passenger_id in mount.passengers.iter() {
             let Some(passenger) = self.by_protocol_id.get(&passenger_id).copied() else {
@@ -6131,7 +6247,12 @@ impl EntityStore {
             {
                 continue;
             }
-            self.append_client_tick_passenger_tree(passenger_id, scratch, is_ticking_entity);
+            self.append_client_tick_passenger_tree(
+                passenger_id,
+                scratch,
+                is_ticking_entity,
+                boat_inputs,
+            );
         }
     }
 
@@ -6738,6 +6859,85 @@ fn entity_block_pos(position: super::EntityVec3) -> crate::BlockPos {
         x: position.x.floor() as i32,
         y: position.y.floor() as i32,
         z: position.z.floor() as i32,
+    }
+}
+
+fn apply_boat_push_to_local_player(
+    boat_transform: &mut EntityTransform,
+    boat_mount: &EntityMount,
+    facts: &EntityBoatClientTickWorldFacts,
+    local_player_pose: &mut LocalPlayerPoseState,
+    local_player_is_vehicle: bool,
+) {
+    if !facts.can_push_local_player {
+        return;
+    }
+
+    // `ClientLevel.getPushableEntities` tests the local player's bounds
+    // against `boat.getBoundingBox().inflate(0.2F, -0.01F, 0.2F)` before
+    // `AbstractBoat.push` applies its additional vertical gate.
+    let boat_min = [
+        boat_transform.position.x + facts.relative_min[0],
+        boat_transform.position.y + facts.relative_min[1],
+        boat_transform.position.z + facts.relative_min[2],
+    ];
+    let boat_max = [
+        boat_transform.position.x + facts.relative_max[0],
+        boat_transform.position.y + facts.relative_max[1],
+        boat_transform.position.z + facts.relative_max[2],
+    ];
+    let player_half_width = f64::from(0.6_f32) * 0.5;
+    let player_min = [
+        local_player_pose.position.x - player_half_width,
+        local_player_pose.position.y,
+        local_player_pose.position.z - player_half_width,
+    ];
+    let player_max = [
+        local_player_pose.position.x + player_half_width,
+        local_player_pose.position.y + local_player_pose.body_height(),
+        local_player_pose.position.z + player_half_width,
+    ];
+    let query_min = [
+        boat_min[0] - f64::from(0.2_f32),
+        boat_min[1] + f64::from(0.01_f32),
+        boat_min[2] - f64::from(0.2_f32),
+    ];
+    let query_max = [
+        boat_max[0] + f64::from(0.2_f32),
+        boat_max[1] - f64::from(0.01_f32),
+        boat_max[2] + f64::from(0.2_f32),
+    ];
+    if !(player_min[0] < query_max[0]
+        && player_max[0] > query_min[0]
+        && player_min[1] < query_max[1]
+        && player_max[1] > query_min[1]
+        && player_min[2] < query_max[2]
+        && player_max[2] > query_min[2]
+        && player_min[1] <= boat_min[1])
+    {
+        return;
+    }
+
+    let mut xa = local_player_pose.position.x - boat_transform.position.x;
+    let mut za = local_player_pose.position.z - boat_transform.position.z;
+    let mut distance = xa.abs().max(za.abs());
+    if distance < f64::from(0.01_f32) {
+        return;
+    }
+    distance = distance.sqrt();
+    xa /= distance;
+    za /= distance;
+    let power = (1.0_f64 / distance).min(1.0_f64);
+    xa *= power * f64::from(0.05_f32);
+    za *= power * f64::from(0.05_f32);
+
+    if boat_mount.passengers.is_empty() {
+        boat_transform.delta_movement.x -= xa;
+        boat_transform.delta_movement.z -= za;
+    }
+    if !local_player_is_vehicle {
+        local_player_pose.delta_movement.x += xa;
+        local_player_pose.delta_movement.z += za;
     }
 }
 

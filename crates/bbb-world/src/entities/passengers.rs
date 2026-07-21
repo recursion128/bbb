@@ -1857,6 +1857,17 @@ impl WorldStore {
         None
     }
 
+    pub(crate) fn entity_shares_local_player_root_vehicle(&self, entity_id: i32) -> bool {
+        let Some(local_player_id) = self.local_player_id else {
+            return false;
+        };
+        let local_root = self
+            .local_player_vehicle_id
+            .and_then(|vehicle_id| self.resolve_root_vehicle_id(vehicle_id))
+            .unwrap_or(local_player_id);
+        self.resolve_root_vehicle_id(entity_id) == Some(local_root)
+    }
+
     pub(crate) fn local_player_vehicle_chain_contains(&self, entity_id: i32) -> bool {
         let Some(mut vehicle_id) = self.local_player_vehicle_id else {
             return false;

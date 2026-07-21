@@ -90,6 +90,39 @@ impl ScoreboardState {
                 .as_ref()
                 .is_some_and(ScoreboardTeamParameters::can_see_friendly_invisibles)
     }
+
+    /// Vanilla `EntitySelector.pushableBy`: applies both teams' collision rules
+    /// before a client-owned local-player push. A missing team uses `ALWAYS`.
+    pub(crate) fn entity_can_push_scoreboard_target(
+        &self,
+        pusher_scoreboard_name: &str,
+        target_scoreboard_name: Option<&str>,
+    ) -> bool {
+        let pusher_team = self.team_for_scoreboard_name(pusher_scoreboard_name);
+        let pusher_rule = pusher_team
+            .and_then(|team| team.parameters.as_ref())
+            .map_or("always", |parameters| parameters.collision_rule.as_str());
+        if pusher_rule == "never" {
+            return false;
+        }
+
+        let target_team = target_scoreboard_name
+            .and_then(|scoreboard_name| self.team_for_scoreboard_name(scoreboard_name));
+        let target_rule = target_team
+            .and_then(|team| team.parameters.as_ref())
+            .map_or("always", |parameters| parameters.collision_rule.as_str());
+        if target_rule == "never" {
+            return false;
+        }
+
+        let same_team = pusher_team
+            .zip(target_team)
+            .is_some_and(|(pusher, target)| pusher.name == target.name);
+        if same_team && (pusher_rule == "pushOwnTeam" || target_rule == "pushOwnTeam") {
+            return false;
+        }
+        (pusher_rule != "pushOtherTeams" && target_rule != "pushOtherTeams") || same_team
+    }
 }
 
 impl ScoreboardTeamParameters {

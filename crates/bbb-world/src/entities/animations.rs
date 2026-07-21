@@ -7039,6 +7039,19 @@ impl WorldStore {
         game_time: i64,
     ) -> crate::EntityClientTickWork {
         let preparation_started_at = std::time::Instant::now();
+        let has_client_level = self.level.is_some();
+        let chunks = &self.chunks;
+        let is_ticking_entity = |_: i32, entity_type_id: i32, position: EntityVec3| {
+            !has_client_level
+                || entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                || chunks.iter().any(|chunk| {
+                    chunk.pos
+                        == crate::ChunkPos {
+                            x: entity_chunk_coordinate(position.x),
+                            z: entity_chunk_coordinate(position.z),
+                        }
+                })
+        };
         let interpolation_collision_inputs = self.entities.interpolation_collision_inputs();
         let experience_orb_needs_entity_collision =
             self.entities.client_movement_has_experience_orb();
@@ -7112,6 +7125,70 @@ impl WorldStore {
                 guardian_attack_target_ids.insert(input.guardian_attack_target_id);
             }
         }
+        let local_player_pose_before_tick = self.local_player.pose;
+        let local_player_can_be_pushed = local_player_pose_before_tick.is_some_and(|pose| {
+            self.local_player
+                .health
+                .as_ref()
+                .map_or(true, |health| health.health > 0.0)
+                && !self.local_player_is_spectator()
+                && !crate::client::local_player_is_on_climbable(self, pose)
+        });
+        let local_player_scoreboard_name = self.local_player_scoreboard_name();
+        let has_terrain_chunks = !self.chunks.is_empty();
+        let boat_world_facts = self
+            .entities
+            .prepare_client_tick_schedule(runs_normally, &is_ticking_entity)
+            .into_iter()
+            .map(|input| {
+                let aabb_min = std::array::from_fn(|axis| {
+                    [input.position.x, input.position.y, input.position.z][axis]
+                        + input.relative_min[axis]
+                });
+                let aabb_max = std::array::from_fn(|axis| {
+                    [input.position.x, input.position.y, input.position.z][axis]
+                        + input.relative_max[axis]
+                });
+                let (status, water_level, land_friction) = if !has_terrain_chunks {
+                    (super::EntityBoatStatus::InAir, 0.0, None)
+                } else {
+                    let (water_status, water_level) =
+                        crate::fluid::boat_water_status(self, aabb_min, aabb_max);
+                    if let Some(status) = water_status {
+                        (status, water_level, None)
+                    } else {
+                        let friction = self.boat_ground_friction(
+                            [input.position.x, input.position.y, input.position.z],
+                            input.relative_min,
+                            input.relative_max,
+                        );
+                        if friction > 0.0 {
+                            (super::EntityBoatStatus::OnLand, water_level, Some(friction))
+                        } else {
+                            (super::EntityBoatStatus::InAir, water_level, None)
+                        }
+                    }
+                };
+                let pusher_scoreboard_name =
+                    self.scoreboard_name_for_identity(input.entity_type_id, input.uuid);
+                let can_push_local_player = local_player_can_be_pushed
+                    && self.local_player_id != Some(input.entity_id)
+                    && !self.entity_shares_local_player_root_vehicle(input.entity_id)
+                    && self.scoreboard.entity_can_push_scoreboard_target(
+                        &pusher_scoreboard_name,
+                        local_player_scoreboard_name.as_deref(),
+                    );
+                super::store::EntityBoatClientTickWorldFacts {
+                    entity_id: input.entity_id,
+                    status,
+                    water_level,
+                    land_friction,
+                    can_push_local_player,
+                    relative_min: input.relative_min,
+                    relative_max: input.relative_max,
+                }
+            })
+            .collect::<Vec<_>>();
         let client_movement_fluid_by_id = client_movement_fluid_inputs
             .iter()
             .map(|input| {
@@ -7345,31 +7422,21 @@ impl WorldStore {
                     && self.entity_controlling_passenger(*entity_id) == self.local_player_id
             });
         let local_player_rotation = self.local_player.pose.map(|pose| (pose.x_rot, pose.y_rot));
+        let local_player_is_vehicle = self
+            .local_player_id
+            .and_then(|entity_id| self.entities.mount(entity_id))
+            .is_some_and(|mount| !mount.passengers.is_empty());
         let local_player_holds_carrot_on_a_stick = self
             .local_player_holds_item(bbb_protocol::item_types::VANILLA_ITEM_CARROT_ON_A_STICK_ID);
         let local_player_holds_warped_fungus_on_a_stick = self.local_player_holds_item(
             bbb_protocol::item_types::VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
         );
-        let has_client_level = self.level.is_some();
-        let chunks = &self.chunks;
-        let is_ticking_entity = |_: i32, entity_type_id: i32, position: EntityVec3| {
-            !has_client_level
-                || entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
-                || chunks.iter().any(|chunk| {
-                    chunk.pos
-                        == crate::ChunkPos {
-                            x: entity_chunk_coordinate(position.x),
-                            z: entity_chunk_coordinate(position.z),
-                        }
-                })
-        };
         let can_carry_interpolation_target =
             |entity_id: i32| collision_free_interpolation_targets.contains(&entity_id);
         let preparation_duration = preparation_started_at.elapsed();
         let mut work = self.entities.advance_client_animations(
             1,
             game_time,
-            runs_normally,
             deferred_boat_paddle_entity_id,
             deferred_local_camel_vehicle_id,
             deferred_local_nautilus_vehicle_id,
@@ -7381,13 +7448,15 @@ impl WorldStore {
             local_player_holds_warped_fungus_on_a_stick,
             &spectator_player_uuids,
             &fluid_facts_by_id,
+            &boat_world_facts,
+            self.local_player.pose.as_mut(),
+            local_player_is_vehicle,
             &guardian_can_stand_on_below_by_id,
             &guardian_attack_target_ids,
             &client_movement_collisions_by_id,
             minecart_improvements_enabled,
             death_tick_player_chunk,
             death_tick_simulation_distance,
-            &is_ticking_entity,
             &can_carry_interpolation_target,
         );
         work.preparation_duration += preparation_duration;

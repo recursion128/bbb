@@ -1007,6 +1007,10 @@ fn local_player_climbable_kind(
     None
 }
 
+pub(crate) fn local_player_is_on_climbable(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
+    local_player_climbable_kind(world, pose).is_some()
+}
+
 fn is_climbable_block_name(block_name: &str) -> bool {
     matches!(
         block_name,
