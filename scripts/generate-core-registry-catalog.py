@@ -203,6 +203,7 @@ def render_entity_types(
     deflects_projectiles: frozenset[str],
     powder_snow_walkable_mobs: frozenset[str],
     non_controlling_riders: frozenset[str],
+    can_float_while_ridden: frozenset[str],
     can_equip_saddle: frozenset[str],
     can_wear_horse_armor: frozenset[str],
 ) -> str:
@@ -244,6 +245,7 @@ def render_entity_types(
         "    pub deflects_projectiles: bool,",
         "    pub powder_snow_walkable: bool,",
         "    pub non_controlling_rider: bool,",
+        "    pub can_float_while_ridden: bool,",
         "    pub can_equip_saddle: bool,",
         "    pub can_wear_horse_armor: bool,",
         "}",
@@ -283,6 +285,7 @@ def render_entity_types(
                 f"        deflects_projectiles: {str(entry.resource_id in deflects_projectiles).lower()},",
                 f"        powder_snow_walkable: {str(entry.resource_id in powder_snow_walkable_mobs).lower()},",
                 f"        non_controlling_rider: {str(entry.resource_id in non_controlling_riders).lower()},",
+                f"        can_float_while_ridden: {str(entry.resource_id in can_float_while_ridden).lower()},",
                 f"        can_equip_saddle: {str(entry.resource_id in can_equip_saddle).lower()},",
                 f"        can_wear_horse_armor: {str(entry.resource_id in can_wear_horse_armor).lower()},",
                 "    },",
@@ -398,6 +401,12 @@ def render_entity_types(
             "        .unwrap_or(false)",
             "}",
             "",
+            "pub fn vanilla_entity_type_can_float_while_ridden(entity_type_id: i32) -> bool {",
+            "    vanilla_entity_type(entity_type_id)",
+            "        .map(|entry| entry.can_float_while_ridden)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
             "pub fn vanilla_entity_type_can_wear_horse_armor(entity_type_id: i32) -> bool {",
             "    vanilla_entity_type(entity_type_id)",
             "        .map(|entry| entry.can_wear_horse_armor)",
@@ -435,6 +444,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.deflects_projectiles).count(), 1);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.powder_snow_walkable).count(), 4);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.non_controlling_rider).count(), 2);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_float_while_ridden).count(), 6);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_equip_saddle).count(), 11);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_wear_horse_armor).count(), 2);",
             "    }",
@@ -482,6 +492,33 @@ def render_entity_types(
             "        assert!(vanilla_entity_type_is_non_controlling_rider(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID));",
             "        assert!(!vanilla_entity_type_is_non_controlling_rider(VANILLA_ENTITY_TYPE_ZOMBIE_ID));",
             "        assert!(!vanilla_entity_type_is_non_controlling_rider(-1));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn can_float_while_ridden_membership_comes_from_the_vanilla_tag() {",
+            "        assert!(vanilla_entity_type_can_float_while_ridden(VANILLA_ENTITY_TYPE_HORSE_ID));",
+            "        assert!(vanilla_entity_type_can_float_while_ridden(VANILLA_ENTITY_TYPE_CAMEL_ID));",
+            "        assert!(!vanilla_entity_type_can_float_while_ridden(VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID));",
+            "        assert!(!vanilla_entity_type_can_float_while_ridden(-1));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn ridden_float_consumer_uses_generated_tag_membership() {",
+            '        let passengers = include_str!("../../bbb-world/src/entities/passengers.rs");',
+            '        let owner = passengers',
+            '            .split("pub fn advance_local_abstract_horse_vehicle_input")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split("pub fn local_player_root_vehicle_id").next())',
+            '            .expect("AbstractHorse travel owner source");',
+            '        assert!(owner.contains("vanilla_entity_type_can_float_while_ridden"));',
+            '        for removed in [',
+            '            "VANILLA_ENTITY_TYPE_HORSE_ID",',
+            '            "VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID",',
+            '            "VANILLA_ENTITY_TYPE_MULE_ID",',
+            '            "VANILLA_ENTITY_TYPE_DONKEY_ID",',
+            '        ] {',
+            '            assert!(!owner.contains(removed), "travel owner restored {removed}");',
+            "        }",
             "    }",
             "",
             "    #[test]",
@@ -1690,6 +1727,14 @@ def generated_files(
             registry_name="entity type",
         )
     )
+    can_float_while_ridden = frozenset(
+        resolve_tag_values(
+            entity_type_tags,
+            "minecraft:can_float_while_ridden",
+            6,
+            registry_name="entity type",
+        )
+    )
     can_equip_saddle = frozenset(
         resolve_tag_values(
             entity_type_tags,
@@ -1712,6 +1757,7 @@ def generated_files(
         | deflects_projectiles
         | powder_snow_walkable_mobs
         | non_controlling_riders
+        | can_float_while_ridden
         | can_equip_saddle
         | can_wear_horse_armor
     ) - entity_type_resources
@@ -1747,6 +1793,7 @@ def generated_files(
                 deflects_projectiles,
                 powder_snow_walkable_mobs,
                 non_controlling_riders,
+                can_float_while_ridden,
                 can_equip_saddle,
                 can_wear_horse_armor,
             )

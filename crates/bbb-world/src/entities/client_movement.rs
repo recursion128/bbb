@@ -2074,7 +2074,7 @@ fn item_entity_has_stack(
     })
 }
 
-fn apply_entity_fluid_currents(
+pub(super) fn apply_entity_fluid_currents(
     mut movement: EntityVec3,
     contact: crate::client::EntityFluidContactState,
     lava_current_scale: f64,

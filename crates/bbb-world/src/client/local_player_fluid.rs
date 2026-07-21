@@ -119,6 +119,35 @@ pub(super) fn local_player_bounds_contains_any_fluid(
     false
 }
 
+pub(crate) fn entity_bounds_contains_any_fluid(
+    world: &WorldStore,
+    aabb_min: [f64; 3],
+    aabb_max: [f64; 3],
+) -> bool {
+    let min_x = block_floor(aabb_min[0]);
+    let max_x = block_ceil(aabb_max[0]);
+    let min_y = block_floor(aabb_min[1]);
+    let max_y = block_ceil(aabb_max[1]);
+    let min_z = block_floor(aabb_min[2]);
+    let max_z = block_ceil(aabb_max[2]);
+    for x in min_x..max_x {
+        for y in min_y..max_y {
+            for z in min_z..max_z {
+                let pos = BlockPos { x, y, z };
+                if world
+                    .fluid_state_and_height_at(pos)
+                    .is_some_and(|(_, height)| {
+                        f64::from(y) < aabb_max[1] && f64::from(y) + height > aabb_min[1]
+                    })
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 fn local_player_fluid_contact_in_bounds(
     world: &WorldStore,
     bounds: LocalPlayerBounds,

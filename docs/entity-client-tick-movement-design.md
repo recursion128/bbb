@@ -650,6 +650,30 @@ already-modelled wobble multiplier/angle; ejection and velocity changes are
 server-only, so no separate client bubble motion remains.
 None of those server-authoritative consequences is synthesized here.
 
+The ground-rideable foundation now closes the non-dash, non-jump
+`AbstractHorse` branch. Direct local-player control still comes from the
+generated ancestry plus saddle/first-passenger gate. The mounted input owner
+reuses `LocalPlayer.applyInput`'s float normalization, slow-movement attribute,
+`0.98` scale and unit-square correction, then applies AbstractHorse's half
+strafe, quarter-speed non-forward movement, controller yaw and half pitch.
+`LivingEntity.travel` uses narrow movement-speed, step-height, gravity and
+water-efficiency attributes, narrow levitation/slow-falling/dolphins-grace
+lookups, generated block friction/speed factors, fluid currents, collision and
+supporting-block state. Skeleton Horse's `0.96` water slowdown is the only
+subclass override in this branch.
+
+`EntityTypeTags.CAN_FLOAT_WHILE_RIDDEN` is now another generated core-registry
+catalog bit sourced from Vanilla's data tag. Horse travel therefore does not
+redeclare the six-member tag and future Camel travel consumes the same source.
+Air, water/lava, standing refusal, one-block step-up, controller rejection,
+native passenger-rotation/MoveVehicle order and retained A/B generations have
+focused tests. The repo-native benchmark measures 3.6783 us for one moving
+Horse physics tick and 7.8025 us for physics plus a retained publication on
+the same machine. This is newly implemented client work rather than a claimed
+speedup over the absent path. Player jump-pending scale/stand sliding and Camel
+pose/dash cooldown remain retained-state stages; Pig/Strider boost and
+Nautilus travel also remain before phase-4 closure.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:

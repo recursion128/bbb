@@ -102,6 +102,7 @@ pub(crate) fn advance_player_input_for_client_ticks(
             .is_some();
         let vehicle_report = world
             .advance_local_boat_vehicle_input(input_state, client_ticks)
+            .or_else(|| world.advance_local_abstract_horse_vehicle_input(input_state, client_ticks))
             .or_else(|| world.advance_local_happy_ghast_vehicle_input(input_state, client_ticks));
         if client_ticks > 0 || boat_vehicle && input.last_vehicle_command_at.is_none() {
             maybe_queue_vehicle_commands(input, world, counters, net_commands, now, vehicle_report);
@@ -1244,6 +1245,41 @@ mod tests {
     }
 
     #[test]
+    fn controlled_abstract_horse_queues_predicted_vehicle_move_without_boat_paddles() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let now = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_HORSE_ID);
+        let initial = world.probe_entity(10).unwrap();
+        let mut counters = NetCounters::default();
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            now,
+            1,
+        );
+
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
+        let vehicle = match rx.try_recv().unwrap() {
+            NetCommand::MoveVehicle(command) => command,
+            other => panic!("expected AbstractHorse move command, got {other:?}"),
+        };
+        assert!(vehicle.position.z > initial.position.z);
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_move_commands_queued, 1);
+        assert_eq!(counters.move_vehicle_commands_queued, 1);
+        assert_eq!(counters.paddle_boat_commands_queued, 0);
+    }
+
+    #[test]
     fn riding_jump_scale_matches_vanilla_local_player_curve() {
         let assert_scale = |actual: f32, expected: f32| {
             assert!(
@@ -1298,6 +1334,8 @@ mod tests {
         assert_eq!(command.entity_id, 99);
         assert_eq!(command.action, PlayerCommandAction::StartRidingJump);
         assert_eq!(command.data, 20);
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MoveVehicle(_)));
+        assert!(rx.try_recv().is_err());
         assert_eq!(counters.player_command_commands_queued, 1);
     }
 

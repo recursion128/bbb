@@ -3797,6 +3797,15 @@ impl EntityStore {
             .map(|effects| (*effects).clone())
     }
 
+    pub(crate) fn mob_effect_amplifier(&self, id: i32, effect_id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let effects = self.ecs.get::<&EntityMobEffects>(entity).ok()?;
+        effects
+            .effects
+            .get(&effect_id)
+            .map(|effect| effect.amplifier)
+    }
+
     pub(crate) fn damage(&self, id: i32) -> Option<EntityDamage> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.ecs

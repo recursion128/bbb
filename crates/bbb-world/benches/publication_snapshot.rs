@@ -28,8 +28,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     game_types::{VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
@@ -37,8 +37,9 @@ use bbb_protocol::{
 use bbb_world::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type, ChunkColumn, ChunkPos,
-    ChunkSection, ChunkState, EntityClientMovementEffectState, HeightmapData, LightData,
-    LocalPlayerInputState, PaletteDomain, PaletteKind, PalettedContainerData, WorldStore,
+    ChunkSection, ChunkState, EntityClientMovementEffectState, HeightmapData, ItemEquipmentSlot,
+    LightData, LocalPlayerInputState, PaletteDomain, PaletteKind, PalettedContainerData,
+    WorldStore,
 };
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
@@ -346,6 +347,49 @@ fn build_local_happy_ghast_world() -> WorldStore {
             slot: EquipmentSlot::Body,
             item: ItemStackSummary {
                 item_id: Some(1),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        }],
+    }));
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 2,
+        passenger_ids: vec![99],
+    }));
+    world.set_local_player_pose(Default::default());
+    world
+}
+
+fn build_local_horse_world() -> WorldStore {
+    let mut world = build_local_boat_world();
+    assert_eq!(
+        world.apply_remove_entities(RemoveEntities {
+            entity_ids: vec![1],
+        }),
+        1
+    );
+    const SADDLE_ITEM_ID: i32 = 1;
+    world.set_default_item_equipment_slots(BTreeMap::from([(
+        SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    world.apply_add_entity(entity_packet(2, 0, VANILLA_ENTITY_TYPE_HORSE_ID));
+    let entity_accessors =
+        vanilla_entity_metadata_entity_accessors().expect("generated Entity metadata accessors");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 2,
+        values: vec![EntityDataValue {
+            data_id: entity_accessors.no_gravity_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: 2,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: ItemStackSummary {
+                item_id: Some(SADDLE_ITEM_ID),
                 count: 1,
                 component_patch: DataComponentPatchSummary::default(),
             },
@@ -972,6 +1016,40 @@ fn bench_local_happy_ghast_physics(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_local_horse_physics(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_tick/local_horse");
+    let input = LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        right: true,
+        ..LocalPlayerInputState::default()
+    };
+    let mut physics = build_local_horse_world();
+    group.bench_function("physics_only", |b| {
+        b.iter(|| {
+            black_box(
+                physics
+                    .advance_local_abstract_horse_vehicle_input(black_box(input), black_box(1))
+                    .expect("locally controlled AbstractHorse"),
+            );
+        });
+    });
+    let mut publish = build_local_horse_world();
+    let mut held = Arc::new(publish.publication_snapshot());
+    group.bench_function("physics_then_publish_retained", |b| {
+        b.iter(|| {
+            black_box(
+                publish
+                    .advance_local_abstract_horse_vehicle_input(black_box(input), black_box(1))
+                    .expect("locally controlled AbstractHorse"),
+            );
+            held = black_box(Arc::new(publish.publication_snapshot()));
+        });
+    });
+    black_box(held);
+    group.finish();
+}
+
 fn submit_entity_client_movement_effects(world: &mut WorldStore) -> usize {
     let mut effects = world.take_entity_client_movement_effect_states();
     let mut submitted = 0;
@@ -1281,6 +1359,7 @@ criterion_group! {
         bench_entity_spawn_remove_churn,
         bench_entity_interpolation_and_passengers,
         bench_local_boat_physics,
+        bench_local_horse_physics,
         bench_local_happy_ghast_physics,
         bench_entity_effect_generation,
         bench_entity_projection,

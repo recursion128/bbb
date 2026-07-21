@@ -1355,6 +1355,210 @@ fn local_happy_ghast_input_uses_vanilla_ridden_rotation_and_flying_drag() {
 }
 
 #[test]
+fn local_abstract_horse_input_uses_ridden_rotation_air_travel_and_gravity() {
+    let mut store = locally_controlled_horse();
+    store.set_local_player_pose(crate::LocalPlayerPoseState {
+        y_rot: 90.0,
+        x_rot: 30.0,
+        ..crate::LocalPlayerPoseState::default()
+    });
+    let before = store.entities.transform(10).unwrap();
+
+    let report = store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+
+    assert_eq!(report.vehicle_id, 10);
+    assert_eq!(report.position, after.position);
+    assert_eq!(after.y_rot, 90.0);
+    assert_eq!(after.old_y_rot, 90.0);
+    assert_eq!(after.x_rot, 15.0);
+    assert_eq!(after.y_head_rot, 90.0);
+    assert!(after.position.x < before.position.x);
+    assert!((after.position.z - before.position.z).abs() < 1.0e-7);
+    assert_eq!(after.position.y, before.position.y);
+    assert!((after.delta_movement.y - -0.08 * f64::from(0.98_f32)).abs() < 1.0e-12);
+}
+
+#[test]
+fn local_abstract_horse_standing_gate_and_controller_gate_match_vanilla() {
+    let mut store = locally_controlled_horse();
+    store.entities.with_transform_mut(10, |transform| {
+        transform.on_ground = Some(true);
+    });
+    let accessors = vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    )
+    .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![ProtocolEntityDataValue {
+            data_id: accessors.flags_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: EntityDataValueKind::Byte(accessors.standing_mask),
+        }],
+    }));
+    let before = store.entities.transform(10).unwrap();
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+    assert_eq!(after.position.x, before.position.x);
+    assert_eq!(after.position.z, before.position.z);
+
+    let mut unsaddled = WorldStore::new();
+    unsaddled.apply_login(&protocol_play_login(99));
+    unsaddled.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    assert!(unsaddled.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    unsaddled.set_local_player_pose(crate::LocalPlayerPoseState::default());
+    assert_eq!(
+        unsaddled.advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        ),
+        None
+    );
+}
+
+#[test]
+fn local_abstract_horse_movement_isolates_retained_publication() {
+    let mut store = locally_controlled_horse();
+    let generation_a = store.publication_snapshot();
+    let before = generation_a.probe_entity(10).unwrap();
+
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let generation_b = store.publication_snapshot();
+
+    assert_eq!(generation_a.probe_entity(10).unwrap(), before);
+    assert_ne!(
+        generation_b.probe_entity(10).unwrap().position,
+        before.position
+    );
+}
+
+#[test]
+fn local_abstract_horse_water_travel_uses_generated_ridden_float_tag() {
+    let mut store = locally_controlled_horse();
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.entities.with_transform_mut(10, |transform| {
+        transform.position = EntityVec3 {
+            x: 1.0,
+            y: -63.0,
+            z: 1.0,
+        };
+        transform.old_position = transform.position;
+    });
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 1, y: -63, z: 1 },
+        block_state_id: vanilla_block_state_id("minecraft:water", [("level", "0")]),
+    }));
+
+    store
+        .advance_local_abstract_horse_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+
+    assert!(after.delta_movement.y > 0.03);
+    assert!(
+        bbb_protocol::entity_types::vanilla_entity_type_can_float_while_ridden(
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+        )
+    );
+}
+
+#[test]
+fn local_abstract_horse_uses_step_height_attribute_for_one_block_step() {
+    let mut store = locally_controlled_horse();
+    store.insert_decoded_chunk(empty_test_chunk());
+    let bounds = store.entities.pick_bounds(10).unwrap();
+    store.entities.with_transform_mut(10, |transform| {
+        transform.position = EntityVec3 {
+            x: 1.0,
+            y: -63.0,
+            z: 2.0 - f64::from(bounds.max[2]),
+        };
+        transform.old_position = transform.position;
+        transform.y_rot = 0.0;
+        transform.old_y_rot = 0.0;
+        transform.on_ground = Some(true);
+    });
+    let before = store.entities.transform(10).unwrap();
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 1, y: -63, z: 2 },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+
+    assert!(after.position.z > before.position.z);
+    assert!((after.position.y - (before.position.y + 1.0)).abs() < 1.0e-12);
+}
+
+fn locally_controlled_horse() -> WorldStore {
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    equip_test_saddle(&mut store, 10);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    store.set_local_player_pose(crate::LocalPlayerPoseState::default());
+    store
+}
+
+#[test]
 fn local_happy_ghast_backward_pitch_and_focus_follow_controller_input() {
     let mut store = locally_controlled_happy_ghast();
     store.set_local_player_pose(crate::LocalPlayerPoseState {
