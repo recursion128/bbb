@@ -34,8 +34,8 @@ use bbb_world::{
     GuardianAttackParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
     LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LlamaSpitRecreationParticleState,
-    OminousItemSpawnerParticleState, RavagerRoarParticleState, ShulkerBulletTrailParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
+    ShulkerBulletTrailParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
     TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
     VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
     WitchMagicParticleState,
@@ -1394,6 +1394,10 @@ impl LegacyRandom {
 
     fn next_float(&mut self) -> f32 {
         self.next_bits(24) as f32 / (1_u32 << 24) as f32
+    }
+
+    fn next_boolean(&mut self) -> bool {
+        self.next_bits(1) != 0
     }
 
     fn next_i64(&mut self) -> i64 {

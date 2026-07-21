@@ -714,6 +714,15 @@ pub struct EntityClientMovementSimpleParticleState {
     pub velocity: EntityVec3,
 }
 
+/// One `PowderSnowBlock.entityInside` snowflake chance. The consumer owns the
+/// level random, so Vanilla's `nextBoolean` gate and velocity rolls happen at
+/// spawn time; only the anchored position is decided here.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PowderSnowFlakeParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+}
+
 /// One Blaze `aiStep` particle submission. Keeping both smoke positions in one
 /// typed owner preserves the Vanilla per-entity ordering while avoiding two
 /// maximum-sized FIFO entries and duplicate renderer template lookup.
@@ -755,6 +764,7 @@ pub enum EntityClientMovementParticleState {
     EyeOfEnder(EyeOfEnderTrailParticleState),
     ShulkerBullet(ShulkerBulletTrailParticleState),
     Simple(EntityClientMovementSimpleParticleState),
+    PowderSnowFlake(PowderSnowFlakeParticleState),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

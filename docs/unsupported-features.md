@@ -657,8 +657,9 @@ Movement:
 - Cover the remaining vanilla voxel collision shapes.
 - Implement full vanilla post-`Entity.move` `deltaMovement` travel ordering.
 - Add sprint-swim camera, animation, and presentation nuance.
-- Implement the `minecraft:powder_snow` inside-block particle, extinguish, and
-  fall-sound side effects.
+- Implement the `minecraft:powder_snow` fall-sound side effects (the
+  inside-block snowflake particle and extinguish effects are wired through the
+  block-effect evaluator and particle resolver).
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
 - Complete the remaining relative-entity authority/interpolation edges: resolve
   every entity-specific local-authority controller beyond the direct local player
@@ -1365,23 +1366,14 @@ back into a todo. Do not delete these.
   authoritative combat, drops, spawning, and server RNG outside the client
   implementation. The frozen owner/evidence/phase contract is
   `docs/entity-client-tick-movement-design.md`.
-- The remaining `Entity.applyEffectsFromBlocks` work after the swept runtime,
-  the locally controlled vehicle integration (boat two-pass, horse/camel,
-  nautilus, pig/strider, happy ghast: recorded travel move, stuck-speed
-  consumption at `Entity.move`, fire/freeze/powder-snow state), the explicit
-  `AbstractArrow` slot (per-tick flight segment between `setPos` and the
-  inertia tail, in-ground degenerate segment without `baseTick`, the
-  `isInWaterOrRain` head clear, and the trident `noPhysics`-field
-  `isAffectedByBlocks` skip), and `isInRain` fire clearing over synced sky
-  light, `MOTION_BLOCKING` heightmaps, and registry biome climate, and the
-  local player's own `aiStep` callback (per physics step with the recorded
-  clipped move: swept freeze/fire/rain state, stuck-speed set-then-consume
-  replacing the probe, bubble/honey delta edits, spectator `noPhysics` skip):
-  the client-side powder-snow snowflake particles plus extinguish
-  presentation.
-  Arrows collapse to one segment per tick because the client does not simulate
-  `stepMoveAndHit` entity-hit stepping (pierce hops stay server-authoritative);
-  revisit the multi-segment loop only if client arrow hit simulation lands.
+- `Entity.applyEffectsFromBlocks` is closed end-to-end (swept runtime, locally
+  controlled vehicles, the explicit `AbstractArrow` slot, `isInRain` fire
+  clearing, the local player `aiStep` step callback, powder-snow snowflake
+  chances, and the `!isClientSide()`-gated extinguish sound verified as
+  server-only) except one deliberate collapse: arrows run one movement segment
+  per tick because the client does not simulate `stepMoveAndHit` entity-hit
+  stepping (pierce hops stay server-authoritative); revisit the multi-segment
+  loop only if client arrow hit simulation lands.
 
 ### Entity coverage matrix dimensions collision and pick
 

@@ -372,6 +372,53 @@ fn entity_client_movement_simple_particles_resolve_typed_commands() {
 }
 
 #[test]
+fn powder_snow_flake_batches_roll_vanilla_gate_and_velocity() {
+    let mut resolver = test_resolver(7);
+    let mut mirror = LegacyRandom::new(7);
+    let mut spawned = 0;
+    let mut skipped = 0;
+    for _ in 0..32 {
+        let expect_spawn = mirror.next_boolean();
+        let expected_velocity = expect_spawn.then(|| {
+            [
+                f64::from((mirror.next_float() * 2.0 - 1.0) * 0.083_333_336),
+                f64::from(0.05_f32),
+                f64::from((mirror.next_float() * 2.0 - 1.0) * 0.083_333_336),
+            ]
+        });
+        let batch = resolver.entity_client_movement_particle_batch(
+            EntityClientMovementParticleState::PowderSnowFlake(
+                bbb_world::PowderSnowFlakeParticleState {
+                    entity_id: 10,
+                    position: bbb_world::EntityVec3 {
+                        x: 1.0,
+                        y: 2.0,
+                        z: 3.0,
+                    },
+                },
+            ),
+        );
+        if let Some(velocity) = expected_velocity {
+            spawned += 1;
+            assert_eq!(batch.commands.len(), 1);
+            assert_particle_command(
+                &batch.commands[0],
+                VANILLA_PARTICLE_TYPE_SNOWFLAKE_ID,
+                "minecraft:snowflake",
+                [1.0, 2.0, 3.0],
+                velocity,
+                false,
+            );
+        } else {
+            skipped += 1;
+            assert!(batch.commands.is_empty());
+        }
+    }
+    // The `nextBoolean` gate must actually flip both ways across the run.
+    assert!(spawned > 0 && skipped > 0);
+}
+
+#[test]
 fn llama_spit_recreation_batch_matches_vanilla_horizontal_velocity_scales() {
     let mut resolver = test_resolver(0);
     let batch = resolver.llama_spit_recreation_particle_batch(
@@ -8751,6 +8798,7 @@ fn test_resolver_with_particle_status(
             "trial_spawner_detection_0",
             "trial_spawner_detection_ominous_0",
             "trial_omen_0",
+            "snowflake_0",
         ],
     )
 }
@@ -9017,6 +9065,14 @@ fn test_resolver_with_cloud_textures(
         r#"{
           "textures": [
             "minecraft:bubble_0"
+          ]
+        }"#,
+    );
+    write_json(
+        &particle_dir(&root).join("snowflake.json"),
+        r#"{
+          "textures": [
+            "minecraft:snowflake_0"
           ]
         }"#,
     );

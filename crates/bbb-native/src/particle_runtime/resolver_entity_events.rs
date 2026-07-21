@@ -30,6 +30,9 @@ impl ParticleCommandResolver {
             EntityClientMovementParticleState::Simple(state) => {
                 self.entity_client_movement_simple_particle_batch(state)
             }
+            EntityClientMovementParticleState::PowderSnowFlake(state) => {
+                self.powder_snow_flake_particle_batch(state)
+            }
         }
     }
 
@@ -173,6 +176,42 @@ impl ParticleCommandResolver {
                     x: state.velocity.x,
                     y: state.velocity.y,
                     z: state.velocity.z,
+                },
+                false,
+            )],
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
+    fn powder_snow_flake_particle_batch(
+        &mut self,
+        state: PowderSnowFlakeParticleState,
+    ) -> ParticleSpawnBatch {
+        // `PowderSnowBlock.entityInside` rolls the level random per chance:
+        // `nextBoolean` gate first, then the two horizontal float rolls in
+        // `Mth.randomBetween(random, -1.0F, 1.0F) * 0.083333336F` order.
+        if !self.random.next_boolean() {
+            return ParticleSpawnBatch::default();
+        }
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_SNOWFLAKE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let velocity_x = f64::from((self.random.next_float() * 2.0 - 1.0) * 0.083_333_336);
+        let velocity_z = f64::from((self.random.next_float() * 2.0 - 1.0) * 0.083_333_336);
+        ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            commands: vec![self.command_from_template(
+                &template,
+                Vec3d {
+                    x: state.position.x,
+                    y: state.position.y,
+                    z: state.position.z,
+                },
+                Vec3d {
+                    x: velocity_x,
+                    y: f64::from(0.05_f32),
+                    z: velocity_z,
                 },
                 false,
             )],

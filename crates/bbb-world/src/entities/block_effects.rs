@@ -283,7 +283,7 @@ pub(crate) struct EntityBlockEffectQuery<'a> {
 }
 
 /// Canonical mutations returned by one exact block-intersection pass.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct EntityBlockEffectEvaluation {
     pub(crate) delta_movement: EntityVec3,
     pub(crate) stuck_speed_multiplier: EntityVec3,
@@ -291,6 +291,10 @@ pub(crate) struct EntityBlockEffectEvaluation {
     pub(crate) fall_distance: f64,
     pub(crate) ticks_frozen: i32,
     pub(crate) in_powder_snow: bool,
+    /// One `PowderSnowBlock.entityInside` snowflake chance per stuck-applying
+    /// powder-snow block visited while the tick moved horizontally; each entry
+    /// still rolls Vanilla's `random.nextBoolean()` gate at spawn time.
+    pub(crate) snowflakes: Vec<EntityVec3>,
     pub(crate) visited_blocks: usize,
     pub(crate) applied_callbacks: usize,
 }
@@ -304,6 +308,7 @@ impl EntityBlockEffectEvaluation {
             fall_distance: query.fall_distance,
             ticks_frozen: query.ticks_frozen,
             in_powder_snow: false,
+            snowflakes: Vec::new(),
             visited_blocks: 0,
             applied_callbacks: 0,
         }

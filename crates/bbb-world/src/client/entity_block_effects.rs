@@ -47,6 +47,10 @@ pub(crate) struct EntityBlockEffectWorld<'a> {
     // linear scratch avoids hashing and still grows for long swept segments.
     visited_blocks: Vec<BlockPos>,
     travel_blocks: Vec<BlockPos>,
+    // Vanilla's powder-snow snowflakes read `entity.getX()/getZ()` at
+    // `entityInside` time and gate on the tick's `xOld/zOld` horizontal
+    // delta; the current movement's end anchors both while cells are visited.
+    snowflake_anchor: Option<EntityVec3>,
     chunk_lookup_cache: [Cell<Option<(ChunkPos, usize)>>; CHUNK_LOOKUP_CACHE_SLOTS],
 }
 
@@ -64,6 +68,7 @@ impl<'a> EntityBlockEffectWorld<'a> {
             weather,
             visited_blocks: Vec::new(),
             travel_blocks: Vec::new(),
+            snowflake_anchor: None,
             chunk_lookup_cache: std::array::from_fn(|_| Cell::new(None)),
         }
     }
@@ -74,6 +79,7 @@ impl<'a> EntityBlockEffectWorld<'a> {
     ) -> EntityBlockEffectEvaluation {
         self.visited_blocks.clear();
         self.travel_blocks.clear();
+        self.snowflake_anchor = None;
         let mut evaluation = EntityBlockEffectEvaluation::from_query(&query);
         self.apply_step_on(&query, &mut evaluation);
         let mut collector = InsideEffectCollector::default();
@@ -245,6 +251,9 @@ impl<'a> EntityBlockEffectWorld<'a> {
         collector: &mut InsideEffectCollector,
         evaluation: &mut EntityBlockEffectEvaluation,
     ) {
+        self.snowflake_anchor = (movement.from.x != movement.to.x
+            || movement.from.z != movement.to.z)
+            .then_some(movement.to);
         let delta = subtract(movement.to, movement.from);
         let mut iterations_left = MAX_MOVEMENT_ITERATIONS;
         if let Some(original) = movement
@@ -701,6 +710,13 @@ fn apply_block_callback(
                     z: 0.9,
                 };
                 evaluation.fall_distance = 0.0;
+                if let Some(anchor) = world.snowflake_anchor {
+                    evaluation.snowflakes.push(EntityVec3 {
+                        x: anchor.x,
+                        y: f64::from(pos.y + 1),
+                        z: anchor.z,
+                    });
+                }
             }
             collector.effects.freeze = true;
             collector.effects.extinguish = true;
@@ -1404,6 +1420,59 @@ mod tests {
         assert_eq!(result.ticks_frozen, 0);
         assert_eq!(result.remaining_fire_ticks, 160);
         assert!(result.in_powder_snow);
+    }
+
+    #[test]
+    fn powder_snow_snowflakes_require_horizontal_movement() {
+        let mut world = test_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            "minecraft:powder_snow",
+            [],
+        );
+        let from = EntityVec3 {
+            x: 0.4,
+            y: 0.0,
+            z: 0.5,
+        };
+        let to = EntityVec3 {
+            x: 0.6,
+            y: 0.0,
+            z: 0.5,
+        };
+        let mut movements = crate::entities::EntityBlockEffectMovements::default();
+        let movement_iter = movements.prepare_current(from, to);
+        let mut evaluator = EntityBlockEffectWorld::new(
+            world.dimension,
+            &world.registries,
+            &world.chunks,
+            world.entity_block_effect_weather(),
+        );
+        let result = evaluator.evaluate(test_query(to, movement_iter));
+        // One chance per stuck-applying block, anchored at the movement end
+        // with the Vanilla `pos.getY() + 1` particle height.
+        assert_eq!(
+            result.snowflakes,
+            vec![EntityVec3 {
+                x: 0.6,
+                y: 1.0,
+                z: 0.5,
+            }]
+        );
+        assert!((result.stuck_speed_multiplier.x - 0.9).abs() <= f64::EPSILON);
+
+        let position = EntityVec3 {
+            x: 0.5,
+            y: 0.1,
+            z: 0.5,
+        };
+        let mut movements = crate::entities::EntityBlockEffectMovements::default();
+        let movement_iter = movements.prepare_current(EntityVec3 { y: 0.3, ..position }, position);
+        let result = evaluator.evaluate(test_query(position, movement_iter));
+        // A purely vertical move still gets stuck but never rolls snowflakes.
+        assert!(result.snowflakes.is_empty());
+        assert!((result.stuck_speed_multiplier.x - 0.9).abs() <= f64::EPSILON);
     }
 
     #[test]

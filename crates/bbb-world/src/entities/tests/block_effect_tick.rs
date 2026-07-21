@@ -185,6 +185,58 @@ fn powder_snow_freeze_mutation_is_visible_only_in_next_generation() {
 }
 
 #[test]
+fn powder_snow_movement_emits_snowflake_chances() {
+    let mut world =
+        world_with_entity_and_block(VANILLA_ENTITY_TYPE_ITEM_ID, "minecraft:powder_snow");
+    // Direct item movement only runs for items carrying a synced stack.
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: ENTITY_ID,
+        values: vec![item_stack_entity_data(item_stack(42, 1))],
+    }));
+    assert!(world.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: ENTITY_ID,
+        delta_movement: ProtocolVec3d {
+            x: 0.1,
+            y: 0.0,
+            z: 0.0,
+        },
+    }));
+
+    world.advance_entity_client_animations(1);
+
+    let snowflakes = world
+        .drain_entity_client_movement_effect_states()
+        .filter_map(|effect| match effect {
+            EntityClientMovementEffectState::Particle(
+                EntityClientMovementParticleState::PowderSnowFlake(particle),
+            ) => Some(particle),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let [snowflake] = snowflakes.as_slice() else {
+        panic!("expected one snowflake chance, got {snowflakes:?}");
+    };
+    assert_eq!(snowflake.entity_id, ENTITY_ID);
+    assert!((snowflake.position.y - 3.0).abs() <= f64::EPSILON);
+    assert!(snowflake.position.x > 8.5);
+
+    // The next move consumes the stuck multiplier and zeroes the delta at its
+    // tail, so the second tick still slides while the third goes vertical-only
+    // under gravity and rolls no further chances.
+    world.advance_entity_client_animations(1);
+    world.drain_entity_client_movement_effect_states();
+    world.advance_entity_client_animations(1);
+    assert!(world
+        .drain_entity_client_movement_effect_states()
+        .all(|effect| !matches!(
+            effect,
+            EntityClientMovementEffectState::Particle(
+                EntityClientMovementParticleState::PowderSnowFlake(_),
+            )
+        )));
+}
+
+#[test]
 fn in_ground_arrow_keeps_private_fire_without_base_tick() {
     let mut world = world_with_entity_and_block(VANILLA_ENTITY_TYPE_ARROW_ID, "minecraft:fire");
     set_arrow_in_ground(&mut world, ENTITY_ID);

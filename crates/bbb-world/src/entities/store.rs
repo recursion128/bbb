@@ -102,8 +102,8 @@ use super::{
     FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
     HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
     LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
-    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
+    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
+    RavagerStunParticleState, VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
     VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
@@ -5744,6 +5744,18 @@ impl EntityStore {
             block_effects.remaining_fire_ticks = evaluation.remaining_fire_ticks;
             block_effects.fall_distance = evaluation.fall_distance;
             block_effects.in_powder_snow |= evaluation.in_powder_snow;
+            for &position in &evaluation.snowflakes {
+                self.pending_entity_client_movement_effects.push(
+                    EntityClientMovementEffectState::Particle(
+                        EntityClientMovementParticleState::PowderSnowFlake(
+                            PowderSnowFlakeParticleState {
+                                entity_id: identity.id,
+                                position,
+                            },
+                        ),
+                    ),
+                );
+            }
             if ticks_frozen != evaluation.ticks_frozen {
                 if let Some(accessors) = entity_accessors {
                     upsert_metadata_value(
@@ -5914,6 +5926,18 @@ impl EntityStore {
         block_effects.remaining_fire_ticks = evaluation.remaining_fire_ticks;
         block_effects.fall_distance = evaluation.fall_distance;
         block_effects.in_powder_snow |= evaluation.in_powder_snow;
+        for &position in &evaluation.snowflakes {
+            self.pending_entity_client_movement_effects.push(
+                EntityClientMovementEffectState::Particle(
+                    EntityClientMovementParticleState::PowderSnowFlake(
+                        PowderSnowFlakeParticleState {
+                            entity_id: step.player_id,
+                            position,
+                        },
+                    ),
+                ),
+            );
+        }
         if ticks_frozen != evaluation.ticks_frozen {
             if let Some(accessors) = entity_accessors {
                 upsert_metadata_value(

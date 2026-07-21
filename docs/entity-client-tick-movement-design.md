@@ -971,8 +971,18 @@ light (`canSeeSky` needs 15), the packet `MOTION_BLOCKING` heightmap
 (missing final maps behave zero-filled), and registry biome climate through
 the world-owned `Biome.getHeightAdjustedTemperature` stack moved from the
 renderer glue. Arrows collapse to one segment per tick because the client
-does not simulate `stepMoveAndHit` entity-hit stepping. Still open on this
-boundary: client snowflake/extinguish presentation.
+does not simulate `stepMoveAndHit` entity-hit stepping. The presentation
+tail is closed too: `PowderSnowBlock.entityInside` snowflake chances are
+collected by the evaluator — one per stuck-applying powder-snow block,
+gated on the movement's horizontal `xOld/zOld` displacement and anchored at
+the movement end over `pos.getY() + 1` — and forwarded through the pending
+movement-effect queue from all three callback paths (ordered remote pass,
+arrow slot, local player step); the native particle resolver owns the level
+random, rolling Vanilla's `nextBoolean` gate and the
+`randomBetween(-1, 1) * 0.083333336F` horizontal velocities at spawn time
+into the descriptor-modeled `SNOWFLAKE` particle.
+`playEntityOnFireExtinguishedSound` is `!isClientSide()`-gated in Vanilla,
+so no client extinguish presentation exists to port.
 
 ### Local player aiStep checkpoint
 

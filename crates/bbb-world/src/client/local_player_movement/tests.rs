@@ -4116,6 +4116,68 @@ fn local_player_in_powder_snow_caps_ticks_frozen_at_required_ticks() {
 }
 
 #[test]
+fn local_player_moving_in_powder_snow_emits_snowflake_chance() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+    world.drain_entity_client_movement_effect_states();
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    let snowflakes = world
+        .drain_entity_client_movement_effect_states()
+        .filter_map(|effect| match effect {
+            crate::entities::EntityClientMovementEffectState::Particle(
+                crate::entities::EntityClientMovementParticleState::PowderSnowFlake(particle),
+            ) => Some(particle),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let [snowflake] = snowflakes.as_slice() else {
+        panic!("expected one snowflake chance, got {snowflakes:?}");
+    };
+    assert_eq!(snowflake.entity_id, 123);
+    // Anchored at the step's end position over the Vanilla `pos.getY() + 1`.
+    assert_f64_near(snowflake.position.x, pose.position.x, 0.000001);
+    assert_f64_near(snowflake.position.z, pose.position.z, 0.000001);
+    assert_f64_near(snowflake.position.y, 2.0, 0.000001);
+}
+
+#[test]
+fn local_player_still_in_powder_snow_rolls_no_snowflake_chance() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+    world.drain_entity_client_movement_effect_states();
+
+    advance_effects_tick_at(&mut world, vec3(0.5, 1.2, 0.5));
+
+    assert_eq!(world.entities.ticks_frozen(123), Some(1));
+    assert!(world
+        .drain_entity_client_movement_effect_states()
+        .all(|effect| !matches!(
+            effect,
+            crate::entities::EntityClientMovementEffectState::Particle(
+                crate::entities::EntityClientMovementParticleState::PowderSnowFlake(_),
+            )
+        )));
+}
+
+#[test]
 fn local_player_out_of_powder_snow_keeps_synced_ticks_frozen() {
     // Vanilla thaws `ticksFrozen` only on the server (`LivingEntity.aiStep`
     // freezing block is `ServerLevel`-gated); the client keeps the synced
