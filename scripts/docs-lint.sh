@@ -4,13 +4,12 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 goal="$repo_root/goal.md"
 
-# workflow-v3 reduced goal.md to 564 lines on 2026-07-15; the original 660
-# cap left about 17% headroom. 2026-07-18: after archiving the playable-gate
-# stage-1 input-loop history, the queued frame-loop/terrain architecture items
-# still needed room, so the cap moved to 700 (~4% headroom). When the cap is
-# reached, archive completed history before changing the limit; do not raise
-# it to accommodate coverage prose.
-max_goal_lines=700
+# workflow-v5 (2026-07-21) rewrote goal.md down to 513 lines: completed
+# foundations moved to the goal-archive milestone index and workflow prose was
+# deduplicated with AGENTS.md. The cap is 560 (~9% headroom). When the cap is
+# reached, archive completed history (as index lines, not prose) before
+# changing the limit; do not raise it to accommodate coverage prose.
+max_goal_lines=560
 line_count=$(wc -l <"$goal")
 failed=0
 
@@ -28,7 +27,7 @@ if completed_history=$(rg -n --no-heading --color never \
 fi
 
 if [ "$failed" -ne 0 ]; then
-  echo "Fix: move completed history to docs/goal-archive.md and put evidence in coverage overrides before raising the goal.md limit." >&2
+  echo "Fix: drop completed prose (atomic slices need no archive entry; milestones get 1-3 index lines in docs/goal-archive.md) and put evidence in coverage overrides before raising the goal.md limit." >&2
   exit 1
 fi
 
