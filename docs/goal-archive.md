@@ -114,12 +114,18 @@
   playsound/particle → canonical sound_packets+last_sound 精确
   volume/pitch/位置 + level_particles_packets 计数，evidence schema 7，
   live 实跑全绿）与 deterministic screenshot 场景（冻结全部服务端动画源 +
-  pitch-90 排除云漂移，双帧 readback 按 7-bit 位深比较——vanilla lightmap
-  blockLightFlicker 每 tick 随机游走使 ±1 LSB 抖动成为语义本身；顺带修
+  pitch-90 排除云漂移，双帧 readback 按每通道 ≤3 容差比较——vanilla lightmap
+  blockLightFlicker 每 tick 随机游走使全屏小幅抖动成为语义本身，实测跨
+  ~10 tick 采样间隔漂移达 ±2 LSB；顺带修
   场景列探测缺中间列视线检查的间歇失败，evidence schema 8，live 实跑
   全绿）与 inventory 背包场景（E 键真实路径开背包 + player menu
   quick-move + server playerdata Slot 区间双确认，evidence schema 9）；
   **修正 canonical 缺口**：vanilla 容器 menu 与背包共享底层 Inventory，
   快照镜像未回写——容器 set_content/set_slot/本地 click 的尾部 36 槽玩家段
   现镜像回 player_slots 与 survival menu 投影。**至此 P1 playable 阶段 1
-  基础游玩交互全部闭环**，playable 门禁剩阶段 2 扩展失败证据。
+  基础游玩交互全部闭环**；随后阶段 2 扩展失败证据亦闭环（evidence schema
+  10）：失败按 server_start/network/canonical_apply/runtime_side_effect/
+  presentation 五档分类并标注场景，失败时刻 best-effort 采集同代
+  renderer/audio/net/world counters、pending 写探针双采样与最终
+  screenshot，四处 evidence 组装收敛为单一 `_write_live_evidence`。
+  **playable 门禁阶段队列清空，转入维护态**。

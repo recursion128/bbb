@@ -1,7 +1,10 @@
+import argparse
 import copy
 import importlib.util
 import json
+import socket
 import tempfile
+import threading
 import unittest
 import zipfile
 from pathlib import Path
@@ -421,9 +424,13 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
             + chunk(b"IEND", b"")
         )
 
-    def test_flicker_tolerance_accepts_one_bit_lightmap_jitter(self):
+    def test_flicker_tolerance_accepts_lightmap_jitter_band(self):
         base = bytes([100, 120, 140, 255] * 4)
-        jittered = bytes([99, 120, 140, 255] + [100, 120, 140, 255] * 3)
+        jittered = bytes(
+            [99, 120, 140, 255]
+            + [97, 118, 137, 255]
+            + [100, 120, 140, 255] * 2
+        )
         first = self._encode_rgba_png(2, 2, base)
         second = self._encode_rgba_png(2, 2, jittered)
 
@@ -431,16 +438,173 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
             first, second
         )
         self.assertTrue(matched)
-        self.assertEqual(flicker_pixels, 1)
+        self.assertEqual(flicker_pixels, 2)
 
     def test_flicker_tolerance_rejects_real_content_changes(self):
         base = bytes([100, 120, 140, 255] * 4)
-        changed = bytes([100, 120, 140, 255] * 3 + [110, 120, 140, 255])
+        changed = bytes([100, 120, 140, 255] * 3 + [104, 120, 140, 255])
         first = self._encode_rgba_png(2, 2, base)
         second = self._encode_rgba_png(2, 2, changed)
 
         matched, _ = playable_gate._frames_match_within_flicker(first, second)
         self.assertFalse(matched)
+
+
+class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
+    def test_pre_gameplay_failure_classification(self):
+        classify = playable_gate._classify_pre_gameplay_failure
+        self.assertEqual(classify({"ok": False}, None), "server_start")
+        self.assertEqual(classify({"ok": True}, None), "network")
+        self.assertEqual(
+            classify(
+                {"ok": True},
+                {"net": {"connected": True, "state": "Configuration"}},
+            ),
+            "network",
+        )
+        self.assertEqual(
+            classify(
+                {"ok": True},
+                {"net": {"connected": True, "state": "Play"}},
+            ),
+            "canonical_apply",
+        )
+
+    def test_failure_diagnostics_degrade_when_control_is_unreachable(self):
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            address = sock.getsockname()
+        with tempfile.TemporaryDirectory() as temporary:
+            diagnostics = playable_gate._failure_diagnostics(
+                (address[0], address[1]), Path(temporary)
+            )
+        self.assertFalse(diagnostics["captured"])
+        self.assertIsNotNone(diagnostics["capture_error"])
+        self.assertIsNone(diagnostics["renderer_counters"])
+        self.assertIsNone(diagnostics["pending_control_requests"])
+        self.assertIsNone(diagnostics["final_screenshot"])
+
+    def _serve_control(self, handler):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(8)
+        listener.settimeout(0.2)
+        stop = threading.Event()
+
+        def run():
+            while not stop.is_set():
+                try:
+                    connection, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                with connection:
+                    data = bytearray()
+                    while not data.endswith(b"\n"):
+                        chunk = connection.recv(65536)
+                        if not chunk:
+                            break
+                        data.extend(chunk)
+                    if not data:
+                        continue
+                    response = handler(json.loads(bytes(data)))
+                    connection.sendall(
+                        json.dumps(response).encode("utf-8") + b"\n"
+                    )
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+
+        def cleanup():
+            stop.set()
+            thread.join(timeout=5.0)
+            listener.close()
+
+        self.addCleanup(cleanup)
+        return listener.getsockname()
+
+    def test_failure_diagnostics_capture_the_live_session(self):
+        pending_probes = []
+        screenshot = PlayableGateBlockInteractionTests._encode_rgba_png(
+            2, 2, bytes([10, 20, 30, 255] * 4)
+        )
+
+        def handler(request):
+            method = request.get("method")
+            if method == "app.status":
+                return {
+                    "ok": True,
+                    "result": {
+                        "app": {"version": "test", "running": True},
+                        "net": {"connected": True, "state": "Play"},
+                        "audio": {"enabled": False},
+                        "renderer": {"frame_index": 41},
+                        "world": {"chunks_decoded": 37},
+                    },
+                }
+            if method == "input.look_delta":
+                pending_probes.append(request.get("params"))
+                return {
+                    "ok": True,
+                    "result": {"queued": True, "pending": len(pending_probes)},
+                }
+            if method == "renderer.screenshot":
+                Path(request["params"]["path"]).write_bytes(screenshot)
+                return {"ok": True, "result": {"queued": True}}
+            return {"ok": False, "error": f"unexpected method {method}"}
+
+        address = self._serve_control(handler)
+        with tempfile.TemporaryDirectory() as temporary:
+            diagnostics = playable_gate._failure_diagnostics(
+                address, Path(temporary)
+            )
+        self.assertTrue(diagnostics["captured"])
+        self.assertIsNone(diagnostics["capture_error"])
+        self.assertEqual(diagnostics["app"], {"version": "test", "running": True})
+        self.assertEqual(diagnostics["renderer_counters"], {"frame_index": 41})
+        self.assertEqual(diagnostics["audio_counters"], {"enabled": False})
+        self.assertEqual(diagnostics["pending_control_requests"]["first"], 1)
+        self.assertEqual(diagnostics["pending_control_requests"]["second"], 2)
+        self.assertEqual(pending_probes, [{"dx": 0.0, "dy": 0.0}] * 2)
+        self.assertIsNone(diagnostics["screenshot_error"])
+        self.assertEqual(diagnostics["final_screenshot"]["width"], 2)
+        self.assertEqual(diagnostics["final_screenshot"]["height"], 2)
+        self.assertEqual(
+            diagnostics["final_screenshot"]["byte_size"], len(screenshot)
+        )
+
+    def test_collect_live_writes_staged_failure_evidence(self):
+        with socket.socket() as reserved:
+            reserved.bind(("127.0.0.1", 0))
+            port = reserved.getsockname()[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "status.json").write_text('{"ok": false}\n')
+            (root / "ledger.json").write_text("{}\n")
+            args = argparse.Namespace(
+                control=f"127.0.0.1:{port}",
+                status=root / "status.json",
+                packet_ledger=root / "ledger.json",
+                timeout=0.5,
+                output=root / "evidence.json",
+                client_log=root / "client.log",
+                server_log=root / "server.log",
+                transfer_server_log=root / "transfer.log",
+                transfer_server_port=0,
+                server_command=root / "server-command",
+                profile_id="0" * 32,
+                server_pack_id="0" * 32,
+                protocol_source=root / "protocol.rs",
+            )
+            with self.assertRaises(playable_gate.GateFailure):
+                playable_gate.collect_live(args)
+            evidence = json.loads((root / "evidence.json").read_text())
+        self.assertEqual(evidence["schema"], 10)
+        self.assertEqual(evidence["failure_stage"], "server_start")
+        diagnostics = evidence["failure_diagnostics"]
+        self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
+        self.assertFalse(diagnostics["captured"])
+        for section in playable_gate.LIVE_SCENARIO_SECTIONS:
+            self.assertIsNone(evidence[section])
 
 
 class PlayableGateLifecycleTests(unittest.TestCase):

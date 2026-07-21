@@ -137,8 +137,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 9:
-        raise GateFailure(f"playable evidence schema must be 9, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 10:
+        raise GateFailure(f"playable evidence schema must be 10, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -2260,11 +2260,17 @@ def _decode_png_rgba(data: bytes) -> tuple[int, int, bytes]:
     return width, height, bytes(out)
 
 
+FLICKER_CHANNEL_TOLERANCE = 3
+
+
 def _frames_match_within_flicker(first: bytes, second: bytes) -> tuple[bool, int]:
-    """Vanilla's lightmap `blockLightFlicker` random-walks every tick, so a
-    frozen scene still jitters by one least-significant bit per channel.
-    Compare at 7-bit depth (any real change moves a channel by >= 2) and
-    report how many pixels differed only in that vanilla flicker bit."""
+    """Vanilla's lightmap `blockLightFlicker` random-walks every tick
+    (AR(1) with 0.9 decay), so a frozen scene still jitters globally between
+    two readbacks taken ~10 ticks apart -- measured drift reaches +/-2 LSB
+    per channel across the whole frame. Tolerate up to
+    FLICKER_CHANNEL_TOLERANCE per channel (real content changes move some
+    channel by >= 4) and report how many pixels differed only within that
+    vanilla flicker band."""
 
     _, _, pixels_a = _decode_png_rgba(first)
     width, height, pixels_b = _decode_png_rgba(second)
@@ -2277,7 +2283,7 @@ def _frames_match_within_flicker(first: bytes, second: bytes) -> tuple[bool, int
         if pixel_a == pixel_b:
             continue
         for channel_a, channel_b in zip(pixel_a, pixel_b):
-            if abs(channel_a - channel_b) > 1:
+            if abs(channel_a - channel_b) > FLICKER_CHANNEL_TOLERANCE:
                 return False, flicker_pixels
         flicker_pixels += 1
     _ = (width, height)
@@ -2923,6 +2929,139 @@ def drive_session_lifecycle(
     return progress
 
 
+LIVE_SCENARIO_SECTIONS = (
+    "movement",
+    "block_interaction",
+    "entity_interaction",
+    "container_interaction",
+    "chat_interaction",
+    "hotbar_interaction",
+    "sound_particle_push",
+    "inventory_interaction",
+    "screenshot_readback",
+    "lifecycle",
+)
+
+
+def _classify_pre_gameplay_failure(
+    status: Any, snapshot: dict[str, Any] | None
+) -> str:
+    """Bucket a failure that happened before gameplay driving started.
+
+    server_start: the delegated status ping never succeeded, so the official
+    server itself never came up. network: the client never held a connected
+    Play-state session. canonical_apply: the session was up but canonical
+    world state never became complete.
+    """
+    if not isinstance(status, dict) or status.get("ok") is not True:
+        return "server_start"
+    net = snapshot.get("net") if isinstance(snapshot, dict) else None
+    if (
+        not isinstance(net, dict)
+        or net.get("connected") is not True
+        or net.get("state") != "Play"
+    ):
+        return "network"
+    return "canonical_apply"
+
+
+def _failure_diagnostics(
+    address: tuple[str, int], artifact_dir: Path
+) -> dict[str, Any]:
+    """Capture failure-time forensics from the still-running client.
+
+    Everything here is read at the moment of failure -- the same lifecycle
+    generation as the failing scenario (app.status running plus the renderer
+    frame_index tie the counters to the live session, unlike the join-time
+    world_snapshot). Every step degrades to a recorded error instead of
+    raising: diagnostics must never mask the original gate failure.
+    """
+    diagnostics: dict[str, Any] = {
+        "captured": False,
+        "capture_error": None,
+        "app": None,
+        "net_counters": None,
+        "audio_counters": None,
+        "renderer_counters": None,
+        "world_counters": None,
+        "pending_control_requests": None,
+        "final_screenshot": None,
+        "screenshot_error": None,
+    }
+    try:
+        status = _object(_control_request(address, "app.status"), "app.status")
+        diagnostics["app"] = status.get("app")
+        diagnostics["net_counters"] = status.get("net")
+        diagnostics["audio_counters"] = status.get("audio")
+        diagnostics["renderer_counters"] = status.get("renderer")
+        diagnostics["world_counters"] = status.get("world")
+        first = _control_request(
+            address, "input.look_delta", {"dx": 0.0, "dy": 0.0}
+        )
+        time.sleep(0.4)
+        second = _control_request(
+            address, "input.look_delta", {"dx": 0.0, "dy": 0.0}
+        )
+        diagnostics["pending_control_requests"] = {
+            "probe": "zero-delta input.look_delta write",
+            "first": first.get("pending") if isinstance(first, dict) else None,
+            "second": second.get("pending")
+            if isinstance(second, dict)
+            else None,
+        }
+        diagnostics["captured"] = True
+    except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
+        diagnostics["capture_error"] = str(error)
+        return diagnostics
+    try:
+        path = artifact_dir / "failure-final.png"
+        data = _capture_screenshot(address, path, time.monotonic() + 15.0)
+        width, height = _png_dimensions(data)
+        diagnostics["final_screenshot"] = {
+            "path": str(path),
+            "byte_size": len(data),
+            "width": width,
+            "height": height,
+        }
+    except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
+        diagnostics["screenshot_error"] = str(error)
+    return diagnostics
+
+
+def _write_live_evidence(
+    args: argparse.Namespace,
+    status: Any,
+    last_snapshot: dict[str, Any] | None,
+    timeline: list[dict[str, Any]],
+    scenarios: dict[str, Any],
+    failure: str | None = None,
+    failure_stage: str | None = None,
+    failure_diagnostics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    evidence: dict[str, Any] = {
+        "schema": 10,
+        "mode": "live",
+        "vanilla_version": "26.1",
+        "timeline": timeline,
+        "status": status,
+        "world_snapshot": last_snapshot,
+    }
+    for name in LIVE_SCENARIO_SECTIONS:
+        evidence[name] = scenarios.get(name)
+    if failure is not None:
+        evidence["failure"] = failure
+        evidence["failure_stage"] = failure_stage
+        evidence["failure_diagnostics"] = failure_diagnostics
+    evidence["artifacts"] = {
+        "timeline": str(args.client_log),
+        "world_snapshot": str(args.output),
+        "server_log": str(args.server_log),
+        "transfer_server_log": str(args.transfer_server_log),
+    }
+    args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+    return evidence
+
+
 def collect_live(args: argparse.Namespace) -> None:
     host, raw_port = args.control.rsplit(":", 1)
     address = (host, int(raw_port))
@@ -2931,6 +3070,7 @@ def collect_live(args: argparse.Namespace) -> None:
     deadline = time.monotonic() + args.timeout
     last_snapshot: dict[str, Any] | None = None
     last_error: str | None = None
+    scenarios: dict[str, Any] = {name: None for name in LIVE_SCENARIO_SECTIONS}
 
     while time.monotonic() < deadline:
         try:
@@ -2958,176 +3098,165 @@ def collect_live(args: argparse.Namespace) -> None:
             last_error = str(error)
         time.sleep(0.1)
     else:
-        evidence = {
-            "schema": 9,
-            "mode": "live",
-            "vanilla_version": "26.1",
-            "timeline": [],
-            "status": status,
-            "world_snapshot": last_snapshot,
-            "movement": None,
-            "block_interaction": None,
-            "entity_interaction": None,
-            "container_interaction": None,
-            "chat_interaction": None,
-            "hotbar_interaction": None,
-            "sound_particle_push": None,
-            "inventory_interaction": None,
-            "screenshot_readback": None,
-            "lifecycle": None,
-            "failure": last_error or "timed out waiting for canonical live state",
-            "artifacts": {
-                "timeline": str(args.client_log),
-                "world_snapshot": str(args.output),
-                "server_log": str(args.server_log),
-                "transfer_server_log": str(args.transfer_server_log),
-            },
-        }
-        args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
-        raise GateFailure(evidence["failure"])
+        failure = last_error or "timed out waiting for canonical live state"
+        diagnostics = _failure_diagnostics(address, args.output.parent)
+        diagnostics["scenario"] = "canonical_state_wait"
+        _write_live_evidence(
+            args,
+            status,
+            last_snapshot,
+            [],
+            scenarios,
+            failure=failure,
+            failure_stage=_classify_pre_gameplay_failure(status, last_snapshot),
+            failure_diagnostics=diagnostics,
+        )
+        raise GateFailure(failure)
 
-    movement: dict[str, Any] | None = None
-    block_interaction: dict[str, Any] | None = None
-    entity_interaction: dict[str, Any] | None = None
-    container_interaction: dict[str, Any] | None = None
-    chat_interaction: dict[str, Any] | None = None
-    hotbar_interaction: dict[str, Any] | None = None
-    sound_particle_push: dict[str, Any] | None = None
-    inventory_interaction: dict[str, Any] | None = None
-    screenshot_readback: dict[str, Any] | None = None
-    lifecycle: dict[str, Any] | None = None
+    failure_stage = "canonical_apply"
+    failure_scenario = "await_control_stability"
     try:
         _await_control_stability(address, deadline)
-        movement = drive_basic_movement(
-            address, min(30.0, float(args.timeout))
+        gameplay_timeout = float(args.timeout)
+
+        def _run_lifecycle() -> dict[str, Any]:
+            # The progress dict is registered before driving so partial
+            # lifecycle progress survives into failure evidence.
+            progress: dict[str, Any] = {}
+            scenarios["lifecycle"] = progress
+            return drive_session_lifecycle(
+                address,
+                args.server_command,
+                args.profile_id,
+                args.server_pack_id,
+                args.client_log,
+                args.transfer_server_log,
+                args.transfer_server_port,
+                min(180.0, gameplay_timeout),
+                progress,
+            )
+
+        plan = (
+            (
+                "movement",
+                "runtime_side_effect",
+                lambda: drive_basic_movement(
+                    address, min(30.0, gameplay_timeout)
+                ),
+            ),
+            (
+                "block_interaction",
+                "runtime_side_effect",
+                lambda: drive_block_interaction(
+                    address, args.server_command, min(90.0, gameplay_timeout)
+                ),
+            ),
+            (
+                "entity_interaction",
+                "runtime_side_effect",
+                lambda: drive_entity_interaction(
+                    address, args.server_command, min(90.0, gameplay_timeout)
+                ),
+            ),
+            (
+                "container_interaction",
+                "runtime_side_effect",
+                lambda: drive_container_interaction(
+                    address,
+                    args.server_command,
+                    args.server_log,
+                    min(90.0, gameplay_timeout),
+                ),
+            ),
+            (
+                "chat_interaction",
+                "runtime_side_effect",
+                lambda: drive_chat_interaction(
+                    address, args.server_log, min(60.0, gameplay_timeout)
+                ),
+            ),
+            (
+                "hotbar_interaction",
+                "runtime_side_effect",
+                lambda: drive_hotbar_interaction(
+                    address,
+                    args.server_command,
+                    args.server_log,
+                    min(60.0, gameplay_timeout),
+                ),
+            ),
+            (
+                "sound_particle_push",
+                "runtime_side_effect",
+                lambda: drive_sound_particle_push(
+                    address, args.server_command, min(60.0, gameplay_timeout)
+                ),
+            ),
+            (
+                "inventory_interaction",
+                "runtime_side_effect",
+                lambda: drive_inventory_interaction(
+                    address,
+                    args.server_command,
+                    args.server_log,
+                    min(60.0, gameplay_timeout),
+                ),
+            ),
+            (
+                "screenshot_readback",
+                "presentation",
+                lambda: drive_screenshot_readback(
+                    address,
+                    args.server_command,
+                    args.output.parent,
+                    min(90.0, gameplay_timeout),
+                ),
+            ),
+            ("lifecycle", "runtime_side_effect", _run_lifecycle),
         )
-        block_interaction = drive_block_interaction(
-            address, args.server_command, min(90.0, float(args.timeout))
-        )
-        entity_interaction = drive_entity_interaction(
-            address, args.server_command, min(90.0, float(args.timeout))
-        )
-        container_interaction = drive_container_interaction(
-            address, args.server_command, args.server_log, min(90.0, float(args.timeout))
-        )
-        chat_interaction = drive_chat_interaction(
-            address, args.server_log, min(60.0, float(args.timeout))
-        )
-        hotbar_interaction = drive_hotbar_interaction(
-            address, args.server_command, args.server_log, min(60.0, float(args.timeout))
-        )
-        sound_particle_push = drive_sound_particle_push(
-            address, args.server_command, min(60.0, float(args.timeout))
-        )
-        inventory_interaction = drive_inventory_interaction(
-            address, args.server_command, args.server_log, min(60.0, float(args.timeout))
-        )
-        screenshot_readback = drive_screenshot_readback(
-            address, args.server_command, args.output.parent, min(90.0, float(args.timeout))
-        )
-        lifecycle = {}
-        lifecycle = drive_session_lifecycle(
-            address,
-            args.server_command,
-            args.profile_id,
-            args.server_pack_id,
-            args.client_log,
-            args.transfer_server_log,
-            args.transfer_server_port,
-            min(180.0, float(args.timeout)),
-            lifecycle,
-        )
-        last_snapshot = lifecycle.pop("final_snapshot")
+        for scenario_name, stage, run in plan:
+            failure_scenario = scenario_name
+            failure_stage = stage
+            scenarios[scenario_name] = run()
+        last_snapshot = scenarios["lifecycle"].pop("final_snapshot")
     except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
         failure = (
             str(error)
             if isinstance(error, GateFailure)
             else f"control-driven gameplay failed: {error}"
         )
-        evidence = {
-            "schema": 9,
-            "mode": "live",
-            "vanilla_version": "26.1",
-            "timeline": [],
-            "status": status,
-            "world_snapshot": last_snapshot,
-            "movement": movement,
-            "block_interaction": block_interaction,
-            "entity_interaction": entity_interaction,
-            "container_interaction": container_interaction,
-            "chat_interaction": chat_interaction,
-            "hotbar_interaction": hotbar_interaction,
-            "sound_particle_push": sound_particle_push,
-            "inventory_interaction": inventory_interaction,
-            "screenshot_readback": screenshot_readback,
-            "lifecycle": lifecycle,
-            "failure": failure,
-            "artifacts": {
-                "timeline": str(args.client_log),
-                "world_snapshot": str(args.output),
-                "server_log": str(args.server_log),
-                "transfer_server_log": str(args.transfer_server_log),
-            },
-        }
-        args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+        diagnostics = _failure_diagnostics(address, args.output.parent)
+        diagnostics["scenario"] = failure_scenario
+        _write_live_evidence(
+            args,
+            status,
+            last_snapshot,
+            [],
+            scenarios,
+            failure=failure,
+            failure_stage=failure_stage,
+            failure_diagnostics=diagnostics,
+        )
         raise GateFailure(failure) from error
 
     client_log = args.client_log.read_text(encoding="utf-8", errors="replace")
     try:
         timeline = timeline_from_client_log(client_log, ledger, status.get("ok") is True)
     except GateFailure as error:
-        evidence = {
-            "schema": 9,
-            "mode": "live",
-            "vanilla_version": "26.1",
-            "timeline": [],
-            "status": status,
-            "world_snapshot": last_snapshot,
-            "movement": movement,
-            "block_interaction": block_interaction,
-            "entity_interaction": entity_interaction,
-            "container_interaction": container_interaction,
-            "chat_interaction": chat_interaction,
-            "hotbar_interaction": hotbar_interaction,
-            "sound_particle_push": sound_particle_push,
-            "inventory_interaction": inventory_interaction,
-            "screenshot_readback": screenshot_readback,
-            "lifecycle": lifecycle,
-            "failure": str(error),
-            "artifacts": {
-                "timeline": str(args.client_log),
-                "world_snapshot": str(args.output),
-                "server_log": str(args.server_log),
-                "transfer_server_log": str(args.transfer_server_log),
-            },
-        }
-        args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+        diagnostics = _failure_diagnostics(address, args.output.parent)
+        diagnostics["scenario"] = "timeline"
+        _write_live_evidence(
+            args,
+            status,
+            last_snapshot,
+            [],
+            scenarios,
+            failure=str(error),
+            failure_stage="canonical_apply",
+            failure_diagnostics=diagnostics,
+        )
         raise
-    evidence = {
-        "schema": 9,
-        "mode": "live",
-        "vanilla_version": "26.1",
-        "timeline": timeline,
-        "status": status,
-        "world_snapshot": last_snapshot,
-        "movement": movement,
-        "block_interaction": block_interaction,
-        "entity_interaction": entity_interaction,
-        "container_interaction": container_interaction,
-        "chat_interaction": chat_interaction,
-        "hotbar_interaction": hotbar_interaction,
-        "sound_particle_push": sound_particle_push,
-        "inventory_interaction": inventory_interaction,
-        "screenshot_readback": screenshot_readback,
-        "lifecycle": lifecycle,
-        "artifacts": {
-            "timeline": str(args.client_log),
-            "world_snapshot": str(args.output),
-            "server_log": str(args.server_log),
-            "transfer_server_log": str(args.transfer_server_log),
-        },
-    }
-    args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+    evidence = _write_live_evidence(args, status, last_snapshot, timeline, scenarios)
     validate_evidence(evidence, _parse_protocol_version(args.protocol_source))
 
 

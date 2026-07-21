@@ -247,11 +247,13 @@ effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域�
 foundation、entity matrix+schema+spawn/transform、playable session lifecycle 四个
 foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺序调整为：
 
-1. playable 基础游玩交互闭环（最接近交付闭环，为其余队列提供验收面）；
-2. entity 矩阵 client tick/movement 与其余开放类目的 family closure；
-3. play packet family 与 registry consumer 长尾——优先随上述垂直 slice 顺带
+1. entity 矩阵 client tick/movement 与其余开放类目的 family closure；
+2. play packet family 与 registry consumer 长尾——优先随上述垂直 slice 顺带
    关闭；独立立项仅当其阻塞前两者或本身构成 hardest-ready 工程；
-4. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。
+3. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。
+
+（playable 基础游玩交互与扩展失败证据两阶段均已闭环，见下节；playable 门禁
+转入维护态：新交互场景随对应垂直 slice 扩展，不再单列队列。）
 
 关闭 milestone 后照常运行适用的 playable-gate；暴露的依赖进入下一轮候选，
 不得借机扩大当前 slice。
@@ -278,14 +280,12 @@ foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺
 Overworld↔Nether、resource-pack push/pop、Play→Configuration→Play、双 server
 Transfer）与基础游玩交互（movement、破坏/放置、实体攻击、容器
 开箱/quick-move/关箱、chat round-trip、hotbar 切槽、声音/粒子推送、
-deterministic screenshot、inventory 背包操作，evidence schema 9）均已闭环。
-
-剩余阶段：
-
-1. **扩展失败证据**：在已有 packet/session timeline、world/control snapshot 与
-   双 server log 基础上增加同 lifecycle generation 的 renderer/audio counters、
-   pending request 断言和最后 screenshot；失败继续区分 server 启动、网络、
-   canonical apply、runtime side effect 和 presentation 阶段。
+deterministic screenshot、inventory 背包操作）均已闭环。失败证据同样闭环
+（evidence schema 10）：任何失败按 server_start / network / canonical_apply /
+runtime_side_effect / presentation 五档分类并标注失败场景，附失败时刻同代
+renderer/audio/net/world counters、pending 写探针双采样和最终 screenshot
+（control 不可达时逐级降级，不掩盖原始失败）。阶段队列已清空；新交互场景随
+对应垂直 slice 扩展本门禁，不再单列。
 
 持续架构优化（随 slice 顺带落地，不单独排队）：rust 类型状态/newtype 收紧
 协议状态机非法空间、`Arc` 共享替代克隆；tokio 连接/控制任务零阻塞 await、
