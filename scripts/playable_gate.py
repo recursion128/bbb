@@ -137,8 +137,8 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 10:
-        raise GateFailure(f"playable evidence schema must be 10, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 11:
+        raise GateFailure(f"playable evidence schema must be 11, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -622,6 +622,16 @@ def _validate_screenshot_readback(screenshot_readback: Any) -> None:
             raise GateFailure(
                 f"screenshot_readback.{key} must be an integer >= {minimum}, "
                 f"got {value!r}"
+            )
+    platform = _object(
+        screenshot_readback.get("platform"), "screenshot_readback.platform"
+    )
+    for axis in ("x", "y", "z"):
+        if not isinstance(platform.get(axis), int) or isinstance(
+            platform.get(axis), bool
+        ):
+            raise GateFailure(
+                f"screenshot_readback.platform.{axis} must be an integer"
             )
 
 
@@ -1467,7 +1477,23 @@ def drive_entity_interaction(
         summon = {"x": column_x + 0.5, "y": float(feet_y), "z": column_z + 0.5}
         break
     if summon is None:
-        raise GateFailure("no clear two-block column near the player to summon into")
+        # Random terrain sometimes leaves no naturally clear sight line in
+        # any of the four probe directions; carve one out server-side
+        # instead of failing on world RNG.
+        column_x = math.floor(float(position["x"]))
+        column_z = math.floor(float(position["z"])) + 2
+        _server_console_command(
+            server_command,
+            f"fill {column_x - 1} {feet_y} {column_z - 1} "
+            f"{column_x + 1} {feet_y + 1} {column_z} minecraft:air",
+        )
+        _await_value(
+            deadline,
+            "the carved summon sight line to reach canonical state",
+            lambda: _line_of_sight_columns_clear(address, position, 0, 2, feet_y),
+            lambda clear: clear is True,
+        )
+        summon = {"x": column_x + 0.5, "y": float(feet_y), "z": column_z + 0.5}
 
     ids_before = set(_entity_transform_by_id(address))
     _server_console_command(
@@ -1969,6 +1995,32 @@ def drive_sound_particle_push(
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
 
+    # Nearby wild mobs keep emitting ambient Sound packets that overwrite
+    # the single canonical last-sound record and race the probe; clear them
+    # and wait for the sound channel to go quiet before pushing.
+    for command in (
+        "kill @e[type=!minecraft:player]",
+        # 26.1 renamed every game rule to a namespaced id (doMobSpawning ->
+        # minecraft:spawn_mobs, see GameRuleRegistryFix); the legacy names
+        # are rejected with "Incorrect argument for command".
+        "gamerule minecraft:spawn_mobs false",
+    ):
+        _server_console_command(server_command, command)
+
+    def _quiet_sound_counter() -> int | None:
+        first = _world_counter(address, "sound_packets")
+        time.sleep(1.0)
+        if _world_counter(address, "sound_packets") != first:
+            return None
+        return first
+
+    _await_value(
+        deadline,
+        "the sound channel to go quiet after clearing mobs",
+        _quiet_sound_counter,
+        lambda value: value is not None,
+    )
+
     pose = _local_player_pose(address)
     position = _object(pose.get("position"), "local_player.pose.position")
     x = math.floor(float(position["x"])) + 0.5
@@ -2321,10 +2373,12 @@ def drive_screenshot_readback(
     artifact_dir: Path,
     timeout_seconds: float,
 ) -> dict[str, Any]:
-    """Freeze every server-driven animation source, aim the crosshair
-    straight down (clouds drift with game time even when the daylight cycle
-    is frozen, so the sky must stay out of frame), and require two spaced
-    renderer readbacks to be byte-identical and non-trivial."""
+    """Freeze every server-driven animation source, cover the ground below
+    with a static-texture platform (animated sprites like lava advance every
+    tick as P0 semantics and can never converge), aim the crosshair straight
+    down (clouds drift with game time even when the daylight cycle is frozen,
+    so the sky must stay out of frame), and require two spaced renderer
+    readbacks to be byte-identical and non-trivial."""
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
@@ -2332,13 +2386,37 @@ def drive_screenshot_readback(
 
     for command in (
         "kill @e[type=!minecraft:player]",
-        "gamerule doMobSpawning false",
+        # 26.1 game-rule ids (GameRuleRegistryFix renames): spawn_mobs,
+        # random_tick_speed, advance_weather, advance_time. The legacy
+        # camelCase names fail with "Incorrect argument for command", which
+        # silently left daylight/weather cycles and random ticks running.
+        "gamerule minecraft:spawn_mobs false",
+        "gamerule minecraft:random_tick_speed 0",
         "weather clear",
-        "gamerule doWeatherCycle false",
+        "gamerule minecraft:advance_weather false",
         "time set noon",
-        "gamerule doDaylightCycle false",
+        "gamerule minecraft:advance_time false",
     ):
         _server_console_command(server_command, command)
+
+    position = _object(
+        _local_player_pose(address).get("position"), "local_player.pose.position"
+    )
+    platform_x = math.floor(float(position["x"]))
+    platform_y = math.floor(float(position["y"])) - 1
+    platform_z = math.floor(float(position["z"]))
+    _server_console_command(
+        server_command,
+        f"fill {platform_x - 8} {platform_y} {platform_z - 8} "
+        f"{platform_x + 8} {platform_y} {platform_z + 8} minecraft:smooth_stone",
+    )
+    _await_value(
+        deadline,
+        "the static screenshot platform to reach canonical state",
+        lambda: _probe_block(address, platform_x, platform_y, platform_z),
+        lambda probe: probe is not None
+        and probe.get("block_name") == "minecraft:smooth_stone",
+    )
 
     _look_to_pitch(address, 90.0, deadline)
 
@@ -2385,6 +2463,7 @@ def drive_screenshot_readback(
         "exact": exact,
         "lightmap_flicker_pixels": flicker_pixels,
         "attempts": attempts,
+        "platform": {"x": platform_x, "y": platform_y, "z": platform_z},
         "byte_size": len(first),
         "width": width,
         "height": height,
@@ -3039,7 +3118,7 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 10,
+        "schema": 11,
         "mode": "live",
         "vanilla_version": "26.1",
         "timeline": timeline,

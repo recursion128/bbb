@@ -380,6 +380,15 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_screenshot_without_static_platform_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["screenshot_readback"]["platform"]
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "screenshot_readback.platform"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
     def test_png_dimension_parser_rejects_non_png(self):
         with self.assertRaisesRegex(playable_gate.GateFailure, "PNG"):
             playable_gate._png_dimensions(b"not a png at all")
@@ -598,7 +607,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 10)
+        self.assertEqual(evidence["schema"], 11)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")

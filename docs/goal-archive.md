@@ -136,4 +136,9 @@
   调度/求值/policy/动画推进 + 五个语义测试）、退役 Turtle not-applicable
   试点（server MoveControl 权威、无客户端可观察差异，通用 remote-Living
   行覆盖）、arrow 单段折叠记录为 vanilla-faithful；合同归档
-  `docs/archive/entity-client-tick-movement-design.md`。
+  `docs/archive/entity-client-tick-movement-design.md`。同日 live gate
+  抗随机性批（65078f610，evidence schema 11）：修 26.1 gamerule 更名缺口
+  （legacy camelCase 名静默失败，daylight/weather/随机 tick 从未冻结——
+  权威对照 `GameRuleRegistryFix`），screenshot 场景加脚下静态石台排除
+  动画纹理，entity 场景 sight-line 全堵时服务端凿列，sound 场景推送前
+  清 mob 等声道静默。
