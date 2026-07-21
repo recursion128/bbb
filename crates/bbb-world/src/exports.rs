@@ -1,5 +1,6 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
+pub use crate::climate::{biome_height_adjusted_temperature, biome_info_noise};
 pub use crate::entities::state::*;
 pub use crate::entities::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type;
 pub use crate::entities::vanilla_entity_renderer_guardian_kind;
