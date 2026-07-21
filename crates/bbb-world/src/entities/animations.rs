@@ -237,6 +237,7 @@ const RAVAGER_STUN_PARTICLE_RANDOM_SALT: i64 = 0x5A17;
 const BLAZE_CLIENT_RANDOM_SALT: u64 = 0x626c_617a_655f_7469;
 const ENDER_AMBIENT_RANDOM_SALT: u64 = 0x656e_6465_725f_7469;
 const GUARDIAN_CLIENT_RANDOM_SALT: u64 = 0x6775_6172_6469_616e;
+const CAMEL_VOICE_RANDOM_SALT: u64 = 0x6361_6d65_6c5f_766f;
 /// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
 /// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
 const HOGLIN_ATTACK_TICKS: i32 = 10;
@@ -302,6 +303,9 @@ pub(crate) struct EntityClientTickParticleTriggers {
     /// Vanilla `AbstractBoat.tick` tests the pre-increment paddle position for
     /// the `PI / 4` sound crossing, then advances the corresponding paddle.
     pub(crate) boat_paddle_sounds: [bool; 2],
+    /// Vanilla `Camel.tick` plays the neutral dash-ready sound on the exact
+    /// client tick where the retained cooldown reaches zero.
+    pub(crate) camel_dash_ready_sound: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -547,6 +551,11 @@ pub struct EntityClientAnimationState {
     /// phase, dry spike flicker, ambient bubbles, and dry jump in Java order.
     #[serde(skip)]
     pub(crate) guardian_client_random_seed: Option<u64>,
+    /// Client-local Camel voice-pitch cursor. Vanilla does not synchronize the
+    /// entity RandomSource; the retained cursor preserves the two-float pitch
+    /// distribution and old-generation isolation without a parallel owner.
+    #[serde(skip)]
+    pub(crate) camel_voice_random_seed: Option<u64>,
     /// Client-local `PlayerRideableJumping` input retained between the local
     /// player's release edge and the controlled vehicle's ridden tick. It is
     /// cloned into immutable publications for old-generation isolation but is
@@ -1383,14 +1392,41 @@ pub struct CamelDashCooldownState {
 }
 
 impl CamelDashCooldownState {
-    fn advance_client_tick(&mut self, is_dashing: bool) {
+    fn advance_client_tick(&mut self, is_dashing: bool) -> bool {
         if is_dashing && !self.was_dashing && self.cooldown_ticks == 0 {
             self.cooldown_ticks = CAMEL_DASH_COOLDOWN_TICKS;
         }
         self.was_dashing = is_dashing;
+        let previous = self.cooldown_ticks;
         if self.cooldown_ticks > 0 {
             self.cooldown_ticks -= 1;
         }
+        previous == 1
+    }
+
+    fn start_local_dash_after_tick(&mut self) {
+        // The native input owner runs after the common entity tick. Seed the
+        // end-of-Camel.tick value (`55` set by executeRidersJump, then `--`).
+        self.cooldown_ticks = CAMEL_DASH_COOLDOWN_TICKS - 1;
+        self.was_dashing = true;
+    }
+
+    fn stop_local_dash(&mut self) {
+        self.was_dashing = false;
+    }
+
+    pub(crate) fn cooldown_ticks(self) -> i32 {
+        self.cooldown_ticks
+    }
+
+    fn should_clear_before_tick(
+        self,
+        is_dashing: bool,
+        on_ground: bool,
+        in_liquid: bool,
+        is_passenger: bool,
+    ) -> bool {
+        is_dashing && self.cooldown_ticks < 50 && (on_ground || in_liquid || is_passenger)
     }
 
     fn jump_cooldown(self, partial_tick: f32) -> f32 {
@@ -3972,6 +4008,47 @@ impl FoxAnimationState {
 }
 
 impl EntityClientAnimationState {
+    pub(crate) fn camel_dash_should_clear_before_tick(
+        self,
+        is_dashing: bool,
+        on_ground: bool,
+        in_liquid: bool,
+        is_passenger: bool,
+    ) -> bool {
+        // A newly observed synced DASH edge has the same effective 55-tick
+        // cooldown that `Camel.onSyncedDataUpdated` installs in Vanilla. The
+        // state is created by this tick below, so it cannot clear on that edge.
+        self.camel_dash_cooldown.is_some_and(|cooldown| {
+            cooldown.should_clear_before_tick(is_dashing, on_ground, in_liquid, is_passenger)
+        })
+    }
+
+    pub(crate) fn next_camel_voice_pitch(&mut self, entity_id: i32, is_baby: bool) -> f32 {
+        let random_seed = self.camel_voice_random_seed.get_or_insert_with(|| {
+            java_random_seed(i64::from(entity_id).wrapping_add(CAMEL_VOICE_RANDOM_SALT as i64))
+        });
+        let base = if is_baby { 1.5 } else { 1.0 };
+        (java_random_next_float(random_seed) - java_random_next_float(random_seed)) * 0.2 + base
+    }
+
+    pub(crate) fn start_local_camel_dash_after_tick(&mut self) {
+        self.camel_dash
+            .get_or_insert_with(KeyframeAnimationState::default)
+            .animate_when(true, self.age_ticks);
+        self.camel_dash_cooldown
+            .get_or_insert_with(Default::default)
+            .start_local_dash_after_tick();
+    }
+
+    pub(crate) fn stop_local_camel_dash(&mut self) {
+        if let Some(dash) = self.camel_dash.as_mut() {
+            dash.animate_when(false, self.age_ticks);
+        }
+        if let Some(cooldown) = self.camel_dash_cooldown.as_mut() {
+            cooldown.stop_local_dash();
+        }
+    }
+
     pub(crate) fn needs_particle_trigger_bounds_snapshot(&self) -> bool {
         self.ravager.is_some() || self.evoker_fangs.is_some()
     }
@@ -4009,6 +4086,13 @@ impl EntityClientAnimationState {
                 ENDER_AMBIENT_RANDOM_SALT ^ entity_type_id as u64,
             ) as i64)
         });
+        self.camel_voice_random_seed =
+            vanilla_entity_metadata_type_is_camel(entity_type_id).then(|| {
+                java_random_seed(spawn_random_bits(
+                    uuid,
+                    CAMEL_VOICE_RANDOM_SALT ^ entity_type_id as u64,
+                ) as i64)
+            });
         self.ridden_jump = vanilla_entity_metadata_type_is_player_rideable_jumping(entity_type_id)
             .then(RiddenJumpState::default);
     }
@@ -6218,7 +6302,8 @@ impl EntityClientAnimationState {
                 let cooldown = self
                     .camel_dash_cooldown
                     .get_or_insert_with(Default::default);
-                cooldown.advance_client_tick(camel_is_dashing);
+                particle_triggers.camel_dash_ready_sound =
+                    cooldown.advance_client_tick(camel_is_dashing);
                 if cooldown.is_settled() {
                     self.camel_dash_cooldown = None;
                 }
@@ -6428,6 +6513,7 @@ pub(super) fn spawn_random_bits(uuid: Uuid, salt: u64) -> u64 {
 /// dolphin, axolotl, fish, …) is just another arm here.
 pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
     vanilla_entity_metadata_type_is_guardian(entity_type_id)
+        || vanilla_entity_metadata_type_is_camel(entity_type_id)
         || vanilla_entity_type_is_squid(entity_type_id)
         || matches!(
             entity_type_id,
@@ -6712,12 +6798,24 @@ impl WorldStore {
         // AABBs and interpolation collision targets are sampled again after every
         // transform mutation. The immutable reads MUST precede the mutable advance.
         let in_water_inputs = self.entities.in_water_aabb_inputs();
-        let mut in_water_by_id = std::collections::HashMap::with_capacity(in_water_inputs.len());
+        let mut fluid_facts_by_id = std::collections::HashMap::with_capacity(in_water_inputs.len());
         let mut guardian_can_stand_on_below_by_id = std::collections::HashMap::new();
         let mut guardian_attack_target_ids = std::collections::HashSet::new();
         for input in in_water_inputs {
             let in_water = crate::fluid::world_aabb_in_water(self, input.aabb_min, input.aabb_max);
-            in_water_by_id.insert(input.entity_id, in_water);
+            let in_liquid = vanilla_entity_metadata_type_is_camel(input.entity_type_id)
+                && crate::client::entity_bounds_contains_any_fluid(
+                    self,
+                    input.aabb_min,
+                    input.aabb_max,
+                );
+            fluid_facts_by_id.insert(
+                input.entity_id,
+                super::store::EntityClientTickFluidFacts {
+                    in_water,
+                    in_liquid,
+                },
+            );
             if let Some(pos) = input.guardian_below_pos.filter(|_| !in_water) {
                 let can_stand = self.probe_block(pos).is_some_and(|block| {
                     crate::client::block_collision_shape_has_full_up_face(&block, pos)
@@ -6934,6 +7032,13 @@ impl WorldStore {
             self.is_feature_enabled("minecraft:minecart_improvements");
         let deferred_boat_paddle_entity_id =
             self.local_player_first_passenger_root_boat_vehicle_id();
+        let deferred_local_camel_vehicle_id = self
+            .local_player_first_passenger_root_vehicle_id()
+            .filter(|entity_id| {
+                self.entities
+                    .entity_type_id(*entity_id)
+                    .is_some_and(vanilla_entity_metadata_type_is_camel)
+            });
         let has_client_level = self.level.is_some();
         let chunks = &self.chunks;
         let is_ticking_entity = |_: i32, entity_type_id: i32, position: EntityVec3| {
@@ -6952,10 +7057,12 @@ impl WorldStore {
         let preparation_duration = preparation_started_at.elapsed();
         let mut work = self.entities.advance_client_animations(
             1,
+            game_time,
             runs_normally,
             deferred_boat_paddle_entity_id,
+            deferred_local_camel_vehicle_id,
             &spectator_player_uuids,
-            &in_water_by_id,
+            &fluid_facts_by_id,
             &guardian_can_stand_on_below_by_id,
             &guardian_attack_target_ids,
             &client_movement_collisions_by_id,
@@ -7042,6 +7149,17 @@ pub(crate) fn entity_data_bool(
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+pub(crate) fn entity_data_long(data_values: &[EntityDataValue], data_id: u8, default: i64) -> i64 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Long(value) => Some(*value),
             _ => None,
         })
         .unwrap_or(default)

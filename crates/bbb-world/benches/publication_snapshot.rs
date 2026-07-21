@@ -12,8 +12,8 @@ use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use bbb_protocol::packets::{
     AddEntity, AttributeSnapshot, BlockPos, BlockUpdate, CommonPlayerSpawnInfo,
     DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove,
-    EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, MobEffectFlags, PlayLogin, RegistryData,
-    RegistryDataEntry, RemoveEntities, SetEntityData, SetEquipment, SetPassengers,
+    EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, MobEffectFlags, PlayLogin, PlayTime,
+    RegistryData, RegistryDataEntry, RemoveEntities, SetEntityData, SetEquipment, SetPassengers,
     UpdateAttributes, UpdateMobEffect, Vec3d,
 };
 use bbb_protocol::{
@@ -24,7 +24,7 @@ use bbb_protocol::{
     },
     entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
@@ -394,6 +394,58 @@ fn build_local_horse_world() -> WorldStore {
                 component_patch: DataComponentPatchSummary::default(),
             },
         }],
+    }));
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 2,
+        passenger_ids: vec![99],
+    }));
+    world.set_local_player_pose(Default::default());
+    world
+}
+
+fn build_local_camel_world() -> WorldStore {
+    let mut world = build_local_horse_world();
+    assert_eq!(
+        world.apply_remove_entities(RemoveEntities {
+            entity_ids: vec![2],
+        }),
+        1
+    );
+    world.apply_world_time(PlayTime {
+        game_time: 100,
+        clock_updates: Vec::new(),
+    });
+    world.apply_add_entity(entity_packet(2, 0, VANILLA_ENTITY_TYPE_CAMEL_ID));
+    let entity_accessors =
+        vanilla_entity_metadata_entity_accessors().expect("generated Entity metadata accessors");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 2,
+        values: vec![EntityDataValue {
+            data_id: entity_accessors.no_gravity_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: 2,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: ItemStackSummary {
+                item_id: Some(1),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        }],
+    }));
+    assert!(world.apply_entity_move(EntityMove {
+        id: 2,
+        has_position: false,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground: true,
     }));
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id: 2,
@@ -1050,6 +1102,60 @@ fn bench_local_horse_physics(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_local_camel_physics(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_tick/local_camel");
+    let input = LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        right: true,
+        ..LocalPlayerInputState::default()
+    };
+    let mut physics = build_local_camel_world();
+    group.bench_function("physics_only", |b| {
+        b.iter(|| {
+            black_box(
+                physics
+                    .advance_local_abstract_horse_vehicle_input(black_box(input), black_box(1))
+                    .expect("locally controlled Camel"),
+            );
+        });
+    });
+    let mut publish = build_local_camel_world();
+    let mut held = Arc::new(publish.publication_snapshot());
+    group.bench_function("physics_then_publish_retained", |b| {
+        b.iter(|| {
+            black_box(
+                publish
+                    .advance_local_abstract_horse_vehicle_input(black_box(input), black_box(1))
+                    .expect("locally controlled Camel"),
+            );
+            held = black_box(Arc::new(publish.publication_snapshot()));
+        });
+    });
+    black_box(held);
+    group.bench_function("dash_then_publish_retained", |b| {
+        b.iter_batched(
+            || {
+                let world = build_local_camel_world();
+                let held = Arc::new(world.publication_snapshot());
+                (world, held)
+            },
+            |(mut world, held)| {
+                assert!(world.apply_local_player_riding_jump(90));
+                black_box(
+                    world
+                        .advance_local_abstract_horse_vehicle_input(black_box(input), black_box(1))
+                        .expect("locally controlled Camel dash"),
+                );
+                let next = black_box(Arc::new(world.publication_snapshot()));
+                black_box((held, next));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+    group.finish();
+}
+
 fn submit_entity_client_movement_effects(world: &mut WorldStore) -> usize {
     let mut effects = world.take_entity_client_movement_effect_states();
     let mut submitted = 0;
@@ -1360,6 +1466,7 @@ criterion_group! {
         bench_entity_interpolation_and_passengers,
         bench_local_boat_physics,
         bench_local_horse_physics,
+        bench_local_camel_physics,
         bench_local_happy_ghast_physics,
         bench_entity_effect_generation,
         bench_entity_projection,

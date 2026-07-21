@@ -696,6 +696,42 @@ pose transition and dash/cooldown remain the immediate subclass stage; this
 commit is therefore a buildable phase-4 stage rather than the local-vehicle
 milestone boundary.
 
+The Camel subclass stage now consumes that retained release state without
+changing the single-owner boundary. Generated Camel/CamelHusk metadata
+accessors provide `DASH` and `LAST_POSE_CHANGE_TICK`; the generated
+`CAN_FLOAT_WHILE_RIDDEN` catalog and the existing narrow attributes provide
+the remaining class/tag facts. `getRiddenInput` and `getRiddenRotation` honor
+the sitting/52-or-40-tick transition refusal before `tickRidden`, so forward
+input can stand a settled sitting Camel while the current tick still travels
+with zero input. The post-stand collision/fluid probe resolves fresh standing
+dimensions rather than retaining the sitting AABB.
+
+Grounded local release applies Vanilla's `22.2222 * charge * movement_speed *
+block_speed_factor` horizontal dash and `1.4285 * charge * jump_power`
+vertical impulse, sets the canonical DASH metadata and retains the end-of-tick
+54-tick cooldown. Sprint adds `0.1` movement speed only at cooldown zero.
+The common entity tick owns remote/uncontrolled dash clearing, dash-ready
+sound and sitting-in-water instant stand; the directly controlled Camel
+defers clear/instant-stand until after its ridden travel, preserving subclass
+ordering. Ordinary stand emits the Camel/CamelHusk neutral sound at the
+AbstractHorse `0.8` volume with the exact adult/baby two-float pitch shape;
+the deterministic client-local cursor is cloned with immutable generations.
+No protocol-id membership table or second vehicle state is introduced.
+
+Focused tests cover release/packet/MoveVehicle order, exact cooldown, refusal
+and stand timing, post-minimum dash clear, ready-sound single emission,
+remote clear, remote water instant stand, entity-id recreation and retained
+A/B publication isolation. On the same machine, the repo Criterion case
+(20 samples, one-second warm-up, two-second measurement) measures 4.6474 us
+for steady Camel physics, 8.5837 us for physics plus a retained publication,
+and 21.066 us for a fresh dash mutation plus publication while the old
+generation remains retained. The retained steady snapshot adds about 3.94 us;
+the dash case includes metadata, animation/cooldown, collision and COW work
+rather than transferring it to the following mutation. Pig/Strider boost,
+Nautilus ridden travel and the remaining subclass inventory are still phase-4
+work, so this is the next buildable local-vehicle milestone rather than
+coverage closeout.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:

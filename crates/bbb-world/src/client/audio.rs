@@ -79,6 +79,10 @@ const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb
 const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
 const GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.guardian.flop";
 const ELDER_GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.flop";
+const CAMEL_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.camel.dash_ready";
+const CAMEL_HUSK_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.camel_husk.dash_ready";
+const CAMEL_STAND_SOUND_EVENT: &str = "minecraft:entity.camel.stand";
+const CAMEL_HUSK_STAND_SOUND_EVENT: &str = "minecraft:entity.camel_husk.stand";
 const BREEZE_DEFLECT_SOUND_EVENT: &str = "minecraft:entity.breeze.deflect";
 const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
 const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
@@ -1384,26 +1388,13 @@ impl WorldStore {
         &mut self,
         state: EntityClientMovementSoundState,
     ) -> SoundEventState {
-        let (sound, source, volume) = match state.kind {
+        let (sound, source, volume, pitch) = match state.kind {
             EntityClientMovementSoundKind::BoatPaddleLeft
             | EntityClientMovementSoundKind::BoatPaddleRight => {
                 unreachable!("boat paddle sounds require post-move world resolution")
             }
             EntityClientMovementSoundKind::BlazeBurn { volume, pitch } => {
-                let event = SoundEventState {
-                    sound: direct_sound_holder(BLAZE_BURN_SOUND_EVENT),
-                    source: "hostile".to_string(),
-                    position: ProtocolVec3d {
-                        x: state.position.x,
-                        y: state.position.y,
-                        z: state.position.z,
-                    },
-                    volume,
-                    pitch,
-                    seed: self.next_sound_seed(),
-                    distance_delay: false,
-                };
-                return self.record_positioned_sound(event);
+                (BLAZE_BURN_SOUND_EVENT, "hostile", volume, pitch)
             }
             EntityClientMovementSoundKind::GuardianFlop { elder } => (
                 if elder {
@@ -1413,15 +1404,36 @@ impl WorldStore {
                 },
                 "hostile",
                 1.0,
+                1.0,
+            ),
+            EntityClientMovementSoundKind::CamelDashReady { husk } => (
+                if husk {
+                    CAMEL_HUSK_DASH_READY_SOUND_EVENT
+                } else {
+                    CAMEL_DASH_READY_SOUND_EVENT
+                },
+                "neutral",
+                1.0,
+                1.0,
+            ),
+            EntityClientMovementSoundKind::CamelStand { husk, pitch } => (
+                if husk {
+                    CAMEL_HUSK_STAND_SOUND_EVENT
+                } else {
+                    CAMEL_STAND_SOUND_EVENT
+                },
+                "neutral",
+                0.8,
+                pitch,
             ),
             EntityClientMovementSoundKind::BreezeDeflect => {
-                (BREEZE_DEFLECT_SOUND_EVENT, "hostile", 1.0)
+                (BREEZE_DEFLECT_SOUND_EVENT, "hostile", 1.0, 1.0)
             }
             EntityClientMovementSoundKind::FireworkRocketLaunch => {
-                (FIREWORK_ROCKET_LAUNCH_SOUND_EVENT, "ambient", 3.0)
+                (FIREWORK_ROCKET_LAUNCH_SOUND_EVENT, "ambient", 3.0, 1.0)
             }
             EntityClientMovementSoundKind::TridentReturn => {
-                (TRIDENT_RETURN_SOUND_EVENT, "neutral", 10.0)
+                (TRIDENT_RETURN_SOUND_EVENT, "neutral", 10.0, 1.0)
             }
         };
         let event = SoundEventState {
@@ -1433,7 +1445,7 @@ impl WorldStore {
                 z: state.position.z,
             },
             volume,
-            pitch: 1.0,
+            pitch,
             seed: self.next_sound_seed(),
             distance_delay: false,
         };
@@ -3736,6 +3748,21 @@ mod tests {
                     z: 16.0,
                 },
             });
+        let camel_ready =
+            store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+                entity_id: 13,
+                kind: EntityClientMovementSoundKind::CamelDashReady { husk: false },
+                position: crate::EntityVec3::default(),
+            });
+        let camel_husk_stand =
+            store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+                entity_id: 14,
+                kind: EntityClientMovementSoundKind::CamelStand {
+                    husk: true,
+                    pitch: 1.125,
+                },
+                position: crate::EntityVec3::default(),
+            });
         let breeze = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
             entity_id: 9,
             kind: EntityClientMovementSoundKind::BreezeDeflect,
@@ -3789,6 +3816,20 @@ mod tests {
         );
         assert_eq!(elder_guardian.source, "hostile");
         assert_eq!(
+            camel_ready.sound.location.as_deref(),
+            Some("minecraft:entity.camel.dash_ready")
+        );
+        assert_eq!(camel_ready.source, "neutral");
+        assert_eq!(camel_ready.volume, 1.0);
+        assert_eq!(camel_ready.pitch, 1.0);
+        assert_eq!(
+            camel_husk_stand.sound.location.as_deref(),
+            Some("minecraft:entity.camel_husk.stand")
+        );
+        assert_eq!(camel_husk_stand.source, "neutral");
+        assert_eq!(camel_husk_stand.volume, 0.8);
+        assert_eq!(camel_husk_stand.pitch, 1.125);
+        assert_eq!(
             breeze.sound.location.as_deref(),
             Some("minecraft:entity.breeze.deflect")
         );
@@ -3803,7 +3844,9 @@ mod tests {
         assert_ne!(firework.seed, blaze.seed);
         assert_ne!(blaze.seed, guardian.seed);
         assert_ne!(guardian.seed, elder_guardian.seed);
-        assert_ne!(elder_guardian.seed, breeze.seed);
+        assert_ne!(elder_guardian.seed, camel_ready.seed);
+        assert_ne!(camel_ready.seed, camel_husk_stand.seed);
+        assert_ne!(camel_husk_stand.seed, breeze.seed);
         assert_ne!(breeze.seed, trident.seed);
         assert_eq!(store.last_sound(), Some(&trident));
         assert_eq!(store.counters().sound_packets, 0);

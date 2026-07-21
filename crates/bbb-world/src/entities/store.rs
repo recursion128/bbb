@@ -9,7 +9,10 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
 use bbb_protocol::attribute_types::vanilla_attribute_type;
-use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID;
+use bbb_protocol::entity_data_serializers::{
+    VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+};
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
     VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
@@ -20,7 +23,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use bbb_protocol::entity_types::{
-    vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+    vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
     VANILLA_ENTITY_TYPE_WITHER_ID,
@@ -44,6 +48,8 @@ use super::schema::{
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_accessors_for_entity_type,
+    vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
+    vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type,
@@ -101,7 +107,7 @@ use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
     boat_paddle_states, camel_is_dashing, cat_is_lying, cat_relax_state_one,
     copper_golem_animation_flags, creaking_can_move, creaking_is_tearing_down,
-    entity_animation_uses_in_water, entity_chunk_coordinate, entity_data_bool,
+    entity_animation_uses_in_water, entity_chunk_coordinate, entity_data_bool, entity_data_long,
     entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
     sniffer_can_play_digging_sound, warden_heartbeat_delay, wither_side_head_target_ids,
@@ -286,6 +292,26 @@ fn equipment_contains_saddle_item(
     equipment_saddle_item(equipment, equipment_slots).is_some()
 }
 
+fn upsert_metadata_value(metadata: &mut EntityMetadata, value: ProtocolEntityDataValue) {
+    if metadata
+        .data_values
+        .iter()
+        .any(|existing| *existing == value)
+    {
+        return;
+    }
+    if let Some(existing) = metadata
+        .data_values
+        .iter_mut()
+        .find(|existing| existing.data_id == value.data_id)
+    {
+        *existing = value;
+    } else {
+        metadata.data_values.push(value);
+        metadata.data_values.sort_by_key(|value| value.data_id);
+    }
+}
+
 /// Vanilla `WitherBoss.DATA_ID_INV` data id (19): the int spawn-invulnerability countdown
 /// (`getInvulnerableTicks`), the fourth `WitherBoss` accessor after `Mob.DATA_MOB_FLAGS_ID` (15) and
 /// the three `DATA_TARGET_A/B/C` ints (16..=18).
@@ -309,6 +335,8 @@ struct EntityClientTickScratch {
     scheduled_entities: Vec<Entity>,
     player_passenger_ancestors: HashSet<i32>,
     guardian_dry_jump_entities: Vec<i32>,
+    camel_clear_dash_entities: Vec<i32>,
+    camel_stand_instantly_entities: Vec<i32>,
 }
 
 impl EntityClientTickScratch {
@@ -317,6 +345,8 @@ impl EntityClientTickScratch {
         self.scheduled_entities.clear();
         self.player_passenger_ancestors.clear();
         self.guardian_dry_jump_entities.clear();
+        self.camel_clear_dash_entities.clear();
+        self.camel_stand_instantly_entities.clear();
     }
 }
 
@@ -344,10 +374,17 @@ pub struct EntityClientTickWork {
 
 pub(crate) struct EntityInWaterTickInput {
     pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
     pub(crate) aabb_min: [f64; 3],
     pub(crate) aabb_max: [f64; 3],
     pub(crate) guardian_below_pos: Option<crate::BlockPos>,
     pub(crate) guardian_attack_target_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct EntityClientTickFluidFacts {
+    pub(crate) in_water: bool,
+    pub(crate) in_liquid: bool,
 }
 
 impl EntityClientTickWork {
@@ -849,6 +886,37 @@ impl EntityStore {
         animations.animations.ridden_jump
     }
 
+    pub(crate) fn camel_jump_cooldown_ticks(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(
+            animations
+                .animations
+                .camel_dash_cooldown
+                .map(|cooldown| cooldown.cooldown_ticks())
+                .unwrap_or(0),
+        )
+    }
+
+    pub(crate) fn start_local_camel_dash_after_tick(&mut self, id: i32) -> Option<()> {
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.start_local_camel_dash_after_tick();
+        })
+    }
+
+    pub(crate) fn stop_local_camel_dash(&mut self, id: i32) -> Option<()> {
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.stop_local_camel_dash();
+        })
+    }
+
+    pub(crate) fn next_camel_voice_pitch(&mut self, id: i32) -> Option<f32> {
+        let is_baby = self.is_baby(id)?;
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.next_camel_voice_pitch(id, is_baby)
+        })
+    }
+
     pub(crate) fn with_ridden_jump_state_mut<R>(
         &mut self,
         id: i32,
@@ -1233,7 +1301,7 @@ impl EntityStore {
         )
     }
 
-    fn metadata_long(&self, id: i32, data_id: u8, default: i64) -> Option<i64> {
+    pub(super) fn metadata_long(&self, id: i32, data_id: u8, default: i64) -> Option<i64> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         Some(
@@ -4881,6 +4949,7 @@ impl EntityStore {
                 };
             inputs.push(EntityInWaterTickInput {
                 entity_id: identity.id,
+                entity_type_id: identity.entity_type_id,
                 aabb_min,
                 aabb_max,
                 guardian_below_pos,
@@ -5077,10 +5146,12 @@ impl EntityStore {
     pub(crate) fn advance_client_animations<F, G>(
         &mut self,
         ticks: u32,
+        game_time: i64,
         runs_normally: bool,
         deferred_boat_paddle_entity_id: Option<i32>,
+        deferred_local_camel_vehicle_id: Option<i32>,
         spectator_player_uuids: &HashSet<Uuid>,
-        in_water_by_id: &HashMap<i32, bool>,
+        fluid_facts_by_id: &HashMap<i32, EntityClientTickFluidFacts>,
         guardian_can_stand_on_below_by_id: &HashMap<i32, bool>,
         guardian_attack_target_ids: &HashSet<i32>,
         client_movement_collisions_by_id: &HashMap<
@@ -5137,7 +5208,7 @@ impl EntityStore {
             let movement_started_at = Instant::now();
             self.advance_direct_client_movement(
                 &tick_scratch.scheduled_entities,
-                in_water_by_id,
+                fluid_facts_by_id,
                 client_movement_collisions_by_id,
             );
             work.projectile_duration += movement_started_at.elapsed();
@@ -5212,7 +5283,9 @@ impl EntityStore {
                 // this mutable pass, defaulting to `false` for non-consumers, and the
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
                 let in_water = entity_animation_uses_in_water(entity_type_id)
-                    && in_water_by_id.get(&identity.id).copied().unwrap_or(false);
+                    && fluid_facts_by_id
+                        .get(&identity.id)
+                        .is_some_and(|facts| facts.in_water);
                 let is_guardian = vanilla_entity_metadata_type_is_guardian(entity_type_id);
                 let is_moving =
                     is_guardian && guardian_is_moving(entity_type_id, &metadata.data_values);
@@ -5249,8 +5322,34 @@ impl EntityStore {
                     .flatten();
                 let is_camel = vanilla_entity_metadata_type_is_camel(entity_type_id);
                 let camel_is_standing = is_camel && pose == Some(VANILLA_ENTITY_POSE_STANDING_ID);
-                let camel_is_dashing =
+                let mut camel_is_dashing =
                     is_camel && camel_is_dashing(entity_type_id, &metadata.data_values);
+                if is_camel && deferred_local_camel_vehicle_id != Some(identity.id) {
+                    let clear_dash = animations.animations.camel_dash_should_clear_before_tick(
+                        camel_is_dashing,
+                        transform.on_ground.unwrap_or(false),
+                        fluid_facts_by_id
+                            .get(&identity.id)
+                            .is_some_and(|facts| facts.in_liquid),
+                        is_passenger,
+                    );
+                    if clear_dash {
+                        camel_is_dashing = false;
+                        tick_scratch.camel_clear_dash_entities.push(identity.id);
+                    }
+                    let camel_is_sitting =
+                        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+                            entity_type_id,
+                        )
+                        .is_some_and(|(data_id, default)| {
+                            entity_data_long(&metadata.data_values, data_id, default) < 0
+                        });
+                    if camel_is_sitting && in_water {
+                        tick_scratch
+                            .camel_stand_instantly_entities
+                            .push(identity.id);
+                    }
+                }
                 let copper_golem_animation =
                     if entity_type_id == VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID {
                         copper_golem_animation_flags(entity_type_id, &metadata.data_values)
@@ -5400,6 +5499,73 @@ impl EntityStore {
                     {
                         *supporting_block = EntitySupportingBlock::default();
                     }
+                }
+            }
+            for entity_id in tick_scratch.camel_clear_dash_entities.drain(..) {
+                let Some(&entity) = self.by_protocol_id.get(&entity_id) else {
+                    continue;
+                };
+                let Some(entity_type_id) = self
+                    .ecs
+                    .get::<&EntityIdentity>(entity)
+                    .ok()
+                    .map(|identity| identity.entity_type_id)
+                else {
+                    continue;
+                };
+                let Some((data_id, _)) =
+                    vanilla_entity_metadata_camel_dash_accessor_for_entity_type(entity_type_id)
+                else {
+                    continue;
+                };
+                if let Ok(mut metadata) = self.ecs.get::<&mut EntityMetadata>(entity) {
+                    upsert_metadata_value(
+                        &mut metadata,
+                        ProtocolEntityDataValue {
+                            data_id,
+                            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                            value: EntityDataValueKind::Boolean(false),
+                        },
+                    );
+                }
+            }
+            for entity_id in tick_scratch.camel_stand_instantly_entities.drain(..) {
+                let Some(&entity) = self.by_protocol_id.get(&entity_id) else {
+                    continue;
+                };
+                let Some(entity_type_id) = self
+                    .ecs
+                    .get::<&EntityIdentity>(entity)
+                    .ok()
+                    .map(|identity| identity.entity_type_id)
+                else {
+                    continue;
+                };
+                let (Some(entity_accessors), Some((last_pose_data_id, _))) = (
+                    vanilla_entity_metadata_entity_accessors(),
+                    vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+                        entity_type_id,
+                    ),
+                ) else {
+                    continue;
+                };
+                if let Ok(mut metadata) = self.ecs.get::<&mut EntityMetadata>(entity) {
+                    upsert_metadata_value(
+                        &mut metadata,
+                        ProtocolEntityDataValue {
+                            data_id: entity_accessors.pose_data_id,
+                            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                            value: EntityDataValueKind::Pose(VANILLA_ENTITY_POSE_STANDING_ID),
+                        },
+                    );
+                    upsert_metadata_value(
+                        &mut metadata,
+                        ProtocolEntityDataValue {
+                            data_id: last_pose_data_id,
+                            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+                            value: EntityDataValueKind::Long(game_time.saturating_sub(53).max(0)),
+                        },
+                    );
                 }
             }
             work.animation_duration += animation_started_at.elapsed();
@@ -6179,6 +6345,17 @@ fn append_client_tick_particle_triggers(
     client_animations: Option<EntityClientAnimationState>,
     triggers: &mut EntityClientTickParticleTriggers,
 ) {
+    if triggers.camel_dash_ready_sound {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::CamelDashReady {
+                    husk: identity.entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                },
+                position: transform.position,
+            },
+        ));
+    }
     if triggers.minecart_tnt_smoke {
         pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
             EntityClientMovementParticleState::Simple(EntityClientMovementSimpleParticleState {

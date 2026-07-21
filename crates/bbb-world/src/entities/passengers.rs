@@ -11,12 +11,14 @@ use bbb_protocol::{
     },
     entity_data_serializers::{
         VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
     },
+    entity_poses::VANILLA_ENTITY_POSE_STANDING_ID,
     entity_types::{
         vanilla_entity_type_can_float_while_ridden, vanilla_entity_type_is_non_controlling_rider,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
     },
     item_types::{VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID},
     mob_effect_types::{
@@ -30,6 +32,8 @@ use crate::{LocalPlayerInputState, WorldStore};
 use super::schema::{
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
+    vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
+    vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
@@ -388,6 +392,8 @@ impl WorldStore {
             return None;
         }
         let bounds = self.entities.pick_bounds(vehicle_id)?;
+        let relative_min = bounds.min.map(f64::from);
+        let relative_max = bounds.max.map(f64::from);
         let flying_speed = self
             .entities
             .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_FLYING_SPEED_ID)?;
@@ -411,8 +417,6 @@ impl WorldStore {
             slow_factor,
         );
         let travel_speed = (flying_speed as f32 * 5.0_f32 / 3.0_f32) as f64;
-        let relative_min = bounds.min.map(f64::from);
-        let relative_max = bounds.max.map(f64::from);
         let entity_collision_targets = (ticks > 0)
             .then(|| self.entities.vehicle_entity_collision_targets())
             .unwrap_or_default();
@@ -540,9 +544,9 @@ impl WorldStore {
         })
     }
 
-    /// Advances a directly controlled non-Camel `AbstractHorse` through its
-    /// retained jump stage, `LivingEntity.travelRidden`, and the shared
-    /// air/fluid travel owner. Camel dash remains a separate subclass stage.
+    /// Advances a directly controlled `AbstractHorse` through its retained
+    /// jump stage, `LivingEntity.travelRidden`, and the shared air/fluid travel
+    /// owner. Camel adds its refusal, dash, and pose-transition subclass work.
     pub fn advance_local_abstract_horse_vehicle_input(
         &mut self,
         input: LocalPlayerInputState,
@@ -551,12 +555,11 @@ impl WorldStore {
         let vehicle_id = self.local_player_first_passenger_root_vehicle_id()?;
         let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
         if !is_vanilla_abstract_horse_type(entity_type_id)
-            || vanilla_entity_metadata_type_is_camel(entity_type_id)
             || self.entity_controlling_passenger(vehicle_id) != self.local_player_id
         {
             return None;
         }
-        let bounds = self.entities.pick_bounds(vehicle_id)?;
+        let is_camel = vanilla_entity_metadata_type_is_camel(entity_type_id);
         let controller = self.local_player.pose?;
         let slow_factor = if controller.sneaking || controller.swimming {
             self.local_player_id
@@ -581,10 +584,11 @@ impl WorldStore {
             y: 0.0,
             z: f64::from(forward),
         };
-        let movement_speed = self
+        let base_movement_speed_value = self
             .entities
-            .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)?
-            as f32;
+            .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)?;
+        let base_movement_speed = base_movement_speed_value as f32;
+        let controller_sprinting = self.local_player_effective_sprint(input);
         let max_up_step =
             self.entities
                 .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_STEP_HEIGHT_ID)? as f32;
@@ -618,8 +622,6 @@ impl WorldStore {
             .entities
             .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID)
             .is_some();
-        let relative_min = bounds.min.map(f64::from);
-        let relative_max = bounds.max.map(f64::from);
         let entity_collision_targets = (ticks > 0)
             .then(|| self.entities.vehicle_entity_collision_targets())
             .unwrap_or_default();
@@ -628,40 +630,49 @@ impl WorldStore {
             let transform = self.entities.transform(vehicle_id)?;
             let previous_supporting_block = self.entities.supporting_block(vehicle_id)?;
             let mut next_transform = transform;
-            next_transform.y_rot = controller.y_rot;
-            next_transform.old_y_rot = controller.y_rot;
-            next_transform.x_rot = (controller.x_rot * 0.5).clamp(-90.0, 90.0);
-            next_transform.y_head_rot = controller.y_rot;
+            let camel_pose = is_camel
+                .then(|| camel_ridden_pose_state(self, vehicle_id))
+                .flatten();
+            let camel_refuses_to_move = camel_pose.is_some_and(|pose| pose.refuses_to_move);
+            if !camel_refuses_to_move {
+                next_transform.y_rot = controller.y_rot;
+                next_transform.old_y_rot = controller.y_rot;
+                next_transform.x_rot = (controller.x_rot * 0.5).clamp(-90.0, 90.0);
+                next_transform.y_head_rot = controller.y_rot;
+            }
             let mut ridden_jump = self.entities.ridden_jump_state(vehicle_id)?;
-            let mut current_horse_flags = self.entities.metadata_byte(
-                vehicle_id,
-                horse_accessors.flags_data_id,
-                horse_accessors.flags_default,
-            )?;
-            let was_locally_standing = ridden_jump.local_stand_ticks_remaining > 0;
-            if was_locally_standing {
-                ridden_jump.local_stand_ticks_remaining -= 1;
-                if ridden_jump.local_stand_ticks_remaining == 0 {
-                    current_horse_flags &= !horse_accessors.standing_mask;
-                    let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
-                        set_metadata_byte(
-                            metadata,
-                            horse_accessors.flags_data_id,
-                            current_horse_flags,
-                        );
-                    });
+            let mut standing = false;
+            if !is_camel {
+                let mut current_horse_flags = self.entities.metadata_byte(
+                    vehicle_id,
+                    horse_accessors.flags_data_id,
+                    horse_accessors.flags_default,
+                )?;
+                if ridden_jump.local_stand_ticks_remaining > 0 {
+                    ridden_jump.local_stand_ticks_remaining -= 1;
+                    if ridden_jump.local_stand_ticks_remaining == 0 {
+                        current_horse_flags &= !horse_accessors.standing_mask;
+                        let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
+                            set_metadata_byte(
+                                metadata,
+                                horse_accessors.flags_data_id,
+                                current_horse_flags,
+                            );
+                        });
+                    }
+                }
+                standing = current_horse_flags & horse_accessors.standing_mask != 0;
+                if !standing {
+                    ridden_jump.allow_stand_sliding = false;
+                    ridden_jump.local_stand_ticks_remaining = 0;
                 }
             }
-            let standing = current_horse_flags & horse_accessors.standing_mask != 0;
-            if !standing {
-                ridden_jump.allow_stand_sliding = false;
-                ridden_jump.local_stand_ticks_remaining = 0;
-            }
             let on_ground = transform.on_ground.unwrap_or(false);
-            let input_this_tick = if on_ground
-                && ridden_jump.player_jump_pending_scale == 0.0
-                && standing
-                && !ridden_jump.allow_stand_sliding
+            let input_this_tick = if camel_refuses_to_move
+                || on_ground
+                    && ridden_jump.player_jump_pending_scale == 0.0
+                    && standing
+                    && !ridden_jump.allow_stand_sliding
             {
                 HappyGhastInput {
                     x: 0.0,
@@ -671,36 +682,39 @@ impl WorldStore {
             } else {
                 ridden_input
             };
+            if is_camel && camel_refuses_to_move && on_ground {
+                next_transform.delta_movement.x = 0.0;
+                next_transform.delta_movement.z = 0.0;
+            }
             if on_ground {
                 if ridden_jump.player_jump_pending_scale > 0.0 {
                     let amount = ridden_jump.player_jump_pending_scale;
-                    let mut impulse = self
-                        .entities
-                        .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID)?
-                        as f32
-                        * amount
-                        * entity_block_jump_factor(
+                    let position = [
+                        next_transform.position.x,
+                        next_transform.position.y,
+                        next_transform.position.z,
+                    ];
+                    if is_camel {
+                        execute_local_camel_dash(
                             self,
-                            [
-                                next_transform.position.x,
-                                next_transform.position.y,
-                                next_transform.position.z,
-                            ],
+                            vehicle_id,
+                            entity_type_id,
+                            amount,
+                            base_movement_speed_value,
+                            position,
                             previous_supporting_block.main,
-                        );
-                    if let Some(amplifier) = self
-                        .entities
-                        .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_JUMP_BOOST_ID)
-                    {
-                        impulse += 0.1_f32 * (amplifier + 1) as f32;
-                    }
-                    next_transform.delta_movement.y = f64::from(impulse);
-                    if input_this_tick.z > 0.0 {
-                        let yaw = next_transform.y_rot * std::f32::consts::PI / 180.0;
-                        let sin = super::client_movement::vanilla_mth_sin(f64::from(yaw));
-                        let cos = super::client_movement::vanilla_mth_cos(f64::from(yaw));
-                        next_transform.delta_movement.x += f64::from(-0.4_f32 * sin * amount);
-                        next_transform.delta_movement.z += f64::from(0.4_f32 * cos * amount);
+                            &mut next_transform,
+                        )?;
+                    } else {
+                        execute_local_horse_jump(
+                            self,
+                            vehicle_id,
+                            amount,
+                            input_this_tick,
+                            position,
+                            previous_supporting_block.main,
+                            &mut next_transform,
+                        )?;
                     }
                 }
                 ridden_jump.player_jump_pending_scale = 0.0;
@@ -708,6 +722,27 @@ impl WorldStore {
             let _ = self
                 .entities
                 .with_ridden_jump_state_mut(vehicle_id, |state| *state = ridden_jump);
+            if is_camel
+                && forward > 0.0
+                && camel_pose.is_some_and(|pose| pose.is_sitting && !pose.is_in_transition)
+            {
+                self.stand_local_camel(vehicle_id, false)?;
+            }
+            let movement_speed = base_movement_speed
+                + if is_camel
+                    && controller_sprinting
+                    && self.entities.camel_jump_cooldown_ticks(vehicle_id)? == 0
+                {
+                    0.1
+                } else {
+                    0.0
+                };
+            // `Camel.tickRidden` may have changed SITTING to STANDING above.
+            // Vanilla's following `travel` observes the new dimensions, so do
+            // not retain the pre-stand AABB across this tick.
+            let bounds = self.entities.pick_bounds(vehicle_id)?;
+            let relative_min = bounds.min.map(f64::from);
+            let relative_max = bounds.max.map(f64::from);
             let position = [
                 next_transform.position.x,
                 next_transform.position.y,
@@ -894,6 +929,35 @@ impl WorldStore {
                     outcome.supporting_block,
                 )?;
             }
+            if is_camel {
+                let current = self.entities.transform(vehicle_id)?;
+                let camel_is_passenger = self
+                    .entities
+                    .mount(vehicle_id)
+                    .is_some_and(|mount| mount.vehicle_id.is_some());
+                let (dash_data_id, dash_default) =
+                    vanilla_entity_metadata_camel_dash_accessor_for_entity_type(entity_type_id)?;
+                let is_dashing = self.entities.metadata_bool_for_entity(
+                    vehicle_id,
+                    dash_data_id,
+                    dash_default,
+                )?;
+                if is_dashing
+                    && self.entities.camel_jump_cooldown_ticks(vehicle_id)? <= 48
+                    && (current.on_ground.unwrap_or(false)
+                        || fluid_contact.in_water()
+                        || fluid_contact.in_lava()
+                        || camel_is_passenger)
+                {
+                    let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
+                        set_metadata_bool(metadata, dash_data_id, false);
+                    });
+                    self.entities.stop_local_camel_dash(vehicle_id)?;
+                }
+                if camel_pose.is_some_and(|pose| pose.is_sitting) && fluid_contact.in_water() {
+                    self.stand_local_camel(vehicle_id, true)?;
+                }
+            }
         }
 
         let transform = self.entities.transform(vehicle_id)?;
@@ -952,6 +1016,11 @@ impl WorldStore {
         if !is_vanilla_player_rideable_jumping_type(entity_type_id) {
             return None;
         }
+        if vanilla_entity_metadata_type_is_camel(entity_type_id)
+            && camel_ridden_pose_state(self, vehicle_id)?.refuses_to_move
+        {
+            return None;
+        }
         if !self
             .entities
             .saddle_slot_contains_saddle_item(vehicle_id, &self.items.default_item_equipment_slots)
@@ -977,6 +1046,16 @@ impl WorldStore {
             .map(|cooldown| cooldown.max(0.0))
     }
 
+    /// Exact integer `PlayerRideableJumping.getJumpCooldown()` used by
+    /// `LocalPlayer.aiStep`; unlike the render projection, this is not
+    /// partial-tick adjusted.
+    pub fn local_player_rideable_jumping_vehicle_cooldown_ticks(&self) -> Option<i32> {
+        let vehicle_id = self.local_player_rideable_jumping_vehicle_id()?;
+        self.entities
+            .camel_jump_cooldown_ticks(vehicle_id)
+            .map(|cooldown| cooldown.max(0))
+    }
+
     /// Applies the local `PlayerRideableJumping.onPlayerJump` call that
     /// Vanilla performs immediately before sending `START_RIDING_JUMP`.
     /// Horse-family state is retained canonically until its ridden tick;
@@ -988,9 +1067,7 @@ impl WorldStore {
         let Some(entity_type_id) = self.entities.entity_type_id(vehicle_id) else {
             return false;
         };
-        if !is_vanilla_abstract_horse_type(entity_type_id)
-            || vanilla_entity_metadata_type_is_camel(entity_type_id)
-        {
+        if !is_vanilla_abstract_horse_type(entity_type_id) {
             return false;
         }
         let Some(accessors) =
@@ -1005,13 +1082,27 @@ impl WorldStore {
         } else {
             0.4 + 0.4 * jump_amount as f32 / 90.0
         };
+        let is_camel = vanilla_entity_metadata_type_is_camel(entity_type_id);
+        if is_camel {
+            let Some(cooldown) = self.entities.camel_jump_cooldown_ticks(vehicle_id) else {
+                return false;
+            };
+            let Some(transform) = self.entities.transform(vehicle_id) else {
+                return false;
+            };
+            if cooldown > 0 || !transform.on_ground.unwrap_or(false) {
+                return false;
+            }
+        }
         let Some(()) = self
             .entities
             .with_ridden_jump_state_mut(vehicle_id, |state| {
                 state.player_jump_pending_scale = pending_scale;
-                if should_stand {
+                if should_stand && !is_camel {
                     state.allow_stand_sliding = true;
                     state.local_stand_ticks_remaining = 20;
+                } else if is_camel {
+                    state.allow_stand_sliding = true;
                 }
             })
         else {
@@ -1021,13 +1112,59 @@ impl WorldStore {
             .entities
             .metadata_byte(vehicle_id, accessors.flags_data_id, accessors.flags_default)
             .unwrap_or(accessors.flags_default);
-        if should_stand {
+        if should_stand && !is_camel {
             let flags = (flags & !accessors.eating_mask) | accessors.standing_mask;
             let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
                 set_metadata_byte(metadata, accessors.flags_data_id, flags);
             });
         }
         true
+    }
+
+    fn stand_local_camel(&mut self, vehicle_id: i32, instantly: bool) -> Option<()> {
+        let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
+        if !vanilla_entity_metadata_type_is_camel(entity_type_id) {
+            return None;
+        }
+        if !camel_ridden_pose_state(self, vehicle_id)?.is_sitting {
+            return Some(());
+        }
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+        let (last_pose_data_id, _) =
+            vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+                entity_type_id,
+            )?;
+        let game_time = self.world_time().map_or(0, |time| time.game_time);
+        let last_pose_change_tick = if instantly {
+            game_time.saturating_sub(53).max(0)
+        } else {
+            game_time
+        };
+        let _ = self.entities.with_metadata_mut(vehicle_id, |metadata| {
+            set_metadata_pose(
+                metadata,
+                entity_accessors.pose_data_id,
+                VANILLA_ENTITY_POSE_STANDING_ID,
+            );
+            set_metadata_long(metadata, last_pose_data_id, last_pose_change_tick);
+        });
+        if !instantly && !self.entities.is_silent(vehicle_id).unwrap_or(false) {
+            let position = self.entities.transform(vehicle_id)?.position;
+            let pitch = self.entities.next_camel_voice_pitch(vehicle_id)?;
+            self.entities.pending_entity_client_movement_effects.push(
+                super::EntityClientMovementEffectState::Sound(
+                    super::EntityClientMovementSoundState {
+                        entity_id: vehicle_id,
+                        kind: super::EntityClientMovementSoundKind::CamelStand {
+                            husk: entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                            pitch,
+                        },
+                        position,
+                    },
+                ),
+            );
+        }
+        Some(())
     }
 
     pub fn local_player_sprintable_vehicle_id(&self) -> Option<i32> {
@@ -1106,7 +1243,7 @@ impl WorldStore {
         false
     }
 
-    fn local_player_first_passenger_root_vehicle_id(&self) -> Option<i32> {
+    pub(crate) fn local_player_first_passenger_root_vehicle_id(&self) -> Option<i32> {
         let mut passenger_id = self.local_player_id?;
         let mut vehicle_id = self.local_player_vehicle_id?;
         for _ in 0..self.entities.len() {
@@ -1613,6 +1750,106 @@ fn entity_block_jump_factor(
     crate::terrain::vanilla_block_jump_factor(below_name.as_deref())
 }
 
+#[allow(clippy::too_many_arguments)]
+fn execute_local_horse_jump(
+    world: &WorldStore,
+    vehicle_id: i32,
+    amount: f32,
+    input: HappyGhastInput,
+    position: [f64; 3],
+    supporting_block: Option<crate::BlockPos>,
+    transform: &mut super::components::EntityTransform,
+) -> Option<()> {
+    let mut impulse = world
+        .entities
+        .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID)?
+        as f32
+        * amount
+        * entity_block_jump_factor(world, position, supporting_block);
+    if let Some(amplifier) = world
+        .entities
+        .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_JUMP_BOOST_ID)
+    {
+        impulse += 0.1_f32 * (amplifier + 1) as f32;
+    }
+    transform.delta_movement.y = f64::from(impulse);
+    if input.z > 0.0 {
+        let yaw = transform.y_rot * std::f32::consts::PI / 180.0;
+        let sin = super::client_movement::vanilla_mth_sin(f64::from(yaw));
+        let cos = super::client_movement::vanilla_mth_cos(f64::from(yaw));
+        transform.delta_movement.x += f64::from(-0.4_f32 * sin * amount);
+        transform.delta_movement.z += f64::from(0.4_f32 * cos * amount);
+    }
+    Some(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn execute_local_camel_dash(
+    world: &mut WorldStore,
+    vehicle_id: i32,
+    entity_type_id: i32,
+    amount: f32,
+    movement_speed: f64,
+    position: [f64; 3],
+    supporting_block: Option<crate::BlockPos>,
+    transform: &mut super::components::EntityTransform,
+) -> Option<()> {
+    let mut jump_momentum = world
+        .entities
+        .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID)?
+        as f32
+        * entity_block_jump_factor(world, position, supporting_block);
+    if let Some(amplifier) = world
+        .entities
+        .mob_effect_amplifier(vehicle_id, VANILLA_MOB_EFFECT_JUMP_BOOST_ID)
+    {
+        jump_momentum += 0.1_f32 * (amplifier + 1) as f32;
+    }
+    let yaw = transform.y_rot * std::f32::consts::PI / 180.0;
+    let sin = super::client_movement::vanilla_mth_sin(f64::from(yaw));
+    let cos = super::client_movement::vanilla_mth_cos(f64::from(yaw));
+    let horizontal_momentum = f64::from(22.2222_f32 * amount)
+        * movement_speed
+        * entity_block_speed_factor(world, position);
+    transform.delta_movement.x += f64::from(-sin) * horizontal_momentum;
+    transform.delta_movement.y += f64::from(1.4285_f32 * amount) * f64::from(jump_momentum);
+    transform.delta_movement.z += f64::from(cos) * horizontal_momentum;
+    let (dash_data_id, _) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(entity_type_id)?;
+    let _ = world.entities.with_metadata_mut(vehicle_id, |metadata| {
+        set_metadata_bool(metadata, dash_data_id, true);
+    });
+    world
+        .entities
+        .start_local_camel_dash_after_tick(vehicle_id)?;
+    Some(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CamelRiddenPoseState {
+    is_sitting: bool,
+    is_in_transition: bool,
+    refuses_to_move: bool,
+}
+
+fn camel_ridden_pose_state(world: &WorldStore, entity_id: i32) -> Option<CamelRiddenPoseState> {
+    let entity_type_id = world.entities.entity_type_id(entity_id)?;
+    let (data_id, default) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            entity_type_id,
+        )?;
+    let last_pose_change_tick = world.entities.metadata_long(entity_id, data_id, default)?;
+    let game_time = world.world_time().map_or(0, |time| time.game_time);
+    let is_sitting = last_pose_change_tick < 0;
+    let pose_time = game_time.saturating_sub(last_pose_change_tick.saturating_abs());
+    let is_in_transition = pose_time < if is_sitting { 40 } else { 52 };
+    Some(CamelRiddenPoseState {
+        is_sitting,
+        is_in_transition,
+        refuses_to_move: is_sitting || is_in_transition,
+    })
+}
+
 fn entity_movement_effect_block_pos(
     world: &WorldStore,
     position: [f64; 3],
@@ -1846,43 +2083,58 @@ fn entity_block_speed_factor(world: &WorldStore, position: [f64; 3]) -> f64 {
 }
 
 fn set_metadata_bool(metadata: &mut super::components::EntityMetadata, data_id: u8, value: bool) {
-    if metadata.data_values.iter().any(|existing| {
-        existing.data_id == data_id
-            && existing.serializer_id == VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID
-            && existing.value == EntityDataValueKind::Boolean(value)
-    }) {
-        return;
-    }
-    let value = EntityDataValue {
-        data_id,
-        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-        value: EntityDataValueKind::Boolean(value),
-    };
-    if let Some(existing) = metadata
-        .data_values
-        .iter_mut()
-        .find(|existing| existing.data_id == data_id)
-    {
-        *existing = value;
-    } else {
-        metadata.data_values.push(value);
-        metadata.data_values.sort_by_key(|value| value.data_id);
-    }
+    set_metadata_value(
+        metadata,
+        EntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(value),
+        },
+    );
 }
 
 fn set_metadata_byte(metadata: &mut super::components::EntityMetadata, data_id: u8, value: i8) {
-    if metadata.data_values.iter().any(|existing| {
-        existing.data_id == data_id
-            && existing.serializer_id == VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID
-            && existing.value == EntityDataValueKind::Byte(value)
-    }) {
+    set_metadata_value(
+        metadata,
+        EntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: EntityDataValueKind::Byte(value),
+        },
+    );
+}
+
+fn set_metadata_long(metadata: &mut super::components::EntityMetadata, data_id: u8, value: i64) {
+    set_metadata_value(
+        metadata,
+        EntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+            value: EntityDataValueKind::Long(value),
+        },
+    );
+}
+
+fn set_metadata_pose(metadata: &mut super::components::EntityMetadata, data_id: u8, value: i32) {
+    set_metadata_value(
+        metadata,
+        EntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+            value: EntityDataValueKind::Pose(value),
+        },
+    );
+}
+
+fn set_metadata_value(metadata: &mut super::components::EntityMetadata, value: EntityDataValue) {
+    if metadata
+        .data_values
+        .iter()
+        .any(|existing| *existing == value)
+    {
         return;
     }
-    let value = EntityDataValue {
-        data_id,
-        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-        value: EntityDataValueKind::Byte(value),
-    };
+    let data_id = value.data_id;
     if let Some(existing) = metadata
         .data_values
         .iter_mut()

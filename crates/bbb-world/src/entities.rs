@@ -751,6 +751,8 @@ pub enum EntityClientMovementSoundKind {
     BoatPaddleRight,
     BlazeBurn { volume: f32, pitch: f32 },
     GuardianFlop { elder: bool },
+    CamelDashReady { husk: bool },
+    CamelStand { husk: bool, pitch: f32 },
     BreezeDeflect,
     FireworkRocketLaunch,
     TridentReturn,

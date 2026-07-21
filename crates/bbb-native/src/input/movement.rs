@@ -192,8 +192,8 @@ fn maybe_queue_riding_jump_command(
 ) {
     if world.local_player_rideable_jumping_vehicle_id().is_none()
         || world
-            .local_player_rideable_jumping_vehicle_cooldown(1.0)
-            .is_none_or(|cooldown| cooldown > 0.0)
+            .local_player_rideable_jumping_vehicle_cooldown_ticks()
+            .is_none_or(|cooldown| cooldown > 0)
     {
         input.riding_jump_charge_seconds = None;
         return;
@@ -222,8 +222,8 @@ pub(super) fn queue_released_riding_jump_command(
 ) {
     if world.local_player_rideable_jumping_vehicle_id().is_none()
         || world
-            .local_player_rideable_jumping_vehicle_cooldown(1.0)
-            .is_none_or(|cooldown| cooldown > 0.0)
+            .local_player_rideable_jumping_vehicle_cooldown_ticks()
+            .is_none_or(|cooldown| cooldown > 0)
     {
         return;
     }
@@ -429,13 +429,15 @@ mod tests {
 
     use super::*;
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity, CommonPlayerSpawnInfo, EquipmentSlot, EquipmentSlotUpdate,
-        GameEvent as ProtocolGameEvent, ItemStackSummary, PaddleBoat, PlayLogin, PlayerAbilities,
-        PlayerAbilitiesCommand, SetCamera, SetEquipment, SetPassengers, Vec3d as ProtocolVec3d,
+        AddEntity, CommonPlayerSpawnInfo, EntityMove, EquipmentSlot, EquipmentSlotUpdate,
+        GameEvent as ProtocolGameEvent, ItemStackSummary, PaddleBoat, PlayLogin, PlayTime,
+        PlayerAbilities, PlayerAbilitiesCommand, SetCamera, SetEquipment, SetPassengers,
+        Vec3d as ProtocolVec3d,
     };
     use bbb_world::ItemEquipmentSlot;
     use uuid::Uuid;
@@ -1366,6 +1368,43 @@ mod tests {
     }
 
     #[test]
+    fn camel_jump_release_starts_dash_before_vehicle_report() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let now = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        input.riding_jump_charge_seconds = Some(0.40);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_CAMEL_ID);
+        let mut counters = NetCounters::default();
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            now,
+            1,
+        );
+
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerCommand(command)
+                if command.action == PlayerCommandAction::StartRidingJump && command.data == 90
+        ));
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MoveVehicle(_)));
+        assert!(rx.try_recv().is_err());
+        assert_eq!(
+            world.local_player_rideable_jumping_vehicle_cooldown_ticks(),
+            Some(54)
+        );
+    }
+
+    #[test]
     fn mounted_non_jumpable_vehicle_release_does_not_queue_riding_jump() {
         let (tx, mut rx) = mpsc::channel(3);
         let commands = Some(tx);
@@ -1428,8 +1467,17 @@ mod tests {
     fn world_with_local_vehicle(entity_type_id: i32) -> WorldStore {
         let mut world = WorldStore::new();
         world.apply_login(&protocol_play_login(99));
+        if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID {
+            world.apply_world_time(PlayTime {
+                game_time: 100,
+                clock_updates: Vec::new(),
+            });
+        }
         world.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
-        if entity_type_id == VANILLA_ENTITY_TYPE_HORSE_ID {
+        if matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_HORSE_ID | VANILLA_ENTITY_TYPE_CAMEL_ID
+        ) {
             world.set_default_item_equipment_slots(BTreeMap::from([(
                 SADDLE_ITEM_ID,
                 ItemEquipmentSlot::Saddle,
@@ -1445,6 +1493,18 @@ mod tests {
                     },
                 }],
             }));
+            if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID {
+                assert!(world.apply_entity_move(EntityMove {
+                    id: 10,
+                    has_position: false,
+                    delta_x: 0,
+                    delta_y: 0,
+                    delta_z: 0,
+                    y_rot: None,
+                    x_rot: None,
+                    on_ground: true,
+                }));
+            }
         } else if entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
             assert!(world.apply_set_equipment(SetEquipment {
                 entity_id: 10,

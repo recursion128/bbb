@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_STANDING_ID;
 use bbb_protocol::item_types::{
     VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
 };
@@ -952,6 +953,10 @@ fn local_player_rideable_jumping_vehicle_id_tracks_vanilla_controlled_mounts() {
         ItemEquipmentSlot::Saddle,
     )]));
     store.apply_login(&protocol_play_login(99));
+    store.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 100,
+        clock_updates: Vec::new(),
+    });
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
         VANILLA_ENTITY_TYPE_HORSE_ID,
@@ -1013,6 +1018,10 @@ fn local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown() {
         ItemEquipmentSlot::Saddle,
     )]));
     store.apply_login(&protocol_play_login(99));
+    store.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 100,
+        clock_updates: Vec::new(),
+    });
     let mut loaded = empty_test_chunk();
     loaded.pos = crate::ChunkPos { x: 0, z: -1 };
     store.insert_decoded_chunk(loaded);
@@ -1581,6 +1590,371 @@ fn recreated_horse_id_does_not_retain_local_riding_jump_state() {
 }
 
 #[test]
+fn local_camel_dash_consumes_pending_jump_and_starts_exact_cooldown() {
+    let mut store = locally_controlled_camel();
+    store.set_local_player_pose(crate::LocalPlayerPoseState {
+        y_rot: 0.0,
+        ..crate::LocalPlayerPoseState::default()
+    });
+    let generation_a = store.publication_snapshot();
+    let before = store.entities.transform(10).unwrap();
+
+    assert!(store.apply_local_player_riding_jump(90));
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+
+    let after = store.entities.transform(10).unwrap();
+    assert!(after.position.z > before.position.z + 1.9);
+    assert!(after.position.y > before.position.y + 0.5);
+    assert_eq!(store.entities.camel_jump_cooldown_ticks(10), Some(54));
+    assert_eq!(
+        store.local_player_rideable_jumping_vehicle_cooldown_ticks(),
+        Some(54)
+    );
+    let (dash_data_id, dash_default) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .unwrap();
+    assert!(store
+        .entities
+        .metadata_bool_for_entity(10, dash_data_id, dash_default)
+        .unwrap());
+    assert!(!store.apply_local_player_riding_jump(90));
+
+    assert_eq!(generation_a.entities.transform(10).unwrap(), before);
+    assert_eq!(generation_a.entities.camel_jump_cooldown_ticks(10), Some(0));
+}
+
+#[test]
+fn recreated_camel_id_does_not_retain_local_dash_state() {
+    let mut store = locally_controlled_camel();
+    assert!(store.apply_local_player_riding_jump(90));
+    store
+        .advance_local_abstract_horse_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    let generation_a = store.publication_snapshot();
+    assert_eq!(
+        generation_a.entities.camel_jump_cooldown_ticks(10),
+        Some(54)
+    );
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![10],
+        }),
+        1
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    equip_test_saddle(&mut store, 10);
+    store.entities.with_transform_mut(10, |transform| {
+        transform.on_ground = Some(true);
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+
+    let (dash_data_id, dash_default) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .unwrap();
+    assert_eq!(store.entities.camel_jump_cooldown_ticks(10), Some(0));
+    assert!(!store
+        .entities
+        .metadata_bool_for_entity(10, dash_data_id, dash_default)
+        .unwrap());
+    assert!(store.apply_local_player_riding_jump(90));
+    assert_eq!(
+        generation_a.entities.camel_jump_cooldown_ticks(10),
+        Some(54)
+    );
+    assert!(generation_a
+        .entities
+        .metadata_bool_for_entity(10, dash_data_id, dash_default)
+        .unwrap());
+}
+
+#[test]
+fn sitting_camel_forward_input_stands_then_refuses_current_tick_travel() {
+    let mut store = locally_controlled_camel();
+    let entity_accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    let (last_pose_data_id, _) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+        )
+        .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: entity_accessors.pose_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                value: EntityDataValueKind::Pose(
+                    bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SITTING_ID,
+                ),
+            },
+            ProtocolEntityDataValue {
+                data_id: last_pose_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+                value: EntityDataValueKind::Long(-1),
+            },
+        ],
+    }));
+    store.entities.with_transform_mut(10, |transform| {
+        transform.delta_movement.x = 0.5;
+        transform.delta_movement.z = 0.5;
+        transform.on_ground = Some(true);
+    });
+    let before = store.entities.transform(10).unwrap();
+    assert_eq!(store.local_player_rideable_jumping_vehicle_id(), None);
+
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+
+    let after = store.entities.transform(10).unwrap();
+    assert_eq!(after.position.x, before.position.x);
+    assert_eq!(after.position.z, before.position.z);
+    assert_eq!(
+        store.entities.pose(10),
+        Some(VANILLA_ENTITY_POSE_STANDING_ID)
+    );
+    assert_eq!(
+        store
+            .entities
+            .metadata_long(10, last_pose_data_id, 0)
+            .unwrap(),
+        100
+    );
+    let effects = store.take_entity_client_movement_effect_states();
+    assert!(effects.iter().any(|effect| matches!(
+        effect,
+        super::super::EntityClientMovementEffectState::Sound(
+            super::super::EntityClientMovementSoundState {
+                kind: super::super::EntityClientMovementSoundKind::CamelStand { husk: false, .. },
+                ..
+            }
+        )
+    )));
+}
+
+#[test]
+fn local_camel_dash_flag_clears_after_minimum_duration_on_ground() {
+    let mut store = locally_controlled_camel();
+    assert!(store.apply_local_player_riding_jump(90));
+    store
+        .advance_local_abstract_horse_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    store.advance_entity_client_animations(6);
+    store.insert_decoded_chunk(empty_test_chunk());
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 1, y: -64, z: 1 },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+    store.entities.with_transform_mut(10, |transform| {
+        transform.position = EntityVec3 {
+            x: 1.0,
+            y: -63.0,
+            z: 1.0,
+        };
+        transform.old_position = transform.position;
+        transform.delta_movement = EntityVec3 {
+            y: -0.1,
+            ..EntityVec3::default()
+        };
+        transform.on_ground = Some(true);
+    });
+    store
+        .advance_local_abstract_horse_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+
+    assert_eq!(store.entities.camel_jump_cooldown_ticks(10), Some(48));
+    assert!(store
+        .entities
+        .transform(10)
+        .unwrap()
+        .on_ground
+        .unwrap_or(false));
+
+    let (dash_data_id, dash_default) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .unwrap();
+    assert!(!store
+        .entities
+        .metadata_bool_for_entity(10, dash_data_id, dash_default)
+        .unwrap());
+}
+
+#[test]
+fn camel_dash_cooldown_emits_ready_sound_once_at_zero() {
+    let mut store = locally_controlled_camel();
+    let (dash_data_id, _) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![ProtocolEntityDataValue {
+            data_id: dash_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+
+    store.advance_entity_client_animations(55);
+    let effects = store.take_entity_client_movement_effect_states();
+    assert_eq!(
+        effects
+            .iter()
+            .filter(|effect| matches!(
+                effect,
+                super::super::EntityClientMovementEffectState::Sound(
+                    super::super::EntityClientMovementSoundState {
+                        kind: super::super::EntityClientMovementSoundKind::CamelDashReady {
+                            husk: false
+                        },
+                        ..
+                    }
+                )
+            ))
+            .count(),
+        1
+    );
+    assert_eq!(store.entities.camel_jump_cooldown_ticks(10), Some(0));
+    store.advance_entity_client_animations(1);
+    assert!(store.take_entity_client_movement_effect_states().is_empty());
+}
+
+#[test]
+fn remote_camel_tick_clears_dash_after_minimum_duration() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.entities.with_transform_mut(10, |transform| {
+        transform.on_ground = Some(true);
+    });
+    let (dash_data_id, dash_default) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![ProtocolEntityDataValue {
+            data_id: dash_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    let generation_a = store.publication_snapshot();
+
+    store.advance_entity_client_animations(7);
+
+    assert!(!store
+        .entities
+        .metadata_bool_for_entity(10, dash_data_id, dash_default)
+        .unwrap());
+    assert_eq!(store.entities.camel_jump_cooldown_ticks(10), Some(48));
+    assert!(generation_a
+        .entities
+        .metadata_bool_for_entity(10, dash_data_id, dash_default)
+        .unwrap());
+}
+
+#[test]
+fn remote_sitting_camel_in_water_stands_instantly() {
+    let mut store = WorldStore::new();
+    store.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 100,
+        clock_updates: Vec::new(),
+    });
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 1,
+            y: -63,
+            z: -2
+        },
+        block_state_id: vanilla_block_state_id("minecraft:water", [("level", "0")]),
+    }));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.entities.with_transform_mut(10, |transform| {
+        transform.position.y = -63.0;
+        transform.old_position = transform.position;
+    });
+    let entity_accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    let (last_pose_data_id, _) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+        )
+        .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: entity_accessors.pose_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                value: EntityDataValueKind::Pose(
+                    bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SITTING_ID,
+                ),
+            },
+            ProtocolEntityDataValue {
+                data_id: last_pose_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+                value: EntityDataValueKind::Long(-100),
+            },
+        ],
+    }));
+    let generation_a = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+
+    assert_eq!(
+        store.entities.pose(10),
+        Some(VANILLA_ENTITY_POSE_STANDING_ID)
+    );
+    assert_eq!(
+        store.entities.metadata_long(10, last_pose_data_id, 0),
+        Some(48)
+    );
+    assert!(store.take_entity_client_movement_effect_states().is_empty());
+    assert_eq!(
+        generation_a.entities.pose(10),
+        Some(bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SITTING_ID)
+    );
+    assert_eq!(
+        generation_a
+            .entities
+            .metadata_long(10, last_pose_data_id, 0),
+        Some(-100)
+    );
+}
+
+#[test]
 fn local_abstract_horse_water_travel_uses_generated_ridden_float_tag() {
     let mut store = locally_controlled_horse();
     store.insert_decoded_chunk(empty_test_chunk());
@@ -1660,6 +2034,36 @@ fn locally_controlled_horse() -> WorldStore {
         VANILLA_ENTITY_TYPE_HORSE_ID,
     ));
     equip_test_saddle(&mut store, 10);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    store.set_local_player_pose(crate::LocalPlayerPoseState::default());
+    store
+}
+
+fn locally_controlled_camel() -> WorldStore {
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_login(&protocol_play_login(99));
+    store.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 100,
+        clock_updates: Vec::new(),
+    });
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    equip_test_saddle(&mut store, 10);
+    store.entities.with_transform_mut(10, |transform| {
+        transform.on_ground = Some(true);
+    });
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 10,
         passenger_ids: vec![99],

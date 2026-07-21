@@ -984,7 +984,7 @@ impl EntityStore {
     pub(super) fn advance_direct_client_movement(
         &mut self,
         scheduled: &[Entity],
-        in_water_by_id: &HashMap<i32, bool>,
+        fluid_facts_by_id: &HashMap<i32, super::store::EntityClientTickFluidFacts>,
         collisions_by_id: &HashMap<i32, EntityClientMovementCollisionResult>,
     ) {
         let mut effects = Vec::new();
@@ -1014,7 +1014,9 @@ impl EntityStore {
                         metadata,
                         transform,
                         policy,
-                        in_water_by_id.get(&entity_id).copied().unwrap_or(false),
+                        fluid_facts_by_id
+                            .get(&entity_id)
+                            .is_some_and(|facts| facts.in_water),
                         &mut effects,
                     );
                 }
@@ -1038,7 +1040,9 @@ impl EntityStore {
                         hurting_projectile,
                         transform,
                         policy,
-                        in_water_by_id.get(&entity_id).copied().unwrap_or(false),
+                        fluid_facts_by_id
+                            .get(&entity_id)
+                            .is_some_and(|facts| facts.in_water),
                         &mut effects,
                     );
                 }
@@ -1066,10 +1070,9 @@ impl EntityStore {
                                                 - transform.delta_movement.z * 0.25,
                                         },
                                         delta_movement: transform.delta_movement,
-                                        in_water: in_water_by_id
+                                        in_water: fluid_facts_by_id
                                             .get(&entity_id)
-                                            .copied()
-                                            .unwrap_or(false),
+                                            .is_some_and(|facts| facts.in_water),
                                     },
                                 ),
                             ));
@@ -1146,7 +1149,9 @@ impl EntityStore {
                         metadata,
                         transform,
                         accessors,
-                        in_water_by_id.get(&entity_id).copied().unwrap_or(false),
+                        fluid_facts_by_id
+                            .get(&entity_id)
+                            .is_some_and(|facts| facts.in_water),
                         &mut effects,
                     );
                 }
