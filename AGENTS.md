@@ -23,9 +23,10 @@ configuration UI.
   `docs/native-client-architecture.md`
 - Build/target/cache policy and measured build baselines:
   `docs/cargo-build-performance.md`
-- Current priorities, hard constraints, structural invariants, and the
-  slice/checkpoint gate policy: `goal.md`; the feature gap ledger:
-  `docs/unsupported-features.md`
+- Current priorities, hard constraints, structural invariants, slice shapes,
+  ready contracts, hardest-ready-first selection, and the checkpoint/full-gate
+  policy: `goal.md`. The feature gap ledger: `docs/unsupported-features.md`.
+  Completed history: the milestone index in `docs/goal-archive.md` plus git log.
 - For packet ids and wire formats, prefer vanilla `GameProtocols.java` and the
   relevant `Clientbound*Packet` / `Serverbound*Packet` class.
 - For client behavior, inspect `ClientPacketListener`, `ClientLevel`,
@@ -37,16 +38,14 @@ configuration UI.
 
 - The main agent owns the complete slice by default: task selection, planning,
   vanilla-source verification, implementation, focused tests, integration, review,
-  the atomic-slice commit or engineering-slice phase commits, and the applicable
-  checkpoint or high-risk full gate.
+  commits, and the applicable checkpoint or full gate.
 - Subagents are optional concurrency tools, not a default topology. Do not spawn one
   merely because a role or execution slot is available.
-- Explorer agents are useful only for bounded, read-only questions that can be
-  investigated while the main agent continues independent critical-path work.
-- Worker agents are useful only for bounded implementation with explicit,
-  non-overlapping file/module ownership and a frozen integration contract.
-- Reviewer agents are useful for large, ambiguous, or high-risk integrated diffs;
-  they are not required for every slice.
+- Explorer agents suit bounded, read-only questions investigated while the main
+  agent continues independent critical-path work. Worker agents suit bounded
+  implementation with explicit, non-overlapping file/module ownership and a frozen
+  integration contract. Reviewer agents suit large, ambiguous, or high-risk
+  integrated diffs; they are not required for every slice.
 
 The main agent remains responsible for verifying critical vanilla facts and reviewing
 all integrated code. Workers must not commit to `master`, merge into `master`, or
@@ -56,60 +55,15 @@ on temporary branches and the main agent remains the only merger and final commi
 ## Orchestration Strategy
 
 Use a single-slice pipeline rather than assigning several complete features at once.
-The default path is solo: the main agent verifies the gap and vanilla behavior,
-implements the slice, runs focused tests, updates documentation, reviews the diff,
-runs the required per-commit checks, and commits without delegation. An atomic slice
-is a small cohesive closure that normally lands in one commit. An engineering slice
-is one cohesive semantic objective that may cross crates and ownership boundaries or
-require several serial phases and normal commits. Related low-risk atomic slices may
-share a later checkpoint gate under the policy in `goal.md`; engineering slices use
-the milestone plan defined before they start.
-
-Bounded means that the semantic goal, non-goals, completion criteria, and validation
-are bounded; it does not impose a small file, crate, commit, or implementation count.
-Only one semantic slice advances at a time. Once selected, an engineering slice
-continues to completion, an explicit blocker, or a predeclared safe stopping point,
-without interleaving unrelated feature work.
-
-After a clean P0 audit, select work by **hardest-ready-first** across all open roadmap
-and ledger items. Build both atomic-slice and engineering-slice candidates. A ready
-engineering slice has one clear semantic objective; explicit scope, non-goals, and
-final completion criteria; satisfied real prerequisites; a cross-boundary integration
-contract that can be frozen before work; a serial phase plan; focused validation and
-a buildable, reviewable normal commit for every phase; and checkpoints that localize
-failure. Do not exclude it merely because it spans many files or crates, is large, or
-needs multiple commits.
-
-Exclude blocked/deferred work, unmet real prerequisites, expanding or undefined
-scope, missing completion criteria, work that cannot be validated, committed, or
-failure-localized in stages, and grab bags of unrelated features. Rank the remaining
-complete semantic slices by architecture, protocol, or state-machine risk;
-cross-crate/ownership integration breadth; vanilla or wire uncertainty;
-test/fixture/migration/regression complexity; and failure impact plus localization
-difficulty. Choose the hardest ready slice by default, including a multi-stage
-engineering slice. Choose its hardest ready bounded prerequisite only when a real
-blocker remains or its integration contract cannot yet be frozen; size alone is not
-a blocker.
-
-For equally difficult candidates, prefer the slice that unlocks more later work,
-then the one closest to a playable-session or delivery closure, then the P1-P4/order
-already recorded in `goal.md`. This is not a P4-to-P1 reversal: those sections remain
-the roadmap, dependency map, and final tie-breaker. At the start of every round,
-briefly report the main candidates and whether each is atomic or engineering, excluded
-candidates and their real blockers, and the final selection with why it is hardest at
-the complete-engineering level. Hardest-ready-first changes task selection only; it
-does not permit scope creep, start multiple complete features, or make subagents the
-default.
-
-Before an engineering slice starts, record its semantic goal and final completion
-criteria, non-goals, involved crates and ownership boundaries, vanilla or wire
-evidence, serial phases and dependency order, focused tests per phase, planned
-checkpoint/full-gate positions, and failure-localization and safe-stop strategy. The
-authoritative ready, commit, checkpoint, and full-gate rules remain in `goal.md`.
+The default path is solo: verify the gap and vanilla behavior, implement, run focused
+tests, update documentation, review the diff, run the per-commit checks, and commit
+without delegation. Slice shapes (atomic vs engineering), ready contracts,
+hardest-ready-first selection, and all checkpoint/gate rules are defined in `goal.md`
+and are not duplicated here.
 
 Spawn a subagent only when the expected critical-path saving is greater than the
-setup, context-transfer, worktree, integration, and review cost. In particular, the
-following should all be true for an implementation worker:
+setup, context-transfer, worktree, integration, and review cost. For an
+implementation worker, all of the following should be true:
 
 - the task has a bounded deliverable and exact owned paths;
 - its integration API, ordering constraints, and fallback behavior are already
@@ -134,64 +88,35 @@ For a parallel slice, run three stages:
    fallback behavior, and focused test commands. A read-only explorer may gather
    additional evidence concurrently when it is not a prerequisite for all progress.
 2. **Disjoint implementation**: workers edit non-overlapping modules in independent
-   worktrees while the main agent advances a separate integration path. Use the
-   fewest workers that produce real critical-path savings. Do not start another
-   complete slice before the current slice reaches completion, an explicit blocker,
-   or its predeclared safe stopping point.
+   worktrees while the main agent advances a separate integration path. Do not start
+   another complete slice before the current slice reaches completion, an explicit
+   blocker, or its predeclared safe stopping point.
 3. **Review and closeout**: workers run focused tests only. The main agent reviews the
-   integrated diff, runs the required per-commit checks, and makes the atomic-slice or
-   engineering-phase commit. The main agent then applies the checkpoint/high-risk
-   full-gate policy from `goal.md`. Add a read-only reviewer only when diff size,
-   ambiguity, or regression risk justifies the extra pass.
+   integrated diff, runs the required per-commit checks, makes the commit, and applies
+   the checkpoint/full-gate policy from `goal.md`.
 
 While a checkpoint full gate runs, an otherwise idle read-only agent may audit the
 next slice without editing files or launching Cargo, but the next implementation
 waits for the current commit.
 
-Parallelize by semantic ownership, not by checklist count. When a slice establishes
-a reusable renderer or world surface, include dependent ledger items in the next
-ready-candidate audit; select among them and all other ready work using
-hardest-ready-first. Reuse and unlock value inform the tie-breakers without bypassing
-required prerequisites.
-
 ## Standard Workflow
 
 1. Start with `git status --short`.
-2. After the P0 audit, apply the hardest-ready-first policy above and record the main
-   candidates and slice shapes, exclusions and real blockers, final selection, and
-   complete-engineering difficulty basis in the progress update.
+2. Run the P0 audit, then apply the hardest-ready-first policy from `goal.md`.
 3. Verify relevant vanilla wire format or behavior from local sources.
-4. For an engineering slice, record the pre-start contract required above; for every
-   slice, identify the semantic ownership involved, usually:
-   - protocol: packet ids, structs, encode/decode, protocol tests
-   - world: canonical state, counters, query APIs, world tests
-   - net: event/command wiring and offline probe behavior
-   - native/control: drain handling, snapshot counters, runtime tests
-   - renderer/input: visible or interactive behavior when the slice needs it
-5. Keep the slice with the main agent unless it passes the parallelism criteria above.
-   If it does, spawn workers only for non-overlapping modules.
-   Prefer one independent git worktree per worker, for example:
-   - `../bbb-wt-renderer`
-   - `../bbb-wt-world`
-   - `../bbb-wt-protocol`
-   Use `scripts/worker-worktree.sh create <name>` for the standard path.
-6. When workers are used, give each worker worktree a temporary branch and, when
-   tests may run in parallel, a distinct external `CARGO_TARGET_DIR` to avoid Cargo
-   lock contention and preserve build cache.
-7. If worker changes exist, the main agent integrates them by reviewing diffs and
-   using patch, cherry-pick, or merge from temporary branches. Main agent resolves
-   API mismatches and reviews the full integrated diff.
-8. Workers keep assigned external Cargo build caches unless the slice explicitly
-   asks for cleanup or the cache is disposable.
-9. Main agent removes temporary worktrees and branches after their diffs are
-   integrated or explicitly abandoned.
-10. Before an atomic-slice or engineering-phase commit, run affected-crate focused
-    tests, formatting and diff checks, documentation lint when documentation changed,
-    and review the complete diff. Do not commit a knowingly broken intermediate
-    state; fix failures forward with normal commits and never rewrite history.
-11. Make a normal clean-worktree commit, report the engineering stage, completed
-    commits, focused tests, and next checkpoint when applicable, then continue or run
-    the full gate when `goal.md` requires it.
+4. Identify the semantic ownership involved (protocol / world / net /
+   native-control / renderer-input); for an engineering slice, record the
+   pre-start contract required by `goal.md`.
+5. Keep the slice with the main agent unless it passes the parallelism criteria
+   above. If workers are used, create worktrees with
+   `scripts/worker-worktree.sh create <name>` and give each a temporary branch
+   plus a distinct external `CARGO_TARGET_DIR`.
+6. The main agent integrates worker diffs via patch/cherry-pick/merge, resolves
+   API mismatches, reviews the full integrated diff, and removes temporary
+   worktrees and branches after integration or explicit abandonment.
+7. Before each commit, run the per-commit checks from `goal.md`; commit clean,
+   fix failures forward, never rewrite history; then continue or run the full
+   gate where `goal.md` requires it.
 
 ## Worker Prompt Requirements
 
@@ -218,106 +143,58 @@ Every worker prompt should include:
 
 - Do not assign multiple workers to the same large file or unstable module.
 - Renderer assets, world tests, protocol decode/encode, and narrow net wiring
-  are good parallel worktree tasks.
-- Structural refactors such as `lib.rs` extraction are usually main-agent work
-  or a single-worker task because concurrent edits are likely to conflict.
+  are good parallel worktree tasks; structural refactors are usually main-agent
+  or single-worker tasks because concurrent edits conflict.
 - Worker branches are integration inputs, not final history. The main agent
   owns the final reviewed commit on `master`.
-- Use external target directories for agent work. The main worktree should use
-  `/tmp/bbb-target-main`; workers should use stable per-domain directories such
-  as `/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, or
-  `/tmp/bbb-target-net`.
+- Use external target directories: the main worktree uses `/tmp/bbb-target-main`;
+  workers use stable per-domain directories such as `/tmp/bbb-target-renderer`,
+  `/tmp/bbb-target-world`, or `/tmp/bbb-target-net`.
 - Standard worker setup:
   - `scripts/worker-worktree.sh create world`
   - `scripts/worker-worktree.sh status`
   - `scripts/worker-worktree.sh shell-env world`
   - `scripts/worker-worktree.sh cleanup world`
   The helper creates `../bbb-wt-<name>`, branch `worker/<name>`, and reports
-  `BBB_CARGO_TARGET_NAME=<name>` plus
   `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`. Worker focused tests should prefer
   `scripts/cargo-dev.sh test -p <crate> <filter>`.
-- Do not delete assigned Cargo target caches after every slice. Clean them
-  periodically or when measuring a clean build, reclaiming disk, or abandoning a
-  disposable one-off target.
-- For periodic cleanup of stale slice caches, use `scripts/cargo-dev.sh prune`
-  (dry-run by default; `--force` deletes). Its keep-list is documented in
-  `docs/cargo-build-performance.md` under "Periodic Cleanup".
-- Repo-local `target` directories should still not be generated or committed.
-- Main agent should remove completed worker worktrees and temporary branches
-  after integration.
+- Do not delete assigned Cargo target caches after every slice. For periodic
+  cleanup of stale slice caches use `scripts/cargo-dev.sh prune` (dry-run by
+  default; keep-list documented in `docs/cargo-build-performance.md`).
+- Repo-local `target` directories must not be generated or committed.
 - Do not force-remove a dirty worker worktree until its diff has been reviewed
   and confirmed integrated, duplicated, or intentionally abandoned.
 
 ## Testing Gate
 
-The authoritative per-slice and full-checkpoint policy is defined in `goal.md` under
-"提交前门禁". Do not copy the full gate command list into other files; point at
-`goal.md` instead. `scripts/cargo-dev.sh gate` runs exactly that full gate against
-`/tmp/bbb-target-main`.
+The authoritative per-slice, batch, and full-gate policy is defined in `goal.md`
+under “提交前门禁” and the checkpoint rules; do not copy the command list into
+other files. `scripts/cargo-dev.sh gate` runs exactly that full gate against
+`/tmp/bbb-target-main`; `scripts/cargo-dev.sh batch-gate <last-gated>..HEAD` is a
+failure-localization tool only.
+
 deny-warnings is baked into the workspace lints table; never set
 `RUSTFLAGS='-D warnings'` manually — toggling `RUSTFLAGS` invalidates the whole
 shared target cache in both directions (see `docs/cargo-build-performance.md`).
-Developers may optionally run `scripts/install-hooks.sh` to install the seconds-only local
-pre-commit checks; it is never installed automatically and does not replace the full gate.
-
-Every atomic slice and every engineering-slice phase commit must run affected-crate
-focused tests, `cargo fmt --all --check`, `git diff --check`, documentation lint when
-documentation changed, and a complete diff review before its clean commit. A planned
-ordinary checkpoint batch contains two to four consecutive, semantically related,
-low-risk atomic-slice commits; it runs the full gate once at the batch tip. A forced
-checkpoint may contain only one commit when work must stop or change domains before a
-second related slice is ready. Engineering slices use their predeclared milestones
-and the forced boundaries in `goal.md`.
-
-End the current batch and run the full gate immediately at four commits, before a
-semantic-domain switch, delivery, stopping, push, merge, or release, and whenever
-focused tests are abnormal or risk cannot be bounded locally. Protocol codecs,
-Cargo/workspace configuration, build scripts, generators, `unsafe`, concurrency, and
-core-architecture changes are high risk: close any prior batch first. An atomic
-high-risk slice keeps one commit and one full gate. A high-risk engineering slice may
-use serial phase commits, but it never joins an ordinary low-risk batch and must run
-the milestone and forced full gates defined in `goal.md`, including a final gate at
-its delivered HEAD.
-
-The normal batch or engineering-checkpoint path is one `scripts/cargo-dev.sh gate` at
-the latest commit.
-`scripts/cargo-dev.sh batch-gate <last-gated>..HEAD` is a failure-localization tool,
-not a routine batch or engineering-checkpoint gate: use it only when the tip gate has
-failed and focused diagnosis has not identified the introducing commit. Fix failures
-with a normal follow-up commit; do not rewrite history.
-
-The main agent must track the commit hash covered by the most recent successful full
-gate. Progress updates and final delivery must report the commits in the current
-ordinary batch or engineering milestone, focused-test results, full-gate result, and
-that latest gated commit. Any HEAD being delivered or merged must have passed the full
-gate. If a required command cannot run, state the reason and residual risk.
+Developers may optionally run `scripts/install-hooks.sh` for the seconds-only
+local pre-commit checks; it never replaces the full gate.
 
 For daily focused tests, agents may use `cargo test --profile fast-test` with an
-assigned external `CARGO_TARGET_DIR`; this does not replace the merge gate.
-Agents may use `scripts/cargo-dev.sh` for focused tests, fast-test, timings,
-`sccache` evaluation/status, target-size inspection, and the same final gate
-commands.
+assigned external `CARGO_TARGET_DIR`, and `scripts/cargo-dev.sh` for focused
+tests, fast-test, timings, `sccache` evaluation, and target-size inspection.
+Track the latest fully gated commit; any delivered or merged HEAD must have
+passed the full gate.
 
 ## Implementation Guidance
 
 - Keep changes scoped to the selected slice.
-- Organize code by semantic modules and avoid growing catch-all `lib.rs` or
-  `main.rs` sections; use `docs/code-organization-style.md` as the required
-  module/layout policy.
+- Organize code by semantic modules per `docs/code-organization-style.md`; avoid
+  growing catch-all `lib.rs`/`main.rs` sections.
 - Do not split files just to reduce line count. Files under 1000 lines stay
-  intact by default, and files over 1000 lines are reviewed rather than
-  extracted automatically.
-- A split must have a named semantic owner, a narrow API, focused tests or a
-  clear test plan, and a concrete payoff for current or near-term work.
-- The default is to preserve locality. A new module must make the current slice
-  easier to review, test, or assign; line count, directory symmetry, and
-  artificial worker parallelism are not valid split reasons.
-- Before creating a module, pass the checklist in
-  `docs/code-organization-style.md`: semantic owner, exact moved items, narrow
-  visibility, colocated tests, immediate use, and mechanical reviewability.
-- Keep cohesive single-caller helpers beside their caller. Avoid one-function
-  modules, vague bucket modules, and broad `pub` exposure created only to make a
-  split compile.
+  intact by default; a split needs a named semantic owner, a narrow API, focused
+  tests or a clear test plan, and a concrete payoff. Keep cohesive
+  single-caller helpers beside their caller; avoid one-function modules, vague
+  bucket modules, and broad `pub` exposure created only to make a split compile.
 - Use Rust 2018 module layout: `foo.rs` plus `foo/bar.rs`; do not add new
   `foo/mod.rs` files.
 - Prefer existing crate boundaries and local patterns over new abstractions.
