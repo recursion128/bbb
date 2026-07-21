@@ -1377,11 +1377,15 @@ impl WorldStore {
     /// Resolves a narrow entity-movement sound into the same positioned sound
     /// state used by packet and client-local audio, consuming the canonical
     /// client sound seed at the movement effect's ordered position.
-    pub fn record_entity_client_movement_sound(
+    pub(crate) fn record_entity_client_movement_sound(
         &mut self,
         state: EntityClientMovementSoundState,
     ) -> SoundEventState {
         let (sound, source, volume) = match state.kind {
+            EntityClientMovementSoundKind::BoatPaddleLeft
+            | EntityClientMovementSoundKind::BoatPaddleRight => {
+                unreachable!("boat paddle sounds require post-move world resolution")
+            }
             EntityClientMovementSoundKind::BreezeDeflect => {
                 (BREEZE_DEFLECT_SOUND_EVENT, "hostile", 1.0)
             }
@@ -1406,6 +1410,83 @@ impl WorldStore {
             distance_delay: false,
         };
         self.record_positioned_sound(event)
+    }
+
+    /// Resolves movement sounds whose exact client-visible result depends on
+    /// post-move world state. Ordinary movement sounds keep the narrower
+    /// infallible path above.
+    pub fn record_entity_client_movement_sound_if_audible(
+        &mut self,
+        state: EntityClientMovementSoundState,
+    ) -> Option<SoundEventState> {
+        match state.kind {
+            EntityClientMovementSoundKind::BoatPaddleLeft => {
+                self.record_boat_paddle_sound(state.entity_id, 0)
+            }
+            EntityClientMovementSoundKind::BoatPaddleRight => {
+                self.record_boat_paddle_sound(state.entity_id, 1)
+            }
+            _ => Some(self.record_entity_client_movement_sound(state)),
+        }
+    }
+
+    fn record_boat_paddle_sound(&mut self, entity_id: i32, side: usize) -> Option<SoundEventState> {
+        let entity_type_id = self.entities.entity_type_id(entity_id)?;
+        if !crate::entities::is_vanilla_boat_type(entity_type_id)
+            || self.entities.is_silent(entity_id).unwrap_or(false)
+        {
+            return None;
+        }
+        let transform = self.entities.transform(entity_id)?;
+        let bounds = self.entities.pick_bounds(entity_id)?;
+        let relative_min = bounds.min.map(f64::from);
+        let relative_max = bounds.max.map(f64::from);
+        let position = [
+            transform.position.x,
+            transform.position.y,
+            transform.position.z,
+        ];
+        let aabb_min = std::array::from_fn(|axis| position[axis] + relative_min[axis]);
+        let aabb_max = std::array::from_fn(|axis| position[axis] + relative_max[axis]);
+        let sound = if crate::fluid::boat_water_status(self, aabb_min, aabb_max)
+            .0
+            .is_some()
+        {
+            "minecraft:entity.boat.paddle_water"
+        } else if self.boat_ground_friction(position, relative_min, relative_max) > 0.0 {
+            "minecraft:entity.boat.paddle_land"
+        } else {
+            return None;
+        };
+        let view = crate::entities::calculate_view_vector(transform.x_rot, transform.y_rot);
+        let (dx, dz) = if side == 1 {
+            (-view.z, view.x)
+        } else {
+            (view.z, -view.x)
+        };
+        let identity = self.entities.identity(entity_id)?;
+        let age_ticks = self
+            .entities
+            .entity_age_ticks(entity_id)
+            .unwrap_or_default();
+        let salt = 0x626f_6174_5f70_646c_u64
+            ^ u64::from(age_ticks)
+            ^ (side as u64).wrapping_mul(0x9e37_79b9);
+        let pitch = 0.8 + crate::entities::spawn_random_unit_float(identity.uuid, salt) * 0.4;
+        let event = SoundEventState {
+            sound: direct_sound_holder(sound),
+            source: "neutral".to_string(),
+            position: ProtocolVec3d {
+                x: transform.position.x + dx,
+                y: transform.position.y,
+                z: transform.position.z + dz,
+            },
+            volume: 1.0,
+            pitch,
+            seed: self.next_sound_seed(),
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(event))
     }
 
     pub fn last_sound(&self) -> Option<&SoundEventState> {

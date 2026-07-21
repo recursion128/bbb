@@ -270,6 +270,9 @@ pub(crate) struct EntityClientTickParticleTriggers {
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
+    /// Vanilla `AbstractBoat.tick` tests the pre-increment paddle position for
+    /// the `PI / 4` sound crossing, then advances the corresponding paddle.
+    pub(crate) boat_paddle_sounds: [bool; 2],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -591,9 +594,14 @@ pub struct BoatPaddleAnimationState {
 }
 
 impl BoatPaddleAnimationState {
-    fn advance_client_tick(&mut self, left_active: bool, right_active: bool) {
+    fn advance_client_tick(&mut self, left_active: bool, right_active: bool) -> [bool; 2] {
+        let sounds = [
+            boat_paddle_sound_crossed(self.left, left_active),
+            boat_paddle_sound_crossed(self.right, right_active),
+        ];
         self.left = advance_boat_paddle(self.left, left_active);
         self.right = advance_boat_paddle(self.right, right_active);
+        sounds
     }
 
     fn rowing_times(self, partial_tick: f32, left_active: bool, right_active: bool) -> [f32; 2] {
@@ -606,6 +614,13 @@ impl BoatPaddleAnimationState {
     fn is_settled(self) -> bool {
         self.left == 0.0 && self.right == 0.0
     }
+}
+
+fn boat_paddle_sound_crossed(position: f32, active: bool) -> bool {
+    active
+        && position % std::f32::consts::TAU <= std::f32::consts::FRAC_PI_4
+        && (position + BOAT_PADDLE_ADVANCE_PER_TICK) % std::f32::consts::TAU
+            >= std::f32::consts::FRAC_PI_4
 }
 
 fn advance_boat_paddle(position: f32, active: bool) -> f32 {
@@ -5543,6 +5558,10 @@ impl EntityClientAnimationState {
         // They drive the cat's client-side lie-down and relaxed-head easing. `false` for non-cats.
         cat_is_lying: bool,
         cat_relax_state_one: bool,
+        // The direct locally controlled root boat advances paddles later in
+        // the input/control owner, after `controlBoat` and `move`, exactly as
+        // Vanilla does. Remote and uncontrolled boats advance here.
+        advance_boat_paddles_here: bool,
         // Vanilla `AbstractBoat.getPaddleState(side)`: synced left/right paddle
         // booleans gated by the presence of a controlling passenger.
         boat_paddle_left: bool,
@@ -6025,14 +6044,9 @@ impl EntityClientAnimationState {
                             self.boat_bubble = None;
                         }
                     }
-                    if self.boat.is_some() || boat_paddle_left || boat_paddle_right {
-                        let boat = self
-                            .boat
-                            .get_or_insert_with(BoatPaddleAnimationState::default);
-                        boat.advance_client_tick(boat_paddle_left, boat_paddle_right);
-                        if boat.is_settled() {
-                            self.boat = None;
-                        }
+                    if advance_boat_paddles_here {
+                        particle_triggers.boat_paddle_sounds =
+                            self.advance_boat_paddles(boat_paddle_left, boat_paddle_right);
                     }
                 }
             }
@@ -6067,9 +6081,27 @@ impl EntityClientAnimationState {
         }
         particle_triggers
     }
+
+    pub(crate) fn advance_boat_paddles(
+        &mut self,
+        left_active: bool,
+        right_active: bool,
+    ) -> [bool; 2] {
+        if self.boat.is_none() && !left_active && !right_active {
+            return [false; 2];
+        }
+        let boat = self
+            .boat
+            .get_or_insert_with(BoatPaddleAnimationState::default);
+        let sounds = boat.advance_client_tick(left_active, right_active);
+        if boat.is_settled() {
+            self.boat = None;
+        }
+        sounds
+    }
 }
 
-fn spawn_random_unit_float(uuid: Uuid, salt: u64) -> f32 {
+pub(crate) fn spawn_random_unit_float(uuid: Uuid, salt: u64) -> f32 {
     let bits = spawn_random_bits(uuid, salt);
     ((bits >> 40) as u32) as f32 / (1_u32 << 24) as f32
 }
@@ -6589,6 +6621,8 @@ impl WorldStore {
         let death_tick_simulation_distance = self.local_player.simulation_distance;
         let minecart_improvements_enabled =
             self.is_feature_enabled("minecraft:minecart_improvements");
+        let deferred_boat_paddle_entity_id =
+            self.local_player_first_passenger_root_boat_vehicle_id();
         let has_client_level = self.level.is_some();
         let chunks = &self.chunks;
         let is_ticking_entity = |_: i32, entity_type_id: i32, position: EntityVec3| {
@@ -6608,6 +6642,7 @@ impl WorldStore {
         let mut work = self.entities.advance_client_animations(
             1,
             runs_normally,
+            deferred_boat_paddle_entity_id,
             &spectator_player_uuids,
             &in_water_by_id,
             &client_movement_collisions_by_id,
@@ -6684,7 +6719,11 @@ pub(crate) fn bat_is_resting(entity_type_id: i32, data_values: &[EntityDataValue
     )
 }
 
-fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool) -> bool {
+pub(crate) fn entity_data_bool(
+    data_values: &[EntityDataValue],
+    data_id: u8,
+    default: bool,
+) -> bool {
     data_values
         .iter()
         .find(|value| value.data_id == data_id)

@@ -20092,3 +20092,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 同机 moving-boat Criterion 从 1.1205/5.8637 us 变为 physics-only 1.3802 us、
   physics + retained publication 6.1161 us（+23.3%/+4.46%）。新增绝对成本归属 narrow collision
   query，而非推迟到 publication；后续统一 local travel owner 时仍应复用 target scratch。
+
+## 2026-07-20：boat paddle tick and ordered audio
+
+- [x] remote/uncontrolled boat 在有序 entity tick 中按 generated paddle metadata 推进左右
+  paddle clock；direct local root boat 则在同 tick `controlBoat`/move 后推进，消除输入开始/停止
+  的一 tick 错位。Vanilla pre-increment `PI / 4` crossing、无乘客 paddle gate 与 retained
+  publication A/B 隔离均有专项测试。
+- [x] paddle crossing 进入既有 lossless client-movement effect FIFO，并在 publication 前按
+  post-move box 重新执行 `getStatus()` 等价 water/land/air 选择；左右 view-vector offset、neutral、
+  volume 1、0.8--1.2 pitch 与 silent gate 保持 `AbstractBoat.tick` 顺序。没有新增 RNG owner、
+  server physics 或 renderer-side live-world read。
+- [x] local-boat Criterion 修正为每 tick drain/recycle effect FIFO，避免 benchmark 自身把历史
+  sound state 无限累积进后续 snapshot。相对 exact-collision 阶段 1.3802/6.1161 us，同机结果为
+  physics+effect 1.5319 us、再加 retained publication 6.2547 us（+11.0%/+2.27%）；新增成本是
+  有界的 Vanilla paddle/effect 工作，没有转移到 publication 或下一次 mutation。remote persistent
+  status、bubble column、passenger push、block callback 与非 boat local travel 仍保持开放。

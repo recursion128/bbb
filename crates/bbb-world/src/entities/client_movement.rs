@@ -2231,7 +2231,7 @@ fn normalize(value: EntityVec3) -> EntityVec3 {
     }
 }
 
-fn calculate_view_vector(x_rot: f32, y_rot: f32) -> EntityVec3 {
+pub(crate) fn calculate_view_vector(x_rot: f32, y_rot: f32) -> EntityVec3 {
     let radians_per_degree = (std::f64::consts::PI / 180.0) as f32;
     let real_x_rot = x_rot * radians_per_degree;
     let real_y_rot = -y_rot * radians_per_degree;

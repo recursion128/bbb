@@ -31,8 +31,9 @@ use bbb_protocol::{
 };
 use bbb_world::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_entity_accessors,
-    ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
-    LocalPlayerInputState, PaletteDomain, PaletteKind, PalettedContainerData, WorldStore,
+    ChunkColumn, ChunkPos, ChunkSection, ChunkState, EntityClientMovementEffectState,
+    HeightmapData, LightData, LocalPlayerInputState, PaletteDomain, PaletteKind,
+    PalettedContainerData, WorldStore,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
@@ -775,6 +776,7 @@ fn bench_local_boat_physics(c: &mut Criterion) {
                     .advance_local_boat_vehicle_input(black_box(input), black_box(1))
                     .expect("local boat"),
             );
+            black_box(submit_entity_client_movement_effects(&mut physics));
         });
     });
     let mut publish = build_local_boat_world();
@@ -786,11 +788,31 @@ fn bench_local_boat_physics(c: &mut Criterion) {
                     .advance_local_boat_vehicle_input(black_box(input), black_box(1))
                     .expect("local boat"),
             );
+            black_box(submit_entity_client_movement_effects(&mut publish));
             held = black_box(Arc::new(publish.publication_snapshot()));
         });
     });
     black_box(held);
     group.finish();
+}
+
+fn submit_entity_client_movement_effects(world: &mut WorldStore) -> usize {
+    let mut effects = world.take_entity_client_movement_effect_states();
+    let mut submitted = 0;
+    for effect in effects.drain(..) {
+        match effect {
+            EntityClientMovementEffectState::Particle(_) => submitted += 1,
+            EntityClientMovementEffectState::Sound(state) => {
+                submitted += usize::from(
+                    world
+                        .record_entity_client_movement_sound_if_audible(state)
+                        .is_some(),
+                );
+            }
+        }
+    }
+    world.recycle_entity_client_movement_effect_states(effects);
+    submitted
 }
 
 fn bench_entity_effect_generation(c: &mut Criterion) {

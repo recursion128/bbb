@@ -1375,6 +1375,186 @@ fn local_boat_input_updates_generated_paddle_metadata() {
 }
 
 #[test]
+fn local_boat_paddles_advance_after_control_and_emit_post_move_water_sounds() {
+    const ADVANCE: f32 = std::f32::consts::PI / 8.0;
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 1,
+            y: -64,
+            z: -2,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:water", [("level", "0")]),
+    }));
+    let mut boat = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
+    boat.position.y = -63.2;
+    store.apply_add_entity(boat);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let retained = store.publication_snapshot();
+    let forward = crate::LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        ..crate::LocalPlayerInputState::default()
+    };
+
+    store.advance_entity_client_animations(1);
+    store.advance_local_boat_vehicle_input(forward, 1).unwrap();
+    let first = store.entity_model_source_at_partial_tick(20, 1.0).unwrap();
+    assert!((first.boat_rowing_time_left - ADVANCE).abs() < 1.0e-6);
+    assert!((first.boat_rowing_time_right - ADVANCE).abs() < 1.0e-6);
+    assert!(store
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+
+    store.advance_entity_client_animations(1);
+    store.advance_local_boat_vehicle_input(forward, 1).unwrap();
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(effects.len(), 2);
+    let sounds = effects
+        .into_iter()
+        .map(|effect| match effect {
+            EntityClientMovementEffectState::Sound(sound) => store
+                .record_entity_client_movement_sound_if_audible(sound)
+                .expect("water paddle sound"),
+            EntityClientMovementEffectState::Particle(_) => panic!("unexpected particle"),
+        })
+        .collect::<Vec<_>>();
+    assert!(sounds.iter().all(|sound| {
+        sound.sound.location.as_deref() == Some("minecraft:entity.boat.paddle_water")
+            && sound.source == "neutral"
+            && sound.volume == 1.0
+            && (0.8..=1.2).contains(&sound.pitch)
+    }));
+    assert_ne!(sounds[0].seed, sounds[1].seed);
+    let transform = store.entities.transform(20).unwrap();
+    assert!(
+        (sounds[0].position.x + sounds[1].position.x - 2.0 * transform.position.x).abs() < 1.0e-12
+    );
+    assert!(
+        (sounds[0].position.z + sounds[1].position.z - 2.0 * transform.position.z).abs() < 1.0e-12
+    );
+
+    let retained_boat = retained
+        .entity_model_source_at_partial_tick(20, 1.0)
+        .unwrap();
+    assert_eq!(retained_boat.boat_rowing_time_left, 0.0);
+    assert_eq!(retained_boat.boat_rowing_time_right, 0.0);
+}
+
+#[test]
+fn remote_boat_paddle_sound_respects_air_and_silent_gates() {
+    let accessors = vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    )
+    .expect("generated boat accessors");
+    let entity_accessors =
+        vanilla_entity_metadata_entity_accessors().expect("generated entity accessors");
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        99,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![
+            protocol_bool_data(accessors.paddle_left_data_id, true),
+            protocol_bool_data(accessors.paddle_right_data_id, true),
+        ],
+    }));
+
+    store.advance_entity_client_animations(2);
+    let air_effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(air_effects.len(), 2);
+    assert!(air_effects.into_iter().all(|effect| match effect {
+        EntityClientMovementEffectState::Sound(sound) => store
+            .record_entity_client_movement_sound_if_audible(sound)
+            .is_none(),
+        EntityClientMovementEffectState::Particle(_) => false,
+    }));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![protocol_bool_data(entity_accessors.silent_data_id, true)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!(store
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+}
+
+#[test]
+fn remote_boat_paddle_sound_uses_post_move_land_status() {
+    let accessors = vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    )
+    .expect("generated boat accessors");
+    let mut store = WorldStore::new();
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 1,
+            y: -64,
+            z: -2,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+    let mut boat = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
+    boat.position.y = -63.0;
+    store.apply_add_entity(boat);
+    let mut passenger = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_CHICKEN_ID);
+    passenger.position.y = -63.0;
+    store.apply_add_entity(passenger);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![
+            protocol_bool_data(accessors.paddle_left_data_id, true),
+            protocol_bool_data(accessors.paddle_right_data_id, true),
+        ],
+    }));
+
+    store.advance_entity_client_animations(2);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(effects.len(), 2);
+    assert!(effects.into_iter().all(|effect| match effect {
+        EntityClientMovementEffectState::Sound(sound) => store
+            .record_entity_client_movement_sound_if_audible(sound)
+            .is_some_and(|sound| {
+                sound.sound.location.as_deref() == Some("minecraft:entity.boat.paddle_land")
+            }),
+        EntityClientMovementEffectState::Particle(_) => false,
+    }));
+}
+
+#[test]
 fn zero_client_ticks_do_not_advance_boat_physics_or_paddles() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

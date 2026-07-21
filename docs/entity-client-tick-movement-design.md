@@ -450,10 +450,35 @@ so the narrow component did not show an attributable boat-density publication
 regression. Final phase-4 comparisons must still be collected under a stable
 machine load.
 
+The next stage completes `AbstractBoat` paddle-clock and paddle-audio ordering.
+Remote/uncontrolled boats advance the metadata-driven paddle clocks in the
+ordered entity query. The direct locally controlled root boat defers that one
+narrow mutation until after same-tick `controlBoat` and `move`, so starting and
+stopping a paddle cannot lag the input owner by one client tick. The pre-
+increment `PI / 4` crossing emits an ordered narrow sound effect; effect
+submission then re-evaluates Vanilla `getStatus()` against the post-move box and
+selects water, land, or silence. Side offsets, neutral source, volume and the
+0.8--1.2 pitch range match `AbstractBoat.tick`; silent boats do not enter the
+lossless effect FIFO. UUID/tick-derived presentation randomness follows the
+existing reproducible client-local convention because the constructor RNG seed
+is not reconstructible from the wire.
+
+The dedicated Criterion now drains and recycles movement effects before each
+publication, matching runtime order. Without that drain, the benchmark itself
+accumulated an unbounded pending FIFO and incorrectly charged every retained
+snapshot for all prior paddle events. On the same machine, the final corrected stage
+measures 1.5319 us physics plus effect submission and 6.2547 us for physics,
+effect submission, and retained publication. Relative to the exact-collision
+stage's 1.3802/6.1161 us this is +11.0% isolated and +2.27% end to end. The added
+bounded cost is the required paddle state/effect work; it is neither an
+ever-growing publication payload nor deferred to the next mutation. A wider
+four-component hecs mutation prototype measured 1.7618/6.6617 us and was
+discarded; combining borrow syntax did not reduce the end-to-end owner cost.
+
 This is a buildable stage within phase 4, not closure of locally controlled
 vehicles. The existing runtime still applies input/boat movement in its
 post-entity-tick input owner, as required by the frozen integration boundary.
-Remote boat status/paddle sounds, block inside/emission callbacks, the exact
+Remote persistent boat status, block inside/emission callbacks, the exact
 passenger push pass, bubble-column motion, and non-boat controlling-passenger
 travel remain for the subsequent stage.
 None of those server-authoritative consequences is synthesized here.

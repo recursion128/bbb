@@ -97,8 +97,8 @@ use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
     boat_paddle_states, camel_is_dashing, cat_is_lying, cat_relax_state_one,
     copper_golem_animation_flags, creaking_can_move, creaking_is_tearing_down,
-    entity_animation_uses_in_water, entity_chunk_coordinate, entity_is_fall_flying,
-    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    entity_animation_uses_in_water, entity_chunk_coordinate, entity_data_bool,
+    entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
     sniffer_can_play_digging_sound, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
@@ -4950,6 +4950,7 @@ impl EntityStore {
         &mut self,
         ticks: u32,
         runs_normally: bool,
+        deferred_boat_paddle_entity_id: Option<i32>,
         spectator_player_uuids: &HashSet<Uuid>,
         in_water_by_id: &HashMap<i32, bool>,
         client_movement_collisions_by_id: &HashMap<
@@ -5167,6 +5168,7 @@ impl EntityStore {
                     wolf_is_interested,
                     cat_is_lying,
                     cat_relax_state_one,
+                    deferred_boat_paddle_entity_id != Some(identity.id),
                     boat_paddles[0],
                     boat_paddles[1],
                     boat_bubble_time_value,
@@ -5175,6 +5177,7 @@ impl EntityStore {
                 append_client_tick_particle_triggers(
                     &mut self.pending_ravager_stun_particles,
                     &mut self.pending_evoker_fangs_crit_particles,
+                    &mut self.pending_entity_client_movement_effects,
                     identity,
                     transform,
                     &metadata.data_values,
@@ -5195,6 +5198,37 @@ impl EntityStore {
             self.client_tick_scratch = tick_scratch;
         }
         work
+    }
+
+    /// Advances the direct local root boat's paddles after its control/move
+    /// owner. Remote boats advance in the ordered entity-tick query above.
+    pub(crate) fn advance_deferred_boat_paddles(
+        &mut self,
+        entity_id: i32,
+        left_active: bool,
+        right_active: bool,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&entity_id).copied()?;
+        let (identity, transform, metadata, animations) = self
+            .ecs
+            .query_one_mut::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &EntityMetadata,
+                &mut EntityClientAnimations,
+            )>(entity)
+            .ok()?;
+        let triggers = animations
+            .animations
+            .advance_boat_paddles(left_active, right_active);
+        append_boat_paddle_sound_triggers(
+            &mut self.pending_entity_client_movement_effects,
+            identity,
+            transform,
+            &metadata.data_values,
+            triggers,
+        );
+        Some(())
     }
 
     fn fill_client_tick_schedule<F>(
@@ -5929,6 +5963,7 @@ fn entity_block_pos(position: super::EntityVec3) -> crate::BlockPos {
 fn append_client_tick_particle_triggers(
     pending_ravager_stun_particles: &mut Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: &mut Vec<EvokerFangsCritParticleState>,
+    pending_entity_client_movement_effects: &mut Vec<EntityClientMovementEffectState>,
     identity: &EntityIdentity,
     transform: &EntityTransform,
     data_values: &[bbb_protocol::packets::EntityDataValue],
@@ -5936,6 +5971,13 @@ fn append_client_tick_particle_triggers(
     client_animations: Option<EntityClientAnimationState>,
     triggers: EntityClientTickParticleTriggers,
 ) {
+    append_boat_paddle_sound_triggers(
+        pending_entity_client_movement_effects,
+        identity,
+        transform,
+        data_values,
+        triggers.boat_paddle_sounds,
+    );
     if triggers.ravager_stun.is_none() && triggers.evoker_fangs_crit.is_none() {
         return;
     }
@@ -5981,6 +6023,41 @@ fn append_client_tick_particle_triggers(
                 velocity: offset.velocity,
             }
         }));
+    }
+}
+
+fn append_boat_paddle_sound_triggers(
+    pending_effects: &mut Vec<EntityClientMovementEffectState>,
+    identity: &EntityIdentity,
+    transform: &EntityTransform,
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    triggers: [bool; 2],
+) {
+    if triggers == [false; 2]
+        || vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+            entity_data_bool(
+                data_values,
+                accessors.silent_data_id,
+                accessors.silent_default,
+            )
+        })
+    {
+        return;
+    }
+    for (side, triggered) in triggers.into_iter().enumerate() {
+        if triggered {
+            pending_effects.push(EntityClientMovementEffectState::Sound(
+                super::EntityClientMovementSoundState {
+                    entity_id: identity.id,
+                    kind: if side == 0 {
+                        super::EntityClientMovementSoundKind::BoatPaddleLeft
+                    } else {
+                        super::EntityClientMovementSoundKind::BoatPaddleRight
+                    },
+                    position: transform.position,
+                },
+            ));
+        }
     }
 }
 

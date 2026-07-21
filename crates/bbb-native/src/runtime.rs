@@ -3383,9 +3383,10 @@ fn submit_entity_client_tick_effects(
                 );
             }
             EntityClientMovementEffectState::Sound(state) => {
-                let sound = world.record_entity_client_movement_sound(state);
-                if let Some(audio_events) = audio_events.as_deref_mut() {
-                    audio_events.play_positioned_sound(&sound);
+                if let Some(sound) = world.record_entity_client_movement_sound_if_audible(state) {
+                    if let Some(audio_events) = audio_events.as_deref_mut() {
+                        audio_events.play_positioned_sound(&sound);
+                    }
                 }
             }
         }

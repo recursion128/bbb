@@ -37,10 +37,11 @@ mod store;
 mod updates;
 
 use animations::cat_is_lying;
-pub(crate) use animations::ATTACK_SWING_DURATION;
+pub(crate) use animations::{spawn_random_unit_float, ATTACK_SWING_DURATION};
 pub use animations::{EntityClientAnimationState, PolarBearStandingAnimationState};
 pub(crate) use bbb_protocol::entity_types::*;
 pub(crate) use bbb_protocol::item_types::{VANILLA_ITEM_EGG_ID, VANILLA_ITEM_SNOWBALL_ID};
+pub(crate) use client_movement::calculate_view_vector;
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
@@ -709,6 +710,8 @@ pub enum EntityClientMovementParticleState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntityClientMovementSoundKind {
+    BoatPaddleLeft,
+    BoatPaddleRight,
     BreezeDeflect,
     FireworkRocketLaunch,
     TridentReturn,

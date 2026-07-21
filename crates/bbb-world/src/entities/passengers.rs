@@ -197,6 +197,8 @@ impl WorldStore {
             .and_then(|mount| mount.passengers.first().copied())
             .is_some_and(|passenger| self.entity_id_is_player(passenger));
         let controls = BoatInput::from_local_input(input);
+        let paddle_left = controls.right && !controls.left || controls.forward;
+        let paddle_right = controls.left && !controls.right || controls.forward;
         let entity_collision_targets = (ticks > 0)
             .then(|| self.entities.vehicle_entity_collision_targets())
             .unwrap_or_default();
@@ -329,21 +331,15 @@ impl WorldStore {
                     }
                 },
             )?;
+            self.entities
+                .advance_deferred_boat_paddles(vehicle_id, paddle_left, paddle_right)?;
         }
         if ticks > 0 {
             let accessors =
                 vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(entity_type_id)?;
             self.entities.with_metadata_mut(vehicle_id, |metadata| {
-                set_metadata_bool(
-                    metadata,
-                    accessors.paddle_left_data_id,
-                    controls.right && !controls.left || controls.forward,
-                );
-                set_metadata_bool(
-                    metadata,
-                    accessors.paddle_right_data_id,
-                    controls.left && !controls.right || controls.forward,
-                );
+                set_metadata_bool(metadata, accessors.paddle_left_data_id, paddle_left);
+                set_metadata_bool(metadata, accessors.paddle_right_data_id, paddle_right);
             })?;
         }
 
