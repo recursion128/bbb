@@ -200,6 +200,7 @@ def render_entity_types(
     entries: list[EntityTypeEntry],
     arrows: frozenset[str],
     redirectable_projectiles: frozenset[str],
+    deflects_projectiles: frozenset[str],
     powder_snow_walkable_mobs: frozenset[str],
     non_controlling_riders: frozenset[str],
     can_equip_saddle: frozenset[str],
@@ -240,6 +241,7 @@ def render_entity_types(
         "    pub vehicle_attachment: [f32; 3],",
         "    pub in_arrows_tag: bool,",
         "    pub redirectable_projectile: bool,",
+        "    pub deflects_projectiles: bool,",
         "    pub powder_snow_walkable: bool,",
         "    pub non_controlling_rider: bool,",
         "    pub can_equip_saddle: bool,",
@@ -278,6 +280,7 @@ def render_entity_types(
                 + "],",
                 f"        in_arrows_tag: {str(entry.resource_id in arrows).lower()},",
                 f"        redirectable_projectile: {str(entry.resource_id in redirectable_projectiles).lower()},",
+                f"        deflects_projectiles: {str(entry.resource_id in deflects_projectiles).lower()},",
                 f"        powder_snow_walkable: {str(entry.resource_id in powder_snow_walkable_mobs).lower()},",
                 f"        non_controlling_rider: {str(entry.resource_id in non_controlling_riders).lower()},",
                 f"        can_equip_saddle: {str(entry.resource_id in can_equip_saddle).lower()},",
@@ -377,6 +380,12 @@ def render_entity_types(
             "        .unwrap_or(false)",
             "}",
             "",
+            "pub fn vanilla_entity_type_deflects_projectiles(entity_type_id: i32) -> bool {",
+            "    vanilla_entity_type(entity_type_id)",
+            "        .map(|entry| entry.deflects_projectiles)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
             "pub fn vanilla_entity_type_is_powder_snow_walkable(entity_type_id: i32) -> bool {",
             "    vanilla_entity_type(entity_type_id)",
             "        .map(|entry| entry.powder_snow_walkable)",
@@ -423,6 +432,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.vehicle_attachment != [0.0; 3]).count(), 24);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.in_arrows_tag).count(), 2);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.redirectable_projectile).count(), 3);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.deflects_projectiles).count(), 1);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.powder_snow_walkable).count(), 4);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.non_controlling_rider).count(), 2);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_equip_saddle).count(), 11);",
@@ -457,6 +467,13 @@ def render_entity_types(
             "        assert!(vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID));",
             "        assert!(!vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID));",
             "        assert!(!vanilla_entity_type_is_redirectable_projectile(-1));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn deflects_projectiles_membership_comes_from_the_vanilla_tag() {",
+            "        assert!(vanilla_entity_type_deflects_projectiles(VANILLA_ENTITY_TYPE_BREEZE_ID));",
+            "        assert!(!vanilla_entity_type_deflects_projectiles(VANILLA_ENTITY_TYPE_WIND_CHARGE_ID));",
+            "        assert!(!vanilla_entity_type_deflects_projectiles(-1));",
             "    }",
             "",
             "    #[test]",
@@ -1649,6 +1666,14 @@ def generated_files(
             registry_name="entity type",
         )
     )
+    deflects_projectiles = frozenset(
+        resolve_tag_values(
+            entity_type_tags,
+            "minecraft:deflects_projectiles",
+            1,
+            registry_name="entity type",
+        )
+    )
     powder_snow_walkable_mobs = frozenset(
         resolve_tag_values(
             entity_type_tags,
@@ -1684,6 +1709,7 @@ def generated_files(
     unknown_tag_values = (
         arrows
         | redirectable_projectiles
+        | deflects_projectiles
         | powder_snow_walkable_mobs
         | non_controlling_riders
         | can_equip_saddle
@@ -1718,6 +1744,7 @@ def generated_files(
                 entity_types,
                 arrows,
                 redirectable_projectiles,
+                deflects_projectiles,
                 powder_snow_walkable_mobs,
                 non_controlling_riders,
                 can_equip_saddle,

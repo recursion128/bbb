@@ -140,6 +140,9 @@ impl WorldStore {
         let _ = self
             .entities
             .sync_client_animation_events_from_metadata_update(id, &updated_values);
+        let _ = self
+            .entities
+            .sync_fishing_hook_from_metadata_update(id, &updated_values);
         let _ = self.entities.refresh_client_position_from_entity_data(id);
         if let Some((flags, accessors)) = local_living_entity_flags {
             self.sync_local_using_item_from_living_entity_flags(flags, accessors);

@@ -3,7 +3,10 @@ use std::collections::{HashMap, HashSet};
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
 };
-use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TRIDENT_ID;
+use bbb_protocol::entity_types::{
+    vanilla_entity_type_deflects_projectiles, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+};
 use bbb_protocol::item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID;
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
@@ -12,13 +15,14 @@ use hecs::Entity;
 use super::animations::{java_random_next_float, java_random_seed, spawn_random_bits};
 use super::components::{
     EntityAttributes, EntityClientAnimations, EntityClientMovementCollisionFacts, EntityEquipment,
-    EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityHurtingProjectile,
-    EntityIdentity, EntityMetadata, EntityProjectileLifecycle, EntitySupportingBlock,
-    EntityTransform,
+    EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityFishingHookMovement,
+    EntityFishingHookState, EntityHurtingProjectile, EntityIdentity, EntityIncarnation,
+    EntityMetadata, EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform,
 };
 use super::dimensions::{vanilla_bounds_for_entity_data, vanilla_eye_height_for_entity_data};
 use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
+    vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
@@ -26,6 +30,7 @@ use super::schema::{
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
     vanilla_entity_metadata_type_client_movement_policy, vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     VanillaEntityClientMovementPolicy,
 };
@@ -45,9 +50,13 @@ pub(crate) struct EntityClientMovementCollisionInput {
     pub(crate) pre_move_delta: EntityVec3,
     pub(crate) requested_movement: EntityVec3,
     pub(crate) bounds: EntityPickBoundsState,
+    pub(crate) on_ground: bool,
     pub(crate) previous_supporting_block: EntitySupportingBlock,
     pub(crate) movement_skipped: bool,
     pub(crate) experience_orb_update: Option<EntityExperienceOrbMovementUpdate>,
+    pub(crate) fishing_hook_update: Option<EntityFishingHookMovementUpdate>,
+    pub(crate) fishing_hook_entity_hit: Option<EntityFishingHookProjectileHit>,
+    pub(crate) fishing_hook_collision_delta: Option<EntityVec3>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -59,12 +68,31 @@ pub(crate) struct EntityClientMovementCollisionResult {
     pub(crate) ground_friction: f32,
     pub(crate) movement_skipped: bool,
     pub(crate) experience_orb_update: Option<EntityExperienceOrbMovementUpdate>,
+    pub(crate) fishing_hook_update: Option<EntityFishingHookMovementUpdate>,
+    pub(crate) fishing_hook_reverse_deflection: Option<EntityFishingHookReverseDeflection>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntityExperienceOrbMovementUpdate {
     pub(crate) following_player_uuid: Option<uuid::Uuid>,
     pub(crate) random_seed: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityFishingHookMovementUpdate {
+    pub(crate) movement: EntityFishingHookMovement,
+    pub(crate) position_override: Option<EntityVec3>,
+    pub(crate) clear_hooked_entity_data: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum EntityFishingHookReverseDeflection {
+    WorldBorder,
+    Entity {
+        entity_id: i32,
+        incarnation: EntityIncarnation,
+        position: EntityVec3,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -93,10 +121,215 @@ struct EntityExperienceOrbPlayerTarget {
     is_dead_or_dying: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct EntityFishingHookProjectileTarget {
+    entity_id: i32,
+    entity_type_id: i32,
+    root_vehicle_id: i32,
+    position: EntityVec3,
+    bounds: EntityPickBoundsState,
+    alive: bool,
+    pickable: bool,
+    deflects_projectiles: bool,
+    incarnation: EntityIncarnation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityFishingHookProjectileHit {
+    pub(crate) scale: f64,
+    pub(crate) reverse_deflection: Option<(i32, EntityIncarnation, EntityVec3)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct FishingHookAabb {
+    min: EntityVec3,
+    max: EntityVec3,
+}
+
+impl FishingHookAabb {
+    fn expand_towards(self, delta: EntityVec3) -> Self {
+        Self {
+            min: EntityVec3 {
+                x: self.min.x + delta.x.min(0.0),
+                y: self.min.y + delta.y.min(0.0),
+                z: self.min.z + delta.z.min(0.0),
+            },
+            max: EntityVec3 {
+                x: self.max.x + delta.x.max(0.0),
+                y: self.max.y + delta.y.max(0.0),
+                z: self.max.z + delta.z.max(0.0),
+            },
+        }
+    }
+
+    fn inflate(self, amount: f64) -> Self {
+        Self {
+            min: EntityVec3 {
+                x: self.min.x - amount,
+                y: self.min.y - amount,
+                z: self.min.z - amount,
+            },
+            max: EntityVec3 {
+                x: self.max.x + amount,
+                y: self.max.y + amount,
+                z: self.max.z + amount,
+            },
+        }
+    }
+
+    fn intersects(self, other: Self) -> bool {
+        self.min.x < other.max.x
+            && self.max.x > other.min.x
+            && self.min.y < other.max.y
+            && self.max.y > other.min.y
+            && self.min.z < other.max.z
+            && self.max.z > other.min.z
+    }
+}
+
+fn fishing_hook_world_bounds(
+    position: EntityVec3,
+    bounds: EntityPickBoundsState,
+) -> FishingHookAabb {
+    FishingHookAabb {
+        min: EntityVec3 {
+            x: position.x + f64::from(bounds.min[0]),
+            y: position.y + f64::from(bounds.min[1]),
+            z: position.z + f64::from(bounds.min[2]),
+        },
+        max: EntityVec3 {
+            x: position.x + f64::from(bounds.max[0]),
+            y: position.y + f64::from(bounds.max[1]),
+            z: position.z + f64::from(bounds.max[2]),
+        },
+    }
+}
+
+fn fishing_hook_entity_hit(
+    source_id: i32,
+    from: EntityVec3,
+    delta: EntityVec3,
+    owner_root_vehicle_id: Option<i32>,
+    left_owner: bool,
+    tick_count: u32,
+    last_deflected_by: Option<EntityIncarnation>,
+    targets: &[EntityFishingHookProjectileTarget],
+) -> Option<EntityFishingHookProjectileHit> {
+    let to = add(from, delta);
+    let margin = (((tick_count as f32) - 2.0) / 20.0).clamp(0.0, 0.3);
+    targets
+        .iter()
+        .filter(|target| target.entity_id != source_id && target.alive)
+        .filter(|target| {
+            let super_can_hit = target.pickable
+                && (left_owner
+                    || owner_root_vehicle_id
+                        .is_none_or(|owner_root| target.root_vehicle_id != owner_root));
+            super_can_hit || target.entity_type_id == super::VANILLA_ENTITY_TYPE_ITEM_ID
+        })
+        .filter_map(|target| {
+            fishing_hook_segment_box_entry_scale(
+                from,
+                to,
+                fishing_hook_world_bounds(target.position, target.bounds)
+                    .inflate(f64::from(margin)),
+            )
+            .map(|scale| EntityFishingHookProjectileHit {
+                scale,
+                reverse_deflection: target
+                    .deflects_projectiles
+                    .then_some((target.entity_id, target.incarnation, target.position))
+                    .filter(|_| last_deflected_by != Some(target.incarnation)),
+            })
+        })
+        .min_by(|left, right| left.scale.total_cmp(&right.scale))
+}
+
+fn fishing_hook_segment_box_entry_scale(
+    from: EntityVec3,
+    to: EntityVec3,
+    bounds: FishingHookAabb,
+) -> Option<f64> {
+    let delta = subtract(to, from);
+    let mut nearest = 1.0;
+    let mut hit = false;
+    for (axis_delta, from_a, min_a, max_a, other) in [
+        (
+            delta.x,
+            from.x,
+            bounds.min.x,
+            bounds.max.x,
+            [
+                (from.y, delta.y, bounds.min.y, bounds.max.y),
+                (from.z, delta.z, bounds.min.z, bounds.max.z),
+            ],
+        ),
+        (
+            delta.y,
+            from.y,
+            bounds.min.y,
+            bounds.max.y,
+            [
+                (from.z, delta.z, bounds.min.z, bounds.max.z),
+                (from.x, delta.x, bounds.min.x, bounds.max.x),
+            ],
+        ),
+        (
+            delta.z,
+            from.z,
+            bounds.min.z,
+            bounds.max.z,
+            [
+                (from.x, delta.x, bounds.min.x, bounds.max.x),
+                (from.y, delta.y, bounds.min.y, bounds.max.y),
+            ],
+        ),
+    ] {
+        let plane = if axis_delta > 1.0e-7 {
+            min_a
+        } else if axis_delta < -1.0e-7 {
+            max_a
+        } else {
+            continue;
+        };
+        let scale = (plane - from_a) / axis_delta;
+        if 0.0 < scale
+            && scale < nearest
+            && other.iter().all(|(origin, movement, min, max)| {
+                let point = origin + scale * movement;
+                min - 1.0e-7 < point && point < max + 1.0e-7
+            })
+        {
+            nearest = scale;
+            hit = true;
+        }
+    }
+    hit.then_some(nearest)
+}
+
 pub(super) fn experience_orb_movement_from_uuid(uuid: uuid::Uuid) -> EntityExperienceOrbMovement {
     EntityExperienceOrbMovement {
         following_player_uuid: None,
         random_seed: java_random_seed(spawn_random_bits(uuid, 0x6578_7065_7269_656e) as i64),
+    }
+}
+
+pub(super) fn fishing_hook_movement_from_uuid(
+    uuid: uuid::Uuid,
+    owner_uuid: Option<uuid::Uuid>,
+) -> EntityFishingHookMovement {
+    EntityFishingHookMovement {
+        state: EntityFishingHookState::Flying,
+        owner_uuid,
+        hooked_entity_uuid: None,
+        hooked_entity_incarnation: None,
+        biting: false,
+        left_owner: false,
+        last_deflected_by: None,
+        random_seed: java_random_seed(spawn_random_bits(uuid, 0x6669_7368_5f72_6e67) as i64),
+        synchronized_random_seed: java_random_seed(
+            spawn_random_bits(uuid, 0x6669_7368_5f73_796e) as i64
+        ),
     }
 }
 
@@ -136,6 +369,7 @@ pub(super) fn client_movement_uses_collision_facts(entity_type_id: i32) -> bool 
                 | VanillaEntityClientMovementPolicy::PrimedTnt
                 | VanillaEntityClientMovementPolicy::Item
                 | VanillaEntityClientMovementPolicy::ExperienceOrb
+                | VanillaEntityClientMovementPolicy::FishingHook
         )
     )
 }
@@ -144,11 +378,28 @@ impl EntityStore {
     pub(crate) fn client_movement_collision_inputs(
         &self,
         fluid_by_id: &HashMap<i32, crate::client::EntityFluidContactState>,
+        world_fact_position_by_id: &HashMap<i32, EntityVec3>,
         collision_free_by_id: &HashMap<i32, bool>,
         spectator_player_uuids: &HashSet<uuid::Uuid>,
         lava_current_scale: f64,
+        game_time: i64,
     ) -> Vec<EntityClientMovementCollisionInput> {
         let mut experience_orb_player_targets = None;
+        let fishing_hook_needs_targets = {
+            let mut hooks = self.ecs.query::<&EntityFishingHookMovement>();
+            hooks.iter().any(|(_, movement)| {
+                movement.owner_uuid.is_some_and(|owner_uuid| {
+                    self.protocol_id_by_uuid
+                        .get(&owner_uuid)
+                        .and_then(|id| self.by_protocol_id.get(id))
+                        .and_then(|entity| self.ecs.get::<&EntityIdentity>(*entity).ok())
+                        .is_some_and(|owner| owner.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID)
+                })
+            })
+        };
+        let fishing_hook_targets = fishing_hook_needs_targets
+            .then(|| self.fishing_hook_projectile_targets(spectator_player_uuids))
+            .unwrap_or_default();
         let mut inputs = Vec::new();
         let mut facts_query = self.ecs.query::<(
             &EntityClientMovementCollisionFacts,
@@ -159,6 +410,7 @@ impl EntityStore {
             &EntityAttributes,
             &EntityClientAnimations,
             Option<&EntityExperienceOrbMovement>,
+            Option<&EntityFishingHookMovement>,
         )>();
         for (
             _,
@@ -171,6 +423,7 @@ impl EntityStore {
                 attributes,
                 animations,
                 orb_movement,
+                fishing_hook_movement,
             ),
         ) in facts_query.iter()
         {
@@ -185,6 +438,7 @@ impl EntityStore {
                     | VanillaEntityClientMovementPolicy::PrimedTnt
                     | VanillaEntityClientMovementPolicy::Item
                     | VanillaEntityClientMovementPolicy::ExperienceOrb
+                    | VanillaEntityClientMovementPolicy::FishingHook
             ));
             let identity_data = identity.data;
             if policy == VanillaEntityClientMovementPolicy::ExperienceOrb
@@ -192,7 +446,20 @@ impl EntityStore {
             {
                 continue;
             }
-            let position = transform.position;
+            let position = world_fact_position_by_id
+                .get(&identity.id)
+                .copied()
+                .unwrap_or(transform.position);
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                entity_type_id,
+                identity_data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
             let previous_supporting_block = *supporting_block;
             let fluid = fluid_by_id.get(&identity.id).copied().unwrap_or_default();
             let mut pre_move_delta = match policy {
@@ -204,10 +471,14 @@ impl EntityStore {
                 | VanillaEntityClientMovementPolicy::ExperienceOrb => {
                     apply_entity_fluid_currents(transform.delta_movement, fluid, lava_current_scale)
                 }
+                VanillaEntityClientMovementPolicy::FishingHook => transform.delta_movement,
                 _ => unreachable!("filtered client movement collision policy"),
             };
             let mut movement_skipped = false;
             let mut experience_orb_update = None;
+            let mut fishing_hook_update = None;
+            let mut fishing_hook_entity_hit = None;
+            let mut fishing_hook_collision_delta = None;
             match policy {
                 VanillaEntityClientMovementPolicy::Item => {
                     if !item_entity_has_stack(entity_type_id, &metadata.data_values) {
@@ -285,22 +556,35 @@ impl EntityStore {
                         random_seed,
                     });
                 }
+                VanillaEntityClientMovementPolicy::FishingHook => {
+                    let Some(movement) = fishing_hook_movement.copied() else {
+                        continue;
+                    };
+                    let update = self.prepare_fishing_hook_movement(
+                        identity,
+                        position,
+                        pre_move_delta,
+                        transform.on_ground.unwrap_or(false),
+                        fluid,
+                        movement,
+                        game_time,
+                        bounds,
+                        animations.animations.age_ticks.saturating_add(1),
+                        &fishing_hook_targets,
+                        spectator_player_uuids,
+                    );
+                    pre_move_delta = update.0;
+                    movement_skipped = update.1;
+                    fishing_hook_update = Some(update.2);
+                    fishing_hook_entity_hit = update.3;
+                    fishing_hook_collision_delta = update.4;
+                }
                 _ => {}
             }
             let requested_movement = if movement_skipped {
                 EntityVec3::default()
             } else {
                 pre_move_delta
-            };
-            let Some(bounds) = vanilla_bounds_for_entity_data(
-                entity_type_id,
-                identity_data,
-                &metadata.data_values,
-                &attributes.attributes,
-                Some(animations.animations),
-                metadata.painting_variant_projection.as_ref(),
-            ) else {
-                continue;
             };
             inputs.push(EntityClientMovementCollisionInput {
                 entity_id: identity.id,
@@ -309,9 +593,13 @@ impl EntityStore {
                 pre_move_delta,
                 requested_movement,
                 bounds,
+                on_ground: transform.on_ground.unwrap_or(false),
                 previous_supporting_block,
                 movement_skipped,
                 experience_orb_update,
+                fishing_hook_update,
+                fishing_hook_entity_hit,
+                fishing_hook_collision_delta,
             });
         }
         inputs
@@ -380,6 +668,312 @@ impl EntityStore {
                 .unwrap_or(usize::MAX)
         });
         targets
+    }
+
+    fn fishing_hook_projectile_targets(
+        &self,
+        spectator_player_uuids: &HashSet<uuid::Uuid>,
+    ) -> Vec<EntityFishingHookProjectileTarget> {
+        let mut targets = Vec::new();
+        let mut query = self.ecs.query::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+        )>();
+        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            let alive = if vanilla_entity_metadata_type_is_living(identity.entity_type_id) {
+                vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                    identity.entity_type_id,
+                )
+                .is_some_and(|accessors| {
+                    entity_data_float(
+                        &metadata.data_values,
+                        accessors.health_data_id,
+                        accessors.health_default,
+                    ) > 0.0
+                })
+            } else {
+                true
+            };
+            let pickable = vanilla_entity_metadata_type_is_pickable(identity.entity_type_id)
+                && !(identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                    && spectator_player_uuids.contains(&identity.uuid))
+                && (identity.entity_type_id != VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+                    || vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+                        identity.entity_type_id,
+                    )
+                    .is_some_and(|accessors| {
+                        entity_data_byte(
+                            &metadata.data_values,
+                            accessors.client_flags_data_id,
+                            accessors.client_flags_default,
+                        ) & accessors.marker_mask
+                            == 0
+                    }));
+            targets.push(EntityFishingHookProjectileTarget {
+                entity_id: identity.id,
+                entity_type_id: identity.entity_type_id,
+                root_vehicle_id: self.fishing_hook_root_vehicle_id(identity.id),
+                position: transform.position,
+                bounds,
+                alive,
+                pickable,
+                deflects_projectiles: vanilla_entity_type_deflects_projectiles(
+                    identity.entity_type_id,
+                ),
+                incarnation: identity.incarnation,
+            });
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+                let dragon_animation = animations.animations.ender_dragon;
+                targets.extend(
+                    super::dragon::ender_dragon_part_pick_targets_at_partial_tick(
+                        identity.id,
+                        *transform,
+                        dragon_animation,
+                        1.0,
+                    )
+                    .into_iter()
+                    .map(|part| EntityFishingHookProjectileTarget {
+                        entity_id: part.entity_id,
+                        entity_type_id: VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+                        root_vehicle_id: part.entity_id,
+                        position: part.position,
+                        bounds: part.bounds,
+                        alive: true,
+                        // `EnderDragonPart.isPickable` is unconditionally true;
+                        // the parent EnderDragon itself remains non-pickable.
+                        pickable: true,
+                        deflects_projectiles: false,
+                        incarnation: identity.incarnation,
+                    }),
+                );
+            }
+        }
+        targets
+    }
+
+    fn fishing_hook_root_vehicle_id(&self, entity_id: i32) -> i32 {
+        let mut root = entity_id;
+        let mut visited = Vec::new();
+        while !visited.contains(&root) {
+            visited.push(root);
+            let Some(vehicle_id) = self
+                .by_protocol_id
+                .get(&root)
+                .and_then(|entity| {
+                    self.ecs
+                        .get::<&super::components::EntityMount>(*entity)
+                        .ok()
+                })
+                .and_then(|mount| mount.vehicle_id)
+            else {
+                break;
+            };
+            root = vehicle_id;
+        }
+        root
+    }
+
+    fn prepare_fishing_hook_movement(
+        &self,
+        identity: &EntityIdentity,
+        position: EntityVec3,
+        mut delta_movement: EntityVec3,
+        on_ground: bool,
+        fluid: crate::client::EntityFluidContactState,
+        mut movement: EntityFishingHookMovement,
+        game_time: i64,
+        bounds: EntityPickBoundsState,
+        tick_count: u32,
+        targets: &[EntityFishingHookProjectileTarget],
+        spectator_player_uuids: &HashSet<uuid::Uuid>,
+    ) -> (
+        EntityVec3,
+        bool,
+        EntityFishingHookMovementUpdate,
+        Option<EntityFishingHookProjectileHit>,
+        Option<EntityVec3>,
+    ) {
+        movement.synchronized_random_seed =
+            java_random_seed(((identity.uuid.as_u128() as u64) ^ game_time as u64) as i64);
+        let mut update = EntityFishingHookMovementUpdate {
+            movement,
+            position_override: None,
+            clear_hooked_entity_data: false,
+        };
+        let owner_is_current_player = movement.owner_uuid.is_some_and(|owner_uuid| {
+            self.protocol_id_by_uuid
+                .get(&owner_uuid)
+                .and_then(|id| self.by_protocol_id.get(id))
+                .and_then(|entity| self.ecs.get::<&EntityIdentity>(*entity).ok())
+                .is_some_and(|owner| owner.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID)
+        });
+        if !owner_is_current_player {
+            // Vanilla discards here. Authoritative removal is outside this
+            // slice, so freeze the removed instance rather than advancing it.
+            return (delta_movement, true, update, None, None);
+        }
+
+        let owner_root_vehicle_id = movement
+            .owner_uuid
+            .and_then(|uuid| self.protocol_id_by_uuid.get(&uuid).copied())
+            .map(|id| self.fishing_hook_root_vehicle_id(id));
+        if !movement.left_owner {
+            let source_bounds = fishing_hook_world_bounds(position, bounds)
+                .expand_towards(delta_movement)
+                .inflate(1.0);
+            update.movement.left_owner = owner_root_vehicle_id.is_none_or(|owner_root| {
+                targets.iter().all(|target| {
+                    !target.pickable
+                        || target.root_vehicle_id != owner_root
+                        || !source_bounds
+                            .intersects(fishing_hook_world_bounds(target.position, target.bounds))
+                })
+            });
+        }
+
+        let hooked_target = movement
+            .hooked_entity_uuid
+            .zip(movement.hooked_entity_incarnation)
+            .and_then(|(uuid, incarnation)| {
+                self.fishing_hook_target(uuid, incarnation, spectator_player_uuids)
+            });
+        let has_hooked_entity_reference = movement.hooked_entity_uuid.is_some();
+        let is_in_water = fluid.block_fluid_kind == Some(crate::TerrainFluidKind::Water)
+            && fluid.block_fluid_height > 0.0;
+        match movement.state {
+            EntityFishingHookState::Flying => {
+                if has_hooked_entity_reference {
+                    delta_movement = EntityVec3::default();
+                    update.movement.state = EntityFishingHookState::HookedInEntity;
+                    return (delta_movement, true, update, None, None);
+                }
+                if is_in_water {
+                    delta_movement.x *= 0.3;
+                    delta_movement.y *= 0.2;
+                    delta_movement.z *= 0.3;
+                    update.movement.state = EntityFishingHookState::Bobbing;
+                    return (delta_movement, true, update, None, None);
+                }
+            }
+            EntityFishingHookState::HookedInEntity => {
+                if let Some((target_position, target_height)) = hooked_target {
+                    update.position_override = Some(EntityVec3 {
+                        x: target_position.x,
+                        y: target_position.y + target_height * 0.8,
+                        z: target_position.z,
+                    });
+                } else {
+                    update.movement.hooked_entity_uuid = None;
+                    update.movement.hooked_entity_incarnation = None;
+                    update.movement.state = EntityFishingHookState::Flying;
+                    update.clear_hooked_entity_data = true;
+                }
+                return (delta_movement, true, update, None, None);
+            }
+            EntityFishingHookState::Bobbing => {
+                let mut force =
+                    position.y + delta_movement.y - position.y.floor() - fluid.block_fluid_height;
+                if force.abs() < 0.01 {
+                    force += force.signum() * 0.1;
+                }
+                let random = java_random_next_float(&mut update.movement.random_seed);
+                delta_movement = EntityVec3 {
+                    x: delta_movement.x * 0.9,
+                    y: delta_movement.y - force * f64::from(random) * 0.2,
+                    z: delta_movement.z * 0.9,
+                };
+                if is_in_water && movement.biting {
+                    let first =
+                        java_random_next_float(&mut update.movement.synchronized_random_seed);
+                    let second =
+                        java_random_next_float(&mut update.movement.synchronized_random_seed);
+                    delta_movement.y -= 0.1 * f64::from(first) * f64::from(second);
+                }
+            }
+        }
+        let applies_gravity = !is_in_water && !on_ground && movement.hooked_entity_uuid.is_none();
+        let collision_delta =
+            (update.movement.state == EntityFishingHookState::Flying).then_some(delta_movement);
+        let entity_hit = collision_delta.and_then(|collision_delta| {
+            fishing_hook_entity_hit(
+                identity.id,
+                position,
+                collision_delta,
+                owner_root_vehicle_id,
+                update.movement.left_owner,
+                tick_count,
+                movement.last_deflected_by,
+                targets,
+            )
+        });
+        if applies_gravity {
+            delta_movement.y -= 0.03;
+        }
+        (delta_movement, false, update, entity_hit, collision_delta)
+    }
+
+    fn fishing_hook_target(
+        &self,
+        uuid: uuid::Uuid,
+        incarnation: EntityIncarnation,
+        spectator_player_uuids: &HashSet<uuid::Uuid>,
+    ) -> Option<(EntityVec3, f64)> {
+        let id = self.protocol_id_by_uuid.get(&uuid).copied()?;
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut query = self
+            .ecs
+            .query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &EntityMetadata,
+                &EntityAttributes,
+                &EntityClientAnimations,
+            )>(entity)
+            .ok()?;
+        let (identity, transform, metadata, attributes, animations) = query.get()?;
+        if identity.incarnation != incarnation {
+            return None;
+        }
+        if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+            && spectator_player_uuids.contains(&identity.uuid)
+        {
+            return None;
+        }
+        if vanilla_entity_metadata_type_is_living(identity.entity_type_id) {
+            let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                identity.entity_type_id,
+            )?;
+            if entity_data_float(
+                &metadata.data_values,
+                accessors.health_data_id,
+                accessors.health_default,
+            ) <= 0.0
+            {
+                return None;
+            }
+        }
+        let bounds = vanilla_bounds_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(animations.animations),
+            metadata.painting_variant_projection.as_ref(),
+        )?;
+        Some((transform.position, f64::from(bounds.max[1] - bounds.min[1])))
     }
 
     /// Advances client-owned projectile and nonliving movement in the frozen
@@ -584,6 +1178,29 @@ impl EntityStore {
                         continue;
                     };
                     advance_experience_orb(movement, transform, supporting_block, collision);
+                }
+                VanillaEntityClientMovementPolicy::FishingHook => {
+                    let Some(collision) = collisions_by_id.get(&entity_id).copied() else {
+                        continue;
+                    };
+                    let Ok((movement, metadata, transform, supporting_block)) =
+                        self.ecs.query_one_mut::<(
+                            &mut EntityFishingHookMovement,
+                            &mut EntityMetadata,
+                            &mut EntityTransform,
+                            &mut EntitySupportingBlock,
+                        )>(entity)
+                    else {
+                        continue;
+                    };
+                    advance_fishing_hook(
+                        movement,
+                        metadata,
+                        transform,
+                        supporting_block,
+                        collision,
+                        &mut effects,
+                    );
                 }
                 VanillaEntityClientMovementPolicy::FallingBlock => {
                     let Ok((metadata, transform)) = self
@@ -1152,6 +1769,64 @@ fn advance_experience_orb(
     }
 }
 
+fn advance_fishing_hook(
+    movement: &mut EntityFishingHookMovement,
+    metadata: &mut EntityMetadata,
+    transform: &mut EntityTransform,
+    supporting_block: &mut EntitySupportingBlock,
+    collision: EntityClientMovementCollisionResult,
+    effects: &mut Vec<EntityClientMovementEffectState>,
+) {
+    let Some(update) = collision.fishing_hook_update else {
+        return;
+    };
+    *movement = update.movement;
+    transform.delta_movement = collision.pre_move_delta;
+    if let Some(deflection) = collision.fishing_hook_reverse_deflection {
+        let rotation = 170.0 + java_random_next_float(&mut movement.random_seed) * 20.0;
+        transform.y_rot += rotation;
+        transform.old_y_rot += rotation;
+        if let EntityFishingHookReverseDeflection::Entity {
+            entity_id,
+            incarnation,
+            position,
+        } = deflection
+        {
+            movement.last_deflected_by = Some(incarnation);
+            effects.push(EntityClientMovementEffectState::Sound(
+                EntityClientMovementSoundState {
+                    entity_id,
+                    kind: EntityClientMovementSoundKind::BreezeDeflect,
+                    position,
+                },
+            ));
+        }
+    }
+    if let Some(position) = update.position_override {
+        transform.position = position;
+    }
+    if update.clear_hooked_entity_data {
+        set_entity_data_int(
+            metadata,
+            super::schema::VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
+            super::schema::VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY,
+        );
+    }
+    if collision.movement_skipped {
+        return;
+    }
+    apply_client_collision_movement(transform, supporting_block, collision);
+    update_projectile_rotation(transform);
+    if movement.state == EntityFishingHookState::Flying
+        && (transform.on_ground.unwrap_or(false)
+            || collision.requested_movement.x != collision.clipped_movement.x
+            || collision.requested_movement.z != collision.clipped_movement.z)
+    {
+        transform.delta_movement = EntityVec3::default();
+    }
+    transform.delta_movement = scale(transform.delta_movement, 0.92);
+}
+
 fn apply_client_collision_movement(
     transform: &mut EntityTransform,
     supporting_block: &mut EntitySupportingBlock,
@@ -1636,21 +2311,23 @@ fn lerp(alpha: f32, start: f32, end: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
         VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
-        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
-        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, EntityDataValue, ItemStackSummary,
-        SetEntityData as ProtocolSetEntityData, Vec3d as ProtocolVec3d,
+        AddEntity as ProtocolAddEntity, EntityDataValue, ItemStackSummary, RemoveEntities,
+        SetBorderSize as ProtocolSetBorderSize, SetEntityData as ProtocolSetEntityData,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -2408,15 +3085,23 @@ mod tests {
             },
         ));
         set_nonempty_item_stack(&mut store, 63);
-        assert_eq!(store.entities.client_movement_fluid_inputs().len(), 1);
+        assert_eq!(
+            store
+                .entities
+                .client_movement_fluid_inputs(&HashSet::new())
+                .len(),
+            1
+        );
         assert_eq!(
             store
                 .entities
                 .client_movement_collision_inputs(
                     &HashMap::new(),
                     &HashMap::new(),
+                    &HashMap::new(),
                     &HashSet::new(),
                     0.0023333333333333335,
+                    0,
                 )
                 .len(),
             1
@@ -2486,8 +3171,10 @@ mod tests {
                 .client_movement_collision_inputs(
                     &HashMap::new(),
                     &HashMap::new(),
+                    &HashMap::new(),
                     &HashSet::new(),
                     0.0023333333333333335,
+                    0,
                 )
                 .len(),
             1,
@@ -2603,6 +3290,604 @@ mod tests {
     }
 
     #[test]
+    fn fishing_hook_free_flight_uses_client_gravity_inertia_and_generation_isolation() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            80,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut hook = projectile(
+            81,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            ProtocolVec3d {
+                x: 0.5,
+                y: 0.2,
+                z: -0.25,
+            },
+        );
+        hook.data = 80;
+        store.apply_add_entity(hook);
+        let generation_a = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+
+        let moved = EntityVec3 {
+            x: 0.5,
+            y: 0.17,
+            z: -0.25,
+        };
+        assert_vec3_near(
+            store.probe_entity_transform(81).unwrap().position,
+            add(
+                generation_a.probe_entity_transform(81).unwrap().position,
+                moved,
+            ),
+        );
+        assert_vec3_near(
+            store.probe_entity_transform(81).unwrap().delta_movement,
+            scale(moved, 0.92),
+        );
+        assert_eq!(
+            generation_a
+                .entities
+                .fishing_hook_movement(81)
+                .unwrap()
+                .state,
+            EntityFishingHookState::Flying
+        );
+        assert_eq!(
+            generation_a.probe_entity_transform(81).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            }
+        );
+    }
+
+    #[test]
+    fn fishing_hook_batched_ticks_use_each_post_tick_game_time_for_synchronized_rng() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            85,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut hook = projectile(
+            86,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            ProtocolVec3d::default(),
+        );
+        hook.data = 85;
+        store.apply_add_entity(hook);
+
+        store.advance_entity_client_animations(3);
+
+        assert_eq!(
+            store
+                .entities
+                .fishing_hook_movement(86)
+                .unwrap()
+                .synchronized_random_seed,
+            java_random_seed((86_u64 ^ 3_u64) as i64),
+        );
+    }
+
+    #[test]
+    fn fishing_hook_metadata_update_retains_exact_target_and_biting_rng_order() {
+        let mut store = WorldStore::new();
+        for id in [82, 83] {
+            store.apply_add_entity(projectile(
+                id,
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                ProtocolVec3d::default(),
+            ));
+        }
+        let mut hook = projectile(
+            84,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            ProtocolVec3d {
+                x: 0.25,
+                y: 0.5,
+                z: -0.75,
+            },
+        );
+        hook.data = 82;
+        store.apply_add_entity(hook);
+        let generation_a = store.publication_snapshot();
+        let mut expected_seed = store
+            .entities
+            .fishing_hook_movement(84)
+            .unwrap()
+            .synchronized_random_seed;
+        let random = java_random_next_float(&mut expected_seed);
+        let expected_y = f64::from(-0.4_f32 * (0.6_f32 + random * 0.4_f32));
+
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 84,
+            values: vec![
+                EntityDataValue {
+                    data_id: crate::entities::VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    value: EntityDataValueKind::Int(84),
+                },
+                EntityDataValue {
+                    data_id: crate::entities::VANILLA_FISHING_HOOK_BITING_DATA_ID,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    value: EntityDataValueKind::Boolean(true),
+                },
+            ],
+        }));
+        let movement = store.entities.fishing_hook_movement(84).unwrap();
+        assert_eq!(movement.hooked_entity_uuid, Some(Uuid::from_u128(83)));
+        assert!(movement.biting);
+        assert_eq!(movement.synchronized_random_seed, expected_seed);
+        assert_eq!(
+            store.probe_entity_transform(84).unwrap().delta_movement.y,
+            expected_y
+        );
+        assert_eq!(
+            generation_a
+                .entities
+                .fishing_hook_movement(84)
+                .unwrap()
+                .hooked_entity_uuid,
+            None,
+            "the retained generation must not observe metadata-derived target identity"
+        );
+
+        store.advance_entity_client_animations(1);
+        assert_eq!(
+            store.entities.fishing_hook_movement(84).unwrap().state,
+            EntityFishingHookState::HookedInEntity
+        );
+        let transition_position = store.probe_entity_transform(84).unwrap().position;
+        store.advance_entity_client_animations(1);
+        let hooked_position = store.probe_entity_transform(84).unwrap().position;
+        assert_eq!(hooked_position.x, 1.0);
+        assert_eq!(hooked_position.z, -2.0);
+        assert!(hooked_position.y > transition_position.y);
+
+        store.apply_remove_entities(RemoveEntities {
+            entity_ids: vec![83],
+        });
+        let reused_id = projectile(83, VANILLA_ENTITY_TYPE_ZOMBIE_ID, ProtocolVec3d::default());
+        store.apply_add_entity(reused_id);
+        store.advance_entity_client_animations(1);
+        assert_eq!(
+            store.entities.fishing_hook_movement(84).unwrap().state,
+            EntityFishingHookState::Flying
+        );
+        assert_eq!(
+            store
+                .entities
+                .metadata_int_for_entity(
+                    84,
+                    crate::entities::VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
+                    crate::entities::VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY,
+                )
+                .unwrap(),
+            0,
+            "a same-id/same-UUID replacement cannot retarget the old hookedIn object"
+        );
+    }
+
+    #[test]
+    fn fishing_hook_entity_hit_uses_margin_and_owner_root_gate() {
+        let target = EntityFishingHookProjectileTarget {
+            entity_id: 91,
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            root_vehicle_id: 91,
+            position: EntityVec3 {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            bounds: EntityPickBoundsState::from_base_size(0.6, 1.8, 0.1),
+            alive: true,
+            pickable: true,
+            deflects_projectiles: false,
+            incarnation: EntityIncarnation(91),
+        };
+        let from = EntityVec3 {
+            x: 0.0,
+            y: 0.9,
+            z: 0.0,
+        };
+        let delta = EntityVec3 {
+            x: 2.0,
+            y: 0.0,
+            z: 0.0,
+        };
+        assert_eq!(
+            fishing_hook_entity_hit(90, from, delta, Some(91), false, 1, None, &[target]),
+            None,
+            "a hook that has not left its owner root cannot hit that graph"
+        );
+        let hit =
+            fishing_hook_entity_hit(90, from, delta, Some(91), true, 22, None, &[target]).unwrap();
+        assert!((hit.scale - 0.2).abs() <= 1.0e-6, "{}", hit.scale);
+
+        let deflecting = EntityFishingHookProjectileTarget {
+            deflects_projectiles: true,
+            ..target
+        };
+        assert!(
+            fishing_hook_entity_hit(90, from, delta, Some(91), true, 22, None, &[deflecting],)
+                .unwrap()
+                .reverse_deflection
+                .is_some()
+        );
+        assert_eq!(
+            fishing_hook_entity_hit(
+                90,
+                from,
+                delta,
+                Some(91),
+                true,
+                22,
+                Some(deflecting.incarnation),
+                &[deflecting],
+            )
+            .unwrap()
+            .reverse_deflection,
+            None,
+            "Projectile.lastDeflectedBy suppresses a repeated reverse from the same instance"
+        );
+        let replacement = EntityFishingHookProjectileTarget {
+            incarnation: EntityIncarnation(92),
+            ..deflecting
+        };
+        assert!(
+            fishing_hook_entity_hit(
+                90,
+                from,
+                delta,
+                Some(91),
+                true,
+                22,
+                Some(deflecting.incarnation),
+                &[replacement],
+            )
+            .unwrap()
+            .reverse_deflection
+            .is_some(),
+            "a same-id/same-UUID replacement is a new Vanilla entity object"
+        );
+    }
+
+    #[test]
+    fn fishing_hook_projectile_targets_include_dragon_parts_but_not_parent() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            100,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            ProtocolVec3d::default(),
+        ));
+
+        let targets = store
+            .entities
+            .fishing_hook_projectile_targets(&HashSet::new());
+        let parent = targets
+            .iter()
+            .find(|target| target.entity_id == 100)
+            .unwrap();
+        assert!(!parent.pickable);
+        for part_id in 101..=108 {
+            let part = targets
+                .iter()
+                .find(|target| target.entity_id == part_id)
+                .unwrap_or_else(|| panic!("missing EnderDragonPart {part_id}"));
+            assert!(part.pickable);
+            assert!(part.alive);
+            assert_eq!(part.root_vehicle_id, part_id);
+        }
+    }
+
+    #[test]
+    fn entity_incarnation_changes_on_same_identity_readd_and_is_snapshot_isolated() {
+        let mut store = WorldStore::new();
+        let breeze = projectile(109, VANILLA_ENTITY_TYPE_BREEZE_ID, ProtocolVec3d::default());
+        store.apply_add_entity(breeze.clone());
+        let first = store
+            .entities
+            .fishing_hook_projectile_targets(&HashSet::new())
+            .into_iter()
+            .find(|target| target.entity_id == 109)
+            .unwrap()
+            .incarnation;
+        let generation_a = store.publication_snapshot();
+
+        store.apply_add_entity(breeze);
+        let replacement = store
+            .entities
+            .fishing_hook_projectile_targets(&HashSet::new())
+            .into_iter()
+            .find(|target| target.entity_id == 109)
+            .unwrap()
+            .incarnation;
+        let retained = generation_a
+            .entities
+            .fishing_hook_projectile_targets(&HashSet::new())
+            .into_iter()
+            .find(|target| target.entity_id == 109)
+            .unwrap()
+            .incarnation;
+
+        assert_ne!(replacement, first);
+        assert_eq!(retained, first);
+
+        store.apply_add_entity(projectile(
+            110,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let player_before_respawn = store.entities.identity(110).unwrap().incarnation;
+        store
+            .entities
+            .rebuild_local_player_entity_for_respawn(110, false, false)
+            .unwrap();
+        assert_ne!(
+            store.entities.identity(110).unwrap().incarnation,
+            player_before_respawn,
+            "respawn creates a new Vanilla entity object even when id and UUID stay stable"
+        );
+    }
+
+    #[test]
+    fn fishing_hook_world_border_hit_reverses_and_damps_before_gravity() {
+        let mut store = WorldStore::new();
+        store.apply_set_border_size(ProtocolSetBorderSize { size: 4.0 });
+        store.apply_add_entity(projectile(
+            109,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut hook = projectile(
+            110,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            ProtocolVec3d {
+                x: 10.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        );
+        hook.data = 109;
+        store.apply_add_entity(hook);
+        let mut expected_seed = store
+            .entities
+            .fishing_hook_movement(110)
+            .unwrap()
+            .random_seed;
+        let _ = java_random_next_float(&mut expected_seed);
+
+        store.advance_entity_client_animations(1);
+
+        let transform = store.probe_entity_transform(110).unwrap();
+        assert_vec3_near(
+            transform.position,
+            EntityVec3 {
+                x: 0.0,
+                y: 63.97,
+                z: -2.0,
+            },
+        );
+        assert_vec3_near(
+            transform.delta_movement,
+            EntityVec3 {
+                x: -0.92,
+                y: -0.0276,
+                z: 0.0,
+            },
+        );
+        assert_eq!(
+            store
+                .entities
+                .fishing_hook_movement(110)
+                .unwrap()
+                .random_seed,
+            expected_seed,
+        );
+        assert!(store
+            .drain_entity_client_movement_effect_states()
+            .next()
+            .is_none());
+    }
+
+    #[test]
+    fn fishing_hook_breeze_hit_reverses_and_emits_ordered_deflect_sound() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            111,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut hook = projectile(
+            112,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            ProtocolVec3d {
+                x: 4.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        );
+        hook.data = 111;
+        store.apply_add_entity(hook);
+        let mut breeze = projectile(113, VANILLA_ENTITY_TYPE_BREEZE_ID, ProtocolVec3d::default());
+        breeze.position.x = 2.0;
+        store.apply_add_entity(breeze);
+        let breeze_incarnation = store
+            .entities
+            .fishing_hook_projectile_targets(&HashSet::new())
+            .into_iter()
+            .find(|target| target.entity_id == 113)
+            .unwrap()
+            .incarnation;
+        let generation_a = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+
+        let transform = store.probe_entity_transform(112).unwrap();
+        assert_vec3_near(
+            transform.position,
+            EntityVec3 {
+                x: -1.0,
+                y: 63.97,
+                z: -2.0,
+            },
+        );
+        assert_vec3_near(
+            transform.delta_movement,
+            EntityVec3 {
+                x: -1.84,
+                y: -0.0276,
+                z: 0.0,
+            },
+        );
+        assert_eq!(
+            generation_a
+                .entities
+                .fishing_hook_movement(112)
+                .unwrap()
+                .last_deflected_by,
+            None,
+        );
+        assert_eq!(
+            store
+                .entities
+                .fishing_hook_movement(112)
+                .unwrap()
+                .last_deflected_by,
+            Some(breeze_incarnation),
+        );
+        assert_eq!(
+            store
+                .drain_entity_client_movement_effect_states()
+                .collect::<Vec<_>>(),
+            vec![EntityClientMovementEffectState::Sound(
+                EntityClientMovementSoundState {
+                    entity_id: 113,
+                    kind: EntityClientMovementSoundKind::BreezeDeflect,
+                    position: EntityVec3 {
+                        x: 2.0,
+                        y: 64.0,
+                        z: -2.0,
+                    },
+                },
+            )],
+        );
+    }
+
+    #[test]
+    fn fishing_hook_water_transition_and_bobbing_preserve_random_call_order() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            92,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+        ));
+        let mut hook = projectile(
+            93,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            ProtocolVec3d {
+                x: 0.3,
+                y: -0.2,
+                z: 0.6,
+            },
+        );
+        hook.data = 92;
+        store.apply_add_entity(hook);
+        let identity = store.entities.identity(93).unwrap();
+        let bounds = store
+            .entities
+            .client_movement_fluid_inputs(&HashSet::new())
+            .into_iter()
+            .find(|input| input.entity_id == 93)
+            .unwrap()
+            .bounds;
+        let movement = store.entities.fishing_hook_movement(93).unwrap();
+        let water = crate::client::EntityFluidContactState {
+            block_fluid_kind: Some(crate::TerrainFluidKind::Water),
+            block_fluid_height: 0.8,
+            ..crate::client::EntityFluidContactState::default()
+        };
+
+        let (transition_delta, skipped, mut update, entity_hit, collision_delta) =
+            store.entities.prepare_fishing_hook_movement(
+                &identity,
+                EntityVec3 {
+                    x: 1.0,
+                    y: 64.5,
+                    z: -2.0,
+                },
+                EntityVec3 {
+                    x: 0.3,
+                    y: -0.2,
+                    z: 0.6,
+                },
+                false,
+                water,
+                movement,
+                7,
+                bounds,
+                1,
+                &[],
+                &HashSet::new(),
+            );
+        assert!(skipped);
+        assert_eq!(update.movement.state, EntityFishingHookState::Bobbing);
+        assert_eq!(entity_hit, None);
+        assert_eq!(collision_delta, None);
+        assert_vec3_near(
+            transition_delta,
+            EntityVec3 {
+                x: 0.09,
+                y: -0.04,
+                z: 0.18,
+            },
+        );
+
+        update.movement.biting = true;
+        let mut expected_regular = update.movement.random_seed;
+        let regular = java_random_next_float(&mut expected_regular);
+        let force = 64.5 - 0.04 - 64.0 - 0.8;
+        let mut expected_sync = java_random_seed((93_u64 ^ 7_u64) as i64);
+        let sync_first = java_random_next_float(&mut expected_sync);
+        let sync_second = java_random_next_float(&mut expected_sync);
+        let expected = EntityVec3 {
+            x: transition_delta.x * 0.9,
+            y: transition_delta.y
+                - force * f64::from(regular) * 0.2
+                - 0.1 * f64::from(sync_first) * f64::from(sync_second),
+            z: transition_delta.z * 0.9,
+        };
+        let (bobbing_delta, skipped, update, _, collision_delta) =
+            store.entities.prepare_fishing_hook_movement(
+                &identity,
+                EntityVec3 {
+                    x: 1.0,
+                    y: 64.5,
+                    z: -2.0,
+                },
+                transition_delta,
+                false,
+                water,
+                update.movement,
+                7,
+                bounds,
+                2,
+                &[],
+                &HashSet::new(),
+            );
+        assert!(!skipped);
+        assert_eq!(collision_delta, None);
+        assert_vec3_near(bobbing_delta, expected);
+        assert_eq!(update.movement.random_seed, expected_regular);
+        assert_eq!(update.movement.synchronized_random_seed, expected_sync);
+    }
+
+    #[test]
     fn item_and_orb_collision_responses_use_block_friction_and_vertical_bounce() {
         let collision = EntityClientMovementCollisionResult {
             pre_move_delta: EntityVec3 {
@@ -2624,6 +3909,8 @@ mod tests {
             ground_friction: 0.98,
             movement_skipped: false,
             experience_orb_update: None,
+            fishing_hook_update: None,
+            fishing_hook_reverse_deflection: None,
         };
         let mut support = EntitySupportingBlock::default();
         let mut item = test_transform(EntityVec3::default());
@@ -2662,21 +3949,32 @@ mod tests {
             VANILLA_ENTITY_TYPE_ITEM_ID,
             ProtocolVec3d::default(),
         ));
-        assert_eq!(store.entities.client_movement_fluid_inputs().len(), 1);
+        assert_eq!(
+            store
+                .entities
+                .client_movement_fluid_inputs(&HashSet::new())
+                .len(),
+            1
+        );
 
         store.apply_add_entity(projectile(
             66,
             VANILLA_ENTITY_TYPE_ZOMBIE_ID,
             ProtocolVec3d::default(),
         ));
-        assert!(store.entities.client_movement_fluid_inputs().is_empty());
+        assert!(store
+            .entities
+            .client_movement_fluid_inputs(&HashSet::new())
+            .is_empty());
         assert!(store
             .entities
             .client_movement_collision_inputs(
                 &HashMap::new(),
                 &HashMap::new(),
+                &HashMap::new(),
                 &HashSet::new(),
                 0.0023333333333333335,
+                0,
             )
             .is_empty());
 
@@ -2734,8 +4032,10 @@ mod tests {
         let inputs = store.entities.client_movement_collision_inputs(
             &fluid_by_id,
             &HashMap::new(),
+            &HashMap::new(),
             &HashSet::new(),
             0.0023333333333333335,
+            0,
         );
         let item = inputs.iter().find(|input| input.entity_id == 67).unwrap();
         assert_vec3_near(
@@ -2900,6 +4200,8 @@ mod tests {
             ground_friction: 0.6,
             movement_skipped: false,
             experience_orb_update: None,
+            fishing_hook_update: None,
+            fishing_hook_reverse_deflection: None,
         });
 
         let mut falling = test_transform(EntityVec3 {

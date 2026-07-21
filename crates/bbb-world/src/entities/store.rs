@@ -34,7 +34,8 @@ use bbb_protocol::packets::{
 
 use super::components::{
     EntityClientMovementCollisionFacts, EntityClientMovementFluidFacts,
-    EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts,
+    EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityFishingHookMovement,
+    EntityIncarnation,
 };
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
@@ -64,7 +65,8 @@ use super::schema::{
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_entity_type_default_attribute, VanillaEntityCollidabilityKind,
-    VanillaFireworkRocketMetadataAccessors,
+    VanillaFireworkRocketMetadataAccessors, VANILLA_FISHING_HOOK_BITING_DATA_ID,
+    VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
 };
 
 use super::{
@@ -288,6 +290,7 @@ pub(crate) struct EntityStore {
     pub(super) by_protocol_id: BTreeMap<i32, Entity>,
     pub(super) protocol_id_by_uuid: HashMap<Uuid, i32>,
     pub(super) order: Vec<i32>,
+    next_incarnation: u64,
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
     pub(super) pending_entity_client_movement_effects: Vec<EntityClientMovementEffectState>,
@@ -380,6 +383,15 @@ fn sync_derived_marker<T: hecs::Component + Default>(
 }
 
 impl EntityStore {
+    fn allocate_incarnation(&mut self) -> EntityIncarnation {
+        let incarnation = EntityIncarnation(self.next_incarnation);
+        self.next_incarnation = self
+            .next_incarnation
+            .checked_add(1)
+            .expect("entity incarnation space exhausted");
+        incarnation
+    }
+
     #[cfg(test)]
     pub(crate) fn publication_payload_sharing(
         &self,
@@ -441,21 +453,25 @@ impl EntityStore {
     /// spawn-fresh value.
     pub(crate) fn apply_add_entity_components(
         &mut self,
-        identity: EntityIdentity,
+        mut identity: EntityIdentity,
         transform: EntityTransform,
     ) {
+        let fresh_incarnation = self.allocate_incarnation();
+        identity.incarnation = fresh_incarnation;
         let id = identity.id;
         let uuid = identity.uuid;
         let entity_type_id = identity.entity_type_id;
+        let spawn_owner_uuid = self.uuid_for_protocol_id(identity.data);
         let fresh_projectile = entity_hurting_projectile_from_state(entity_type_id, None);
-        let fresh_projectile_lifecycle = entity_projectile_lifecycle_from_state(
-            entity_type_id,
-            None,
-            self.uuid_for_protocol_id(identity.data),
-        );
+        let fresh_projectile_lifecycle =
+            entity_projectile_lifecycle_from_state(entity_type_id, None, spawn_owner_uuid);
         let fresh_experience_orb_movement = (entity_type_id
             == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
             .then(|| super::client_movement::experience_orb_movement_from_uuid(uuid));
+        let fresh_fishing_hook_movement = (entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
+            .then(|| {
+                super::client_movement::fishing_hook_movement_from_uuid(uuid, spawn_owner_uuid)
+            });
         let uses_collision_facts =
             super::client_movement::client_movement_uses_collision_facts(entity_type_id);
         let uses_fluid_facts =
@@ -570,6 +586,18 @@ impl EntityStore {
             } else {
                 let _ = self.ecs.remove_one::<EntityExperienceOrbMovement>(entity);
             }
+            if let Some(movement) = fresh_fishing_hook_movement {
+                let updated = self
+                    .ecs
+                    .get::<&mut EntityFishingHookMovement>(entity)
+                    .map(|mut existing| *existing = movement)
+                    .is_ok();
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, movement);
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityFishingHookMovement>(entity);
+            }
             sync_derived_marker::<EntityClientMovementCollisionFacts>(
                 &mut self.ecs,
                 entity,
@@ -623,6 +651,9 @@ impl EntityStore {
         if let Some(movement) = fresh_experience_orb_movement {
             let _ = self.ecs.insert_one(entity, movement);
         }
+        if let Some(movement) = fresh_fishing_hook_movement {
+            let _ = self.ecs.insert_one(entity, movement);
+        }
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
             entity,
@@ -647,8 +678,11 @@ impl EntityStore {
         let uuid = state.uuid;
         let entity_type_id = state.entity_type_id;
         let spawn_owner_uuid = self.uuid_for_protocol_id(state.data);
+        let incarnation = self.allocate_incarnation();
+        let mut identity = EntityIdentity::from(&state);
+        identity.incarnation = incarnation;
         let entity = self.ecs.spawn((
-            EntityIdentity::from(&state),
+            identity,
             EntityTransform::from(&state),
             EntityMetadata::from(&state),
             EntityEquipment::from(&state),
@@ -687,6 +721,12 @@ impl EntityStore {
                 super::client_movement::experience_orb_movement_from_uuid(uuid),
             );
         }
+        if state.entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
+            let _ = self.ecs.insert_one(
+                entity,
+                super::client_movement::fishing_hook_movement_from_uuid(uuid, spawn_owner_uuid),
+            );
+        }
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
             entity,
@@ -713,7 +753,11 @@ impl EntityStore {
             .get::<&EntityIdentity>(entity)
             .ok()
             .map(|identity| identity.uuid);
+        let incarnation = self.allocate_incarnation();
         self.sync_components_from_state(entity, &state);
+        if let Ok(mut identity) = self.ecs.get::<&mut EntityIdentity>(entity) {
+            identity.incarnation = incarnation;
+        }
         if let Some(previous_uuid) = previous_uuid.filter(|previous| *previous != uuid) {
             if self.protocol_id_by_uuid.get(&previous_uuid) == Some(&state.id) {
                 self.protocol_id_by_uuid.remove(&previous_uuid);
@@ -4149,6 +4193,15 @@ impl EntityStore {
             .map(|movement| *movement)
     }
 
+    #[cfg(test)]
+    pub(crate) fn fishing_hook_movement(&self, id: i32) -> Option<EntityFishingHookMovement> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityFishingHookMovement>(entity)
+            .ok()
+            .map(|movement| *movement)
+    }
+
     pub(crate) fn with_transform_mut<R>(
         &mut self,
         id: i32,
@@ -4284,9 +4337,11 @@ impl EntityStore {
         keep_attribute_modifiers: bool,
     ) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
+        let incarnation = self.allocate_incarnation();
 
         if let Ok(mut identity) = self.ecs.get::<&mut EntityIdentity>(entity) {
             identity.data = 0;
+            identity.incarnation = incarnation;
         }
         if let Ok(mut transform) = self.ecs.get::<&mut EntityTransform>(entity) {
             let (delta_movement, y_rot, x_rot) = if keep_entity_data {
@@ -4398,6 +4453,62 @@ impl EntityStore {
             updated_values,
             &metadata.data_values,
         );
+        Some(())
+    }
+
+    /// Applies `FishingHook.onSyncedDataUpdated` in packet field order. The
+    /// hooked target is captured by UUID so a later protocol-id reuse cannot
+    /// retarget an old hook instance, while the biting impulse consumes the
+    /// hook's retained synchronized RNG cursor immediately like Vanilla.
+    pub(crate) fn sync_fishing_hook_from_metadata_update(
+        &mut self,
+        id: i32,
+        updated_values: &[bbb_protocol::packets::EntityDataValue],
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        if self.ecs.get::<&EntityFishingHookMovement>(entity).is_err() {
+            return None;
+        }
+        for value in updated_values {
+            if value.data_id == VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID {
+                let EntityDataValueKind::Int(target_data) = &value.value else {
+                    continue;
+                };
+                let hooked_entity = target_data
+                    .to_owned()
+                    .checked_sub(1)
+                    .and_then(|target_id| self.by_protocol_id.get(&target_id).copied())
+                    .and_then(|target| self.ecs.get::<&EntityIdentity>(target).ok())
+                    .map(|identity| (identity.uuid, identity.incarnation));
+                let mut movement = self
+                    .ecs
+                    .get::<&mut EntityFishingHookMovement>(entity)
+                    .ok()?;
+                movement.hooked_entity_uuid = hooked_entity.map(|(uuid, _)| uuid);
+                movement.hooked_entity_incarnation =
+                    hooked_entity.map(|(_, incarnation)| incarnation);
+            } else if value.data_id == VANILLA_FISHING_HOOK_BITING_DATA_ID {
+                let EntityDataValueKind::Boolean(biting) = &value.value else {
+                    continue;
+                };
+                let Ok((movement, transform)) = self
+                    .ecs
+                    .query_one_mut::<(&mut EntityFishingHookMovement, &mut EntityTransform)>(
+                        entity,
+                    )
+                else {
+                    return None;
+                };
+                movement.biting = *biting;
+                if *biting {
+                    let random = super::animations::java_random_next_float(
+                        &mut movement.synchronized_random_seed,
+                    );
+                    let downward = -0.4_f32 * (0.6_f32 + random * (1.0_f32 - 0.6_f32));
+                    transform.delta_movement.y = f64::from(downward);
+                }
+            }
+        }
         Some(())
     }
 
@@ -4660,6 +4771,7 @@ impl EntityStore {
 
     pub(crate) fn client_movement_fluid_inputs(
         &self,
+        can_carry_interpolation_target: &HashSet<i32>,
     ) -> Vec<super::client_movement::EntityClientMovementFluidInput> {
         let mut inputs = Vec::new();
         let mut query = self.ecs.query::<(
@@ -4694,29 +4806,42 @@ impl EntityStore {
             ) else {
                 continue;
             };
+            let mut world_fact_transform = *transform;
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
+                world_fact_transform.advance_interpolation_tick(
+                    true,
+                    true,
+                    can_carry_interpolation_target.contains(&identity.id),
+                );
+            }
+            let position = world_fact_transform.position;
             inputs.push(super::client_movement::EntityClientMovementFluidInput {
                 entity_id: identity.id,
                 entity_type_id: identity.entity_type_id,
-                position: transform.position,
+                position,
                 bounds,
                 aabb_min: [
-                    transform.position.x + f64::from(bounds.min[0]),
-                    transform.position.y + f64::from(bounds.min[1]),
-                    transform.position.z + f64::from(bounds.min[2]),
+                    position.x + f64::from(bounds.min[0]),
+                    position.y + f64::from(bounds.min[1]),
+                    position.z + f64::from(bounds.min[2]),
                 ],
                 aabb_max: [
-                    transform.position.x + f64::from(bounds.max[0]),
-                    transform.position.y + f64::from(bounds.max[1]),
-                    transform.position.z + f64::from(bounds.max[2]),
+                    position.x + f64::from(bounds.max[0]),
+                    position.y + f64::from(bounds.max[1]),
+                    position.z + f64::from(bounds.max[2]),
                 ],
-                eye_position: [
-                    transform.position.x,
-                    transform.position.y + f64::from(eye_height),
-                    transform.position.z,
-                ],
+                eye_position: [position.x, position.y + f64::from(eye_height), position.z],
             });
         }
         inputs
+    }
+
+    pub(crate) fn client_movement_has_experience_orb(&self) -> bool {
+        self.ecs
+            .query::<&EntityExperienceOrbMovement>()
+            .iter()
+            .next()
+            .is_some()
     }
 
     pub(crate) fn client_movement_entity_collision_targets(
@@ -5280,6 +5405,22 @@ impl EntityStore {
         } else {
             let _ = self.ecs.remove_one::<EntityExperienceOrbMovement>(entity);
         }
+        if state.entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
+            let movement = super::client_movement::fishing_hook_movement_from_uuid(
+                state.uuid,
+                self.uuid_for_protocol_id(state.data),
+            );
+            let updated = self
+                .ecs
+                .get::<&mut EntityFishingHookMovement>(entity)
+                .map(|mut existing| *existing = movement)
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, movement);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityFishingHookMovement>(entity);
+        }
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
             entity,
@@ -5423,6 +5564,7 @@ impl Default for EntityStore {
             by_protocol_id: BTreeMap::new(),
             protocol_id_by_uuid: HashMap::new(),
             order: Vec::new(),
+            next_incarnation: 1,
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
             pending_entity_client_movement_effects: Vec::new(),
@@ -5502,6 +5644,11 @@ impl Clone for EntityStore {
                     let _ = store.ecs.insert_one(cloned, *movement);
                 }
             }
+            if entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
+                if let Ok(movement) = self.ecs.get::<&EntityFishingHookMovement>(entity) {
+                    let _ = store.ecs.insert_one(cloned, *movement);
+                }
+            }
             if super::client_movement::client_movement_uses_collision_facts(entity_type_id) {
                 let _ = store
                     .ecs
@@ -5519,6 +5666,7 @@ impl Clone for EntityStore {
         }
         store.protocol_id_by_uuid = self.protocol_id_by_uuid.clone();
         store.order = self.order.clone();
+        store.next_incarnation = self.next_incarnation;
         store.pending_ravager_stun_particles = self.pending_ravager_stun_particles.clone();
         store.pending_evoker_fangs_crit_particles =
             self.pending_evoker_fangs_crit_particles.clone();

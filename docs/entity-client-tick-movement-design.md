@@ -326,10 +326,75 @@ The added roughly 0.5 ms is real client behavior rather than a publication or
 next-mutation transfer. Against the slice baseline it remains a 3.04x tick-only
 and 2.40x tick+publication improvement. The preparation average is now about
 0.54 ms; its remaining hotspot is collidable-target projection plus temporary
-fluid/collision maps for worlds containing experience orbs. FishingHook still
-needs its separate state machine and this preparation data before phase 3 can
-close. Retained scratch/spatial narrowing may optimize that cost, but cannot
-drop entity collision or change equal-distance Player ordering.
+fluid/collision maps for worlds containing experience orbs. Retained
+scratch/spatial narrowing may optimize that cost, but cannot drop entity
+collision or change equal-distance Player ordering.
+
+## Phase 3 FishingHook Milestone
+
+FishingHook now has one narrow canonical movement component rather than a
+parallel entity schema. It owns the Vanilla `FLYING` / `HOOKED_IN_ENTITY` /
+`BOBBING` state, owner UUID, hooked-target UUID plus incarnation, biting/left-owner flags, and the
+two Java RNG cursors. A store-local monotonic incarnation token preserves
+Vanilla's object-identity-based repeated-deflection suppression across same-id
+and same-UUID remove/re-add without entering `EntityState` or creating a
+parallel membership table. UUID capture occurs when AddEntity or ordered metadata is
+applied, so protocol-id reuse cannot silently retarget an old hook. Same-id
+recreation resets or removes the component by generated EntityType policy, and
+publication clone copies it into the old immutable generation. The incarnation
+is a field of the existing private `EntityIdentity` component, not a separate
+hecs column; AddEntity replacement, state replacement, and local-player respawn
+all allocate a new value. An intermediate separate-component prototype regressed the valid
+hook tick+publication benchmark by about 1.86% and was removed.
+
+The tick follows local Vanilla 26.1 `FishingHook.tick`,
+`onSyncedDataUpdated`, `ProjectileUtil.getHitResultOnMoveVector`,
+`CollisionGetter.clipIncludingBorder`, `BlockGetter.traverseBlocks`, and
+`Entity.move`: interpolation precedes water sampling, hooked targets follow
+`getY(0.8)` only while alive/interactable, water entry and Bobbing keep float/RNG
+order, and batched catch-up predicts each running tick's post-`tickTime` value
+without taking clock ownership away from runtime. Collision runs before gravity,
+movement precedes rotation, and inertia is last. Block hits use collision-shape DDA rather than whole cells. The shared
+narrow target batch preserves owner-root/left-owner, generated pickability,
+marker/spectator/living gates, ItemEntity's override, age-scaled hit margin,
+and all eight EnderDragonPart bounds. World-border hits run FishingHook's
+reverse deflection and -0.1 velocity damping; entity deflection membership is
+generated from Vanilla's `#deflects_projectiles` tag, so the Breeze path also
+emits its ordered hostile deflect sound without a hand-written type table.
+
+The target batch is built only when at least one hook resolves a current Player
+owner. An early prototype built it for invalid-owner fixture hooks and regressed
+the 2,000 heterogeneous tick from about 3.315 ms to 4.060 ms. Exact owner
+admission removed that scan. Same-machine Criterion after the complete hook
+path measured:
+
+| 2,000 heterogeneous case | Item/Orb milestone | FishingHook milestone |
+| --- | ---: | ---: |
+| tick only | 3.3150 ms | 3.1832 ms |
+| tick + immutable publication | 4.6342 ms | 4.5525 ms |
+
+Repeated final reruns recovered the publication regression from the discarded
+separate-component prototype and kept all centers below the recorded Item/Orb
+milestone; the last standard tick+publication comparison remained within
+Criterion's noise threshold. Against the slice baseline, the current result remains a 3.17x tick-only and 2.45x
+tick+publication improvement. FishingHook therefore adds the required client
+state machine, world facts, collision, deflection, sound, and generation
+isolation without transferring a full target scan into the common heterogeneous
+tick. The roughly 1 ms full EntityStore publication shell remains the largest
+publication-side hotspot. A separate repo-native fixture with one valid
+Player-owned hook among the same 2,000 heterogeneous entities measures 4.0581 ms
+tick-only and 5.4191 ms tick+publication. Its phase observation attributes
+about 1.397 ms to preparation, 0.217 ms to schedule, 0.242 ms to projectile,
+0.016 ms to interpolation, and 2.125 ms to animation. The additional one-time
+narrow target batch is therefore visible and bounded once per tick, not once
+per hook; a retained spatial index is the next optimization boundary if valid
+hook density or entity count makes it material. Server fishing simulation
+(`catchingFish`, loot, open-water decisions, durability/pull results) and
+canonical removal stay with the server/packet authority contract rather than
+this client tick owner. The existing runtime still commits a batch's moving
+WorldBorder ticks after the batched entity call; static-border collision is
+exact here, while per-tick moving-border/entity interleaving remains a
+cross-system scheduler boundary for the final movement-slice closeout.
 
 ## Required Tests
 

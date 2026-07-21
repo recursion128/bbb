@@ -21,7 +21,8 @@ use bbb_protocol::{
     entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
     entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID,
-        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
 };
@@ -150,6 +151,26 @@ fn build_heterogeneous_entity_world(count: usize) -> WorldStore {
     build_entity_world_with(count, |index| {
         VANILLA_ENTITY_TYPES[index % VANILLA_ENTITY_TYPES.len()].id
     })
+}
+
+fn build_valid_fishing_hook_heterogeneous_world(count: usize) -> WorldStore {
+    assert!(count >= 2);
+    let mut world = WorldStore::new();
+    world.apply_add_entity(entity_packet(1, 0, VANILLA_ENTITY_TYPE_PLAYER_ID));
+    for index in 1..count - 1 {
+        let id = index as i32 + 1;
+        let entity_type_id = VANILLA_ENTITY_TYPES[index % VANILLA_ENTITY_TYPES.len()].id;
+        world.apply_add_entity(entity_packet(id, index, entity_type_id));
+    }
+    let mut hook = entity_packet(
+        count as i32,
+        count - 1,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+    );
+    hook.data = 1;
+    world.apply_add_entity(hook);
+    assert_eq!(world.entity_count(), count);
+    world
 }
 
 fn build_payload_heavy_entity_world(count: usize) -> WorldStore {
@@ -348,6 +369,17 @@ fn bench_entity_tick_only(c: &mut Criterion) {
             );
         });
     });
+    let mut valid_fishing_hook = build_valid_fishing_hook_heterogeneous_world(ENTITY_COUNT);
+    group.bench_function("valid_fishing_hook_heterogeneous/2000", |b| {
+        b.iter(|| {
+            valid_fishing_hook.advance_entity_client_animations(black_box(1));
+            black_box(
+                valid_fishing_hook
+                    .drain_entity_client_movement_effect_states()
+                    .count(),
+            );
+        });
+    });
     group.finish();
 }
 
@@ -358,6 +390,10 @@ fn bench_entity_tick_phase_observation(c: &mut Criterion) {
         (
             "heterogeneous/2000",
             build_heterogeneous_entity_world(ENTITY_COUNT),
+        ),
+        (
+            "valid_fishing_hook_heterogeneous/2000",
+            build_valid_fishing_hook_heterogeneous_world(ENTITY_COUNT),
         ),
     ] {
         let mut calls = 0_u128;
@@ -485,6 +521,21 @@ fn bench_entity_tick_and_publication(c: &mut Criterion) {
         });
     });
     black_box(held);
+    let mut valid_fishing_hook = build_valid_fishing_hook_heterogeneous_world(ENTITY_COUNT);
+    let mut valid_fishing_hook_held = Arc::new(valid_fishing_hook.publication_snapshot());
+    group.bench_function("valid_fishing_hook_heterogeneous/2000", |b| {
+        b.iter(|| {
+            valid_fishing_hook.advance_entity_client_animations(black_box(1));
+            black_box(
+                valid_fishing_hook
+                    .drain_entity_client_movement_effect_states()
+                    .count(),
+            );
+            valid_fishing_hook_held =
+                black_box(Arc::new(valid_fishing_hook.publication_snapshot()));
+        });
+    });
+    black_box(valid_fishing_hook_held);
     group.finish();
 }
 

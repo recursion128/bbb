@@ -708,6 +708,7 @@ pub enum EntityClientMovementParticleState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntityClientMovementSoundKind {
+    BreezeDeflect,
     FireworkRocketLaunch,
     TridentReturn,
 }

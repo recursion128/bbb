@@ -1593,6 +1593,13 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Input, movement, and interaction
 
+- **Server-owned FishingHook catching/removal outcomes.** The client tick now
+  owns Vanilla flight, Bobbing, hooked-target following, collision/deflection,
+  metadata biting impulse, and Breeze deflect audio. `catchingFish`, loot,
+  open-water/server timers, rod durability/pull results, and canonical removal
+  remain incoming server/packet outcomes; an invalid-owner client instance is
+  frozen until that authoritative removal instead of creating a second local
+  removal path.
 - **Local component fallback for Efficiency and Aqua Affinity destroy speed.**
   Vanilla routes both through synced attributes: Efficiency contributes to
   `mining_efficiency` (attribute id `20`), Aqua Affinity to

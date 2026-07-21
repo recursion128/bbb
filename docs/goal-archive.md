@@ -20042,3 +20042,23 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 本片不连带关闭 client tick/movement、dimensions/collision/pick、model/texture/layers、
   animation、equipment/passenger/leash、event/particle/audio 或 save/debug；这些相邻 cell 继续
   按各自生成 ledger 与 unsupported 边界独立推进。
+
+## 2026-07-20：FishingHook client tick/movement milestone
+
+- [x] 为 FishingHook 建立唯一 canonical 窄组件，按 UUID 持有 owner/hooked target，完整推进
+  Flying/Hooked/Bobbing、metadata biting impulse、water/RNG、gravity/move/rotation/inertia，并在
+  same-id recreation、target id reuse 与 retained publication 中保持实例隔离。
+- [x] projectile collision 使用 collision-shape DDA、owner-root/left-owner、generated pickability、
+  spectator/marker/alive gate、ItemEntity override、age margin 与 EnderDragonPart；world border 按
+  `shouldBounceOnWorldBorder` reverse/-0.1，Vanilla `#deflects_projectiles` tag 已进入生成 catalog，
+  Breeze reverse、store-local incarnation 约束的 same-instance repeat suppression 与 hostile deflect sound 保持
+  effect-before-publication 顺序。
+- [x] 首版无条件 target projection 将 2,000 heterogeneous tick 推到约 4.060 ms；按 exact current
+  Player owner admission 后，同机 Criterion 为 tick-only 3.1832 ms、tick+publication 4.5525 ms，
+  相对本片 10.093/11.147 ms 基线仍为 3.17x/2.45x；最终标准 tick+publication 复测位于 noise threshold 内，
+  且移除独立 ECS incarnation column 后收回 publication 回退。单个 valid Player-owned hook 的同规模
+  fixture 为 4.0581/5.4191 ms，其中 preparation
+  约 1.397 ms；共享 target batch 每 tick 只建一次，后续空间索引仍是高密度 hook 的优化边界。
+  完整 EntityStore publication shell 约 1 ms 仍是 publication 侧最大剩余热点。
+- [x] 服务器 `catchingFish`、loot/open-water、durability/pull 与 canonical removal 不移入客户端；
+  该 milestone 关闭 FishingHook 的 client-owned tick 行为，不提前翻转 157 项最终 coverage cell。

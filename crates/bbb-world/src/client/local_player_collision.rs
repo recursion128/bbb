@@ -46,6 +46,12 @@ pub struct ParticleBlockFluidSurfaceSample {
     pub block_is_air: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ProjectileBlockMovementClip {
+    pub(crate) movement: [f64; 3],
+    pub(crate) world_border_hit: bool,
+}
+
 /// One world-space AABB from `CollisionGetter.getCollisions` near the active
 /// camera entity.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1063,6 +1069,76 @@ impl WorldStore {
         self.clip_collision_bounds_movement(bounds, movement)
     }
 
+    /// Vanilla `ProjectileUtil.getHitResultOnMoveVector` block phase for a
+    /// remote projectile. Returns the original direction shortened to the
+    /// nearest collision-shape surface; fluid shapes are intentionally absent
+    /// because FishingHook uses `ClipContext.Fluid.NONE`.
+    pub(crate) fn clip_projectile_block_movement(
+        &self,
+        entity_type_id: i32,
+        position: [f64; 3],
+        movement: [f64; 3],
+        on_ground: bool,
+    ) -> ProjectileBlockMovementClip {
+        if !particle_collision_input_is_finite(position, movement) || movement == [0.0, 0.0, 0.0] {
+            return ProjectileBlockMovementClip {
+                movement,
+                world_border_hit: false,
+            };
+        }
+        let to = [
+            position[0] + movement[0],
+            position[1] + movement[1],
+            position[2] + movement[2],
+        ];
+        let context = LocalPlayerCollisionContext::for_remote_entity(
+            position[1],
+            on_ground,
+            false,
+            entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        );
+        let block_scale = projectile_block_hit_scale(self, position, to, context).unwrap_or(1.0);
+        let block_hit: [f64; 3] =
+            std::array::from_fn(|axis| position[axis] + movement[axis] * block_scale);
+        let border = self.world_border();
+        let from_is_inside = position[0] >= border.min_x_at(0.0)
+            && position[0] < border.max_x_at(0.0)
+            && position[2] >= border.min_z_at(0.0)
+            && position[2] < border.max_z_at(0.0);
+        let block_hit_is_inside = block_hit[0] >= border.min_x_at(0.0)
+            && block_hit[0] < border.max_x_at(0.0)
+            && block_hit[2] >= border.min_z_at(0.0)
+            && block_hit[2] < border.max_z_at(0.0);
+        let world_border_hit = from_is_inside && !block_hit_is_inside;
+        let scale = if world_border_hit {
+            // `CollisionGetter.clipIncludingBorder` clamps the block hit (or
+            // miss endpoint) to the border. Preserve that distance for the
+            // entity-vs-border comparison; the caller uses the retained flag
+            // to run FishingHook's reverse deflection instead of `onHitBlock`.
+            let max_edge_offset = f64::from(1.0e-5_f32);
+            let border_hit = [
+                block_hit[0].clamp(border.min_x_at(0.0), border.max_x_at(0.0) - max_edge_offset),
+                block_hit[1],
+                block_hit[2].clamp(border.min_z_at(0.0), border.max_z_at(0.0) - max_edge_offset),
+            ];
+            let border_distance_squared = (border_hit[0] - position[0]).powi(2)
+                + (border_hit[1] - position[1]).powi(2)
+                + (border_hit[2] - position[2]).powi(2);
+            let movement_length_squared = movement.iter().map(|value| value * value).sum::<f64>();
+            (border_distance_squared / movement_length_squared).sqrt()
+        } else {
+            block_scale
+        };
+        ProjectileBlockMovementClip {
+            movement: [
+                movement[0] * scale,
+                movement[1] * scale,
+                movement[2] * scale,
+            ],
+            world_border_hit,
+        }
+    }
+
     pub(crate) fn entity_supporting_block_after_collision(
         &self,
         entity_type_id: i32,
@@ -1164,6 +1240,133 @@ impl WorldStore {
             clipped
         }
     }
+}
+
+fn projectile_block_hit_scale(
+    world: &WorldStore,
+    from: [f64; 3],
+    to: [f64; 3],
+    context: LocalPlayerCollisionContext,
+) -> Option<f64> {
+    // `BlockGetter.traverseBlocks` extrapolates both endpoints by -1e-7 away
+    // from the opposite endpoint before selecting the first cell.
+    let nudged_to: [f64; 3] =
+        std::array::from_fn(|axis| to[axis] + (from[axis] - to[axis]) * -1.0e-7);
+    let nudged_from: [f64; 3] =
+        std::array::from_fn(|axis| from[axis] + (to[axis] - from[axis]) * -1.0e-7);
+    let mut current = [
+        block_floor(nudged_from[0]),
+        block_floor(nudged_from[1]),
+        block_floor(nudged_from[2]),
+    ];
+    if let Some(scale) = projectile_block_shape_hit_scale(world, current, from, to, context) {
+        return Some(scale);
+    }
+    let delta = std::array::from_fn::<_, 3, _>(|axis| nudged_to[axis] - nudged_from[axis]);
+    let step = delta.map(|value| {
+        if value > 0.0 {
+            1
+        } else if value < 0.0 {
+            -1
+        } else {
+            0
+        }
+    });
+    let t_delta = std::array::from_fn::<_, 3, _>(|axis| {
+        if step[axis] == 0 {
+            f64::MAX
+        } else {
+            f64::from(step[axis]) / delta[axis]
+        }
+    });
+    let mut t = std::array::from_fn::<_, 3, _>(|axis| {
+        t_delta[axis]
+            * if step[axis] > 0 {
+                1.0 - (nudged_from[axis] - nudged_from[axis].floor())
+            } else {
+                nudged_from[axis] - nudged_from[axis].floor()
+            }
+    });
+    while t[0] <= 1.0 || t[1] <= 1.0 || t[2] <= 1.0 {
+        let axis = if t[0] < t[1] {
+            if t[0] < t[2] {
+                0
+            } else {
+                2
+            }
+        } else if t[1] < t[2] {
+            1
+        } else {
+            2
+        };
+        current[axis] = current[axis].saturating_add(step[axis]);
+        t[axis] += t_delta[axis];
+        if let Some(scale) = projectile_block_shape_hit_scale(world, current, from, to, context) {
+            return Some(scale);
+        }
+    }
+    None
+}
+
+fn projectile_block_shape_hit_scale(
+    world: &WorldStore,
+    cell: [i32; 3],
+    from: [f64; 3],
+    to: [f64; 3],
+    context: LocalPlayerCollisionContext,
+) -> Option<f64> {
+    let pos = BlockPos {
+        x: cell[0],
+        y: cell[1],
+        z: cell[2],
+    };
+    let block = world.probe_block(pos)?;
+    let shape = block_collision_shape_with_context(&block, pos, context)?;
+    let delta = std::array::from_fn::<_, 3, _>(|axis| to[axis] - from[axis]);
+    let test_point = std::array::from_fn::<_, 3, _>(|axis| from[axis] + delta[axis] * 0.001);
+    shape
+        .boxes()
+        .filter_map(|shape_box| {
+            let collision_box = world_collision_box(pos, shape_box);
+            if world_collision_box_contains(collision_box, test_point) {
+                Some(0.001)
+            } else {
+                segment_box_entry_scale(from, to, collision_box)
+            }
+        })
+        .min_by(f64::total_cmp)
+}
+
+fn world_collision_box_contains(bounds: WorldCollisionBox, point: [f64; 3]) -> bool {
+    (0..3).all(|axis| bounds.min[axis] <= point[axis] && point[axis] < bounds.max[axis])
+}
+
+fn segment_box_entry_scale(from: [f64; 3], to: [f64; 3], bounds: WorldCollisionBox) -> Option<f64> {
+    let delta = std::array::from_fn::<_, 3, _>(|axis| to[axis] - from[axis]);
+    let mut nearest = 1.0;
+    let mut hit = false;
+    for axis in 0..3 {
+        let (plane, range_a, range_b) = if delta[axis] > 1.0e-7 {
+            (bounds.min[axis], bounds.min, bounds.max)
+        } else if delta[axis] < -1.0e-7 {
+            (bounds.max[axis], bounds.min, bounds.max)
+        } else {
+            continue;
+        };
+        let scale = (plane - from[axis]) / delta[axis];
+        if !(0.0 < scale && scale < nearest) {
+            continue;
+        }
+        let other = [(axis + 1) % 3, (axis + 2) % 3];
+        if other.iter().all(|&candidate| {
+            let point = from[candidate] + scale * delta[candidate];
+            range_a[candidate] - 1.0e-7 < point && point < range_b[candidate] + 1.0e-7
+        }) {
+            nearest = scale;
+            hit = true;
+        }
+    }
+    hit.then_some(nearest)
 }
 
 fn particle_collision_input_is_finite(position: [f64; 3], movement: [f64; 3]) -> bool {
@@ -4061,9 +4264,11 @@ mod tests {
     };
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BAT_ID,
-        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
+        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
     };
+    use bbb_protocol::packets::SetBorderSize as ProtocolSetBorderSize;
 
     fn entity_shift_key_down_data() -> bbb_protocol::packets::EntityDataValue {
         let accessors = vanilla_entity_metadata_entity_accessors()
@@ -4318,6 +4523,62 @@ mod tests {
         assert_f64_near(clipped[0], 0.0);
         assert_f64_near(clipped[1], -0.1);
         assert_f64_near(clipped[2], 0.0);
+    }
+
+    #[test]
+    fn projectile_block_clip_stops_at_the_first_collision_shape_surface() {
+        let mut world = empty_world();
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, BlockPos { x: 1, y: 1, z: 0 }, stone);
+
+        let clipped = world.clip_projectile_block_movement(
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            [0.5, 1.5, 0.5],
+            [2.0, 0.0, 0.0],
+            false,
+        );
+
+        assert_f64_near(clipped.movement[0], 0.5);
+        assert_f64_near(clipped.movement[1], 0.0);
+        assert_f64_near(clipped.movement[2], 0.0);
+        assert!(!clipped.world_border_hit);
+    }
+
+    #[test]
+    fn projectile_block_clip_uses_vanilla_inside_shape_test_point() {
+        let mut world = empty_world();
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, BlockPos { x: 0, y: 1, z: 0 }, stone);
+
+        let clipped = world.clip_projectile_block_movement(
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            [0.5, 1.5, 0.5],
+            [2.0, 0.0, 0.0],
+            false,
+        );
+
+        assert_f64_near(clipped.movement[0], 0.002);
+        assert_f64_near(clipped.movement[1], 0.0);
+        assert_f64_near(clipped.movement[2], 0.0);
+        assert!(!clipped.world_border_hit);
+    }
+
+    #[test]
+    fn projectile_block_clip_includes_the_world_border() {
+        let mut world = empty_world();
+        world.apply_set_border_size(ProtocolSetBorderSize { size: 4.0 });
+
+        let clipped = world.clip_projectile_block_movement(
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            [0.0, 1.5, 0.0],
+            [10.0, 0.0, 0.0],
+            false,
+        );
+
+        assert_f64_near(clipped.movement[0], 2.0 - f64::from(1.0e-5_f32));
+        assert_f64_near(clipped.movement[1], 0.0);
+        assert_f64_near(clipped.movement[2], 0.0);
+        assert!(clipped.world_border_hit);
     }
 
     #[test]

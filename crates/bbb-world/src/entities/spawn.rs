@@ -103,6 +103,7 @@ impl WorldStore {
             uuid: packet.uuid,
             entity_type_id: packet.entity_type_id,
             data: packet.data,
+            incarnation: super::components::EntityIncarnation(0),
         };
         let client_position = if packet.entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
             vanilla_shulker_attached_position(packet_position)

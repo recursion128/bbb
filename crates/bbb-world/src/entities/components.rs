@@ -24,7 +24,15 @@ pub(crate) struct EntityIdentity {
     pub(crate) uuid: Uuid,
     pub(crate) entity_type_id: i32,
     pub(crate) data: i32,
+    pub(crate) incarnation: EntityIncarnation,
 }
+
+/// Store-local identity for one concrete canonical entity instance. Unlike the
+/// protocol id and UUID, this changes on every remove/re-add or same-id spawn
+/// replacement, matching Vanilla object identity without entering serialized
+/// `EntityState`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EntityIncarnation(pub(crate) u64);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityTransform {
@@ -138,6 +146,27 @@ pub(crate) struct EntityExperienceOrbMovement {
     pub(crate) random_seed: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum EntityFishingHookState {
+    #[default]
+    Flying,
+    HookedInEntity,
+    Bobbing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct EntityFishingHookMovement {
+    pub(crate) state: EntityFishingHookState,
+    pub(crate) owner_uuid: Option<Uuid>,
+    pub(crate) hooked_entity_uuid: Option<Uuid>,
+    pub(crate) hooked_entity_incarnation: Option<EntityIncarnation>,
+    pub(crate) biting: bool,
+    pub(crate) left_owner: bool,
+    pub(crate) last_deflected_by: Option<EntityIncarnation>,
+    pub(crate) random_seed: u64,
+    pub(crate) synchronized_random_seed: u64,
+}
+
 /// Derived family membership for entities whose client tick samples a
 /// collision shape and supporting block. Spawn/re-add regenerates it from the
 /// generated Vanilla movement policy; the marker owns no canonical state.
@@ -161,6 +190,7 @@ impl From<&EntityState> for EntityIdentity {
             uuid: state.uuid,
             entity_type_id: state.entity_type_id,
             data: state.data,
+            incarnation: EntityIncarnation(0),
         }
     }
 }

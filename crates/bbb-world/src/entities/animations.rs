@@ -6325,9 +6325,18 @@ impl WorldStore {
         } else {
             ticks
         };
+        let mut game_time = self.world_time().map_or(0, |time| time.game_time);
         let mut work = crate::EntityClientTickWork::default();
         for tick_index in 0..ticks {
-            work.accumulate(self.advance_entity_client_animation_tick(tick_index < running_ticks));
+            let runs_normally = tick_index < running_ticks;
+            if runs_normally {
+                // `ClientLevel.tick` advances game time before `tickEntities`.
+                // Runtime commits the same aggregate `running_ticks` after
+                // this batched call; predict only the per-tick value needed by
+                // entity RNG so catch-up ticks do not reuse the old clock.
+                game_time = game_time.saturating_add(1);
+            }
+            work.accumulate(self.advance_entity_client_animation_tick(runs_normally, game_time));
         }
         work
     }
@@ -6335,13 +6344,12 @@ impl WorldStore {
     fn advance_entity_client_animation_tick(
         &mut self,
         runs_normally: bool,
+        game_time: i64,
     ) -> crate::EntityClientTickWork {
         let preparation_started_at = std::time::Instant::now();
         let interpolation_collision_inputs = self.entities.interpolation_collision_inputs();
-        let client_movement_fluid_inputs = self.entities.client_movement_fluid_inputs();
-        let experience_orb_needs_entity_collision = client_movement_fluid_inputs
-            .iter()
-            .any(|input| input.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID);
+        let experience_orb_needs_entity_collision =
+            self.entities.client_movement_has_experience_orb();
         let entity_collision_targets = if interpolation_collision_inputs.is_empty()
             && !experience_orb_needs_entity_collision
         {
@@ -6360,6 +6368,9 @@ impl WorldStore {
                 })
                 .map(|input| input.entity_id)
                 .collect();
+        let client_movement_fluid_inputs = self
+            .entities
+            .client_movement_fluid_inputs(&collision_free_interpolation_targets);
         // Vanilla `Guardian.aiStep` recomputes `isInWater()` each client tick. This
         // entry point normalizes batched callers to one pass per tick above, so the
         // AABBs and interpolation collision targets are sampled again after every
@@ -6388,6 +6399,10 @@ impl WorldStore {
                     ),
                 )
             })
+            .collect::<std::collections::HashMap<_, _>>();
+        let client_movement_world_fact_position_by_id = client_movement_fluid_inputs
+            .iter()
+            .map(|input| (input.entity_id, input.position))
             .collect::<std::collections::HashMap<_, _>>();
         let client_movement_collision_free_by_id = client_movement_fluid_inputs
             .iter()
@@ -6419,24 +6434,101 @@ impl WorldStore {
             .entities
             .client_movement_collision_inputs(
                 &client_movement_fluid_by_id,
+                &client_movement_world_fact_position_by_id,
                 &client_movement_collision_free_by_id,
                 &spectator_player_uuids,
                 lava_current_scale,
+                game_time,
             )
             .into_iter()
             .map(|input| {
+                let (requested_movement, fishing_hook_reverse_deflection) =
+                    if let Some(collision_delta) = input.fishing_hook_collision_delta {
+                        let clipped = self.clip_projectile_block_movement(
+                            input.entity_type_id,
+                            [input.position.x, input.position.y, input.position.z],
+                            [collision_delta.x, collision_delta.y, collision_delta.z],
+                            input.on_ground,
+                        );
+                        let block_clipped = EntityVec3 {
+                            x: clipped.movement[0],
+                            y: clipped.movement[1],
+                            z: clipped.movement[2],
+                        };
+                        let collision_length = (collision_delta.x * collision_delta.x
+                            + collision_delta.y * collision_delta.y
+                            + collision_delta.z * collision_delta.z)
+                            .sqrt();
+                        let block_scale = if collision_length == 0.0 {
+                            1.0
+                        } else {
+                            (block_clipped.x * block_clipped.x
+                                + block_clipped.y * block_clipped.y
+                                + block_clipped.z * block_clipped.z)
+                                .sqrt()
+                                / collision_length
+                        };
+                        let entity_hit = input
+                            .fishing_hook_entity_hit
+                            .filter(|entity_hit| entity_hit.scale < block_scale);
+                        let (checked, reverse_deflection) = if let Some(entity_hit) = entity_hit {
+                            if let Some((entity_id, incarnation, position)) =
+                                entity_hit.reverse_deflection
+                            {
+                                (
+                                    EntityVec3 {
+                                        x: collision_delta.x * -0.5,
+                                        y: collision_delta.y * -0.5,
+                                        z: collision_delta.z * -0.5,
+                                    },
+                                    Some(super::client_movement::EntityFishingHookReverseDeflection::Entity {
+                                        entity_id,
+                                        incarnation,
+                                        position,
+                                    }),
+                                )
+                            } else {
+                                (collision_delta, None)
+                            }
+                        } else if clipped.world_border_hit {
+                            let reversed = EntityVec3 {
+                                x: collision_delta.x * -0.5,
+                                y: collision_delta.y * -0.5,
+                                z: collision_delta.z * -0.5,
+                            };
+                            (
+                                EntityVec3 {
+                                    x: reversed.x * 0.2,
+                                    y: reversed.y * 0.2,
+                                    z: reversed.z * 0.2,
+                                },
+                                Some(super::client_movement::EntityFishingHookReverseDeflection::WorldBorder),
+                            )
+                        } else {
+                            (block_clipped, None)
+                        };
+                        (
+                            EntityVec3 {
+                                x: checked.x + input.requested_movement.x - collision_delta.x,
+                                y: checked.y + input.requested_movement.y - collision_delta.y,
+                                z: checked.z + input.requested_movement.z - collision_delta.z,
+                            },
+                            reverse_deflection,
+                        )
+                    } else {
+                        (input.requested_movement, None)
+                    };
                 let clipped = self.clip_entity_collision_movement(
                     [input.position.x, input.position.y, input.position.z],
                     [
-                        input.requested_movement.x,
-                        input.requested_movement.y,
-                        input.requested_movement.z,
+                        requested_movement.x,
+                        requested_movement.y,
+                        requested_movement.z,
                     ],
                     input.bounds.min.map(f64::from),
                     input.bounds.max.map(f64::from),
                 );
-                let on_ground =
-                    input.requested_movement.y < 0.0 && clipped[1] != input.requested_movement.y;
+                let on_ground = requested_movement.y < 0.0 && clipped[1] != requested_movement.y;
                 let supporting_block = on_ground
                     .then(|| {
                         self.entity_supporting_block_after_collision(
@@ -6467,8 +6559,12 @@ impl WorldStore {
                 (
                     input.entity_id,
                     super::client_movement::EntityClientMovementCollisionResult {
-                        pre_move_delta: input.pre_move_delta,
-                        requested_movement: input.requested_movement,
+                        pre_move_delta: if input.fishing_hook_update.is_some() {
+                            requested_movement
+                        } else {
+                            input.pre_move_delta
+                        },
+                        requested_movement,
                         clipped_movement: EntityVec3 {
                             x: clipped[0],
                             y: clipped[1],
@@ -6478,6 +6574,8 @@ impl WorldStore {
                         ground_friction,
                         movement_skipped: input.movement_skipped,
                         experience_orb_update: input.experience_orb_update,
+                        fishing_hook_update: input.fishing_hook_update,
+                        fishing_hook_reverse_deflection,
                     },
                 )
             })

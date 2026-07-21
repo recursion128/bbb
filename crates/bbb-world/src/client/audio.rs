@@ -76,6 +76,7 @@ const PLAYER_HURT_FREEZE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_freez
 const WOLF_ARMOR_DAMAGE_SOUND_EVENT: &str = "minecraft:entity.wolf_armor.damage";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
+const BREEZE_DEFLECT_SOUND_EVENT: &str = "minecraft:entity.breeze.deflect";
 const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
 const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
@@ -1381,6 +1382,9 @@ impl WorldStore {
         state: EntityClientMovementSoundState,
     ) -> SoundEventState {
         let (sound, source, volume) = match state.kind {
+            EntityClientMovementSoundKind::BreezeDeflect => {
+                (BREEZE_DEFLECT_SOUND_EVENT, "hostile", 1.0)
+            }
             EntityClientMovementSoundKind::FireworkRocketLaunch => {
                 (FIREWORK_ROCKET_LAUNCH_SOUND_EVENT, "ambient", 3.0)
             }
@@ -3592,6 +3596,15 @@ mod tests {
                 z: 3.0,
             },
         });
+        let breeze = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+            entity_id: 9,
+            kind: EntityClientMovementSoundKind::BreezeDeflect,
+            position: crate::EntityVec3 {
+                x: 5.0,
+                y: 6.0,
+                z: 7.0,
+            },
+        });
         let trident = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
             entity_id: 8,
             kind: EntityClientMovementSoundKind::TridentReturn,
@@ -3609,12 +3622,19 @@ mod tests {
         assert_eq!(firework.source, "ambient");
         assert_eq!(firework.volume, 3.0);
         assert_eq!(
+            breeze.sound.location.as_deref(),
+            Some("minecraft:entity.breeze.deflect")
+        );
+        assert_eq!(breeze.source, "hostile");
+        assert_eq!(breeze.volume, 1.0);
+        assert_eq!(
             trident.sound.location.as_deref(),
             Some("minecraft:item.trident.return")
         );
         assert_eq!(trident.source, "neutral");
         assert_eq!(trident.volume, 10.0);
-        assert_ne!(firework.seed, trident.seed);
+        assert_ne!(firework.seed, breeze.seed);
+        assert_ne!(breeze.seed, trident.seed);
         assert_eq!(store.last_sound(), Some(&trident));
         assert_eq!(store.counters().sound_packets, 0);
     }
