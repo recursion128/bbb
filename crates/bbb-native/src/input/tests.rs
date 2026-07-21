@@ -51,11 +51,12 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
     VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
     VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-    VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-    VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+    VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+    VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+    VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
     VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
     VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
@@ -111,14 +112,14 @@ use bbb_protocol::packets::{
     LastSeenMessagesUpdate, MessageSignature, NbtSummaryEntry, OpenBook,
     OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
     PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
-    PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
+    PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerSkinPatchData,
     ProjectilePower as ProtocolProjectilePower, RemoveEntities as ProtocolRemoveEntities,
-    RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
-    SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
-    SignedMessageBody, StatUpdate, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
-    WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
-    VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+    RenameItem, ResolvableProfileData, ResolvableProfileKind, SeenAdvancements, SelectBundleItem,
+    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
+    SetEquipment, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate, TagQuery,
+    UpdateAdvancements, Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+    VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::recipe_wire_types::{
@@ -24254,4 +24255,147 @@ fn text_display_local_save_projects_text_and_style_flags() {
     assert!(snbt.contains("text: \"hello display\""));
     assert!(snbt.contains("shadow: 1b, see_through: 0b, default_background: 0b"));
     assert!(snbt.contains("alignment: \"left\""));
+}
+
+#[test]
+fn mannequin_local_save_projects_avatar_defaults() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 311, VANILLA_ENTITY_TYPE_MANNEQUIN_ID);
+
+    let entity = world.probe_entity(311).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("profile: {}"));
+    assert!(snbt.contains("hidden_layers: []"));
+    assert!(snbt.contains("main_hand: \"right\""));
+    assert!(snbt.contains("pose: \"standing\""));
+    assert!(snbt.contains("immovable: 0b"));
+    assert!(!snbt.contains("description"));
+}
+
+#[test]
+fn mannequin_local_save_projects_synced_profile_layers_pose_and_description() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 312, VANILLA_ENTITY_TYPE_MANNEQUIN_ID);
+    let entity_accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    let profile_id = display_data_id(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, "DATA_PROFILE");
+    let layers_id = display_data_id(
+        VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+        "DATA_PLAYER_MODE_CUSTOMISATION",
+    );
+    let main_hand_id = display_data_id(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, "DATA_PLAYER_MAIN_HAND");
+    let immovable_id = display_data_id(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, "DATA_IMMOVABLE");
+    let description_id = display_data_id(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, "DATA_DESCRIPTION");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 312,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: profile_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_RESOLVABLE_PROFILE_ID,
+                value: EntityDataValueKind::ResolvableProfile(ResolvableProfileData {
+                    profile: ResolvableProfileKind::Partial {
+                        name: Some("Steve".to_string()),
+                        id: Some(Uuid::from_u128(1)),
+                        properties: 0,
+                    },
+                    skin_patch: PlayerSkinPatchData {
+                        body: None,
+                        cape: None,
+                        elytra: None,
+                        slim_model: None,
+                    },
+                }),
+            },
+            ProtocolEntityDataValue {
+                data_id: layers_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                // All layers except cape (0x01) and hat (0x40) shown.
+                value: EntityDataValueKind::Byte(0x3E),
+            },
+            ProtocolEntityDataValue {
+                data_id: main_hand_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID,
+                value: EntityDataValueKind::HumanoidArm(0),
+            },
+            ProtocolEntityDataValue {
+                data_id: entity_accessors.pose_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                value: EntityDataValueKind::Pose(
+                    bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_CROUCHING_ID,
+                ),
+            },
+            ProtocolEntityDataValue {
+                data_id: immovable_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            },
+            ProtocolEntityDataValue {
+                data_id: description_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+                value: EntityDataValueKind::OptionalComponent(Some(
+                    bbb_protocol::RichTextComponent::plain("Shop Guide"),
+                )),
+            },
+        ],
+    }));
+
+    let entity = world.probe_entity(312).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("profile: {name: \"Steve\", id: [I; 0, 0, 0, 1]}"));
+    assert!(snbt.contains("hidden_layers: [\"cape\", \"hat\"]"));
+    assert!(snbt.contains("main_hand: \"left\""));
+    assert!(snbt.contains("pose: \"crouching\""));
+    assert!(snbt.contains("immovable: 1b"));
+    assert!(snbt.contains("description: \"Shop Guide\""));
+    assert!(!snbt.contains("hide_description"));
+}
+
+#[test]
+fn mannequin_local_save_hides_description_and_omits_default_label() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 313, VANILLA_ENTITY_TYPE_MANNEQUIN_ID);
+    let description_id = display_data_id(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, "DATA_DESCRIPTION");
+
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 313,
+        values: vec![ProtocolEntityDataValue {
+            data_id: description_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+            value: EntityDataValueKind::OptionalComponent(None),
+        }],
+    }));
+    let entity = world.probe_entity(313).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("hide_description: 1b"));
+    assert!(!snbt.contains("description: \""));
+
+    // The synced default translatable label is omitted like vanilla's
+    // DEFAULT_DESCRIPTION equality check.
+    let default_label =
+        bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: NbtSummaryValue::String("entity.minecraft.mannequin.label".to_string()),
+            },
+        ]))
+        .unwrap();
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 313,
+        values: vec![ProtocolEntityDataValue {
+            data_id: description_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+            value: EntityDataValueKind::OptionalComponent(Some(default_label)),
+        }],
+    }));
+    let entity = world.probe_entity(313).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(!snbt.contains("hide_description"));
+    assert!(!snbt.contains("description: \""));
 }

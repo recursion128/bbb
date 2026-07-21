@@ -35,12 +35,13 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-        VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -71,7 +72,8 @@ use bbb_protocol::{
         FireworkExplosionShapeSummary, FireworkExplosionSummary, GameType, InteractionHand,
         ItemStackSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryValue,
         PlayerActionKind, PlayerCommandAction, PlayerInput, PlayerModelTypeSummary, RecipeBookType,
-        ResolvableProfileKindSummary, ResolvableProfileSummary, SeenAdvancements, SignUpdate,
+        ResolvableProfileData, ResolvableProfileKind, ResolvableProfileKindSummary,
+        ResolvableProfileSummary, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -4889,6 +4891,10 @@ fn debug_push_entity_additional_save_data(
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
             debug_push_text_display_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
+            // Mannequin is an Avatar, not a Mob, so no shared Mob layer.
+            debug_push_mannequin_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_CREEPER_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_creeper_additional_save_data(entity, fields);
@@ -8527,6 +8533,150 @@ fn debug_push_text_display_additional_save_data(entity: &EntityState, fields: &m
             "center"
         };
         fields.push(format!("alignment: {}", debug_snbt_string(alignment)));
+    }
+}
+
+fn debug_snbt_resolvable_profile(profile: Option<&ResolvableProfileData>) -> String {
+    // The network summary keeps only a property count, so profile properties
+    // are never projected; vanilla writes name before id.
+    let (name, id) = match profile.map(|profile| &profile.profile) {
+        Some(ResolvableProfileKind::GameProfile { id, name, .. }) => {
+            (Some(name.as_str()), Some(*id))
+        }
+        Some(ResolvableProfileKind::Partial { name, id, .. }) => (name.as_deref(), *id),
+        None => (None, None),
+    };
+    let mut entries = Vec::new();
+    if let Some(name) = name {
+        entries.push(format!("name: {}", debug_snbt_string(name)));
+    }
+    if let Some(id) = id {
+        entries.push(format!("id: {}", debug_snbt_uuid_int_array(id)));
+    }
+    format!("{{{}}}", entries.join(", "))
+}
+
+fn debug_mannequin_description_is_default(component: &bbb_protocol::RichTextComponent) -> bool {
+    match component.component() {
+        NbtSummaryValue::Compound(entries) => entries.iter().any(|entry| {
+            entry.name == "translate"
+                && entry.value == NbtSummaryValue::String("entity.minecraft.mannequin.label".into())
+        }),
+        _ => false,
+    }
+}
+
+fn debug_push_mannequin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let profile = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_PROFILE",
+    )
+    .and_then(|entry| {
+        entity
+            .data_values
+            .iter()
+            .find(|value| value.data_id == entry.data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::ResolvableProfile(profile) => Some(profile),
+                _ => None,
+            })
+    });
+    fields.push(format!(
+        "profile: {}",
+        debug_snbt_resolvable_profile(profile)
+    ));
+    if let Some(entry) = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_PLAYER_MODE_CUSTOMISATION",
+    ) {
+        // Mannequin's constructor raises the Avatar default to all layers
+        // shown, which vanilla encodes as the inverted hidden-part list.
+        let mask = debug_entity_data_byte_present(entity, entry.data_id).unwrap_or(0x7F);
+        let hidden: Vec<&str> = [
+            (0x01, "cape"),
+            (0x02, "jacket"),
+            (0x04, "left_sleeve"),
+            (0x08, "right_sleeve"),
+            (0x10, "left_pants_leg"),
+            (0x20, "right_pants_leg"),
+            (0x40, "hat"),
+        ]
+        .into_iter()
+        .filter(|(part_mask, _)| mask & part_mask == 0)
+        .map(|(_, name)| name)
+        .collect();
+        let rendered: Vec<String> = hidden.iter().map(|name| debug_snbt_string(name)).collect();
+        fields.push(format!("hidden_layers: [{}]", rendered.join(", ")));
+    }
+    if let Some(entry) = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_PLAYER_MAIN_HAND",
+    ) {
+        let arm = entity
+            .data_values
+            .iter()
+            .find(|value| value.data_id == entry.data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::HumanoidArm(id) => Some(*id),
+                _ => None,
+            })
+            // Vanilla DEFAULT_MAIN_HAND is HumanoidArm.RIGHT (id 1).
+            .unwrap_or(1);
+        let name = if arm == 0 { "left" } else { "right" };
+        fields.push(format!("main_hand: {}", debug_snbt_string(name)));
+    }
+    if let Some(entity_accessors) = vanilla_entity_metadata_entity_accessors() {
+        let pose = entity
+            .data_values
+            .iter()
+            .find(|value| value.data_id == entity_accessors.pose_data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::Pose(id) => Some(*id),
+                _ => None,
+            })
+            .unwrap_or(entity_accessors.pose_default);
+        // Mannequin's POSE_CODEC only admits these five poses.
+        let name = match pose {
+            bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_FALL_FLYING_ID => "fall_flying",
+            bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID => "sleeping",
+            bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SWIMMING_ID => "swimming",
+            bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_CROUCHING_ID => "crouching",
+            _ => "standing",
+        };
+        fields.push(format!("pose: {}", debug_snbt_string(name)));
+    }
+    if let Some(entry) = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_IMMOVABLE",
+    ) {
+        let immovable = debug_entity_data_bool_present(entity, entry.data_id).unwrap_or(false);
+        fields.push(format!("immovable: {}", debug_snbt_bool(immovable)));
+    }
+    if let Some(entry) = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        entity.entity_type_id,
+        "DATA_DESCRIPTION",
+    ) {
+        // Synced empty means hide_description; the default translatable label
+        // is omitted like vanilla's DEFAULT_DESCRIPTION comparison.
+        match entity
+            .data_values
+            .iter()
+            .find(|value| value.data_id == entry.data_id)
+            .map(|value| &value.value)
+        {
+            Some(EntityDataValueKind::OptionalComponent(Some(component))) => {
+                if !debug_mannequin_description_is_default(component) {
+                    fields.push(format!(
+                        "description: {}",
+                        debug_snbt_string(component.text())
+                    ));
+                }
+            }
+            Some(EntityDataValueKind::OptionalComponent(None)) => {
+                fields.push("hide_description: 1b".to_string());
+            }
+            _ => {}
+        }
     }
 }
 

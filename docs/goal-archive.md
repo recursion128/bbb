@@ -142,3 +142,22 @@
   权威对照 `GameRuleRegistryFix`），screenshot 场景加脚下静态石台排除
   动画纹理，entity 场景 sight-line 全堵时服务端凿列，sound 场景推送前
   清 mob 等声道静默。
+- **2026-07-21（同日续）**：entity 矩阵第五类目 **save/debug 全量 157 行
+  complete**。F3+I Shift-local `saveWithoutId` 投影全 dispatch 审计闭环：
+  24 个 default-arm 类型全部裁决——villager/zombie-villager（VillagerData
+  registry 身份重绑）、warden、ender-dragon、area-effect-cloud、
+  eye-of-ender、item-entity、ominous-item-spawner（commit "Project
+  remaining synced families into local save NBT"）、Display 三兄弟共享
+  transformation/billboard/interpolation/shadow/brightness 层 + 各自
+  block_state / item+item_display 上下文 / text+style-flags（commit
+  "Project display trio local save debug fields"）、Mannequin
+  profile/hidden_layers/main_hand/pose/immovable/description 含
+  hide_description 与默认 translatable label 省略（commit "Project
+  mannequin avatar fields into local save NBT"）；FishingHook/LeashKnot/
+  LightningBolt/Marker vanilla 空体验证，probed Player
+  `addAdditionalSaveData` 全 server-private 验证（default arm 即
+  vanilla-faithful）。投影政策：只投 synced/client-owned 字段，server
+  私有字段缺席而非默认值。`save_debug_audit` 证据集扩为
+  组装/分派/Mannequin/Display 实现 + 四语义测试 + 三 vanilla 锚点，
+  base cell 翻 complete；顺带补齐 coverage JSON 引用的
+  events/particles/audio 悬空锚点标题。

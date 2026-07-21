@@ -1387,24 +1387,7 @@ back into a todo. Do not delete these.
   including Turtle packets forced by server state; retaining `SetEntityLink` state
   without the visible rope does not close the presentation gap.
 
-### Entity coverage matrix save and debug
-
-- Close family-specific Shift-local F3+I projections using only synced,
-  spawn/equipment/component, and client-owned state. Server-private inventory,
-  targets, timers, RNG, AI, and authoritative save fields must remain absent or
-  carry a narrow vanilla-backed not-applicable decision. The 2026-07-21 audit
-  of the generated dispatch closed the villager/zombie-villager, warden,
-  ender-dragon, area-effect-cloud, eye-of-ender, item-entity,
-  ominous-item-spawner and Display trio (block/item/text — shared Display
-  transformation/billboard/interpolation/shadow/brightness fields plus the
-  per-subtype block_state, item + item_display context, and
-  text/line_width/background/opacity/style-flag projections) families,
-  verified the FishingHook, LeashKnot, LightningBolt and Marker vanilla bodies
-  are empty, and verified probed Player `addAdditionalSaveData` is entirely
-  server-private (abilities/inventory/xp/stats never sync to remote clients),
-  so the Player default arm is vanilla-faithful as-is; the remaining
-  default-arm gap is the Mannequin projection (profile, immovable,
-  description, hidden layers, main hand).
+### Deferred model and animation details
 
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
@@ -1483,6 +1466,9 @@ back into a todo. Do not delete these.
 - **Broader collision-clipping parity** for special contexts beyond the covered
   `WakeParticle` case.
 - **Player-coupled particle emitters** beyond the currently covered scoped cases.
+
+### Entity coverage matrix events particles and audio
+
 - **Broader entity-event particle/audio parity** outside the covered fixed attack
   sounds and Fox family.
 - **Broader firework presentation** outside the Starter particle/audio path and
