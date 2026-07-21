@@ -396,6 +396,53 @@ WorldBorder ticks after the batched entity call; static-border collision is
 exact here, while per-tick moving-border/entity interleaving remains a
 cross-system scheduler boundary for the final movement-slice closeout.
 
+## Phase 4 Locally Controlled Boat Physics Stage
+
+The first local-vehicle stage replaces the previous elapsed-time-scaled boat
+approximation with discrete Vanilla 26.1 `AbstractBoat.tick`, `getStatus`,
+`floatBoat`, `controlBoat`, and `Entity.move` math for the direct locally
+controlling first-passenger root boat. A private narrow `EntityBoatMovement`
+component owns only retained Java fields: nullable current/old status,
+water-level and land-friction samples, last vertical velocity, accumulated turn
+velocity, and underwater control time. Java's initially-null status is
+preserved; spawning in water therefore does not incorrectly execute the
+air-to-water transition branch.
+
+Status sampling distinguishes source and flowing water, the bottom-surface
+contact scan, exact collision-shape land friction, and air in Vanilla order.
+Buoyancy, gravity, damping, turn acceleration, paddle booleans, and the
+air-to-water collision-guarded snap retain Java float/double order. Horizontal
+control uses the shared Vanilla `Mth` sine table reconstruction. Block movement
+clips against existing voxel collision shapes, retains the supporting block,
+applies ordinary/bed/slime vertical collision response, and applies the exact
+generated `BlockBehaviour.Properties.speedFactor` overrides after movement.
+The block membership generator now derives both 26.1 speed-factor overrides;
+boat and local-player movement consume that single catalog instead of parallel
+Soul Sand/Honey Block lists.
+
+Publication cloning copies the narrow component into the immutable hecs shell.
+Same-id boat recreation resets it, type reuse removes it, and retained A/B
+tests cover transform plus private physics state. The standard 2,000-entity
+benchmark remains the end-to-end guard; a dedicated repo-native benchmark now
+separates local boat physics from physics plus a retained publication. On the
+same machine, the new no-gravity moving-boat fixture measures 1.1205 us for
+physics only and 5.8637 us for physics plus retained immutable publication.
+Focused confirmation measured 3.2278 ms tick-only and 4.7282 ms
+tick+publication for 2,000 heterogeneous entities, while the 1,000-boat
+passenger case remained within Criterion's noise threshold at 3.6756 ms. The
+preceding full run's non-boat Zombie controls also moved upward by roughly 2-3%,
+so the narrow component did not show an attributable boat-density publication
+regression. Final phase-4 comparisons must still be collected under a stable
+machine load.
+
+This is a buildable stage within phase 4, not closure of locally controlled
+vehicles. The existing runtime still applies input/boat movement in its
+post-entity-tick input owner, as required by the frozen integration boundary.
+Remote boat status/paddle sounds, entity/world-border collision and block
+inside/emission callbacks, the exact passenger push pass, bubble-column motion,
+and non-boat controlling-passenger travel remain for the subsequent stage.
+None of those server-authoritative consequences is synthesized here.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:

@@ -20062,3 +20062,22 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   完整 EntityStore publication shell 约 1 ms 仍是 publication 侧最大剩余热点。
 - [x] 服务器 `catchingFish`、loot/open-water、durability/pull 与 canonical removal 不移入客户端；
   该 milestone 关闭 FishingHook 的 client-owned tick 行为，不提前翻转 157 项最终 coverage cell。
+
+## 2026-07-20：locally controlled boat physics foundation
+
+- [x] direct first-passenger local root boat 删除 elapsed-time/powf 近似，改为离散 20 Hz
+  `AbstractBoat` status/float/control/move：source/flowing/in-water/land/air、buoyancy、gravity、
+  friction、turn accumulator、Vanilla Mth sin/cos、paddle metadata 与 collision-clipped transform
+  均由唯一 WorldStore owner 推进。
+- [x] 新增窄 canonical `EntityBoatMovement`，保留 Java nullable initial status、water/land/lastYd/
+  deltaRotation/outOfControl 字段；publication clone、retained A/B、same-id recreation 与 type reuse
+  均有隔离测试，不向 `EntityState`/serde/control schema 增加第二套载具状态。
+- [x] `Blocks.java` generator 新增两个 exact `speedFactor(float)` override；local player 与 boat
+  共用该 catalog。boat land scan 使用真实 collision shape，move 后覆盖 default/bed/slime vertical
+  response、supporting block 和 speed factor。阶段仍不关闭 remote boat paddle sound、entity/border
+  collision、bubble-column motion、push pass、block callbacks 或非 boat locally-controlled travel。
+- [x] repo-native moving-boat Criterion：physics-only 1.1205 us，physics + retained publication
+  5.8637 us；2,000 heterogeneous focused confirmation 为 3.2278/4.7282 ms，1,000 boat +
+  1,000 passenger + publication 3.6756 ms 且在 Criterion noise threshold 内。full run 的
+  Zombie control 同步慢约 2-3%，因此最终 phase-4
+  closeout 仍会在稳定负载下重采，不把机器漂移误归因于 boat component。

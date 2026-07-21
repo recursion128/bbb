@@ -12,6 +12,7 @@ from pathlib import Path
 from block_membership_catalog_extractor import (
     air_blocks,
     block_friction_overrides,
+    block_speed_factor_overrides,
     block_tag_membership,
     constructor_family_blocks,
     constructor_types_extending,
@@ -208,6 +209,7 @@ def generate(source_root: Path) -> str:
     no_collision_entries = no_collision_blocks(source, block_id_constants)
     air_entries = air_blocks(source)
     friction_entries = block_friction_overrides(source, block_id_constants)
+    speed_factor_entries = block_speed_factor_overrides(source, block_id_constants)
     constructor_catalogs = [
         (
             name,
@@ -289,6 +291,13 @@ def generate(source_root: Path) -> str:
         ),
         "];",
         "",
+        "pub(super) const VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES: &[(&str, u32)] = &[",
+        *(
+            f'    ("{entry.resource_id}", {entry.value!r}_f32.to_bits()),'
+            for entry in speed_factor_entries
+        ),
+        "];",
+        "",
     ]
     for name, values in constructor_catalogs:
         lines.extend(
@@ -322,6 +331,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_NO_COLLISION_BLOCKS.len(), 255);",
             '        assert_eq!(VANILLA_AIR_BLOCKS, &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]);',
             "        assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);",
+            "        assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);",
             '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
             "        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);",

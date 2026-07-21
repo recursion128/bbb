@@ -2246,11 +2246,11 @@ fn calculate_view_vector(x_rot: f32, y_rot: f32) -> EntityVec3 {
     }
 }
 
-fn vanilla_mth_sin(angle: f64) -> f32 {
+pub(super) fn vanilla_mth_sin(angle: f64) -> f32 {
     vanilla_mth_sin_table_value((angle * 10_430.378_350_470_453) as i64)
 }
 
-fn vanilla_mth_cos(angle: f64) -> f32 {
+pub(super) fn vanilla_mth_cos(angle: f64) -> f32 {
     vanilla_mth_sin_table_value((angle * 10_430.378_350_470_453 + 16_384.0) as i64)
 }
 

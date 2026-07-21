@@ -1,8 +1,9 @@
 use bbb_protocol::packets::{
-    EquipmentSlot as ProtocolEquipmentSlot, InteractionHand, MoveVehicle as ProtocolMoveVehicle,
-    SetPassengers as ProtocolSetPassengers,
+    EntityDataValue, EntityDataValueKind, EquipmentSlot as ProtocolEquipmentSlot, InteractionHand,
+    MoveVehicle as ProtocolMoveVehicle, SetPassengers as ProtocolSetPassengers,
 };
 use bbb_protocol::{
+    entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
     entity_types::{
         vanilla_entity_type_is_non_controlling_rider, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
@@ -13,6 +14,7 @@ use bbb_protocol::{
 use crate::{LocalPlayerInputState, WorldStore};
 
 use super::schema::{
+    vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_type_has_custom_inventory_screen,
@@ -22,17 +24,10 @@ use super::schema::{
 use super::{
     is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type, is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
-    VehicleMoveReport,
+    EntityBoatStatus, VehicleMoveReport,
 };
 
 const MOVE_VEHICLE_SNAP_EPSILON: f64 = 1.0e-5_f32 as f64;
-const LOCAL_BOAT_TICK_SECONDS: f64 = 0.05;
-const LOCAL_BOAT_TURN_DEGREES_PER_TICK: f32 = 1.0;
-const LOCAL_BOAT_FORWARD_ACCELERATION_PER_TICK: f64 = 0.04;
-const LOCAL_BOAT_BACKWARD_ACCELERATION_PER_TICK: f64 = -0.005;
-const LOCAL_BOAT_TURN_ONLY_ACCELERATION_PER_TICK: f64 = 0.005;
-const LOCAL_BOAT_HORIZONTAL_DAMPING: f64 = 0.9;
-
 impl WorldStore {
     pub fn apply_set_passengers(&mut self, packet: ProtocolSetPassengers) -> bool {
         self.counters.entity_passenger_updates_received += 1;
@@ -190,47 +185,159 @@ impl WorldStore {
     pub fn advance_local_boat_vehicle_input(
         &mut self,
         input: LocalPlayerInputState,
-        dt_seconds: f64,
+        ticks: u32,
     ) -> Option<VehicleMoveReport> {
         let vehicle_id = self.local_player_first_passenger_root_boat_vehicle_id()?;
-        let ticks = (dt_seconds.max(0.0) / LOCAL_BOAT_TICK_SECONDS).max(0.0);
-        self.entities.with_transform_mut(vehicle_id, |transform| {
-            if ticks > 0.0 {
-                let turn = if input.focused {
-                    axis(input.right, input.left)
+        let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
+        let bounds = self.entities.pick_bounds(vehicle_id)?;
+        let no_gravity = self.entities.no_gravity(vehicle_id).unwrap_or(false);
+        let first_passenger_is_player = self
+            .entities
+            .mount(vehicle_id)
+            .and_then(|mount| mount.passengers.first().copied())
+            .is_some_and(|passenger| self.entity_id_is_player(passenger));
+        let controls = BoatInput::from_local_input(input);
+        for _ in 0..ticks {
+            let transform = self.entities.transform(vehicle_id)?;
+            let mut movement = self.entities.boat_movement(vehicle_id)?;
+            let previous_supporting_block = self.entities.supporting_block(vehicle_id)?;
+            let relative_min = bounds.min.map(f64::from);
+            let relative_max = bounds.max.map(f64::from);
+            let position = [
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            ];
+            let aabb_min = std::array::from_fn(|axis| position[axis] + relative_min[axis]);
+            let aabb_max = std::array::from_fn(|axis| position[axis] + relative_max[axis]);
+            movement.old_status = movement.status;
+            let (water_status, water_level) =
+                crate::fluid::boat_water_status(self, aabb_min, aabb_max);
+            movement.water_level = water_level;
+            movement.status = Some(if let Some(status) = water_status {
+                status
+            } else {
+                let friction = self.boat_ground_friction(position, relative_min, relative_max);
+                if friction > 0.0 {
+                    movement.land_friction = friction;
+                    EntityBoatStatus::OnLand
                 } else {
-                    0.0
-                };
-                transform.y_rot = wrap_degrees_f32(
-                    transform.y_rot + turn as f32 * LOCAL_BOAT_TURN_DEGREES_PER_TICK * ticks as f32,
-                );
-
-                let mut acceleration = 0.0;
-                if input.focused {
-                    if input.forward {
-                        acceleration += LOCAL_BOAT_FORWARD_ACCELERATION_PER_TICK;
-                    }
-                    if input.backward {
-                        acceleration += LOCAL_BOAT_BACKWARD_ACCELERATION_PER_TICK;
-                    }
-                    if turn != 0.0 && !input.forward && !input.backward {
-                        acceleration += LOCAL_BOAT_TURN_ONLY_ACCELERATION_PER_TICK;
-                    }
+                    EntityBoatStatus::InAir
                 }
-                acceleration *= ticks;
-
-                let yaw = f64::from(transform.y_rot).to_radians();
-                transform.delta_movement.x += (-yaw.sin()) * acceleration;
-                transform.delta_movement.z += yaw.cos() * acceleration;
-                let damping = LOCAL_BOAT_HORIZONTAL_DAMPING.powf(ticks);
-                transform.delta_movement.x *= damping;
-                transform.delta_movement.z *= damping;
-                transform.position.x += transform.delta_movement.x * ticks;
-                transform.position.y += transform.delta_movement.y * ticks;
-                transform.position.z += transform.delta_movement.z * ticks;
-                transform.position_base = transform.position;
+            });
+            if matches!(
+                movement.status,
+                Some(EntityBoatStatus::UnderWater | EntityBoatStatus::UnderFlowingWater)
+            ) {
+                movement.out_of_control_ticks += 1.0;
+            } else {
+                movement.out_of_control_ticks = 0.0;
             }
-        })?;
+
+            let mut next_transform = transform;
+            float_boat(
+                self,
+                entity_type_id,
+                relative_min,
+                relative_max,
+                no_gravity,
+                first_passenger_is_player,
+                &mut movement,
+                &mut next_transform,
+            );
+            control_boat(controls, &mut movement, &mut next_transform);
+            let requested = next_transform.delta_movement;
+            let clipped = self.clip_entity_collision_movement(
+                [
+                    next_transform.position.x,
+                    next_transform.position.y,
+                    next_transform.position.z,
+                ],
+                [requested.x, requested.y, requested.z],
+                relative_min,
+                relative_max,
+            );
+            next_transform.position.x += clipped[0];
+            next_transform.position.y += clipped[1];
+            next_transform.position.z += clipped[2];
+            let x_collision = (requested.x - clipped[0]).abs() >= f64::from(1.0e-5_f32);
+            let y_collision = requested.y != clipped[1];
+            let z_collision = (requested.z - clipped[2]).abs() >= f64::from(1.0e-5_f32);
+            let on_ground = y_collision && requested.y < 0.0;
+            next_transform.on_ground = Some(on_ground);
+            let supporting_block = on_ground
+                .then(|| {
+                    self.entity_supporting_block_after_collision(
+                        entity_type_id,
+                        position,
+                        clipped,
+                        relative_min,
+                        relative_max,
+                        previous_supporting_block,
+                    )
+                })
+                .flatten();
+            if x_collision {
+                next_transform.delta_movement.x = 0.0;
+            }
+            if y_collision {
+                next_transform.delta_movement.y = boat_vertical_collision_response(
+                    self,
+                    [
+                        next_transform.position.x,
+                        next_transform.position.y,
+                        next_transform.position.z,
+                    ],
+                    supporting_block,
+                    requested.y,
+                );
+            }
+            if z_collision {
+                next_transform.delta_movement.z = 0.0;
+            }
+            let speed_factor = boat_block_speed_factor(
+                self,
+                [
+                    next_transform.position.x,
+                    next_transform.position.y,
+                    next_transform.position.z,
+                ],
+            );
+            next_transform.delta_movement.x *= speed_factor;
+            next_transform.delta_movement.z *= speed_factor;
+            // `AbstractBoat.checkFallDamage` retains `getDeltaMovement().y`,
+            // not the collision-clipped displacement supplied by `Entity.move`.
+            movement.last_yd = requested.y;
+            self.entities.with_boat_movement_transform_and_support_mut(
+                vehicle_id,
+                |stored, canonical, support| {
+                    *stored = movement;
+                    *canonical = next_transform;
+                    if on_ground {
+                        support.main = supporting_block;
+                        support.on_ground_no_blocks = supporting_block.is_none();
+                    } else {
+                        *support = super::components::EntitySupportingBlock::default();
+                    }
+                },
+            )?;
+        }
+        if ticks > 0 {
+            let accessors =
+                vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(entity_type_id)?;
+            self.entities.with_metadata_mut(vehicle_id, |metadata| {
+                set_metadata_bool(
+                    metadata,
+                    accessors.paddle_left_data_id,
+                    controls.right && !controls.left || controls.forward,
+                );
+                set_metadata_bool(
+                    metadata,
+                    accessors.paddle_right_data_id,
+                    controls.left && !controls.right || controls.forward,
+                );
+            })?;
+        }
 
         let transform = self.entities.transform(vehicle_id)?;
         Some(VehicleMoveReport {
@@ -572,11 +679,218 @@ impl WorldStore {
     }
 }
 
-fn axis(positive: bool, negative: bool) -> f64 {
-    match (positive, negative) {
-        (true, false) => 1.0,
-        (false, true) => -1.0,
+#[derive(Debug, Clone, Copy)]
+struct BoatInput {
+    left: bool,
+    right: bool,
+    forward: bool,
+    backward: bool,
+}
+
+impl BoatInput {
+    fn from_local_input(input: LocalPlayerInputState) -> Self {
+        Self {
+            left: input.focused && input.left,
+            right: input.focused && input.right,
+            forward: input.focused && input.forward,
+            backward: input.focused && input.backward,
+        }
+    }
+}
+
+fn float_boat(
+    world: &WorldStore,
+    entity_type_id: i32,
+    relative_min: [f64; 3],
+    relative_max: [f64; 3],
+    no_gravity: bool,
+    first_passenger_is_player: bool,
+    movement: &mut super::components::EntityBoatMovement,
+    transform: &mut super::components::EntityTransform,
+) {
+    if movement.old_status == Some(EntityBoatStatus::InAir)
+        && !matches!(
+            movement.status,
+            Some(EntityBoatStatus::InAir | EntityBoatStatus::OnLand)
+        )
+    {
+        movement.water_level = transform.position.y + relative_max[1];
+        let position = [
+            transform.position.x,
+            transform.position.y,
+            transform.position.z,
+        ];
+        let aabb_min = std::array::from_fn(|axis| position[axis] + relative_min[axis]);
+        let aabb_max = std::array::from_fn(|axis| position[axis] + relative_max[axis]);
+        let target_y =
+            crate::fluid::boat_water_level_above(world, aabb_min, aabb_max, movement.last_yd)
+                - (relative_max[1] - relative_min[1])
+                + 0.101;
+        let target_position = [transform.position.x, target_y, transform.position.z];
+        if world.entity_collision_bounds_are_free(
+            entity_type_id,
+            target_position,
+            relative_min,
+            relative_max,
+            transform.on_ground.unwrap_or(false),
+        ) {
+            transform.position.y = target_y;
+            transform.delta_movement.y = 0.0;
+            movement.last_yd = 0.0;
+        }
+        movement.status = Some(EntityBoatStatus::InWater);
+        return;
+    }
+
+    let mut vertical_speed = if no_gravity { 0.0 } else { -0.04 };
+    let mut buoyancy = 0.0;
+    let friction = match movement.status {
+        Some(EntityBoatStatus::InWater) => {
+            buoyancy =
+                (movement.water_level - transform.position.y) / (relative_max[1] - relative_min[1]);
+            0.9_f32
+        }
+        Some(EntityBoatStatus::UnderFlowingWater) => {
+            vertical_speed = -7.0e-4;
+            0.9
+        }
+        Some(EntityBoatStatus::UnderWater) => {
+            buoyancy = f64::from(0.01_f32);
+            0.45
+        }
+        Some(EntityBoatStatus::InAir) => 0.9,
+        Some(EntityBoatStatus::OnLand) => {
+            let friction = movement.land_friction;
+            if first_passenger_is_player {
+                movement.land_friction /= 2.0;
+            }
+            friction
+        }
+        None => 0.05,
+    };
+    let friction = f64::from(friction);
+    transform.delta_movement.x *= friction;
+    transform.delta_movement.y += vertical_speed;
+    transform.delta_movement.z *= friction;
+    movement.delta_rotation *= friction as f32;
+    if buoyancy > 0.0 {
+        transform.delta_movement.y = (transform.delta_movement.y + buoyancy * (0.04 / 0.65)) * 0.75;
+    }
+}
+
+fn control_boat(
+    input: BoatInput,
+    movement: &mut super::components::EntityBoatMovement,
+    transform: &mut super::components::EntityTransform,
+) {
+    if input.left {
+        movement.delta_rotation -= 1.0;
+    }
+    if input.right {
+        movement.delta_rotation += 1.0;
+    }
+    let mut acceleration = 0.0_f32;
+    if input.right != input.left && !input.forward && !input.backward {
+        acceleration += 0.005;
+    }
+    transform.y_rot = wrap_degrees_f32(transform.y_rot + movement.delta_rotation);
+    if input.forward {
+        acceleration += 0.04;
+    }
+    if input.backward {
+        acceleration -= 0.005;
+    }
+    let yaw = transform.y_rot * (std::f64::consts::PI / 180.0) as f32;
+    transform.delta_movement.x +=
+        f64::from(super::client_movement::vanilla_mth_sin(-f64::from(yaw)) * acceleration);
+    transform.delta_movement.z +=
+        f64::from(super::client_movement::vanilla_mth_cos(f64::from(yaw)) * acceleration);
+}
+
+fn boat_vertical_collision_response(
+    world: &WorldStore,
+    position: [f64; 3],
+    supporting_block: Option<crate::BlockPos>,
+    requested_y: f64,
+) -> f64 {
+    let effect_pos = crate::BlockPos {
+        x: supporting_block.map_or(position[0].floor() as i32, |pos| pos.x),
+        y: (position[1] - 0.2).floor() as i32,
+        z: supporting_block.map_or(position[2].floor() as i32, |pos| pos.z),
+    };
+    let block_name = world
+        .probe_block(effect_pos)
+        .and_then(|block| block.block_name);
+    if requested_y >= 0.0 {
+        return if block_name.as_deref().is_some_and(|name| {
+            name == "minecraft:slime_block" || crate::terrain::block_name_is_bed(name)
+        }) {
+            requested_y
+        } else {
+            0.0
+        };
+    }
+    match block_name.as_deref() {
+        Some("minecraft:slime_block") => -requested_y * 0.8,
+        Some(name) if crate::terrain::block_name_is_bed(name) => {
+            -requested_y * f64::from(0.66_f32) * 0.8
+        }
         _ => 0.0,
+    }
+}
+
+fn boat_block_speed_factor(world: &WorldStore, position: [f64; 3]) -> f64 {
+    let block_pos = crate::BlockPos {
+        x: position[0].floor() as i32,
+        y: position[1].floor() as i32,
+        z: position[2].floor() as i32,
+    };
+    let here = world
+        .probe_block(block_pos)
+        .and_then(|block| block.block_name)
+        .unwrap_or_default();
+    if matches!(here.as_str(), "minecraft:water" | "minecraft:bubble_column") {
+        return 1.0;
+    }
+    let here_factor = f64::from(crate::terrain::vanilla_block_speed_factor(Some(&here)));
+    if here_factor != 1.0 {
+        return here_factor;
+    }
+    let below = crate::BlockPos {
+        y: (position[1] - f64::from(0.500001_f32)).floor() as i32,
+        ..block_pos
+    };
+    world
+        .probe_block(below)
+        .and_then(|block| block.block_name)
+        .as_deref()
+        .map_or(1.0, |name| {
+            f64::from(crate::terrain::vanilla_block_speed_factor(Some(name)))
+        })
+}
+
+fn set_metadata_bool(metadata: &mut super::components::EntityMetadata, data_id: u8, value: bool) {
+    if metadata.data_values.iter().any(|existing| {
+        existing.data_id == data_id
+            && existing.serializer_id == VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID
+            && existing.value == EntityDataValueKind::Boolean(value)
+    }) {
+        return;
+    }
+    let value = EntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(value),
+    };
+    if let Some(existing) = metadata
+        .data_values
+        .iter_mut()
+        .find(|existing| existing.data_id == data_id)
+    {
+        *existing = value;
+    } else {
+        metadata.data_values.push(value);
+        metadata.data_values.sort_by_key(|value| value.data_id);
     }
 }
 

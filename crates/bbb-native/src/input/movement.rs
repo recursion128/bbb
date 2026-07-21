@@ -97,7 +97,7 @@ pub(crate) fn advance_player_input_for_client_ticks(
             }
         }
         maybe_queue_riding_jump_command(input, world, counters, net_commands, dt_seconds);
-        let boat_report = world.advance_local_boat_vehicle_input(input_state, dt_seconds);
+        let boat_report = world.advance_local_boat_vehicle_input(input_state, client_ticks);
         if client_ticks > 0 || input.last_paddle_boat_command_at.is_none() {
             maybe_queue_boat_commands(input, world, counters, net_commands, now, boat_report);
         }

@@ -13,6 +13,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipEntry,
     air_blocks,
     block_friction_overrides,
+    block_speed_factor_overrides,
     block_tag_membership,
     constructor_family_blocks,
     constructor_types_extending,
@@ -139,6 +140,32 @@ class Blocks {
             [
                 ("ICE", "minecraft:ice", 0.98),
                 ("SLIME", "minecraft:slime_block", 0.8),
+            ],
+        )
+
+    def test_speed_factor_overrides_share_the_literal_float_extractor(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block SOUL = register(
+      "soul_sand", Block::new, BlockBehaviour.Properties.of().speedFactor(0.4F));
+  static final Block NORMAL = register(
+      "normal", Block::new, BlockBehaviour.Properties.of());
+  static final Block HONEY = register(
+      BlockIds.HONEY, Block::new, BlockBehaviour.Properties.of().speedFactor(0.4f));
+}''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id, entry.value)
+                for entry in block_speed_factor_overrides(
+                    source, {"HONEY": "honey_block"}, 2
+                )
+            ],
+            [
+                ("SOUL", "minecraft:soul_sand", 0.4),
+                ("HONEY", "minecraft:honey_block", 0.4),
             ],
         )
 

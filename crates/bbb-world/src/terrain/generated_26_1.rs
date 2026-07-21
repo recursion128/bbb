@@ -275,6 +275,11 @@ pub(super) const VANILLA_BLOCK_FRICTION_OVERRIDES: &[(&str, u32)] = &[
     ("minecraft:blue_ice", 0.989_f32.to_bits()),
 ];
 
+pub(super) const VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES: &[(&str, u32)] = &[
+    ("minecraft:soul_sand", 0.4_f32.to_bits()),
+    ("minecraft:honey_block", 0.4_f32.to_bits()),
+];
+
 pub(super) const VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
     &["minecraft:powder_snow"];
 
@@ -1125,6 +1130,7 @@ mod tests {
             &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
         );
         assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);
+        assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);
         assert_eq!(
             VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
             &["minecraft:powder_snow"]

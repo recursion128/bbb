@@ -146,6 +146,46 @@ pub(crate) struct EntityExperienceOrbMovement {
     pub(crate) random_seed: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum EntityBoatStatus {
+    UnderWater,
+    UnderFlowingWater,
+    InWater,
+    OnLand,
+    InAir,
+}
+
+/// Canonical client-owned `AbstractBoat` physics state. Packet transforms stay
+/// in `EntityTransform`; only the values retained between Vanilla boat ticks
+/// live here.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityBoatMovement {
+    pub(crate) old_status: Option<EntityBoatStatus>,
+    pub(crate) status: Option<EntityBoatStatus>,
+    pub(crate) water_level: f64,
+    pub(crate) land_friction: f32,
+    pub(crate) last_yd: f64,
+    pub(crate) delta_rotation: f32,
+    pub(crate) out_of_control_ticks: f32,
+}
+
+impl Default for EntityBoatMovement {
+    fn default() -> Self {
+        Self {
+            // Java fields start as null. This matters on a boat's first water
+            // tick: the air-to-water snap runs only after a preceding IN_AIR
+            // status, not merely because the boat spawned in water.
+            old_status: None,
+            status: None,
+            water_level: 0.0,
+            land_friction: 0.0,
+            last_yd: 0.0,
+            delta_rotation: 0.0,
+            out_of_control_ticks: 0.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum EntityFishingHookState {
     #[default]

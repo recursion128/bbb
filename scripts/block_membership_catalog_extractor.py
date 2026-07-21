@@ -200,15 +200,16 @@ def air_blocks(
     return _builder_property_blocks(source, "air", expected_count)
 
 
-def block_friction_overrides(
+def block_float_property_overrides(
     source: JavaSource,
     block_id_constants: dict[str, str],
-    expected_count: int = 5,
+    property_name: str,
+    expected_count: int,
 ) -> list[BlockFloatPropertyEntry]:
-    """Extract the non-default ``BlockBehaviour.Properties.friction`` values."""
+    """Extract one literal float-valued ``BlockBehaviour.Properties`` override."""
 
     entries = _builder_property_blocks(
-        source, "friction", expected_count, block_id_constants
+        source, property_name, expected_count, block_id_constants
     )
     by_constant = {entry.constant_name: entry for entry in entries}
     values: list[BlockFloatPropertyEntry] = []
@@ -221,25 +222,61 @@ def block_friction_overrides(
             for call in source.calls
             if field.initializer.span.start_byte <= call.span.start_byte
             and call.span.end_byte <= field.initializer.span.end_byte
-            and call.name == "friction"
+            and call.name == property_name
         ]
         if len(calls) != 1 or len(calls[0].arguments) != 1:
-            _fail(source, field.initializer, "friction block lacks one literal value")
+            _fail(
+                source,
+                field.initializer,
+                f"{property_name} block lacks one literal value",
+            )
         literal = calls[0].arguments[0].canonical
         if not literal.endswith(("F", "f")):
-            _fail(source, calls[0].arguments[0], "friction value is not a float literal")
+            _fail(
+                source,
+                calls[0].arguments[0],
+                f"{property_name} value is not a float literal",
+            )
         try:
             value = float(literal[:-1])
         except ValueError:
-            _fail(source, calls[0].arguments[0], "friction value is not a float literal")
+            _fail(
+                source,
+                calls[0].arguments[0],
+                f"{property_name} value is not a float literal",
+            )
         values.append(BlockFloatPropertyEntry(field.name, entry.resource_id, value))
 
     if len(values) != expected_count:
         raise BlockMembershipCatalogExtractionError(
-            f"{source.relative_path}: expected {expected_count} friction values, "
+            f"{source.relative_path}: expected {expected_count} {property_name} values, "
             f"extracted {len(values)}"
         )
     return values
+
+
+def block_friction_overrides(
+    source: JavaSource,
+    block_id_constants: dict[str, str],
+    expected_count: int = 5,
+) -> list[BlockFloatPropertyEntry]:
+    """Extract the non-default ``BlockBehaviour.Properties.friction`` values."""
+
+    return block_float_property_overrides(
+        source, block_id_constants, "friction", expected_count
+    )
+
+
+def block_speed_factor_overrides(
+    source: JavaSource,
+    block_id_constants: dict[str, str],
+    expected_count: int = 2,
+) -> list[BlockFloatPropertyEntry]:
+    """Extract the non-default ``BlockBehaviour.Properties.speedFactor`` values."""
+
+    return block_float_property_overrides(
+        source, block_id_constants, "speedFactor", expected_count
+    )
 
 
 def _constructed_type_name(source: JavaSource, node) -> str | None:

@@ -33,7 +33,7 @@ use bbb_protocol::packets::{
 };
 
 use super::components::{
-    EntityClientMovementCollisionFacts, EntityClientMovementFluidFacts,
+    EntityBoatMovement, EntityClientMovementCollisionFacts, EntityClientMovementFluidFacts,
     EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityFishingHookMovement,
     EntityIncarnation,
 };
@@ -468,6 +468,8 @@ impl EntityStore {
         let fresh_experience_orb_movement = (entity_type_id
             == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
             .then(|| super::client_movement::experience_orb_movement_from_uuid(uuid));
+        let fresh_boat_movement =
+            is_vanilla_boat_type(entity_type_id).then(EntityBoatMovement::default);
         let fresh_fishing_hook_movement = (entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
             .then(|| {
                 super::client_movement::fishing_hook_movement_from_uuid(uuid, spawn_owner_uuid)
@@ -586,6 +588,18 @@ impl EntityStore {
             } else {
                 let _ = self.ecs.remove_one::<EntityExperienceOrbMovement>(entity);
             }
+            if let Some(movement) = fresh_boat_movement {
+                let updated = self
+                    .ecs
+                    .get::<&mut EntityBoatMovement>(entity)
+                    .map(|mut existing| *existing = movement)
+                    .is_ok();
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, movement);
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityBoatMovement>(entity);
+            }
             if let Some(movement) = fresh_fishing_hook_movement {
                 let updated = self
                     .ecs
@@ -649,6 +663,9 @@ impl EntityStore {
             let _ = self.ecs.insert_one(entity, projectile);
         }
         if let Some(movement) = fresh_experience_orb_movement {
+            let _ = self.ecs.insert_one(entity, movement);
+        }
+        if let Some(movement) = fresh_boat_movement {
             let _ = self.ecs.insert_one(entity, movement);
         }
         if let Some(movement) = fresh_fishing_hook_movement {
@@ -720,6 +737,9 @@ impl EntityStore {
                 entity,
                 super::client_movement::experience_orb_movement_from_uuid(uuid),
             );
+        }
+        if is_vanilla_boat_type(state.entity_type_id) {
+            let _ = self.ecs.insert_one(entity, EntityBoatMovement::default());
         }
         if state.entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
             let _ = self.ecs.insert_one(
@@ -4213,6 +4233,35 @@ impl EntityStore {
         Some(result)
     }
 
+    pub(crate) fn boat_movement(&self, id: i32) -> Option<EntityBoatMovement> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityBoatMovement>(entity)
+            .ok()
+            .map(|movement| *movement)
+    }
+
+    pub(crate) fn with_boat_movement_transform_and_support_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(
+            &mut EntityBoatMovement,
+            &mut EntityTransform,
+            &mut EntitySupportingBlock,
+        ) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let (movement, transform, support) = self
+            .ecs
+            .query_one_mut::<(
+                &mut EntityBoatMovement,
+                &mut EntityTransform,
+                &mut EntitySupportingBlock,
+            )>(entity)
+            .ok()?;
+        Some(update(movement, transform, support))
+    }
+
     fn with_client_animations_mut<R>(
         &mut self,
         id: i32,
@@ -5405,6 +5454,18 @@ impl EntityStore {
         } else {
             let _ = self.ecs.remove_one::<EntityExperienceOrbMovement>(entity);
         }
+        if is_vanilla_boat_type(state.entity_type_id) {
+            let updated = self
+                .ecs
+                .get::<&mut EntityBoatMovement>(entity)
+                .map(|mut existing| *existing = EntityBoatMovement::default())
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, EntityBoatMovement::default());
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityBoatMovement>(entity);
+        }
         if state.entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
             let movement = super::client_movement::fishing_hook_movement_from_uuid(
                 state.uuid,
@@ -5641,6 +5702,11 @@ impl Clone for EntityStore {
             }
             if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
                 if let Ok(movement) = self.ecs.get::<&EntityExperienceOrbMovement>(entity) {
+                    let _ = store.ecs.insert_one(cloned, *movement);
+                }
+            }
+            if is_vanilla_boat_type(entity_type_id) {
+                if let Ok(movement) = self.ecs.get::<&EntityBoatMovement>(entity) {
                     let _ = store.ecs.insert_one(cloned, *movement);
                 }
             }

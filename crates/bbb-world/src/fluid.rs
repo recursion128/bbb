@@ -1,5 +1,7 @@
 use crate::{BlockPos, TerrainFluidKind, TerrainFluidState, WorldStore};
 
+use crate::entities::EntityBoatStatus;
+
 /// Vanilla `Entity.updateFluidStateAndDoFluidPushing` deflates the bounding box by this
 /// amount (`box.deflate(0.001)`) before testing fluid overlap.
 pub(crate) const FLUID_INTERACTION_BOX_DEFLATE: f64 = 0.001;
@@ -118,6 +120,89 @@ pub(crate) fn world_aabb_boat_underwater(world: &WorldStore, min: [f64; 3], max:
     }
 
     false
+}
+
+/// Exact water portion of Vanilla `AbstractBoat.getStatus()`. The caller owns
+/// the following land-friction/air decision because it requires collision
+/// shapes rather than fluid state.
+pub(crate) fn boat_water_status(
+    world: &WorldStore,
+    min: [f64; 3],
+    max: [f64; 3],
+) -> (Option<EntityBoatStatus>, f64) {
+    let top_y = max[1] + 0.001;
+    let mut underwater = false;
+    for y in (max[1].floor() as i32)..(top_y.ceil() as i32) {
+        for z in (min[2].floor() as i32)..(max[2].ceil() as i32) {
+            for x in (min[0].floor() as i32)..(max[0].ceil() as i32) {
+                let pos = BlockPos { x, y, z };
+                let Some(fluid) = world.probe_block(pos).and_then(|block| block.fluid) else {
+                    continue;
+                };
+                let fluid_top = f64::from(y as f32 + fluid_height_at(world, pos, fluid) as f32);
+                if fluid.kind != TerrainFluidKind::Water || top_y >= fluid_top {
+                    continue;
+                }
+                if fluid.amount < 8 || fluid.falling {
+                    return (Some(EntityBoatStatus::UnderFlowingWater), max[1]);
+                }
+                underwater = true;
+            }
+        }
+    }
+    if underwater {
+        return (Some(EntityBoatStatus::UnderWater), max[1]);
+    }
+
+    let mut in_water = false;
+    let mut water_level = -f64::MAX;
+    let min_y = min[1].floor() as i32;
+    let max_y = (min[1] + 0.001).ceil() as i32;
+    for x in (min[0].floor() as i32)..(max[0].ceil() as i32) {
+        for y in min_y..max_y {
+            for z in (min[2].floor() as i32)..(max[2].ceil() as i32) {
+                let pos = BlockPos { x, y, z };
+                let Some(fluid) = world.probe_block(pos).and_then(|block| block.fluid) else {
+                    continue;
+                };
+                if fluid.kind != TerrainFluidKind::Water {
+                    continue;
+                }
+                let height = f64::from(y as f32 + fluid_height_at(world, pos, fluid) as f32);
+                water_level = water_level.max(height);
+                in_water |= min[1] < height;
+            }
+        }
+    }
+    (in_water.then_some(EntityBoatStatus::InWater), water_level)
+}
+
+pub(crate) fn boat_water_level_above(
+    world: &WorldStore,
+    min: [f64; 3],
+    max: [f64; 3],
+    last_yd: f64,
+) -> f64 {
+    let min_y = max[1].floor() as i32;
+    let max_y = (max[1] - last_yd).ceil() as i32;
+    for y in min_y..max_y {
+        let mut block_height = 0.0_f32;
+        for x in (min[0].floor() as i32)..(max[0].ceil() as i32) {
+            for z in (min[2].floor() as i32)..(max[2].ceil() as i32) {
+                let pos = BlockPos { x, y, z };
+                let Some(fluid) = world.probe_block(pos).and_then(|block| block.fluid) else {
+                    continue;
+                };
+                if fluid.kind == TerrainFluidKind::Water {
+                    block_height = block_height.max(fluid_height_at(world, pos, fluid) as f32);
+                }
+            }
+        }
+        if block_height < 1.0 {
+            return f64::from(y as f32 + block_height);
+        }
+    }
+    f64::from(max_y.wrapping_add(1) as f32)
 }
 
 #[cfg(test)]
@@ -278,6 +363,68 @@ mod tests {
             [0.25, 1.0, 0.25],
             [0.75, 1.8, 0.75]
         ));
+    }
+
+    #[test]
+    fn boat_water_status_distinguishes_source_flowing_surface_and_air() {
+        let mut source = empty_world();
+        set_block(
+            &mut source,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        assert_eq!(
+            boat_water_status(&source, [0.25, 1.0, 0.25], [0.75, 1.8, 0.75]),
+            (Some(EntityBoatStatus::UnderWater), 1.8)
+        );
+
+        let mut flowing = empty_world();
+        set_block(
+            &mut flowing,
+            BlockPos { x: 0, y: 1, z: 0 },
+            FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID,
+        );
+        assert_eq!(
+            boat_water_status(&flowing, [0.25, 0.5, 0.25], [0.75, 1.4, 0.75]),
+            (Some(EntityBoatStatus::UnderFlowingWater), 1.4)
+        );
+
+        let mut surface = empty_world();
+        set_block(
+            &mut surface,
+            BlockPos { x: 0, y: 0, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        assert_eq!(
+            boat_water_status(&surface, [0.25, 0.8, 0.25], [0.75, 1.6, 0.75]),
+            (
+                Some(EntityBoatStatus::InWater),
+                f64::from(8.0_f32 / 9.0_f32)
+            )
+        );
+
+        assert_eq!(
+            boat_water_status(&empty_world(), [0.25, 1.0, 0.25], [0.75, 1.8, 0.75]),
+            (None, -f64::MAX)
+        );
+    }
+
+    #[test]
+    fn boat_water_level_above_stops_at_first_non_full_water_layer() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 2, z: 0 },
+            FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID,
+        );
+
+        let level = boat_water_level_above(&world, [0.25, 0.5, 0.25], [0.75, 1.8, 0.75], -1.0);
+        assert_eq!(level, f64::from(2.0_f32 + 5.0_f32 / 9.0_f32));
     }
 
     fn empty_world() -> WorldStore {

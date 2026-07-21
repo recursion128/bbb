@@ -1258,20 +1258,26 @@ fn local_boat_input_advances_root_boat_and_reports_move() {
                 right: true,
                 ..crate::LocalPlayerInputState::default()
             },
-            0.05,
+            1,
         )
         .unwrap();
 
     assert_eq!(report.vehicle_id, 20);
     assert!(!report.snapped);
-    assert!(report.y_rot > initial.y_rot);
-    assert!(report.position.z > initial.position.z);
+    assert_eq!(report.y_rot, initial.y_rot + 1.0);
+    let yaw = report.y_rot * (std::f64::consts::PI / 180.0) as f32;
+    let expected_x = initial.position.x
+        + f64::from(super::super::client_movement::vanilla_mth_sin(-f64::from(yaw)) * 0.04);
+    let expected_z = initial.position.z
+        + f64::from(super::super::client_movement::vanilla_mth_cos(f64::from(yaw)) * 0.04);
+    assert!((report.position.x - expected_x).abs() < 1.0e-12);
+    assert!((report.position.z - expected_z).abs() < 1.0e-12);
     assert_eq!(report.position, store.probe_entity(20).unwrap().position);
     assert_eq!(store.local_player_root_boat_vehicle_id(), Some(20));
 }
 
 #[test]
-fn local_boat_input_ignores_unfocused_controls() {
+fn local_boat_input_ignores_unfocused_controls_but_keeps_vanilla_physics() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -1292,12 +1298,265 @@ fn local_boat_input_ignores_unfocused_controls() {
                 right: true,
                 ..crate::LocalPlayerInputState::default()
             },
-            0.05,
+            1,
         )
         .unwrap();
 
-    assert_eq!(report.position, initial.position);
+    assert_eq!(report.position.x, initial.position.x);
+    assert_eq!(report.position.z, initial.position.z);
+    assert!((report.position.y - (initial.position.y - 0.04)).abs() < 1.0e-12);
     assert_eq!(report.y_rot, initial.y_rot);
+}
+
+#[test]
+fn local_boat_input_updates_generated_paddle_metadata() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let accessors =
+        super::super::schema::vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        )
+        .expect("generated boat accessors");
+
+    store
+        .advance_local_boat_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    assert_eq!(
+        store.entities.metadata_bool_for_entity(
+            20,
+            accessors.paddle_left_data_id,
+            accessors.paddle_left_default,
+        ),
+        Some(true)
+    );
+    assert_eq!(
+        store.entities.metadata_bool_for_entity(
+            20,
+            accessors.paddle_right_data_id,
+            accessors.paddle_right_default,
+        ),
+        Some(true)
+    );
+
+    store
+        .advance_local_boat_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    assert_eq!(
+        store.entities.metadata_bool_for_entity(
+            20,
+            accessors.paddle_left_data_id,
+            accessors.paddle_left_default,
+        ),
+        Some(false)
+    );
+    assert_eq!(
+        store.entities.metadata_bool_for_entity(
+            20,
+            accessors.paddle_right_data_id,
+            accessors.paddle_right_default,
+        ),
+        Some(false)
+    );
+}
+
+#[test]
+fn zero_client_ticks_do_not_advance_boat_physics_or_paddles() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let before = store.publication_snapshot();
+
+    store
+        .advance_local_boat_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                right: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            0,
+        )
+        .unwrap();
+
+    assert_eq!(store.probe_entity(20), before.probe_entity(20));
+    assert_eq!(
+        store.entities.boat_movement(20),
+        before.entities.boat_movement(20)
+    );
+}
+
+#[test]
+fn boat_physics_state_isolated_in_publication_and_reset_on_entity_recreation() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let generation_a = store.publication_snapshot();
+
+    store
+        .advance_local_boat_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                right: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let generation_b = store.publication_snapshot();
+    assert_eq!(
+        generation_a.entities.boat_movement(20),
+        Some(super::super::components::EntityBoatMovement::default())
+    );
+    let advanced = generation_b.entities.boat_movement(20).unwrap();
+    assert_eq!(advanced.old_status, None);
+    assert_eq!(advanced.status, Some(super::super::EntityBoatStatus::InAir));
+    assert_eq!(advanced.delta_rotation, 1.0);
+    assert_ne!(
+        generation_a.probe_entity(20).unwrap().position,
+        generation_b.probe_entity(20).unwrap().position
+    );
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert_eq!(
+        store.entities.boat_movement(20),
+        Some(super::super::components::EntityBoatMovement::default())
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert_eq!(store.entities.boat_movement(20), None);
+}
+
+#[test]
+fn local_boat_uses_vanilla_land_friction_and_collision_response() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 1,
+            y: -64,
+            z: -2
+        },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+    let mut boat = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
+    boat.position.y = -63.0;
+    boat.delta_movement.x = 0.1;
+    store.apply_add_entity(boat);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+
+    let report = store
+        .advance_local_boat_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    let transform = store.entities.transform(20).unwrap();
+    let movement = store.entities.boat_movement(20).unwrap();
+
+    assert_eq!(movement.old_status, None);
+    assert_eq!(
+        movement.status,
+        Some(super::super::EntityBoatStatus::OnLand)
+    );
+    assert_eq!(movement.land_friction, 0.3);
+    assert!(
+        (report.position.x - 1.06).abs() < 1.0e-8,
+        "x: {}, delta: {:?}",
+        report.position.x,
+        transform.delta_movement
+    );
+    assert_eq!(report.position.y, -63.0);
+    assert_eq!(transform.delta_movement.y, 0.0);
+    assert_eq!(transform.on_ground, Some(true));
+    assert_eq!(
+        store.entities.supporting_block(20).unwrap().main,
+        Some(crate::BlockPos {
+            x: 1,
+            y: -64,
+            z: -2
+        })
+    );
+}
+
+#[test]
+fn local_boat_first_water_tick_uses_buoyancy_without_air_transition_snap() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 1,
+            y: -64,
+            z: -2
+        },
+        block_state_id: vanilla_block_state_id("minecraft:water", [("level", "0")]),
+    }));
+    let mut boat = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
+    boat.position.y = -63.2;
+    store.apply_add_entity(boat);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let bounds = store.entities.pick_bounds(20).unwrap();
+    let height = f64::from(bounds.max[1] - bounds.min[1]);
+    let water_level = f64::from(-64.0_f32 + 8.0_f32 / 9.0_f32);
+    let buoyancy = (water_level - -63.2) / height;
+    let expected_delta_y = (-0.04 + buoyancy * (0.04 / 0.65)) * 0.75;
+
+    let report = store
+        .advance_local_boat_vehicle_input(crate::LocalPlayerInputState::default(), 1)
+        .unwrap();
+    let movement = store.entities.boat_movement(20).unwrap();
+    let transform = store.entities.transform(20).unwrap();
+
+    assert_eq!(movement.old_status, None);
+    assert_eq!(
+        movement.status,
+        Some(super::super::EntityBoatStatus::InWater)
+    );
+    assert_eq!(movement.water_level, water_level);
+    assert!((transform.delta_movement.y - expected_delta_y).abs() < 1.0e-12);
+    assert!((report.position.y - (-63.2 + expected_delta_y)).abs() < 1.0e-12);
 }
 
 #[test]
@@ -1461,7 +1720,7 @@ fn noncontrolling_passenger_cannot_apply_vehicle_correction_or_drive_boat() {
                 forward: true,
                 ..crate::LocalPlayerInputState::default()
             },
-            0.05,
+            1,
         ),
         None
     );

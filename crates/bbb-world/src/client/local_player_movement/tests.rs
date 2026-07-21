@@ -3789,9 +3789,19 @@ fn player_abilities_walking_speed_scales_fov_without_mutating_movement_attribute
 
 #[test]
 fn local_player_slow_block_speed_factor_scales_horizontal_movement() {
-    for (name, block_state_id, player_y) in [
-        ("soul sand", SOUL_SAND_BLOCK_STATE_ID, 0.875),
-        ("honey block", HONEY_BLOCK_STATE_ID, 0.9375),
+    for (name, resource_id, block_state_id, player_y) in [
+        (
+            "soul sand",
+            "minecraft:soul_sand",
+            SOUL_SAND_BLOCK_STATE_ID,
+            0.875,
+        ),
+        (
+            "honey block",
+            "minecraft:honey_block",
+            HONEY_BLOCK_STATE_ID,
+            0.9375,
+        ),
     ] {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 0, 0, block_state_id);
@@ -3813,7 +3823,9 @@ fn local_player_slow_block_speed_factor_scales_horizontal_movement() {
             .unwrap();
 
         let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-            * SLOW_BLOCK_SPEED_FACTOR
+            * f64::from(crate::terrain::vanilla_block_speed_factor(Some(
+                resource_id,
+            )))
             * LOCAL_PHYSICS_TICK_SECONDS;
         assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
         assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);

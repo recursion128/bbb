@@ -1069,6 +1069,95 @@ impl WorldStore {
         self.clip_collision_bounds_movement(bounds, movement)
     }
 
+    /// Vanilla `AbstractBoat.getGroundFriction`: average the friction of each
+    /// non-lily-pad collision shape intersecting the one-millimetre slice
+    /// directly below the boat.
+    pub(crate) fn boat_ground_friction(
+        &self,
+        position: [f64; 3],
+        relative_min: [f64; 3],
+        relative_max: [f64; 3],
+    ) -> f32 {
+        let boat_slice = WorldCollisionBox {
+            min: [
+                position[0] + relative_min[0],
+                position[1] + relative_min[1] - 0.001,
+                position[2] + relative_min[2],
+            ],
+            max: [
+                position[0] + relative_max[0],
+                position[1] + relative_min[1],
+                position[2] + relative_max[2],
+            ],
+        };
+        let x0 = boat_slice.min[0].floor() as i32 - 1;
+        let x1 = boat_slice.max[0].ceil() as i32 + 1;
+        let y0 = boat_slice.min[1].floor() as i32 - 1;
+        let y1 = boat_slice.max[1].ceil() as i32 + 1;
+        let z0 = boat_slice.min[2].floor() as i32 - 1;
+        let z1 = boat_slice.max[2].ceil() as i32 + 1;
+        let mut friction = 0.0_f32;
+        let mut count = 0_u32;
+        for x in x0..x1 {
+            for z in z0..z1 {
+                let edges = u8::from(x == x0 || x == x1 - 1) + u8::from(z == z0 || z == z1 - 1);
+                if edges == 2 {
+                    continue;
+                }
+                for y in y0..y1 {
+                    if edges > 0 && (y == y0 || y == y1 - 1) {
+                        continue;
+                    }
+                    let pos = BlockPos { x, y, z };
+                    let Some(block) = self.probe_block(pos) else {
+                        continue;
+                    };
+                    if block.block_name.as_deref() == Some("minecraft:lily_pad") {
+                        continue;
+                    }
+                    let Some(shape) = block_collision_shape(&block, pos) else {
+                        continue;
+                    };
+                    if shape.boxes().any(|shape_box| {
+                        world_collision_boxes_intersect(
+                            world_collision_box(pos, shape_box),
+                            boat_slice,
+                        )
+                    }) {
+                        friction +=
+                            crate::terrain::vanilla_block_friction(block.block_name.as_deref());
+                        count += 1;
+                    }
+                }
+            }
+        }
+        friction / count as f32
+    }
+
+    pub(crate) fn entity_collision_bounds_are_free(
+        &self,
+        entity_type_id: i32,
+        position: [f64; 3],
+        relative_min: [f64; 3],
+        relative_max: [f64; 3],
+        on_ground: bool,
+    ) -> bool {
+        let bounds = LocalPlayerBounds::from_min_max(
+            std::array::from_fn(|axis| position[axis] + relative_min[axis]),
+            std::array::from_fn(|axis| position[axis] + relative_max[axis]),
+        );
+        !local_player_collides_with_context(
+            self,
+            bounds,
+            LocalPlayerCollisionContext::for_remote_entity(
+                position[1],
+                on_ground,
+                false,
+                entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+            ),
+        )
+    }
+
     /// Vanilla `ProjectileUtil.getHitResultOnMoveVector` block phase for a
     /// remote projectile. Returns the original direction shortened to the
     /// nearest collision-shape surface; fluid shapes are intentionally absent
@@ -1339,6 +1428,10 @@ fn projectile_block_shape_hit_scale(
 
 fn world_collision_box_contains(bounds: WorldCollisionBox, point: [f64; 3]) -> bool {
     (0..3).all(|axis| bounds.min[axis] <= point[axis] && point[axis] < bounds.max[axis])
+}
+
+fn world_collision_boxes_intersect(left: WorldCollisionBox, right: WorldCollisionBox) -> bool {
+    (0..3).all(|axis| left.min[axis] < right.max[axis] && left.max[axis] > right.min[axis])
 }
 
 fn segment_box_entry_scale(from: [f64; 3], to: [f64; 3], bounds: WorldCollisionBox) -> Option<f64> {
@@ -4523,6 +4616,21 @@ mod tests {
         assert_f64_near(clipped[0], 0.0);
         assert_f64_near(clipped[1], -0.1);
         assert_f64_near(clipped[2], 0.0);
+    }
+
+    #[test]
+    fn boat_ground_friction_samples_the_thin_shape_slice_below_the_hull() {
+        let mut world = empty_world();
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
+
+        let friction =
+            world.boat_ground_friction([0.5, 1.0, 0.5], [-0.49, 0.0, -0.49], [0.49, 0.5625, 0.49]);
+
+        assert!((friction - 0.6).abs() < f32::EPSILON);
+        assert!(world
+            .boat_ground_friction([2.5, 1.0, 2.5], [-0.49, 0.0, -0.49], [0.49, 0.5625, 0.49],)
+            .is_nan());
     }
 
     #[test]

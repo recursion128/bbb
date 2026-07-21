@@ -10,15 +10,17 @@
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use bbb_protocol::packets::{
-    AddEntity, AttributeSnapshot, BlockPos, BlockUpdate, DataComponentPatchSummary,
-    EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove, EquipmentSlot,
-    EquipmentSlotUpdate, ItemStackSummary, MobEffectFlags, RegistryData, RegistryDataEntry,
-    RemoveEntities, SetEntityData, SetEquipment, SetPassengers, UpdateAttributes, UpdateMobEffect,
-    Vec3d,
+    AddEntity, AttributeSnapshot, BlockPos, BlockUpdate, CommonPlayerSpawnInfo,
+    DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove,
+    EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, MobEffectFlags, PlayLogin, RegistryData,
+    RegistryDataEntry, RemoveEntities, SetEntityData, SetEquipment, SetPassengers,
+    UpdateAttributes, UpdateMobEffect, Vec3d,
 };
 use bbb_protocol::{
     attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
-    entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    entity_data_serializers::{
+        VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    },
     entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
@@ -27,9 +29,9 @@ use bbb_protocol::{
     mob_effect_types::VANILLA_MOB_EFFECT_SPEED_ID,
 };
 use bbb_world::{
-    vanilla_entity_metadata_accessor_for_entity_type, ChunkColumn, ChunkPos, ChunkSection,
-    ChunkState, HeightmapData, LightData, PaletteDomain, PaletteKind, PalettedContainerData,
-    WorldStore,
+    vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_entity_accessors,
+    ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
+    LocalPlayerInputState, PaletteDomain, PaletteKind, PalettedContainerData, WorldStore,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
@@ -273,6 +275,50 @@ fn build_passenger_interpolation_world(count: usize) -> WorldStore {
     for id in 1..=count as i32 {
         assert!(world.apply_entity_move(entity_move(id, 128)));
     }
+    world
+}
+
+fn build_local_boat_world() -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id: 99,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_owned()],
+        max_players: 20,
+        chunk_radius: 12,
+        simulation_distance: 12,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_owned(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    world.apply_add_entity(entity_packet(1, 0, VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID));
+    let entity_accessors =
+        vanilla_entity_metadata_entity_accessors().expect("generated Entity metadata accessors");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 1,
+        values: vec![EntityDataValue {
+            data_id: entity_accessors.no_gravity_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 1,
+        passenger_ids: vec![99],
+    }));
     world
 }
 
@@ -710,6 +756,40 @@ fn bench_entity_interpolation_and_passengers(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_local_boat_physics(c: &mut Criterion) {
+    let mut group = c.benchmark_group("entity_tick/local_boat");
+    let input = LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        right: true,
+        ..LocalPlayerInputState::default()
+    };
+    let mut physics = build_local_boat_world();
+    group.bench_function("physics_only", |b| {
+        b.iter(|| {
+            black_box(
+                physics
+                    .advance_local_boat_vehicle_input(black_box(input), black_box(1))
+                    .expect("local boat"),
+            );
+        });
+    });
+    let mut publish = build_local_boat_world();
+    let mut held = Arc::new(publish.publication_snapshot());
+    group.bench_function("physics_then_publish_retained", |b| {
+        b.iter(|| {
+            black_box(
+                publish
+                    .advance_local_boat_vehicle_input(black_box(input), black_box(1))
+                    .expect("local boat"),
+            );
+            held = black_box(Arc::new(publish.publication_snapshot()));
+        });
+    });
+    black_box(held);
+    group.finish();
+}
+
 fn bench_entity_effect_generation(c: &mut Criterion) {
     let mut group = c.benchmark_group("entity_tick/effect_generation");
     let mut world =
@@ -816,6 +896,7 @@ criterion_group! {
         bench_entity_mutation_families,
         bench_entity_spawn_remove_churn,
         bench_entity_interpolation_and_passengers,
+        bench_local_boat_physics,
         bench_entity_effect_generation,
         bench_entity_projection,
         bench_entity_protocol_lookup_mutation,

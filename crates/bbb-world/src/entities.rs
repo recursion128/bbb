@@ -19,6 +19,7 @@ use crate::{ArmorTrimSprite, BlockPos, PaintingVariantClientProjection, TerrainL
 mod animations;
 mod client_movement;
 mod components;
+pub(crate) use components::EntityBoatStatus;
 mod dimensions;
 mod dragon;
 mod events;

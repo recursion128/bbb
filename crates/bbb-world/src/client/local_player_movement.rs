@@ -95,7 +95,6 @@ const VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID: &str = "minecraft:powder_snow";
 const LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME: &str = "minecraft:powder_snow";
 const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE: f64 = -0.05;
-const SLOW_BLOCK_SPEED_FACTOR: f64 = 0.4;
 const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
 const HONEY_BLOCK_JUMP_FACTOR: f64 = 0.5;
 const DEFAULT_BLOCK_JUMP_FACTOR: f64 = 1.0;
@@ -693,7 +692,7 @@ fn local_player_raw_block_speed_factor(world: &WorldStore, pose: LocalPlayerPose
     let here_factor = here_block
         .as_ref()
         .and_then(|block| block.block_name.as_deref())
-        .map(block_speed_factor)
+        .map(|name| f64::from(crate::terrain::vanilla_block_speed_factor(Some(name))))
         .unwrap_or(DEFAULT_BLOCK_SPEED_FACTOR);
     if here_block
         .as_ref()
@@ -714,7 +713,12 @@ fn local_player_raw_block_speed_factor(world: &WorldStore, pose: LocalPlayerPose
     };
     world
         .probe_block(below_pos)
-        .and_then(|block| block.block_name.as_deref().map(block_speed_factor))
+        .and_then(|block| {
+            block
+                .block_name
+                .as_deref()
+                .map(|name| f64::from(crate::terrain::vanilla_block_speed_factor(Some(name))))
+        })
         .unwrap_or(DEFAULT_BLOCK_SPEED_FACTOR)
 }
 
@@ -770,13 +774,6 @@ fn local_player_cobweb_stuck_multiplier(world: &WorldStore) -> ProtocolVec3d {
             y: 0.05,
             z: 0.25,
         }
-    }
-}
-
-fn block_speed_factor(block_name: &str) -> f64 {
-    match block_name {
-        "minecraft:soul_sand" | "minecraft:honey_block" => SLOW_BLOCK_SPEED_FACTOR,
-        _ => DEFAULT_BLOCK_SPEED_FACTOR,
     }
 }
 
