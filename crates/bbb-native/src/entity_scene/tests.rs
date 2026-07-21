@@ -1758,6 +1758,20 @@ fn entity_model_instances_shake_striders_while_suffocating() {
         VANILLA_ENTITY_TYPE_PIG_ID,
         [3.0, 64.0, -2.0],
     ));
+    // Keep this renderer-only fixture's synchronized warm/cold state under
+    // explicit test control. Vanilla Strider.tick recomputes suffocation in
+    // air unless noAI is set, which is now part of the native client tick.
+    let mob_accessors = bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_STRIDER_ID,
+    )
+    .expect("generated Strider Mob accessors");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 86,
+        values: vec![protocol_byte_data(
+            mob_accessors.flags_data_id,
+            mob_accessors.no_ai_mask as i8,
+        )],
+    }));
     world.advance_entity_client_animations(2);
 
     let strider = |world: &WorldStore| {
