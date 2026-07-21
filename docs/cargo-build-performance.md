@@ -268,6 +268,13 @@ than a warm default-profile focused test because it has to build a separate
 cache. Use it when you expect multiple focused iterations in the same profile,
 not as a replacement for the final gate.
 
+Known issue (2026-07-21): the full `bbb-world` suite under `fast-test` aborts
+with a stack overflow in
+`client::dialog::tests::dialog_components_resolve_click_dialog_references_and_bound_cycles`;
+the default gate profile passes. Until that recursion fixture gets a deeper
+test stack or a smaller bound, run that suite filtered or use the default
+profile for whole-crate runs.
+
 ## Timing Commands
 
 Warm full workspace timing:

@@ -89,13 +89,14 @@ use super::{
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
     BlazeAmbientParticleState, EnderAmbientParticleState, EntityAttachmentFace, EntityAttributes,
-    EntityBlockEffectMovementIter, EntityBlockEffectQuery, EntityBlockModelState,
-    EntityCameraHurtState, EntityCameraPoseState, EntityClientAnimationState,
-    EntityClientAnimations, EntityClientMovementEffectState, EntityClientMovementParticleState,
-    EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState, EntityDamage,
-    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityBlockEffectMovement, EntityBlockEffectMovementIter, EntityBlockEffectQuery,
+    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
+    EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
+    EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
+    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
+    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
@@ -349,6 +350,11 @@ struct EntityClientTickScratch {
     camel_clear_dash_entities: Vec<i32>,
     camel_stand_instantly_entities: Vec<i32>,
     nautilus_clear_dash_entities: Vec<i32>,
+    /// Vanilla `movementThisTick` for the directly controlled vehicle: the
+    /// local travel owner records its one `Entity.move` here and the
+    /// same-call `applyEffectsFromBlocks` takes it. Never retained across
+    /// ticks or publications.
+    local_vehicle_move: Option<(i32, EntityBlockEffectMovement)>,
 }
 
 impl EntityClientTickScratch {
@@ -5541,12 +5547,16 @@ impl EntityStore {
             super::client_movement::EntityClientMovementCollisionResult,
         >,
         block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
+        local_movement: Option<EntityBlockEffectMovement>,
     ) -> (usize, usize, usize) {
-        debug_assert!(!matches!(
-            policy,
-            VanillaEntityBlockEffectTickPolicy::None
-                | VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
-        ));
+        // `LocalAuthoritativeLiving` never runs from the ordered remote pass;
+        // it is reachable only through the local-vehicle entry point, which
+        // supplies the exact travel movement recorded by `Entity.move`.
+        debug_assert!(
+            policy != VanillaEntityBlockEffectTickPolicy::None
+                && (policy != VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
+                    || local_movement.is_some())
+        );
         debug_assert!(block_effect_world.has_loaded_chunks());
 
         let Ok((
@@ -5604,7 +5614,7 @@ impl EntityStore {
         let mut entities = 0usize;
         let mut blocks = 0usize;
         let mut callbacks = 0usize;
-        for _ in 0..apply_count {
+        for pass in 0..apply_count {
             let Some(bounds) = vanilla_bounds_for_entity_data(
                 identity.entity_type_id,
                 identity.data,
@@ -5633,7 +5643,16 @@ impl EntityStore {
                 && client_movement_collisions_by_id
                     .get(&identity.id)
                     .is_some_and(|collision| collision.movement_skipped);
-            let movements = if let Some(collision_facts) = collision_facts.as_deref_mut() {
+            let movements = if let Some(segment) = local_movement {
+                // Vanilla's first call consumes the recorded travel move with
+                // its axis-order original; a boat's second call sees an empty
+                // recorder and falls back to the plain old-to-current segment.
+                if pass == 0 {
+                    EntityBlockEffectMovementIter::OneOwned(Some(segment))
+                } else {
+                    EntityBlockEffectMovementIter::direct(segment.from, transform.position)
+                }
+            } else if let Some(collision_facts) = collision_facts.as_deref_mut() {
                 let movements = &mut collision_facts.block_effect_movements;
                 if use_last_movements {
                     movements.last_movements()
@@ -5701,6 +5720,84 @@ impl EntityStore {
             }
         }
         (entities, blocks, callbacks)
+    }
+
+    /// Records the directly controlled vehicle's travel move for the
+    /// same-call `applyEffectsFromBlocks`; a later move overwrites, matching
+    /// the single `Entity.move` each ridden travel performs per tick.
+    pub(crate) fn record_local_vehicle_move(
+        &mut self,
+        id: i32,
+        movement: EntityBlockEffectMovement,
+    ) {
+        self.client_tick_scratch.local_vehicle_move = Some((id, movement));
+    }
+
+    pub(crate) fn take_local_vehicle_move(&mut self, id: i32) -> Option<EntityBlockEffectMovement> {
+        match self.client_tick_scratch.local_vehicle_move.take() {
+            Some((recorded_id, movement)) if recorded_id == id => Some(movement),
+            _ => None,
+        }
+    }
+
+    /// `Entity.move` consumes the pending stuck-speed multiplier before
+    /// collision clipping and zeroes the delta movement afterwards; the local
+    /// vehicle travel owners call this at their exact move points.
+    pub(crate) fn consume_block_effect_stuck_speed_multiplier(
+        &mut self,
+        id: i32,
+    ) -> Option<EntityVec3> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut supporting_block = self.ecs.get::<&mut EntitySupportingBlock>(entity).ok()?;
+        supporting_block
+            .block_effects
+            .consume_stuck_speed_multiplier()
+    }
+
+    /// Locally authoritative `applyEffectsFromBlocks` for the directly
+    /// controlled vehicle: Vanilla runs it in `LivingEntity.aiStep` after
+    /// `travelRidden` (one pass) and in `AbstractBoat.tick` after `move`
+    /// (two passes). The caller supplies the exact travel move; remote
+    /// instances keep the ordered scheduled pass.
+    pub(crate) fn apply_local_vehicle_block_effect_tick(
+        &mut self,
+        vehicle_id: i32,
+        movement: EntityBlockEffectMovement,
+        client_movement_collisions_by_id: &HashMap<
+            i32,
+            super::client_movement::EntityClientMovementCollisionResult,
+        >,
+        block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
+    ) -> (usize, usize, usize) {
+        if !block_effect_world.has_loaded_chunks() {
+            return (0, 0, 0);
+        }
+        let Some(&entity) = self.by_protocol_id.get(&vehicle_id) else {
+            return (0, 0, 0);
+        };
+        let Ok(entity_type_id) = self
+            .ecs
+            .get::<&EntityIdentity>(entity)
+            .map(|identity| identity.entity_type_id)
+        else {
+            return (0, 0, 0);
+        };
+        let policy = super::vanilla_entity_metadata_type_block_effect_tick_policy(entity_type_id)
+            .unwrap_or(VanillaEntityBlockEffectTickPolicy::None);
+        if !matches!(
+            policy,
+            VanillaEntityBlockEffectTickPolicy::LocalAuthoritativeLiving
+                | VanillaEntityBlockEffectTickPolicy::BoatTwice
+        ) {
+            return (0, 0, 0);
+        }
+        self.apply_block_effect_tick_for_entity(
+            entity,
+            policy,
+            client_movement_collisions_by_id,
+            block_effect_world,
+            Some(movement),
+        )
     }
 
     pub(crate) fn advance_client_animations<G>(
@@ -5879,6 +5976,7 @@ impl EntityStore {
                             block_effect_policy,
                             client_movement_collisions_by_id,
                             block_effect_world,
+                            None,
                         );
                     work.block_effect_duration += block_effect_started_at.elapsed();
                     work.block_effect_entities =
@@ -6216,7 +6314,7 @@ impl EntityStore {
                     if let Ok(mut supporting_block) =
                         self.ecs.get::<&mut EntitySupportingBlock>(entity)
                     {
-                        *supporting_block = EntitySupportingBlock::default();
+                        supporting_block.clear_physical();
                     }
                 }
             }

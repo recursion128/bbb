@@ -505,7 +505,7 @@ impl WorldStore {
             let _ = self
                 .entities
                 .with_supporting_block_mut(entity_id, |support| {
-                    *support = EntitySupportingBlock::default();
+                    support.clear_physical();
                 });
             return;
         }

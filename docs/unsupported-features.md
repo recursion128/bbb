@@ -1361,12 +1361,13 @@ back into a todo. Do not delete these.
   authoritative combat, drops, spawning, and server RNG outside the client
   implementation. The frozen owner/evidence/phase contract is
   `docs/entity-client-tick-movement-design.md`.
-- The remaining common boundary is Vanilla `Entity.applyEffectsFromBlocks`
-  ordering for the entity families that call it: precise movement-segment
-  intersection, stuck-speed ownership, bubble-column velocity, and client-
-  visible fire/freeze/extinguish callbacks. Remote boat water/land status,
-  velocity reset and the exact `ClientLevel` local-player push path are closed;
-  they must not be used to mark the broader common callback boundary complete.
+- The remaining `Entity.applyEffectsFromBlocks` work after the swept runtime
+  and the locally controlled vehicle integration (boat two-pass, horse/camel,
+  nautilus, pig/strider, happy ghast: recorded travel move, stuck-speed
+  consumption at `Entity.move`, fire/freeze/powder-snow state): the locally
+  authoritative Living local-player callback in its `aiStep` slot, explicit
+  `AbstractArrow` multi-hit segments, `isInRain` fire clearing, and the
+  client-side powder-snow snowflake particles plus extinguish presentation.
 
 ### Entity coverage matrix dimensions collision and pick
 

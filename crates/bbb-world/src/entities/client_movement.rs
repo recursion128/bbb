@@ -1927,7 +1927,7 @@ fn apply_client_collision_movement(
         supporting_block.main = collision.supporting_block;
         supporting_block.on_ground_no_blocks = collision.supporting_block.is_none();
     } else {
-        *supporting_block = EntitySupportingBlock::default();
+        supporting_block.clear_physical();
     }
 }
 

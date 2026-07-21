@@ -69,6 +69,17 @@ pub(crate) struct EntitySupportingBlock {
     pub(crate) block_effects: EntityBlockEffects,
 }
 
+impl EntitySupportingBlock {
+    /// Vanilla `checkSupportingBlock` only rewrites the supporting-block
+    /// fields; the private block-effect runtime (stuck multiplier, fire,
+    /// powder-snow state) survives airborne movement and is discarded only
+    /// with the entity incarnation.
+    pub(crate) fn clear_physical(&mut self) {
+        self.main = None;
+        self.on_ground_no_blocks = false;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMetadata {
     pub(crate) data_values: PublicationShared<Vec<ProtocolEntityDataValue>>,

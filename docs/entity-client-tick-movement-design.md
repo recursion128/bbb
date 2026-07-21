@@ -932,6 +932,29 @@ diagnostics now separate its recent/peak duration and entity/cell/callback
 counts. These results intentionally report the regression against the old
 missing-behavior baseline rather than presenting correctness work as a speedup.
 
+### Locally controlled vehicle checkpoint
+
+The directly controlled vehicle owners now run the locally authoritative
+callback at their Vanilla slots: the boat applies its two passes after `move`
+and before the paddle/sound loop; horse/camel, nautilus, pig/strider and
+happy ghast apply one pass after ridden travel completes, before the nautilus
+subclass tail and the strider post-`super.tick` float. Each travel records its
+single `Entity.move` (clipped segment plus the requested axis-order vector) in
+a one-slot scratch recorder that the same call consumes, mirroring
+`movementThisTick`; a boat's second pass falls back to the plain
+old-to-current segment exactly like Vanilla's cleared recorder. Every local
+move point consumes the pending stuck-speed multiplier before collision
+clipping and zeroes the post-move delta, so the ridden travel tails apply
+friction and gravity to the zeroed vector; the boat's retained
+`checkFallDamage` delta is zero in that case. Airborne stores now clear only
+the physical supporting-block fields — the private block-effect runtime
+survives until the incarnation resets, matching Vanilla state ownership.
+Focused tests cover cobweb stuck set-then-consume on a ridden horse and the
+boat's double freeze pass in powder snow. Still open on this boundary: the
+local player's own `aiStep` callback, explicit `AbstractArrow` multi-hit
+segments, `isInRain` fire clearing, and client snowflake/extinguish
+presentation.
+
 ## Required Tests
 
 At minimum, focused semantic tests cover:

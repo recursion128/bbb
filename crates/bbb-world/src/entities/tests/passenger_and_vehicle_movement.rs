@@ -4914,3 +4914,138 @@ fn entity_model_sources_project_old_minecart_rail_render_points() {
     assert_close3_f32(source.minecart_front_pos.unwrap(), [2.8, 1.8625, 3.5]);
     assert_close3_f32(source.minecart_back_pos.unwrap(), [2.2, 1.2625, 3.5]);
 }
+
+fn world_with_dimension_and_block(block_name: &str) -> WorldStore {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut chunk = empty_test_chunk();
+    let dimension = store.dimension();
+    let section = chunk.sections[0].clone();
+    chunk.sections = vec![section; (dimension.height / 16).max(1) as usize];
+    store.insert_decoded_chunk(chunk);
+    set_test_block(&mut store, block_name);
+    store
+}
+
+fn set_test_block(store: &mut WorldStore, block_name: &str) {
+    let block_state_id = crate::BlockStateRegistry::vanilla_26_1()
+        .iter()
+        .find(|state| state.name == block_name)
+        .unwrap_or_else(|| panic!("missing Vanilla block state {block_name}"))
+        .id;
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 8, y: 2, z: 8 },
+        block_state_id,
+    }));
+}
+
+#[test]
+fn local_horse_travel_applies_block_effects_and_next_move_consumes_stuck() {
+    let mut store = world_with_dimension_and_block("minecraft:cobweb");
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 8.5,
+        },
+        y_rot: 0.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_HORSE_ID)
+    });
+    equip_test_saddle(&mut store, 10);
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    store.set_local_player_pose(crate::LocalPlayerPoseState::default());
+
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let stuck = store
+        .entities
+        .block_effects_debug_state(10)
+        .expect("horse block effect state");
+    assert_eq!(
+        stuck.stuck_speed_multiplier,
+        EntityVec3 {
+            x: 0.25,
+            y: 0.05,
+            z: 0.25,
+        }
+    );
+
+    set_test_block(&mut store, "minecraft:air");
+    store
+        .advance_local_abstract_horse_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+    let after = store.entities.transform(10).unwrap();
+    // `Entity.move` consumed the multiplier and zeroed the delta; the ridden
+    // land-travel tail then only applies gravity and friction to zero.
+    assert_eq!(after.delta_movement.x, 0.0);
+    assert_eq!(after.delta_movement.z, 0.0);
+    assert_eq!(
+        store
+            .entities
+            .block_effects_debug_state(10)
+            .expect("horse block effect state")
+            .stuck_speed_multiplier,
+        EntityVec3::default()
+    );
+}
+
+#[test]
+fn local_boat_travel_runs_two_freeze_passes_in_powder_snow() {
+    let mut store = world_with_dimension_and_block("minecraft:powder_snow");
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 8.5,
+        },
+        ..protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+
+    store
+        .advance_local_boat_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            1,
+        )
+        .unwrap();
+
+    // `AbstractBoat.tick` applies `applyEffectsFromBlocks` twice after the
+    // local move: each pass increments the synchronized freeze counter once.
+    assert_eq!(store.entities.ticks_frozen(20), Some(2));
+    assert!(
+        store
+            .entities
+            .block_effects_debug_state(20)
+            .expect("boat block effect state")
+            .in_powder_snow
+    );
+}

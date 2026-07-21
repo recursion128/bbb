@@ -46,7 +46,8 @@ use super::schema::{
 use super::{
     is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type, is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
-    EntityBoatStatus, VehicleMoveReport, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+    EntityBlockEffectMovement, EntityBoatStatus, EntityVec3, VehicleMoveReport,
+    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
 };
 
 const MOVE_VEHICLE_SNAP_EPSILON: f64 = 1.0e-5_f32 as f64;
@@ -275,6 +276,14 @@ impl WorldStore {
                 &mut next_transform,
             );
             control_boat(controls, &mut movement, &mut next_transform);
+            let stuck_multiplier = self
+                .entities
+                .consume_block_effect_stuck_speed_multiplier(vehicle_id);
+            if let Some(multiplier) = stuck_multiplier {
+                next_transform.delta_movement.x *= multiplier.x;
+                next_transform.delta_movement.y *= multiplier.y;
+                next_transform.delta_movement.z *= multiplier.z;
+            }
             let requested = next_transform.delta_movement;
             let clipped = self.clip_locally_authoritative_entity_collision_movement(
                 vehicle_id,
@@ -339,9 +348,17 @@ impl WorldStore {
             );
             next_transform.delta_movement.x *= speed_factor;
             next_transform.delta_movement.z *= speed_factor;
+            if stuck_multiplier.is_some() {
+                next_transform.delta_movement = EntityVec3::default();
+            }
             // `AbstractBoat.checkFallDamage` retains `getDeltaMovement().y`,
-            // not the collision-clipped displacement supplied by `Entity.move`.
-            movement.last_yd = requested.y;
+            // not the collision-clipped displacement supplied by `Entity.move`;
+            // a consumed stuck multiplier has already zeroed that delta.
+            movement.last_yd = if stuck_multiplier.is_some() {
+                0.0
+            } else {
+                requested.y
+            };
             self.entities.with_boat_movement_transform_and_support_mut(
                 vehicle_id,
                 |stored, canonical, support| {
@@ -351,10 +368,24 @@ impl WorldStore {
                         support.main = supporting_block;
                         support.on_ground_no_blocks = supporting_block.is_none();
                     } else {
-                        *support = super::components::EntitySupportingBlock::default();
+                        support.clear_physical();
                     }
                 },
             )?;
+            // `AbstractBoat.tick` runs its two `applyEffectsFromBlocks`
+            // passes after `move` and before the paddle/sound loop.
+            self.apply_local_vehicle_block_effects(
+                vehicle_id,
+                EntityBlockEffectMovement::clipped(
+                    EntityVec3 {
+                        x: position[0],
+                        y: position[1],
+                        z: position[2],
+                    },
+                    next_transform.position,
+                    requested,
+                ),
+            );
             self.entities
                 .advance_deferred_boat_paddles(vehicle_id, paddle_left, paddle_right)?;
         }
@@ -451,6 +482,14 @@ impl WorldStore {
                 position[1],
                 [position[0], eye_y, position[2]],
             );
+            let stuck_multiplier = self
+                .entities
+                .consume_block_effect_stuck_speed_multiplier(vehicle_id);
+            if let Some(multiplier) = stuck_multiplier {
+                next_transform.delta_movement.x *= multiplier.x;
+                next_transform.delta_movement.y *= multiplier.y;
+                next_transform.delta_movement.z *= multiplier.z;
+            }
             let requested = next_transform.delta_movement;
             let clipped = self.clip_locally_authoritative_entity_collision_movement(
                 vehicle_id,
@@ -522,6 +561,9 @@ impl WorldStore {
             next_transform.delta_movement.x *= drag;
             next_transform.delta_movement.y *= drag;
             next_transform.delta_movement.z *= drag;
+            if stuck_multiplier.is_some() {
+                next_transform.delta_movement = EntityVec3::default();
+            }
 
             self.entities
                 .with_transform_and_support_mut(vehicle_id, |canonical, support| {
@@ -530,9 +572,21 @@ impl WorldStore {
                         support.main = supporting_block;
                         support.on_ground_no_blocks = supporting_block.is_none();
                     } else {
-                        *support = super::components::EntitySupportingBlock::default();
+                        support.clear_physical();
                     }
                 })?;
+            self.apply_local_vehicle_block_effects(
+                vehicle_id,
+                EntityBlockEffectMovement::clipped(
+                    EntityVec3 {
+                        x: position[0],
+                        y: position[1],
+                        z: position[2],
+                    },
+                    next_transform.position,
+                    requested,
+                ),
+            );
         }
 
         let transform = self.entities.transform(vehicle_id)?;
@@ -797,7 +851,7 @@ impl WorldStore {
                     slow_down = 0.96;
                 }
                 add_relative_movement(&mut next_transform, input_this_tick, f64::from(speed));
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -842,7 +896,7 @@ impl WorldStore {
                 )?;
             } else if in_lava {
                 add_relative_movement(&mut next_transform, input_this_tick, f64::from(0.02_f32));
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -903,7 +957,7 @@ impl WorldStore {
                     movement_speed * 0.1_f32
                 };
                 add_relative_movement(&mut next_transform, input_this_tick, f64::from(speed));
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -960,6 +1014,7 @@ impl WorldStore {
                     self.stand_local_camel(vehicle_id, true)?;
                 }
             }
+            self.apply_local_vehicle_block_effects_from_recorder(vehicle_id);
         }
 
         let transform = self.entities.transform(vehicle_id)?;
@@ -1118,7 +1173,7 @@ impl WorldStore {
                     ridden_input,
                     f64::from(0.0325_f32) * movement_speed,
                 );
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -1141,7 +1196,7 @@ impl WorldStore {
                 )?;
             } else if fluid_contact.in_lava() {
                 add_relative_movement(&mut next_transform, ridden_input, f64::from(0.02_f32));
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -1205,7 +1260,7 @@ impl WorldStore {
                     ridden_speed * f64::from(0.1_f32)
                 };
                 add_relative_movement(&mut next_transform, ridden_input, speed);
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -1233,6 +1288,7 @@ impl WorldStore {
                     outcome.supporting_block,
                 )?;
             }
+            self.apply_local_vehicle_block_effects_from_recorder(vehicle_id);
             self.entities.advance_deferred_nautilus_subclass_tick(
                 vehicle_id,
                 fluid_contact.in_water(),
@@ -1401,7 +1457,7 @@ impl WorldStore {
                     slow_down = 0.96;
                 }
                 add_relative_movement(&mut next_transform, ridden_input, f64::from(speed));
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -1441,7 +1497,7 @@ impl WorldStore {
                 )?;
             } else if fluid_contact.in_lava() {
                 add_relative_movement(&mut next_transform, ridden_input, f64::from(0.02_f32));
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -1504,7 +1560,7 @@ impl WorldStore {
                     movement_speed * f64::from(0.1_f32)
                 };
                 add_relative_movement(&mut next_transform, ridden_input, speed);
-                let outcome = move_local_living_entity(
+                let outcome = move_local_living_entity_consuming_stuck(
                     self,
                     vehicle_id,
                     entity_type_id,
@@ -1533,6 +1589,7 @@ impl WorldStore {
                 )?;
             }
 
+            self.apply_local_vehicle_block_effects_from_recorder(vehicle_id);
             if strider_suffocating.is_some() && fluid_contact.in_lava() {
                 self.advance_local_strider_float_after_tick(
                     vehicle_id,
@@ -1584,6 +1641,42 @@ impl WorldStore {
         }
         self.entities
             .with_transform_mut(vehicle_id, |canonical| *canonical = transform)
+    }
+
+    /// `LivingEntity.aiStep` runs `applyEffectsFromBlocks` after
+    /// `travelRidden`; the ridden travel owners call this once their recorded
+    /// move is complete.
+    fn apply_local_vehicle_block_effects_from_recorder(&mut self, vehicle_id: i32) {
+        let Some(movement) = self.entities.take_local_vehicle_move(vehicle_id) else {
+            return;
+        };
+        self.apply_local_vehicle_block_effects(vehicle_id, movement);
+    }
+
+    /// Locally authoritative `applyEffectsFromBlocks` for the directly
+    /// controlled vehicle, borrowing the immutable terrain owner beside the
+    /// mutable entity store. Pass count and family gating come from the
+    /// generated block-effect tick policy.
+    fn apply_local_vehicle_block_effects(
+        &mut self,
+        vehicle_id: i32,
+        movement: EntityBlockEffectMovement,
+    ) {
+        if self.chunks.is_empty() {
+            return;
+        }
+        let mut block_effect_world = crate::client::EntityBlockEffectWorld::new(
+            self.dimension,
+            &self.registries,
+            &self.chunks,
+        );
+        let empty_collisions = std::collections::HashMap::new();
+        let _ = self.entities.apply_local_vehicle_block_effect_tick(
+            vehicle_id,
+            movement,
+            &empty_collisions,
+            &mut block_effect_world,
+        );
     }
 
     pub fn local_player_root_vehicle_id(&self) -> Option<i32> {
@@ -2214,6 +2307,10 @@ struct LocalLivingMoveOutcome {
     transform: super::components::EntityTransform,
     supporting_block: Option<crate::BlockPos>,
     horizontal_collision: bool,
+    /// The `Entity.Movement` this move records for `applyEffectsFromBlocks`:
+    /// pre-move origin, collision-clipped destination, and the requested
+    /// vector that drives Vanilla's axis-dependent traversal order.
+    movement: EntityBlockEffectMovement,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2295,10 +2392,63 @@ fn move_local_living_entity(
     transform.delta_movement.x *= speed_factor;
     transform.delta_movement.z *= speed_factor;
     LocalLivingMoveOutcome {
+        movement: EntityBlockEffectMovement::clipped(
+            EntityVec3 {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
+            transform.position,
+            requested,
+        ),
         transform,
         supporting_block,
         horizontal_collision: x_collision || z_collision,
     }
+}
+
+/// `Entity.move` for the directly controlled Living vehicle: consume the
+/// pending stuck-speed multiplier into the requested movement, run the shared
+/// clipped move, and zero the post-move delta exactly as Vanilla does when a
+/// multiplier was pending.
+#[allow(clippy::too_many_arguments)]
+fn move_local_living_entity_consuming_stuck(
+    world: &mut WorldStore,
+    entity_id: i32,
+    entity_type_id: i32,
+    relative_min: [f64; 3],
+    relative_max: [f64; 3],
+    max_up_step: f32,
+    previous_supporting_block: super::components::EntitySupportingBlock,
+    entity_collision_targets: &[super::EntityPickTargetState],
+    mut transform: super::components::EntityTransform,
+) -> LocalLivingMoveOutcome {
+    let stuck_multiplier = world
+        .entities
+        .consume_block_effect_stuck_speed_multiplier(entity_id);
+    if let Some(multiplier) = stuck_multiplier {
+        transform.delta_movement.x *= multiplier.x;
+        transform.delta_movement.y *= multiplier.y;
+        transform.delta_movement.z *= multiplier.z;
+    }
+    let mut outcome = move_local_living_entity(
+        world,
+        entity_id,
+        entity_type_id,
+        relative_min,
+        relative_max,
+        max_up_step,
+        previous_supporting_block,
+        entity_collision_targets,
+        transform,
+    );
+    if stuck_multiplier.is_some() {
+        outcome.transform.delta_movement = EntityVec3::default();
+    }
+    world
+        .entities
+        .record_local_vehicle_move(entity_id, outcome.movement);
+    outcome
 }
 
 fn store_living_move(
@@ -2313,7 +2463,7 @@ fn store_living_move(
             support.main = supporting_block;
             support.on_ground_no_blocks = supporting_block.is_none();
         } else {
-            *support = super::components::EntitySupportingBlock::default();
+            support.clear_physical();
         }
     })
 }
