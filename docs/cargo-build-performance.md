@@ -268,12 +268,16 @@ than a warm default-profile focused test because it has to build a separate
 cache. Use it when you expect multiple focused iterations in the same profile,
 not as a replacement for the final gate.
 
-Known issue (2026-07-21): the full `bbb-world` suite under `fast-test` aborts
-with a stack overflow in
-`client::dialog::tests::dialog_components_resolve_click_dialog_references_and_bound_cycles`;
-the default gate profile passes. Until that recursion fixture gets a deeper
-test stack or a smaller bound, run that suite filtered or use the default
-profile for whole-crate runs.
+`fast-test` builds at opt-level 0, whose stack frames are roughly 3x larger
+than the default profile's (measured 2026-07-21 on the depth-64 dialog
+reference walk: ~33.4 KiB/level vs ~10.3 KiB/level). Deep or dispatch-heavy
+tests can therefore exceed the default 2 MiB test-thread stack only in this
+profile. `scripts/cargo-dev.sh fast-test` exports
+`RUST_MIN_STACK=16777216` for exactly this reason; raw
+`cargo test --profile fast-test` runs need the same variable. The default
+gate profile intentionally keeps standard 2 MiB stacks as its frame-size
+discipline, and the dialog semantic-depth budget test pins the one known deep
+recursion in bytes across profiles.
 
 ## Timing Commands
 

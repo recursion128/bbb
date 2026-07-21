@@ -179,9 +179,11 @@ shared target cache in both directions (see `docs/cargo-build-performance.md`).
 Developers may optionally run `scripts/install-hooks.sh` for the seconds-only
 local pre-commit checks; it never replaces the full gate.
 
-For daily focused tests, agents may use `cargo test --profile fast-test` with an
-assigned external `CARGO_TARGET_DIR`, and `scripts/cargo-dev.sh` for focused
-tests, fast-test, timings, `sccache` evaluation, and target-size inspection.
+For daily focused tests, prefer `scripts/cargo-dev.sh fast-test` with an
+assigned external `CARGO_TARGET_DIR`; it exports the `RUST_MIN_STACK`
+headroom that opt-level-0 frames need (see
+`docs/cargo-build-performance.md`). `scripts/cargo-dev.sh` also covers focused
+tests, timings, `sccache` evaluation, and target-size inspection.
 Track the latest fully gated commit; any delivered or merged HEAD must have
 passed the full gate.
 

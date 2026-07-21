@@ -645,7 +645,12 @@ case "$cmd" in
     exec cargo test "$@"
     ;;
   fast-test)
-    exec cargo test --profile fast-test "$@"
+    # opt-level 0 frames are roughly 3x larger than the default profile's
+    # (measured on the depth-64 dialog reference walk: ~33.4 KiB/level vs
+    # ~10.3 KiB/level). Give fast-test threads explicit headroom so the same
+    # tests fit in every profile; the default gate profile keeps the standard
+    # 2 MiB stacks as its frame-size discipline.
+    RUST_MIN_STACK="${RUST_MIN_STACK:-16777216}" exec cargo test --profile fast-test "$@"
     ;;
   check)
     exec cargo check "$@"

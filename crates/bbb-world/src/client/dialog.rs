@@ -279,11 +279,26 @@ pub(crate) fn decode_component_click_dialog(
     action::decode_action_dialog_holder(dialog, registries.map(RegistrySet::frozen_access), 1)
 }
 
+#[cfg(test)]
+thread_local! {
+    pub(crate) static STACK_PROBE_EXTREMES: std::cell::Cell<(usize, usize)> =
+        const { std::cell::Cell::new((0, usize::MAX)) };
+}
+
 fn decode_dialog_data_inner(
     dialog: &NbtSummaryValue,
     registry_access: Option<FrozenRegistryAccess<'_>>,
     depth: usize,
 ) -> Result<DialogDataState, String> {
+    #[cfg(test)]
+    {
+        let marker = 0u8;
+        let address = std::ptr::from_ref(&marker) as usize;
+        STACK_PROBE_EXTREMES.with(|cell| {
+            let (top, bottom) = cell.get();
+            cell.set((top.max(address), bottom.min(address)));
+        });
+    }
     if depth > MAX_DIALOG_SEMANTIC_DEPTH {
         return Err(format!(
             "dialog semantic nesting exceeds {MAX_DIALOG_SEMANTIC_DEPTH}"
@@ -1161,40 +1176,94 @@ mod tests {
 
     #[test]
     fn dialog_components_resolve_click_dialog_references_and_bound_cycles() {
-        let mut store = WorldStore::new();
-        store.record_registry_entries(
-            DIALOG_REGISTRY,
-            0,
-            vec![
-                RegistryPacketEntry::with_raw_data(
-                    "example:next",
-                    notice_dialog_nbt("Referenced", None),
-                ),
-                RegistryPacketEntry::with_raw_data(
+        // The full-depth self-reference walk needs an explicit stack: at
+        // opt-level 0 the 64 semantic levels consume more than the default
+        // 2 MiB test-thread stack. The companion budget test below pins the
+        // actual consumption.
+        run_with_deep_dialog_stack(|| {
+            let mut store = WorldStore::new();
+            store.record_registry_entries(
+                DIALOG_REGISTRY,
+                0,
+                vec![
+                    RegistryPacketEntry::with_raw_data(
+                        "example:next",
+                        notice_dialog_nbt("Referenced", None),
+                    ),
+                    RegistryPacketEntry::with_raw_data(
+                        "example:self",
+                        click_dialog_notice_nbt("example:self"),
+                    ),
+                ],
+            );
+
+            let referencing = |resource_id: &str| {
+                compound(vec![
+                    string_entry("type", "minecraft:notice"),
+                    value_entry(
+                        "title",
+                        component_with_show_dialog(NbtSummaryValue::String(
+                            resource_id.to_string(),
+                        )),
+                    ),
+                ])
+            };
+            decode_dialog_data(&referencing("example:next"), Some(store.registries())).unwrap();
+
+            let error = decode_dialog_data(&referencing("example:self"), Some(store.registries()))
+                .unwrap_err();
+            assert!(
+                error.contains("dialog title field click_event field dialog")
+                    && error.contains("dialog semantic nesting exceeds 64"),
+                "{error:?}"
+            );
+        });
+    }
+
+    /// Reverse guard for `MAX_DIALOG_SEMANTIC_DEPTH`: the full-depth
+    /// reference walk must stay within a fixed stack budget in every build
+    /// profile, so raising the bound or fattening the per-level frames fails
+    /// here instead of overflowing a production or test thread. Measured
+    /// 2026-07-21: ~33.4 KiB/level at opt 0, ~10.3 KiB/level at opt 1.
+    #[test]
+    fn full_depth_dialog_reference_walk_stays_within_stack_budget() {
+        const STACK_BUDGET_BYTES: usize = 4 * 1024 * 1024;
+        run_with_deep_dialog_stack(|| {
+            let mut store = WorldStore::new();
+            store.record_registry_entries(
+                DIALOG_REGISTRY,
+                0,
+                vec![RegistryPacketEntry::with_raw_data(
                     "example:self",
                     click_dialog_notice_nbt("example:self"),
-                ),
-            ],
-        );
-
-        let referencing = |resource_id: &str| {
-            compound(vec![
+                )],
+            );
+            let referencing = compound(vec![
                 string_entry("type", "minecraft:notice"),
                 value_entry(
                     "title",
-                    component_with_show_dialog(NbtSummaryValue::String(resource_id.to_string())),
+                    component_with_show_dialog(NbtSummaryValue::String("example:self".to_string())),
                 ),
-            ])
-        };
-        decode_dialog_data(&referencing("example:next"), Some(store.registries())).unwrap();
+            ]);
+            super::STACK_PROBE_EXTREMES.with(|cell| cell.set((0, usize::MAX)));
+            decode_dialog_data(&referencing, Some(store.registries())).unwrap_err();
+            let (top, bottom) = super::STACK_PROBE_EXTREMES.with(std::cell::Cell::get);
+            let used = top - bottom;
+            assert!(
+                used <= STACK_BUDGET_BYTES,
+                "depth-{MAX_DIALOG_SEMANTIC_DEPTH} dialog reference walk used {used} bytes of \
+                 stack, over the {STACK_BUDGET_BYTES}-byte budget"
+            );
+        });
+    }
 
-        let error =
-            decode_dialog_data(&referencing("example:self"), Some(store.registries())).unwrap_err();
-        assert!(
-            error.contains("dialog title field click_event field dialog")
-                && error.contains("dialog semantic nesting exceeds 64"),
-            "{error:?}"
-        );
+    fn run_with_deep_dialog_stack(test: impl FnOnce() + Send + 'static) {
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(test)
+            .expect("spawn deep-dialog test thread")
+            .join()
+            .expect("deep-dialog test thread");
     }
 
     #[test]

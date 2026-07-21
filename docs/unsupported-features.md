@@ -83,6 +83,10 @@ Owner: `bbb-protocol`
 - Preserve or explicitly reject lone-surrogate `\u`/`\U`/`\N{name}`
   SNBT escapes instead of passing them through the current UTF-8-backed canonical
   string state; follow `TagParser` and the Java UTF-16 string model.
+- Extend byte-denominated stack budgets to the remaining recursive untrusted
+  decode paths (component trees, SNBT, holder sets) the way the dialog
+  semantic-depth budget test pins its depth-64 reference walk; a depth
+  constant alone does not bound stack use across build profiles.
 - Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
   beyond the atomically published frozen client projection. Extend
   source-aware built-in fallback only where a concrete consumer requires it,
