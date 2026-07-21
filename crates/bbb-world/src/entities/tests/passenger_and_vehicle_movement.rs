@@ -5049,3 +5049,95 @@ fn local_boat_travel_runs_two_freeze_passes_in_powder_snow() {
             .in_powder_snow
     );
 }
+
+#[test]
+fn baby_equine_and_panda_passenger_attachments_use_vanilla_declared_points() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        30,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID,
+        0.0,
+    ));
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 8.0,
+            y: 70.0,
+            z: 4.0,
+        },
+        ..protocol_add_entity_with_type(31, VANILLA_ENTITY_TYPE_COW_ID)
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 30,
+        passenger_ids: vec![31],
+    }));
+
+    // The F3+B passenger-vehicle slab renders at vanilla
+    // `getPassengerRidingPosition`, which exposes the attachment point for
+    // remote riders each frame.
+    let riding_position = |store: &WorldStore, passenger_id: i32| {
+        store
+            .entity_debug_passenger_vehicle_target(passenger_id)
+            .expect("passenger vehicle debug target")
+            .position
+    };
+    let adult = riding_position(&store, 31);
+
+    let (donkey_baby_id, _) = super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID,
+    )
+    .expect("generated Donkey baby accessor");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 30,
+        values: vec![protocol_bool_data(donkey_baby_id, true)],
+    }));
+    let baby = riding_position(&store, 31);
+
+    // Vanilla `AbstractChestedHorse` babies re-declare the passenger point as
+    // `(0, height + 0.03125, -0.3125)` before the 0.5 scale: the adult table
+    // point 1.1125 drops to 1.53125 * 0.5 = 0.765625 and the rider slides
+    // 0.3125 * 0.5 behind the origin, instead of the plain half-scaled
+    // 1.1125 * 0.5 = 0.55625 at z 0.
+    assert!((baby.x - adult.x).abs() < 1.0e-6);
+    assert!(
+        ((adult.y - baby.y) - (1.1125 - 0.765_625)).abs() < 1.0e-6,
+        "adult {adult:?} baby {baby:?}"
+    );
+    assert!(((baby.z - adult.z) - (-0.156_25)).abs() < 1.0e-6);
+
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        32,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PANDA_ID,
+        0.0,
+    ));
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: -3.0,
+            y: 50.0,
+            z: 12.0,
+        },
+        ..protocol_add_entity_with_type(33, VANILLA_ENTITY_TYPE_COW_ID)
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 32,
+        passenger_ids: vec![33],
+    }));
+    let adult = riding_position(&store, 33);
+
+    let (panda_baby_id, _) = super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PANDA_ID,
+    )
+    .expect("generated Panda baby accessor");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_bool_data(panda_baby_id, true)],
+    }));
+    let baby = riding_position(&store, 33);
+
+    // Vanilla panda babies attach at the post-scale 0.40625, not at half of
+    // the adult 1.25 box top (0.625).
+    assert!(
+        ((adult.y - baby.y) - (1.25 - 0.406_25)).abs() < 1.0e-6,
+        "adult {adult:?} baby {baby:?}"
+    );
+    assert!((baby.z - adult.z).abs() < 1.0e-6);
+}

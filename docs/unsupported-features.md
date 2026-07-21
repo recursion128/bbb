@@ -1376,8 +1376,13 @@ back into a todo. Do not delete these.
   living sleeping, camel sitting, sniffer digging, and the thirteen explicit
   baby tables — while pure-`scale` variants (goat long-jump, warden digging,
   slime/phantom, scale attribute) stay proportional because vanilla scales
-  the eye height by the same factor. Still open: the remaining collision and
-  pushability exceptions and the per-family attachment-point audit.
+  the eye height by the same factor. The follow-up attachment sweep verified
+  the collision surfaces (`canBeCollidedWith` in local-player collision with
+  tests, schema-derived pushability kinds, the Shulker/wind-charge/Interaction
+  `makeBoundingBox` overrides, and the redirectable-projectile pick radius)
+  and closed the last attachment gap: baby equine/llama/panda variants that
+  re-declare their passenger point through `withAttachments` now ride at the
+  declared basis instead of the ratio-scaled adult table point.
 
 ### Entity coverage matrix model texture and layers
 

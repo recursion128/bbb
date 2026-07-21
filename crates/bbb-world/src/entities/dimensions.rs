@@ -703,6 +703,7 @@ fn vanilla_passenger_attachment_point(
         vehicle_entity_type_id,
         vehicle_bounds,
         passenger_index,
+        vehicle_data_values,
     );
 
     if let Some((data_id, default)) =
@@ -885,7 +886,17 @@ fn vanilla_default_passenger_attachment_point(
     entity_type_id: i32,
     bounds: EntityPickBoundsState,
     passenger_index: usize,
+    data_values: &[EntityDataValue],
 ) -> [f32; 3] {
+    if vanilla_is_baby(entity_type_id, data_values) {
+        if let Some((point, declared_width, declared_height)) =
+            vanilla_baby_passenger_attachment_basis(entity_type_id)
+        {
+            let xz_scale = scale_axis(bounds_width(bounds), declared_width);
+            let y_scale = scale_axis(bounds_height(bounds), declared_height);
+            return [point[0] * xz_scale, point[1] * y_scale, point[2] * xz_scale];
+        }
+    }
     let Some(points) = vanilla_passenger_attachment_overrides(entity_type_id) else {
         return [0.0, bounds_height(bounds), 0.0];
     };
@@ -894,6 +905,33 @@ fn vanilla_default_passenger_attachment_point(
     let y_scale = scale_axis(bounds_height(bounds), bounds_height(base_bounds));
     let point = points[passenger_index.min(points.len() - 1)];
     [point[0] * xz_scale, point[1] * y_scale, point[2] * xz_scale]
+}
+
+/// Vanilla baby variants that re-declare their passenger attachment through `withAttachments`
+/// decouple the riding point from the adult table, mirroring the variant eye-height basis: the
+/// declared point is paired with the (width, height) it was declared at, so age and
+/// scale-attribute factors flow through the actual-to-declared ratio. Equine and llama babies
+/// declare before their dimension scale (adult-size basis); the panda declares after its 0.5
+/// scale, so its basis is the baby size.
+fn vanilla_baby_passenger_attachment_basis(entity_type_id: i32) -> Option<([f32; 3], f32, f32)> {
+    Some(match entity_type_id {
+        // `EntityType.HORSE.getHeight() - 0.125F` at the adult 1.396_484_4 x 1.6 size.
+        VANILLA_ENTITY_TYPE_HORSE_ID => ([0.0, 1.475, 0.0], 1.396_484_4, 1.6),
+        // `getHeight() - 0.25F` at the adult size.
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
+            ([0.0, 1.35, 0.0], 1.396_484_4, 1.6)
+        }
+        // `AbstractChestedHorse`: `getHeight() + 0.03125F`, z -0.3125 at the adult size.
+        VANILLA_ENTITY_TYPE_DONKEY_ID => ([0.0, 1.531_25, -0.3125], 1.396_484_4, 1.5),
+        VANILLA_ENTITY_TYPE_MULE_ID => ([0.0, 1.631_25, -0.3125], 1.396_484_4, 1.6),
+        // `EntityType.LLAMA.getHeight() - 0.25F`, z -0.3 at the adult 0.9 x 1.87 size.
+        VANILLA_ENTITY_TYPE_LLAMA_ID | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
+            ([0.0, 1.62, -0.3], 0.9, 1.87)
+        }
+        // Panda attaches 0.40625 after `scale(0.5)`, so the basis is the 0.65 x 0.625 baby box.
+        VANILLA_ENTITY_TYPE_PANDA_ID => ([0.0, 0.406_25, 0.0], 0.65, 0.625),
+        _ => return None,
+    })
 }
 
 fn vanilla_passenger_attachment_overrides(entity_type_id: i32) -> Option<&'static [[f32; 3]]> {

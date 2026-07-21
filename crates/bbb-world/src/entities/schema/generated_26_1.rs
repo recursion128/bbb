@@ -27323,8 +27323,9 @@ mod generated_catalog_guards {
             source
                 .matches("vanilla_is_baby(entity_type_id, data_values)")
                 .count(),
-            // Bounds branches plus the variant eye-height basis lookup.
-            8
+            // Bounds branches plus the variant eye-height and baby
+            // passenger-attachment basis lookups.
+            9
         );
         assert!(fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(
