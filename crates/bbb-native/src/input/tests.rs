@@ -23827,3 +23827,274 @@ fn test_player_slot_item(world: &WorldStore, slot: i32) -> ProtocolItemStackSumm
         .map(|state| state.item.clone())
         .unwrap_or_else(ProtocolItemStackSummary::empty)
 }
+
+fn simple_probe_entity(world: &mut WorldStore, id: i32, entity_type_id: i32) {
+    world.apply_add_entity(AddEntity {
+        id,
+        uuid: Uuid::from_u128(id as u128),
+        entity_type_id,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+}
+
+#[test]
+fn villager_local_save_projects_synced_villager_data_and_finalized_flag() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 300, VANILLA_ENTITY_TYPE_VILLAGER_ID);
+    let villager_data_id =
+        bbb_world::vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        )
+        .expect("villager data accessor");
+    let (finalized_id, _) =
+        bbb_world::vanilla_entity_metadata_villager_data_finalized_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        )
+        .expect("villager data finalized accessor");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 300,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: villager_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_VILLAGER_DATA_ID,
+                // Vanilla registration order: villager_type plains = 2,
+                // profession farmer = 5; the store rebinds identities from
+                // the holder ids through the registry fallback.
+                value: EntityDataValueKind::VillagerData {
+                    villager_type: EntityDataRegistryReference::unresolved(2),
+                    profession: EntityDataRegistryReference::unresolved(5),
+                    level: 2,
+                },
+            },
+            ProtocolEntityDataValue {
+                data_id: finalized_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            },
+        ],
+    }));
+
+    let entity = world.probe_entity(300).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains(
+        "VillagerData: {type: \"minecraft:plains\", profession: \"minecraft:farmer\", level: 2}"
+    ));
+    assert!(snbt.contains("VillagerDataFinalized: 1b"));
+    assert!(!snbt.contains("Gossips"));
+    assert!(!snbt.contains("FoodLevel"));
+}
+
+#[test]
+fn zombie_villager_local_save_projects_conversion_and_villager_data() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 301, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID);
+    let (converting_id, _) =
+        bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        )
+        .expect("zombie villager converting accessor");
+    let villager_data_id =
+        bbb_world::vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        )
+        .expect("zombie villager data accessor");
+
+    let entity = world.probe_entity(301).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("ConversionTime: -1"));
+    assert!(snbt.contains("IsBaby: 0b"));
+    assert!(snbt.contains("VillagerDataFinalized: 0b"));
+    assert!(!snbt.contains("VillagerData: {"));
+
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 301,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: converting_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            },
+            ProtocolEntityDataValue {
+                data_id: villager_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_VILLAGER_DATA_ID,
+                // Vanilla registration order: villager_type swamp = 5,
+                // profession cleric = 4.
+                value: EntityDataValueKind::VillagerData {
+                    villager_type: EntityDataRegistryReference::unresolved(5),
+                    profession: EntityDataRegistryReference::unresolved(4),
+                    level: 1,
+                },
+            },
+        ],
+    }));
+    let entity = world.probe_entity(301).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("ConversionTime: 0"));
+    assert!(snbt.contains(
+        "VillagerData: {type: \"minecraft:swamp\", profession: \"minecraft:cleric\", level: 1}"
+    ));
+}
+
+#[test]
+fn warden_local_save_keeps_server_private_anger_absent() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 302, VANILLA_ENTITY_TYPE_WARDEN_ID);
+
+    let entity = world.probe_entity(302).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(!snbt.contains("anger"));
+    assert!(!snbt.contains("listener"));
+    assert!(snbt.contains("Motion"));
+}
+
+#[test]
+fn ender_dragon_local_save_projects_synced_phase() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 303, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID);
+    let (phase_id, _) =
+        bbb_world::vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+        )
+        .expect("ender dragon phase accessor");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 303,
+        values: vec![ProtocolEntityDataValue {
+            data_id: phase_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: EntityDataValueKind::Int(7),
+        }],
+    }));
+
+    let entity = world.probe_entity(303).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("DragonPhase: 7, DragonDeathTime: 0"));
+}
+
+#[test]
+fn area_effect_cloud_local_save_projects_client_age_and_synced_radius() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 304, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID);
+    let (radius_id, _) =
+        bbb_world::vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+        )
+        .expect("area effect cloud radius accessor");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 304,
+        values: vec![ProtocolEntityDataValue {
+            data_id: radius_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+            value: EntityDataValueKind::Float(2.5),
+        }],
+    }));
+
+    let entity = world.probe_entity(304).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(snbt.contains("Age: 0, Radius: 2.5f"));
+    assert!(!snbt.contains("Duration"));
+    assert!(!snbt.contains("potion_contents"));
+}
+
+fn diamond_item_runtime() -> NativeItemRuntime {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:diamond"],
+        "protocol_ids": {"minecraft:diamond": 0}
+    }))
+    .unwrap();
+    NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    )
+}
+
+fn synced_item_stack_value(data_id: u8, count: i32) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
+            item_id: Some(0),
+            count,
+            component_patch: DataComponentPatchSummary::default(),
+        }),
+    }
+}
+
+#[test]
+fn item_entity_local_save_projects_client_age_and_synced_stack() {
+    let item_runtime = diamond_item_runtime();
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 305, VANILLA_ENTITY_TYPE_ITEM_ID);
+    let stack_id = bbb_world::vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    )
+    .expect("item entity stack accessor");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 305,
+        values: vec![synced_item_stack_value(stack_id, 3)],
+    }));
+
+    let entity = world.probe_entity(305).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains("Age: 0s, Item: {id: \"minecraft:diamond\", count: 3}"));
+    assert!(!snbt.contains("Health"));
+    assert!(!snbt.contains("PickupDelay"));
+}
+
+#[test]
+fn eye_of_ender_local_save_projects_synced_stack() {
+    let item_runtime = diamond_item_runtime();
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 306, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID);
+    let stack_id = bbb_world::vanilla_entity_metadata_eye_of_ender_item_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+    )
+    .expect("eye of ender item accessor");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 306,
+        values: vec![synced_item_stack_value(stack_id, 1)],
+    }));
+
+    let entity = world.probe_entity(306).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains("Item: {id: \"minecraft:diamond\"}"));
+}
+
+#[test]
+fn ominous_item_spawner_local_save_projects_lowercase_item_field() {
+    let item_runtime = diamond_item_runtime();
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 307, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID);
+    let stack_id =
+        bbb_world::vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+        )
+        .expect("ominous item spawner accessor");
+
+    let entity = world.probe_entity(307).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity);
+    assert!(snbt
+        .as_deref()
+        .map(|text| !text.contains("item:"))
+        .unwrap_or(true));
+
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 307,
+        values: vec![synced_item_stack_value(stack_id, 1)],
+    }));
+    let entity = world.probe_entity(307).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains("item: {id: \"minecraft:diamond\"}"));
+    assert!(!snbt.contains("spawn_item_after_ticks"));
+}

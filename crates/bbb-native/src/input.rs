@@ -10,18 +10,20 @@ use bbb_protocol::{
     attribute_types::vanilla_attribute_type,
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ALLAY_ID,
-        VANILLA_ENTITY_TYPE_ARMADILLO_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
-        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID,
-        VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID,
-        VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
-        VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
-        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+        VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
+        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-        VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
         VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
@@ -30,9 +32,10 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
         VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
         VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
@@ -50,12 +53,13 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     mob_effect_types::vanilla_mob_effect_type,
@@ -4838,6 +4842,43 @@ fn debug_push_entity_additional_save_data(
     }
 
     match entity.entity_type_id {
+        VANILLA_ENTITY_TYPE_VILLAGER_ID => {
+            debug_push_mob_additional_save_data(world, entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_abstract_villager_additional_save_data(fields);
+            debug_push_villager_data_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => {
+            debug_push_mob_additional_save_data(world, entity, fields);
+            debug_push_zombie_additional_save_data(entity, fields);
+            debug_push_zombie_villager_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_WARDEN_ID => {
+            // Warden's own anger/vibration save state is server-private; only
+            // the shared Mob layer is client-observable.
+            debug_push_mob_additional_save_data(world, entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
+            debug_push_mob_additional_save_data(world, entity, fields);
+            debug_push_ender_dragon_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID => {
+            debug_push_area_effect_cloud_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID => {
+            debug_push_eye_of_ender_additional_save_data(world, entity, item_runtime, fields);
+        }
+        VANILLA_ENTITY_TYPE_ITEM_ID => {
+            debug_push_item_entity_additional_save_data(world, entity, item_runtime, fields);
+        }
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => {
+            debug_push_ominous_item_spawner_additional_save_data(
+                world,
+                entity,
+                item_runtime,
+                fields,
+            );
+        }
         VANILLA_ENTITY_TYPE_CREEPER_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_creeper_additional_save_data(entity, fields);
@@ -8013,6 +8054,201 @@ fn debug_push_zombie_additional_save_data(entity: &EntityState, fields: &mut Vec
     let is_baby = debug_entity_data_bool_present(entity, accessors.baby_data_id)
         .unwrap_or(accessors.baby_default);
     fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
+}
+
+fn debug_entity_data_villager_data_present(
+    entity: &EntityState,
+    data_id: u8,
+) -> Option<(&str, &str, i32)> {
+    entity
+        .data_values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::VillagerData {
+                villager_type,
+                profession,
+                level,
+            } => Some((
+                debug_registry_resource_id(villager_type, "minecraft:villager_type")?,
+                debug_registry_resource_id(profession, "minecraft:villager_profession")?,
+                *level,
+            )),
+            _ => None,
+        })
+}
+
+fn debug_push_villager_data_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some(data_id) = bbb_world::vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+        entity.entity_type_id,
+    ) else {
+        return;
+    };
+    if let Some((villager_type, profession, level)) =
+        debug_entity_data_villager_data_present(entity, data_id)
+    {
+        fields.push(format!(
+            "VillagerData: {{type: {}, profession: {}, level: {level}}}",
+            debug_snbt_string(villager_type),
+            debug_snbt_string(profession),
+        ));
+    }
+    if let Some((finalized_id, default)) =
+        bbb_world::vanilla_entity_metadata_villager_data_finalized_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    {
+        let finalized = debug_entity_data_bool_present(entity, finalized_id).unwrap_or(default);
+        fields.push(format!(
+            "VillagerDataFinalized: {}",
+            debug_snbt_bool(finalized)
+        ));
+    }
+}
+
+fn debug_push_zombie_villager_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    debug_push_villager_data_save_data(entity, fields);
+    let Some((converting_id, default)) =
+        bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let converting = debug_entity_data_bool_present(entity, converting_id).unwrap_or(default);
+    // The conversion timer value is server-private; the client entity holds
+    // zero while the synced converting flag is set, so the vanilla
+    // `isConverting() ? villagerConversionTime : -1` projection collapses to
+    // these two observable values.
+    fields.push(format!(
+        "ConversionTime: {}",
+        if converting { 0 } else { -1 }
+    ));
+}
+
+fn debug_push_ender_dragon_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some((phase_id, default)) =
+        bbb_world::vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let phase = debug_entity_data_int_present(entity, phase_id).unwrap_or(default);
+    fields.push(format!("DragonPhase: {phase}"));
+    // The death animation timer only advances after the server-authoritative
+    // kill; a probed live dragon holds the client entity's zero.
+    fields.push("DragonDeathTime: 0".to_string());
+}
+
+fn debug_push_area_effect_cloud_additional_save_data(
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    let Some((radius_id, default)) =
+        bbb_world::vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    // Age mirrors the client-advanced `Entity.tickCount`; Duration, wait and
+    // reapplication state, potion contents and the owner reference are
+    // server-private and stay absent.
+    fields.push(format!("Age: {}", entity.client_animations.age_ticks));
+    if let Some(radius) =
+        debug_snbt_float(debug_entity_data_float_present(entity, radius_id).unwrap_or(default))
+    {
+        fields.push(format!("Radius: {radius}"));
+    }
+}
+
+fn debug_push_item_stack_field(
+    world: &WorldStore,
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    stack_data_id: u8,
+    field_name: &str,
+    fields: &mut Vec<String>,
+) {
+    let Some((stack, resource_id)) = debug_entity_data_item_stack_present(entity, stack_data_id)
+        .and_then(|stack| {
+            let resource_id = stack
+                .item_id
+                .and_then(|item_id| item_runtime?.item_resource_id(item_id))?;
+            Some((stack, resource_id))
+        })
+    else {
+        return;
+    };
+    if let Some(item) = debug_item_stack_snbt_with_context(
+        resource_id,
+        stack.count,
+        Some(stack),
+        PersistentSnbtContext {
+            item_runtime,
+            registry_access: Some(world.frozen_registry_access()),
+        },
+    ) {
+        fields.push(format!("{field_name}: {item}"));
+    }
+}
+
+fn debug_push_eye_of_ender_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    fields: &mut Vec<String>,
+) {
+    let Some(stack_id) =
+        bbb_world::vanilla_entity_metadata_eye_of_ender_item_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    debug_push_item_stack_field(world, entity, item_runtime, stack_id, "Item", fields);
+}
+
+fn debug_push_item_entity_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    fields: &mut Vec<String>,
+) {
+    let Some(stack_id) =
+        bbb_world::vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    // Age mirrors the client-advanced `ItemEntity.age`; Health, PickupDelay
+    // and the thrower/owner references are server-private and stay absent.
+    fields.push(format!(
+        "Age: {}s",
+        entity.client_animations.age_ticks as i16
+    ));
+    debug_push_item_stack_field(world, entity, item_runtime, stack_id, "Item", fields);
+}
+
+fn debug_push_ominous_item_spawner_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    fields: &mut Vec<String>,
+) {
+    let Some(stack_id) =
+        bbb_world::vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    // Vanilla only stores a non-empty spawner stack, and the spawn delay is
+    // server-private.
+    debug_push_item_stack_field(world, entity, item_runtime, stack_id, "item", fields);
 }
 
 fn debug_push_zoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

@@ -1392,7 +1392,13 @@ back into a todo. Do not delete these.
 - Close family-specific Shift-local F3+I projections using only synced,
   spawn/equipment/component, and client-owned state. Server-private inventory,
   targets, timers, RNG, AI, and authoritative save fields must remain absent or
-  carry a narrow vanilla-backed not-applicable decision.
+  carry a narrow vanilla-backed not-applicable decision. The 2026-07-21 audit
+  of the generated dispatch closed the villager/zombie-villager, warden,
+  ender-dragon, area-effect-cloud, eye-of-ender, item-entity and
+  ominous-item-spawner families and verified the FishingHook, LeashKnot,
+  LightningBolt and Marker vanilla bodies are empty; the remaining default-arm
+  gaps are the Display trio (block/item/text), Mannequin and probed Player
+  projections.
 
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the

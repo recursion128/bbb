@@ -2313,6 +2313,58 @@ pub fn vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_typ
     }
 }
 
+/// Resolves the generated villager-data-finalized boolean accessor and default.
+///
+/// Villager and ZombieVillager each define their own `DATA_VILLAGER_DATA_FINALIZED`
+/// slot, so the class-chain lookup lands on the owner's id for either type.
+pub fn vanilla_entity_metadata_villager_data_finalized_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_VILLAGER_DATA_FINALIZED",
+    )?;
+    match (accessor.serializer_name, accessor.typed_default) {
+        ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
+            Some((accessor.data_id, default))
+        }
+        _ => None,
+    }
+}
+
+/// Resolves AreaEffectCloud's generated synced radius accessor and default.
+pub fn vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, f32)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_RADIUS")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.AreaEffectCloud",
+            "FLOAT",
+            Some(VanillaEntityMetadataDefault::Float(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves EyeOfEnder's generated synced item-stack accessor.
+pub fn vanilla_entity_metadata_eye_of_ender_item_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<u8> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ITEM_STACK")?;
+    match (accessor.owner, accessor.serializer_name) {
+        ("net.minecraft.world.entity.projectile.EyeOfEnder", "ITEM_STACK") => {
+            Some(accessor.data_id)
+        }
+        _ => None,
+    }
+}
+
 /// Resolves OminousItemSpawner's generated item-stack accessor and empty default.
 pub fn vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(
     entity_type_id: i32,
@@ -4650,7 +4702,8 @@ mod tests {
         VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
     };
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ALLAY_ID,
+        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID,
         VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
@@ -4665,28 +4718,28 @@ mod tests {
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
         VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
-        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-        VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
-        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
@@ -7865,6 +7918,50 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_local_save_projection_accessors_own_membership_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_villager_data_finalized_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID
+            ),
+            Some((VANILLA_VILLAGER_DATA_FINALIZED_DATA_ID, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_villager_data_finalized_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+            ),
+            Some((VANILLA_ZOMBIE_VILLAGER_DATA_FINALIZED_DATA_ID, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_villager_data_finalized_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_WITHER_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID
+            ),
+            Some((8, 3.0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type(-1),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_eye_of_ender_item_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID
+            ),
+            Some(8)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_eye_of_ender_item_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ITEM_ID
+            ),
             None
         );
     }
