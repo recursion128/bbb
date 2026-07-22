@@ -51,13 +51,24 @@
     {
       "call_site": "net/minecraft/advancements/criterion/BlockPredicate.java:39:30:ByteBufCodecs.holderSet",
       "column": 30,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -67,7 +78,7 @@
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/advancements/criterion/BlockPredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/EnchantmentPredicate.java:17:13:RegistryCodecs.homogeneousList",
@@ -2052,13 +2063,24 @@
     {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:63:7:ByteBufCodecs.holderSet",
       "column": 7,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2068,7 +2090,7 @@
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/item/component/BlocksAttacks.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:141:16:RegistryCodecs.homogeneousList",
@@ -2093,13 +2115,24 @@
     {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:150:10:ByteBufCodecs.holderSet",
       "column": 10,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2109,7 +2142,7 @@
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/item/component/BlocksAttacks.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/DamageResistant.java:16:20:RegistryCodecs.homogeneousList",
@@ -2134,13 +2167,24 @@
     {
       "call_site": "net/minecraft/world/item/component/DamageResistant.java:19:7:ByteBufCodecs.holderSet",
       "column": 7,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2150,7 +2194,7 @@
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/item/component/DamageResistant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/DebugStickState.java:15:10:Registry.holderByNameCodec",
@@ -2195,13 +2239,24 @@
     {
       "call_site": "net/minecraft/world/item/component/Tool.java:69:10:ByteBufCodecs.holderSet",
       "column": 10,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2211,7 +2266,7 @@
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/item/component/Tool.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java:19:20:RegistryCodecs.homogeneousList",
@@ -2236,13 +2291,24 @@
     {
       "call_site": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java:23:7:ByteBufCodecs.holderSet",
       "column": 7,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2252,18 +2318,29 @@
       "registry_expression": "Registries.MOB_EFFECT",
       "resource_id": "minecraft:mob_effect",
       "source_path": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/crafting/Ingredient.java:26:97:ByteBufCodecs.holderSet",
       "column": 97,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2273,18 +2350,29 @@
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/crafting/Ingredient.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/crafting/Ingredient.java:28:116:ByteBufCodecs.holderSet",
       "column": 116,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2294,7 +2382,7 @@
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/crafting/Ingredient.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/crafting/Ingredient.java:33:74:HolderSetCodec.create",
@@ -2488,13 +2576,24 @@
     {
       "call_site": "net/minecraft/world/item/enchantment/Repairable.java:19:7:ByteBufCodecs.holderSet",
       "column": 7,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2504,7 +2603,7 @@
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/enchantment/Repairable.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/effects/ApplyMobEffect.java:26:13:RegistryCodecs.homogeneousList",
@@ -2629,13 +2728,24 @@
     {
       "call_site": "net/minecraft/world/item/equipment/Equippable.java:72:7:ByteBufCodecs.holderSet",
       "column": 7,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints.",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holderSet",
       "family": "network-holder-set-or-tag",
@@ -2645,7 +2755,7 @@
       "registry_expression": "Registries.ENTITY_TYPE",
       "resource_id": "minecraft:entity_type",
       "source_path": "net/minecraft/world/item/equipment/Equippable.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/equipment/trim/TrimMaterial.java:25:60:RegistryFileCodec.create",

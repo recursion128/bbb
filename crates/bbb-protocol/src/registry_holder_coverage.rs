@@ -217,7 +217,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            147
+            137
         );
         assert_eq!(
             ledger
@@ -240,7 +240,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 46);
+        assert_eq!(complete.len(), 56);
         assert_eq!(
             complete
                 .iter()
@@ -249,6 +249,7 @@ mod tests {
             BTreeSet::from([
                 "minecraft:attribute",
                 "minecraft:banner_pattern",
+                "minecraft:block",
                 "minecraft:chicken_variant",
                 "minecraft:chicken_sound_variant",
                 "minecraft:cat_sound_variant",
@@ -260,6 +261,7 @@ mod tests {
                 "minecraft:dimension_type",
                 "minecraft:dialog",
                 "minecraft:enchantment",
+                "minecraft:entity_type",
                 "minecraft:frog_variant",
                 "minecraft:game_event",
                 "minecraft:item",
@@ -283,6 +285,88 @@ mod tests {
                 "minecraft:zombie_nautilus_variant",
             ])
         );
+    }
+
+    #[test]
+    fn complete_network_holder_set_family_keeps_wire_registry_and_consumer_guards() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        let entries = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.family == "network-holder-set-or-tag")
+            .collect::<Vec<_>>();
+        assert_eq!(entries.len(), 10);
+        assert!(entries
+            .iter()
+            .all(|entry| entry.status == RegistryHolderCoverageStatus::Complete));
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| entry.resource_id.as_deref().unwrap())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([
+                "minecraft:block",
+                "minecraft:damage_type",
+                "minecraft:entity_type",
+                "minecraft:item",
+                "minecraft:mob_effect",
+            ])
+        );
+
+        let components = include_str!("packets/data_components.rs");
+        for required in [
+            "enum NetworkHolderSetRegistry {",
+            "fn decode_holder_set_summary(",
+            "Self::EntityType => vanilla_entity_type(holder_id).is_some()",
+            "Self::Item => crate::item_types::vanilla_item_type(holder_id).is_some()",
+            "Self::MobEffect => vanilla_mob_effect_type(holder_id).is_some()",
+        ] {
+            assert!(
+                components.contains(required),
+                "network holder-set decode lost structural guard {required}"
+            );
+        }
+
+        let recipes = include_str!("packets/client_features/recipes.rs");
+        for required in [
+            "fn decode_ingredient_summary(",
+            "ingredient holder set must not be empty",
+            "inventory::decode_non_empty_item_holder_id(decoder)?",
+        ] {
+            assert!(
+                recipes.contains(required),
+                "Ingredient decode lost structural guard {required}"
+            );
+        }
+
+        let world_recipes = include_str!("../../bbb-world/src/recipes.rs");
+        for required in [
+            "pub(crate) fn ingredient_holder_set_is_resolved(",
+            "access.holder_set_by_tag(\"minecraft:item\", tag)",
+            ".holder_set_by_holder_ids(\"minecraft:item\", holder_ids)",
+            "entry.resource_id != \"minecraft:air\"",
+        ] {
+            assert!(
+                world_recipes.contains(required),
+                "Ingredient consumer lost structural guard {required}"
+            );
+        }
+
+        let persistent = include_str!("../../bbb-native/src/input/component_patch.rs");
+        for required in [
+            "pub(super) fn registry_holder_set_snbt(",
+            "access.holder_set_by_tag(registry, tag)",
+            ".holder_set_by_holder_ids(registry, holder_ids)",
+            "fn block_holder_set_snbt(",
+            "fn entity_type_holder_set_snbt(",
+            "fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags(",
+            "fn damage_type_encoders_use_session_order_or_fixed_catalog(",
+        ] {
+            assert!(
+                persistent.contains(required),
+                "network holder-set persistence lost structural guard {required}"
+            );
+        }
     }
 
     #[test]

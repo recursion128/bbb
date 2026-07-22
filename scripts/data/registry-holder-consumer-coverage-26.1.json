@@ -650,15 +650,26 @@
           "minecraft:banner_pattern"
         ]
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
       "evidence": [
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#public class RegistryDataCollector",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#enum NetworkHolderSetRegistry",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_set_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn fixed_registry_network_holder_sets_reject_unknown_direct_ids",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_holder_ids",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/recipes.rs#pub(crate) fn ingredient_holder_set_is_resolved",
+        "crates/bbb-world/src/recipes.rs#fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically",
+        "crates/bbb-world/src/recipe_book.rs#fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state",
+        "crates/bbb-native/src/input/component_patch.rs#fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints."
     },
     {
       "id": "network-tag",
