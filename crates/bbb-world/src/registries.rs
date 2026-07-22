@@ -12,6 +12,7 @@ mod environment_attributes;
 mod game_tests;
 mod instrument_values;
 mod instruments;
+mod int_providers;
 mod item_component_initializers;
 mod jukebox_songs;
 mod painting_variants;
@@ -84,6 +85,7 @@ pub use instrument_values::{
     InstrumentPresentation, InstrumentProjectionError, InstrumentSoundEvent, INSTRUMENT_REGISTRY,
 };
 pub use instruments::VanillaInstrumentIdentity;
+pub use int_providers::{WorldIntProvider, WorldWeightedIntProvider};
 pub use jukebox_songs::{
     JukeboxSongPresentation, JukeboxSongProjectionError, JukeboxSoundEvent, JUKEBOX_SONG_REGISTRY,
 };

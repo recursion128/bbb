@@ -21,7 +21,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    registries::{ClientEnvironmentAttributes, DIMENSION_TYPE_REGISTRY},
+    registries::{ClientEnvironmentAttributes, WorldIntProvider, DIMENSION_TYPE_REGISTRY},
     BlockPos, WorldStore,
 };
 
@@ -84,6 +84,10 @@ pub struct WorldDimensionTypeProperties {
     pub logical_height: i32,
     #[serde(default)]
     pub infiniburn_tag: Option<String>,
+    #[serde(default)]
+    pub monster_spawn_light_level: Option<WorldIntProvider>,
+    #[serde(default)]
+    pub monster_spawn_block_light_limit: Option<i32>,
 }
 
 impl Default for WorldDimensionTypeProperties {
@@ -94,6 +98,8 @@ impl Default for WorldDimensionTypeProperties {
             coordinate_scale: world_dimension_coordinate_scale_default(),
             logical_height: 0,
             infiniburn_tag: None,
+            monster_spawn_light_level: None,
+            monster_spawn_block_light_limit: None,
         }
     }
 }
@@ -745,6 +751,12 @@ impl WorldStore {
             infiniburn_tag: dimension_type
                 .as_ref()
                 .and_then(|projection| projection.infiniburn_tag.clone()),
+            monster_spawn_light_level: dimension_type
+                .as_ref()
+                .and_then(|projection| projection.monster_spawn_light_level.clone()),
+            monster_spawn_block_light_limit: dimension_type
+                .as_ref()
+                .and_then(|projection| projection.monster_spawn_block_light_limit),
         };
         let environment_attributes = dimension_type
             .as_ref()
@@ -2490,6 +2502,8 @@ mod tests {
                 coordinate_scale: 8.0,
                 logical_height: 256,
                 infiniburn_tag: Some("example:forever".to_string()),
+                monster_spawn_light_level: Some(WorldIntProvider::Constant(7)),
+                monster_spawn_block_light_limit: Some(4),
             }
         );
     }
@@ -2873,6 +2887,12 @@ mod tests {
         write_nbt_string(&mut payload, "coordinate_scale");
         payload.extend_from_slice(&8.0_f64.to_bits().to_be_bytes());
         write_nbt_named_string(&mut payload, "infiniburn", "#example:forever");
+        payload.push(3);
+        write_nbt_string(&mut payload, "monster_spawn_light_level");
+        payload.extend_from_slice(&7_i32.to_be_bytes());
+        payload.push(3);
+        write_nbt_string(&mut payload, "monster_spawn_block_light_limit");
+        payload.extend_from_slice(&4_i32.to_be_bytes());
         payload.push(0);
         payload
     }

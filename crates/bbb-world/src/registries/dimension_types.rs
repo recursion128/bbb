@@ -4,10 +4,11 @@ use crate::{
     FrozenRegistryAccess, RegistryPacketEntry, WorldCardinalLighting, WorldDimension, WorldSkybox,
 };
 
+use super::int_providers::decode_bounded_int_provider;
 use super::{
     decode_client_environment_attributes,
     environment_attributes::validate_client_environment_references, ClientEnvironmentAttributes,
-    EnvironmentAttributeProjectionError, TIMELINE_REGISTRY,
+    EnvironmentAttributeProjectionError, WorldIntProvider, TIMELINE_REGISTRY,
 };
 
 pub const DIMENSION_TYPE_REGISTRY: &str = "minecraft:dimension_type";
@@ -22,6 +23,8 @@ pub(crate) struct DimensionTypeClientProjection {
     pub(crate) coordinate_scale: Option<f64>,
     pub(crate) logical_height: Option<i32>,
     pub(crate) infiniburn_tag: Option<String>,
+    pub(crate) monster_spawn_light_level: Option<WorldIntProvider>,
+    pub(crate) monster_spawn_block_light_limit: Option<i32>,
     pub(crate) cardinal_lighting: Option<WorldCardinalLighting>,
     pub(crate) skybox: Option<WorldSkybox>,
     pub(crate) ambient_light: Option<f32>,
@@ -70,6 +73,20 @@ pub(super) fn decode_dimension_type_client_projection(
         .map_err(|error| format!("{resource_id} infiniburn: {error}"))?;
     let ambient_light = required_f32_field(fields, "ambient_light")
         .map_err(|error| format!("{resource_id} ambient_light: {error}"))?;
+    let monster_spawn_light_level = field(fields, "monster_spawn_light_level")
+        .ok_or_else(|| format!("{resource_id} monster_spawn_light_level: missing required field"))
+        .and_then(|value| {
+            decode_bounded_int_provider(value, 0, 15)
+                .map_err(|error| format!("{resource_id} monster_spawn_light_level: {error}"))
+        })?;
+    let monster_spawn_block_light_limit =
+        required_i32_field(fields, "monster_spawn_block_light_limit")
+            .map_err(|error| format!("{resource_id} monster_spawn_block_light_limit: {error}"))?;
+    if !(0..=15).contains(&monster_spawn_block_light_limit) {
+        return Err(format!(
+            "{resource_id} monster_spawn_block_light_limit: expected integer in range 0..=15"
+        ));
+    }
     let cardinal_lighting = match field(fields, "cardinal_light") {
         Some(NbtSummaryValue::String(name)) => cardinal_lighting_type_from_name(name)
             .ok_or_else(|| format!("{resource_id} cardinal_light: unknown value {name}"))?,
@@ -96,6 +113,8 @@ pub(super) fn decode_dimension_type_client_projection(
     projection.coordinate_scale = Some(coordinate_scale);
     projection.logical_height = Some(logical_height);
     projection.infiniburn_tag = Some(infiniburn_tag);
+    projection.monster_spawn_light_level = Some(monster_spawn_light_level);
+    projection.monster_spawn_block_light_limit = Some(monster_spawn_block_light_limit);
     projection.cardinal_lighting = Some(cardinal_lighting);
     projection.skybox = Some(skybox);
     projection.ambient_light = Some(ambient_light);
@@ -142,6 +161,11 @@ fn dimension_type_client_projection(
         NbtSummaryValue::String(raw) => decode_hashed_tag(raw).ok(),
         _ => None,
     });
+    let monster_spawn_light_level = field(fields, "monster_spawn_light_level")
+        .and_then(|value| decode_bounded_int_provider(value, 0, 15).ok());
+    let monster_spawn_block_light_limit = field(fields, "monster_spawn_block_light_limit")
+        .and_then(numeric_i32)
+        .filter(|value| (0..=15).contains(value));
     let cardinal_lighting = match field(fields, "cardinal_light") {
         Some(NbtSummaryValue::String(name)) => cardinal_lighting_type_from_name(name),
         None => Some(WorldCardinalLighting::Default),
@@ -189,6 +213,8 @@ fn dimension_type_client_projection(
         coordinate_scale,
         logical_height,
         infiniburn_tag,
+        monster_spawn_light_level,
+        monster_spawn_block_light_limit,
         cardinal_lighting,
         skybox,
         ambient_light,
@@ -396,6 +422,11 @@ mod tests {
             projection.infiniburn_tag.as_deref(),
             Some("example:forever")
         );
+        assert_eq!(
+            projection.monster_spawn_light_level,
+            Some(WorldIntProvider::Constant(7))
+        );
+        assert_eq!(projection.monster_spawn_block_light_limit, Some(4));
         assert_eq!(projection.ambient_light, Some(0.25));
         assert_eq!(projection.skybox, Some(WorldSkybox::End));
         assert_eq!(
@@ -438,6 +469,11 @@ mod tests {
             projection.infiniburn_tag.as_deref(),
             Some("example:burns_forever")
         );
+        assert_eq!(
+            projection.monster_spawn_light_level,
+            Some(WorldIntProvider::Constant(0))
+        );
+        assert_eq!(projection.monster_spawn_block_light_limit, Some(0));
 
         for (json, expected) in [
             (

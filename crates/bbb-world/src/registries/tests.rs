@@ -2815,6 +2815,11 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
         Some("minecraft:infiniburn_overworld")
     );
     assert_eq!(
+        dimension.monster_spawn_light_level,
+        Some(crate::WorldIntProvider::Constant(0))
+    );
+    assert_eq!(dimension.monster_spawn_block_light_limit, Some(0));
+    assert_eq!(
         store
             .registry_resource_ids_for_tag("minecraft:block", "minecraft:infiniburn_overworld")
             .unwrap()
@@ -3070,6 +3075,46 @@ fn malformed_dimension_hashed_tag_rejects_candidate_atomically() {
     assert_eq!(error.registry, "minecraft:dimension_type");
     assert_eq!(error.validator, "DimensionType.CLIENT_PROJECTION");
     assert!(error.message.contains("infiniburn"), "{error:?}");
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:dimension_type", 0),
+        Some("example:old_dimension")
+    );
+}
+
+#[test]
+fn malformed_dimension_monster_provider_rejects_candidate_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_dimension")],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    let invalid = String::from_utf8(dimension_type_json("")).unwrap().replace(
+        "\"monster_spawn_light_level\":0",
+        "\"monster_spawn_light_level\":{\"type\":\"uniform\",\"min_inclusive\":0,\"max_inclusive\":16}",
+    );
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_dimension",
+            invalid.into_bytes(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:dimension_type");
+    assert_eq!(error.validator, "DimensionType.CLIENT_PROJECTION");
+    assert!(
+        error.message.contains("monster_spawn_light_level") && error.message.contains("too high"),
+        "{error:?}"
+    );
     assert_eq!(store.registry_access_revision(), committed_revision);
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:dimension_type", 0),
