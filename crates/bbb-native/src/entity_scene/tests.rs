@@ -8065,7 +8065,8 @@ fn entity_model_instances_project_avatar_model_part_visibility_from_world() {
                         player_uuid.as_u128(),
                     )),
                     player_parts,
-                ),
+                )
+                .with_player_fall_flying_time_in_ticks(1.0),
                 EntityModelInstance::player_with_parts(
                     830,
                     [3.0, 64.0, -2.0],
