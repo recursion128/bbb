@@ -74,9 +74,12 @@ pub(super) fn decode_consumable(
         Some(_) => return Err(format!("{what} field animation is not a string")),
     };
     let sound = match find_entry(entries, "sound") {
-        Some(value) => decode_sound_event_holder(value, &format!("{what} field sound"))?,
+        Some(value) => {
+            decode_sound_event_holder(value, registries, &format!("{what} field sound"))?
+        }
         None => decode_sound_event_holder(
             &NbtSummaryValue::String(DEFAULT_CONSUME_SOUND.to_string()),
+            registries,
             &format!("{what} default sound"),
         )?,
     };
@@ -172,7 +175,11 @@ fn decode_consume_effect(
             let sound = find_entry(entries, "sound")
                 .ok_or_else(|| format!("{what} is missing field sound"))?;
             Ok(DialogConsumeEffectState::PlaySound {
-                sound: decode_sound_event_holder(sound, &format!("{what} field sound"))?,
+                sound: decode_sound_event_holder(
+                    sound,
+                    registries,
+                    &format!("{what} field sound"),
+                )?,
             })
         }
         _ => Err(format!("unknown {what} type {type_id}")),

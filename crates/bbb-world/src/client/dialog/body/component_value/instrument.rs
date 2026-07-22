@@ -7,10 +7,10 @@ use crate::RegistrySet;
 use super::super::super::{decode_component, DialogDecodeContext, DialogTextState};
 use super::{
     component_f32_bits, find_entry,
-    holder_set::decode_registry_holder_reference,
     sound_event::{decode_sound_event_holder, DialogSoundEventHolderState},
     validate_component_float_exclusive_min,
 };
+use crate::registries::PersistentHolderOrInline;
 
 const INSTRUMENT_REGISTRY: &str = "minecraft:instrument";
 
@@ -39,23 +39,28 @@ pub(super) fn decode_instrument_holder(
     context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogInstrumentHolderState, String> {
-    match value {
-        NbtSummaryValue::String(_) => {
-            let holder = decode_registry_holder_reference(
-                value,
-                INSTRUMENT_REGISTRY,
-                context.registry_access,
-                what,
-            )?;
-            Ok(DialogInstrumentHolderState::Named {
-                registry_id: holder.holder_id,
-                resource_id: holder.resource_id,
+    let holder = match context.registry_access {
+        Some(access) => access
+            .persistent_holder_or_inline_from_nbt(INSTRUMENT_REGISTRY, value)
+            .map_err(|error| format!("{error} for {what}"))?,
+        None if matches!(value, NbtSummaryValue::String(_)) => {
+            return Err(format!(
+                "{what} holder cannot be decoded without registry context"
+            ))
+        }
+        None => PersistentHolderOrInline::Direct(value),
+    };
+    match holder {
+        PersistentHolderOrInline::Named(entry) => Ok(DialogInstrumentHolderState::Named {
+            registry_id: entry.holder_id,
+            resource_id: entry.resource_id.to_string(),
+        }),
+        PersistentHolderOrInline::Direct(NbtSummaryValue::Compound(entries)) => {
+            Ok(DialogInstrumentHolderState::Direct {
+                instrument: decode_direct_instrument(entries, context, what)?,
             })
         }
-        NbtSummaryValue::Compound(entries) => Ok(DialogInstrumentHolderState::Direct {
-            instrument: decode_direct_instrument(entries, context, what)?,
-        }),
-        _ => Err(format!(
+        PersistentHolderOrInline::Direct(_) => Err(format!(
             "{what} holder is neither a resource id nor a direct instrument"
         )),
     }
@@ -72,6 +77,7 @@ fn decode_direct_instrument(
     Ok(DialogInstrumentState {
         sound_event: decode_sound_event_holder(
             sound_event,
+            context.registry_access,
             &format!("{what} direct holder field sound_event"),
         )?,
         use_duration_bits,

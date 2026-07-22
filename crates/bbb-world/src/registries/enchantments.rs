@@ -7,6 +7,8 @@ use bbb_protocol::{
 
 use crate::{FrozenRegistryAccess, RegistryHolderSetIdentity, WorldStore};
 
+use super::{decode_persistent_sound_event, normalize_codec_identifier};
+
 mod generated_26_1;
 
 pub use generated_26_1::{VanillaEnchantmentIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER};
@@ -353,6 +355,33 @@ fn validate_enchantment_effect_holder_sets(
                     None => {}
                 }
             }
+            match effect_type {
+                Some("minecraft:explode" | "explode") => {
+                    validate_required_sound_event(fields, "sound", registry_access, path)?;
+                }
+                Some("minecraft:play_sound" | "play_sound") => {
+                    let field = "sound";
+                    let sound = nbt_field(fields, field)
+                        .ok_or_else(|| format!("{path}.{field}: missing sound holder"))?;
+                    validate_compact_sound_event_list(
+                        sound,
+                        registry_access,
+                        &format!("{path}.{field}"),
+                    )?;
+                }
+                _ => {}
+            }
+            for entry in fields {
+                if normalize_codec_identifier(&entry.name).as_deref()
+                    == Some("minecraft:trident_sound")
+                {
+                    validate_sound_event_list(
+                        &entry.value,
+                        registry_access,
+                        &format!("{path}.{}", entry.name),
+                    )?;
+                }
+            }
             for entry in fields {
                 validate_enchantment_effect_holder_sets(
                     &entry.value,
@@ -373,6 +402,60 @@ fn validate_enchantment_effect_holder_sets(
         _ => {}
     }
     Ok(())
+}
+
+fn validate_required_sound_event(
+    fields: &[NbtSummaryEntry],
+    field: &str,
+    registry_access: FrozenRegistryAccess<'_>,
+    path: &str,
+) -> Result<(), String> {
+    let value =
+        nbt_field(fields, field).ok_or_else(|| format!("{path}.{field}: missing sound holder"))?;
+    validate_sound_event(value, registry_access, &format!("{path}.{field}"))
+}
+
+fn validate_compact_sound_event_list(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+    path: &str,
+) -> Result<(), String> {
+    match value {
+        NbtSummaryValue::List(values) => {
+            if values.len() > 255 {
+                return Err(format!("{path}: sound holder list exceeds 255 entries"));
+            }
+            for (index, value) in values.iter().enumerate() {
+                validate_sound_event(value, registry_access, &format!("{path}[{index}]"))?;
+            }
+            Ok(())
+        }
+        _ => validate_sound_event(value, registry_access, path),
+    }
+}
+
+fn validate_sound_event_list(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+    path: &str,
+) -> Result<(), String> {
+    let NbtSummaryValue::List(values) = value else {
+        return Err(format!("{path}: expected sound holder list"));
+    };
+    for (index, value) in values.iter().enumerate() {
+        validate_sound_event(value, registry_access, &format!("{path}[{index}]"))?;
+    }
+    Ok(())
+}
+
+fn validate_sound_event(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+    path: &str,
+) -> Result<(), String> {
+    decode_persistent_sound_event(value, Some(registry_access))
+        .map(|_| ())
+        .map_err(|error| format!("{path}.{}: {}", error.field, error.reason))
 }
 
 fn decode_enchantment_tooltip_definition(

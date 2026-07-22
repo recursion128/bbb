@@ -1,9 +1,10 @@
-use bbb_protocol::{
-    sound_event_types::vanilla_sound_event_registry_id, NbtSummaryEntry, NbtSummaryValue,
-};
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
-use crate::registries::normalize_codec_identifier;
+use crate::{
+    registries::{decode_persistent_sound_event, PersistentSoundEvent},
+    FrozenRegistryAccess,
+};
 
 use super::{
     component_f32_bits, optional_component_bool, optional_component_i32, required_component_i32,
@@ -61,6 +62,7 @@ pub struct DialogKineticWeaponState {
 
 pub(super) fn decode_piercing_weapon(
     value: &NbtSummaryValue,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogPiercingWeaponState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
@@ -69,13 +71,14 @@ pub(super) fn decode_piercing_weapon(
     Ok(DialogPiercingWeaponState {
         deals_knockback: optional_component_bool(entries, "deals_knockback", true, what)?,
         dismounts: optional_component_bool(entries, "dismounts", false, what)?,
-        sound: optional_sound_event(entries, "sound", what)?,
-        hit_sound: optional_sound_event(entries, "hit_sound", what)?,
+        sound: optional_sound_event(entries, "sound", registries, what)?,
+        hit_sound: optional_sound_event(entries, "hit_sound", registries, what)?,
     })
 }
 
 pub(super) fn decode_kinetic_weapon(
     value: &NbtSummaryValue,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogKineticWeaponState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
@@ -109,8 +112,8 @@ pub(super) fn decode_kinetic_weapon(
             1.0,
             what,
         )?,
-        sound: optional_sound_event(entries, "sound", what)?,
-        hit_sound: optional_sound_event(entries, "hit_sound", what)?,
+        sound: optional_sound_event(entries, "sound", registries, what)?,
+        hit_sound: optional_sound_event(entries, "hit_sound", registries, what)?,
     })
 }
 
@@ -171,69 +174,63 @@ fn optional_unrestricted_float(
 fn optional_sound_event(
     entries: &[NbtSummaryEntry],
     field: &str,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<Option<DialogSoundEventHolderState>, String> {
     entries
         .iter()
         .rev()
         .find(|entry| entry.name == field)
-        .map(|entry| decode_sound_event_holder(&entry.value, &format!("{what} field {field}")))
+        .map(|entry| {
+            decode_sound_event_holder(&entry.value, registries, &format!("{what} field {field}"))
+        })
         .transpose()
 }
 
 pub(super) fn decode_sound_event_holder(
     value: &NbtSummaryValue,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogSoundEventHolderState, String> {
-    match value {
-        NbtSummaryValue::String(raw) => decode_named_sound_event(raw, what),
-        NbtSummaryValue::Compound(entries) => decode_direct_sound_event(entries, what),
-        _ => Err(format!(
-            "{what} holder is neither a resource id nor a direct sound event"
-        )),
-    }
-}
-
-fn decode_named_sound_event(raw: &str, what: &str) -> Result<DialogSoundEventHolderState, String> {
-    let resource_id = normalize_codec_identifier(raw)
-        .ok_or_else(|| format!("invalid {what} holder resource id {raw}"))?;
-    let registry_id = vanilla_sound_event_registry_id(&resource_id).ok_or_else(|| {
-        format!("missing minecraft:sound_event resource {resource_id} for {what}")
-    })?;
-    Ok(DialogSoundEventHolderState::Named {
-        registry_id,
-        resource_id,
-    })
-}
-
-fn decode_direct_sound_event(
-    entries: &[NbtSummaryEntry],
-    what: &str,
-) -> Result<DialogSoundEventHolderState, String> {
-    let sound_id = entries
-        .iter()
-        .rev()
-        .find(|entry| entry.name == "sound_id")
-        .map(|entry| &entry.value)
-        .ok_or_else(|| format!("{what} direct holder is missing field sound_id"))?;
-    let NbtSummaryValue::String(raw_sound_id) = sound_id else {
-        return Err(format!(
-            "{what} direct holder field sound_id is not a resource id"
-        ));
-    };
-    let sound_id = normalize_codec_identifier(raw_sound_id)
-        .ok_or_else(|| format!("invalid {what} direct holder field sound_id {raw_sound_id}"))?;
-    let fixed_range_bits = entries
-        .iter()
-        .rev()
-        .find(|entry| entry.name == "range")
-        .and_then(|entry| {
-            component_f32_bits(&entry.value, &format!("{what} direct holder field range")).ok()
-        });
-    Ok(DialogSoundEventHolderState::Direct {
-        sound_id,
-        fixed_range_bits,
-    })
+    decode_persistent_sound_event(value, registries)
+        .map(|sound| match sound {
+            PersistentSoundEvent::Named {
+                holder_id,
+                resource_id,
+            } => DialogSoundEventHolderState::Named {
+                registry_id: holder_id,
+                resource_id,
+            },
+            PersistentSoundEvent::Direct {
+                resource_id,
+                fixed_range,
+            } => DialogSoundEventHolderState::Direct {
+                sound_id: resource_id,
+                fixed_range_bits: fixed_range.map(f32::to_bits),
+            },
+        })
+        .map_err(|error| match (error.field, error.reason.as_str()) {
+            ("holder", "expected resource identifier or direct compound") => {
+                format!("{what} holder is neither a resource id nor a direct sound event")
+            }
+            ("holder", reason) if reason.starts_with("invalid resource identifier ") => {
+                format!("invalid {what} holder resource id {}", &reason[28..])
+            }
+            ("holder", reason) => format!("{reason} for {what}"),
+            ("sound_id", "missing required field") => {
+                format!("{what} direct holder is missing field sound_id")
+            }
+            ("sound_id", "expected resource identifier") => {
+                format!("{what} direct holder field sound_id is not a resource id")
+            }
+            ("sound_id", reason) if reason.starts_with("invalid resource identifier ") => {
+                format!(
+                    "invalid {what} direct holder field sound_id {}",
+                    &reason[28..]
+                )
+            }
+            (field, reason) => format!("{what} direct holder field {field}: {reason}"),
+        })
 }
 
 #[cfg(test)]
@@ -308,7 +305,8 @@ mod tests {
             if let Some(range) = range {
                 entries.push(("range", range));
             }
-            let decoded = decode_sound_event_holder(&compound(entries), "break sound").unwrap();
+            let decoded =
+                decode_sound_event_holder(&compound(entries), None, "break sound").unwrap();
             assert!(matches!(
                 decoded,
                 DialogSoundEventHolderState::Direct {
@@ -331,6 +329,7 @@ mod tests {
                 ("range", NbtSummaryValue::String("invalid".to_string())),
                 ("range", NbtSummaryValue::Float(12.5f32.to_bits())),
             ]),
+            None,
             "break sound",
         )
         .unwrap();
@@ -362,7 +361,7 @@ mod tests {
                 "invalid",
             ),
         ] {
-            let error = decode_sound_event_holder(&value, "break sound").unwrap_err();
+            let error = decode_sound_event_holder(&value, None, "break sound").unwrap_err();
             assert!(error.contains(expected), "unexpected error: {error}");
         }
     }
@@ -453,7 +452,7 @@ mod tests {
                 "missing minecraft:sound_event resource",
             ),
         ] {
-            let error = decode_piercing_weapon(&value, "piercing weapon").unwrap_err();
+            let error = decode_piercing_weapon(&value, None, "piercing weapon").unwrap_err();
             assert!(error.contains(expected), "unexpected error: {error}");
         }
     }
@@ -585,6 +584,7 @@ mod tests {
                     NbtSummaryValue::String("entity.item.break".to_string()),
                 ),
             ]),
+            None,
             "kinetic weapon",
         )
         .unwrap();
@@ -648,7 +648,7 @@ mod tests {
                 "missing minecraft:sound_event resource",
             ),
         ] {
-            let error = decode_kinetic_weapon(&value, "kinetic weapon").unwrap_err();
+            let error = decode_kinetic_weapon(&value, None, "kinetic weapon").unwrap_err();
             assert!(error.contains(expected), "unexpected error: {error}");
         }
     }

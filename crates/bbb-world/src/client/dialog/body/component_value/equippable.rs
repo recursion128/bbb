@@ -56,7 +56,13 @@ pub(super) fn decode_equippable(
     Ok(DialogEquippableState {
         slot_id: slot.id,
         slot: slot.serialized_name.to_string(),
-        equip_sound: sound_event_field(entries, "equip_sound", DEFAULT_EQUIP_SOUND, what)?,
+        equip_sound: sound_event_field(
+            entries,
+            "equip_sound",
+            DEFAULT_EQUIP_SOUND,
+            registries,
+            what,
+        )?,
         asset_id: optional_resource_id(entries, "asset_id", what)?,
         camera_overlay: optional_resource_id(entries, "camera_overlay", what)?,
         allowed_entities: find_entry(entries, "allowed_entities")
@@ -74,7 +80,13 @@ pub(super) fn decode_equippable(
         damage_on_hurt: optional_component_bool(entries, "damage_on_hurt", true, what)?,
         equip_on_interact: optional_component_bool(entries, "equip_on_interact", false, what)?,
         can_be_sheared: optional_component_bool(entries, "can_be_sheared", false, what)?,
-        shearing_sound: sound_event_field(entries, "shearing_sound", DEFAULT_SHEARING_SOUND, what)?,
+        shearing_sound: sound_event_field(
+            entries,
+            "shearing_sound",
+            DEFAULT_SHEARING_SOUND,
+            registries,
+            what,
+        )?,
     })
 }
 
@@ -82,6 +94,7 @@ fn sound_event_field(
     entries: &[NbtSummaryEntry],
     field: &str,
     default: &str,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogSoundEventHolderState, String> {
     let default_value;
@@ -92,7 +105,7 @@ fn sound_event_field(
             &default_value
         }
     };
-    decode_sound_event_holder(value, &format!("{what} field {field}"))
+    decode_sound_event_holder(value, registries, &format!("{what} field {field}"))
 }
 
 fn optional_resource_id(

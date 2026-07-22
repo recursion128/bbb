@@ -73,8 +73,8 @@ pub(super) fn decode_blocks_attacks(
         damage_reductions: damage_reductions(entries, registries, what)?,
         item_damage: item_damage(entries, what)?,
         bypassed_by: optional_holder_set(entries, "bypassed_by", registries, what)?,
-        block_sound: optional_sound_event(entries, "block_sound", what)?,
-        disabled_sound: optional_sound_event(entries, "disabled_sound", what)?,
+        block_sound: optional_sound_event(entries, "block_sound", registries, what)?,
+        disabled_sound: optional_sound_event(entries, "disabled_sound", registries, what)?,
     })
 }
 
@@ -183,10 +183,11 @@ fn optional_holder_set(
 fn optional_sound_event(
     entries: &[NbtSummaryEntry],
     field: &str,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<Option<DialogSoundEventHolderState>, String> {
     find_entry(entries, field)
-        .map(|value| decode_sound_event_holder(value, &format!("{what} field {field}")))
+        .map(|value| decode_sound_event_holder(value, registries, &format!("{what} field {field}")))
         .transpose()
 }
 

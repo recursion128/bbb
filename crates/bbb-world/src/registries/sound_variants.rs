@@ -4,7 +4,7 @@ use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
 use crate::{FrozenRegistryAccess, RegistryElementSource, WorldStore};
 
-use super::normalize_codec_identifier;
+use super::{decode_persistent_sound_event, PersistentSoundEvent};
 
 pub(crate) const CAT_SOUND_VARIANT_REGISTRY: &str = "minecraft:cat_sound_variant";
 pub(crate) const CHICKEN_SOUND_VARIANT_REGISTRY: &str = "minecraft:chicken_sound_variant";
@@ -90,7 +90,7 @@ pub(crate) enum RegistrySoundKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SoundVariantProjectionError {
     pub field: String,
-    pub reason: &'static str,
+    pub reason: String,
 }
 
 impl WorldStore {
@@ -291,33 +291,26 @@ fn decode_sound_event_holder(
     value: &NbtSummaryValue,
     field: &str,
 ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
-    match value {
-        NbtSummaryValue::String(resource_id) => Ok(RegistrySoundEvent::Named {
-            resource_id: normalize_codec_identifier(resource_id)
-                .ok_or_else(|| error(field, "invalid sound event identifier"))?,
-        }),
-        NbtSummaryValue::Compound(fields) => {
-            let sound_id_field = field_path(field, "sound_id");
-            let sound_id = match field_value(fields, "sound_id") {
-                Some(NbtSummaryValue::String(sound_id)) => normalize_codec_identifier(sound_id)
-                    .ok_or_else(|| error(&sound_id_field, "invalid sound event identifier"))?,
-                Some(_) => return Err(error(sound_id_field, "expected string")),
-                None => return Err(error(sound_id_field, "missing required field")),
-            };
-            let range_field = field_path(field, "range");
-            let fixed_range = match field_value(fields, "range") {
-                Some(value) => Some(
-                    nbt_float(value).ok_or_else(|| error(range_field, "expected numeric range"))?,
-                ),
-                None => None,
-            };
-            Ok(RegistrySoundEvent::Direct {
-                location: sound_id,
+    decode_persistent_sound_event(value, None)
+        .map(|sound| match sound {
+            PersistentSoundEvent::Named { resource_id, .. } => {
+                RegistrySoundEvent::Named { resource_id }
+            }
+            PersistentSoundEvent::Direct {
+                resource_id,
                 fixed_range,
-            })
-        }
-        _ => Err(error(field, "expected named or direct sound event holder")),
-    }
+            } => RegistrySoundEvent::Direct {
+                location: resource_id,
+                fixed_range,
+            },
+        })
+        .map_err(|failure| {
+            let field = match failure.field {
+                "holder" => field.to_string(),
+                nested => field_path(field, nested),
+            };
+            error(field, failure.reason)
+        })
 }
 
 fn required_compound<'a>(
@@ -329,18 +322,6 @@ fn required_compound<'a>(
         Some(NbtSummaryValue::Compound(fields)) => Ok(fields),
         Some(_) => Err(error(path, "expected compound")),
         None => Err(error(path, "missing required field")),
-    }
-}
-
-fn nbt_float(value: &NbtSummaryValue) -> Option<f32> {
-    match value {
-        NbtSummaryValue::Byte(value) => Some(f32::from(*value)),
-        NbtSummaryValue::Short(value) => Some(f32::from(*value)),
-        NbtSummaryValue::Int(value) => Some(*value as f32),
-        NbtSummaryValue::Long(value) => Some(*value as f32),
-        NbtSummaryValue::Float(bits) => Some(f32::from_bits(*bits)),
-        NbtSummaryValue::Double(bits) => Some(f64::from_bits(*bits) as f32),
-        _ => None,
     }
 }
 
@@ -359,10 +340,10 @@ fn field_path(prefix: &str, field: &str) -> String {
     }
 }
 
-fn error(field: impl Into<String>, reason: &'static str) -> SoundVariantProjectionError {
+fn error(field: impl Into<String>, reason: impl Into<String>) -> SoundVariantProjectionError {
     SoundVariantProjectionError {
         field: field.into(),
-        reason,
+        reason: reason.into(),
     }
 }
 
@@ -398,13 +379,13 @@ mod tests {
             assert_eq!(
                 variant.sound(false, RegistrySoundKind::Hurt),
                 &RegistrySoundEvent::Named {
-                    resource_id: "minecraft:entity.example.other".to_string(),
+                    resource_id: "minecraft:entity.generic.hurt".to_string(),
                 }
             );
             assert_eq!(
                 decode_sound_variant_death_sound_nbt(registry, &raw_data, false).unwrap(),
                 RegistrySoundEvent::Named {
-                    resource_id: "minecraft:entity.example.adult_death".to_string(),
+                    resource_id: "minecraft:entity.generic.death".to_string(),
                 }
             );
             let expected_baby = if age_sets {
@@ -414,7 +395,7 @@ mod tests {
                 }
             } else {
                 RegistrySoundEvent::Named {
-                    resource_id: "minecraft:entity.example.adult_death".to_string(),
+                    resource_id: "minecraft:entity.generic.death".to_string(),
                 }
             };
             assert_eq!(
@@ -428,10 +409,10 @@ mod tests {
     fn decodes_known_pack_json_through_the_same_sound_variant_projection() {
         let data = super::super::element_value::decode_known_pack_element(
             br#"{
-                "ambient_sound": "example:ambient",
-                "hurt_sound": "example:hurt",
+                "ambient_sound": "minecraft:entity.generic.hurt",
+                "hurt_sound": "minecraft:entity.generic.hurt",
                 "death_sound": {"sound_id": "example:death", "range": 24.0},
-                "step_sound": "example:step"
+                "step_sound": "minecraft:block.stone.step"
             }"#,
         )
         .unwrap();
@@ -454,7 +435,7 @@ mod tests {
         assert_eq!(
             variant.sound(false, RegistrySoundKind::Hurt),
             &RegistrySoundEvent::Named {
-                resource_id: "example:hurt".to_string(),
+                resource_id: "minecraft:entity.generic.hurt".to_string(),
             }
         );
     }
@@ -477,12 +458,12 @@ mod tests {
             .unwrap_err(),
             SoundVariantProjectionError {
                 field: "adult_sounds.step_sound".to_string(),
-                reason: "missing required field",
+                reason: "missing required field".to_string(),
             }
         );
 
         let mut invalid_identifier = sound_variant_nbt(COW_SOUND_FIELDS, false);
-        let identifier = b"entity.example.adult_death";
+        let identifier = b"entity.generic.death";
         let offset = invalid_identifier
             .windows(identifier.len())
             .position(|window| window == identifier)
@@ -497,7 +478,7 @@ mod tests {
             .unwrap_err(),
             SoundVariantProjectionError {
                 field: "death_sound".to_string(),
-                reason: "invalid sound event identifier",
+                reason: "invalid resource identifier Entity.generic.death".to_string(),
             }
         );
     }
@@ -533,7 +514,7 @@ mod tests {
                 }
             } else {
                 RegistrySoundEvent::Named {
-                    resource_id: "minecraft:entity.example.adult_death".to_string(),
+                    resource_id: "minecraft:entity.generic.death".to_string(),
                 }
             };
             assert_eq!(
@@ -548,7 +529,7 @@ mod tests {
                     .synchronized_sound_variant_hurt_sound(registry, 0, true)
                     .unwrap(),
                 Some(RegistrySoundEvent::Named {
-                    resource_id: "minecraft:entity.example.other".to_string(),
+                    resource_id: "minecraft:entity.generic.hurt".to_string(),
                 }),
                 "{registry}"
             );
@@ -596,9 +577,9 @@ mod tests {
                 out.push(0);
             } else {
                 let resource = if *field == "death_sound" {
-                    "entity.example.adult_death"
+                    "entity.generic.death"
                 } else {
-                    "minecraft:entity.example.other"
+                    "minecraft:entity.generic.hurt"
                 };
                 write_string(out, field, resource);
             }

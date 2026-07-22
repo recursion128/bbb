@@ -16,6 +16,7 @@ mod item_component_initializers;
 mod jukebox_songs;
 mod painting_variants;
 mod revision;
+mod sound_events;
 mod sound_variants;
 mod state;
 mod store;
@@ -90,11 +91,13 @@ pub use painting_variants::{
     painting_variant_translation_key, PaintingVariantClientProjection, PaintingVariantPresentation,
     PaintingVariantProjectionError, PAINTING_VARIANT_REGISTRY,
 };
+pub(crate) use sound_events::{decode_persistent_sound_event, PersistentSoundEvent};
 pub(crate) use sound_variants::{
     RegistrySoundEvent, RegistrySoundKind, CAT_SOUND_VARIANT_REGISTRY,
     CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY,
     WOLF_SOUND_VARIANT_REGISTRY,
 };
+pub(crate) use state::PersistentHolderOrInline;
 pub use state::{
     FrozenRegistryAccess, FrozenRegistryEntry, FrozenRegistryHolderSet,
     FrozenRegistryHolderSetKind, FrozenRegistryMembership, PersistentHolderDecodeError,

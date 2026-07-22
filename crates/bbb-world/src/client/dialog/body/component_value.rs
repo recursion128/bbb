@@ -1900,16 +1900,16 @@ pub(super) fn decode_supported_component_value_with_context(
             slots: decode_item_stack_template_slots_with_context(value, context, &what)?,
         },
         VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => DialogDataComponentValueState::BreakSound {
-            sound: decode_sound_event_holder(value, &what)?,
+            sound: decode_sound_event_holder(value, context.registry_access, &what)?,
         },
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => {
             DialogDataComponentValueState::PiercingWeapon {
-                weapon: decode_piercing_weapon(value, &what)?,
+                weapon: decode_piercing_weapon(value, context.registry_access, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => {
             DialogDataComponentValueState::KineticWeapon {
-                weapon: decode_kinetic_weapon(value, &what)?,
+                weapon: decode_kinetic_weapon(value, context.registry_access, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => DialogDataComponentValueState::Equippable {

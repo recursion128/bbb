@@ -4,9 +4,9 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::{FrozenRegistryAccess, WorldStore};
 
-use super::normalize_codec_identifier;
+use super::{decode_persistent_sound_event, PersistentSoundEvent};
 
 pub const JUKEBOX_SONG_REGISTRY: &str = "minecraft:jukebox_song";
 
@@ -53,7 +53,7 @@ pub struct JukeboxSongPresentation {
 pub struct JukeboxSongProjectionError {
     pub resource_id: String,
     pub field: String,
-    pub reason: &'static str,
+    pub reason: String,
 }
 
 impl std::fmt::Display for JukeboxSongProjectionError {
@@ -86,7 +86,7 @@ impl WorldStore {
         let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_jukebox_song(&data.value)
+        decode_jukebox_song_with_access(&data.value, Some(self.frozen_registry_access()))
             .map(Some)
             .map_err(|failure| JukeboxSongProjectionError {
                 resource_id: entry.id.clone(),
@@ -96,19 +96,23 @@ impl WorldStore {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct DecodeFailure {
     pub field: &'static str,
-    pub reason: &'static str,
+    pub reason: String,
 }
 
-pub(super) fn decode_jukebox_song(
+pub(super) fn decode_jukebox_song_with_access(
     value: &NbtSummaryValue,
+    registry_access: Option<FrozenRegistryAccess<'_>>,
 ) -> Result<JukeboxSongPresentation, DecodeFailure> {
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(failure("<root>", "expected compound"));
     };
-    let sound_event = decode_sound_event(required_field(entries, "sound_event")?)?;
+    let sound_event =
+        decode_persistent_sound_event(required_field(entries, "sound_event")?, registry_access)
+            .map(JukeboxSoundEvent::from)
+            .map_err(|error| failure(sound_event_field(error.field), error.reason))?;
     let description_nbt = required_field(entries, "description")?.clone();
     validate_component_nbt(&description_nbt, "jukebox song description")
         .map_err(|_| failure("description", "invalid Component"))?;
@@ -135,37 +139,27 @@ pub(super) fn decode_jukebox_song(
     })
 }
 
-fn decode_sound_event(value: &NbtSummaryValue) -> Result<JukeboxSoundEvent, DecodeFailure> {
-    match value {
-        NbtSummaryValue::String(resource_id) => Ok(JukeboxSoundEvent::Reference {
-            resource_id: normalize_codec_identifier(resource_id)
-                .ok_or_else(|| failure("sound_event", "invalid reference identifier"))?,
-        }),
-        NbtSummaryValue::Compound(entries) => {
-            let Some(sound_id) = field(entries, "sound_id") else {
-                return Err(failure("sound_event.sound_id", "missing required field"));
-            };
-            let NbtSummaryValue::String(resource_id) = sound_id else {
-                return Err(failure("sound_event.sound_id", "expected string"));
-            };
-            let resource_id = normalize_codec_identifier(resource_id)
-                .ok_or_else(|| failure("sound_event.sound_id", "invalid identifier"))?;
-            let fixed_range = match field(entries, "range") {
-                Some(value) => Some(
-                    numeric_f32(value)
-                        .ok_or_else(|| failure("sound_event.range", "expected number"))?,
-                ),
-                None => None,
-            };
-            Ok(JukeboxSoundEvent::Direct {
+fn sound_event_field(field: &'static str) -> &'static str {
+    match field {
+        "holder" => "sound_event",
+        "sound_id" => "sound_event.sound_id",
+        "range" => "sound_event.range",
+        _ => "sound_event",
+    }
+}
+
+impl From<PersistentSoundEvent> for JukeboxSoundEvent {
+    fn from(value: PersistentSoundEvent) -> Self {
+        match value {
+            PersistentSoundEvent::Named { resource_id, .. } => Self::Reference { resource_id },
+            PersistentSoundEvent::Direct {
                 resource_id,
                 fixed_range,
-            })
+            } => Self::Direct {
+                resource_id,
+                fixed_range,
+            },
         }
-        _ => Err(failure(
-            "sound_event",
-            "expected resource identifier or direct compound",
-        )),
     }
 }
 
@@ -213,8 +207,11 @@ fn numeric_i32(value: &NbtSummaryValue) -> Option<i32> {
     }
 }
 
-const fn failure(field: &'static str, reason: &'static str) -> DecodeFailure {
-    DecodeFailure { field, reason }
+fn failure(field: &'static str, reason: impl Into<String>) -> DecodeFailure {
+    DecodeFailure {
+        field,
+        reason: reason.into(),
+    }
 }
 
 #[cfg(test)]
@@ -225,7 +222,7 @@ mod tests {
     #[test]
     fn decodes_named_and_direct_sound_event_codec_forms() {
         let named = decode_jukebox_song_nbt(&song_nbt(
-            SoundFixture::Reference("example:records/custom"),
+            SoundFixture::Reference("minecraft:music_disc.cat"),
             "Custom song",
             12.5,
             7,
@@ -234,7 +231,7 @@ mod tests {
         assert_eq!(
             named.sound_event,
             JukeboxSoundEvent::Reference {
-                resource_id: "example:records/custom".to_string(),
+                resource_id: "minecraft:music_disc.cat".to_string(),
             }
         );
         assert_eq!(named.description, "Custom song");
@@ -267,7 +264,7 @@ mod tests {
                 RegistryPacketEntry::with_raw_data(
                     "example:custom",
                     song_nbt(
-                        SoundFixture::Reference("example:music.custom"),
+                        SoundFixture::Direct("example:music.custom", None),
                         "Custom",
                         20.0,
                         3,
@@ -326,7 +323,12 @@ mod tests {
             0,
             vec![RegistryPacketEntry::with_raw_data(
                 "example:broken",
-                song_nbt(SoundFixture::Reference("example:sound"), "Broken", 0.0, 16),
+                song_nbt(
+                    SoundFixture::Direct("example:sound", None),
+                    "Broken",
+                    0.0,
+                    16,
+                ),
             )],
         );
 
@@ -335,12 +337,16 @@ mod tests {
             JukeboxSongProjectionError {
                 resource_id: "example:broken".to_string(),
                 field: "length_in_seconds".to_string(),
-                reason: "float outside (0, Float.MAX_VALUE]",
+                reason: "float outside (0, Float.MAX_VALUE]".to_string(),
             }
         );
 
-        let invalid_comparator =
-            song_nbt(SoundFixture::Reference("example:sound"), "Broken", 1.0, 16);
+        let invalid_comparator = song_nbt(
+            SoundFixture::Direct("example:sound", None),
+            "Broken",
+            1.0,
+            16,
+        );
         assert_eq!(
             decode_jukebox_song_nbt(&invalid_comparator).unwrap_err(),
             failure("comparator_output", "integer outside 0..=15")
@@ -354,7 +360,7 @@ mod tests {
 
     fn decode_jukebox_song_nbt(raw_data: &[u8]) -> Result<JukeboxSongPresentation, DecodeFailure> {
         let data = super::super::element_value::decode_network_element(raw_data).unwrap();
-        decode_jukebox_song(&data.value)
+        decode_jukebox_song_with_access(&data.value, None)
     }
 
     fn song_nbt(

@@ -4,7 +4,7 @@ use std::fmt;
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
-use super::normalize_codec_identifier;
+use super::{decode_persistent_sound_event, normalize_codec_identifier, PersistentSoundEvent};
 use crate::FrozenRegistryAccess;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1138,25 +1138,18 @@ fn parse_ambient_addition(fields: &[NbtSummaryEntry]) -> Option<ClientAmbientAdd
 }
 
 fn parse_sound_holder(value: &NbtSummaryValue) -> Option<ClientSoundEventHolder> {
-    match value {
-        NbtSummaryValue::String(resource_id) => Some(ClientSoundEventHolder::Reference {
-            resource_id: normalize_codec_identifier(resource_id)?,
-        }),
-        NbtSummaryValue::Compound(fields) => {
-            let NbtSummaryValue::String(sound_id) = field_value(fields, "sound_id")? else {
-                return None;
-            };
-            let range_bits = match field_value(fields, "range") {
-                None => None,
-                Some(value) => numeric_f32(value).map(f32::to_bits),
-            };
-            Some(ClientSoundEventHolder::Direct {
-                sound_id: normalize_codec_identifier(sound_id)?,
-                range_bits,
-            })
+    Some(match decode_persistent_sound_event(value, None).ok()? {
+        PersistentSoundEvent::Named { resource_id, .. } => {
+            ClientSoundEventHolder::Reference { resource_id }
         }
-        _ => None,
-    }
+        PersistentSoundEvent::Direct {
+            resource_id,
+            fixed_range,
+        } => ClientSoundEventHolder::Direct {
+            sound_id: resource_id,
+            range_bits: fixed_range.map(f32::to_bits),
+        },
+    })
 }
 
 fn optional_compound<T>(

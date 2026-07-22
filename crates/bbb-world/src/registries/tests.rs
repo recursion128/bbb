@@ -2,7 +2,7 @@ use bbb_protocol::packets::{
     EntityDataRegistryHolder, KnownPack, RegistryData, RegistryDataEntry, RegistryTags,
     TagNetworkPayload, UpdateTags,
 };
-use bbb_protocol::NbtSummaryValue;
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -1167,6 +1167,27 @@ fn persistent_holder_decoder_uses_resource_identity_and_typed_failures() {
         )
     );
 
+    assert!(matches!(
+        access
+            .persistent_holder_or_inline_from_nbt(
+                "minecraft:test",
+                &NbtSummaryValue::String("example:first".to_string()),
+            )
+            .unwrap(),
+        crate::registries::PersistentHolderOrInline::Named(entry)
+            if entry.holder_id == 1 && entry.resource_id == "example:first"
+    ));
+    let direct = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+        name: "value".to_string(),
+        value: NbtSummaryValue::Int(7),
+    }]);
+    assert!(matches!(
+        access
+            .persistent_holder_or_inline_from_nbt("minecraft:test", &direct)
+            .unwrap(),
+        crate::registries::PersistentHolderOrInline::Direct(value) if value == &direct
+    ));
+
     for (value, expected) in [
         (
             NbtSummaryValue::String("example:missing".to_string()),
@@ -2316,12 +2337,13 @@ fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_a
                     "effects":{"example:test":[
                         {"type":"minecraft:apply_mob_effect","to_apply":"#example:curable"},
                         {"type":"minecraft:damage_entity","damage_type":"minecraft:generic"},
-                        {"type":"minecraft:explode","damage_type":"minecraft:generic","immune_blocks":["minecraft:stone"]},
+                        {"type":"minecraft:explode","damage_type":"minecraft:generic","immune_blocks":["minecraft:stone"],"sound":"minecraft:entity.generic.explode"},
+                        {"type":"minecraft:play_sound","sound":["minecraft:block.note_block.harp",{"sound_id":"example:direct_note"}]},
                         {"type":"minecraft:summon_entity","entity":"minecraft:pig"},
                         {"type":"minecraft:replace_block","trigger_game_event":"minecraft:block_change"},
                         {"type":"minecraft:replace_disk","trigger_game_event":"minecraft:block_change"},
                         {"type":"minecraft:set_block_properties","trigger_game_event":"minecraft:block_change"}
-                    ]}
+                    ],"minecraft:trident_sound":["minecraft:item.trident.return",{"sound_id":"example:direct_trident"}]}
                 }"##
                 .to_vec(),
             ),
@@ -2435,6 +2457,29 @@ fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_a
     assert!(error.message.contains("trigger_game_event"), "{error:?}");
     assert_eq!(store.registry_access_revision(), committed_revision);
 
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:enchantment",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_sound",
+            br#"{
+                "supported_items":"minecraft:stone",
+                "effects":{"example:test":{
+                    "type":"minecraft:play_sound",
+                    "sound":"example:missing_sound"
+                }}
+            }"#
+            .to_vec(),
+        )],
+    );
+    let error = store.finish_registry_configuration().unwrap_err();
+    assert_eq!(error.validator, "Enchantment.DIRECT_CODEC");
+    assert!(error.message.contains("sound"), "{error:?}");
+    assert!(error.message.contains("example:missing_sound"), "{error:?}");
+    assert_eq!(store.registry_access_revision(), committed_revision);
+
     store.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {
             registry: "minecraft:item".to_string(),
@@ -2442,6 +2487,74 @@ fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_a
         }],
     });
     assert_eq!(store.synchronized_enchantment_holder_sets(0), None);
+}
+
+#[test]
+fn unknown_instrument_and_jukebox_sounds_reject_candidates_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:instrument",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_instrument")],
+    );
+    store.record_registry_entries(
+        "minecraft:jukebox_song",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_song")],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:instrument",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_instrument",
+            br#"{
+                "sound_event":"example:missing_sound",
+                "use_duration":1.0,
+                "range":16.0,
+                "description":"Invalid instrument"
+            }"#
+            .to_vec(),
+        )],
+    );
+    let error = store.finish_registry_configuration().unwrap_err();
+    assert_eq!(error.registry, "minecraft:instrument");
+    assert_eq!(error.validator, "Instrument.DIRECT_CODEC");
+    assert!(error.message.contains("example:missing_sound"), "{error:?}");
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:instrument", 0),
+        Some("example:old_instrument")
+    );
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:jukebox_song",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_song",
+            br#"{
+                "sound_event":"example:missing_sound",
+                "description":"Invalid song",
+                "length_in_seconds":1.0,
+                "comparator_output":1
+            }"#
+            .to_vec(),
+        )],
+    );
+    let error = store.finish_registry_configuration().unwrap_err();
+    assert_eq!(error.registry, "minecraft:jukebox_song");
+    assert_eq!(error.validator, "JukeboxSong.DIRECT_CODEC");
+    assert!(error.message.contains("example:missing_sound"), "{error:?}");
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:jukebox_song", 0),
+        Some("example:old_song")
+    );
 }
 
 #[test]
@@ -2555,20 +2668,6 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
         ],
     );
     store.record_registry_entries(
-        "minecraft:sound_event",
-        0,
-        vec![
-            RegistryPacketEntry::with_known_pack_data_for_test(
-                "example:unused_sound",
-                br#"{"sound_id":"example:unused"}"#.to_vec(),
-            ),
-            RegistryPacketEntry::with_known_pack_data_for_test(
-                "example:music",
-                br#"{"sound_id":"example:music"}"#.to_vec(),
-            ),
-        ],
-    );
-    store.record_registry_entries(
         "minecraft:timeline",
         0,
         vec![RegistryPacketEntry::with_known_pack_data_for_test(
@@ -2613,7 +2712,7 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
                     "minecraft:gameplay/piglins_zombify":false,
                     "minecraft:audio/background_music":{
                         "default":{
-                            "sound":"example:music",
+                            "sound":{"sound_id":"example:music"},
                             "min_delay":10,
                             "max_delay":20
                         },
@@ -2665,8 +2764,9 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
         .unwrap();
     assert_eq!(
         background.default.as_ref().map(|music| &music.sound),
-        Some(&crate::ClientSoundEventHolder::Reference {
-            resource_id: "example:music".to_string(),
+        Some(&crate::ClientSoundEventHolder::Direct {
+            sound_id: "example:music".to_string(),
+            range_bits: None,
         })
     );
     assert_eq!(
@@ -2863,9 +2963,7 @@ fn unknown_environment_sound_reference_rejects_candidate_atomically() {
 
     assert_eq!(error.registry, "minecraft:dimension_type");
     assert_eq!(error.validator, "DimensionType.CLIENT_PROJECTION");
-    assert!(error
-        .message
-        .contains("missing minecraft:sound_event resource example:missing_sound"));
+    assert!(error.message.contains("invalid background music"));
     assert_eq!(store.registry_access_revision(), committed_revision);
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:dimension_type", 0),

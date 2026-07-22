@@ -25,9 +25,9 @@ use super::game_tests::{
     decode_test_environment, decode_test_instance, TEST_ENVIRONMENT_REGISTRY,
     TEST_INSTANCE_REGISTRY,
 };
-use super::instrument_values::{decode_instrument, INSTRUMENT_REGISTRY};
+use super::instrument_values::{decode_instrument_with_access, INSTRUMENT_REGISTRY};
 use super::item_component_initializers::build_registry_dependent_item_defaults;
-use super::jukebox_songs::{decode_jukebox_song, JUKEBOX_SONG_REGISTRY};
+use super::jukebox_songs::{decode_jukebox_song_with_access, JUKEBOX_SONG_REGISTRY};
 use super::painting_variants::{decode_painting_variant, PAINTING_VARIANT_REGISTRY};
 use super::sound_variants::{
     decode_sound_variant_definition, validate_sound_variant_references, CAT_SOUND_VARIANT_REGISTRY,
@@ -292,8 +292,8 @@ fn build_registered_typed_projections(
         candidate,
         INSTRUMENT_REGISTRY,
         "Instrument.DIRECT_CODEC",
-        |_, data, _| {
-            decode_instrument(&data.value, data.source)
+        |_, data, access| {
+            decode_instrument_with_access(&data.value, data.source, Some(access))
                 .map_err(|error| format!("{}: {}", error.field, error.reason))
         },
     )?;
@@ -301,8 +301,8 @@ fn build_registered_typed_projections(
         candidate,
         JUKEBOX_SONG_REGISTRY,
         "JukeboxSong.DIRECT_CODEC",
-        |_, data, _| {
-            decode_jukebox_song(&data.value)
+        |_, data, access| {
+            decode_jukebox_song_with_access(&data.value, Some(access))
                 .map_err(|error| format!("{}: {}", error.field, error.reason))
         },
     )?;

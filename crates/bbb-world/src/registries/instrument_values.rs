@@ -3,9 +3,9 @@ use bbb_protocol::{
     NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 
-use crate::{RegistryElementSource, WorldStore};
+use crate::{FrozenRegistryAccess, RegistryElementSource, WorldStore};
 
-use super::normalize_codec_identifier;
+use super::{decode_persistent_sound_event, PersistentSoundEvent};
 
 pub const INSTRUMENT_REGISTRY: &str = "minecraft:instrument";
 
@@ -51,7 +51,7 @@ pub struct InstrumentPresentation {
 pub struct InstrumentProjectionError {
     pub resource_id: String,
     pub field: String,
-    pub reason: &'static str,
+    pub reason: String,
 }
 
 impl std::fmt::Display for InstrumentProjectionError {
@@ -87,35 +87,43 @@ impl WorldStore {
                 return Err(InstrumentProjectionError {
                     resource_id: entry.id.clone(),
                     field: "<root>".to_string(),
-                    reason: "typed payload unavailable",
+                    reason: "typed payload unavailable".to_string(),
                 });
             }
             return Ok(None);
         };
-        decode_instrument(&data.value, data.source)
-            .map(Some)
-            .map_err(|failure| InstrumentProjectionError {
-                resource_id: entry.id.clone(),
-                field: failure.field.to_string(),
-                reason: failure.reason,
-            })
+        decode_instrument_with_access(
+            &data.value,
+            data.source,
+            Some(self.frozen_registry_access()),
+        )
+        .map(Some)
+        .map_err(|failure| InstrumentProjectionError {
+            resource_id: entry.id.clone(),
+            field: failure.field.to_string(),
+            reason: failure.reason,
+        })
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct DecodeFailure {
     pub field: &'static str,
-    pub reason: &'static str,
+    pub reason: String,
 }
 
-pub(super) fn decode_instrument(
+pub(super) fn decode_instrument_with_access(
     value: &NbtSummaryValue,
     element_source: RegistryElementSource,
+    registry_access: Option<FrozenRegistryAccess<'_>>,
 ) -> Result<InstrumentPresentation, DecodeFailure> {
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(failure("<root>", "expected compound"));
     };
-    let sound_event = decode_sound_event(required_field(entries, "sound_event")?)?;
+    let sound_event =
+        decode_persistent_sound_event(required_field(entries, "sound_event")?, registry_access)
+            .map(InstrumentSoundEvent::from)
+            .map_err(|error| failure(sound_event_field(error.field), error.reason))?;
     let use_duration = required_positive_float(entries, "use_duration")?;
     let range = required_positive_float(entries, "range")?;
     let description_nbt = required_field(entries, "description")?.clone();
@@ -134,36 +142,27 @@ pub(super) fn decode_instrument(
     })
 }
 
-fn decode_sound_event(value: &NbtSummaryValue) -> Result<InstrumentSoundEvent, DecodeFailure> {
-    match value {
-        NbtSummaryValue::String(resource_id) => Ok(InstrumentSoundEvent::Reference {
-            resource_id: normalize_codec_identifier(resource_id)
-                .ok_or_else(|| failure("sound_event", "invalid reference identifier"))?,
-        }),
-        NbtSummaryValue::Compound(entries) => {
-            let resource_id = match field(entries, "sound_id") {
-                Some(NbtSummaryValue::String(resource_id)) => {
-                    normalize_codec_identifier(resource_id)
-                        .ok_or_else(|| failure("sound_event.sound_id", "invalid identifier"))?
-                }
-                Some(_) => return Err(failure("sound_event.sound_id", "expected string")),
-                None => return Err(failure("sound_event.sound_id", "missing required field")),
-            };
-            let fixed_range = field(entries, "range")
-                .map(|value| {
-                    numeric_f32(value)
-                        .ok_or_else(|| failure("sound_event.range", "expected number"))
-                })
-                .transpose()?;
-            Ok(InstrumentSoundEvent::Direct {
+fn sound_event_field(field: &'static str) -> &'static str {
+    match field {
+        "holder" => "sound_event",
+        "sound_id" => "sound_event.sound_id",
+        "range" => "sound_event.range",
+        _ => "sound_event",
+    }
+}
+
+impl From<PersistentSoundEvent> for InstrumentSoundEvent {
+    fn from(value: PersistentSoundEvent) -> Self {
+        match value {
+            PersistentSoundEvent::Named { resource_id, .. } => Self::Reference { resource_id },
+            PersistentSoundEvent::Direct {
                 resource_id,
                 fixed_range,
-            })
+            } => Self::Direct {
+                resource_id,
+                fixed_range,
+            },
         }
-        _ => Err(failure(
-            "sound_event",
-            "expected resource identifier or direct compound",
-        )),
     }
 }
 
@@ -206,8 +205,11 @@ fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
     })
 }
 
-const fn failure(field: &'static str, reason: &'static str) -> DecodeFailure {
-    DecodeFailure { field, reason }
+fn failure(field: &'static str, reason: impl Into<String>) -> DecodeFailure {
+    DecodeFailure {
+        field,
+        reason: reason.into(),
+    }
 }
 
 #[cfg(test)]
@@ -279,7 +281,7 @@ mod tests {
             InstrumentProjectionError {
                 resource_id: "example:broken".to_string(),
                 field: "use_duration".to_string(),
-                reason: "float outside (0, Float.MAX_VALUE]",
+                reason: "float outside (0, Float.MAX_VALUE]".to_string(),
             }
         );
         assert_eq!(store.synchronized_instrument_presentation(1), Ok(None));
@@ -292,9 +294,12 @@ mod tests {
         range: f32,
         description: &str,
     ) -> Vec<u8> {
-        let mut out = vec![10, 8];
+        let mut out = vec![10, 10];
         write_nbt_string(&mut out, "sound_event");
+        out.push(8);
+        write_nbt_string(&mut out, "sound_id");
         write_nbt_string(&mut out, sound_event);
+        out.push(0);
         out.push(5);
         write_nbt_string(&mut out, "use_duration");
         out.extend_from_slice(&use_duration.to_bits().to_be_bytes());

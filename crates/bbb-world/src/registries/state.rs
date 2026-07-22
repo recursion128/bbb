@@ -241,6 +241,12 @@ pub struct FrozenRegistryEntry<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PersistentHolderOrInline<'a> {
+    Named(FrozenRegistryEntry<'a>),
+    Direct(&'a NbtSummaryValue),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RegistryEntryPayload<'a> {
     Server {
         has_data: bool,
@@ -953,6 +959,19 @@ impl<'a> FrozenRegistryAccess<'a> {
         })?;
         self.require_entry_by_resource_id(registry, &resource_id)
             .map_err(PersistentHolderDecodeError::Resolution)
+    }
+
+    pub(crate) fn persistent_holder_or_inline_from_nbt(
+        self,
+        registry: &str,
+        value: &'a NbtSummaryValue,
+    ) -> Result<PersistentHolderOrInline<'a>, PersistentHolderDecodeError> {
+        match value {
+            NbtSummaryValue::String(_) => self
+                .persistent_holder_from_nbt(registry, value)
+                .map(PersistentHolderOrInline::Named),
+            _ => Ok(PersistentHolderOrInline::Direct(value)),
+        }
     }
 
     pub fn persistent_holder_set_from_nbt(

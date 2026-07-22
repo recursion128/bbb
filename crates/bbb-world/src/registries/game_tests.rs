@@ -8,7 +8,7 @@ use crate::{
     RegistryEntrySource, RegistryResolutionError, WorldStore,
 };
 
-use super::normalize_codec_identifier;
+use super::{normalize_codec_identifier, PersistentHolderOrInline};
 
 pub const TEST_ENVIRONMENT_REGISTRY: &str = "minecraft:test_environment";
 pub const TEST_INSTANCE_REGISTRY: &str = "minecraft:test_instance";
@@ -431,16 +431,15 @@ fn decode_environment_holder(
     depth: usize,
     path: &str,
 ) -> Result<TestEnvironmentHolder, GameTestRegistryProjectionError> {
-    match value {
-        NbtSummaryValue::String(_) => Ok(TestEnvironmentHolder::Named(decode_named_reference(
-            value,
-            resource_id,
-            TEST_ENVIRONMENT_REGISTRY,
-            access,
-            path,
-        )?)),
-        NbtSummaryValue::Compound(_) => Ok(TestEnvironmentHolder::Direct(Box::new(
-            decode_test_environment(
+    let holder = access
+        .persistent_holder_or_inline_from_nbt(TEST_ENVIRONMENT_REGISTRY, value)
+        .map_err(|failure| reference_failure(resource_id, path, failure))?;
+    match holder {
+        PersistentHolderOrInline::Named(entry) => {
+            Ok(TestEnvironmentHolder::Named(test_registry_reference(entry)))
+        }
+        PersistentHolderOrInline::Direct(NbtSummaryValue::Compound(_)) => Ok(
+            TestEnvironmentHolder::Direct(Box::new(decode_test_environment(
                 resource_id,
                 element_source,
                 value,
@@ -448,9 +447,9 @@ fn decode_environment_holder(
                 access,
                 depth,
                 path,
-            )?,
-        ))),
-        _ => Err(error(
+            )?)),
+        ),
+        PersistentHolderOrInline::Direct(_) => Err(error(
             resource_id,
             path,
             "environment holder is neither a resource id nor a direct compound",
@@ -578,30 +577,42 @@ fn decode_named_reference(
 ) -> Result<TestRegistryReference, GameTestRegistryProjectionError> {
     let entry = access
         .persistent_holder_from_nbt(registry, value)
-        .map_err(|resolution| match resolution {
-            crate::PersistentHolderDecodeError::InvalidShape { .. } => {
-                error(resource_id, path, "expected resource identifier")
-            }
-            crate::PersistentHolderDecodeError::InvalidResourceId { .. } => {
-                error(resource_id, path, "invalid resource identifier")
-            }
-            crate::PersistentHolderDecodeError::Resolution(
-                RegistryResolutionError::MissingResourceId {
-                    resource_id: reference,
-                    ..
-                },
-            ) => error(
-                resource_id,
-                path,
-                format!("{reference} is absent from current session {registry}"),
-            ),
-            resolution => error(resource_id, path, resolution.to_string()),
-        })?;
-    Ok(TestRegistryReference {
+        .map_err(|failure| reference_failure(resource_id, path, failure))?;
+    Ok(test_registry_reference(entry))
+}
+
+fn test_registry_reference(entry: FrozenRegistryEntry<'_>) -> TestRegistryReference {
+    TestRegistryReference {
         holder_id: entry.holder_id,
         resource_id: entry.resource_id.to_string(),
         source: entry.source,
-    })
+    }
+}
+
+fn reference_failure(
+    resource_id: &str,
+    path: &str,
+    failure: crate::PersistentHolderDecodeError,
+) -> GameTestRegistryProjectionError {
+    match failure {
+        crate::PersistentHolderDecodeError::InvalidShape { .. } => {
+            error(resource_id, path, "expected resource identifier")
+        }
+        crate::PersistentHolderDecodeError::InvalidResourceId { .. } => {
+            error(resource_id, path, "invalid resource identifier")
+        }
+        crate::PersistentHolderDecodeError::Resolution(
+            RegistryResolutionError::MissingResourceId {
+                registry,
+                resource_id: reference,
+            },
+        ) => error(
+            resource_id,
+            path,
+            format!("{reference} is absent from current session {registry}"),
+        ),
+        failure => error(resource_id, path, failure.to_string()),
+    }
 }
 
 fn compound<'a>(
