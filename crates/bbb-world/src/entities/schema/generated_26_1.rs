@@ -31905,8 +31905,9 @@ mod generated_catalog_guards {
                     "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
                 )
                 .count(),
-            3
+            4
         );
+        assert!(dimensions.contains("pub(crate) fn vanilla_camel_leash_offset_for_entity_data"));
         assert!(sit_body.contains(
             "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
         ));
