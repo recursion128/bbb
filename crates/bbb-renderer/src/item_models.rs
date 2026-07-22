@@ -25,6 +25,7 @@ use crate::{
 };
 
 mod display_text;
+mod entity_name_tag;
 mod map;
 mod residency;
 mod sign_text;
@@ -37,6 +38,11 @@ pub use display_text::{
 pub(crate) use display_text::{
     create_display_text_background_pipeline, create_display_text_pipeline,
     create_display_text_see_through_pipeline,
+};
+pub use entity_name_tag::{
+    bake_entity_name_tag_surfaces, entity_name_tag_root_position, EntityNameTagLayerSubmission,
+    EntityNameTagLineKind, EntityNameTagRenderType, EntityNameTagSubmission, EntityNameTagSurface,
+    ENTITY_NAME_TAG_BACKGROUND_OPACITY, ENTITY_NAME_TAG_FONT_TEXTURE, ENTITY_NAME_TAG_SCALE,
 };
 pub use map::{
     bake_first_person_map_background_surface, bake_first_person_map_decoration_surface,

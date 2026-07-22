@@ -30,6 +30,7 @@ mod events;
 mod leash;
 mod metadata;
 mod movement;
+mod name_tags;
 mod passengers;
 mod projectiles;
 mod renderer_catalog;
@@ -72,6 +73,10 @@ pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDrago
 pub(crate) use events::{vanilla_entity_event_kind, VanillaEntityEventKind};
 pub use leash::EntityLeashRenderState;
 use movement::entity_vec3;
+pub use name_tags::{
+    EntityNameTagLivingVisibilityState, EntityNameTagRenderSourceState,
+    EntityNameTagTextSegmentState, EntityNameTagTextState, EntityNameTagVisibilityPolicy,
+};
 pub use renderer_catalog::{
     vanilla_entity_renderer_boat_kind, vanilla_entity_renderer_camel_kind,
     vanilla_entity_renderer_culling_kind, vanilla_entity_renderer_extracts_parrot_pose,
@@ -1422,6 +1427,11 @@ entity_model_source_state! {
     #[serde(default)]
     pub uuid: uuid::Uuid,
     pub entity_type_id: i32,
+    /// Raw interpolated entity position used by
+    /// `EntityRenderDispatcher.distanceToSqr`. Unlike `position`, this excludes
+    /// passenger/new-minecart/Shulker render offsets owned by the dispatch pose.
+    #[serde(default)]
+    pub distance_position: EntityVec3,
     pub position: EntityVec3,
     pub y_rot: f32,
     /// Canonical entity head pitch (`Entity.getXRot`), applied as the model head
@@ -1858,9 +1868,9 @@ entity_model_source_state! {
     #[serde(default)]
     pub wither_y_head_rots: [f32; 2],
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Entity.isCrouching`, the synced
-    /// `Pose.CROUCHING`): a sneaking player, whose `HumanoidModel.setupAnim` leans the body,
-    /// drops the head, tucks the legs and tilts the arms. Projected only for the player (the
-    /// only entity the server puts in the crouch pose); `false` for every other entity.
+    /// `Pose.CROUCHING`): a crouching player or mannequin, whose `HumanoidModel.setupAnim`
+    /// leans the body, drops the head, tucks the legs and tilts the arms. `false` for every
+    /// non-Avatar entity.
     #[serde(default)]
     pub is_crouching: bool,
     /// Vanilla `HumanoidRenderState.elytraRotX`, sampled from

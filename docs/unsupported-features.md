@@ -644,6 +644,9 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
+- Apply the F1-backed `hideGui` state to the remaining HUD, crosshair, overlays,
+  and first-person presentation. Generic entity-name visibility consumes it;
+  the rest of the GUI still renders.
 
 - UpdateMobEffect wire/state replacement, living-entity gate and common movement/
   render consumers are covered; remaining vanilla client behavior across all mob
@@ -793,11 +796,18 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 Submission surfaces:
 
-- Add renderer submission surfaces for generic name-tag text and remaining
-  block-feature submissions, then wire their draw ordering into vanilla's
+- Add renderer submission surfaces for remaining block-feature submissions,
+  then wire their draw ordering into vanilla's
   ordered text phase. Texture-backed special geometry added by these surfaces
   must record complete submission metadata before atlas lookup rather than
   reuse the no-texture custom-geometry path.
+- Implement `ItemFrameRenderer`'s displayed-stack custom hover-name label;
+  unlike the closed generic entity pass, its eligibility and text come from
+  the framed ItemStack rather than the entity custom name.
+- Finish shared world-text font parity for entity names and display text:
+  retained custom Component font ids still use the active default atlas, and
+  obfuscated runs still draw their literal glyphs instead of frame-varying
+  equal-advance substitutes.
 
 Living-entity render state:
 
@@ -1363,10 +1373,8 @@ back into a todo. Do not delete these.
 
 - Audit every non-noop vanilla renderer registration for exact model family,
   texture/variant, shadow/culling, held-item/equipment, emissive, overlay, and
-  attachment layers. Close generic name displays, including generated name-tag
-  attachment offsets, team/crosshair visibility, below-name scores, and ordered
-  see-through/normal text submissions. A generic cuboid or missing-texture
-  fallback remains partial.
+  attachment layers. A generic cuboid or missing-texture fallback remains
+  partial.
 
 ### Entity coverage matrix animation
 

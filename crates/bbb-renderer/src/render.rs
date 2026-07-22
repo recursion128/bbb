@@ -858,6 +858,39 @@ impl Renderer {
             );
         }
 
+        // Vanilla FeatureRenderDispatcher draws NameTagFeatureRenderer after
+        // entity translucent model features and before order-1 text features.
+        // The see-through bucket is already stable-sorted far-to-near; the
+        // normal bucket retains collector submission order.
+        let name_tags = self.collect_entity_name_tag_geometry();
+        if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+            for (vertices, indices, pipeline) in [
+                (
+                    &name_tags.see_through.0,
+                    &name_tags.see_through.1,
+                    &self.display_text_see_through_pipeline,
+                ),
+                (
+                    &name_tags.normal.0,
+                    &name_tags.normal.1,
+                    &self.display_text_background_pipeline,
+                ),
+            ] {
+                if !indices.is_empty() {
+                    self.draw_item_model_geometry_with_pipeline(
+                        &mut *encoder,
+                        main_view,
+                        vertices,
+                        indices,
+                        &atlas.bind_group,
+                        pipeline,
+                    );
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
+                }
+            }
+        }
+
         // Vanilla MapRenderer submits decoration name labels through
         // submitNodeCollector.order(1).submitText(...), so TextFeatureRenderer draws them during
         // renderTranslucentFeatures after order-0 model/custom geometry and before crumbling /
@@ -5318,9 +5351,21 @@ mod tests {
             .find("self.draw_entity_translucent_features(")
             .map(|index| entity_pass + index)
             .expect("entity translucent feature helper is called from the pass");
-        let map_text_collect = source[draw_features..]
-            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+        let name_tag_collect = source[draw_features..]
+            .find("self.collect_entity_name_tag_geometry()")
             .map(|index| draw_features + index)
+            .expect("name tags follow entity translucent model features");
+        let name_tag_see_through = source[name_tag_collect..]
+            .find("&self.display_text_see_through_pipeline")
+            .map(|index| name_tag_collect + index)
+            .expect("name-tag see-through layer is drawn");
+        let name_tag_normal = source[name_tag_see_through..]
+            .find("&self.display_text_background_pipeline")
+            .map(|index| name_tag_see_through + index)
+            .expect("name-tag normal layer follows the see-through layer");
+        let map_text_collect = source[name_tag_normal..]
+            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+            .map(|index| name_tag_normal + index)
             .expect("resident item-frame map text pass follows model translucent features");
         let map_text_draw = source[map_text_collect..]
             .find("self.draw_resident_map_text(")
@@ -5336,11 +5381,14 @@ mod tests {
         assert!(
             copy_particles < entity_pass
                 && entity_pass < draw_features
-                && draw_features < map_text_collect
+                && draw_features < name_tag_collect
+                && name_tag_collect < name_tag_see_through
+                && name_tag_see_through < name_tag_normal
+                && name_tag_normal < map_text_collect
                 && map_text_collect < map_text_draw
                 && map_text_draw < block_destroy
                 && block_destroy < translucent_target,
-            "vanilla MapRenderer decoration labels are order(1) text submits drawn during renderTranslucentFeatures before crumbling and translucent terrain"
+            "vanilla name tags draw after model features and before order(1) MapRenderer text, crumbling, and translucent terrain"
         );
         assert!(
             source[map_text_draw..block_destroy].contains("main_view"),

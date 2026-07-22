@@ -294,6 +294,17 @@ pub fn component_style_from_nbt_value(value: &NbtSummaryValue) -> Option<Compone
     Some(component_style_from_entries(entries))
 }
 
+/// Extracts only the style declared directly by one already-validated Component
+/// node. Presentation owners that resolve translatable content can use this to
+/// preserve the same parent-chain semantics as the protocol's flattened run
+/// projection without duplicating the style codec.
+pub fn component_node_style_from_nbt_value(value: &NbtSummaryValue) -> ComponentStyle {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return ComponentStyle::default();
+    };
+    component_style_from_entries(entries)
+}
+
 pub(crate) fn decode_styled_component_summary_from_decoder(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<StyledTextRun>> {

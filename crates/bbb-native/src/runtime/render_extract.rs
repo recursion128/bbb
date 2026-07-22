@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use bbb_renderer::{
     BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
-    DisplayTextSurface, EntityModelInstance, FirstPersonMapBackgroundSurface,
+    DisplayTextSurface, EntityModelInstance, EntityNameTagSurface, FirstPersonMapBackgroundSurface,
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAirSupply,
     HudBlockItemModel, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudCommandSuggestions, HudDebugOptionsScreen,
@@ -20,6 +20,8 @@ use bbb_renderer::{
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
     ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
+
+use crate::component_text::{visit_localized_template, LocalizedTemplatePart};
 
 use super::*;
 
@@ -1116,47 +1118,19 @@ fn format_localized_projected_chat_runs(
     style: &bbb_protocol::ComponentStyle,
     arguments: &[Vec<ProjectedChatRun>],
 ) -> Vec<ProjectedChatRun> {
-    let bytes = template.as_bytes();
     let mut runs = Vec::new();
-    let mut offset = 0;
-    let mut sequential = 0usize;
-    while offset < bytes.len() {
-        let Some(relative_percent) = bytes[offset..].iter().position(|byte| *byte == b'%') else {
-            push_projected_chat_literal(&mut runs, &template[offset..], style);
-            break;
-        };
-        let percent = offset + relative_percent;
-        push_projected_chat_literal(&mut runs, &template[offset..percent], style);
-        if bytes.get(percent + 1) == Some(&b'%') {
-            push_projected_chat_literal(&mut runs, "%", style);
-            offset = percent + 2;
-            continue;
+    visit_localized_template(template, |part| match part {
+        LocalizedTemplatePart::Literal(text) => {
+            push_projected_chat_literal(&mut runs, text, style);
         }
-        let (argument_index, next) = if bytes.get(percent + 1) == Some(&b's') {
-            let index = sequential;
-            sequential += 1;
-            (Some(index), percent + 2)
-        } else {
-            let mut cursor = percent + 1;
-            while bytes.get(cursor).is_some_and(u8::is_ascii_digit) {
-                cursor += 1;
+        LocalizedTemplatePart::Argument { index, raw } => {
+            if let Some(argument) = arguments.get(index) {
+                runs.extend(argument.iter().cloned());
+            } else {
+                push_projected_chat_literal(&mut runs, raw, style);
             }
-            let index = (cursor > percent + 1
-                && bytes.get(cursor) == Some(&b'$')
-                && bytes.get(cursor + 1) == Some(&b's'))
-            .then(|| template[percent + 1..cursor].parse::<usize>().ok())
-            .flatten()
-            .and_then(|index| index.checked_sub(1));
-            (index, cursor.saturating_add(2))
-        };
-        if let Some(argument) = argument_index.and_then(|index| arguments.get(index)) {
-            runs.extend(argument.iter().cloned());
-            offset = next;
-        } else {
-            push_projected_chat_literal(&mut runs, "%", style);
-            offset = percent + 1;
         }
-    }
+    });
     if runs.is_empty() {
         vec![projected_chat_run(template, style)]
     } else {
@@ -1274,47 +1248,17 @@ pub(crate) fn format_localized_chat_runs(
     style: &bbb_protocol::ComponentStyle,
     arguments: &[Vec<HudStyledTextRun>],
 ) -> Vec<HudStyledTextRun> {
-    let bytes = template.as_bytes();
     let mut runs = Vec::new();
-    let mut offset = 0;
-    let mut sequential = 0usize;
-    while offset < bytes.len() {
-        let Some(relative_percent) = bytes[offset..].iter().position(|byte| *byte == b'%') else {
-            push_hud_chat_literal(&mut runs, &template[offset..], style);
-            break;
-        };
-        let percent = offset + relative_percent;
-        push_hud_chat_literal(&mut runs, &template[offset..percent], style);
-        if bytes.get(percent + 1) == Some(&b'%') {
-            push_hud_chat_literal(&mut runs, "%", style);
-            offset = percent + 2;
-            continue;
-        }
-        let (argument_index, next) = if bytes.get(percent + 1) == Some(&b's') {
-            let index = sequential;
-            sequential += 1;
-            (Some(index), percent + 2)
-        } else {
-            let mut cursor = percent + 1;
-            while bytes.get(cursor).is_some_and(u8::is_ascii_digit) {
-                cursor += 1;
+    visit_localized_template(template, |part| match part {
+        LocalizedTemplatePart::Literal(text) => push_hud_chat_literal(&mut runs, text, style),
+        LocalizedTemplatePart::Argument { index, raw } => {
+            if let Some(argument) = arguments.get(index) {
+                runs.extend(argument.iter().cloned());
+            } else {
+                push_hud_chat_literal(&mut runs, raw, style);
             }
-            let index = (cursor > percent + 1
-                && bytes.get(cursor) == Some(&b'$')
-                && bytes.get(cursor + 1) == Some(&b's'))
-            .then(|| template[percent + 1..cursor].parse::<usize>().ok())
-            .flatten()
-            .and_then(|index| index.checked_sub(1));
-            (index, cursor.saturating_add(2))
-        };
-        if let Some(argument) = argument_index.and_then(|index| arguments.get(index)) {
-            runs.extend(argument.iter().cloned());
-            offset = next;
-        } else {
-            push_hud_chat_literal(&mut runs, "%", style);
-            offset = percent + 1;
         }
-    }
+    });
     if runs.is_empty() {
         vec![hud_chat_run(template, style)]
     } else {
@@ -1525,6 +1469,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) item_frame_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
     pub(crate) sign_text_surfaces: Vec<SignTextSurface>,
     pub(crate) display_text_surfaces: Vec<DisplayTextSurface>,
+    pub(crate) entity_name_tag_surfaces: Vec<EntityNameTagSurface>,
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
@@ -1800,6 +1745,7 @@ pub(crate) fn apply_renderer_frame(
     );
     renderer.set_sign_text_surfaces(frame.sign_text_surfaces);
     renderer.set_display_text_surfaces(frame.display_text_surfaces);
+    renderer.set_entity_name_tag_surfaces(frame.entity_name_tag_surfaces);
     let recycled_instances = renderer.replace_entity_model_instances(frame.entity_model_instances);
     entity_render_extraction.recycle_instances(recycled_instances);
     renderer.set_camera_hurt_effect(frame.camera_hurt_effect);

@@ -29,7 +29,6 @@ pub use block_attachment::{
 };
 pub use cat_variants::CatModelVariant;
 pub use catalog::*;
-pub(crate) use colored::sign_base_transformation;
 #[cfg(test)]
 use colored::{
     boat_bubble_transform, boat_damage_roll_degrees, creeper_model_root_transform,
@@ -44,6 +43,7 @@ use colored::{
     wind_charge_model_root_transform, wither_model_root_transform, HUMANOID_ARM_PART_INDICES,
     HUMANOID_LEG_PART_INDICES,
 };
+pub(crate) use colored::{entity_dispatch_render_offset, sign_base_transformation};
 use colored::{
     entity_model_colored_runtime_mesh, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,

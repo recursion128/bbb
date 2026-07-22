@@ -98,13 +98,14 @@ use crate::{
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
     end_portal_scene::end_portal_model_instances_from_world_at_partial_tick,
+    entity_name_tags::entity_name_tag_surfaces,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
         visible_display_entity_render_sources_at_partial_tick,
         visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick,
-        EntityRenderVisibilityContext,
+        visible_entity_name_tag_render_sources, EntityRenderVisibilityContext,
     },
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
@@ -2859,6 +2860,25 @@ pub(crate) fn update_renderer_from_publication(
             },
             entity_render_extraction,
         );
+    // Vanilla `LevelRenderer.extractVisibleEntities` submits generic name
+    // displays from the same culled entity generation immediately after each
+    // entity renderer extracts its model state. Camera distance/crosshair and
+    // `Options.hideGui` are frame/input facts, so native resolves them here.
+    let targeted_entity_id =
+        match crosshair_target_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick)
+        {
+            Some(CrosshairTarget::Entity(hit)) => Some(hit.entity_id),
+            _ => None,
+        };
+    let entity_name_tag_surfaces = entity_name_tag_surfaces(
+        visible_entity_name_tag_render_sources(entity_render_extraction),
+        &entity_instances,
+        item_runtime,
+        camera_pose,
+        targeted_entity_id,
+        world.local_player().camera.entity_id,
+        !input.hide_gui(),
+    );
     let display_entity_item_models = display_entity_item_models(
         visible_display_entity_render_sources_at_partial_tick(
             world,
@@ -3250,6 +3270,7 @@ pub(crate) fn update_renderer_from_publication(
             item_frame_map_text_surfaces,
             sign_text_surfaces,
             display_text_surfaces,
+            entity_name_tag_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
             camera_hurt_effect,

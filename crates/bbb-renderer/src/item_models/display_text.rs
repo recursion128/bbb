@@ -109,14 +109,14 @@ impl DisplayTextSurface {
     }
 }
 
-fn display_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
+pub(super) fn display_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
     glyphs
         .get(ch)
         .or_else(|| glyphs.get(DISPLAY_TEXT_REPLACEMENT_GLYPH))
         .unwrap_or_default()
 }
 
-fn display_text_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> u32 {
+pub(super) fn display_text_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> u32 {
     runs.iter()
         .map(|run| {
             run.text
@@ -213,7 +213,7 @@ pub fn split_display_text_lines(
     lines
 }
 
-fn argb_to_color(argb: u32) -> [f32; 4] {
+pub(super) fn argb_to_color(argb: u32) -> [f32; 4] {
     [
         ((argb >> 16) & 0xFF) as f32 / 255.0,
         ((argb >> 8) & 0xFF) as f32 / 255.0,
@@ -222,7 +222,7 @@ fn argb_to_color(argb: u32) -> [f32; 4] {
     ]
 }
 
-fn text_argb(rgb: Option<u32>, alpha: u8) -> u32 {
+pub(super) fn text_argb(rgb: Option<u32>, alpha: u8) -> u32 {
     u32::from(alpha) << 24 | rgb.unwrap_or(0xFF_FF_FF) & 0xFF_FF_FF
 }
 
@@ -231,7 +231,7 @@ fn shadow_argb(argb: u32) -> u32 {
     argb & 0xFF00_0000 | scale(16) << 16 | scale(8) << 8 | scale(0)
 }
 
-fn append_quad(
+pub(super) fn append_quad(
     mesh: &mut ItemModelMesh,
     transform: Mat4,
     corners: [[f32; 3]; 4],
@@ -251,7 +251,7 @@ fn append_quad(
     );
 }
 
-fn append_untextured_rect(
+pub(super) fn append_untextured_rect(
     mesh: &mut ItemModelMesh,
     transform: Mat4,
     x0: f32,
@@ -451,7 +451,7 @@ pub(crate) struct DisplayTextGeometry {
     pub(crate) see_through_text: (Vec<ItemModelVertex>, Vec<u32>),
 }
 
-fn append_mesh(target: &mut (Vec<ItemModelVertex>, Vec<u32>), mesh: &ItemModelMesh) {
+pub(super) fn append_mesh(target: &mut (Vec<ItemModelVertex>, Vec<u32>), mesh: &ItemModelMesh) {
     let base = u32::try_from(target.0.len()).expect("display text vertex count fits in u32");
     target.0.extend(mesh.vertices.iter().copied());
     target

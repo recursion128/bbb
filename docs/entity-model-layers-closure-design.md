@@ -107,7 +107,7 @@ name, outline, fire, and exceptional culling in coherent source families.
 Each stage names its concrete Vanilla renderer/model classes and runs the
 affected crate's family-focused tests plus the renderer-catalog reverse tests.
 
-The first cross-cutting stage closes generic entity name displays from
+The first cross-cutting stage is closed for generic entity name displays from
 `EntityRenderer`, `LivingEntityRenderer`, `MobRenderer`, and
 `ArmorStandRenderer`: generate the `EntityType.Builder.nameTagOffset` override,
 project synchronized custom/player names, team visibility and below-name score,

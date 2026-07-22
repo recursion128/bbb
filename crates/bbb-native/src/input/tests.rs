@@ -22426,6 +22426,45 @@ fn item_model_keybind_context_tracks_non_debug_default_keymappings() {
 }
 
 #[test]
+fn toggle_gui_key_flips_hide_gui_once_per_press_edge() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    assert!(!input.hide_gui());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F1),
+        ElementState::Pressed,
+    );
+    assert!(input.hide_gui());
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F1),
+        ElementState::Pressed,
+    );
+    assert!(input.hide_gui());
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F1),
+        ElementState::Released,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F1),
+        ElementState::Pressed,
+    );
+    assert!(!input.hide_gui());
+}
+
+#[test]
 fn item_model_keybind_context_accepts_vanilla_default_unbound_keymappings() {
     // Vanilla Options registers these with InputConstants.UNKNOWN, so
     // IsKeybindDown can decode the key names but KeyMapping.isDown() is false

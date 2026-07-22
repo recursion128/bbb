@@ -46,6 +46,7 @@ mod creature_pick_bounds_projection;
 mod item_entity_and_pickup_projection;
 mod lifecycle_and_queries;
 mod movement_combat_and_swing_projection;
+mod name_tag_projection;
 mod passenger_and_vehicle_movement;
 mod player_pose_and_sleeping_projection;
 mod small_mob_and_walk_animation;

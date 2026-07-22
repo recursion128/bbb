@@ -1551,7 +1551,11 @@ impl EntityStore {
         )
     }
 
-    fn metadata_optional_component(&self, id: i32, data_id: u8) -> Option<String> {
+    pub(crate) fn metadata_optional_rich_component_override(
+        &self,
+        id: i32,
+        data_id: u8,
+    ) -> Option<Option<bbb_protocol::RichTextComponent>> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         metadata
@@ -1559,11 +1563,23 @@ impl EntityStore {
             .iter()
             .find(|value| value.data_id == data_id)
             .and_then(|value| match &value.value {
-                EntityDataValueKind::OptionalComponent(component) => component
-                    .as_ref()
-                    .map(|component| component.text().to_string()),
+                EntityDataValueKind::OptionalComponent(component) => Some(component.clone()),
                 _ => None,
             })
+    }
+
+    fn metadata_optional_component(&self, id: i32, data_id: u8) -> Option<String> {
+        self.metadata_optional_rich_component_override(id, data_id)?
+            .map(|component| component.text().to_string())
+    }
+
+    pub(crate) fn entity_has_passengers(&self, id: i32) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        self.ecs
+            .get::<&EntityMount>(entity)
+            .is_ok_and(|mount| !mount.passengers.is_empty())
     }
 
     /// Vanilla `LivingEntity.getSleepingPos`: the synced bed position the entity is
@@ -3306,11 +3322,13 @@ impl EntityStore {
         // source defaults to the no-bed fallback.
         let is_sleeping = vanilla_living_entity_type(identity.entity_type_id)
             && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID;
-        // Vanilla `Entity.isCrouching` (`Pose.CROUCHING`): only the player is ever put into the
-        // crouch pose by the server, and only the player model has the `HumanoidModel.setupAnim`
-        // crouch, so the projection is gated to the player.
-        let is_crouching = identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
-            && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
+        // Vanilla `Entity.isCrouching` (`Pose.CROUCHING`): AvatarRenderer consumes this for both
+        // real players and client mannequins (the latter accepts CROUCHING in `VALID_POSES`).
+        let is_crouching = matches!(
+            identity.entity_type_id,
+            VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID
+        ) && entity_data_pose(&metadata.data_values)
+            == VANILLA_ENTITY_POSE_CROUCHING_ID;
         // Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the SCALE
         // attribute): only living entities carry a render scale; everything else
         // renders at its default size.
@@ -3487,6 +3505,7 @@ impl EntityStore {
             entity_id: identity.id,
             uuid: identity.uuid,
             entity_type_id: identity.entity_type_id,
+            distance_position: position,
             position: source_position,
             y_rot: source_y_rot,
             x_rot: source_x_rot,

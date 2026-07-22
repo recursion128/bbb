@@ -1182,7 +1182,7 @@ fn goat_pick_bounds(entity_type_id: i32, data_values: &[EntityDataValue]) -> Ent
     }
 }
 
-fn sniffer_is_digging(data_values: &[EntityDataValue]) -> bool {
+pub(crate) fn sniffer_is_digging(data_values: &[EntityDataValue]) -> bool {
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(VANILLA_ENTITY_TYPE_SNIFFER_ID)
         .is_some_and(|(data_id, default)| {
             entity_data_enum_id(

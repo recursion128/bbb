@@ -179,3 +179,6 @@
 - **2026-07-21（FishingHook renderer 工程切片）**：闭环 world 同帧 owner/持竿手
   状态、第一/第三人称手部起点、专用裁剪纹理四边形与 16 段屏幕宽度抛物线；
   commit "Render dedicated fishing hook and line"，语义测试覆盖三层边界。
+- **2026-07-21（generic entity name display 工程切片）**：闭环 rich/team/score
+  world 投影、camera/crosshair/F1 可见性、生成 attachment 与 dispatcher 偏移，
+  以及 score→name、see-through→normal 的有序双层字体提交。

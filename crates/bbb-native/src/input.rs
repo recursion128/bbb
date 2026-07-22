@@ -636,6 +636,8 @@ pub(crate) struct ClientInputState {
     debug_fog_enabled: bool,
     debug_smart_cull_enabled: bool,
     debug_wireframe_enabled: bool,
+    /// Vanilla `Options.hideGui`, toggled by the default `key.toggleGui` (F1).
+    hide_gui: bool,
     debug_frustum_requests: Vec<DebugFrustumRequest>,
     debug_feature_count_requests: Vec<DebugFeatureCountRequest>,
     debug_pause_on_lost_focus: bool,
@@ -1250,6 +1252,10 @@ impl ClientInputState {
 
     pub(crate) fn player_list_key_down(&self) -> bool {
         self.pressed_keys.contains(&KeyCode::Tab)
+    }
+
+    pub(crate) fn hide_gui(&self) -> bool {
+        self.hide_gui
     }
 
     fn set_key_down(&mut self, code: KeyCode, pressed: bool) {
@@ -10009,6 +10015,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
     let PhysicalKey::Code(code) = physical_key else {
         return;
     };
+    let just_pressed = pressed && !input.pressed_keys.contains(&code);
     input.set_key_down(code, pressed);
     if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
         input.set_shift_key(code, pressed);
@@ -10119,6 +10126,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
             return;
         }
         input.record_debug_profiler_chart_navigation_key(code);
+        if just_pressed && code == KeyCode::F1 {
+            input.hide_gui = !input.hide_gui;
+            return;
+        }
         if let Some(slot) = hotbar_slot_for_key(code) {
             if world.local_player_is_spectator() {
                 return;

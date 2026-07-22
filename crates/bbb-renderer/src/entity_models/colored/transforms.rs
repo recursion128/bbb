@@ -114,7 +114,19 @@ fn living_entity_model_root_transform_with_renderer_transform(
 }
 
 fn entity_render_offset_transform(instance: EntityModelInstance) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(enderman_creepy_render_offset(instance)))
+    Mat4::from_translation(Vec3::from_array(entity_dispatch_render_offset(instance)))
+}
+
+/// Vanilla dispatcher-root offset applied before both the living model and
+/// `NameTagFeatureRenderer`. `AvatarRenderer.getRenderOffset` lowers crouching
+/// avatars by two model pixels; Enderman jitter remains renderer-owned too.
+pub(crate) fn entity_dispatch_render_offset(instance: EntityModelInstance) -> [f32; 3] {
+    let mut offset = enderman_creepy_render_offset(instance);
+    if matches!(instance.kind, EntityModelKind::Player { .. }) && instance.render_state.is_crouching
+    {
+        offset[1] -= instance.render_state.scale * 2.0 / 16.0;
+    }
+    offset
 }
 
 pub(in crate::entity_models) fn enderman_creepy_render_offset(

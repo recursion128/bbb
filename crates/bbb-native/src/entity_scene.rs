@@ -106,9 +106,9 @@ use bbb_world::{
     EnderDragonAnimationSource as WorldEnderDragonAnimationSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
-    EntityPickTargetState, EntityRenderCandidateState, FarmAnimalVariantModel,
-    FarmAnimalVariantPresentation, FishingHookRenderSourceState, FrogVariantPresentation,
-    GuardianBeamSource as WorldGuardianBeamSource,
+    EntityNameTagRenderSourceState, EntityPickTargetState, EntityRenderCandidateState,
+    FarmAnimalVariantModel, FarmAnimalVariantPresentation, FishingHookRenderSourceState,
+    FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
     HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemFrameFacing as WorldItemFrameFacing,
     LeashRopeSource as WorldLeashRopeSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
     VanillaArmorStandMetadataAccessors, VanillaEntityRendererCullingKind,
@@ -384,6 +384,7 @@ pub(crate) struct EntityRenderExtractionScratch {
     candidate_index: HashMap<i32, usize>,
     sources: Vec<EntityModelSourceState>,
     display_sources: Vec<DisplayEntityRenderSourceState>,
+    name_tag_sources: Vec<EntityNameTagRenderSourceState>,
     instances: Vec<EntityModelInstance>,
     observation: EntityRenderExtractionObservation,
 }
@@ -422,6 +423,7 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
         scratch.survivors.capacity(),
         scratch.candidate_index.capacity(),
         scratch.sources.capacity(),
+        scratch.name_tag_sources.capacity(),
         scratch.instances.capacity(),
     ];
 
@@ -485,6 +487,10 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
     );
     let projection_duration = projection_started_at.elapsed();
     let projected = scratch.sources.len();
+    world.fill_entity_name_tag_render_sources_for_model_sources(
+        &scratch.sources,
+        &mut scratch.name_tag_sources,
+    );
 
     let model_started_at = Instant::now();
     let context = EntityVariantRenderContext { world, textures };
@@ -527,6 +533,7 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
         scratch.survivors.capacity(),
         scratch.candidate_index.capacity(),
         scratch.sources.capacity(),
+        scratch.name_tag_sources.capacity(),
         scratch.instances.capacity(),
     ];
     let capacity_growths = previous_capacities
@@ -564,6 +571,14 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
             .saturating_add(capacity_growths),
     };
     std::mem::take(&mut scratch.instances)
+}
+
+/// Returns the generic name-tag facts projected from the exact survivor/model
+/// source generation consumed by the preceding entity extraction.
+pub(crate) fn visible_entity_name_tag_render_sources(
+    scratch: &EntityRenderExtractionScratch,
+) -> &[EntityNameTagRenderSourceState] {
+    &scratch.name_tag_sources
 }
 
 /// Projects the dedicated Display render sources for the exact survivor set
