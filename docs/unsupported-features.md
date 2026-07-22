@@ -1293,8 +1293,6 @@ back into a todo. Do not delete these.
 - **Sign `filtered_messages` decoding.**
 - **Sign POLYGON_OFFSET font display mode**, currently approximated by the fixed
   `TEXT_OFFSET` z gap.
-- **General block-entity record removal on block change.** Only `sign_text`
-  prunes today.
 - **Chest christmas Dec 24-26 texture swap.** There is no wall-clock input;
   `bbb-world` serializable state must not introduce one.
 - **Trial-spawner display-state behavior**, and custom `SpawnData` entity NBT

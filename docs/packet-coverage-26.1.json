@@ -7034,21 +7034,27 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#apply_block_update",
+            "crates/bbb-world/src/chunks/store.rs#apply_server_verified_block_state",
             "crates/bbb-world/src/chunks/tests.rs#applies_single_block_update_and_reuploads_palette",
             "crates/bbb-world/src/chunks/tests.rs#block_update_maintains_distinct_motion_blocking_heightmaps",
             "crates/bbb-world/src/chunks/tests.rs#block_update_materializes_omitted_motion_blocking_heightmaps",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockUpdate"
+            "crates/bbb-world/src/chunks/tests.rs#block_updates_follow_vanilla_block_entity_lifecycle",
+            "crates/bbb-protocol/src/block_types.rs#block_entity_type_id",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockUpdate",
+            "vanilla:net/minecraft/world/level/chunk/LevelChunk.java#setBlockState"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/chunks.rs#decode_block_update",
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "crates/bbb-protocol/src/block_state_types.rs#block_state_registry_report_is_contiguous_and_matches_wire_range",
             "vanilla:net/minecraft/network/protocol/game/ClientboundBlockUpdatePacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -7060,10 +7066,13 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/chunks/tests.rs#local_destroy_prediction_defers_server_block_update_until_ack",
-            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#setServerVerifiedBlockState"
+            "crates/bbb-world/src/chunks/tests.rs#block_updates_follow_vanilla_block_entity_lifecycle",
+            "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers",
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#setServerVerifiedBlockState",
+            "vanilla:net/minecraft/client/renderer/LevelRenderer.java#blockChanged"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -7071,6 +7080,8 @@
             "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
             "crates/bbb-world/src/chunks/tests.rs#applies_single_block_update_and_reuploads_palette",
+            "crates/bbb-world/src/chunks/tests.rs#block_updates_follow_vanilla_block_entity_lifecycle",
+            "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
           ],
           "gap": null,
@@ -11270,15 +11281,22 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#apply_section_blocks_update",
+            "crates/bbb-world/src/chunks/store.rs#apply_server_verified_block_state",
             "crates/bbb-world/src/chunks/tests.rs#applies_section_blocks_update",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunkBlocksUpdate"
+            "crates/bbb-world/src/chunks/tests.rs#section_block_updates_apply_in_order_and_reject_impossible_positions",
+            "crates/bbb-world/src/chunks/tests.rs#block_updates_follow_vanilla_block_entity_lifecycle",
+            "crates/bbb-protocol/src/block_types.rs#block_entity_type_id",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunkBlocksUpdate",
+            "vanilla:net/minecraft/world/level/chunk/LevelChunk.java#setBlockState"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/chunks.rs#decode_section_blocks_update",
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "crates/bbb-protocol/src/block_state_types.rs#block_state_registry_report_is_contiguous_and_matches_wire_range",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSectionBlocksUpdatePacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -11295,12 +11313,15 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#apply_section_blocks_update",
+            "crates/bbb-world/src/chunks/tests.rs#section_block_updates_apply_in_order_and_reject_impossible_positions",
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
+            "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunkBlocksUpdate",
-            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#setServerVerifiedBlockState"
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#setServerVerifiedBlockState",
+            "vanilla:net/minecraft/client/renderer/LevelRenderer.java#blockChanged"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -11308,7 +11329,9 @@
             "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
             "crates/bbb-world/src/chunks/tests.rs#applies_section_blocks_update",
+            "crates/bbb-world/src/chunks/tests.rs#section_block_updates_apply_in_order_and_reject_impossible_positions",
             "crates/bbb-world/src/chunks/tests.rs#block_updates_for_missing_targets_are_counted_but_not_applied",
+            "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
           ],
           "gap": null,

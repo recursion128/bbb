@@ -2316,7 +2316,7 @@ mod tests {
     }
 
     #[test]
-    fn play_block_update_keeps_registry_and_full_level_invalidation_open() {
+    fn play_block_update_is_complete_through_native_section_reuse() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2325,17 +2325,22 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_BLOCK_UPDATE"
             })
             .expect("play block update coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["decode"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
-        );
+            .any(|evidence| evidence.contains("block_state_registry_report_is_contiguous")));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("block_updates_follow_vanilla_block_entity")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("rebuild_dirty_sections_and_reuse_stable_layers")));
     }
 
     #[test]
@@ -2919,7 +2924,7 @@ mod tests {
     }
 
     #[test]
-    fn play_section_blocks_update_keeps_full_block_side_effects_open() {
+    fn play_section_blocks_update_is_complete_through_ordered_section_reuse() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2928,17 +2933,22 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_SECTION_BLOCKS_UPDATE"
             })
             .expect("play section blocks update coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["decode"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .any(|evidence| evidence.contains("decode_section_blocks_update")));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("apply_in_order_and_reject_impossible")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("rebuild_dirty_sections_and_reuse_stable_layers")));
     }
 
     #[test]

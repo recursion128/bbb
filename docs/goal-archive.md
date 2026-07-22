@@ -226,3 +226,7 @@
   分派完整 `triggerEvent` 族；note block 音画与 piston 原子移动、碰撞、running tick、
   插值场景提交共用 world canonical 状态。packet coverage 全单元 complete，合同见
   `docs/block-event-packet-closure-design.md`。
+- **2026-07-22（BlockUpdate 双包族闭环）**：固定 29,873 项 block-state identity 与
+  生成的 block→block-entity 映射驱动严格解码、预测协调和 Vanilla 移除/创建/铜族保留；
+  原生地形仅替换脏 section 并复用稳定 mesh。双包 coverage 全单元 complete，合同见
+  `docs/block-update-packet-family-closure-design.md`。
