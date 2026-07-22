@@ -563,11 +563,20 @@ mod tests {
         let summonable = store.complete_command("/summon player");
         assert!(summonable.suggestions.is_empty());
         assert!(!summonable.request_server);
-        assert!(store
-            .complete_command("/summon lightning")
+        let lightning_completion = store.complete_command("/summon lightning");
+        let lightning = lightning_completion
             .suggestions
             .iter()
-            .any(|suggestion| suggestion.text == "minecraft:lightning_bolt"));
+            .find(|suggestion| suggestion.text == "minecraft:lightning_bolt")
+            .expect("lightning bolt is summonable");
+        assert_eq!(
+            lightning.tooltip.as_deref(),
+            Some("minecraft:lightning_bolt")
+        );
+        assert_eq!(
+            lightning.tooltip_translation_key.as_deref(),
+            Some("entity.minecraft.lightning_bolt")
+        );
         store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
             features: vec!["minecraft:trade_rebalance".to_string()],
         });

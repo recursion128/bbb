@@ -38,6 +38,8 @@ pub struct CommandSuggestionState {
     pub text: String,
     pub tooltip: Option<String>,
     #[serde(default)]
+    pub tooltip_translation_key: Option<String>,
+    #[serde(default)]
     pub tooltip_styled: Option<Vec<bbb_protocol::StyledTextRun>>,
     #[serde(default)]
     pub tooltip_component: Option<bbb_protocol::NbtSummaryValue>,
@@ -67,6 +69,7 @@ impl From<ProtocolCommandSuggestions> for CommandSuggestionsResultState {
                 .map(|suggestion| CommandSuggestionState {
                     text: suggestion.text,
                     tooltip: suggestion.tooltip,
+                    tooltip_translation_key: None,
                     tooltip_styled: suggestion.tooltip_styled,
                     tooltip_component: suggestion.tooltip_component,
                 })
@@ -135,6 +138,7 @@ impl WorldStore {
         self.command_suggestions.pending_request_id = None;
         let result = CommandSuggestionsResultState::from(packet);
         self.command_suggestions.last_id = Some(id);
+        self.command_suggestions.by_id.clear();
         self.command_suggestions.by_id.insert(id, result);
         self.update_command_suggestion_count();
         self.command_suggestions.by_id.get(&id)
@@ -410,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn command_suggestions_count_all_cached_entries() {
+    fn command_suggestions_retain_only_latest_matching_result() {
         let mut store = WorldStore::new();
         store.command_suggestions.pending_request_id = Some(7);
         store.apply_command_suggestions(CommandSuggestions {
@@ -445,8 +449,17 @@ mod tests {
             ],
         });
 
-        assert_eq!(store.command_suggestions().by_id.len(), 2);
-        assert_eq!(store.counters().command_suggestion_entries_tracked, 3);
+        assert_eq!(store.command_suggestions().by_id.len(), 1);
+        assert!(store.command_suggestions_by_id(7).is_none());
+        assert_eq!(
+            store
+                .command_suggestions_by_id(8)
+                .unwrap()
+                .suggestions
+                .len(),
+            2
+        );
+        assert_eq!(store.counters().command_suggestion_entries_tracked, 2);
     }
 
     #[test]

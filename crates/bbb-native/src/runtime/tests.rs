@@ -8970,6 +8970,7 @@ fn command_suggestion_narration_localizes_vanilla_payload_shapes() {
                 total: 4,
                 text: "stone".to_string(),
                 tooltip: None,
+                tooltip_translation_key: None,
             },
         ),
         "Selected suggestion 2 out of 4: stone"
@@ -8982,6 +8983,7 @@ fn command_suggestion_narration_localizes_vanilla_payload_shapes() {
                 total: 5,
                 text: "stick".to_string(),
                 tooltip: Some("minecraft:stick".to_string()),
+                tooltip_translation_key: None,
             },
         ),
         "Selected suggestion 3 out of 5: stick (minecraft:stick)"
@@ -8990,6 +8992,43 @@ fn command_suggestion_narration_localizes_vanilla_payload_shapes() {
         format_localized_string_arguments("Selected %s (%s), 100%%", &["value %s", "tip"]),
         "Selected value %s (tip), 100%"
     );
+
+    let root = unique_runtime_temp_dir("command-suggestion-language");
+    write_runtime_bow_item_assets(&root);
+    write_runtime_json(
+        &runtime_assets_dir(&root).join("lang").join("en_us.json"),
+        r#"{"entity.minecraft.zombie":"Localized Zombie"}"#,
+    );
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    assert_eq!(
+        localized_command_suggestion_narration(
+            Some(&item_runtime),
+            &CommandSuggestionNarrationState {
+                position: 1,
+                total: 2,
+                text: "minecraft:zombie".to_string(),
+                tooltip: Some("minecraft:zombie".to_string()),
+                tooltip_translation_key: Some("entity.minecraft.zombie".to_string()),
+            },
+        ),
+        "Selected suggestion 1 out of 2: minecraft:zombie (Localized Zombie)"
+    );
+    let tooltip_runs = hud_command_suggestion_tooltip_runs(
+        CommandSuggestionHudTooltip {
+            text: "minecraft:zombie".to_string(),
+            translation_key: Some("entity.minecraft.zombie".to_string()),
+            runs: Vec::new(),
+            x: 12,
+            y: 24,
+        },
+        Some(&item_runtime),
+    );
+    assert_eq!(tooltip_runs.len(), 1);
+    assert_eq!(tooltip_runs[0].text, "Localized Zombie");
+    assert_eq!(tooltip_runs[0].style, HudTextStyle::default());
+    assert_eq!(tooltip_runs[0].color, None);
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
@@ -9020,6 +9059,7 @@ fn command_suggestion_narration_speaks_once_per_state_change_and_resets() {
         total: 2,
         text: "stone".to_string(),
         tooltip: None,
+        tooltip_translation_key: None,
     };
     let mut last = None;
     let mut narrator = RecordingNarrator::default();

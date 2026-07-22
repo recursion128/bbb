@@ -124,15 +124,16 @@ use crate::{
         recipe_book_type_settings, recipe_book_visible_tab_indices, release_active_input,
         stats_screen_done_button_contains, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        CommandSuggestionNarrationState, DebugOptionsScreenHudRow, DialogImePreeditHudState,
-        InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
-        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, StatsScreenFocus,
-        LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
-        LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
-        LOOM_PATTERN_ITEM_PATTERN_COUNT, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET,
-        LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID,
-        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
-        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        CommandSuggestionHudTooltip, CommandSuggestionNarrationState, DebugOptionsScreenHudRow,
+        DialogImePreeditHudState, InventoryScreenBackground, RecipeBookOverlayHudState,
+        RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
+        StatsScreenFocus, LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT, LOOM_PATTERN_BUTTON_COLUMNS,
+        LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
+        LOOM_PATTERN_BUTTON_Y, LOOM_PATTERN_ITEM_PATTERN_COUNT, LOOM_SCROLLER_HEIGHT,
+        LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y,
+        LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
         RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
@@ -2861,7 +2862,13 @@ pub(crate) fn update_renderer_from_publication(
     let hud_command_suggestions =
         if hud_debug_options_screen.is_none() && input.command_suggestions_active() {
             let mut suggestion_input = input.clone();
-            hud_command_suggestions(&mut suggestion_input, world, renderer, surface_size)
+            hud_command_suggestions(
+                &mut suggestion_input,
+                world,
+                renderer,
+                item_runtime,
+                surface_size,
+            )
         } else {
             None
         };
@@ -4904,7 +4911,14 @@ pub(crate) fn localized_command_suggestion_narration(
 ) -> String {
     let position = narration.position.to_string();
     let total = narration.total.to_string();
-    match narration.tooltip.as_deref() {
+    let tooltip = narration.tooltip.as_deref().map(|fallback| {
+        narration
+            .tooltip_translation_key
+            .as_deref()
+            .map(|key| localized_gui_text(item_runtime, key, fallback))
+            .unwrap_or_else(|| fallback.to_string())
+    });
+    match tooltip.as_deref() {
         Some(tooltip) => localized_gui_text_with_args(
             item_runtime,
             "narration.suggestion.tooltip",
@@ -5298,27 +5312,14 @@ fn hud_command_suggestions(
     input: &mut ClientInputState,
     world: &WorldStore,
     renderer: &Renderer,
+    item_runtime: Option<&NativeItemRuntime>,
     surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudCommandSuggestions> {
     let state = input.command_suggestion_hud_state(world, renderer, surface_size)?;
     let tooltip = state.tooltip.map(|tooltip| HudCommandSuggestionTooltip {
-        runs: tooltip
-            .runs
-            .into_iter()
-            .map(|run| HudStyledTextRun {
-                text: run.text,
-                style: HudTextStyle {
-                    bold: run.style.bold == Some(true),
-                    italic: run.style.italic == Some(true),
-                    underlined: run.style.underlined == Some(true),
-                    strikethrough: run.style.strikethrough == Some(true),
-                    obfuscated: run.style.obfuscated == Some(true),
-                },
-                color: run.style.color,
-            })
-            .collect(),
         x: tooltip.x,
         y: tooltip.y,
+        runs: hud_command_suggestion_tooltip_runs(tooltip, item_runtime),
     });
     Some(HudCommandSuggestions {
         input_text: state.input_text,
@@ -5342,6 +5343,34 @@ fn hud_command_suggestions(
         has_next: state.has_next,
         tooltip,
     })
+}
+
+fn hud_command_suggestion_tooltip_runs(
+    tooltip: CommandSuggestionHudTooltip,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudStyledTextRun> {
+    if let Some(translation_key) = tooltip.translation_key.as_deref() {
+        return vec![HudStyledTextRun {
+            text: localized_gui_text(item_runtime, translation_key, &tooltip.text),
+            style: HudTextStyle::default(),
+            color: None,
+        }];
+    }
+    tooltip
+        .runs
+        .into_iter()
+        .map(|run| HudStyledTextRun {
+            text: run.text,
+            style: HudTextStyle {
+                bold: run.style.bold == Some(true),
+                italic: run.style.italic == Some(true),
+                underlined: run.style.underlined == Some(true),
+                strikethrough: run.style.strikethrough == Some(true),
+                obfuscated: run.style.obfuscated == Some(true),
+            },
+            color: run.style.color,
+        })
+        .collect()
 }
 
 fn hud_debug_options_status(

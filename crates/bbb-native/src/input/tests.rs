@@ -17705,6 +17705,7 @@ fn command_suggestion_list_cycles_applies_suffix_and_preserves_narration_state()
             total: 3,
             text: "gamerule".to_string(),
             tooltip: Some("Change a game rule".to_string()),
+            tooltip_translation_key: None,
         })
     );
     handle_key_input(
@@ -17815,6 +17816,7 @@ fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
             total: 12,
             text: "cmd02".to_string(),
             tooltip: Some("Rich help".to_string()),
+            tooltip_translation_key: None,
         })
     );
 
@@ -17906,6 +17908,7 @@ fn command_suggestion_escape_hides_list_before_closing_command_entry() {
             total: 1,
             text: "seed".to_string(),
             tooltip: None,
+            tooltip_translation_key: None,
         })
     );
     assert_eq!(

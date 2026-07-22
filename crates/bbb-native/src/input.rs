@@ -766,6 +766,7 @@ pub(crate) struct CommandSuggestionNarrationState {
     pub(crate) total: usize,
     pub(crate) text: String,
     pub(crate) tooltip: Option<String>,
+    pub(crate) tooltip_translation_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -809,6 +810,7 @@ pub(crate) struct CommandSuggestionHudEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommandSuggestionHudTooltip {
     pub(crate) text: String,
+    pub(crate) translation_key: Option<String>,
     pub(crate) runs: Vec<StyledTextRun>,
     pub(crate) x: i32,
     pub(crate) y: i32,
@@ -10670,6 +10672,7 @@ fn sync_chat_suggestion_list(entry: &mut ChatEntryState, world: &WorldStore) {
                 .map(|suggestion| CommandSuggestionState {
                     text: suggestion.text,
                     tooltip: suggestion.tooltip,
+                    tooltip_translation_key: suggestion.tooltip_translation_key,
                     tooltip_styled: None,
                     tooltip_component: None,
                 })
@@ -10797,6 +10800,7 @@ fn update_chat_suggestion_narration(entry: &mut ChatEntryState) {
         total: len,
         text: suggestion.text.clone(),
         tooltip: suggestion.tooltip.clone(),
+        tooltip_translation_key: suggestion.tooltip_translation_key.clone(),
     });
 }
 
@@ -10946,13 +10950,19 @@ fn chat_suggestion_hud_state(entry: &ChatEntryState) -> CommandSuggestionHudStat
                             style: ComponentStyle::default(),
                         }]
                     });
-                    (text, runs)
+                    (text, suggestion.tooltip_translation_key.clone(), runs)
                 })
             })
-            .and_then(|(text, runs)| {
+            .and_then(|(text, translation_key, runs)| {
                 entry
                     .mouse_position
-                    .map(|(x, y)| CommandSuggestionHudTooltip { text, runs, x, y })
+                    .map(|(x, y)| CommandSuggestionHudTooltip {
+                        text,
+                        translation_key,
+                        runs,
+                        x,
+                        y,
+                    })
             })
     } else {
         None

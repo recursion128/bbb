@@ -49,6 +49,12 @@ mod blocks;
 mod items;
 mod selector;
 
+#[derive(Default)]
+struct CompletionMetadata {
+    tooltip: Option<String>,
+    tooltip_translation_key: Option<String>,
+}
+
 pub(in crate::commands) struct CommandCompletionSources<'a> {
     pub(in crate::commands) registry_access: FrozenRegistryAccess<'a>,
     pub(in crate::commands) online_player_names: Vec<&'a str>,
@@ -67,7 +73,7 @@ impl CommandTreeState {
         let parse = self.parse_command_with_registry(source, Some(sources.registry_access));
         let start = parse.completion.start.min(source.len());
         let remaining = source.get(start..).unwrap_or_default();
-        let mut suggestions = BTreeMap::<String, Option<String>>::new();
+        let mut suggestions = BTreeMap::<String, CompletionMetadata>::new();
         let mut request_server = false;
         let Some(parent) = self.node(parse.completion.node_index) else {
             return CommandCompletionResult {
@@ -102,16 +108,10 @@ impl CommandTreeState {
                                 sources.available_sounds.iter().copied(),
                                 "",
                             ),
-                            "minecraft:summonable_entities" => push_resource_candidates(
+                            "minecraft:summonable_entities" => push_summonable_candidates(
                                 &mut suggestions,
                                 remaining,
-                                VANILLA_ENTITY_TYPES
-                                    .iter()
-                                    .filter(|entry| {
-                                        sources.vanilla_feature_enabled && entry.can_summon
-                                    })
-                                    .map(|entry| entry.resource_id),
-                                "",
+                                sources.vanilla_feature_enabled,
                             ),
                             "minecraft:ask_server" => request_server = true,
                             _ => request_server = true,
@@ -146,7 +146,11 @@ impl CommandTreeState {
             length: source.len().saturating_sub(start),
             suggestions: suggestions
                 .into_iter()
-                .map(|(text, tooltip)| CommandCompletionSuggestion { text, tooltip })
+                .map(|(text, metadata)| CommandCompletionSuggestion {
+                    text,
+                    tooltip: metadata.tooltip,
+                    tooltip_translation_key: metadata.tooltip_translation_key,
+                })
                 .collect(),
             request_server,
         }
@@ -154,7 +158,7 @@ impl CommandTreeState {
 }
 
 fn push_parser_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     type_id: i32,
     template: &CommandArgumentTemplate,
     remaining: &str,
@@ -347,7 +351,7 @@ fn push_parser_candidates(
 }
 
 fn push_string_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     candidates: impl IntoIterator<Item = impl AsRef<str>>,
 ) {
@@ -361,7 +365,7 @@ fn push_string_candidates(
 }
 
 fn push_resource_candidates<'a>(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     candidates: impl IntoIterator<Item = &'a str>,
     prefix: &str,
@@ -387,7 +391,7 @@ fn push_resource_candidates<'a>(
 }
 
 fn push_registry_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     registry: &str,
     include_tags: bool,
@@ -406,7 +410,7 @@ fn push_registry_candidates(
 }
 
 fn push_objective_criteria_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     access: FrozenRegistryAccess<'_>,
 ) {
@@ -431,7 +435,7 @@ fn push_objective_criteria_candidates(
 }
 
 fn push_coordinate_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     width: usize,
 ) {
@@ -457,7 +461,7 @@ fn push_coordinate_candidates(
     }
 }
 
-fn push_time_candidates(output: &mut BTreeMap<String, Option<String>>, remaining: &str) {
+fn push_time_candidates(output: &mut BTreeMap<String, CompletionMetadata>, remaining: &str) {
     let number_len = remaining
         .bytes()
         .take_while(|byte| byte.is_ascii_digit() || matches!(byte, b'+' | b'-' | b'.'))
@@ -471,6 +475,38 @@ fn push_time_candidates(output: &mut BTreeMap<String, Option<String>>, remaining
         if suffix.starts_with(unit) {
             output.entry(format!("{number}{suffix}")).or_default();
         }
+    }
+}
+
+fn push_summonable_candidates(
+    output: &mut BTreeMap<String, CompletionMetadata>,
+    remaining: &str,
+    vanilla_feature_enabled: bool,
+) {
+    let mut candidates = BTreeMap::new();
+    push_resource_candidates(
+        &mut candidates,
+        remaining,
+        VANILLA_ENTITY_TYPES
+            .iter()
+            .filter(|entry| vanilla_feature_enabled && entry.can_summon)
+            .map(|entry| entry.resource_id),
+        "",
+    );
+    for resource_id in candidates.into_keys() {
+        let tooltip_translation_key = {
+            let (namespace, path) = resource_id
+                .split_once(':')
+                .unwrap_or(("minecraft", resource_id.as_str()));
+            format!("entity.{namespace}.{}", path.replace('/', "."))
+        };
+        output.insert(
+            resource_id.clone(),
+            CompletionMetadata {
+                tooltip: Some(resource_id),
+                tooltip_translation_key: Some(tooltip_translation_key),
+            },
+        );
     }
 }
 

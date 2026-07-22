@@ -2,11 +2,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_protocol::{block_types::vanilla_block_type_for_resource_id, normalize_resource_location};
 
-use super::push_registry_candidates;
+use super::{push_registry_candidates, CompletionMetadata};
 use crate::{FrozenRegistryAccess, FrozenRegistryMembership};
 
 pub(super) fn push_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     include_tags: bool,
     access: FrozenRegistryAccess<'_>,
@@ -61,7 +61,7 @@ pub(super) fn push_candidates(
 }
 
 fn push_property_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     base: &str,
     body: &str,
     property_values: &BTreeMap<&str, BTreeSet<&str>>,

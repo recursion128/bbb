@@ -5,7 +5,9 @@ use bbb_protocol::{
     VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
 };
 
-use super::{push_resource_candidates, push_string_candidates, CommandCompletionSources};
+use super::{
+    push_resource_candidates, push_string_candidates, CommandCompletionSources, CompletionMetadata,
+};
 
 #[derive(Default)]
 struct SelectorCompletionState<'a> {
@@ -24,7 +26,7 @@ struct SelectorCompletionState<'a> {
 }
 
 pub(super) fn push_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     _players_only: bool,
     sources: &CommandCompletionSources<'_>,
@@ -186,7 +188,7 @@ impl SelectorCompletionState<'_> {
 }
 
 fn push_option_names(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     selector_len: usize,
     prefix: &str,
@@ -206,7 +208,7 @@ fn push_option_names(
 }
 
 fn push_gamemode_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     prefix: &str,
     remaining: &str,
     state: &SelectorCompletionState<'_>,
@@ -233,7 +235,7 @@ fn push_gamemode_candidates(
 }
 
 fn push_entity_type_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     prefix: &str,
     remaining: &str,
     state: &SelectorCompletionState<'_>,
@@ -257,7 +259,7 @@ fn push_entity_type_candidates(
 }
 
 fn push_string_candidates_with_prefix(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     prefix: &str,
     remaining: &str,
     candidates: impl IntoIterator<Item = impl AsRef<str>>,

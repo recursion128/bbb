@@ -83,6 +83,7 @@ pub struct CommandCompletionResult {
 pub struct CommandCompletionSuggestion {
     pub text: String,
     pub tooltip: Option<String>,
+    pub tooltip_translation_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

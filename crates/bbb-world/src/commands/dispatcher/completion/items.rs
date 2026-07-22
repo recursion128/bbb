@@ -7,11 +7,11 @@ use bbb_protocol::{
     normalize_resource_location, parse_command_snbt_value_prefix,
 };
 
-use super::{push_registry_candidates, push_resource_candidates};
+use super::{push_registry_candidates, push_resource_candidates, CompletionMetadata};
 use crate::{FrozenRegistryAccess, FrozenRegistryMembership};
 
 pub(super) fn push_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     access: FrozenRegistryAccess<'_>,
 ) {
@@ -37,7 +37,7 @@ pub(super) fn push_candidates(
 }
 
 pub(super) fn push_predicate_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     remaining: &str,
     access: FrozenRegistryAccess<'_>,
 ) {
@@ -98,7 +98,7 @@ pub(super) fn push_predicate_candidates(
 }
 
 fn push_component_patch_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     item: &str,
     components: &str,
     access: FrozenRegistryAccess<'_>,
@@ -178,7 +178,7 @@ fn push_component_patch_candidates(
 }
 
 fn push_next_or_end(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     item: &str,
     components: &str,
     cursor: usize,
@@ -193,7 +193,7 @@ fn push_next_or_end(
 }
 
 fn push_component_ids(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     item: &str,
     components: &str,
     component_start: usize,
@@ -242,7 +242,7 @@ fn item_predicate_root_is_exact(remaining: &str, access: FrozenRegistryAccess<'_
 }
 
 fn push_predicate_type_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
+    output: &mut BTreeMap<String, CompletionMetadata>,
     prefix: &str,
     remaining: &str,
     access: FrozenRegistryAccess<'_>,
@@ -279,7 +279,7 @@ fn predicate_type(resource_id: &str) -> bool {
             .any(|entry| entry.resource_id == resource_id)
 }
 
-fn push_predicate_delimiters(output: &mut BTreeMap<String, Option<String>>, complete: &str) {
+fn push_predicate_delimiters(output: &mut BTreeMap<String, CompletionMetadata>, complete: &str) {
     output.entry(format!("{complete},")).or_default();
     output.entry(format!("{complete}|")).or_default();
     output.entry(format!("{complete}]")).or_default();
