@@ -139,7 +139,7 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 1);
+        assert_eq!(counts["network-holder-or-inline-instrument"], 1);
         assert_eq!(
             counts["network-holder-or-inline-banner-pattern-synchronized"],
             1
@@ -185,7 +185,8 @@ mod tests {
         assert_eq!(counts["network-tag"], 1);
         assert_eq!(counts["persistent-hashed-tag"], 7);
         assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
-        assert_eq!(counts["persistent-holder-or-inline"], 23);
+        assert_eq!(counts["persistent-holder-or-inline-client"], 3);
+        assert_eq!(counts["persistent-holder-or-inline-server-only"], 20);
         assert_eq!(counts["persistent-holder-or-inline-banner-pattern"], 1);
         assert_eq!(counts["persistent-holder-reference-client"], 25);
         assert_eq!(counts["persistent-holder-reference-server-only"], 13);
@@ -223,7 +224,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            51
+            27
         );
         assert_eq!(
             ledger
@@ -239,14 +240,14 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::NotApplicable)
                 .count(),
-            42
+            62
         );
         let complete = ledger
             .entries
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 101);
+        assert_eq!(complete.len(), 105);
         assert_eq!(
             complete
                 .iter()
@@ -271,6 +272,7 @@ mod tests {
                 "minecraft:frog_variant",
                 "minecraft:game_event",
                 "minecraft:item",
+                "minecraft:instrument",
                 "minecraft:jukebox_song",
                 "minecraft:map_decoration_type",
                 "minecraft:mob_effect",
@@ -280,6 +282,7 @@ mod tests {
                 "minecraft:potion",
                 "minecraft:point_of_interest_type",
                 "minecraft:sound_event",
+                "minecraft:test_environment",
                 "minecraft:trim_material",
                 "minecraft:trim_pattern",
                 "minecraft:timeline",
@@ -542,6 +545,139 @@ mod tests {
     }
 
     #[test]
+    fn holder_or_inline_closure_keeps_client_and_server_boundaries() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        for (family, count, status) in [
+            (
+                "network-holder-or-inline-instrument",
+                1,
+                RegistryHolderCoverageStatus::Complete,
+            ),
+            (
+                "persistent-holder-or-inline-client",
+                3,
+                RegistryHolderCoverageStatus::Complete,
+            ),
+            (
+                "persistent-holder-or-inline-server-only",
+                20,
+                RegistryHolderCoverageStatus::NotApplicable,
+            ),
+        ] {
+            let entries = ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.family == family)
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), count, "holder-or-inline family {family}");
+            assert!(
+                entries.iter().all(|entry| entry.status == status),
+                "holder-or-inline family {family} status"
+            );
+        }
+
+        let client = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.family == "persistent-holder-or-inline-client")
+            .map(|entry| entry.source_path.as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            client,
+            BTreeSet::from([
+                "net/minecraft/gametest/framework/TestEnvironmentDefinition.java",
+                "net/minecraft/sounds/SoundEvent.java",
+                "net/minecraft/world/item/Instrument.java",
+            ])
+        );
+        let server_only = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.family == "persistent-holder-or-inline-server-only")
+            .collect::<Vec<_>>();
+        assert!(server_only.iter().all(|entry| entry.consumer.is_none()));
+        assert_eq!(
+            server_only
+                .iter()
+                .map(|entry| entry.source_path.as_str())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([
+                "net/minecraft/core/RegistryCodecs.java",
+                "net/minecraft/world/level/biome/Biome.java",
+                "net/minecraft/world/level/biome/MultiNoiseBiomeSourceParameterList.java",
+                "net/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig.java",
+                "net/minecraft/world/level/dimension/DimensionType.java",
+                "net/minecraft/world/level/levelgen/DensityFunction.java",
+                "net/minecraft/world/level/levelgen/NoiseGeneratorSettings.java",
+                "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java",
+                "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java",
+                "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorPreset.java",
+                "net/minecraft/world/level/levelgen/placement/PlacedFeature.java",
+                "net/minecraft/world/level/levelgen/presets/WorldPreset.java",
+                "net/minecraft/world/level/levelgen/structure/Structure.java",
+                "net/minecraft/world/level/levelgen/structure/StructureSet.java",
+                "net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool.java",
+                "net/minecraft/world/level/levelgen/structure/templatesystem/StructureProcessorType.java",
+                "net/minecraft/world/level/levelgen/synth/NormalNoise.java",
+                "net/minecraft/world/level/storage/loot/LootTable.java",
+                "net/minecraft/world/level/storage/loot/functions/LootItemFunctions.java",
+                "net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java",
+            ])
+        );
+
+        let protocol = include_str!("packets/data_components.rs");
+        for required in [
+            "pub instrument_direct: Option<Box<InstrumentSummary>>",
+            "pub struct InstrumentSummary {",
+            "fn decode_direct_instrument_summary(",
+            "fn decodes_inline_instrument_direct_sound_and_exact_component()",
+        ] {
+            assert!(
+                protocol.contains(required),
+                "Instrument protocol path lost structural guard {required}"
+            );
+        }
+
+        let state = include_str!("../../bbb-world/src/registries/state.rs");
+        assert!(state.contains("pub(crate) enum PersistentHolderOrInline<'a>"));
+        assert!(state.contains("pub(crate) fn persistent_holder_or_inline_from_nbt("));
+        let sounds = include_str!("../../bbb-world/src/registries/sound_events.rs");
+        for required in [
+            "pub(crate) fn decode_persistent_sound_event(",
+            "vanilla_sound_event_registry_id(&resource_id)",
+            "NbtSummaryValue::Compound(entries) => decode_direct(entries)",
+        ] {
+            assert!(
+                sounds.contains(required),
+                "SoundEvent persistent path lost structural guard {required}"
+            );
+        }
+        let game_tests = include_str!("../../bbb-world/src/registries/game_tests.rs");
+        assert!(game_tests.contains(".persistent_holder_or_inline_from_nbt("));
+        let dialog =
+            include_str!("../../bbb-world/src/client/dialog/body/component_value/instrument.rs");
+        assert!(dialog.contains("PersistentHolderOrInline::Direct"));
+        let revision = include_str!("../../bbb-world/src/registries/revision.rs");
+        assert!(revision.contains("decode_instrument_with_access(&data.value"));
+        assert!(revision.contains("decode_jukebox_song_with_access(&data.value"));
+        let enchantments = include_str!("../../bbb-world/src/registries/enchantments.rs");
+        assert!(enchantments.contains("validate_required_sound_event("));
+        assert!(enchantments.contains("Some(\"minecraft:play_sound\" | \"play_sound\")"));
+
+        let native = include_str!("../../bbb-native/src/input/component_patch.rs");
+        for required in [
+            "fn encode_direct_instrument(",
+            "instrument.description_nbt.as_deref()?",
+            "fn instrument_encoder_uses_session_order_or_fixed_catalog()",
+        ] {
+            assert!(
+                native.contains(required),
+                "Instrument persistence path lost structural guard {required}"
+            );
+        }
+    }
+
+    #[test]
     fn complete_timeline_holder_families_keep_session_resolution_guards() {
         let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
         for family in [
@@ -743,7 +879,7 @@ mod tests {
         let world = include_str!("../../bbb-world/src/registries/jukebox_songs.rs");
         for required in [
             "registry_entry_by_holder_id(JUKEBOX_SONG_REGISTRY",
-            "fn decode_jukebox_song(",
+            "fn decode_jukebox_song_with_access(",
             "pub fn synchronized_jukebox_song_presentation(",
         ] {
             assert!(

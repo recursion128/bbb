@@ -318,21 +318,22 @@
     {
       "call_site": "net/minecraft/core/RegistryCodecs.java:17:49:RegistryFileCodec.create",
       "column": 49,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 17,
       "owner": "net.minecraft.core.RegistryCodecs",
       "registry_expression": "registryKey",
       "resource_id": null,
       "source_path": "net/minecraft/core/RegistryCodecs.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/core/RegistryCodecs.java:25:14:HolderSetCodec.create",
@@ -556,21 +557,27 @@
     {
       "call_site": "net/minecraft/gametest/framework/TestEnvironmentDefinition.java:37:56:RegistryFileCodec.create",
       "column": 56,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub(crate) fn persistent_holder_or_inline_from_nbt",
+      "decision": "The frozen registry boundary distinguishes named resource identities from borrowed inline values. Nested synchronized test environments resolve recursively in session order; the shared SoundEvent codec validates fixed named identities and lenient direct values across registry and dialog consumers; Instrument persistent values preserve named/direct shape. Unknown named sounds reject synchronized candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#Codec<Holder<TestEnvironmentDefinition<?>>> CODEC",
+        "vanilla:net/minecraft/sounds/SoundEvent.java#public static final Codec<Holder<SoundEvent>> CODEC",
+        "vanilla:net/minecraft/world/item/Instrument.java#public static final Codec<Holder<Instrument>> CODEC",
+        "crates/bbb-world/src/registries/sound_events.rs#pub(crate) fn decode_persistent_sound_event",
+        "crates/bbb-world/src/registries/game_tests.rs#fn decode_environment_holder(",
+        "crates/bbb-world/src/client/dialog/body/component_value/instrument.rs#pub(super) fn decode_instrument_holder(",
+        "crates/bbb-world/src/registries/tests.rs#fn unknown_instrument_and_jukebox_sounds_reject_candidates_atomically"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-client",
       "kind": "persistent_holder_or_inline",
       "line": 37,
       "owner": "net.minecraft.gametest.framework.TestEnvironmentDefinition",
       "registry_expression": "Registries.TEST_ENVIRONMENT",
       "resource_id": "minecraft:test_environment",
       "source_path": "net/minecraft/gametest/framework/TestEnvironmentDefinition.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/network/HashedStack.java:40:10:ByteBufCodecs.holderRegistry",
@@ -742,21 +749,27 @@
     {
       "call_site": "net/minecraft/sounds/SoundEvent.java:22:58:RegistryFileCodec.create",
       "column": 58,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub(crate) fn persistent_holder_or_inline_from_nbt",
+      "decision": "The frozen registry boundary distinguishes named resource identities from borrowed inline values. Nested synchronized test environments resolve recursively in session order; the shared SoundEvent codec validates fixed named identities and lenient direct values across registry and dialog consumers; Instrument persistent values preserve named/direct shape. Unknown named sounds reject synchronized candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#Codec<Holder<TestEnvironmentDefinition<?>>> CODEC",
+        "vanilla:net/minecraft/sounds/SoundEvent.java#public static final Codec<Holder<SoundEvent>> CODEC",
+        "vanilla:net/minecraft/world/item/Instrument.java#public static final Codec<Holder<Instrument>> CODEC",
+        "crates/bbb-world/src/registries/sound_events.rs#pub(crate) fn decode_persistent_sound_event",
+        "crates/bbb-world/src/registries/game_tests.rs#fn decode_environment_holder(",
+        "crates/bbb-world/src/client/dialog/body/component_value/instrument.rs#pub(super) fn decode_instrument_holder(",
+        "crates/bbb-world/src/registries/tests.rs#fn unknown_instrument_and_jukebox_sounds_reject_candidates_atomically"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-client",
       "kind": "persistent_holder_or_inline",
       "line": 22,
       "owner": "net.minecraft.sounds.SoundEvent",
       "registry_expression": "Registries.SOUND_EVENT",
       "resource_id": "minecraft:sound_event",
       "source_path": "net/minecraft/sounds/SoundEvent.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/sounds/SoundEvent.java:26:96:ByteBufCodecs.holder",
@@ -1987,42 +2000,49 @@
     {
       "call_site": "net/minecraft/world/item/Instrument.java:37:58:RegistryFileCodec.create",
       "column": 58,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub(crate) fn persistent_holder_or_inline_from_nbt",
+      "decision": "The frozen registry boundary distinguishes named resource identities from borrowed inline values. Nested synchronized test environments resolve recursively in session order; the shared SoundEvent codec validates fixed named identities and lenient direct values across registry and dialog consumers; Instrument persistent values preserve named/direct shape. Unknown named sounds reject synchronized candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#Codec<Holder<TestEnvironmentDefinition<?>>> CODEC",
+        "vanilla:net/minecraft/sounds/SoundEvent.java#public static final Codec<Holder<SoundEvent>> CODEC",
+        "vanilla:net/minecraft/world/item/Instrument.java#public static final Codec<Holder<Instrument>> CODEC",
+        "crates/bbb-world/src/registries/sound_events.rs#pub(crate) fn decode_persistent_sound_event",
+        "crates/bbb-world/src/registries/game_tests.rs#fn decode_environment_holder(",
+        "crates/bbb-world/src/client/dialog/body/component_value/instrument.rs#pub(super) fn decode_instrument_holder(",
+        "crates/bbb-world/src/registries/tests.rs#fn unknown_instrument_and_jukebox_sounds_reject_candidates_atomically"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-client",
       "kind": "persistent_holder_or_inline",
       "line": 37,
       "owner": "net.minecraft.world.item.Instrument",
       "registry_expression": "Registries.INSTRUMENT",
       "resource_id": "minecraft:instrument",
       "source_path": "net/minecraft/world/item/Instrument.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/Instrument.java:38:96:ByteBufCodecs.holder",
       "column": 96,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-protocol/src/packets/data_components.rs#pub struct InstrumentSummary",
+      "decision": "Vanilla Instrument.STREAM_CODEC carries either a current-session holder id or all four DIRECT_STREAM_CODEC fields. Protocol retains the direct SoundEvent holder, exact float bits, styled description, and exact Component NBT; native persistence resolves named ids through the current session, reconstructs complete direct values, and fails closed for mixed or incomplete summaries.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "vanilla:net/minecraft/world/item/Instrument.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<Instrument>> STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_direct_instrument_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decodes_inline_instrument_direct_sound_and_exact_component",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_instrument(",
+        "crates/bbb-native/src/input/component_patch.rs#fn instrument_encoder_uses_session_order_or_fixed_catalog"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-instrument",
       "kind": "network_holder_or_inline",
       "line": 38,
       "owner": "net.minecraft.world.item.Instrument",
       "registry_expression": "Registries.INSTRUMENT",
       "resource_id": "minecraft:instrument",
       "source_path": "net/minecraft/world/item/Instrument.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/Item.java:99:52:Registry.holderByNameCodec",
@@ -3079,21 +3099,22 @@
     {
       "call_site": "net/minecraft/world/level/biome/Biome.java:59:53:RegistryFileCodec.create",
       "column": 53,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 59,
       "owner": "net.minecraft.world.level.biome.Biome",
       "registry_expression": "Registries.BIOME",
       "resource_id": "minecraft:worldgen/biome",
       "source_path": "net/minecraft/world/level/biome/Biome.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/biome/Biome.java:60:61:RegistryCodecs.homogeneousList",
@@ -3117,21 +3138,22 @@
     {
       "call_site": "net/minecraft/world/level/biome/MultiNoiseBiomeSourceParameterList.java:28:82:RegistryFileCodec.create",
       "column": 82,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 28,
       "owner": "net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList",
       "registry_expression": "Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST",
       "resource_id": "minecraft:worldgen/multi_noise_biome_source_parameter_list",
       "source_path": "net/minecraft/world/level/biome/MultiNoiseBiomeSourceParameterList.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/block/AttachedStemBlock.java:33:13:TagKey.codec",
@@ -3301,21 +3323,22 @@
     {
       "call_site": "net/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig.java:56:66:RegistryFileCodec.create",
       "column": 66,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 56,
       "owner": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig",
       "registry_expression": "Registries.TRIAL_SPAWNER_CONFIG",
       "resource_id": "minecraft:trial_spawner",
       "source_path": "net/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/chunk/PalettedContainerFactory.java:34:36:Registry.holderByNameCodec",
@@ -3366,21 +3389,22 @@
     {
       "call_site": "net/minecraft/world/level/dimension/DimensionType.java:59:61:RegistryFileCodec.create",
       "column": 61,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 59,
       "owner": "net.minecraft.world.level.dimension.DimensionType",
       "registry_expression": "Registries.DIMENSION_TYPE",
       "resource_id": "minecraft:dimension_type",
       "source_path": "net/minecraft/world/level/dimension/DimensionType.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/dimension/DimensionType.java:95:19:TagKey.hashedCodec",
@@ -3453,21 +3477,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/DensityFunction.java:14:43:RegistryFileCodec.create",
       "column": 43,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 14,
       "owner": "net.minecraft.world.level.levelgen.DensityFunction",
       "registry_expression": "Registries.DENSITY_FUNCTION",
       "resource_id": "minecraft:worldgen/density_function",
       "source_path": "net/minecraft/world/level/levelgen/DensityFunction.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/GeodeBlockSettings.java:30:13:TagKey.hashedCodec",
@@ -3512,21 +3537,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/NoiseGeneratorSettings.java:48:70:RegistryFileCodec.create",
       "column": 70,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 48,
       "owner": "net.minecraft.world.level.levelgen.NoiseGeneratorSettings",
       "registry_expression": "Registries.NOISE_SETTINGS",
       "resource_id": "minecraft:worldgen/noise_settings",
       "source_path": "net/minecraft/world/level/levelgen/NoiseGeneratorSettings.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlockTagPredicate.java:14:37:TagKey.codec",
@@ -3613,21 +3639,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java:24:72:RegistryFileCodec.create",
       "column": 72,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 24,
       "owner": "net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver",
       "registry_expression": "Registries.CONFIGURED_CARVER",
       "resource_id": "minecraft:worldgen/configured_carver",
       "source_path": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java:25:80:RegistryCodecs.homogeneousList",
@@ -3651,21 +3678,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java:19:71:RegistryFileCodec.create",
       "column": 71,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 19,
       "owner": "net.minecraft.world.level.levelgen.feature.ConfiguredFeature",
       "registry_expression": "Registries.CONFIGURED_FEATURE",
       "resource_id": "minecraft:worldgen/configured_feature",
       "source_path": "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java:20:79:RegistryCodecs.homogeneousList",
@@ -3834,21 +3862,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorPreset.java:15:72:RegistryFileCodec.create",
       "column": 72,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 15,
       "owner": "net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorPreset",
       "registry_expression": "Registries.FLAT_LEVEL_GENERATOR_PRESET",
       "resource_id": "minecraft:worldgen/flat_level_generator_preset",
       "source_path": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorPreset.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorSettings.java:38:16:RegistryCodecs.homogeneousList",
@@ -3874,21 +3903,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java:30:61:RegistryFileCodec.create",
       "column": 61,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 30,
       "owner": "net.minecraft.world.level.levelgen.placement.PlacedFeature",
       "registry_expression": "Registries.PLACED_FEATURE",
       "resource_id": "minecraft:worldgen/placed_feature",
       "source_path": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java:31:69:RegistryCodecs.homogeneousList",
@@ -3931,40 +3961,42 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/presets/WorldPreset.java:24:59:RegistryFileCodec.create",
       "column": 59,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 24,
       "owner": "net.minecraft.world.level.levelgen.presets.WorldPreset",
       "registry_expression": "Registries.WORLD_PRESET",
       "resource_id": "minecraft:worldgen/world_preset",
       "source_path": "net/minecraft/world/level/levelgen/presets/WorldPreset.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/Structure.java:48:57:RegistryFileCodec.create",
       "column": 57,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 48,
       "owner": "net.minecraft.world.level.levelgen.structure.Structure",
       "registry_expression": "Registries.STRUCTURE",
       "resource_id": "minecraft:worldgen/structure",
       "source_path": "net/minecraft/world/level/levelgen/structure/Structure.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/Structure.java:276:16:RegistryCodecs.homogeneousList",
@@ -3990,21 +4022,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/StructureSet.java:20:60:RegistryFileCodec.create",
       "column": 60,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 20,
       "owner": "net.minecraft.world.level.levelgen.structure.StructureSet",
       "registry_expression": "Registries.STRUCTURE_SET",
       "resource_id": "minecraft:worldgen/structure_set",
       "source_path": "net/minecraft/world/level/levelgen/structure/StructureSet.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/placement/ConcentricRingsStructurePlacement.java:40:10:RegistryCodecs.homogeneousList",
@@ -4052,21 +4085,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool.java:41:7:RegistryFileCodec.create",
       "column": 7,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 41,
       "owner": "net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool",
       "registry_expression": "Registries.TEMPLATE_POOL",
       "resource_id": "minecraft:worldgen/template_pool",
       "source_path": "net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/BlockRotProcessor.java:19:13:RegistryCodecs.homogeneousList",
@@ -4112,21 +4146,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/StructureProcessorType.java:17:55:RegistryFileCodec.create",
       "column": 55,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 17,
       "owner": "net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType",
       "registry_expression": "Registries.PROCESSOR_LIST",
       "resource_id": "minecraft:worldgen/processor_list",
       "source_path": "net/minecraft/world/level/levelgen/structure/templatesystem/StructureProcessorType.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/TagMatchTest.java:11:55:TagKey.codec",
@@ -4150,21 +4185,22 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/synth/NormalNoise.java:104:78:RegistryFileCodec.create",
       "column": 78,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 104,
       "owner": "net.minecraft.world.level.levelgen.synth.NormalNoise.NoiseParameters",
       "registry_expression": "Registries.NOISE",
       "resource_id": "minecraft:worldgen/noise",
       "source_path": "net/minecraft/world/level/levelgen/synth/NormalNoise.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/saveddata/maps/MapDecorationType.java:14:65:Registry.holderByNameCodec",
@@ -4220,21 +4256,22 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/LootTable.java:48:57:RegistryFileCodec.create",
       "column": 57,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 48,
       "owner": "net.minecraft.world.level.storage.loot.LootTable",
       "registry_expression": "Registries.LOOT_TABLE",
       "resource_id": "minecraft:loot_table",
       "source_path": "net/minecraft/world/level/storage/loot/LootTable.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/entries/TagEntry.java:20:20:TagKey.codec",
@@ -4341,21 +4378,22 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/LootItemFunctions.java:21:64:RegistryFileCodec.create",
       "column": 64,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 21,
       "owner": "net.minecraft.world.level.storage.loot.functions.LootItemFunctions",
       "registry_expression": "Registries.ITEM_MODIFIER",
       "resource_id": "minecraft:item_modifier",
       "source_path": "net/minecraft/world/level/storage/loot/functions/LootItemFunctions.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/SetContainerLootTable.java:26:16:Registry.holderByNameCodec",
@@ -4446,21 +4484,22 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java:16:45:RegistryFileCodec.create",
       "column": 45,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-server-only",
       "kind": "persistent_holder_or_inline",
       "line": 16,
       "owner": "net.minecraft.world.level.storage.loot.predicates.LootItemCondition",
       "registry_expression": "Registries.PREDICATE",
       "resource_id": "minecraft:predicate",
       "source_path": "net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/timeline/Timeline.java:33:56:RegistryFixedCodec.create",

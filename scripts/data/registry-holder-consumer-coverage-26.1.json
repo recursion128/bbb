@@ -157,31 +157,23 @@
       "decision": "Vanilla 26.1 synchronizes PaintingVariant.DIRECT_CODEC and sends named or inline holders in item components and painting entity metadata. Protocol retains both forms; world resolves the current-session holder order, stores named metadata identity with its exact resource/source/revision, validates width/height/asset/components, and permits resource-identity fallback only for known vanilla data-less stubs. Tooltips, entity bounds/direction, per-tile light, paintings-atlas sprites, and exact front/back/boundary geometry consume that typed projection; malformed and unknown entries never fall back by bootstrap ordinal."
     },
     {
-      "id": "network-holder-or-inline",
+      "id": "network-holder-or-inline-instrument",
       "selector": {
         "kind": "network_holder_or_inline",
-        "exclude_resource_ids": [
-          "minecraft:banner_pattern",
-          "minecraft:painting_variant"
-        ],
-        "exclude_source_paths": [
-          "net/minecraft/sounds/SoundEvent.java",
-          "net/minecraft/server/dialog/Dialog.java",
-          "net/minecraft/network/chat/ChatType.java",
-          "net/minecraft/world/item/JukeboxSong.java",
-          "net/minecraft/world/item/equipment/trim/TrimMaterial.java",
-          "net/minecraft/world/item/equipment/trim/TrimPattern.java"
+        "source_paths": [
+          "net/minecraft/world/item/Instrument.java"
         ]
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
+      "status": "complete",
+      "consumer": "crates/bbb-protocol/src/packets/data_components.rs#pub struct InstrumentSummary",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "vanilla:net/minecraft/world/item/Instrument.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<Instrument>> STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_direct_instrument_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decodes_inline_instrument_direct_sound_and_exact_component",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_instrument(",
+        "crates/bbb-native/src/input/component_patch.rs#fn instrument_encoder_uses_session_order_or_fixed_catalog"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "Vanilla Instrument.STREAM_CODEC carries either a current-session holder id or all four DIRECT_STREAM_CODEC fields. Protocol retains the direct SoundEvent holder, exact float bits, styled description, and exact Component NBT; native persistence resolves named ids through the current session, reconstructs complete direct values, and fails closed for mixed or incomplete summaries."
     },
     {
       "id": "network-holder-reference-debug",
@@ -761,25 +753,64 @@
       "decision": "Persistent banner-pattern layers reconstruct named holders from the current-session resource id and inline holders from their validated asset_id/translation_key pair, preserve layer order and dye names, and fail the component closed for unknown session ids or malformed direct identifiers. The fixed vanilla identity catalog is used only when no synchronized registry exists."
     },
     {
-      "id": "persistent-holder-or-inline",
+      "id": "persistent-holder-or-inline-client",
       "selector": {
         "kind": "persistent_holder_or_inline",
-        "exclude_resource_ids": [
-          "minecraft:banner_pattern"
-        ],
-        "exclude_source_paths": [
-          "net/minecraft/server/dialog/Dialog.java",
-          "net/minecraft/world/item/equipment/trim/TrimMaterial.java",
-          "net/minecraft/world/item/equipment/trim/TrimPattern.java"
+        "source_paths": [
+          "net/minecraft/gametest/framework/TestEnvironmentDefinition.java",
+          "net/minecraft/sounds/SoundEvent.java",
+          "net/minecraft/world/item/Instrument.java"
         ]
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub(crate) fn persistent_holder_or_inline_from_nbt",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#Codec<Holder<TestEnvironmentDefinition<?>>> CODEC",
+        "vanilla:net/minecraft/sounds/SoundEvent.java#public static final Codec<Holder<SoundEvent>> CODEC",
+        "vanilla:net/minecraft/world/item/Instrument.java#public static final Codec<Holder<Instrument>> CODEC",
+        "crates/bbb-world/src/registries/sound_events.rs#pub(crate) fn decode_persistent_sound_event",
+        "crates/bbb-world/src/registries/game_tests.rs#fn decode_environment_holder(",
+        "crates/bbb-world/src/client/dialog/body/component_value/instrument.rs#pub(super) fn decode_instrument_holder(",
+        "crates/bbb-world/src/registries/tests.rs#fn unknown_instrument_and_jukebox_sounds_reject_candidates_atomically"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "The frozen registry boundary distinguishes named resource identities from borrowed inline values. Nested synchronized test environments resolve recursively in session order; the shared SoundEvent codec validates fixed named identities and lenient direct values across registry and dialog consumers; Instrument persistent values preserve named/direct shape. Unknown named sounds reject synchronized candidates atomically."
+    },
+    {
+      "id": "persistent-holder-or-inline-server-only",
+      "selector": {
+        "kind": "persistent_holder_or_inline",
+        "source_paths": [
+          "net/minecraft/core/RegistryCodecs.java",
+          "net/minecraft/world/level/biome/Biome.java",
+          "net/minecraft/world/level/biome/MultiNoiseBiomeSourceParameterList.java",
+          "net/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig.java",
+          "net/minecraft/world/level/dimension/DimensionType.java",
+          "net/minecraft/world/level/levelgen/DensityFunction.java",
+          "net/minecraft/world/level/levelgen/NoiseGeneratorSettings.java",
+          "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java",
+          "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java",
+          "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorPreset.java",
+          "net/minecraft/world/level/levelgen/placement/PlacedFeature.java",
+          "net/minecraft/world/level/levelgen/presets/WorldPreset.java",
+          "net/minecraft/world/level/levelgen/structure/Structure.java",
+          "net/minecraft/world/level/levelgen/structure/StructureSet.java",
+          "net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool.java",
+          "net/minecraft/world/level/levelgen/structure/templatesystem/StructureProcessorType.java",
+          "net/minecraft/world/level/levelgen/synth/NormalNoise.java",
+          "net/minecraft/world/level/storage/loot/LootTable.java",
+          "net/minecraft/world/level/storage/loot/functions/LootItemFunctions.java",
+          "net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java"
+        ]
+      },
+      "status": "not-applicable",
+      "consumer": null,
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList"
+      ],
+      "decision": "These factories are generic HolderSet delegation or server-side level generation, trial-spawner persistence, and loot loading paths. Client registry synchronization uses the separate element codecs for Biome and DimensionType and does not send these persistent holder factories; bbb does not own server world generation or loot execution."
     },
     {
       "id": "persistent-holder-reference-painting-variant",
