@@ -138,7 +138,21 @@ fn base_non_living_spawn_defaults_stay_sparse_and_type_owned() {
         store.apply_add_entity(add_entity_with_uuid(entity_id, entry.id, uuid));
         let entity = store.probe_entity(entity_id).unwrap();
         assert_eq!(entity.entity_type_id, entry.id, "{}", entry.resource_id);
-        assert!(entity.data_values.is_empty(), "{}", entry.resource_id);
+        if entry.id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID {
+            let start_pos =
+                vanilla_entity_metadata_accessor_for_entity_type(entry.id, "DATA_START_POS")
+                    .unwrap();
+            assert!(matches!(
+                entity.data_values.as_slice(),
+                [ProtocolEntityDataValue {
+                    data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_POS_ID,
+                    value: EntityDataValueKind::BlockPos(ProtocolBlockPos { x: 1, y: 64, z: -2 }),
+                }] if *data_id == start_pos.data_id
+            ));
+        } else {
+            assert!(entity.data_values.is_empty(), "{}", entry.resource_id);
+        }
         assert!(entity.attributes.is_empty(), "{}", entry.resource_id);
         assert!(entity.equipment.is_empty(), "{}", entry.resource_id);
         assert!(entity.passengers.is_empty(), "{}", entry.resource_id);
