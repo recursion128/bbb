@@ -258,3 +258,6 @@
 - **2026-07-22（StructureBlockEditScreen 包闭环）**：typed block-entity 权威投影驱动
   四模式原生编辑器，Done/Save/Load/Detect 精确发包且 Cancel/Escape 零发送；五类 packet
   coverage 全部 complete，合同见 `docs/archive/structure-block-editor-packet-closure-design.md`。
+- **2026-07-22（JigsawBlockEditScreen 双包闭环）**：typed jigsaw NBT 与朝向 joint 规则驱动
+  原生六字段编辑器、0～20 滑条和 keep-jigsaws；Generate 严格按 Set→Generate 发包，
+  两行 packet coverage 的全部适用单元 complete，合同见 `docs/archive/jigsaw-block-editor-packet-closure-design.md`。

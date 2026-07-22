@@ -3588,7 +3588,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_jigsaw_generate_keeps_game_master_screen_open() {
+    fn play_serverbound_jigsaw_generate_closes_all_applicable_cells() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3602,14 +3602,10 @@ mod tests {
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        assert_eq!(
-            entry.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        for dimension in ["command_surface", "state_guard", "tests"] {
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
+                PacketCoverageStatus::Complete,
                 "{dimension}"
             );
         }
@@ -4045,7 +4041,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_set_jigsaw_block_keeps_editor_and_authority_open() {
+    fn play_serverbound_set_jigsaw_block_closes_editor_and_authority() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -4057,7 +4053,7 @@ mod tests {
         assert!(entry
             .coverage
             .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

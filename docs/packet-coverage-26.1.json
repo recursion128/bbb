@@ -4139,16 +4139,18 @@
         },
         "command_surface": {
           "evidence": [
-            "vanilla:net/minecraft/client/player/LocalPlayer.java#openJigsawBlock",
+            "crates/bbb-native/src/input/jigsaw_block.rs#submit_jigsaw_block",
+            "crates/bbb-native/src/input/mouse.rs#start_use_item",
+            "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session",
             "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendGenerate"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_jigsaw_generate",
-            "crates/bbb-protocol/src/packets/tests.rs#encodes_jigsaw_generate_packet",
+            "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encode_play_jigsaw_generate",
+            "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_jigsaw_generate_extremes_without_narrowing",
             "vanilla:net/minecraft/network/protocol/game/ServerboundJigsawGeneratePacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -4156,19 +4158,22 @@
         },
         "state_guard": {
           "evidence": [
+            "crates/bbb-native/src/input/jigsaw_block.rs#controls_enabled",
+            "crates/bbb-world/src/jigsaw_blocks.rs#try_open_jigsaw_block_editor",
             "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#updateValidity",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleJigsawGenerate"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/tests.rs#encodes_jigsaw_generate_packet",
-            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_jigsaw_generate_keeps_game_master_screen_open"
+            "crates/bbb-native/src/input/tests.rs#jigsaw_generate_uses_exact_slider_toggle_joint_and_set_first_order",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_jigsaw_set_before_generate_in_play",
+            "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_jigsaw_generate_extremes_without_narrowing"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -5917,45 +5922,50 @@
         "ack_response": {
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#apply_block_entity_data",
+            "crates/bbb-world/src/jigsaw_blocks.rs#refresh_jigsaw_block_editor_from_authoritative_data",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetJigsawBlock"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_JIGSAW_BLOCK",
-            "vanilla:net/minecraft/client/player/LocalPlayer.java#openJigsawBlock",
+            "crates/bbb-native/src/input/jigsaw_block.rs#submit_jigsaw_block",
+            "crates/bbb-native/src/input/mouse.rs#start_use_item",
+            "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session",
             "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendToServer"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_JIGSAW_BLOCK",
+            "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encode_play_set_jigsaw_block",
+            "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_set_jigsaw_wire_order_resources_joint_and_priorities",
             "vanilla:net/minecraft/network/protocol/game/ServerboundSetJigsawBlockPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
           "evidence": [
+            "crates/bbb-native/src/input/jigsaw_block.rs#controls_enabled",
+            "crates/bbb-world/src/jigsaw_blocks.rs#try_open_jigsaw_block_editor",
             "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendToServer",
-            "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendGenerate",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetJigsawBlock"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
-            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_jigsaw_generate_keeps_game_master_screen_open",
-            "scripts/generate-packet-catalog.py#extract_catalogs"
+            "crates/bbb-native/src/input/tests.rs#jigsaw_block_editor_preloads_and_done_sends_exact_set_once",
+            "crates/bbb-native/src/input/tests.rs#jigsaw_editor_validation_limits_cancel_escape_and_screen_replacement_are_local",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_jigsaw_editor_packets_encode_set_before_generate",
+            "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_set_jigsaw_wire_order_resources_joint_and_priorities"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

@@ -827,11 +827,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   component, submit unsigned/signed edits, and project the server-confirmed
   writable/written item. The current `net.edit_book` maintenance command is not
   an interactive editor or a held-item authority check.
-- Implement the game-master `JigsawBlockEditScreen` owner and canonical jigsaw
-  block-entity projection: preload/edit name, target, pool, final state, joint
-  and priorities; validate resource ids; expose the 0..20 generation-level and
-  keep-jigsaws controls; send SetJigsawBlock before JigsawGenerate; and let
-  ordinary server block/chunk updates remain authoritative for generated output.
 - Implement the game-master `MinecartCommandBlockEditScreen` owner and typed
   `ServerboundSetCommandMinecartPacket`: consume the command/last-output synced
   metadata for the target minecart, preload command and track-output state,
