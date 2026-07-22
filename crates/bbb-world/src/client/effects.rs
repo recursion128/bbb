@@ -1,6 +1,6 @@
 use bbb_protocol::packets::{
-    Explosion as ProtocolExplosion, LevelParticles as ProtocolLevelParticles,
-    Vec3d as ProtocolVec3d,
+    Explosion as ProtocolExplosion, LevelParticles as ProtocolLevelParticles, ParticlePayload,
+    SoundEventHolder, Vec3d as ProtocolVec3d, WeightedExplosionParticle,
 };
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,9 @@ pub struct ExplosionEventState {
     pub radius: f32,
     pub block_count: i32,
     pub player_knockback: Option<ProtocolVec3d>,
-    pub raw_effect_payload_len: usize,
+    pub explosion_particle: ParticlePayload,
+    pub explosion_sound: SoundEventHolder,
+    pub block_particles: Vec<WeightedExplosionParticle>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -65,7 +67,9 @@ impl WorldStore {
             radius: packet.radius,
             block_count: packet.block_count,
             player_knockback: packet.player_knockback,
-            raw_effect_payload_len: packet.raw_effect_payload.len(),
+            explosion_particle: packet.explosion_particle,
+            explosion_sound: packet.explosion_sound,
+            block_particles: packet.block_particles,
         };
         self.client_effects.last_explosion = Some(state.clone());
         state
@@ -292,7 +296,10 @@ mod tests {
     use super::*;
     use crate::LocalPlayerPoseState;
     use bbb_protocol::packets::ParticlePayload;
-    use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
+    use bbb_protocol::particle_types::{
+        VANILLA_PARTICLE_TYPE_CLOUD_ID, VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+        VANILLA_PARTICLE_TYPE_HEART_ID,
+    };
 
     #[test]
     fn tracks_last_world_effect_events_and_counters() {
@@ -311,7 +318,20 @@ mod tests {
                 y: -0.5,
                 z: 1.5,
             }),
-            raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: vec![WeightedExplosionParticle {
+                particle: ParticlePayload {
+                    particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                    raw_options: Vec::new(),
+                },
+                scaling: 0.5,
+                speed: 1.25,
+                weight: 3,
+            }],
         });
         let expected_explosion = ExplosionEventState {
             center: ProtocolVec3d {
@@ -326,7 +346,20 @@ mod tests {
                 y: -0.5,
                 z: 1.5,
             }),
-            raw_effect_payload_len: 4,
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: vec![WeightedExplosionParticle {
+                particle: ParticlePayload {
+                    particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                    raw_options: Vec::new(),
+                },
+                scaling: 0.5,
+                speed: 1.25,
+                weight: 3,
+            }],
         };
         assert_eq!(explosion, expected_explosion);
         assert_eq!(store.last_explosion(), Some(&expected_explosion));
@@ -423,7 +456,12 @@ mod tests {
             radius: 4.5,
             block_count: 7,
             player_knockback,
-            raw_effect_payload: Vec::new(),
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: Vec::new(),
         }
     }
 

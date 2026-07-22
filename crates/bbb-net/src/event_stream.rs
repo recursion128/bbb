@@ -1846,7 +1846,20 @@ mod tests {
                 y: 0.2,
                 z: 0.3,
             }),
-            raw_effect_payload: vec![1, 2, 3],
+            explosion_particle: packets::ParticlePayload {
+                particle_type_id: bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: packets::SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: vec![packets::WeightedExplosionParticle {
+                particle: packets::ParticlePayload {
+                    particle_type_id: bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                    raw_options: Vec::new(),
+                },
+                scaling: 0.5,
+                speed: 1.25,
+                weight: 3,
+            }],
         };
         assert_matching_event!(
             PlayClientbound::Explosion(explosion.clone()),

@@ -3,11 +3,14 @@ use crate::{
     codec::{Decoder, Encoder},
     ids,
     packets::{chunks, decode_play_clientbound, BlockPos, PlayClientbound},
-    particle_types::VANILLA_PARTICLE_TYPES,
+    particle_types::{
+        VANILLA_PARTICLE_TYPES, VANILLA_PARTICLE_TYPE_CLOUD_ID,
+        VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID, VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+    },
 };
 
 #[test]
-fn decodes_explosion_packet_prefix_and_raw_effect_payload() {
+fn decodes_typed_explosion_packet_wire_order() {
     let mut payload = Encoder::new();
     payload.write_f64(1.0);
     payload.write_f64(2.0);
@@ -18,7 +21,17 @@ fn decodes_explosion_packet_prefix_and_raw_effect_payload() {
     payload.write_f64(0.25);
     payload.write_f64(-0.5);
     payload.write_f64(1.5);
-    payload.write_bytes(&[0x2d, 0x2a, 0x01, 0x00]);
+    payload.write_var_i32(VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID);
+    payload.write_var_i32(42);
+    payload.write_var_i32(2);
+    payload.write_var_i32(VANILLA_PARTICLE_TYPE_EXPLOSION_ID);
+    payload.write_f32(0.5);
+    payload.write_f32(1.25);
+    payload.write_var_i32(3);
+    payload.write_var_i32(VANILLA_PARTICLE_TYPE_CLOUD_ID);
+    payload.write_f32(2.0);
+    payload.write_f32(0.75);
+    payload.write_var_i32(5);
     let payload = payload.into_inner();
 
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_EXPLODE, &payload).unwrap();
@@ -37,7 +50,31 @@ fn decodes_explosion_packet_prefix_and_raw_effect_payload() {
                 y: -0.5,
                 z: 1.5,
             }),
-            raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: vec![
+                WeightedExplosionParticle {
+                    particle: ParticlePayload {
+                        particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                        raw_options: Vec::new(),
+                    },
+                    scaling: 0.5,
+                    speed: 1.25,
+                    weight: 3,
+                },
+                WeightedExplosionParticle {
+                    particle: ParticlePayload {
+                        particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                        raw_options: Vec::new(),
+                    },
+                    scaling: 2.0,
+                    speed: 0.75,
+                    weight: 5,
+                },
+            ],
         })
     );
 
@@ -52,11 +89,25 @@ fn decodes_explosion_packet_prefix_and_raw_effect_payload() {
     assert_eq!(decoder.read_f64().unwrap(), -0.5);
     assert_eq!(decoder.read_f64().unwrap(), 1.5);
     assert_eq!(
-        decoder
-            .read_exact(decoder.remaining_len(), "explosion effect payload")
-            .unwrap(),
-        &[0x2d, 0x2a, 0x01, 0x00]
+        decoder.read_var_i32().unwrap(),
+        VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID
     );
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_var_i32().unwrap(), 2);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_PARTICLE_TYPE_EXPLOSION_ID
+    );
+    assert_eq!(decoder.read_f32().unwrap(), 0.5);
+    assert_eq!(decoder.read_f32().unwrap(), 1.25);
+    assert_eq!(decoder.read_var_i32().unwrap(), 3);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_PARTICLE_TYPE_CLOUD_ID
+    );
+    assert_eq!(decoder.read_f32().unwrap(), 2.0);
+    assert_eq!(decoder.read_f32().unwrap(), 0.75);
+    assert_eq!(decoder.read_var_i32().unwrap(), 5);
     assert!(decoder.is_empty());
 }
 
@@ -69,7 +120,12 @@ fn decodes_explosion_without_knockback() {
     payload.write_f32(1.0);
     payload.write_i32(0);
     payload.write_bool(false);
-    payload.write_bytes(&[0x2d]);
+    payload.write_var_i32(VANILLA_PARTICLE_TYPE_EXPLOSION_ID);
+    payload.write_var_i32(0);
+    payload.write_string("minecraft:entity.generic.explode");
+    payload.write_bool(true);
+    payload.write_f32(24.0);
+    payload.write_var_i32(0);
 
     assert_eq!(
         decode_play_clientbound(ids::play::CLIENTBOUND_EXPLODE, &payload.into_inner()).unwrap(),
@@ -82,8 +138,81 @@ fn decodes_explosion_without_knockback() {
             radius: 1.0,
             block_count: 0,
             player_knockback: None,
-            raw_effect_payload: vec![0x2d],
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.generic.explode".to_string(),
+                fixed_range: Some(24.0),
+            },
+            block_particles: Vec::new(),
         })
+    );
+}
+
+#[test]
+fn rejects_invalid_explosion_weighted_list_domains() {
+    fn payload_with_tail(mut write_tail: impl FnMut(&mut Encoder)) -> Vec<u8> {
+        let mut payload = Encoder::new();
+        payload.write_f64(0.0);
+        payload.write_f64(0.0);
+        payload.write_f64(0.0);
+        payload.write_f32(1.0);
+        payload.write_i32(1);
+        payload.write_bool(false);
+        payload.write_var_i32(VANILLA_PARTICLE_TYPE_EXPLOSION_ID);
+        payload.write_var_i32(1);
+        write_tail(&mut payload);
+        payload.into_inner()
+    }
+
+    let oversized = payload_with_tail(|payload| {
+        payload.write_var_i32((MAX_EXPLOSION_BLOCK_PARTICLES + 1) as i32);
+    });
+    assert!(matches!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_EXPLODE, &oversized),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_EXPLOSION_BLOCK_PARTICLES + 1
+                && max == MAX_EXPLOSION_BLOCK_PARTICLES
+    ));
+
+    let negative_count = payload_with_tail(|payload| payload.write_var_i32(-1));
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_EXPLODE, &negative_count)
+            .unwrap_err()
+            .to_string()
+            .contains("invalid explosion block particle count -1")
+    );
+
+    let negative_weight = payload_with_tail(|payload| {
+        payload.write_var_i32(1);
+        payload.write_var_i32(VANILLA_PARTICLE_TYPE_CLOUD_ID);
+        payload.write_f32(1.0);
+        payload.write_f32(1.0);
+        payload.write_var_i32(-1);
+    });
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_EXPLODE, &negative_weight)
+            .unwrap_err()
+            .to_string()
+            .contains("invalid negative explosion block particle weight -1")
+    );
+
+    let overflowed_weight = payload_with_tail(|payload| {
+        payload.write_var_i32(2);
+        for weight in [i32::MAX, 1] {
+            payload.write_var_i32(VANILLA_PARTICLE_TYPE_CLOUD_ID);
+            payload.write_f32(1.0);
+            payload.write_f32(1.0);
+            payload.write_var_i32(weight);
+        }
+    });
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_EXPLODE, &overflowed_weight)
+            .unwrap_err()
+            .to_string()
+            .contains("total weight exceeds i32::MAX")
     );
 }
 

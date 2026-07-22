@@ -16,7 +16,20 @@ fn world_effect_events_update_world_counters() {
             y: -0.5,
             z: 1.5,
         }),
-        raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
+        explosion_particle: ParticlePayload {
+            particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+            raw_options: Vec::new(),
+        },
+        explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+        block_particles: vec![bbb_protocol::packets::WeightedExplosionParticle {
+            particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                raw_options: Vec::new(),
+            },
+            scaling: 0.5,
+            speed: 1.25,
+            weight: 3,
+        }],
     })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::LevelParticles(
@@ -73,7 +86,20 @@ fn world_effect_events_update_world_counters() {
                 y: -0.5,
                 z: 1.5,
             }),
-            raw_effect_payload_len: 4,
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: vec![bbb_protocol::packets::WeightedExplosionParticle {
+                particle: ParticlePayload {
+                    particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                    raw_options: Vec::new(),
+                },
+                scaling: 0.5,
+                speed: 1.25,
+                weight: 3,
+            }],
         })
     );
     assert_eq!(

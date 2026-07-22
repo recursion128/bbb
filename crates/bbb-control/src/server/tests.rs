@@ -44,9 +44,12 @@ use bbb_protocol::packets::{
     TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
     UpdateEnabledFeatures, UpdateMobEffect, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d,
     WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
-    VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
+    WeightedExplosionParticle, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
 };
-use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
+use bbb_protocol::particle_types::{
+    VANILLA_PARTICLE_TYPE_CLOUD_ID, VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+    VANILLA_PARTICLE_TYPE_HEART_ID,
+};
 use bbb_protocol::recipe_wire_types::{
     VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
 };
@@ -2758,7 +2761,20 @@ fn client_effects_reads_canonical_world_state() {
                 y: -0.5,
                 z: 1.5,
             }),
-            raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: vec![WeightedExplosionParticle {
+                particle: ParticlePayload {
+                    particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                    raw_options: Vec::new(),
+                },
+                scaling: 0.5,
+                speed: 1.25,
+                weight: 3,
+            }],
         });
         store.apply_level_particles(ProtocolLevelParticles {
             override_limiter: true,
@@ -2801,7 +2817,19 @@ fn client_effects_reads_canonical_world_state() {
     assert_eq!(effects["last_explosion"]["player_knockback"]["x"], 0.25);
     assert_eq!(effects["last_explosion"]["player_knockback"]["y"], -0.5);
     assert_eq!(effects["last_explosion"]["player_knockback"]["z"], 1.5);
-    assert_eq!(effects["last_explosion"]["raw_effect_payload_len"], 4);
+    assert_eq!(
+        effects["last_explosion"]["explosion_particle"]["particle_type_id"],
+        VANILLA_PARTICLE_TYPE_EXPLOSION_ID
+    );
+    assert_eq!(
+        effects["last_explosion"]["explosion_sound"]["Reference"]["registry_id"],
+        41
+    );
+    assert_eq!(
+        effects["last_explosion"]["block_particles"][0]["particle"]["particle_type_id"],
+        VANILLA_PARTICLE_TYPE_CLOUD_ID
+    );
+    assert_eq!(effects["last_explosion"]["block_particles"][0]["weight"], 3);
     assert_eq!(effects["last_level_particles"]["override_limiter"], true);
     assert_eq!(effects["last_level_particles"]["always_show"], false);
     assert_eq!(effects["last_level_particles"]["position"]["x"], 10.0);

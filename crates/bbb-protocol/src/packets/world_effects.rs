@@ -6,9 +6,9 @@ use crate::particle_types::{
     VANILLA_PARTICLE_TYPE_EFFECT_ID, VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID,
 };
 
-use super::{data_components, Vec3d};
+use super::{client_audio::decode_sound_event_holder, data_components, SoundEventHolder, Vec3d};
 
-const MAX_EFFECT_PAYLOAD: usize = 2 * 1024 * 1024;
+const MAX_EXPLOSION_BLOCK_PARTICLES: usize = 65_536;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Explosion {
@@ -16,7 +16,17 @@ pub struct Explosion {
     pub radius: f32,
     pub block_count: i32,
     pub player_knockback: Option<Vec3d>,
-    pub raw_effect_payload: Vec<u8>,
+    pub explosion_particle: ParticlePayload,
+    pub explosion_sound: SoundEventHolder,
+    pub block_particles: Vec<WeightedExplosionParticle>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WeightedExplosionParticle {
+    pub particle: ParticlePayload,
+    pub scaling: f32,
+    pub speed: f32,
+    pub weight: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -76,14 +86,60 @@ pub(crate) fn decode_explosion(decoder: &mut Decoder<'_>) -> Result<Explosion> {
     } else {
         None
     };
-    let raw_effect_payload = decode_remaining_payload(decoder, "explosion effect payload")?;
+    let explosion_particle = decode_particle_payload(decoder)?;
+    let explosion_sound = decode_sound_event_holder(decoder)?;
+    let block_particle_count = decoder.read_var_i32()?;
+    let block_particle_count = usize::try_from(block_particle_count).map_err(|_| {
+        ProtocolError::InvalidData(format!(
+            "invalid explosion block particle count {block_particle_count}"
+        ))
+    })?;
+    if block_particle_count > MAX_EXPLOSION_BLOCK_PARTICLES {
+        return Err(ProtocolError::PacketTooLarge(
+            block_particle_count,
+            MAX_EXPLOSION_BLOCK_PARTICLES,
+        ));
+    }
+    let mut block_particles = Vec::with_capacity(block_particle_count);
+    let mut total_weight = 0_i64;
+    for _ in 0..block_particle_count {
+        let particle = decode_particle_payload(decoder)?;
+        let scaling = decoder.read_f32()?;
+        let speed = decoder.read_f32()?;
+        let weight = decoder.read_var_i32()?;
+        if weight < 0 {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid negative explosion block particle weight {weight}"
+            )));
+        }
+        total_weight += i64::from(weight);
+        if total_weight > i64::from(i32::MAX) {
+            return Err(ProtocolError::InvalidData(
+                "explosion block particle total weight exceeds i32::MAX".to_string(),
+            ));
+        }
+        block_particles.push(WeightedExplosionParticle {
+            particle,
+            scaling,
+            speed,
+            weight,
+        });
+    }
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "explosion packet has {} trailing byte(s)",
+            decoder.remaining_len()
+        )));
+    }
 
     Ok(Explosion {
         center,
         radius,
         block_count,
         player_knockback,
-        raw_effect_payload,
+        explosion_particle,
+        explosion_sound,
+        block_particles,
     })
 }
 
@@ -328,14 +384,6 @@ fn decode_vec3f_as_vec3d(decoder: &mut Decoder<'_>) -> Result<Vec3d> {
         y: f64::from(decoder.read_f32()?),
         z: f64::from(decoder.read_f32()?),
     })
-}
-
-fn decode_remaining_payload(decoder: &mut Decoder<'_>, what: &'static str) -> Result<Vec<u8>> {
-    let len = decoder.remaining_len();
-    if len > MAX_EFFECT_PAYLOAD {
-        return Err(ProtocolError::PacketTooLarge(len, MAX_EFFECT_PAYLOAD));
-    }
-    Ok(decoder.read_exact(len, what)?.to_vec())
 }
 
 #[cfg(test)]
