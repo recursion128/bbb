@@ -7130,7 +7130,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/runtime/tests.rs#hud_boss_bar_projection_orders_by_uuid_and_maps_style_names",
+            "crates/bbb-native/src/runtime/tests.rs#hud_boss_bar_projection_keeps_packet_add_order_and_maps_style_names",
             "crates/bbb-native/src/runtime/tests.rs#hud_boss_bar_projection_covers_every_vanilla_color_and_overlay",
             "vanilla:net/minecraft/client/gui/components/BossHealthOverlay.java#update"
           ],
