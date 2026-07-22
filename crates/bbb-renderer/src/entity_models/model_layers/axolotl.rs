@@ -1,6 +1,14 @@
 use super::{PartPose, AXOLOTL_BODY, AXOLOTL_GILLS, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::keyframe::{
+    keyframe_animated_pose, keyframe_elapsed_seconds, keyframe_walk_sample,
+    sample_bone_offsets_with_scale, AnimationDefinition,
+};
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+
+mod baby_animations;
+
+pub(in crate::entity_models) use baby_animations::*;
 
 pub(in crate::entity_models) const MODEL_LAYER_AXOLOTL: &str = "minecraft:axolotl#main";
 pub(in crate::entity_models) const MODEL_LAYER_AXOLOTL_BABY: &str = "minecraft:axolotl_baby#main";
@@ -13,9 +21,10 @@ pub(in crate::entity_models) const MODEL_LAYER_AXOLOTL_BABY: &str = "minecraft:a
 // `offset(0, 24, 0)` and parents the legs/tail/head off the body. The adult `setupAnim` IS driven:
 // the body yaw plus the five factor-blended procedural sub-animations (swimming, water-hovering,
 // ground-crawling, lay-still, play-dead) and the mirror-leg copy, all from the four projected
-// `BinaryAnimator` factors. The baby's keyframe swim/walk/idle animations stay deferred. The five
-// color variants (`Axolotl.Variant`) live on the deferred texture-backed path, so the colored debug
-// path renders the lucy (pink) body with one body tint and one gill tint.
+// `BinaryAnimator` factors. The baby applies its seven source-defined swim/walk/idle/play-dead
+// keyframe definitions from the seven projected AnimationState timers. The five color variants
+// (`Axolotl.Variant`) live on the texture-backed path; the colored debug path renders the lucy
+// (pink) body with one body tint and one gill tint.
 
 // ----- Adult -----
 
@@ -401,29 +410,29 @@ pub(in crate::entity_models) const BABY_AXOLOTL_TOP_GILLS_POSE: PartPose = PartP
 };
 
 /// Builds the baby axolotl's `root` bone parenting the cube-bearing `body` (which parents the four
-/// index-named leg pivots — the right hind leg being a doubly-rotated pivot/cube pair — the tail fin,
-/// and the head with its three gill planes), in vanilla order.
+/// named leg pivots — the right hind leg being a doubly-rotated pivot/cube pair — the tail fin, and
+/// the head with its three named gill planes), in vanilla order. Names are keyframe addresses.
 fn baby_axolotl_root() -> ModelPart {
     let head = ModelPart::new(
         BABY_AXOLOTL_HEAD_POSE,
         BABY_AXOLOTL_HEAD_CUBES.to_vec(),
         vec![
             (
-                "0",
+                "left_gills",
                 ModelPart::leaf(
                     BABY_AXOLOTL_LEFT_GILLS_POSE,
                     BABY_AXOLOTL_LEFT_GILLS_CUBES.to_vec(),
                 ),
             ),
             (
-                "1",
+                "right_gills",
                 ModelPart::leaf(
                     BABY_AXOLOTL_RIGHT_GILLS_POSE,
                     BABY_AXOLOTL_RIGHT_GILLS_CUBES.to_vec(),
                 ),
             ),
             (
-                "2",
+                "top_gills",
                 ModelPart::leaf(
                     BABY_AXOLOTL_TOP_GILLS_POSE,
                     BABY_AXOLOTL_TOP_GILLS_CUBES.to_vec(),
@@ -447,32 +456,32 @@ fn baby_axolotl_root() -> ModelPart {
         BABY_AXOLOTL_BODY_CUBES.to_vec(),
         vec![
             (
-                "0",
+                "right_front_leg",
                 ModelPart::leaf(
                     BABY_AXOLOTL_RIGHT_FRONT_LEG_POSE,
                     BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
-            ("1", right_hind_leg),
+            ("right_hind_leg", right_hind_leg),
             (
-                "2",
+                "left_front_leg",
                 ModelPart::leaf(
                     BABY_AXOLOTL_LEFT_FRONT_LEG_POSE,
                     BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
             (
-                "3",
+                "left_hind_leg",
                 ModelPart::leaf(
                     BABY_AXOLOTL_LEFT_HIND_LEG_POSE,
                     BABY_AXOLOTL_LEFT_HIND_LEG_CUBES.to_vec(),
                 ),
             ),
             (
-                "4",
+                "tail",
                 ModelPart::leaf(BABY_AXOLOTL_TAIL_POSE, BABY_AXOLOTL_TAIL_CUBES.to_vec()),
             ),
-            ("5", head),
+            ("head", head),
         ],
     );
     ModelPart::new(BABY_AXOLOTL_ROOT_POSE, Vec::new(), vec![("body", body)])
@@ -639,11 +648,68 @@ fn add_rotation(part: &mut ModelPart, delta: [f32; 3]) {
     part.pose.rotation[2] += delta[2];
 }
 
+const BABY_AXOLOTL_WALK_SPEED_FACTOR: f32 = 15.0;
+const BABY_AXOLOTL_WALK_SCALE_FACTOR: f32 = 30.0;
+
+fn apply_baby_axolotl_bone(
+    part: &mut ModelPart,
+    definition: &AnimationDefinition,
+    bone: &str,
+    elapsed_seconds: f32,
+    target_scale: f32,
+) {
+    let (position, rotation, scale) =
+        sample_bone_offsets_with_scale(definition, bone, elapsed_seconds, target_scale);
+    part.pose = keyframe_animated_pose(part.pose, position, rotation);
+    for (part_scale, offset) in part.scale.iter_mut().zip(scale) {
+        *part_scale += offset;
+    }
+}
+
+/// Applies one baby definition to the exact Vanilla-named model tree. Sampling a bone absent from
+/// a particular definition yields zero offsets, so this fixed traversal is also the exhaustive
+/// topology contract for all seven definitions.
+fn apply_baby_axolotl_definition(
+    root: &mut ModelPart,
+    definition: &AnimationDefinition,
+    elapsed_seconds: f32,
+    target_scale: f32,
+) {
+    apply_baby_axolotl_bone(root, definition, "root", elapsed_seconds, target_scale);
+    let body = root.child_mut("body");
+    apply_baby_axolotl_bone(body, definition, "body", elapsed_seconds, target_scale);
+    for bone in [
+        "right_front_leg",
+        "right_hind_leg",
+        "left_front_leg",
+        "left_hind_leg",
+        "tail",
+    ] {
+        apply_baby_axolotl_bone(
+            body.child_mut(bone),
+            definition,
+            bone,
+            elapsed_seconds,
+            target_scale,
+        );
+    }
+    let head = body.child_mut("head");
+    apply_baby_axolotl_bone(head, definition, "head", elapsed_seconds, target_scale);
+    for bone in ["left_gills", "right_gills", "top_gills"] {
+        apply_baby_axolotl_bone(
+            head.child_mut(bone),
+            definition,
+            bone,
+            elapsed_seconds,
+            target_scale,
+        );
+    }
+}
+
 /// Mutable axolotl model, mirroring vanilla `AdultAxolotlModel` / `BabyAxolotlModel`. The single
-/// `body` root (adult) or `root → body` bone (baby), with its nested index-named hierarchy, hangs off
-/// a synthetic root, built from the baked adult/baby colored geometry selected at construction.
-/// Colored-only: `setup_anim` turns the adult body toward the look yaw via `child_mut("body")` (the
-/// blended procedural sways, the mirror-leg copy, and the baby keyframe animations stay deferred).
+/// `body` root (adult) or `root → body` bone (baby) hangs off a synthetic root, built from the baked
+/// adult/baby geometry selected at construction. `setup_anim` applies the adult factor-blended
+/// procedural pose or the baby's projected AnimationState-driven keyframes.
 pub(in crate::entity_models) struct AxolotlModel {
     root: ModelPart,
     baby: bool,
@@ -674,9 +740,64 @@ impl EntityModel for AxolotlModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        // The baby keyframe swim/walk/idle animations stay deferred, so only the adult body is
-        // animated (vanilla `BabyAxolotlModel` is a separate keyframe model).
         if self.baby {
+            let state = &instance.render_state;
+            let root = self.root.child_mut("root");
+
+            // Vanilla `BabyAxolotlModel.setupAnim` gates floor walk on `walkAnimationState`, then
+            // applies `AXOLOTL_WALK_FLOOR` with limb-swing time/amplitude.
+            if state.axolotl_baby_walk_seconds >= 0.0 {
+                let (seconds, scale) = keyframe_walk_sample(
+                    &AXOLOTL_WALK_FLOOR,
+                    state.walk_animation_pos,
+                    state.walk_animation_speed,
+                    BABY_AXOLOTL_WALK_SPEED_FACTOR,
+                    BABY_AXOLOTL_WALK_SCALE_FACTOR,
+                );
+                apply_baby_axolotl_definition(root, &AXOLOTL_WALK_FLOOR, seconds, scale);
+            }
+
+            let apply_started =
+                |root: &mut ModelPart, definition: &AnimationDefinition, elapsed: f32| {
+                    if elapsed >= 0.0 {
+                        apply_baby_axolotl_definition(
+                            root,
+                            definition,
+                            keyframe_elapsed_seconds(definition, elapsed),
+                            1.0,
+                        );
+                    }
+                };
+            apply_started(root, &BABY_AXOLOTL_SWIM, state.axolotl_baby_swim_seconds);
+            // Exact 26.1 behavior: the model bakes `walkUnderwaterAnimation`, but applies it with
+            // `walkAnimationState` rather than `walkUnderWaterAnimationState`. Therefore a dry-floor
+            // walk composes both definitions, while the dedicated underwater-walk timer has no
+            // model consumer.
+            apply_started(
+                root,
+                &WALK_FLOOR_UNDERWATER,
+                state.axolotl_baby_walk_seconds,
+            );
+            apply_started(
+                root,
+                &BABY_AXOLOTL_IDLE_FLOOR,
+                state.axolotl_baby_idle_on_ground_seconds,
+            );
+            apply_started(
+                root,
+                &IDLE_UNDERWATER,
+                state.axolotl_baby_idle_underwater_seconds,
+            );
+            apply_started(
+                root,
+                &IDLE_FLOOR_UNDERWATER,
+                state.axolotl_baby_idle_underwater_on_ground_seconds,
+            );
+            apply_started(
+                root,
+                &BABY_AXOLOTL_PLAY_DEAD,
+                state.axolotl_baby_play_dead_seconds,
+            );
             return;
         }
         let state = &instance.render_state;

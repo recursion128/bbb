@@ -230,6 +230,80 @@ fn axolotl_procedural_sub_animations_pose_the_body() {
 }
 
 #[test]
+fn baby_axolotl_animation_definitions_match_vanilla_26_1() {
+    let counts = |definition: &AnimationDefinition| {
+        (
+            definition.bones.len(),
+            definition
+                .bones
+                .iter()
+                .map(|bone| bone.channels.len())
+                .sum::<usize>(),
+            definition
+                .bones
+                .iter()
+                .flat_map(|bone| bone.channels.iter())
+                .map(|channel| channel.keyframes.len())
+                .sum::<usize>(),
+        )
+    };
+    for (definition, length, looping, expected_counts) in [
+        (&BABY_AXOLOTL_IDLE_FLOOR, 2.88, true, (10, 12, 30)),
+        (&IDLE_FLOOR_UNDERWATER, 5.12, true, (9, 14, 28)),
+        (&IDLE_UNDERWATER, 5.2, true, (10, 15, 37)),
+        (&BABY_AXOLOTL_SWIM, 1.0, true, (10, 11, 45)),
+        (&AXOLOTL_WALK_FLOOR, 2.72, true, (10, 14, 38)),
+        (&WALK_FLOOR_UNDERWATER, 2.04, true, (10, 15, 51)),
+        (&BABY_AXOLOTL_PLAY_DEAD, 0.04, false, (11, 33, 33)),
+    ] {
+        assert_eq!(definition.length_seconds, length);
+        assert_eq!(definition.looping, looping);
+        assert_eq!(counts(definition), expected_counts);
+    }
+
+    // The one-frame play-dead definition rolls the body 30 degrees and includes the wrapper root;
+    // its scaleVec(1,1,1) channel is the identity offset.
+    let (_, body_rotation, body_scale) =
+        sample_bone_offsets_with_scale(&BABY_AXOLOTL_PLAY_DEAD, "body", 0.0, 1.0);
+    assert!((body_rotation[2] - 30.0_f32.to_radians()).abs() < 1.0e-5);
+    assert_eq!(body_scale, [0.0; 3]);
+    assert!(BABY_AXOLOTL_PLAY_DEAD
+        .bones
+        .iter()
+        .any(|bone| bone.bone == "root"));
+}
+
+#[test]
+fn baby_axolotl_started_states_pose_the_named_model_tree() {
+    let base =
+        EntityModelInstance::axolotl(190, [0.0, 64.0, 0.0], 0.0, true, AxolotlModelVariant::Lucy);
+    let rest = entity_model_mesh(&[base]);
+    let animated = [
+        base.with_axolotl_baby_swim_seconds(0.4),
+        base.with_axolotl_baby_walk_seconds(0.4)
+            .with_walk_animation(0.3, 0.8),
+        base.with_axolotl_baby_idle_underwater_seconds(0.4),
+        base.with_axolotl_baby_idle_underwater_on_ground_seconds(0.4),
+        base.with_axolotl_baby_idle_on_ground_seconds(0.4),
+        base.with_axolotl_baby_play_dead_seconds(0.0),
+    ];
+    for instance in animated {
+        let mesh = entity_model_mesh(&[instance]);
+        assert_eq!(mesh.vertices.len(), rest.vertices.len());
+        assert_ne!(mesh.vertices, rest.vertices);
+    }
+
+    // Exact Vanilla 26.1 edge: `tickBabyAnimations` can start
+    // `walkUnderWaterAnimationState`, and the renderer copies it, but `BabyAxolotlModel.setupAnim`
+    // applies WALK_FLOOR_UNDERWATER with `walkAnimationState` instead. The dedicated timer alone is
+    // therefore inert; a floor walk above composes both walk definitions.
+    let dedicated_underwater_walk = entity_model_mesh(&[base
+        .with_axolotl_baby_walk_underwater_seconds(0.4)
+        .with_walk_animation(0.3, 0.8)]);
+    assert_eq!(dedicated_underwater_walk.vertices, rest.vertices);
+}
+
+#[test]
 fn axolotl_textured_render_matches_vanilla_renderer() {
     // `AxolotlRenderer.TEXTURE_BY_TYPE`: the five `Axolotl.Variant` colours × {adult, baby}.
     let variants = [

@@ -67,6 +67,14 @@ fn axolotl_playing_dead_data(playing_dead: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn axolotl_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_AXOLOTL_ID)
+            .expect("generated Axolotl baby accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, is_baby)
+}
+
 fn camel_dash_data(dashing: bool) -> ProtocolEntityDataValue {
     let (data_id, _) =
         vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
@@ -1354,6 +1362,60 @@ fn axolotl_playing_dead_flag_drives_the_eased_factor() {
     );
     store.advance_entity_client_animations(10);
     assert_eq!(factor(&store, 1.0), 0.0, "fully awake again");
+}
+
+#[test]
+fn baby_axolotl_ticks_one_animation_state_and_restarts_on_transition() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        93,
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 93,
+        values: vec![axolotl_baby_data(true)],
+    }));
+
+    let timers = |store: &WorldStore, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 93)
+            .unwrap();
+        [
+            source.axolotl_baby_swim_seconds,
+            source.axolotl_baby_walk_seconds,
+            source.axolotl_baby_walk_underwater_seconds,
+            source.axolotl_baby_idle_underwater_seconds,
+            source.axolotl_baby_idle_underwater_on_ground_seconds,
+            source.axolotl_baby_idle_on_ground_seconds,
+            source.axolotl_baby_play_dead_seconds,
+        ]
+    };
+
+    assert_eq!(timers(&store, 0.0), [-1.0; 7]);
+    // With no water, movement, or ground contact, Vanilla selects idleOnGround. The selected
+    // `AnimationState` starts at this tick and keeps its original start while the state persists.
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        timers(&store, 0.0),
+        [-1.0, -1.0, -1.0, -1.0, -1.0, 0.0, -1.0]
+    );
+    store.advance_entity_client_animations(2);
+    assert_eq!(timers(&store, 1.0)[5], 0.15);
+
+    // Synced play-dead wins over every movement/environment branch. `soloAnimation` stops the old
+    // idle timer and starts play-dead from zero at the transition tick.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 93,
+        values: vec![axolotl_playing_dead_data(true)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        timers(&store, 0.0),
+        [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 0.0]
+    );
+    assert_eq!(timers(&store, 0.5)[6], 0.025);
 }
 
 #[test]

@@ -2672,12 +2672,21 @@ impl BinaryAnimator {
     }
 }
 
-/// Canonical client-side axolotl animation, mirroring vanilla `Axolotl.tickAdultAnimations`. Four
-/// `BinaryAnimator`s ease the play-dead / in-water / on-ground / moving factors that
-/// `AdultAxolotlModel.setupAnim` blends into its swimming, water-hovering, ground-crawling,
-/// lay-still, and play-dead sub-animations. The mutually-exclusive `playingDead → inWater →
-/// onGround → inAir` state machine feeds the first three; `moving` is fed `walkAnimation.isMoving()`
-/// OR a body/head rotation change (tracked here, since the synced rotation is the only source).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AxolotlBabyAnimation {
+    Swim,
+    Walk,
+    WalkUnderwater,
+    IdleUnderwater,
+    IdleUnderwaterOnGround,
+    IdleOnGround,
+    PlayDead,
+}
+
+/// Canonical client-side axolotl animation. Adults mirror `Axolotl.tickAdultAnimations`: four
+/// `BinaryAnimator`s ease the factors that `AdultAxolotlModel.setupAnim` blends. Babies mirror
+/// `tickBabyAnimations`: exactly one of seven `AnimationState`s remains started, preserving its
+/// original start tick until the selected state changes.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct AxolotlAnimationState {
     #[serde(default)]
@@ -2694,6 +2703,20 @@ pub struct AxolotlAnimationState {
     prev_y_rot: f32,
     #[serde(default)]
     has_prev_rotation: bool,
+    #[serde(default)]
+    baby_swim: KeyframeAnimationState,
+    #[serde(default)]
+    baby_walk: KeyframeAnimationState,
+    #[serde(default)]
+    baby_walk_underwater: KeyframeAnimationState,
+    #[serde(default)]
+    baby_idle_underwater: KeyframeAnimationState,
+    #[serde(default)]
+    baby_idle_underwater_on_ground: KeyframeAnimationState,
+    #[serde(default)]
+    baby_idle_on_ground: KeyframeAnimationState,
+    #[serde(default)]
+    baby_play_dead: KeyframeAnimationState,
 }
 
 impl AxolotlAnimationState {
@@ -2704,6 +2727,8 @@ impl AxolotlAnimationState {
     /// xRotO || getYRot() != yRotO`.
     fn advance_client_tick(
         &mut self,
+        is_baby: bool,
+        age_ticks: u32,
         is_playing_dead: bool,
         is_in_water: bool,
         on_ground: bool,
@@ -2717,6 +2742,48 @@ impl AxolotlAnimationState {
         self.prev_y_rot = y_rot;
         self.has_prev_rotation = true;
         let is_moving = walk_is_moving || rotation_changed;
+
+        if is_baby {
+            // Vanilla `tickBabyAnimations`: `soloAnimation` starts the selected timer only if it
+            // was stopped and stops all six siblings. The moving animator still advances even
+            // though the baby model consumes the discrete AnimationStates instead of its factor.
+            self.moving.tick(is_moving, AXOLOTL_ANIMATOR_LENGTH);
+            let active = if is_playing_dead {
+                AxolotlBabyAnimation::PlayDead
+            } else if is_moving {
+                if is_in_water && !on_ground {
+                    AxolotlBabyAnimation::Swim
+                } else if !is_in_water && on_ground {
+                    AxolotlBabyAnimation::Walk
+                } else {
+                    AxolotlBabyAnimation::WalkUnderwater
+                }
+            } else if is_in_water && !on_ground {
+                AxolotlBabyAnimation::IdleUnderwater
+            } else if is_in_water && on_ground {
+                AxolotlBabyAnimation::IdleUnderwaterOnGround
+            } else {
+                AxolotlBabyAnimation::IdleOnGround
+            };
+            self.baby_swim
+                .animate_when(active == AxolotlBabyAnimation::Swim, age_ticks);
+            self.baby_walk
+                .animate_when(active == AxolotlBabyAnimation::Walk, age_ticks);
+            self.baby_walk_underwater
+                .animate_when(active == AxolotlBabyAnimation::WalkUnderwater, age_ticks);
+            self.baby_idle_underwater
+                .animate_when(active == AxolotlBabyAnimation::IdleUnderwater, age_ticks);
+            self.baby_idle_underwater_on_ground.animate_when(
+                active == AxolotlBabyAnimation::IdleUnderwaterOnGround,
+                age_ticks,
+            );
+            self.baby_idle_on_ground
+                .animate_when(active == AxolotlBabyAnimation::IdleOnGround, age_ticks);
+            self.baby_play_dead
+                .animate_when(active == AxolotlBabyAnimation::PlayDead, age_ticks);
+            return;
+        }
+
         // Vanilla `Axolotl.AxolotlAnimationState`: PLAYING_DEAD → IN_WATER → ON_GROUND → IN_AIR,
         // first match wins, so the three state animators are mutually exclusive.
         let state_playing_dead = is_playing_dead;
@@ -2745,6 +2812,16 @@ impl AxolotlAnimationState {
 
     fn moving_factor(&self, partial_tick: f32) -> f32 {
         self.moving.factor(partial_tick, AXOLOTL_ANIMATOR_LENGTH)
+    }
+
+    fn baby_animation_seconds(
+        timer: KeyframeAnimationState,
+        age_ticks: u32,
+        partial_tick: f32,
+    ) -> f32 {
+        timer
+            .elapsed_seconds(age_ticks, partial_tick)
+            .unwrap_or(-1.0)
     }
 }
 
@@ -5484,6 +5561,84 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.moving_factor(partial_tick))
     }
 
+    /// Elapsed seconds for Vanilla's baby `swimAnimationState`, or `-1` while stopped.
+    pub fn axolotl_baby_swim_seconds(&self, partial_tick: f32) -> f32 {
+        self.axolotl.map_or(-1.0, |state| {
+            AxolotlAnimationState::baby_animation_seconds(
+                state.baby_swim,
+                self.age_ticks,
+                partial_tick,
+            )
+        })
+    }
+
+    /// Elapsed seconds for Vanilla's baby `walkAnimationState`, or `-1` while stopped.
+    pub fn axolotl_baby_walk_seconds(&self, partial_tick: f32) -> f32 {
+        self.axolotl.map_or(-1.0, |state| {
+            AxolotlAnimationState::baby_animation_seconds(
+                state.baby_walk,
+                self.age_ticks,
+                partial_tick,
+            )
+        })
+    }
+
+    /// Elapsed seconds for Vanilla's baby `walkUnderWaterAnimationState`, or `-1` while stopped.
+    pub fn axolotl_baby_walk_underwater_seconds(&self, partial_tick: f32) -> f32 {
+        self.axolotl.map_or(-1.0, |state| {
+            AxolotlAnimationState::baby_animation_seconds(
+                state.baby_walk_underwater,
+                self.age_ticks,
+                partial_tick,
+            )
+        })
+    }
+
+    /// Elapsed seconds for Vanilla's baby `idleUnderWaterAnimationState`, or `-1` while stopped.
+    pub fn axolotl_baby_idle_underwater_seconds(&self, partial_tick: f32) -> f32 {
+        self.axolotl.map_or(-1.0, |state| {
+            AxolotlAnimationState::baby_animation_seconds(
+                state.baby_idle_underwater,
+                self.age_ticks,
+                partial_tick,
+            )
+        })
+    }
+
+    /// Elapsed seconds for Vanilla's baby `idleUnderWaterOnGroundAnimationState`, or `-1` while
+    /// stopped.
+    pub fn axolotl_baby_idle_underwater_on_ground_seconds(&self, partial_tick: f32) -> f32 {
+        self.axolotl.map_or(-1.0, |state| {
+            AxolotlAnimationState::baby_animation_seconds(
+                state.baby_idle_underwater_on_ground,
+                self.age_ticks,
+                partial_tick,
+            )
+        })
+    }
+
+    /// Elapsed seconds for Vanilla's baby `idleOnGroundAnimationState`, or `-1` while stopped.
+    pub fn axolotl_baby_idle_on_ground_seconds(&self, partial_tick: f32) -> f32 {
+        self.axolotl.map_or(-1.0, |state| {
+            AxolotlAnimationState::baby_animation_seconds(
+                state.baby_idle_on_ground,
+                self.age_ticks,
+                partial_tick,
+            )
+        })
+    }
+
+    /// Elapsed seconds for Vanilla's baby `playDeadAnimationState`, or `-1` while stopped.
+    pub fn axolotl_baby_play_dead_seconds(&self, partial_tick: f32) -> f32 {
+        self.axolotl.map_or(-1.0, |state| {
+            AxolotlAnimationState::baby_animation_seconds(
+                state.baby_play_dead,
+                self.age_ticks,
+                partial_tick,
+            )
+        })
+    }
+
     /// The sniffer's active `Sniffer.State` animation (vanilla `Sniffer.onSyncedDataUpdated`'s
     /// one-shot `AnimationState`s) projected for `SnifferModel.setupAnim`: the `(state ordinal,
     /// elapsed seconds)` of the running triggered keyframe, or `(-1, -1.0)` when the sniffer is
@@ -6684,8 +6839,10 @@ impl EntityClientAnimationState {
                     );
             }
             VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
-                // Vanilla `Axolotl.tickAdultAnimations`: the play-dead / in-water / on-ground state
-                // machine drives three `BinaryAnimator`s plus the moving animator.
+                // Vanilla `Axolotl.baseTick` selects `tickBabyAnimations` or
+                // `tickAdultAnimations`: babies keep one of seven keyframe timers active; adults
+                // drive the play-dead / in-water / on-ground BinaryAnimators. Both paths update the
+                // moving animator.
                 // `walkAnimation.isMoving()` reads the PRIOR tick's limb swing (the walk animation is
                 // advanced after this match, mirroring vanilla's `baseTick`-before-`aiStep` order),
                 // OR'd with a body/head rotation change.
@@ -6693,6 +6850,8 @@ impl EntityClientAnimationState {
                 self.axolotl
                     .get_or_insert_with(AxolotlAnimationState::default)
                     .advance_client_tick(
+                        is_baby,
+                        self.age_ticks,
                         axolotl_is_playing_dead,
                         in_water,
                         transform.on_ground.unwrap_or(false),

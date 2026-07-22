@@ -4108,6 +4108,29 @@ impl EntityStore {
             axolotl_moving_factor: client_animations
                 .animations
                 .axolotl_moving_factor(partial_ticks),
+            // Vanilla `AxolotlRenderer.extractRenderState` copies the seven baby AnimationStates.
+            // Stopped timers project `-1`; exactly one timer runs while `isBaby` ticks.
+            axolotl_baby_swim_seconds: client_animations
+                .animations
+                .axolotl_baby_swim_seconds(partial_ticks),
+            axolotl_baby_walk_seconds: client_animations
+                .animations
+                .axolotl_baby_walk_seconds(partial_ticks),
+            axolotl_baby_walk_underwater_seconds: client_animations
+                .animations
+                .axolotl_baby_walk_underwater_seconds(partial_ticks),
+            axolotl_baby_idle_underwater_seconds: client_animations
+                .animations
+                .axolotl_baby_idle_underwater_seconds(partial_ticks),
+            axolotl_baby_idle_underwater_on_ground_seconds: client_animations
+                .animations
+                .axolotl_baby_idle_underwater_on_ground_seconds(partial_ticks),
+            axolotl_baby_idle_on_ground_seconds: client_animations
+                .animations
+                .axolotl_baby_idle_on_ground_seconds(partial_ticks),
+            axolotl_baby_play_dead_seconds: client_animations
+                .animations
+                .axolotl_baby_play_dead_seconds(partial_ticks),
             // Vanilla `ParrotRenderer.extractRenderState`: the lerped, combined
             // wing-flap angle. `0.0` for every non-parrot entity (only the parrot is
             // given a flap animation state).

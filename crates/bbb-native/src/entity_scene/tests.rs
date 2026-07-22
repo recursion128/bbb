@@ -1393,6 +1393,54 @@ fn entity_model_instances_project_axolotl_play_dead_from_world() {
 }
 
 #[test]
+fn entity_model_instances_project_baby_axolotl_animation_states() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        97,
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+        [1.0, 64.0, -2.0],
+    ));
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 97,
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_AXOLOTL_ID, true)],
+    }));
+    world.advance_entity_client_animations(1);
+
+    let timers = |world: &WorldStore, partial_tick: f32| {
+        let instances =
+            entity_model_instances_from_world_at_partial_tick(world, None, partial_tick);
+        let state = &instances
+            .iter()
+            .find(|instance| instance.entity_id == 97)
+            .expect("baby axolotl instance")
+            .render_state;
+        [
+            state.axolotl_baby_swim_seconds,
+            state.axolotl_baby_walk_seconds,
+            state.axolotl_baby_walk_underwater_seconds,
+            state.axolotl_baby_idle_underwater_seconds,
+            state.axolotl_baby_idle_underwater_on_ground_seconds,
+            state.axolotl_baby_idle_on_ground_seconds,
+            state.axolotl_baby_play_dead_seconds,
+        ]
+    };
+    assert_eq!(
+        timers(&world, 0.5),
+        [-1.0, -1.0, -1.0, -1.0, -1.0, 0.025, -1.0]
+    );
+
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 97,
+        values: vec![axolotl_playing_dead_data(true)],
+    }));
+    world.advance_entity_client_animations(1);
+    assert_eq!(
+        timers(&world, 0.5),
+        [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 0.025]
+    );
+}
+
+#[test]
 fn entity_model_instances_project_allay_dance_from_world() {
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -10286,8 +10334,8 @@ fn entity_model_kind_projects_axolotl_baby_from_data() {
     // The axolotl was a placeholder bounds box; it now resolves to the real `AdultAxolotlModel`
     // / `BabyAxolotlModel`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default
     // adult), as in the vanilla `AgeableMobRenderer`, and textured by the `Axolotl.Variant`
-    // colour read from the generated `DATA_VARIANT` accessor. The body yaw, the procedural /
-    // keyframe swim-walk-idle animations, the play-dead pose, and the mirror-leg copy stay deferred.
+    // colour read from the generated `DATA_VARIANT` accessor. Adult procedural factors and baby
+    // AnimationState elapsed clocks project independently through the selected model.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_AXOLOTL_ID, &[]),
         EntityModelKind::Axolotl {

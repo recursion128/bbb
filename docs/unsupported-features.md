@@ -1388,8 +1388,6 @@ back into a todo. Do not delete these.
   animation.
 - **Creaking tearing-down death-flicker** (`hasGlowingEyes`, a client-tick
   toggle).
-- **Baby axolotl swim/walk/idle keyframe animations.** Vanilla `BabyAxolotlModel`
-  is a separate keyframe model.
 - **Ender-dragon egg-distance heightmap stand-in.** The landing/takeoff head
   droop divides by the podium heightmap distance; the synced `MOTION_BLOCKING`
   column stands in for the client-primed `MOTION_BLOCKING_NO_LEAVES` probe. The

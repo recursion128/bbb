@@ -2374,6 +2374,23 @@ entity_model_source_state! {
     /// the mirror-leg copy. `0.0` (still) for every other entity.
     #[serde(default)]
     pub axolotl_moving_factor: f32,
+    /// Vanilla baby Axolotl `AnimationState` elapsed seconds. Each field is `-1.0` while stopped;
+    /// `tickBabyAnimations` keeps exactly one timer running. The renderer preserves the official
+    /// 26.1 model's unusual use of `walkAnimationState` for both floor-walk definitions.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub axolotl_baby_swim_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub axolotl_baby_walk_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub axolotl_baby_walk_underwater_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub axolotl_baby_idle_underwater_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub axolotl_baby_idle_underwater_on_ground_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub axolotl_baby_idle_on_ground_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub axolotl_baby_play_dead_seconds: f32,
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(sin(lerp(flap)) + 1) * lerp(flapSpeed)`): the combined wing-flap angle
     /// `ParrotModel.setupAnim` feeds to the wing `zRot` (`±(0.0873 + flapAngle)`) and

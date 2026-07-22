@@ -1531,6 +1531,16 @@ entity_render_state! {
     /// eased blend separating the moving sub-animations (swim, crawl) from the still ones (hover,
     /// lay-still) and gating `applyMirrorLegRotations`. `0.0` (still) for every non-axolotl entity.
     (with_axolotl_moving_factor) axolotl_moving_factor: f32 = 0.0;
+    /// Vanilla baby Axolotl AnimationState elapsed seconds; `-1.0` means stopped. Exactly one state
+    /// runs per baby client tick, but the explicit fields preserve the render-state contract and
+    /// the official model's unusual cross-use of `walkAnimationState`.
+    (with_axolotl_baby_swim_seconds) axolotl_baby_swim_seconds: f32 = -1.0;
+    (with_axolotl_baby_walk_seconds) axolotl_baby_walk_seconds: f32 = -1.0;
+    (with_axolotl_baby_walk_underwater_seconds) axolotl_baby_walk_underwater_seconds: f32 = -1.0;
+    (with_axolotl_baby_idle_underwater_seconds) axolotl_baby_idle_underwater_seconds: f32 = -1.0;
+    (with_axolotl_baby_idle_underwater_on_ground_seconds) axolotl_baby_idle_underwater_on_ground_seconds: f32 = -1.0;
+    (with_axolotl_baby_idle_on_ground_seconds) axolotl_baby_idle_on_ground_seconds: f32 = -1.0;
+    (with_axolotl_baby_play_dead_seconds) axolotl_baby_play_dead_seconds: f32 = -1.0;
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(Mth.sin(lerp(oFlap, flap)) + 1) * lerp(oFlapSpeed, flapSpeed)`): the combined
     /// wing-flap angle `ParrotModel.setupAnim` writes to the wings (`leftWing.zRot =
@@ -3329,6 +3339,13 @@ mod tests {
                 axolotl_in_water_factor: 0.0,
                 axolotl_on_ground_factor: 0.0,
                 axolotl_moving_factor: 0.0,
+                axolotl_baby_swim_seconds: -1.0,
+                axolotl_baby_walk_seconds: -1.0,
+                axolotl_baby_walk_underwater_seconds: -1.0,
+                axolotl_baby_idle_underwater_seconds: -1.0,
+                axolotl_baby_idle_underwater_on_ground_seconds: -1.0,
+                axolotl_baby_idle_on_ground_seconds: -1.0,
+                axolotl_baby_play_dead_seconds: -1.0,
                 parrot_flap_angle: 0.0,
                 in_water: false,
                 on_ground: false,

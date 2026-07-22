@@ -931,6 +931,13 @@ pub(super) fn entity_model_instance(
         with_axolotl_in_water_factor axolotl_in_water_factor,
         with_axolotl_on_ground_factor axolotl_on_ground_factor,
         with_axolotl_moving_factor axolotl_moving_factor,
+        with_axolotl_baby_swim_seconds axolotl_baby_swim_seconds,
+        with_axolotl_baby_walk_seconds axolotl_baby_walk_seconds,
+        with_axolotl_baby_walk_underwater_seconds axolotl_baby_walk_underwater_seconds,
+        with_axolotl_baby_idle_underwater_seconds axolotl_baby_idle_underwater_seconds,
+        with_axolotl_baby_idle_underwater_on_ground_seconds axolotl_baby_idle_underwater_on_ground_seconds,
+        with_axolotl_baby_idle_on_ground_seconds axolotl_baby_idle_on_ground_seconds,
+        with_axolotl_baby_play_dead_seconds axolotl_baby_play_dead_seconds,
         with_parrot_flap_angle parrot_flap_angle,
     ))
 }
