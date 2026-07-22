@@ -275,6 +275,30 @@ mod tests {
     }
 
     #[test]
+    fn generated_serializer_catalog_has_one_decoder_route_each() {
+        let decoder = include_str!("packets/entities.rs");
+        for serializer in VANILLA_ENTITY_DATA_SERIALIZERS {
+            let identifier = format!(
+                "VANILLA_ENTITY_DATA_SERIALIZER_{}_ID",
+                serializer.constant_name
+            );
+            assert_eq!(
+                decoder.matches(&identifier).count(),
+                1,
+                "{identifier} must have exactly one decoder route"
+            );
+        }
+        assert!(
+            decoder.contains("fn decode_entity_data_value("),
+            "entity-data decoder entry point is missing"
+        );
+        assert!(
+            decoder.contains("unsupported entity data serializer {other}"),
+            "unknown serializer ids must stay rejected"
+        );
+    }
+
+    #[test]
     fn production_consumers_do_not_restore_serializer_id_aliases() {
         fn visit(path: &Path, violations: &mut Vec<String>) {
             if path.is_dir() {
