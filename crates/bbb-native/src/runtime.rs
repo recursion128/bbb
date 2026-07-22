@@ -33,9 +33,10 @@ use bbb_protocol::{
     MC_VERSION,
 };
 use bbb_renderer::{
-    sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
-    EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementBackgroundTexture,
+    sign_text_base_color, BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor,
+    CloudEnvironment, CloudFrame, ConduitModelPart, DebugCuboidFace, DebugFilledBox,
+    DebugFilledRect, DebugLine, DebugTextBillboard, EntityModelInstance, EntityModelKind,
+    FogEnvironment, GuiItemLightingEntry, HudAdvancementBackgroundTexture,
     HudAdvancementHoverBoxSprite, HudAdvancementLineTexture, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudChatContext,
     HudChatMessage, HudChatTag, HudChatTagKind, HudCommandSuggestionEntry,
@@ -2980,6 +2981,8 @@ pub(crate) fn update_renderer_from_publication(
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
     let item_mid_duration = item_mid_started_at.elapsed();
     let block_entity_started_at = Instant::now();
+    let block_destroy_stages = block_destroy_stages_from_world(world);
+    let block_entity_model_start = entity_instances.len();
     // Chest block-entity models join the same single entity-model submission
     // stream after held-item baking (they have no hands to bake).
     entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
@@ -3043,6 +3046,11 @@ pub(crate) fn update_renderer_from_publication(
         world,
         entity_partial_tick,
     ));
+    apply_block_entity_crumbling(
+        &mut entity_instances[block_entity_model_start..],
+        &block_destroy_stages,
+        terrain_textures,
+    );
     let block_entity_duration = block_entity_started_at.elapsed();
     let item_tail_started_at = Instant::now();
     let map_texture_cache = non_entity_render_extraction.begin_map_texture_frame();
@@ -3252,7 +3260,11 @@ pub(crate) fn update_renderer_from_publication(
     let block_destroy_overlays = if stable_world_unchanged {
         RendererFrameUpdate::Unchanged
     } else {
-        RendererFrameUpdate::Replace(block_destroy_overlays_from_world(world, terrain_textures))
+        RendererFrameUpdate::Replace(block_destroy_overlays_from_stages(
+            world,
+            terrain_textures,
+            &block_destroy_stages,
+        ))
     };
     let world_debug_duration = world_debug_started_at.elapsed();
     // Vanilla `ParticleEngine.extract` calls `SingleQuadParticle.getLightCoords(partialTicks)`
@@ -3648,10 +3660,7 @@ fn advance_block_destruction_render_ticks(world: &mut WorldStore, running_ticks:
     world.advance_block_destruction_render_ticks(running_ticks)
 }
 
-fn block_destroy_overlays_from_world(
-    world: &WorldStore,
-    textures: &TerrainTextureState,
-) -> Vec<BlockDestroyOverlay> {
+fn block_destroy_stages_from_world(world: &WorldStore) -> Vec<(BlockPos, u8)> {
     let mut stages = Vec::new();
     for progress in world.block_destructions() {
         if progress.progress < 10 {
@@ -3669,16 +3678,75 @@ fn block_destroy_overlays_from_world(
 
     stages.sort_by_key(|(pos, _stage)| (pos.x, pos.y, pos.z));
     stages
-        .into_iter()
+}
+
+fn block_destroy_overlays_from_stages(
+    world: &WorldStore,
+    textures: &TerrainTextureState,
+    stages: &[(BlockPos, u8)],
+) -> Vec<BlockDestroyOverlay> {
+    stages
+        .iter()
         .filter_map(|(pos, stage)| {
-            let uv = textures.destroy_stage_uv_rect(stage)?;
+            let uv = textures.destroy_stage_uv_rect(*stage)?;
             Some(BlockDestroyOverlay {
                 pos: [pos.x, pos.y, pos.z],
                 uv,
-                shape: block_destroy_render_shape(world, textures, pos),
+                shape: block_destroy_render_shape(world, textures, *pos),
             })
         })
         .collect()
+}
+
+/// Projects Vanilla `BlockEntityRenderState.breakProgress` onto the block-entity model instances
+/// that actually receive a crumbling overlay from their renderer. The `stages` slice is the same
+/// sorted, highest-stage-per-position projection used by the terrain block overlay path above.
+fn apply_block_entity_crumbling(
+    instances: &mut [EntityModelInstance],
+    stages: &[(BlockPos, u8)],
+    textures: &TerrainTextureState,
+) {
+    for instance in instances {
+        instance.render_state.block_entity_crumbling = None;
+        if !block_entity_model_accepts_crumbling(instance.kind) {
+            continue;
+        }
+        let pos = BlockPos {
+            x: instance.position[0].floor() as i32,
+            y: instance.position[1].floor() as i32,
+            z: instance.position[2].floor() as i32,
+        };
+        let Ok(index) = stages.binary_search_by_key(&(pos.x, pos.y, pos.z), |(pos, _stage)| {
+            (pos.x, pos.y, pos.z)
+        }) else {
+            continue;
+        };
+        let Some(uv) = textures.destroy_stage_uv_rect(stages[index].1) else {
+            continue;
+        };
+        instance.render_state.block_entity_crumbling = Some(BlockEntityCrumbling {
+            origin: [pos.x as f32, pos.y as f32, pos.z as f32],
+            uv,
+        });
+    }
+}
+
+fn block_entity_model_accepts_crumbling(kind: EntityModelKind) -> bool {
+    matches!(
+        kind,
+        EntityModelKind::Chest { .. }
+            | EntityModelKind::Sign { .. }
+            | EntityModelKind::Bed { .. }
+            | EntityModelKind::Bell
+            | EntityModelKind::ShulkerBox { .. }
+            | EntityModelKind::Banner { .. }
+            | EntityModelKind::EnchantingBook
+            | EntityModelKind::LecternBook
+            | EntityModelKind::SkullBlock { .. }
+            | EntityModelKind::Conduit {
+                part: ConduitModelPart::Shell | ConduitModelPart::Cage
+            }
+    )
 }
 
 /// The render shape of the block being broken at `pos`, reused from the chunk mesher's

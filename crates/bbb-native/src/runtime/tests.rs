@@ -5136,13 +5136,21 @@ fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
     let destroy_tick = source
         .find("advance_block_destruction_render_ticks(world, running_ticks);")
         .expect("pump should advance block-destroy render ticks");
+    let block_destroy_stages = source
+        .find("let block_destroy_stages = block_destroy_stages_from_world(world);")
+        .expect("pump should select the highest block-destroy stage once");
+    let block_entity_crumbling = source
+        .find("apply_block_entity_crumbling(")
+        .expect("pump should annotate eligible block-entity models");
     let block_destroy_extract = source
-        .find("RendererFrameUpdate::Replace(block_destroy_overlays_from_world(")
+        .find("RendererFrameUpdate::Replace(block_destroy_overlays_from_stages(")
         .expect("pump should extract block-destroy overlays");
 
     assert!(
-        destroy_tick < block_destroy_extract,
-        "vanilla `LevelRenderer.extractBlockDestroyAnimation` reads post-client-tick block-breaking state"
+        destroy_tick < block_destroy_stages
+            && block_destroy_stages < block_entity_crumbling
+            && block_entity_crumbling < block_destroy_extract,
+        "vanilla `LevelRenderer.extractBlockDestroyAnimation` reads one post-client-tick stage projection for block and block-entity geometry"
     );
 }
 
@@ -5399,7 +5407,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         )
         .expect("pump should bind frame camera pose before particle light refresh");
     let block_destroy_extract = source
-        .find("RendererFrameUpdate::Replace(block_destroy_overlays_from_world(")
+        .find("RendererFrameUpdate::Replace(block_destroy_overlays_from_stages(")
         .expect("pump should extract block-destroy overlays before particle light refresh");
     let particle_light_refresh = source
         .find("renderer.refresh_particle_lights(")
@@ -18027,8 +18035,16 @@ fn block_destroy_overlays_include_server_progress_and_keep_highest_per_position(
         })
     );
 
-    let overlays = block_destroy_overlays_from_world(&world, &textures);
+    let stages = block_destroy_stages_from_world(&world);
+    let overlays = block_destroy_overlays_from_stages(&world, &textures, &stages);
 
+    assert_eq!(
+        stages,
+        vec![
+            (BlockPos { x: 1, y: 3, z: 4 }, 3),
+            (BlockPos { x: 2, y: 3, z: 4 }, 7)
+        ]
+    );
     assert_eq!(overlays.len(), 2);
     assert_eq!(overlays[0].pos, [1, 3, 4]);
     assert_eq!(overlays[0].uv, textures.destroy_stage_uv_rect(3).unwrap());
@@ -18077,8 +18093,10 @@ fn block_destroy_overlays_merge_local_stage_with_server_progress_per_position() 
     );
     let textures = destroy_stage_test_textures();
 
-    let overlays = block_destroy_overlays_from_world(&world, &textures);
+    let stages = block_destroy_stages_from_world(&world);
+    let overlays = block_destroy_overlays_from_stages(&world, &textures, &stages);
 
+    assert_eq!(stages, vec![(pos, 5)]);
     assert_eq!(overlays.len(), 1);
     assert_eq!(overlays[0].pos, [0, 1, 3]);
     assert_eq!(overlays[0].uv, textures.destroy_stage_uv_rect(5).unwrap());
@@ -18102,7 +18120,141 @@ fn block_destroy_overlays_skip_missing_destroy_stage_textures() {
         })
     );
 
-    assert!(block_destroy_overlays_from_world(&world, &textures).is_empty());
+    let stages = block_destroy_stages_from_world(&world);
+    assert_eq!(stages, vec![(BlockPos { x: 2, y: 3, z: 4 }, 2)]);
+    assert!(block_destroy_overlays_from_stages(&world, &textures, &stages).is_empty());
+}
+
+#[test]
+fn block_entity_crumbling_acceptance_matches_vanilla_model_renderers() {
+    let accepted = [
+        bbb_renderer::EntityModelKind::Chest {
+            texture: bbb_renderer::ChestModelTexture::Normal,
+            half: bbb_renderer::ChestModelHalf::Single,
+        },
+        bbb_renderer::EntityModelKind::Sign {
+            wood: bbb_renderer::SignModelWood::Oak,
+            attachment: bbb_renderer::SignModelAttachment::Standing,
+        },
+        bbb_renderer::EntityModelKind::Bed {
+            color: bbb_renderer::EntityDyeColor::Red,
+            part: bbb_renderer::BedModelPart::Head,
+        },
+        bbb_renderer::EntityModelKind::Bell,
+        bbb_renderer::EntityModelKind::ShulkerBox {
+            color: None,
+            facing: bbb_renderer::EntityAttachmentFace::Up,
+        },
+        bbb_renderer::EntityModelKind::Banner {
+            wall: false,
+            base_color: bbb_renderer::EntityDyeColor::White,
+            layers: [None; 16],
+        },
+        bbb_renderer::EntityModelKind::EnchantingBook,
+        bbb_renderer::EntityModelKind::LecternBook,
+        bbb_renderer::EntityModelKind::SkullBlock {
+            skull: bbb_renderer::EntityCustomHeadSkull::Skeleton,
+            attachment: bbb_renderer::SkullBlockModelAttachment::Ground,
+        },
+        bbb_renderer::EntityModelKind::Conduit {
+            part: bbb_renderer::ConduitModelPart::Shell,
+        },
+        bbb_renderer::EntityModelKind::Conduit {
+            part: bbb_renderer::ConduitModelPart::Cage,
+        },
+    ];
+    assert!(accepted
+        .into_iter()
+        .all(block_entity_model_accepts_crumbling));
+
+    let rejected = [
+        bbb_renderer::EntityModelKind::DecoratedPot {
+            back: None,
+            left: None,
+            right: None,
+            front: None,
+        },
+        bbb_renderer::EntityModelKind::EndPortalBlock {
+            kind: bbb_renderer::EndPortalModelKind::EndPortal,
+            faces: [
+                bbb_renderer::EndPortalModelFace::Down,
+                bbb_renderer::EndPortalModelFace::Up,
+            ],
+        },
+        bbb_renderer::EntityModelKind::Conduit {
+            part: bbb_renderer::ConduitModelPart::OuterWind { phase: 1 },
+        },
+        bbb_renderer::EntityModelKind::Conduit {
+            part: bbb_renderer::ConduitModelPart::InnerWind { vertical: false },
+        },
+        bbb_renderer::EntityModelKind::Conduit {
+            part: bbb_renderer::ConduitModelPart::Eye { open: true },
+        },
+    ];
+    assert!(rejected
+        .into_iter()
+        .all(|kind| !block_entity_model_accepts_crumbling(kind)));
+}
+
+#[test]
+fn block_entity_crumbling_uses_shared_highest_stage_and_clears_ineligible_models() {
+    let textures = destroy_stage_test_textures();
+    let pos = BlockPos { x: 2, y: 3, z: 4 };
+    let stages = vec![(pos, 7)];
+    let stale = Some(bbb_renderer::BlockEntityCrumbling {
+        origin: [99.0; 3],
+        uv: textures.destroy_stage_uv_rect(1).unwrap(),
+    });
+    let mut instances = vec![
+        bbb_renderer::EntityModelInstance::chest(
+            -1,
+            [2.0, 3.0, 4.0],
+            0.0,
+            bbb_renderer::ChestModelTexture::Normal,
+            bbb_renderer::ChestModelHalf::Single,
+        ),
+        bbb_renderer::EntityModelInstance::conduit(
+            -1,
+            [2.0, 3.0, 4.0],
+            bbb_renderer::ConduitModelPart::Shell,
+        ),
+        bbb_renderer::EntityModelInstance::conduit(
+            -1,
+            [2.0, 3.0, 4.0],
+            bbb_renderer::ConduitModelPart::Cage,
+        ),
+        bbb_renderer::EntityModelInstance::conduit(
+            -1,
+            [2.0, 3.0, 4.0],
+            bbb_renderer::ConduitModelPart::OuterWind { phase: 1 },
+        )
+        .with_block_entity_crumbling(stale),
+        bbb_renderer::EntityModelInstance::decorated_pot(
+            -1,
+            [2.0, 3.0, 4.0],
+            0.0,
+            None,
+            None,
+            None,
+            None,
+        )
+        .with_block_entity_crumbling(stale),
+        bbb_renderer::EntityModelInstance::bell(-1, [5.0, 6.0, 7.0])
+            .with_block_entity_crumbling(stale),
+    ];
+
+    apply_block_entity_crumbling(&mut instances, &stages, &textures);
+
+    let expected = Some(bbb_renderer::BlockEntityCrumbling {
+        origin: [2.0, 3.0, 4.0],
+        uv: textures.destroy_stage_uv_rect(7).unwrap(),
+    });
+    assert_eq!(instances[0].render_state.block_entity_crumbling, expected);
+    assert_eq!(instances[1].render_state.block_entity_crumbling, expected);
+    assert_eq!(instances[2].render_state.block_entity_crumbling, expected);
+    for instance in &instances[3..] {
+        assert_eq!(instance.render_state.block_entity_crumbling, None);
+    }
 }
 
 #[test]
