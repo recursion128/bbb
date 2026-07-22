@@ -3,7 +3,9 @@ use crate::entities::{
     vanilla_entity_metadata_baby_accessor_for_entity_type, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
-use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID;
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPES, VANILLA_MENU_TYPE_GENERIC_9X2_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
 };
@@ -1653,6 +1655,53 @@ fn merchant_offer_scroll_offset_clamps_to_visible_window() {
             .and_then(|container| container.merchant_offers.as_ref())
             .map(|offers| offers.local_scroll_offset),
         Some(0)
+    );
+}
+
+#[test]
+fn merchant_offer_replacement_retains_exact_cost_components_and_resets_local_view() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+        title: "Merchant".to_string(),
+        title_styled: Vec::new(),
+    });
+    assert!(store.apply_merchant_offers(merchant_offers(7, 8)));
+    assert!(store.set_local_merchant_selected_offer(4));
+    assert!(store.scroll_local_merchant_offers(1));
+
+    let mut replacement = merchant_offers(7, 1);
+    let components = &mut replacement.offers[0].buy_a.component_predicate.components;
+    components.added = 1;
+    components.added_type_ids = vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID];
+    components.item_model = Some("minecraft:emerald".to_string());
+    assert!(store.apply_merchant_offers(replacement));
+
+    let offers = store
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.merchant_offers.as_ref())
+        .unwrap();
+    assert_eq!(offers.local_selected_offer_index, 0);
+    assert_eq!(offers.local_scroll_offset, 0);
+    assert_eq!(
+        offers.offers[0]
+            .buy_a
+            .component_predicate
+            .components
+            .added_type_ids,
+        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID]
+    );
+    assert_eq!(
+        offers.offers[0]
+            .buy_a
+            .component_predicate
+            .components
+            .item_model
+            .as_deref(),
+        Some("minecraft:emerald")
     );
 }
 
@@ -5943,8 +5992,10 @@ fn apply_local_merchant_result_quick_move_rejects_component_predicate_cost() {
         carried_item: ProtocolItemStackSummary::empty(),
     });
     let mut cost = item_cost(42, 3);
-    cost.component_predicate.component_count = 1;
-    cost.component_predicate.component_type_ids = vec![10];
+    cost.component_predicate.components.added = 1;
+    cost.component_predicate.components.added_type_ids =
+        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID];
+    cost.component_predicate.components.item_model = Some("minecraft:emerald".to_string());
     assert!(store.apply_merchant_offers(ProtocolMerchantOffers {
         container_id: 7,
         offers: vec![ProtocolMerchantOffer {
@@ -6076,8 +6127,10 @@ fn set_local_merchant_selected_offer_keeps_component_predicate_cost_server_autho
         carried_item: ProtocolItemStackSummary::empty(),
     });
     let mut cost = item_cost(42, 1);
-    cost.component_predicate.component_count = 1;
-    cost.component_predicate.component_type_ids = vec![10];
+    cost.component_predicate.components.added = 1;
+    cost.component_predicate.components.added_type_ids =
+        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID];
+    cost.component_predicate.components.item_model = Some("minecraft:emerald".to_string());
     assert!(store.apply_merchant_offers(ProtocolMerchantOffers {
         container_id: 7,
         offers: vec![ProtocolMerchantOffer {

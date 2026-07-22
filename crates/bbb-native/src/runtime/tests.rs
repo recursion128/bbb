@@ -11,6 +11,7 @@ use bbb_pack::{
     FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,
 };
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID;
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID;
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -17538,8 +17539,13 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
 fn merchant_offer_cost_a_stack_uses_vanilla_modified_cost_count() {
     let mut world = WorldStore::new();
     world.set_default_item_max_stack_sizes(std::collections::BTreeMap::from([(42, 16)]));
+    let mut buy_a = item_cost(42, 10);
+    buy_a.component_predicate.components.added = 1;
+    buy_a.component_predicate.components.added_type_ids =
+        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID];
+    buy_a.component_predicate.components.item_model = Some("minecraft:emerald".to_string());
     let offer = bbb_world::MerchantOfferState {
-        buy_a: item_cost(42, 10),
+        buy_a,
         sell: item_stack(99, 1),
         buy_b: None,
         is_out_of_stock: false,
@@ -17551,9 +17557,16 @@ fn merchant_offer_cost_a_stack_uses_vanilla_modified_cost_count() {
         demand: 2,
     };
 
+    let stack = merchant_offer_cost_a_stack(&world, &offer);
+    assert_eq!(stack.item_id, Some(42));
+    assert_eq!(stack.count, 16);
     assert_eq!(
-        merchant_offer_cost_a_stack(&world, &offer),
-        item_stack(42, 16)
+        stack.component_patch.added_type_ids,
+        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID]
+    );
+    assert_eq!(
+        stack.component_patch.item_model.as_deref(),
+        Some("minecraft:emerald")
     );
 }
 

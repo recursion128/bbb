@@ -927,9 +927,9 @@ pub(crate) fn decode_data_component_patch_summary(
     Ok(summary)
 }
 
-pub(crate) fn decode_data_component_exact_predicate_type_ids(
+pub(crate) fn decode_data_component_exact_predicate_summary(
     decoder: &mut Decoder<'_>,
-) -> Result<Vec<i32>> {
+) -> Result<DataComponentPatchSummary> {
     let component_count = decoder.read_len()?;
     if component_count > MAX_DATA_COMPONENT_PREDICATE_ENTRIES {
         return Err(ProtocolError::PacketTooLarge(
@@ -937,17 +937,9 @@ pub(crate) fn decode_data_component_exact_predicate_type_ids(
             MAX_DATA_COMPONENT_PREDICATE_ENTRIES,
         ));
     }
-    decode_typed_data_component_list(decoder, component_count)
-}
-
-fn decode_typed_data_component_list(decoder: &mut Decoder<'_>, count: usize) -> Result<Vec<i32>> {
-    let mut type_ids = Vec::with_capacity(count);
-    for _ in 0..count {
-        let type_id = decoder.read_var_i32()?;
-        decode_data_component_value(decoder, type_id)?;
-        type_ids.push(type_id);
-    }
-    Ok(type_ids)
+    let mut summary = decode_typed_data_component_patch_summary(decoder, component_count)?;
+    summary.added = component_count;
+    Ok(summary)
 }
 
 fn decode_typed_data_component_patch_summary(
@@ -972,11 +964,6 @@ fn data_component_descriptor_or_error(
     catalog::vanilla_data_component_descriptor(type_id).ok_or_else(|| {
         ProtocolError::InvalidData(format!("unsupported data component type id {type_id}"))
     })
-}
-
-fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Result<()> {
-    let mut ignored = DataComponentPatchSummary::default();
-    data_component_descriptor_or_error(type_id)?.decode(decoder, &mut ignored)
 }
 
 fn decode_holder_registry_id(decoder: &mut Decoder<'_>) -> Result<i32> {

@@ -12352,7 +12352,7 @@ fn item_cost_stack(cost: &ItemCostSummary, count: i32) -> ItemStackSummary {
     ItemStackSummary {
         item_id: Some(cost.item_id),
         count,
-        component_patch: Default::default(),
+        component_patch: cost.component_predicate.display_patch(),
     }
 }
 

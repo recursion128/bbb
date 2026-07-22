@@ -9,9 +9,9 @@ merchant state must remain gated by the active `MerchantMenu`, and the native
 screen must consume the complete offer state through the existing item,
 tooltip, widget, and container-interaction owners.
 
-Completion means each cost retains its holder, positive count, ordered exact
+Completion means each cost retains its holder, signed VarInt count, ordered exact
 component values, and component-aware display stack; the sell stack retains
-its complete patch; malformed counts, holder ids, component ids/values, empty
+its complete patch; malformed holder ids, component ids/values, empty
 sell stacks, oversized collections, and trailing bytes fail without partial
 state; matching-container packets replace offers and merchant metadata while
 mismatched or non-merchant packets do nothing; row buttons use the vanilla

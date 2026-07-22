@@ -99,9 +99,7 @@ fn merchant_offer_supports_local_payment_autofill(offer: &MerchantOfferState) ->
 }
 
 fn merchant_item_cost_supports_local_payment_autofill(cost: &ProtocolItemCostSummary) -> bool {
-    cost.item_id >= 0
-        && cost.component_predicate.component_count == 0
-        && cost.component_predicate.component_type_ids.is_empty()
+    cost.item_id >= 0 && cost.component_predicate.is_empty()
 }
 
 fn merchant_move_payment_slot_to_player(

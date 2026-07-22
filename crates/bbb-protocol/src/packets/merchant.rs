@@ -4,7 +4,7 @@ use crate::{
     codec::{Decoder, ProtocolError, Result},
     packets::{
         data_components,
-        inventory::{self, ItemStackSummary},
+        inventory::{self, DataComponentPatchSummary, ItemStackSummary},
     },
 };
 
@@ -43,9 +43,18 @@ pub struct ItemCostSummary {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemCostComponentPredicateSummary {
-    pub component_count: usize,
     #[serde(default)]
-    pub component_type_ids: Vec<i32>,
+    pub components: DataComponentPatchSummary,
+}
+
+impl ItemCostComponentPredicateSummary {
+    pub fn is_empty(&self) -> bool {
+        self.components.added == 0 && self.components.added_type_ids.is_empty()
+    }
+
+    pub fn display_patch(&self) -> DataComponentPatchSummary {
+        self.components.clone()
+    }
 }
 
 pub(super) fn decode_merchant_offers(decoder: &mut Decoder<'_>) -> Result<MerchantOffers> {
@@ -80,17 +89,30 @@ pub(super) fn decode_merchant_offers(decoder: &mut Decoder<'_>) -> Result<Mercha
 }
 
 fn decode_merchant_offer(decoder: &mut Decoder<'_>) -> Result<MerchantOffer> {
+    let buy_a = decode_item_cost_summary(decoder)?;
+    let sell = decode_non_empty_item_stack_summary(decoder)?;
+    let buy_b = decode_optional_item_cost_summary(decoder)?;
+    let encoded_out_of_stock = decoder.read_bool()?;
+    let mut uses = decoder.read_i32()?;
+    let max_uses = decoder.read_i32()?;
+    let xp = decoder.read_i32()?;
+    let special_price_diff = decoder.read_i32()?;
+    let price_multiplier = decoder.read_f32()?;
+    let demand = decoder.read_i32()?;
+    if encoded_out_of_stock {
+        uses = max_uses;
+    }
     Ok(MerchantOffer {
-        buy_a: decode_item_cost_summary(decoder)?,
-        sell: decode_non_empty_item_stack_summary(decoder)?,
-        buy_b: decode_optional_item_cost_summary(decoder)?,
-        is_out_of_stock: decoder.read_bool()?,
-        uses: decoder.read_i32()?,
-        max_uses: decoder.read_i32()?,
-        xp: decoder.read_i32()?,
-        special_price_diff: decoder.read_i32()?,
-        price_multiplier: decoder.read_f32()?,
-        demand: decoder.read_i32()?,
+        buy_a,
+        sell,
+        buy_b,
+        is_out_of_stock: uses >= max_uses,
+        uses,
+        max_uses,
+        xp,
+        special_price_diff,
+        price_multiplier,
+        demand,
     })
 }
 
@@ -116,12 +138,8 @@ fn decode_item_cost_summary(decoder: &mut Decoder<'_>) -> Result<ItemCostSummary
 fn decode_item_cost_component_predicate_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<ItemCostComponentPredicateSummary> {
-    let component_type_ids =
-        data_components::decode_data_component_exact_predicate_type_ids(decoder)?;
-    Ok(ItemCostComponentPredicateSummary {
-        component_count: component_type_ids.len(),
-        component_type_ids,
-    })
+    let components = data_components::decode_data_component_exact_predicate_summary(decoder)?;
+    Ok(ItemCostComponentPredicateSummary { components })
 }
 
 fn decode_non_empty_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<ItemStackSummary> {
@@ -181,7 +199,7 @@ mod tests {
                     },
                     buy_b: Some(item_cost(43, 2)),
                     is_out_of_stock: true,
-                    uses: 4,
+                    uses: 12,
                     max_uses: 12,
                     xp: 8,
                     special_price_diff: -2,
@@ -212,7 +230,9 @@ mod tests {
         payload.write_var_i32(1);
         payload.write_var_i32(42);
         payload.write_var_i32(1);
+        payload.write_var_i32(2);
         payload.write_var_i32(1);
+        payload.write_var_i32(32);
         payload.write_var_i32(10);
         payload.write_string("minecraft:emerald");
         write_item_stack(&mut payload, 99, 1);
@@ -240,10 +260,67 @@ mod tests {
         assert_eq!(
             offers.offers[0].buy_a.component_predicate,
             ItemCostComponentPredicateSummary {
-                component_count: 1,
-                component_type_ids: vec![10],
+                components: DataComponentPatchSummary {
+                    added: 2,
+                    added_type_ids: vec![1, 10],
+                    max_stack_size: Some(32),
+                    item_model: Some("minecraft:emerald".to_string()),
+                    ..DataComponentPatchSummary::default()
+                },
             }
         );
+    }
+
+    #[test]
+    fn merchant_offer_normalizes_wire_stock_state_like_vanilla() {
+        let mut payload = Encoder::new();
+        write_item_cost(&mut payload, 42, 3);
+        write_item_stack(&mut payload, 99, 1);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_i32(4);
+        payload.write_i32(12);
+        payload.write_i32(8);
+        payload.write_i32(0);
+        payload.write_f32(0.05);
+        payload.write_i32(0);
+
+        let offer = decode_merchant_offer(&mut Decoder::new(&payload.into_inner())).unwrap();
+        assert_eq!(offer.uses, 12);
+        assert_eq!(offer.max_uses, 12);
+        assert!(offer.is_out_of_stock);
+
+        let mut payload = Encoder::new();
+        write_item_cost(&mut payload, 42, 3);
+        write_item_stack(&mut payload, 99, 1);
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_i32(12);
+        payload.write_i32(12);
+        payload.write_i32(8);
+        payload.write_i32(0);
+        payload.write_f32(0.05);
+        payload.write_i32(0);
+
+        let offer = decode_merchant_offer(&mut Decoder::new(&payload.into_inner())).unwrap();
+        assert_eq!(offer.uses, 12);
+        assert!(offer.is_out_of_stock);
+    }
+
+    #[test]
+    fn merchant_item_cost_rejects_oversized_component_predicates_before_values() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(42);
+        payload.write_var_i32(1);
+        payload.write_var_i32((data_components::MAX_DATA_COMPONENT_PREDICATE_ENTRIES + 1) as i32);
+
+        let error = decode_item_cost_summary(&mut Decoder::new(&payload.into_inner())).unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(actual, maximum)
+                if actual == data_components::MAX_DATA_COMPONENT_PREDICATE_ENTRIES + 1
+                    && maximum == data_components::MAX_DATA_COMPONENT_PREDICATE_ENTRIES
+        ));
     }
 
     #[test]
