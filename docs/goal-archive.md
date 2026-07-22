@@ -205,3 +205,6 @@
 - **2026-07-22（persistent Holder reference identity 全量闭环）**：38 个 named persistent
   Holder 调用点由 registry-owned resource identity 解析器统一收口；25 个客户端/同步 registry 行翻为 complete，13 个服务端专属行裁决为 not-applicable，DamageType 与 GameEvent 引用纳入同步附魔原子校验，合同见
   `docs/persistent-holder-reference-coverage-design.md`。
+- **2026-07-22（persistent Holder-or-inline 全量闭环）**：Instrument stream 保留完整 direct
+  值并可精确持久化，TestEnvironment/Instrument/SoundEvent 三个客户端行共用 registry-owned named/direct 路由；20 个 worldgen/trial/loot 服务端行裁决为 not-applicable，合同见
+  `docs/persistent-holder-or-inline-coverage-design.md`。
