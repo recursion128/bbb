@@ -1,4 +1,4 @@
-use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
+use bbb_protocol::{normalize_resource_location, NbtSummaryEntry, NbtSummaryValue};
 
 use crate::{
     FrozenRegistryAccess, RegistryPacketEntry, WorldCardinalLighting, WorldDimension, WorldSkybox,
@@ -15,8 +15,13 @@ pub const DIMENSION_TYPE_REGISTRY: &str = "minecraft:dimension_type";
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DimensionTypeClientProjection {
     pub(crate) dimension: Option<WorldDimension>,
+    pub(crate) has_fixed_time: Option<bool>,
     pub(crate) has_sky_light: Option<bool>,
     pub(crate) has_ceiling: Option<bool>,
+    pub(crate) has_ender_dragon_fight: Option<bool>,
+    pub(crate) coordinate_scale: Option<f64>,
+    pub(crate) logical_height: Option<i32>,
+    pub(crate) infiniburn_tag: Option<String>,
     pub(crate) cardinal_lighting: Option<WorldCardinalLighting>,
     pub(crate) skybox: Option<WorldSkybox>,
     pub(crate) ambient_light: Option<f32>,
@@ -42,8 +47,58 @@ pub(super) fn decode_dimension_type_client_projection(
     let NbtSummaryValue::Compound(fields) = value else {
         return Err(format!("{resource_id} <root>: expected compound"));
     };
+    let dimension = dimension_type_shape_from_fields(fields)
+        .ok_or_else(|| format!("{resource_id} <root>: invalid dimension type shape"))?;
+    let has_fixed_time = optional_bool_field(fields, "has_fixed_time", false)
+        .map_err(|error| format!("{resource_id} has_fixed_time: {error}"))?;
+    let has_sky_light = required_bool_field(fields, "has_skylight")
+        .map_err(|error| format!("{resource_id} has_skylight: {error}"))?;
+    let has_ceiling = required_bool_field(fields, "has_ceiling")
+        .map_err(|error| format!("{resource_id} has_ceiling: {error}"))?;
+    let has_ender_dragon_fight = required_bool_field(fields, "has_ender_dragon_fight")
+        .map_err(|error| format!("{resource_id} has_ender_dragon_fight: {error}"))?;
+    let coordinate_scale = required_f64_field(fields, "coordinate_scale")
+        .map_err(|error| format!("{resource_id} coordinate_scale: {error}"))?;
+    if !coordinate_scale.is_finite() || !(1.0E-5..=3.0E7).contains(&coordinate_scale) {
+        return Err(format!(
+            "{resource_id} coordinate_scale: expected finite double in range 1.0E-5..=3.0E7"
+        ));
+    }
+    let logical_height = required_i32_field(fields, "logical_height")
+        .map_err(|error| format!("{resource_id} logical_height: {error}"))?;
+    let infiniburn_tag = required_hashed_tag(fields, "infiniburn")
+        .map_err(|error| format!("{resource_id} infiniburn: {error}"))?;
+    let ambient_light = required_f32_field(fields, "ambient_light")
+        .map_err(|error| format!("{resource_id} ambient_light: {error}"))?;
+    let cardinal_lighting = match field(fields, "cardinal_light") {
+        Some(NbtSummaryValue::String(name)) => cardinal_lighting_type_from_name(name)
+            .ok_or_else(|| format!("{resource_id} cardinal_light: unknown value {name}"))?,
+        Some(_) => {
+            return Err(format!(
+                "{resource_id} cardinal_light: expected resource identifier"
+            ))
+        }
+        None => WorldCardinalLighting::Default,
+    };
+    let skybox = match field(fields, "skybox") {
+        Some(NbtSummaryValue::String(name)) => skybox_from_name(name)
+            .ok_or_else(|| format!("{resource_id} skybox: unknown value {name}"))?,
+        Some(_) => return Err(format!("{resource_id} skybox: expected string")),
+        None => WorldSkybox::Overworld,
+    };
     let mut projection = dimension_type_client_projection(value, registry_access)
         .ok_or_else(|| format!("{resource_id} <root>: invalid dimension type shape"))?;
+    projection.dimension = Some(dimension);
+    projection.has_fixed_time = Some(has_fixed_time);
+    projection.has_sky_light = Some(has_sky_light);
+    projection.has_ceiling = Some(has_ceiling);
+    projection.has_ender_dragon_fight = Some(has_ender_dragon_fight);
+    projection.coordinate_scale = Some(coordinate_scale);
+    projection.logical_height = Some(logical_height);
+    projection.infiniburn_tag = Some(infiniburn_tag);
+    projection.cardinal_lighting = Some(cardinal_lighting);
+    projection.skybox = Some(skybox);
+    projection.ambient_light = Some(ambient_light);
     if let Some(error) = projection.environment_error.take() {
         return Err(format!("{resource_id} attributes.{error}"));
     }
@@ -74,8 +129,19 @@ fn dimension_type_client_projection(
         return None;
     };
     let dimension = dimension_type_shape_from_fields(fields);
+    let has_fixed_time = match field(fields, "has_fixed_time") {
+        Some(_) => bool_field(fields, "has_fixed_time"),
+        None => Some(false),
+    };
     let has_sky_light = bool_field(fields, "has_skylight");
     let has_ceiling = bool_field(fields, "has_ceiling");
+    let has_ender_dragon_fight = bool_field(fields, "has_ender_dragon_fight");
+    let coordinate_scale = field(fields, "coordinate_scale").and_then(numeric_f64);
+    let logical_height = field(fields, "logical_height").and_then(numeric_i32);
+    let infiniburn_tag = field(fields, "infiniburn").and_then(|value| match value {
+        NbtSummaryValue::String(raw) => decode_hashed_tag(raw).ok(),
+        _ => None,
+    });
     let cardinal_lighting = match field(fields, "cardinal_light") {
         Some(NbtSummaryValue::String(name)) => cardinal_lighting_type_from_name(name),
         None => Some(WorldCardinalLighting::Default),
@@ -116,8 +182,13 @@ fn dimension_type_client_projection(
     };
     Some(DimensionTypeClientProjection {
         dimension,
+        has_fixed_time,
         has_sky_light,
         has_ceiling,
+        has_ender_dragon_fight,
+        coordinate_scale,
+        logical_height,
+        infiniburn_tag,
         cardinal_lighting,
         skybox,
         ambient_light,
@@ -182,6 +253,57 @@ fn bool_field(fields: &[NbtSummaryEntry], name: &str) -> Option<bool> {
     })
 }
 
+fn required_bool_field(fields: &[NbtSummaryEntry], name: &str) -> Result<bool, &'static str> {
+    if field(fields, name).is_none() {
+        return Err("missing required field");
+    }
+    bool_field(fields, name).ok_or("expected boolean")
+}
+
+fn optional_bool_field(
+    fields: &[NbtSummaryEntry],
+    name: &str,
+    default: bool,
+) -> Result<bool, &'static str> {
+    if field(fields, name).is_none() {
+        return Ok(default);
+    }
+    bool_field(fields, name).ok_or("expected boolean")
+}
+
+fn required_i32_field(fields: &[NbtSummaryEntry], name: &str) -> Result<i32, &'static str> {
+    field(fields, name)
+        .ok_or("missing required field")
+        .and_then(|value| numeric_i32(value).ok_or("expected integer"))
+}
+
+fn required_f32_field(fields: &[NbtSummaryEntry], name: &str) -> Result<f32, &'static str> {
+    field(fields, name)
+        .ok_or("missing required field")
+        .and_then(|value| numeric_f32(value).ok_or("expected number"))
+}
+
+fn required_f64_field(fields: &[NbtSummaryEntry], name: &str) -> Result<f64, &'static str> {
+    field(fields, name)
+        .ok_or("missing required field")
+        .and_then(|value| numeric_f64(value).ok_or("expected number"))
+}
+
+fn required_hashed_tag(fields: &[NbtSummaryEntry], name: &str) -> Result<String, String> {
+    let value = field(fields, name).ok_or_else(|| "missing required field".to_string())?;
+    let NbtSummaryValue::String(raw) = value else {
+        return Err("expected #<resource identifier> string".to_string());
+    };
+    decode_hashed_tag(raw)
+}
+
+fn decode_hashed_tag(raw: &str) -> Result<String, String> {
+    let tag = raw
+        .strip_prefix('#')
+        .ok_or_else(|| "expected #<resource identifier> string".to_string())?;
+    normalize_resource_location(tag.to_string()).map_err(|error| error.to_string())
+}
+
 fn numeric_i32(value: &NbtSummaryValue) -> Option<i32> {
     match value {
         NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
@@ -200,6 +322,18 @@ fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
         NbtSummaryValue::Long(value) => *value as f32,
         NbtSummaryValue::Float(bits) => f32::from_bits(*bits),
         NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return None,
+    })
+}
+
+fn numeric_f64(value: &NbtSummaryValue) -> Option<f64> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => f64::from(*value),
+        NbtSummaryValue::Short(value) => f64::from(*value),
+        NbtSummaryValue::Int(value) => f64::from(*value),
+        NbtSummaryValue::Long(value) => *value as f64,
+        NbtSummaryValue::Float(bits) => f64::from(f32::from_bits(*bits)),
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits),
         _ => return None,
     })
 }
@@ -228,17 +362,23 @@ mod tests {
     #[test]
     fn known_pack_value_uses_the_dimension_projection() {
         let known = super::super::element_value::decode_known_pack_element(
-            br#"{
+            br##"{
+                "has_fixed_time": true,
                 "has_skylight": true,
                 "has_ceiling": false,
+                "has_ender_dragon_fight": true,
+                "coordinate_scale": 2.5,
                 "min_y": -64,
                 "height": 384,
                 "logical_height": 384,
+                "infiniburn": "#example:forever",
                 "ambient_light": 0.25,
+                "monster_spawn_light_level": 7,
+                "monster_spawn_block_light_limit": 4,
                 "skybox": "end",
                 "cardinal_light": "nether",
                 "default_clock": "minecraft:the_end"
-            }"#,
+            }"##,
         )
         .unwrap();
         let store = crate::WorldStore::new();
@@ -246,8 +386,16 @@ mod tests {
             dimension_type_client_projection(&known.value, store.frozen_registry_access()).unwrap();
 
         assert_eq!(projection.dimension, Some(WorldDimension::default()));
+        assert_eq!(projection.has_fixed_time, Some(true));
         assert_eq!(projection.has_sky_light, Some(true));
         assert_eq!(projection.has_ceiling, Some(false));
+        assert_eq!(projection.has_ender_dragon_fight, Some(true));
+        assert_eq!(projection.coordinate_scale, Some(2.5));
+        assert_eq!(projection.logical_height, Some(384));
+        assert_eq!(
+            projection.infiniburn_tag.as_deref(),
+            Some("example:forever")
+        );
         assert_eq!(projection.ambient_light, Some(0.25));
         assert_eq!(projection.skybox, Some(WorldSkybox::End));
         assert_eq!(
@@ -258,6 +406,80 @@ mod tests {
             projection.default_clock_resource_id.as_deref(),
             Some("minecraft:the_end")
         );
+    }
+
+    #[test]
+    fn strict_projection_requires_network_scalars_and_hashed_tag_shape() {
+        let valid = super::super::element_value::decode_known_pack_element(
+            br##"{
+                "has_skylight":true,
+                "has_ceiling":false,
+                "has_ender_dragon_fight":false,
+                "coordinate_scale":1.0,
+                "min_y":-64,
+                "height":384,
+                "logical_height":384,
+                "infiniburn":"#example:burns_forever",
+                "ambient_light":0.0,
+                "monster_spawn_light_level":0,
+                "monster_spawn_block_light_limit":0
+            }"##,
+        )
+        .unwrap();
+        let store = crate::WorldStore::new();
+        let projection = decode_dimension_type_client_projection(
+            "example:valid",
+            &valid.value,
+            store.frozen_registry_access(),
+        )
+        .unwrap();
+        assert_eq!(projection.has_fixed_time, Some(false));
+        assert_eq!(
+            projection.infiniburn_tag.as_deref(),
+            Some("example:burns_forever")
+        );
+
+        for (json, expected) in [
+            (
+                br##"{
+                    "has_skylight":true,
+                    "has_ceiling":false,
+                    "has_ender_dragon_fight":false,
+                    "coordinate_scale":1.0,
+                    "min_y":-64,
+                    "height":384,
+                    "logical_height":384,
+                    "infiniburn":"example:not_hashed",
+                    "ambient_light":0.0
+                }"##
+                .as_slice(),
+                "infiniburn",
+            ),
+            (
+                br##"{
+                    "has_skylight":true,
+                    "has_ceiling":false,
+                    "has_ender_dragon_fight":false,
+                    "coordinate_scale":0.0,
+                    "min_y":-64,
+                    "height":384,
+                    "logical_height":384,
+                    "infiniburn":"#example:valid",
+                    "ambient_light":0.0
+                }"##
+                .as_slice(),
+                "coordinate_scale",
+            ),
+        ] {
+            let value = super::super::element_value::decode_known_pack_element(json).unwrap();
+            let error = decode_dimension_type_client_projection(
+                "example:invalid",
+                &value.value,
+                store.frozen_registry_access(),
+            )
+            .unwrap_err();
+            assert!(error.contains(expected), "{error}");
+        }
     }
 
     #[test]

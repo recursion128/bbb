@@ -3295,6 +3295,7 @@ fn local_player_in_nether_lava_current_uses_fast_lava_push() {
         dimension: "minecraft:the_nether".to_string(),
         dimension_type_id: 1,
         dimension_type_name: Some("minecraft:the_nether".to_string()),
+        dimension_type_properties: crate::WorldDimensionTypeProperties::default(),
         biome_zoom_seed: 0,
         default_clock_resource_id: None,
         timeline_resource_ids: Vec::new(),

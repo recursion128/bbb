@@ -87,8 +87,47 @@ fn minimal_client_variant_json(registry: &str) -> Option<&'static str> {
         "minecraft:painting_variant" => {
             Some(r#"{"width":1,"height":1,"asset_id":"example:painting"}"#)
         }
+        "minecraft:dimension_type" => Some(
+            r##"{
+                "has_skylight":true,
+                "has_ceiling":false,
+                "has_ender_dragon_fight":false,
+                "coordinate_scale":1.0,
+                "min_y":-64,
+                "height":384,
+                "logical_height":384,
+                "infiniburn":"#minecraft:infiniburn_overworld",
+                "ambient_light":0.0,
+                "monster_spawn_light_level":0,
+                "monster_spawn_block_light_limit":0
+            }"##,
+        ),
         _ => None,
     }
+}
+
+fn dimension_type_json(extra_fields: &str) -> Vec<u8> {
+    dimension_type_json_with_infiniburn("#minecraft:infiniburn_overworld", extra_fields)
+}
+
+fn dimension_type_json_with_infiniburn(infiniburn_tag: &str, extra_fields: &str) -> Vec<u8> {
+    format!(
+        r##"{{
+            "has_skylight":true,
+            "has_ceiling":false,
+            "has_ender_dragon_fight":false,
+            "coordinate_scale":1.0,
+            "min_y":-64,
+            "height":384,
+            "logical_height":384,
+            "infiniburn":"{infiniburn_tag}",
+            "ambient_light":0.0,
+            "monster_spawn_light_level":0,
+            "monster_spawn_block_light_limit":0
+            {extra_fields}
+        }}"##
+    )
+    .into_bytes()
 }
 
 fn minimal_sound_variant_nbt(registry: &str) -> Option<Vec<u8>> {
@@ -2654,6 +2693,12 @@ fn unknown_sound_variant_reference_rejects_candidate_atomically() {
 #[test]
 fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
     let mut store = WorldStore::new();
+    let stone_id = store
+        .registry_holder_id_by_resource_id("minecraft:block", "minecraft:stone")
+        .unwrap();
+    let dirt_id = store
+        .registry_holder_id_by_resource_id("minecraft:block", "minecraft:dirt")
+        .unwrap();
     store.begin_registry_configuration();
     record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.record_registry_entries(
@@ -2690,20 +2735,30 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
         )],
     );
     store.apply_update_tags(UpdateTags {
-        registries: vec![RegistryTags {
-            registry: "minecraft:timeline".to_string(),
-            tags: vec![TagNetworkPayload {
-                tag: "example:layers".to_string(),
-                entries: vec![0],
-            }],
-        }],
+        registries: vec![
+            RegistryTags {
+                registry: "minecraft:timeline".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:layers".to_string(),
+                    entries: vec![0],
+                }],
+            },
+            RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:infiniburn_overworld".to_string(),
+                    entries: vec![dirt_id, stone_id],
+                }],
+            },
+        ],
     });
     store.record_registry_entries(
         "minecraft:dimension_type",
         0,
         vec![RegistryPacketEntry::with_known_pack_data_for_test(
             "example:dimension",
-            br##"{
+            dimension_type_json(
+                r##",
                 "attributes":{
                     "minecraft:visual/cloud_height":{
                         "modifier":"multiply",
@@ -2729,8 +2784,8 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
                 },
                 "timelines":"#example:layers",
                 "default_clock":"example:clock"
-            }"##
-            .to_vec(),
+            "##,
+            ),
         )],
     );
 
@@ -2751,6 +2806,21 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
         .registries()
         .dimension_type_client_projection(0)
         .unwrap();
+    assert_eq!(dimension.has_fixed_time, Some(false));
+    assert_eq!(dimension.has_ender_dragon_fight, Some(false));
+    assert_eq!(dimension.coordinate_scale, Some(1.0));
+    assert_eq!(dimension.logical_height, Some(384));
+    assert_eq!(
+        dimension.infiniburn_tag.as_deref(),
+        Some("minecraft:infiniburn_overworld")
+    );
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag("minecraft:block", "minecraft:infiniburn_overworld")
+            .unwrap()
+            .unwrap(),
+        ["minecraft:dirt", "minecraft:stone"]
+    );
     assert_eq!(dimension.timeline_resource_ids, ["example:environment"]);
     assert_eq!(dimension.environment_attributes.cloud_height, Some(96.165));
     assert_eq!(
@@ -2781,6 +2851,7 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
         dimension: "example:dimension".to_string(),
         dimension_type_id: 0,
         dimension_type_name: Some("example:dimension".to_string()),
+        dimension_type_properties: crate::WorldDimensionTypeProperties::default(),
         biome_zoom_seed: 0,
         default_clock_resource_id: Some("example:clock".to_string()),
         timeline_resource_ids: dimension.timeline_resource_ids,
@@ -2843,13 +2914,14 @@ fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values() {
         0,
         vec![RegistryPacketEntry::with_known_pack_data_for_test(
             "example:replacement_dimension",
-            br#"{
+            dimension_type_json(
+                r#",
                 "attributes":{
                     "minecraft:visual/cloud_height":40.0,
                     "minecraft:gameplay/fast_lava":false
                 }
-            }"#
-            .to_vec(),
+            "#,
+            ),
         )],
     );
     store.finish_registry_configuration().unwrap();
@@ -2944,7 +3016,8 @@ fn unknown_environment_sound_reference_rejects_candidate_atomically() {
         0,
         vec![RegistryPacketEntry::with_known_pack_data_for_test(
             "example:invalid_dimension",
-            br#"{
+            dimension_type_json(
+                r#",
                 "attributes":{
                     "minecraft:audio/background_music":{
                         "default":{
@@ -2954,8 +3027,8 @@ fn unknown_environment_sound_reference_rejects_candidate_atomically() {
                         }
                     }
                 }
-            }"#
-            .to_vec(),
+            "#,
+            ),
         )],
     );
 
@@ -2964,6 +3037,39 @@ fn unknown_environment_sound_reference_rejects_candidate_atomically() {
     assert_eq!(error.registry, "minecraft:dimension_type");
     assert_eq!(error.validator, "DimensionType.CLIENT_PROJECTION");
     assert!(error.message.contains("invalid background music"));
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:dimension_type", 0),
+        Some("example:old_dimension")
+    );
+}
+
+#[test]
+fn malformed_dimension_hashed_tag_rejects_candidate_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_dimension")],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_dimension",
+            dimension_type_json_with_infiniburn("example:not_hashed", ""),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:dimension_type");
+    assert_eq!(error.validator, "DimensionType.CLIENT_PROJECTION");
+    assert!(error.message.contains("infiniburn"), "{error:?}");
     assert_eq!(store.registry_access_revision(), committed_revision);
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:dimension_type", 0),

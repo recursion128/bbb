@@ -1511,6 +1511,7 @@ mod tests {
             dimension: "example:dimension".to_string(),
             dimension_type_id: 0,
             dimension_type_name: Some("example:dimension_type".to_string()),
+            dimension_type_properties: crate::WorldDimensionTypeProperties::default(),
             biome_zoom_seed: 0,
             default_clock_resource_id: Some("example:clock".to_string()),
             timeline_resource_ids,

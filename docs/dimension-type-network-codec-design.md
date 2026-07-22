@@ -8,8 +8,10 @@ the exact scalar values, the block `infiniburn` tag identity, the complete
 `IntProviders.codec(0, 15)` monster-light provider, and the block-light limit in
 the same frozen typed generation as the existing dimension shape, lighting,
 environment attributes, timelines, and clock. Missing required fields,
-malformed values, invalid ranges, unknown provider types, and an unknown block
-tag must reject the candidate atomically and leave the prior revision visible.
+malformed values, invalid ranges, and unknown provider types must reject the
+candidate atomically and leave the prior revision visible. A syntactically
+valid block tag remains a `TagKey` even when the current tag set has no such
+entry, matching vanilla's non-resolving hashed codec.
 
 The active level projects the client-observable values needed by existing
 level behavior and diagnostics from the selected session holder. Completion is
@@ -57,8 +59,8 @@ Authoritative sources are the corresponding files under
 ## Serial stages and verification
 
 1. Extend the frozen dimension projection with required scalar and hashed-tag
-   validation. Resolve the tag through candidate block tags, expose applicable
-   active-level values, and prove custom order plus rollback.
+   validation. Bind tag queries to the same frozen block-tag state, expose
+   applicable active-level values, and prove custom order plus rollback.
 2. Add the complete bounded integer-provider value model and decoder, then
    retain the monster settings in the same projection. Prove every provider
    shape, nested/weighted derived bounds, range failures, and rollback.

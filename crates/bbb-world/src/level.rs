@@ -69,11 +69,46 @@ impl WorldDimension {
     }
 }
 
+/// Client-owned scalar projection of vanilla `DimensionType.NETWORK_CODEC`.
+/// Fields without a current simulation consumer remain available through the
+/// level snapshot instead of being discarded during registry publication.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorldDimensionTypeProperties {
+    #[serde(default)]
+    pub has_fixed_time: bool,
+    #[serde(default)]
+    pub has_ender_dragon_fight: bool,
+    #[serde(default = "world_dimension_coordinate_scale_default")]
+    pub coordinate_scale: f64,
+    #[serde(default)]
+    pub logical_height: i32,
+    #[serde(default)]
+    pub infiniburn_tag: Option<String>,
+}
+
+impl Default for WorldDimensionTypeProperties {
+    fn default() -> Self {
+        Self {
+            has_fixed_time: false,
+            has_ender_dragon_fight: false,
+            coordinate_scale: world_dimension_coordinate_scale_default(),
+            logical_height: 0,
+            infiniburn_tag: None,
+        }
+    }
+}
+
+const fn world_dimension_coordinate_scale_default() -> f64 {
+    1.0
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldLevelInfo {
     pub dimension: String,
     pub dimension_type_id: i32,
     pub dimension_type_name: Option<String>,
+    #[serde(default)]
+    pub dimension_type_properties: WorldDimensionTypeProperties,
     /// Vanilla passes the CommonPlayerSpawnInfo seed only to ClientLevel's
     /// BiomeManager. It is not client authority over server world generation.
     #[serde(default)]
@@ -690,6 +725,27 @@ impl WorldStore {
                     &spawn_info.dimension,
                 )
             });
+        let dimension_type_properties = WorldDimensionTypeProperties {
+            has_fixed_time: dimension_type
+                .as_ref()
+                .and_then(|projection| projection.has_fixed_time)
+                .unwrap_or(false),
+            has_ender_dragon_fight: dimension_type
+                .as_ref()
+                .and_then(|projection| projection.has_ender_dragon_fight)
+                .unwrap_or(false),
+            coordinate_scale: dimension_type
+                .as_ref()
+                .and_then(|projection| projection.coordinate_scale)
+                .unwrap_or(1.0),
+            logical_height: dimension_type
+                .as_ref()
+                .and_then(|projection| projection.logical_height)
+                .unwrap_or(dimension.height),
+            infiniburn_tag: dimension_type
+                .as_ref()
+                .and_then(|projection| projection.infiniburn_tag.clone()),
+        };
         let environment_attributes = dimension_type
             .as_ref()
             .map(|projection| projection.environment_attributes.clone())
@@ -733,6 +789,7 @@ impl WorldStore {
             dimension: spawn_info.dimension.clone(),
             dimension_type_id: spawn_info.dimension_type_id,
             dimension_type_name,
+            dimension_type_properties,
             biome_zoom_seed: spawn_info.seed,
             default_clock_resource_id,
             timeline_resource_ids,
@@ -1612,6 +1669,7 @@ mod tests {
             dimension: "minecraft:the_nether".to_string(),
             dimension_type_id: 1,
             dimension_type_name: Some("minecraft:the_nether".to_string()),
+            dimension_type_properties: WorldDimensionTypeProperties::default(),
             biome_zoom_seed: 0,
             default_clock_resource_id: None,
             timeline_resource_ids: Vec::new(),
@@ -2415,6 +2473,28 @@ mod tests {
     }
 
     #[test]
+    fn dimension_type_registry_projects_remaining_network_scalars_to_level_state() {
+        let mut store = WorldStore::new();
+        record_custom_dimension_type_registry(
+            &mut store,
+            dimension_type_nbt_with_network_scalars(),
+        );
+
+        store.apply_login(&login_packet(4, "example:custom"));
+
+        assert_eq!(
+            store.level_info().unwrap().dimension_type_properties,
+            WorldDimensionTypeProperties {
+                has_fixed_time: true,
+                has_ender_dragon_fight: true,
+                coordinate_scale: 8.0,
+                logical_height: 256,
+                infiniburn_tag: Some("example:forever".to_string()),
+            }
+        );
+    }
+
+    #[test]
     fn dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape() {
         let mut custom = WorldStore::new();
         record_custom_dimension_type_registry(
@@ -2769,6 +2849,30 @@ mod tests {
             "#305070",
         );
         payload.push(0);
+        payload.push(0);
+        payload
+    }
+
+    fn dimension_type_nbt_with_network_scalars() -> Vec<u8> {
+        let mut payload = dimension_type_nbt(
+            None,
+            Some(false),
+            Some(true),
+            Some((0, 256, 256)),
+            None,
+            Some(0.1),
+        );
+        assert_eq!(payload.pop(), Some(0));
+        payload.push(1);
+        write_nbt_string(&mut payload, "has_fixed_time");
+        payload.push(1);
+        payload.push(1);
+        write_nbt_string(&mut payload, "has_ender_dragon_fight");
+        payload.push(1);
+        payload.push(6);
+        write_nbt_string(&mut payload, "coordinate_scale");
+        payload.extend_from_slice(&8.0_f64.to_bits().to_be_bytes());
+        write_nbt_named_string(&mut payload, "infiniburn", "#example:forever");
         payload.push(0);
         payload
     }

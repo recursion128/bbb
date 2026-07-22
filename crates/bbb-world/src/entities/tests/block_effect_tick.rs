@@ -386,6 +386,7 @@ fn rain_clears_stuck_arrow_fire_at_the_arrow_tick_head() {
         dimension: "minecraft:overworld".to_string(),
         dimension_type_id: 0,
         dimension_type_name: Some("minecraft:overworld".to_string()),
+        dimension_type_properties: crate::WorldDimensionTypeProperties::default(),
         biome_zoom_seed: 0,
         default_clock_resource_id: None,
         timeline_resource_ids: Vec::new(),
