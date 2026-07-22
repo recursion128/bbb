@@ -254,6 +254,12 @@ pub struct FrozenRegistryHolderSet<'a> {
     pub entries: Vec<FrozenRegistryEntry<'a>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RegistryHolderSetIdentity {
+    Direct { resource_ids: Vec<String> },
+    Named { tag: String },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrozenRegistryHolderSetKind<'a> {
     Direct,
@@ -966,12 +972,42 @@ impl<'a> FrozenRegistryAccess<'a> {
         }
     }
 
+    pub fn holder_set_by_identity(
+        self,
+        registry: &str,
+        identity: &RegistryHolderSetIdentity,
+    ) -> Result<FrozenRegistryHolderSet<'a>, RegistryResolutionError> {
+        match identity {
+            RegistryHolderSetIdentity::Direct { resource_ids } => {
+                self.holder_set_by_resource_ids(registry, resource_ids)
+            }
+            RegistryHolderSetIdentity::Named { tag } => self.holder_set_by_tag(registry, tag),
+        }
+    }
+
     pub fn holder_ids_for_tag(self, registry: &str, tag: &str) -> Option<&'a [i32]> {
         self.registries.holder_ids_for_tag(registry, tag)
     }
 
     pub fn unresolved_holder_ids_for_tag(self, registry: &str, tag: &str) -> Option<&'a [i32]> {
         self.registries.unresolved_holder_ids_for_tag(registry, tag)
+    }
+}
+
+impl FrozenRegistryHolderSet<'_> {
+    pub fn identity(&self) -> RegistryHolderSetIdentity {
+        match self.kind {
+            FrozenRegistryHolderSetKind::Direct => RegistryHolderSetIdentity::Direct {
+                resource_ids: self
+                    .entries
+                    .iter()
+                    .map(|entry| entry.resource_id.to_string())
+                    .collect(),
+            },
+            FrozenRegistryHolderSetKind::Named { tag, .. } => RegistryHolderSetIdentity::Named {
+                tag: tag.to_string(),
+            },
+        }
     }
 }
 

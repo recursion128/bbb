@@ -61,8 +61,8 @@ pub use damage_types::{
 pub use dimension_types::DIMENSION_TYPE_REGISTRY;
 pub use element_value::{RegistryElementData, RegistryElementDecodeError, RegistryElementSource};
 pub use enchantments::{
-    EnchantmentAttributeModifier, EnchantmentTooltipDefinition, VanillaEnchantmentIdentity,
-    VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    EnchantmentAttributeModifier, EnchantmentHolderSetDefinition, EnchantmentTooltipDefinition,
+    VanillaEnchantmentIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 pub(crate) use environment_attributes::{
     decode_client_environment_attributes, validate_command_particle_fields,
@@ -99,8 +99,8 @@ pub use state::{
     FrozenRegistryAccess, FrozenRegistryEntry, FrozenRegistryHolderSet,
     FrozenRegistryHolderSetKind, FrozenRegistryMembership, PersistentHolderSetDecodeError,
     RegistryAccessRevision, RegistryContentState, RegistryEntryPayload, RegistryEntrySource,
-    RegistryPacket, RegistryPacketEntry, RegistryResolutionError, RegistrySet, RegistryTagState,
-    ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
+    RegistryHolderSetIdentity, RegistryPacket, RegistryPacketEntry, RegistryResolutionError,
+    RegistrySet, RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
 pub use store::RegistryValidationError;
 pub use timelines::{

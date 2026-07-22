@@ -286,7 +286,7 @@ fn build_registered_typed_projections(
         candidate,
         ENCHANTMENT_REGISTRY,
         "Enchantment.DIRECT_CODEC",
-        |_, data, _| Ok(materialize_enchantment_definition(&data.value)),
+        |_, data, access| materialize_enchantment_definition(&data.value, access),
     )?;
     candidate.typed.instruments = materialize_typed_registry(
         candidate,

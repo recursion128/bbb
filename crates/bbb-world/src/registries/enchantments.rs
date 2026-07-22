@@ -5,7 +5,7 @@ use bbb_protocol::{
     styled_runs_summary_text, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 
-use crate::WorldStore;
+use crate::{FrozenRegistryAccess, RegistryHolderSetIdentity, WorldStore};
 
 mod generated_26_1;
 
@@ -105,19 +105,97 @@ pub(super) struct MaterializedEnchantmentDefinition {
     tooltip: Option<EnchantmentTooltipDefinition>,
     attributes: Option<EnchantmentDefinition>,
     crossbow_charge_time: Option<EnchantmentValueEffect>,
+    holder_sets: EnchantmentHolderSetDefinition,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnchantmentHolderSetDefinition {
+    pub supported_items: RegistryHolderSetIdentity,
+    pub primary_items: Option<RegistryHolderSetIdentity>,
+    pub exclusive_enchantments: RegistryHolderSetIdentity,
 }
 
 pub(super) fn materialize_enchantment_definition(
     value: &NbtSummaryValue,
-) -> MaterializedEnchantmentDefinition {
-    MaterializedEnchantmentDefinition {
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<MaterializedEnchantmentDefinition, String> {
+    let NbtSummaryValue::Compound(fields) = value else {
+        return Err("<root>: expected compound".to_string());
+    };
+    let supported_items = nbt_field(fields, "supported_items")
+        .ok_or_else(|| "supported_items: missing required holder set".to_string())?;
+    let supported_items = registry_access
+        .persistent_holder_set_from_nbt("minecraft:item", supported_items)
+        .map_err(|error| format!("supported_items: {error}"))?
+        .identity();
+    let primary_items = nbt_field(fields, "primary_items")
+        .map(|value| {
+            registry_access
+                .persistent_holder_set_from_nbt("minecraft:item", value)
+                .map(|holder_set| holder_set.identity())
+                .map_err(|error| format!("primary_items: {error}"))
+        })
+        .transpose()?;
+    let exclusive_enchantments = match nbt_field(fields, "exclusive_set") {
+        Some(value) => registry_access
+            .persistent_holder_set_from_nbt(ENCHANTMENT_REGISTRY, value)
+            .map_err(|error| format!("exclusive_set: {error}"))?
+            .identity(),
+        None => RegistryHolderSetIdentity::Direct {
+            resource_ids: Vec::new(),
+        },
+    };
+    if let Some(effects) = nbt_field(fields, "effects") {
+        validate_enchantment_effect_holder_sets(effects, registry_access, "effects")?;
+    }
+
+    Ok(MaterializedEnchantmentDefinition {
         tooltip: decode_enchantment_tooltip_definition(value),
         attributes: decode_enchantment_definition(value),
         crossbow_charge_time: decode_crossbow_charge_time_effect(value).flatten(),
-    }
+        holder_sets: EnchantmentHolderSetDefinition {
+            supported_items,
+            primary_items,
+            exclusive_enchantments,
+        },
+    })
 }
 
 impl WorldStore {
+    pub fn synchronized_enchantment_holder_sets(
+        &self,
+        holder_id: i32,
+    ) -> Option<EnchantmentHolderSetDefinition> {
+        let entry = self.registry_entry_by_holder_id(ENCHANTMENT_REGISTRY, holder_id)?;
+        let access = self.frozen_registry_access();
+        let definition = self
+            .registries
+            .typed
+            .enchantments
+            .get(&entry.id)
+            .cloned()
+            .or_else(|| {
+                entry
+                    .element_data()
+                    .and_then(|data| materialize_enchantment_definition(&data.value, access).ok())
+            })?;
+        access
+            .holder_set_by_identity("minecraft:item", &definition.holder_sets.supported_items)
+            .ok()?;
+        if let Some(primary_items) = &definition.holder_sets.primary_items {
+            access
+                .holder_set_by_identity("minecraft:item", primary_items)
+                .ok()?;
+        }
+        access
+            .holder_set_by_identity(
+                ENCHANTMENT_REGISTRY,
+                &definition.holder_sets.exclusive_enchantments,
+            )
+            .ok()?;
+        Some(definition.holder_sets)
+    }
+
     /// Decodes synchronized enchantment tooltip definitions in network holder order.
     /// Stub and malformed elements stay as `None`; consumers may then apply a
     /// known-vanilla fallback without inventing definitions for custom keys.
@@ -212,6 +290,59 @@ impl WorldStore {
         }
         (duration_seconds.max(0.0) * 20.0).floor() as i32
     }
+}
+
+fn validate_enchantment_effect_holder_sets(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+    path: &str,
+) -> Result<(), String> {
+    match value {
+        NbtSummaryValue::Compound(fields) => {
+            let effect_type = nbt_string(nbt_field(fields, "type"));
+            let holder_set = match effect_type {
+                Some("minecraft:apply_mob_effect" | "apply_mob_effect") => {
+                    Some(("to_apply", "minecraft:mob_effect", true))
+                }
+                Some("minecraft:explode" | "explode") => {
+                    Some(("immune_blocks", "minecraft:block", false))
+                }
+                Some("minecraft:summon_entity" | "summon_entity") => {
+                    Some(("entity", "minecraft:entity_type", true))
+                }
+                _ => None,
+            };
+            if let Some((field, registry, required)) = holder_set {
+                match nbt_field(fields, field) {
+                    Some(value) => {
+                        registry_access
+                            .persistent_holder_set_from_nbt(registry, value)
+                            .map_err(|error| format!("{path}.{field}: {error}"))?;
+                    }
+                    None if required => return Err(format!("{path}.{field}: missing holder set")),
+                    None => {}
+                }
+            }
+            for entry in fields {
+                validate_enchantment_effect_holder_sets(
+                    &entry.value,
+                    registry_access,
+                    &format!("{path}.{}", entry.name),
+                )?;
+            }
+        }
+        NbtSummaryValue::List(values) => {
+            for (index, value) in values.iter().enumerate() {
+                validate_enchantment_effect_holder_sets(
+                    value,
+                    registry_access,
+                    &format!("{path}[{index}]"),
+                )?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn decode_enchantment_tooltip_definition(

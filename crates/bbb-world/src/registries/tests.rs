@@ -13,7 +13,7 @@ use std::{
 
 use crate::{
     FrozenRegistryHolderSetKind, FurnaceFuelRule, NbtPayloadSummary, RegistryElementSource,
-    RegistryEntryPayload, RegistryEntrySource,
+    RegistryEntryPayload, RegistryEntrySource, RegistryHolderSetIdentity,
 };
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 use bbb_pack::RegistryDependentItemComponentInitializer;
@@ -2141,6 +2141,7 @@ fn configuration_candidate_stores_sound_variant_and_test_environment_typed_value
             "example:candidate_enchantment",
             br#"{
                 "description":{"text":"Candidate"},
+                "supported_items":["minecraft:dirt","minecraft:stone"],
                 "max_level":2,
                 "slots":["mainhand"],
                 "effects":{}
@@ -2202,6 +2203,148 @@ fn configuration_candidate_stores_sound_variant_and_test_environment_typed_value
             .map(|definition| (definition.description.as_str(), definition.max_level)),
         Some(("Candidate", 2))
     );
+    assert_eq!(
+        store.synchronized_enchantment_holder_sets(0),
+        Some(crate::EnchantmentHolderSetDefinition {
+            supported_items: RegistryHolderSetIdentity::Direct {
+                resource_ids: vec!["minecraft:dirt".to_string(), "minecraft:stone".to_string(),],
+            },
+            primary_items: None,
+            exclusive_enchantments: RegistryHolderSetIdentity::Direct {
+                resource_ids: Vec::new(),
+            },
+        })
+    );
+}
+
+#[test]
+fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically() {
+    let mut store = WorldStore::new();
+    let stone = store
+        .registry_holder_id_by_resource_id("minecraft:item", "minecraft:stone")
+        .unwrap();
+    let dirt = store
+        .registry_holder_id_by_resource_id("minecraft:item", "minecraft:dirt")
+        .unwrap();
+    let speed = store
+        .registry_holder_id_by_resource_id("minecraft:mob_effect", "minecraft:speed")
+        .unwrap();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:enchantment",
+        0,
+        vec![
+            RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:first",
+                br##"{
+                    "supported_items":"#example:supported",
+                    "primary_items":"minecraft:stone",
+                    "exclusive_set":"#example:exclusive",
+                    "effects":{"example:test":[
+                        {"type":"minecraft:apply_mob_effect","to_apply":"#example:curable"},
+                        {"type":"minecraft:explode","immune_blocks":["minecraft:stone"]},
+                        {"type":"minecraft:summon_entity","entity":"minecraft:pig"}
+                    ]}
+                }"##
+                .to_vec(),
+            ),
+            RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:second",
+                br#"{"supported_items":"minecraft:dirt","effects":{}}"#.to_vec(),
+            ),
+        ],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![
+            RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:supported".to_string(),
+                    entries: vec![dirt, stone],
+                }],
+            },
+            RegistryTags {
+                registry: "minecraft:enchantment".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:exclusive".to_string(),
+                    entries: vec![1],
+                }],
+            },
+            RegistryTags {
+                registry: "minecraft:mob_effect".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:curable".to_string(),
+                    entries: vec![speed],
+                }],
+            },
+        ],
+    });
+    store.finish_registry_configuration().unwrap();
+
+    let expected = crate::EnchantmentHolderSetDefinition {
+        supported_items: RegistryHolderSetIdentity::Named {
+            tag: "example:supported".to_string(),
+        },
+        primary_items: Some(RegistryHolderSetIdentity::Direct {
+            resource_ids: vec!["minecraft:stone".to_string()],
+        }),
+        exclusive_enchantments: RegistryHolderSetIdentity::Named {
+            tag: "example:exclusive".to_string(),
+        },
+    };
+    assert_eq!(
+        store.synchronized_enchantment_holder_sets(0),
+        Some(expected.clone())
+    );
+    assert_eq!(
+        store.synchronized_enchantment_holder_sets(1),
+        Some(crate::EnchantmentHolderSetDefinition {
+            supported_items: RegistryHolderSetIdentity::Direct {
+                resource_ids: vec!["minecraft:dirt".to_string()],
+            },
+            primary_items: None,
+            exclusive_enchantments: RegistryHolderSetIdentity::Direct {
+                resource_ids: Vec::new(),
+            },
+        })
+    );
+
+    let committed_revision = store.registry_access_revision();
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:enchantment",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid",
+            br#"{
+                "supported_items":"minecraft:stone",
+                "effects":{"example:test":{
+                    "type":"minecraft:apply_mob_effect",
+                    "to_apply":"example:missing_effect"
+                }}
+            }"#
+            .to_vec(),
+        )],
+    );
+    let error = store.finish_registry_configuration().unwrap_err();
+    assert_eq!(error.validator, "Enchantment.DIRECT_CODEC");
+    assert!(error.message.contains("to_apply"), "{error:?}");
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.synchronized_enchantment_holder_sets(0),
+        Some(expected)
+    );
+
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: Vec::new(),
+        }],
+    });
+    assert_eq!(store.synchronized_enchantment_holder_sets(0), None);
 }
 
 #[test]
