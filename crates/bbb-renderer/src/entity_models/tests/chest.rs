@@ -258,6 +258,7 @@ fn chest_textured_mesh_bakes_three_boxes_into_the_cutout_bucket() {
         ChestModelHalf::Single,
     )
     .with_chest_openness(0.5)
+    .with_block_entity_crumbling(Some(test_block_entity_crumbling([3.0, 4.0, 5.0])))
     .with_light_coords((4_u32 << 4) | (12_u32 << 20));
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
@@ -282,4 +283,34 @@ fn chest_textured_mesh_bakes_three_boxes_into_the_cutout_bucket() {
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light));
+
+    // Vanilla's `ModelFeatureRenderer` duplicates the already-posed chest model into the
+    // crumbling consumer. The duplicate keeps world positions/normals and projects UVs from the
+    // position local to the block entity origin.
+    assert!(submit.affects_crumbling);
+    assert_eq!(meshes.crumbling.indices, meshes.cutout_cull.indices);
+    assert_eq!(meshes.crumbling.vertices.len(), 72);
+    for (source, crumbling) in meshes
+        .cutout_cull
+        .vertices
+        .iter()
+        .zip(&meshes.crumbling.vertices)
+    {
+        assert_eq!(crumbling.position, source.position);
+        assert_eq!(crumbling.normal, source.normal);
+        assert_eq!(crumbling.uv_rect_min, [0.25, 0.375]);
+        assert_eq!(crumbling.uv_rect_size, [0.125, 0.125]);
+        assert_eq!(
+            crumbling.decal_uv,
+            crate::sheeted_decal::sheeted_decal_uv(
+                [
+                    source.position[0] - 3.0,
+                    source.position[1] - 4.0,
+                    source.position[2] - 5.0,
+                ],
+                source.normal,
+                1.0,
+            )
+        );
+    }
 }

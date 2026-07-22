@@ -37,7 +37,7 @@ use super::{
         EntityModelVertex, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
         ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
     },
-    instances::EntityModelInstance,
+    instances::{BlockEntityCrumbling, EntityModelInstance},
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
         armor_layer_tint, armor_slot_texture_for_layer, default_player_skin_texture_ref,
@@ -94,7 +94,11 @@ use super::{
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
-use crate::particles::{camera_billboard_orientation, ParticleItemPickupProjectileKind};
+use crate::{
+    block_destroy::{BlockDestroyOverlayMesh, BlockDestroyVertex},
+    particles::{camera_billboard_orientation, ParticleItemPickupProjectileKind},
+    sheeted_decal::sheeted_decal_uv,
+};
 use glam::{Mat4, Quat, Vec3};
 use std::cmp::Ordering;
 
@@ -186,6 +190,7 @@ pub(super) struct EntityModelRenderSubmission {
     pub(super) outline_color: u32,
     pub(super) order: i32,
     pub(super) submit_sequence: u32,
+    pub(super) affects_crumbling: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -320,6 +325,9 @@ struct PendingSortedScrollUpload {
 }
 
 pub(super) struct EntityModelTexturedMeshes {
+    /// Posed model geometry duplicated through Vanilla's
+    /// `SheetedDecalTextureGenerator` contract for block-entity break progress.
+    pub(super) crumbling: BlockDestroyOverlayMesh,
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) cutout_cull: EntityModelTexturedMesh,
     /// Vanilla `RenderTypes.entitySolidZOffsetForward(texture)` geometry. This owns a dedicated
@@ -428,6 +436,7 @@ pub(super) struct EntityModelTexturedMeshes {
     current_submission_light: [f32; 2],
     current_submission_overlay: [f32; 2],
     current_submission_outline_color: u32,
+    current_block_entity_crumbling: Option<BlockEntityCrumbling>,
     current_force_transparent: bool,
     current_outline_only: bool,
     next_submission_index: usize,
@@ -436,6 +445,7 @@ pub(super) struct EntityModelTexturedMeshes {
 impl EntityModelTexturedMeshes {
     pub(in crate::entity_models) fn new(sort_camera_position: Option<[f32; 3]>) -> Self {
         Self {
+            crumbling: BlockDestroyOverlayMesh::new(),
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),
             solid_z_offset_forward: EntityModelTexturedMesh::new(),
@@ -492,6 +502,7 @@ impl EntityModelTexturedMeshes {
             current_submission_light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             current_submission_overlay: ENTITY_VERTEX_NO_OVERLAY,
             current_submission_outline_color: 0,
+            current_block_entity_crumbling: None,
             current_force_transparent: false,
             current_outline_only: false,
             next_submission_index: 0,
@@ -643,6 +654,7 @@ impl EntityModelTexturedMeshes {
         self.current_submission_light = instance.render_state.shader_light();
         self.current_submission_overlay = instance.render_state.overlay_coords();
         self.current_submission_outline_color = instance.render_state.outline_color;
+        self.current_block_entity_crumbling = instance.render_state.block_entity_crumbling;
         let illusioner_body_visible = instance.illusioner_body_visible_when_invisible();
         self.current_force_transparent = instance.render_state.invisible
             && !instance.render_state.invisible_to_player
@@ -1015,6 +1027,7 @@ struct EntityModelSubmissionEmit {
     outline_color: Option<u32>,
     order: i32,
     submit_sequence: u32,
+    affects_crumbling: bool,
 }
 
 impl EntityModelSubmissionEmit {
@@ -1040,6 +1053,7 @@ impl EntityModelSubmissionEmit {
             outline_color: None,
             order,
             submit_sequence,
+            affects_crumbling: render_type.affects_crumbling(),
         }
     }
 
@@ -1073,6 +1087,11 @@ impl EntityModelSubmissionEmit {
         self.light = Some(light);
         self
     }
+
+    fn with_affects_crumbling(mut self, affects_crumbling: bool) -> Self {
+        self.affects_crumbling = affects_crumbling;
+        self
+    }
 }
 
 impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
@@ -1091,6 +1110,7 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
             outline_color: submit.outline_color.unwrap_or(0),
             order: submit.order,
             submit_sequence: submit.submit_sequence,
+            affects_crumbling: submit.affects_crumbling,
         }
     }
 }
@@ -1975,10 +1995,14 @@ fn render_textured_dynamic_player_skin_submission(
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerSkinAtlasEntry),
 ) {
     let (submission, insertion_index) = meshes.record_submission_with_index(submit);
+    let current_crumbling = meshes.current_block_entity_crumbling;
     if let Some(sort_key) = meshes.sorted_upload_key(submission, insertion_index) {
         let mut mesh = EntityModelTexturedMesh::new();
         emit(&mut mesh, entry);
         fill_textured_submission_vertices(&mut mesh, 0, submission);
+        if let Some(copy) = submission_crumbling_copy(&mesh, 0, 0, submission, current_crumbling) {
+            append_crumbling_copy(&mut meshes.crumbling, copy);
+        }
         meshes
             .pending_sorted_textured_uploads
             .push(PendingSortedTexturedUpload {
@@ -1989,10 +2013,23 @@ fn render_textured_dynamic_player_skin_submission(
         return;
     }
 
-    let mesh = meshes.dynamic_player_skin_mesh_mut(submit.render_type);
-    let start = mesh.vertices.len();
-    emit(mesh, entry);
-    fill_textured_submission_vertices(mesh, start, submission);
+    let crumbling_copy = {
+        let mesh = meshes.dynamic_player_skin_mesh_mut(submit.render_type);
+        let vertex_start = mesh.vertices.len();
+        let index_start = mesh.indices.len();
+        emit(mesh, entry);
+        fill_textured_submission_vertices(mesh, vertex_start, submission);
+        submission_crumbling_copy(
+            mesh,
+            vertex_start,
+            index_start,
+            submission,
+            current_crumbling,
+        )
+    };
+    if let Some(copy) = crumbling_copy {
+        append_crumbling_copy(&mut meshes.crumbling, copy);
+    }
 }
 
 fn render_textured_dynamic_player_texture_submission(
@@ -2002,10 +2039,14 @@ fn render_textured_dynamic_player_texture_submission(
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerTextureAtlasEntry),
 ) {
     let (submission, insertion_index) = meshes.record_submission_with_index(submit);
+    let current_crumbling = meshes.current_block_entity_crumbling;
     if let Some(sort_key) = meshes.sorted_upload_key(submission, insertion_index) {
         let mut mesh = EntityModelTexturedMesh::new();
         emit(&mut mesh, entry);
         fill_textured_submission_vertices(&mut mesh, 0, submission);
+        if let Some(copy) = submission_crumbling_copy(&mesh, 0, 0, submission, current_crumbling) {
+            append_crumbling_copy(&mut meshes.crumbling, copy);
+        }
         meshes
             .pending_sorted_textured_uploads
             .push(PendingSortedTexturedUpload {
@@ -2016,10 +2057,23 @@ fn render_textured_dynamic_player_texture_submission(
         return;
     }
 
-    let mesh = meshes.dynamic_player_texture_mesh_mut(submit.render_type);
-    let start = mesh.vertices.len();
-    emit(mesh, entry);
-    fill_textured_submission_vertices(mesh, start, submission);
+    let crumbling_copy = {
+        let mesh = meshes.dynamic_player_texture_mesh_mut(submit.render_type);
+        let vertex_start = mesh.vertices.len();
+        let index_start = mesh.indices.len();
+        emit(mesh, entry);
+        fill_textured_submission_vertices(mesh, vertex_start, submission);
+        submission_crumbling_copy(
+            mesh,
+            vertex_start,
+            index_start,
+            submission,
+            current_crumbling,
+        )
+    };
+    if let Some(copy) = crumbling_copy {
+        append_crumbling_copy(&mut meshes.crumbling, copy);
+    }
 }
 
 const PAINTING_DYNAMIC_TEXTURE_FALLBACK_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -2268,6 +2322,7 @@ fn render_textured_submission(
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
     let (submission, insertion_index) = meshes.record_submission_with_index(submit);
+    let current_crumbling = meshes.current_block_entity_crumbling;
     if submit
         .dissolve_texture
         .is_some_and(|texture| entity_model_texture_atlas_entry(atlas, texture).is_none())
@@ -2298,6 +2353,11 @@ fn render_textured_submission(
             let mut scratch = EntityModelTexturedMesh::new();
             emit(&mut scratch, entry);
             fill_textured_submission_vertices(&mut scratch, 0, submission);
+            if let Some(copy) =
+                submission_crumbling_copy(&scratch, 0, 0, submission, current_crumbling)
+            {
+                append_crumbling_copy(&mut meshes.crumbling, copy);
+            }
             append_dissolve_textured_mesh(&mut meshes.dissolve, &scratch, entry.uv, mask_uv_rect);
             return;
         }
@@ -2305,6 +2365,11 @@ fn render_textured_submission(
             let mut mesh = EntityModelTexturedMesh::new();
             emit(&mut mesh, entry);
             fill_textured_submission_vertices(&mut mesh, 0, submission);
+            if let Some(copy) =
+                submission_crumbling_copy(&mesh, 0, 0, submission, current_crumbling)
+            {
+                append_crumbling_copy(&mut meshes.crumbling, copy);
+            }
             if submission_writes_outline_buffer(submission) {
                 let (vertices, indices, cutout_faces) =
                     outline_copy_from_submission(&mesh, 0, 0, 0, submission.outline_color);
@@ -2325,14 +2390,14 @@ fn render_textured_submission(
             return;
         }
 
-        let outline_copy = {
+        let (outline_copy, crumbling_copy) = {
             let mesh = meshes.mesh_mut(submit.render_type);
             let vertex_start = mesh.vertices.len();
             let index_start = mesh.indices.len();
             let face_start = mesh.cutout_faces;
             emit(mesh, entry);
             fill_textured_submission_vertices(mesh, vertex_start, submission);
-            if submission_writes_outline_buffer(submission) {
+            let outline_copy = if submission_writes_outline_buffer(submission) {
                 Some(outline_copy_from_submission(
                     mesh,
                     vertex_start,
@@ -2342,7 +2407,15 @@ fn render_textured_submission(
                 ))
             } else {
                 None
-            }
+            };
+            let crumbling_copy = submission_crumbling_copy(
+                mesh,
+                vertex_start,
+                index_start,
+                submission,
+                current_crumbling,
+            );
+            (outline_copy, crumbling_copy)
         };
         if let Some((vertices, indices, cutout_faces)) = outline_copy {
             let outline = if submission.render_type.outline_cull() {
@@ -2351,6 +2424,9 @@ fn render_textured_submission(
                 &mut meshes.outline
             };
             append_textured_outline_copy(outline, vertices, indices, cutout_faces);
+        }
+        if let Some(copy) = crumbling_copy {
+            append_crumbling_copy(&mut meshes.crumbling, copy);
         }
     }
 }
@@ -2439,6 +2515,70 @@ fn append_textured_outline_copy(
         .indices
         .extend(indices.into_iter().map(|index| index + base));
     outline.cutout_faces += cutout_faces;
+}
+
+fn crumbling_copy_from_submission(
+    mesh: &EntityModelTexturedMesh,
+    vertex_start: usize,
+    index_start: usize,
+    crumbling: BlockEntityCrumbling,
+) -> BlockDestroyOverlayMesh {
+    let uv_rect_size = [
+        crumbling.uv.max[0] - crumbling.uv.min[0],
+        crumbling.uv.max[1] - crumbling.uv.min[1],
+    ];
+    let vertices = mesh.vertices[vertex_start..]
+        .iter()
+        .map(|vertex| {
+            let local_position = [
+                vertex.position[0] - crumbling.origin[0],
+                vertex.position[1] - crumbling.origin[1],
+                vertex.position[2] - crumbling.origin[2],
+            ];
+            BlockDestroyVertex {
+                position: vertex.position,
+                normal: vertex.normal,
+                decal_uv: sheeted_decal_uv(local_position, vertex.normal, 1.0),
+                uv_rect_min: crumbling.uv.min,
+                uv_rect_size,
+            }
+        })
+        .collect();
+    let source_base = u32::try_from(vertex_start).expect("textured vertex start fits in u32");
+    let indices = mesh.indices[index_start..]
+        .iter()
+        .map(|index| {
+            debug_assert!(*index >= source_base);
+            index - source_base
+        })
+        .collect();
+    BlockDestroyOverlayMesh { vertices, indices }
+}
+
+fn append_crumbling_copy(
+    destination: &mut BlockDestroyOverlayMesh,
+    source: BlockDestroyOverlayMesh,
+) {
+    let base = u32::try_from(destination.vertices.len())
+        .expect("block-entity crumbling vertex count fits in u32");
+    destination.vertices.extend(source.vertices);
+    destination
+        .indices
+        .extend(source.indices.into_iter().map(|index| index + base));
+}
+
+fn submission_crumbling_copy(
+    mesh: &EntityModelTexturedMesh,
+    vertex_start: usize,
+    index_start: usize,
+    submission: EntityModelRenderSubmission,
+    current: Option<BlockEntityCrumbling>,
+) -> Option<BlockDestroyOverlayMesh> {
+    submission
+        .affects_crumbling
+        .then_some(current)
+        .flatten()
+        .map(|crumbling| crumbling_copy_from_submission(mesh, vertex_start, index_start, crumbling))
 }
 
 fn fill_textured_submission_vertices(
@@ -2739,6 +2879,13 @@ fn textured_layer_submission(
         transform,
         pass.order,
         pass.submit_sequence,
+    )
+    // `BannerRenderer.submitPatterns` passes the block-entity crumbling value,
+    // but `RenderTypes.bannerPattern` does not set `affectsCrumbling`. bbb uses
+    // the generic translucent bucket for that pipeline, so retain the narrower
+    // per-submission flag here.
+    .with_affects_crumbling(
+        render_type.affects_crumbling() && pass.kind != EntityModelLayerKind::BannerPattern,
     );
     if pass.render_type == EntityModelLayerRenderType::EntityCutoutDissolve {
         submit

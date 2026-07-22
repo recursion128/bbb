@@ -300,6 +300,8 @@ pub struct Renderer {
     pub(super) frame_debug_line_opaque_vertices: FrameDataBuffer,
     pub(super) frame_debug_line_translucent_vertices: FrameDataBuffer,
     pub(super) frame_entity_model_line_vertices: FrameDataBuffer,
+    pub(super) frame_block_entity_crumbling_vertices: FrameDataBuffer,
+    pub(super) frame_block_entity_crumbling_indices: FrameDataBuffer,
     pub(super) frame_item_entity_vertices: FrameDataBuffer,
     pub(super) frame_hud_vertices: FrameDataBuffer,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
@@ -390,6 +392,7 @@ pub struct Renderer {
     pub(super) cloud_texture: Option<CloudTextureData>,
     pub(super) clouds: Option<CloudGpu>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
+    pub(super) block_entity_crumbling_index_count: u32,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_water_mask_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -1593,6 +1596,12 @@ impl Renderer {
             frame_entity_model_line_vertices: FrameDataBuffer::vertex(
                 "bbb-entity-model-line-frame-vertices",
             ),
+            frame_block_entity_crumbling_vertices: FrameDataBuffer::vertex(
+                "bbb-block-entity-crumbling-frame-vertices",
+            ),
+            frame_block_entity_crumbling_indices: FrameDataBuffer::index(
+                "bbb-block-entity-crumbling-frame-indices",
+            ),
             frame_item_entity_vertices: FrameDataBuffer::vertex("bbb-item-entity-frame-vertices"),
             frame_hud_vertices: FrameDataBuffer::vertex("bbb-hud-frame-vertices"),
             weather_pipeline,
@@ -1677,6 +1686,7 @@ impl Renderer {
             cloud_texture: None,
             clouds: None,
             block_destroy_overlays: None,
+            block_entity_crumbling_index_count: 0,
             entity_model_mesh: None,
             entity_model_water_mask_mesh: None,
             entity_model_textured_mesh: None,

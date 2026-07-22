@@ -366,6 +366,28 @@ impl EntityModelLayerRenderType {
         )
     }
 
+    /// Vanilla `RenderSetup.affectsCrumbling` for the represented render type.
+    /// Per-submission exceptions such as `bannerPattern` are applied when the
+    /// layer pass is converted into submission metadata.
+    pub(in crate::entity_models) const fn affects_crumbling(self) -> bool {
+        matches!(
+            self,
+            Self::EntitySolid
+                | Self::EntitySolidZOffsetForward
+                | Self::ArmorCutoutNoCull
+                | Self::ArmorTrimCutoutNoCull
+                | Self::ArmorTrimDecalCutoutNoCull
+                | Self::ArmorTranslucent
+                | Self::EntityCutout
+                | Self::EntityCutoutDissolve
+                | Self::EntityCutoutCull
+                | Self::EntityCutoutZOffset
+                | Self::EntityTranslucent
+                | Self::EntityTranslucentEmissive
+                | Self::EntityTranslucentCullItemTarget
+        )
+    }
+
     pub(in crate::entity_models) const fn has_blending(self) -> bool {
         matches!(
             self,

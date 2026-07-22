@@ -4,6 +4,7 @@ use super::{
     CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern, FrogModelVariant,
     PigModelVariant, SheepHeadEatPose, WolfModelVariant,
 };
+use crate::terrain::TerrainUvRect;
 
 /// Vanilla `LightCoordsUtil.FULL_BRIGHT` (`block 15 | sky 15`): the
 /// `EntityRenderState`/`LivingEntityRenderState.lightCoords` default used until
@@ -12,6 +13,16 @@ pub const ENTITY_FULL_BRIGHT_LIGHT_COORDS: u32 = 15_728_880;
 /// Vanilla `Entity.getTeamColor()` fallback (`0xFFFFFF`) wrapped by
 /// `ARGB.opaque` for a glowing entity with no colored scoreboard team.
 pub const ENTITY_DEFAULT_OUTLINE_COLOR: u32 = 0xffff_ffff;
+
+/// Vanilla `ModelFeatureRenderer.CrumblingOverlay` projected for one
+/// block-entity model instance. `origin` is the block position used by the
+/// wrapper's inverse camera pose; `uv` resolves the selected destroy-stage
+/// texture in bbb's terrain atlas.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BlockEntityCrumbling {
+    pub origin: [f32; 3],
+    pub uv: TerrainUvRect,
+}
 
 /// Vanilla `DataComponents.KINETIC_WEAPON` subset needed by `SpearAnimations.thirdPersonHandUse` and
 /// `thirdPersonUseItem`. Native projects the official default spear values from `Items.java`; renderer
@@ -302,6 +313,11 @@ entity_render_state! {
     /// `Axis.YP.rotation(state.activeRotation * PI / 180)` quirk. `0.0` for
     /// every non-conduit instance.
     (with_conduit_active_rotation) conduit_active_rotation: f32 = 0.0;
+    /// Vanilla `BlockEntityRenderState.breakProgress`: the highest active
+    /// destruction stage at this block position and the block-origin pose used
+    /// by `SheetedDecalTextureGenerator`. `None` for ordinary entities and for
+    /// block-entity renderers that do not pass the overlay to their model.
+    (with_block_entity_crumbling) block_entity_crumbling: Option<BlockEntityCrumbling> = None;
     /// Vanilla `SpawnerRenderer.submitEntityInSpawner` wrapper transform:
     /// centered at `(0.5, 0.4, 0.5)`, spun around Y, dropped by `0.2`,
     /// pitched by `-30` degrees, and scaled by `0.53125/maxLength`. `None`
@@ -3048,6 +3064,7 @@ mod tests {
                 book_float_y: 0.0,
                 conduit_anim_time: 0.0,
                 conduit_active_rotation: 0.0,
+                block_entity_crumbling: None,
                 spawner_display: None,
                 trident_foil: false,
                 fishing_line_origin_offset: None,

@@ -1311,35 +1311,74 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
+        let has_block_overlays = self
+            .block_destroy_overlays
+            .as_ref()
+            .is_some_and(|overlays| overlays.index_count > 0);
+        if !has_block_overlays && self.block_entity_crumbling_index_count == 0 {
+            return;
+        }
         let main_view = &self.main_target.view;
-        if let Some(overlays) = &self.block_destroy_overlays {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("bbb-native-block-destroy-overlay-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: main_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("bbb-native-block-destroy-overlay-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: main_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
                 }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.block_destroy_pipeline);
-            stats.pipeline_switches += 1;
-            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            pass.set_vertex_buffer(0, overlays.vertex_buffer.slice(..));
-            pass.set_index_buffer(overlays.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.block_destroy_pipeline);
+        stats.pipeline_switches += 1;
+        pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+        if let Some(overlays) = self
+            .block_destroy_overlays
+            .as_ref()
+            .filter(|overlays| overlays.index_count > 0)
+        {
+            pass.set_vertex_buffer(
+                0,
+                overlays
+                    .vertex_buffer
+                    .as_ref()
+                    .expect("positive block overlay count requires a vertex buffer")
+                    .slice(..),
+            );
+            pass.set_index_buffer(
+                overlays
+                    .index_buffer
+                    .as_ref()
+                    .expect("positive block overlay count requires an index buffer")
+                    .slice(..),
+                wgpu::IndexFormat::Uint32,
+            );
             pass.draw_indexed(0..overlays.index_count, 0, 0..1);
+            stats.block_destroy_overlay_draw_calls += 1;
+        }
+        if self.block_entity_crumbling_index_count > 0 {
+            let vertices = self
+                .frame_block_entity_crumbling_vertices
+                .buffer()
+                .expect("positive block-entity crumbling count requires uploaded vertices");
+            let indices = self
+                .frame_block_entity_crumbling_indices
+                .buffer()
+                .expect("positive block-entity crumbling count requires uploaded indices");
+            pass.set_vertex_buffer(0, vertices.slice(..));
+            pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..self.block_entity_crumbling_index_count, 0, 0..1);
             stats.block_destroy_overlay_draw_calls += 1;
         }
     }
@@ -5372,6 +5411,13 @@ mod tests {
         assert!(
             source[block_destroy..translucent_target].contains("view: &self.depth.view"),
             "block destroy overlays depth-test against the renderer-owned main depth target"
+        );
+        let crumbling_pass = &source[block_destroy..translucent_target];
+        assert!(
+            crumbling_pass.contains("frame_block_entity_crumbling_vertices")
+                && crumbling_pass.contains("frame_block_entity_crumbling_indices")
+                && crumbling_pass.contains("self.block_entity_crumbling_index_count"),
+            "posed block-entity crumbling geometry shares the vanilla translucent-feature pass"
         );
     }
 

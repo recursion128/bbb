@@ -261,6 +261,7 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     });
     let instance = banner_instance([3.0, 4.0, 5.0], 0.0, false, EntityDyeColor::Lime, layers)
         .with_banner_flag_phase(0.25)
+        .with_block_entity_crumbling(Some(test_block_entity_crumbling([3.0, 4.0, 5.0])))
         .with_light_coords((4_u32 << 4) | (12_u32 << 20));
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     // Four submissions: frame + flag over `banner_base`, then the base-color mask and the one
@@ -299,6 +300,21 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     assert_eq!(meshes.translucent.vertices.len(), 48);
     assert_eq!(meshes.translucent.indices.len(), 72);
     assert!(meshes.cutout.vertices.is_empty());
+    // `BannerRenderer` passes the overlay to frame + flag, but vanilla's dedicated
+    // `bannerPattern` render type does not affect crumbling. Pattern geometry must therefore not
+    // be duplicated even though its local bucket maps to generic entity translucent rendering.
+    assert!(meshes.submissions[0].affects_crumbling);
+    assert!(meshes.submissions[1].affects_crumbling);
+    assert!(!meshes.submissions[2].affects_crumbling);
+    assert!(!meshes.submissions[3].affects_crumbling);
+    assert_eq!(
+        meshes.crumbling.indices.len(),
+        meshes.cutout_cull.indices.len()
+    );
+    assert_eq!(
+        meshes.crumbling.vertices.len(),
+        meshes.cutout_cull.vertices.len()
+    );
 }
 
 #[test]

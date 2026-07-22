@@ -2646,6 +2646,23 @@ impl Renderer {
                 self.camera_sort_position(),
                 self.camera_pose,
             );
+            let crumbling_vertices_uploaded = self.frame_block_entity_crumbling_vertices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&meshes.crumbling.vertices),
+            );
+            let crumbling_indices_uploaded = self.frame_block_entity_crumbling_indices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&meshes.crumbling.indices),
+            );
+            self.block_entity_crumbling_index_count =
+                if crumbling_vertices_uploaded && crumbling_indices_uploaded {
+                    u32::try_from(meshes.crumbling.indices.len())
+                        .expect("block-entity crumbling index count fits in u32")
+                } else {
+                    0
+                };
             self.entity_model_sorted_main_translucent_draws =
                 meshes.sorted_main_translucent_draws.clone();
             self.entity_model_sorted_translucent_draws = meshes.sorted_translucent_draws.clone();
@@ -2886,6 +2903,7 @@ impl Renderer {
                     "bbb-entity-model-armor-entity-glint",
                 );
         } else {
+            self.block_entity_crumbling_index_count = 0;
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
             self.entity_model_dissolve_mesh = None;

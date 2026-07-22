@@ -107,6 +107,7 @@ fn skull_block_textured_mesh_submits_no_overlay_skull_model() {
         SkullBlockModelAttachment::Ground,
         0.0,
     )
+    .with_block_entity_crumbling(Some(test_block_entity_crumbling([2.0, 3.0, 4.0])))
     .with_light_coords((5_u32 << 4) | (11_u32 << 20));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
@@ -120,6 +121,9 @@ fn skull_block_textured_mesh_submits_no_overlay_skull_model() {
     assert_eq!(submission.overlay, [0.0, 10.0]);
     assert_eq!(submission.light, instance.render_state.shader_light());
     assert_eq!(meshes.cutout_z_offset.vertices.len(), 24);
+    assert!(submission.affects_crumbling);
+    assert_eq!(meshes.crumbling.vertices.len(), 24);
+    assert_eq!(meshes.crumbling.indices, meshes.cutout_z_offset.indices);
     assert!(meshes.translucent.vertices.is_empty());
 }
 

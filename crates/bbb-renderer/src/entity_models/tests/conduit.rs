@@ -164,8 +164,12 @@ fn conduit_textured_mesh_submits_shell_and_active_parts() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let instances = [
-        conduit_instance(ConduitModelPart::Shell).with_light_coords((4_u32 << 4) | (12_u32 << 20)),
-        conduit_instance(ConduitModelPart::Cage).with_light_coords((5_u32 << 4) | (11_u32 << 20)),
+        conduit_instance(ConduitModelPart::Shell)
+            .with_block_entity_crumbling(Some(test_block_entity_crumbling([2.0, 3.0, 4.0])))
+            .with_light_coords((4_u32 << 4) | (12_u32 << 20)),
+        conduit_instance(ConduitModelPart::Cage)
+            .with_block_entity_crumbling(Some(test_block_entity_crumbling([2.0, 3.0, 4.0])))
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20)),
         conduit_instance(ConduitModelPart::OuterWind { phase: 1 }),
         conduit_instance(ConduitModelPart::InnerWind { vertical: false }),
         conduit_instance(ConduitModelPart::Eye { open: true }),
@@ -197,4 +201,20 @@ fn conduit_textured_mesh_submits_shell_and_active_parts() {
     // Shell uses culling `entitySolid`; the active parts use non-culling `entityCutout`.
     assert_eq!(meshes.cutout_cull.cutout_faces, 6);
     assert_eq!(meshes.cutout.cutout_faces, 24);
+    // Vanilla attaches the overlay only to shell and cage submissions. Wind and eye use otherwise
+    // eligible entity cutout layers, so this proves renderer extraction state (not bucket type)
+    // selects the conduit geometry that crumbles.
+    let eligible = [
+        conduit_instance(ConduitModelPart::Shell),
+        conduit_instance(ConduitModelPart::Cage),
+    ];
+    let eligible_meshes = entity_model_textured_meshes(&eligible, &atlas);
+    assert_eq!(
+        meshes.crumbling.indices.len(),
+        eligible_meshes.cutout_cull.indices.len() + eligible_meshes.cutout.indices.len()
+    );
+    assert_eq!(
+        meshes.crumbling.vertices.len(),
+        eligible_meshes.cutout_cull.vertices.len() + eligible_meshes.cutout.vertices.len()
+    );
 }

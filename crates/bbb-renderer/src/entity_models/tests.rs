@@ -1,5 +1,16 @@
 use super::*;
 use crate::entity_models::gpu::build_entity_model_texture_atlas_with_height_limit;
+use crate::terrain::TerrainUvRect;
+
+fn test_block_entity_crumbling(origin: [f32; 3]) -> BlockEntityCrumbling {
+    BlockEntityCrumbling {
+        origin,
+        uv: TerrainUvRect {
+            min: [0.25, 0.375],
+            max: [0.375, 0.5],
+        },
+    }
+}
 
 mod allay;
 mod armadillo;
@@ -400,6 +411,27 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
         assert_eq!(render_type.surface_cull(), surface_cull);
         assert_eq!(render_type.outline_cull(), surface_cull);
         assert_eq!(render_type.has_blending(), has_blending);
+        assert_eq!(
+            render_type.affects_crumbling(),
+            matches!(
+                render_type,
+                EntityModelLayerRenderType::EntitySolid
+                    | EntityModelLayerRenderType::EntitySolidZOffsetForward
+                    | EntityModelLayerRenderType::ArmorCutoutNoCull
+                    | EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+                    | EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+                    | EntityModelLayerRenderType::ArmorTranslucent
+                    | EntityModelLayerRenderType::EntityCutout
+                    | EntityModelLayerRenderType::EntityCutoutDissolve
+                    | EntityModelLayerRenderType::EntityCutoutCull
+                    | EntityModelLayerRenderType::EntityCutoutZOffset
+                    | EntityModelLayerRenderType::EntityTranslucent
+                    | EntityModelLayerRenderType::EntityTranslucentEmissive
+                    | EntityModelLayerRenderType::EntityTranslucentCullItemTarget
+            ),
+            "{} crumbling classification",
+            render_type.vanilla_name()
+        );
     }
 }
 

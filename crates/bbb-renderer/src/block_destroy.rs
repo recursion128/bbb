@@ -131,8 +131,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
 pub(super) struct BlockDestroyOverlaysGpu {
     pub(super) overlays: Vec<BlockDestroyOverlay>,
-    pub(super) vertex_buffer: wgpu::Buffer,
-    pub(super) index_buffer: wgpu::Buffer,
+    pub(super) vertex_buffer: Option<wgpu::Buffer>,
+    pub(super) index_buffer: Option<wgpu::Buffer>,
     pub(super) index_count: u32,
 }
 
@@ -141,15 +141,19 @@ pub(super) fn create_block_destroy_overlays_gpu(
     overlays: Vec<BlockDestroyOverlay>,
 ) -> BlockDestroyOverlaysGpu {
     let mesh = block_destroy_overlays_mesh(&overlays);
-    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-block-destroy-overlay-vertices"),
-        contents: bytemuck::cast_slice(&mesh.vertices),
-        usage: wgpu::BufferUsages::VERTEX,
+    let vertex_buffer = (!mesh.vertices.is_empty()).then(|| {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bbb-block-destroy-overlay-vertices"),
+            contents: bytemuck::cast_slice(&mesh.vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        })
     });
-    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-block-destroy-overlay-indices"),
-        contents: bytemuck::cast_slice(&mesh.indices),
-        usage: wgpu::BufferUsages::INDEX,
+    let index_buffer = (!mesh.indices.is_empty()).then(|| {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bbb-block-destroy-overlay-indices"),
+            contents: bytemuck::cast_slice(&mesh.indices),
+            usage: wgpu::BufferUsages::INDEX,
+        })
     });
     BlockDestroyOverlaysGpu {
         overlays,
@@ -202,13 +206,23 @@ pub(super) struct BlockDestroyOverlayMesh {
     pub(super) indices: Vec<u32>,
 }
 
-fn block_destroy_overlays_mesh(overlays: &[BlockDestroyOverlay]) -> BlockDestroyOverlayMesh {
-    let mut vertices = Vec::with_capacity(overlays.len() * 24);
-    let mut indices = Vec::with_capacity(overlays.len() * 36);
-    for overlay in overlays {
-        emit_block_destroy_overlay(&mut vertices, &mut indices, overlay);
+impl BlockDestroyOverlayMesh {
+    pub(super) fn new() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+        }
     }
-    BlockDestroyOverlayMesh { vertices, indices }
+}
+
+fn block_destroy_overlays_mesh(overlays: &[BlockDestroyOverlay]) -> BlockDestroyOverlayMesh {
+    let mut mesh = BlockDestroyOverlayMesh::new();
+    mesh.vertices.reserve(overlays.len() * 24);
+    mesh.indices.reserve(overlays.len() * 36);
+    for overlay in overlays {
+        emit_block_destroy_overlay(&mut mesh.vertices, &mut mesh.indices, overlay);
+    }
+    mesh
 }
 
 #[cfg(test)]
