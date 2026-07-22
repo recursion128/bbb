@@ -107,6 +107,10 @@
 ^crates/bbb-world/src/chunks/.*[.]rs$	fallback
 ^crates/bbb-world/src/(level|terrain|sign_blocks|banner_blocks)[.]rs$	fallback
 ^crates/bbb-world/src/play_apply[.]rs$	fallback
+# Jigsaw block-entity inline tests name a local `fallback` value solely to
+# assert Vanilla codec defaults for wrong-typed optional fields. These exact
+# test lines do not admit a production renderer or canonical-state fallback.
+^crates/bbb-world/src/jigsaw_blocks[.]rs$	fn decodes_jigsaw_fields_codec_fallbacks_and_orientation_default_joint[(][)]|let fallback = decode_jigsaw_block_entity_data|^[[:space:]]*fallback,$
 # Protocol enum/component fallbacks are wire/canonical compatibility behavior.
 ^crates/bbb-protocol/src/.*[.]rs$	fallback
 
