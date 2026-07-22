@@ -2989,7 +2989,7 @@ mod tests {
     }
 
     #[test]
-    fn play_set_entity_data_keeps_schema_and_family_consumers_open() {
+    fn play_set_entity_data_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2998,14 +2998,22 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_ENTITY_DATA"
             })
             .expect("play set entity data coverage row");
-        let complete: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["decode"].evidence.iter().any(|evidence| {
+            evidence.contains("generated_serializer_catalog_has_one_decoder_route_each")
+        }));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Complete).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(complete, BTreeSet::from(["ownership"]));
+            .any(|evidence| evidence.contains("bind_entity_data_registry_references")));
+        for dimension in ["runtime_side_effect", "tests"] {
+            assert!(entry.coverage[dimension].evidence.iter().any(|evidence| {
+                evidence.contains("test_fixed_entity_matrix_has_no_partial_or_deferred_cells")
+            }));
+        }
     }
 
     #[test]

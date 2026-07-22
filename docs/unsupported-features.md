@@ -84,15 +84,6 @@ Owner: `bbb-protocol`
   decode paths (component trees, SNBT, holder sets) the way the dialog
   semantic-depth budget test pins its depth-64 reference walk; a depth
   constant alone does not bound stack use across build profiles.
-- Close the remaining SetEntityData family behavior through the entity matrix:
-  subclass callbacks, animation/effect ordering, and family-specific renderer,
-  audio, particle, save, and debug consumers remain the proof boundary. The
-  shared value foundation now retains exact Component NBT/styled/plain state,
-  uses the inventory/equipment ItemStack component decoder, and binds metadata
-  holders to value-local session resource/source/revision identity before
-  canonical mutation. That foundation does not mark any still-partial family
-  cell complete, nor does it close the separate added-value ItemStack gaps
-  tracked under Inventory.
 - Then cover the remaining play, movement, inventory, chat and interaction
   families end to end.
 - Complete the remaining command-completion fidelity for nested selector option

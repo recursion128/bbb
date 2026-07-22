@@ -628,9 +628,10 @@ registry revision before mutating `EntityMetadata`. The identity lives inside
 the metadata value rather than in a side table. Renderer, audio, debug, and
 control therefore cannot reinterpret an old holder ordinal against a newer
 session, and a retained publication keeps the complete old value even after
-reload, removal, or protocol-id reuse. This value boundary does not imply that
-every entity family's callbacks or presentation are complete; those remain in
-the entity coverage matrix.
+reload, removal, or protocol-id reuse. Renderer, audio, particle, save, debug,
+and control consumers stay mechanically covered by the fixed entity coverage
+matrix; a new entity or consumer category must reopen that generated proof
+boundary.
 
 ### Component Ownership
 
