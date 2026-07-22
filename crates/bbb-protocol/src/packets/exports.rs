@@ -21,6 +21,7 @@ pub use super::player_info::*;
 pub use super::scoreboard::*;
 pub use super::server_presentation::*;
 pub use super::serverbound::*;
+pub use super::structure_blocks::*;
 pub use super::tags::*;
 pub use super::test_instance_blocks::*;
 pub use super::waypoints::*;

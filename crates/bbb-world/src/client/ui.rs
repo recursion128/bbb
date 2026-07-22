@@ -31,6 +31,10 @@ pub struct ClientUiState {
     #[serde(default)]
     pub command_block_editor_open_count: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_structure_block_editor: Option<crate::StructureBlockEditorState>,
+    #[serde(default)]
+    pub structure_block_editor_open_count: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_test_instance_block_editor: Option<crate::TestInstanceBlockEditorState>,
     #[serde(default)]
     pub test_instance_block_editor_open_count: usize,
@@ -2898,6 +2902,7 @@ mod tests {
                 end_gateway: None,
                 spawner: None,
                 command_block: None,
+                structure_block: None,
                 test_instance_block: None,
                 note_block_sound: None,
             }],

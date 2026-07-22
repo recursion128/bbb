@@ -1174,6 +1174,7 @@ fn insert_sign_text(world: &mut WorldStore, pos: BlockPos, front: [&str; 4], bac
                 is_waxed: false,
             }),
             command_block: None,
+            structure_block: None,
             test_instance_block: None,
             vault_shared_data: None,
             decorated_pot_sherds: None,
@@ -1230,6 +1231,7 @@ fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
             command: command.to_string(),
             ..CommandBlockEntityDataState::default()
         }),
+        structure_block: None,
         test_instance_block: None,
         note_block_sound: None,
     };
@@ -1284,6 +1286,7 @@ fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
         end_gateway: None,
         spawner: None,
         command_block: None,
+        structure_block: None,
         test_instance_block: Some(TestInstanceBlockEntityDataState {
             test: Some("example:initial".to_string()),
             size: TestInstanceBlockSizeState { x: 3, y: 4, z: 5 },

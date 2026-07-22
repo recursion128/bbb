@@ -66,10 +66,11 @@ The block entity NBT uses `name`, `author`, `metadata`, `posX/Y/Z`,
 `integrity`, and long `seed`. Missing values use the Vanilla constructor/load
 defaults: empty strings, offset `(0,1,0)`, zero size, NONE mirror/rotation,
 DATA mode, ignore entities true, strict/powered/show-air false,
-show-bounding-box true, integrity 1, and seed 0. Malformed present typed fields
-reject the update atomically. The block state's `mode` property and the typed
-NBT mode must identify the same structure-block family; server updates remain
-the canonical refresh.
+show-bounding-box true, integrity 1, and seed 0. A malformed NBT root rejects
+the update atomically; individual absent or wrongly typed fields follow
+Vanilla `ValueInput.get*Or` / Codec `orElse` fallback behavior. The block
+state's `mode` property and the typed NBT mode identify the same
+structure-block family; server updates remain the canonical refresh.
 
 `StructureBlockEntity.usedBy` opens locally only for
 `Player.canUseGameMasterBlocks`, while the ordinary use still reaches the

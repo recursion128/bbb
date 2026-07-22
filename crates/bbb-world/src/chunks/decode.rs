@@ -183,6 +183,15 @@ fn decode_block_entities(
         } else {
             None
         };
+        let structure_block = if block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID
+        {
+            Some(crate::structure_blocks::decode_structure_block_entity_data(
+                &raw_nbt,
+            )?)
+        } else {
+            None
+        };
         let test_instance_block = if block_entity_type_id
             == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
         {
@@ -211,6 +220,7 @@ fn decode_block_entities(
             end_gateway,
             spawner,
             command_block,
+            structure_block,
             test_instance_block,
             note_block_sound,
         });

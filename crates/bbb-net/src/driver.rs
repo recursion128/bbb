@@ -26,8 +26,9 @@ pub(crate) use commands::{
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
     send_set_beacon, send_set_command_block, send_set_creative_mode_slot,
-    send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
-    send_teleport_to_entity, send_test_instance_block_action, send_use_item, send_use_item_on,
+    send_set_held_slot_command, send_set_structure_block, send_sign_update, send_spectate_entity,
+    send_swing_command, send_teleport_to_entity, send_test_instance_block_action, send_use_item,
+    send_use_item_on,
 };
 use commands::{
     send_client_tick_end, send_player_loaded, send_player_move_command,
@@ -253,6 +254,9 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::SetCommandBlock(packet)) => {
                         send_set_command_block(conn, packet).await?;
                     }
+                    Some(NetCommand::SetStructureBlock(packet)) => {
+                        send_set_structure_block(conn, packet).await?;
+                    }
                     Some(NetCommand::TestInstanceBlockAction(packet)) => {
                         send_test_instance_block_action(conn, packet).await?;
                     }
@@ -370,6 +374,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::SelectTrade(_)) => {}
                     Some(NetCommand::SetBeacon(_)) => {}
                     Some(NetCommand::SetCommandBlock(_)) => {}
+                    Some(NetCommand::SetStructureBlock(_)) => {}
                     Some(NetCommand::TestInstanceBlockAction(_)) => {}
                     Some(NetCommand::SetCreativeModeSlot(_)) => {}
                     Some(NetCommand::SignUpdate(_)) => {}
@@ -420,9 +425,11 @@ mod tests {
             RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
             RecipeDisplayId, RenameItem, ResourcePackResponseAction, SeenAdvancements,
             SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
-            SetCommandBlock, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity,
-            TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
-            UseItem, UseItemOn, Vec3d, Vec3i,
+            SetCommandBlock, SetCreativeModeSlot, SetStructureBlock, SignUpdate, SpectateEntity,
+            StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+            StructureBlockUpdateKind, TeleportToEntity, TestInstanceBlockAction,
+            TestInstanceBlockActionKind, TestInstanceBlockRotation, UseItem, UseItemOn, Vec3d,
+            Vec3i,
         },
     };
     use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
@@ -1363,6 +1370,43 @@ mod tests {
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert_eq!(decoder.read_u8().unwrap(), 0b010);
         assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_structure_block_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetStructureBlock(SetStructureBlock {
+            pos: BlockPos { x: 1, y: 2, z: 3 },
+            update: StructureBlockUpdateKind::ScanArea,
+            mode: StructureBlockMode::Save,
+            name: "example:test".to_string(),
+            offset: BlockPos { x: 0, y: 1, z: 0 },
+            size: Vec3i { x: 2, y: 3, z: 4 },
+            mirror: StructureBlockMirror::None,
+            rotation: StructureBlockRotation::Clockwise90,
+            data: String::new(),
+            ignore_entities: false,
+            strict: false,
+            show_air: true,
+            show_bounding_box: false,
+            integrity: 1.0,
+            seed: 0,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set structure block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_STRUCTURE_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_string(128).unwrap(), "example:test");
     }
 
     #[tokio::test]

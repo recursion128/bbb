@@ -24,6 +24,7 @@ mod profile_textures;
 pub mod scoreboard;
 pub mod server_presentation;
 pub mod serverbound;
+pub mod structure_blocks;
 pub mod tags;
 pub mod test_instance_blocks;
 pub mod waypoints;

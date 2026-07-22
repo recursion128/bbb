@@ -38,6 +38,7 @@ mod sign_blocks;
 mod skull_blocks;
 mod spawner_blocks;
 mod store;
+mod structure_blocks;
 mod terrain;
 mod terrain_state;
 mod test_instance_blocks;
