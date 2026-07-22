@@ -26,6 +26,7 @@ mod resource_reload;
 mod screen_blur;
 mod screenshot;
 mod selection;
+mod sheeted_decal;
 mod sky;
 mod transparency;
 mod weather;

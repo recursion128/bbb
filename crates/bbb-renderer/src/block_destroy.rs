@@ -4,9 +4,10 @@ use wgpu::util::DeviceExt;
 use crate::{
     gpu::DEPTH_FORMAT,
     pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
+    sheeted_decal::sheeted_decal_uv,
     terrain::{
         mesh::geometry::{box_face_corners, CROSS_FACES, FACES},
-        TerrainFace, TerrainRenderShape, TerrainTint, TerrainUvRect, TerrainVertex,
+        TerrainRenderShape, TerrainUvRect,
     },
 };
 
@@ -22,7 +23,7 @@ pub struct BlockDestroyOverlay {
     pub shape: TerrainRenderShape,
 }
 
-const BLOCK_DESTROY_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
+const BLOCK_DESTROY_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x2];
 const BLOCK_DESTROY_FACE_OFFSET: f32 = 0.003;
 const BLOCK_DESTROY_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const BLOCK_DESTROY_DEPTH_WRITE_ENABLED: bool = false;
@@ -72,19 +73,18 @@ var terrain_sampler: sampler;
 struct VertexIn {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) uv: vec2<f32>,
-    @location(3) light: vec2<f32>,
-    @location(4) tint: vec3<f32>,
-    @location(5) shade: f32,
-    @location(6) ambient_occlusion: f32,
-    @location(7) block_state_id: i32,
+    @location(2) decal_uv: vec2<f32>,
+    @location(3) uv_rect_min: vec2<f32>,
+    @location(4) uv_rect_size: vec2<f32>,
 };
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-    @location(1) spherical_distance: f32,
-    @location(2) cylindrical_distance: f32,
+    @location(0) decal_uv: vec2<f32>,
+    @location(1) uv_rect_min: vec2<f32>,
+    @location(2) uv_rect_size: vec2<f32>,
+    @location(3) spherical_distance: f32,
+    @location(4) cylindrical_distance: f32,
 };
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -109,7 +109,9 @@ fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f3
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
-    out.uv = input.uv;
+    out.decal_uv = input.decal_uv;
+    out.uv_rect_min = input.uv_rect_min;
+    out.uv_rect_size = input.uv_rect_size;
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -118,7 +120,8 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let color = textureSample(terrain_atlas, terrain_sampler, input.uv);
+    let atlas_uv = input.uv_rect_min + fract(input.decal_uv) * input.uv_rect_size;
+    let color = textureSample(terrain_atlas, terrain_sampler, atlas_uv);
     if color.a < 0.1 {
         discard;
     }
@@ -181,9 +184,22 @@ pub(super) fn create_block_destroy_pipeline(
         .build()
 }
 
-struct BlockDestroyOverlayMesh {
-    vertices: Vec<TerrainVertex>,
-    indices: Vec<u32>,
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(super) struct BlockDestroyVertex {
+    pub(super) position: [f32; 3],
+    pub(super) normal: [f32; 3],
+    /// Raw `SheetedDecalTextureGenerator` coordinates. They intentionally remain
+    /// unwrapped until the fragment shader so repeated model spans interpolate
+    /// across every destroy-texture tile instead of collapsing integer edges.
+    pub(super) decal_uv: [f32; 2],
+    pub(super) uv_rect_min: [f32; 2],
+    pub(super) uv_rect_size: [f32; 2],
+}
+
+pub(super) struct BlockDestroyOverlayMesh {
+    pub(super) vertices: Vec<BlockDestroyVertex>,
+    pub(super) indices: Vec<u32>,
 }
 
 fn block_destroy_overlays_mesh(overlays: &[BlockDestroyOverlay]) -> BlockDestroyOverlayMesh {
@@ -204,16 +220,14 @@ fn block_destroy_overlay_mesh(overlay: BlockDestroyOverlay) -> BlockDestroyOverl
 }
 
 fn emit_block_destroy_overlay(
-    vertices: &mut Vec<TerrainVertex>,
+    vertices: &mut Vec<BlockDestroyVertex>,
     indices: &mut Vec<u32>,
     overlay: &BlockDestroyOverlay,
 ) {
     let pos = overlay.pos;
     let uv = overlay.uv;
     match &overlay.shape {
-        // A `Quads` shape has no single crumbling-friendly box, so it degrades to the unit cube
-        // crack (recorded in the Terrain Block Presentation Parity ledger entry).
-        TerrainRenderShape::Cube | TerrainRenderShape::Quads(_) => {
+        TerrainRenderShape::Cube => {
             emit_block_destroy_box(
                 vertices,
                 indices,
@@ -223,6 +237,16 @@ fn emit_block_destroy_overlay(
                 [16, 16, 16],
                 [true; 6],
             );
+        }
+        TerrainRenderShape::Quads(quads) => {
+            for quad in quads {
+                let base = vertices.len() as u32;
+                for corner in quad.corners {
+                    let local = [corner[0] / 16.0, corner[1] / 16.0, corner[2] / 16.0];
+                    vertices.push(destroy_vertex(pos, local, quad.normal, uv));
+                }
+                indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+            }
         }
         TerrainRenderShape::Box {
             from,
@@ -256,7 +280,7 @@ fn emit_block_destroy_overlay(
 /// visible from exactly the sides the block's own faces are (see the fluid back-face note in
 /// `terrain::mesh::emitter`).
 fn emit_block_destroy_box(
-    vertices: &mut Vec<TerrainVertex>,
+    vertices: &mut Vec<BlockDestroyVertex>,
     indices: &mut Vec<u32>,
     pos: [i32; 3],
     uv_rect: TerrainUvRect,
@@ -280,7 +304,7 @@ fn emit_block_destroy_box(
         }
         let base = vertices.len() as u32;
         for corner in box_face_corners(face.face, min, max) {
-            vertices.push(destroy_vertex(pos, corner, face.normal, uv_rect, face.face));
+            vertices.push(destroy_vertex(pos, corner, face.normal, uv_rect));
         }
         indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
     }
@@ -290,30 +314,15 @@ fn emit_block_destroy_box(
 /// one-sided quad per direction so the decal shows on both sides of each plane. The planes span the
 /// full `[0, 1]` cell, so the decal covers the whole crumbling sprite.
 fn emit_block_destroy_cross(
-    vertices: &mut Vec<TerrainVertex>,
+    vertices: &mut Vec<BlockDestroyVertex>,
     indices: &mut Vec<u32>,
     pos: [i32; 3],
     uv_rect: TerrainUvRect,
 ) {
-    const CROSS_UVS: [[f32; 2]; 4] = [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]];
     for (_face, normal, corners) in CROSS_FACES {
         let base = vertices.len() as u32;
-        for (corner, uv) in corners.into_iter().zip(CROSS_UVS) {
-            let position = [
-                pos[0] as f32 + corner[0] + normal[0] * BLOCK_DESTROY_FACE_OFFSET,
-                pos[1] as f32 + corner[1] + normal[1] * BLOCK_DESTROY_FACE_OFFSET,
-                pos[2] as f32 + corner[2] + normal[2] * BLOCK_DESTROY_FACE_OFFSET,
-            ];
-            vertices.push(TerrainVertex {
-                position,
-                normal,
-                uv: uv_rect.map(uv),
-                light: [1.0, 1.0],
-                tint: TerrainTint::WHITE.as_shader_tint(),
-                shade: 1.0,
-                ambient_occlusion: 1.0,
-                block_state_id: -1,
-            });
+        for corner in corners {
+            vertices.push(destroy_vertex(pos, corner, normal, uv_rect));
         }
         indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
     }
@@ -327,46 +336,49 @@ fn destroy_vertex(
     corner: [f32; 3],
     normal: [f32; 3],
     uv_rect: TerrainUvRect,
-    face: TerrainFace,
-) -> TerrainVertex {
-    TerrainVertex {
+) -> BlockDestroyVertex {
+    BlockDestroyVertex {
         position: [
             pos[0] as f32 + corner[0] + normal[0] * BLOCK_DESTROY_FACE_OFFSET,
             pos[1] as f32 + corner[1] + normal[1] * BLOCK_DESTROY_FACE_OFFSET,
             pos[2] as f32 + corner[2] + normal[2] * BLOCK_DESTROY_FACE_OFFSET,
         ],
         normal,
-        uv: uv_rect.map(destroy_decal_uv(face, corner)),
-        light: [1.0, 1.0],
-        tint: TerrainTint::WHITE.as_shader_tint(),
-        shade: 1.0,
-        ambient_occlusion: 1.0,
-        block_state_id: -1,
+        decal_uv: sheeted_decal_uv(corner, normal, 1.0),
+        uv_rect_min: uv_rect.min,
+        uv_rect_size: [
+            uv_rect.max[0] - uv_rect.min[0],
+            uv_rect.max[1] - uv_rect.min[1],
+        ],
     }
 }
 
 /// Vanilla `SheetedDecalTextureGenerator.setNormal` projects the crumbling UV from each vertex's
 /// block-local position onto the plane perpendicular to the face's nearest `Direction` (the
-/// crumbling buffer runs at `textureScale = 1.0`). For an axis-aligned face at local position
-/// `p ∈ [0, 1]^3` that reduces to the two perpendicular components; vanilla's crumbling texture
-/// tiles, so we fold the negated components (`-p`) back into `[0, 1]` as `1 - p` to index the atlas
-/// sprite once per block. Partial boxes therefore sample only the covered slice of the sprite (e.g.
-/// a bottom slab's sides show the lower half), matching the projected decal.
-fn destroy_decal_uv(face: TerrainFace, local: [f32; 3]) -> [f32; 2] {
-    let [px, py, pz] = local;
+/// crumbling buffer runs at `textureScale = 1.0`). The raw coordinate is retained for
+/// fragment-time repeat inside the atlas rectangle; folding at vertices would collapse model spans
+/// whose endpoints differ by a whole tile.
+#[cfg(test)]
+fn destroy_decal_uv(face: crate::terrain::TerrainFace, local: [f32; 3]) -> [f32; 2] {
+    sheeted_decal_uv(local, terrain_face_normal(face), 1.0)
+}
+
+#[cfg(test)]
+fn terrain_face_normal(face: crate::terrain::TerrainFace) -> [f32; 3] {
+    use crate::terrain::TerrainFace;
     match face {
-        TerrainFace::Down => [px, 1.0 - pz],
-        TerrainFace::Up => [px, pz],
-        TerrainFace::North => [1.0 - px, 1.0 - py],
-        TerrainFace::South => [px, 1.0 - py],
-        TerrainFace::West => [1.0 - pz, 1.0 - py],
-        TerrainFace::East => [pz, 1.0 - py],
+        TerrainFace::Down => [0.0, -1.0, 0.0],
+        TerrainFace::Up => [0.0, 1.0, 0.0],
+        TerrainFace::North => [0.0, 0.0, -1.0],
+        TerrainFace::South => [0.0, 0.0, 1.0],
+        TerrainFace::West => [-1.0, 0.0, 0.0],
+        TerrainFace::East => [1.0, 0.0, 0.0],
     }
 }
 
 fn block_destroy_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<TerrainVertex>() as wgpu::BufferAddress,
+        array_stride: std::mem::size_of::<BlockDestroyVertex>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &BLOCK_DESTROY_VERTEX_ATTRIBUTES,
     }
@@ -375,7 +387,7 @@ fn block_destroy_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terrain::TerrainTransparency;
+    use crate::terrain::{TerrainFace, TerrainQuad, TerrainTint, TerrainTransparency};
 
     #[test]
     fn block_destroy_crumbling_state_matches_vanilla_pipeline() {
@@ -414,6 +426,7 @@ mod tests {
         // Vanilla `core/rendertype_crumbling.fsh` discards fragments below 0.1
         // and leaves the sampled color alpha intact for the crumbling blend.
         assert!(BLOCK_DESTROY_SHADER.contains("if color.a < 0.1"));
+        assert!(BLOCK_DESTROY_SHADER.contains("fract(input.decal_uv)"));
         assert!(BLOCK_DESTROY_SHADER.contains("return apply_fog(color"));
         assert!(!BLOCK_DESTROY_SHADER.contains("0.85"));
         assert!(!BLOCK_DESTROY_SHADER.contains("<= 0.01"));
@@ -433,12 +446,14 @@ mod tests {
         assert_eq!(mesh.indices.len(), 36);
         assert_eq!(mesh.vertices[0].position, [2.0, 2.997, -3.0]);
         assert_eq!(mesh.vertices[0].normal, [0.0, -1.0, 0.0]);
-        // Down face decal UV = SheetedDecalTextureGenerator projection of the block-local corners
-        // `[0,0,1] [1,0,1] [1,0,0] [0,0,0]` → `[px, 1-pz]`, mapped into the destroy-stage sprite rect.
-        assert_eq!(mesh.vertices[0].uv, [0.25, 0.5]);
-        assert_eq!(mesh.vertices[1].uv, [0.5, 0.5]);
-        assert_eq!(mesh.vertices[2].uv, [0.5, 0.75]);
-        assert_eq!(mesh.vertices[3].uv, [0.25, 0.75]);
+        // Keep Vanilla's raw repeating decal coordinates until the fragment shader; the atlas
+        // rectangle rides each vertex separately.
+        assert_close(mesh.vertices[0].decal_uv, [0.0, -1.0]);
+        assert_close(mesh.vertices[1].decal_uv, [1.0, -1.0]);
+        assert_close(mesh.vertices[2].decal_uv, [1.0, 0.0]);
+        assert_close(mesh.vertices[3].decal_uv, [0.0, 0.0]);
+        assert_eq!(mesh.vertices[0].uv_rect_min, [0.25, 0.5]);
+        assert_eq!(mesh.vertices[0].uv_rect_size, [0.25, 0.25]);
         // Reuses the chunk mesher's `[0,1,2,0,2,3]` winding (not the old reversed table).
         assert_eq!(mesh.indices[0..6], [0, 1, 2, 0, 2, 3]);
     }
@@ -527,18 +542,19 @@ mod tests {
         assert_eq!(mesh.vertices.len(), 24);
         // Up face (FACES index 1) sits at the slab top y=0.5 (nudged +0.003 outward).
         assert_eq!(mesh.vertices[4].position[1], 0.503);
-        // South face (FACES index 3) is verts 12..16: world y in `{0, 0.5}`, decal v in `{1.0, 0.5}`.
+        // South face (FACES index 3) is verts 12..16: world y in `{0, 0.5}`, raw decal v in
+        // `{0, -0.5}`. Fragment-time wrapping samples the corresponding full/lower-half positions.
         assert_eq!(mesh.vertices[12].position[1], 0.0);
-        assert_eq!(mesh.vertices[12].uv, [0.0, 1.0]);
+        assert_close(mesh.vertices[12].decal_uv, [0.0, 0.0]);
         assert_eq!(mesh.vertices[13].position[1], 0.5);
-        assert_eq!(mesh.vertices[13].uv, [0.0, 0.5]);
+        assert_close(mesh.vertices[13].decal_uv, [0.0, -0.5]);
         assert!(mesh
             .vertices
             .chunks_exact(4)
             .nth(3)
             .unwrap()
             .iter()
-            .all(|vertex| vertex.uv[1] >= 0.5));
+            .all(|vertex| vertex.decal_uv[1] >= -0.500_01 && vertex.decal_uv[1] <= 0.000_01));
     }
 
     #[test]
@@ -590,34 +606,39 @@ mod tests {
                 .map(|(_, normal, _)| *normal)
                 .collect::<Vec<_>>()
         );
-        // The decal covers the whole crumbling sprite on each plane.
-        assert!(mesh.vertices.iter().any(|vertex| vertex.uv == [0.0, 0.0]));
-        assert!(mesh.vertices.iter().any(|vertex| vertex.uv == [1.0, 1.0]));
+        // The raw coordinates span one complete repeating tile on each plane.
+        assert!(mesh
+            .vertices
+            .iter()
+            .any(|vertex| close(vertex.decal_uv[0], 0.0) && close(vertex.decal_uv[1], 0.0)));
+        assert!(mesh.vertices.iter().any(|vertex| {
+            close(vertex.decal_uv[0].abs(), 1.0) && close(vertex.decal_uv[1].abs(), 1.0)
+        }));
     }
 
     #[test]
     fn block_destroy_decal_uv_projects_block_local_position() {
         // Hand-checked SheetedDecalTextureGenerator projections (`textureScale = 1`).
-        assert_eq!(
+        assert_close(
             destroy_decal_uv(TerrainFace::Down, [0.2, 0.0, 0.7]),
-            [0.2, 0.3]
+            [0.2, -0.7],
         );
-        assert_eq!(
+        assert_close(
             destroy_decal_uv(TerrainFace::Up, [0.2, 1.0, 0.7]),
-            [0.2, 0.7]
+            [0.2, 0.7],
         );
-        assert_eq!(
+        assert_close(
             destroy_decal_uv(TerrainFace::North, [0.25, 0.75, 0.0]),
-            [0.75, 0.25]
+            [-0.25, -0.75],
         );
-        assert_eq!(
+        assert_close(
             destroy_decal_uv(TerrainFace::East, [1.0, 0.5, 0.3]),
-            [0.3, 0.5]
+            [0.3, -0.5],
         );
 
-        // And the same projection reaches a real mesh vertex, mapped into a non-unit sprite rect.
+        // And the same raw projection reaches a real mesh vertex carrying a non-unit sprite rect.
         // West face first corner of box `4..12 / 0..16 / 2..14` is block-local `[0.25, 0, 0.125]`
-        // => decal `[1-0.125, 1-0] = [0.875, 1.0]` => rect `[0.1,0.2]..[0.5,0.9]` => `[0.45, 0.9]`.
+        // => decal `[-0.125, 0]`; the shader wraps it within `[0.1,0.2]..[0.5,0.9]`.
         let mesh = block_destroy_overlay_mesh(BlockDestroyOverlay {
             pos: [0, 0, 0],
             uv: TerrainUvRect {
@@ -638,23 +659,67 @@ mod tests {
         });
         // West is FACES index 4 => verts 16..20.
         assert_eq!(mesh.vertices[16].position, [0.247, 0.0, 0.125]);
-        assert_eq!(mesh.vertices[16].uv, [0.45, 0.9]);
+        assert_close(mesh.vertices[16].decal_uv, [-0.125, 0.0]);
+        assert_eq!(mesh.vertices[16].uv_rect_min, [0.1, 0.2]);
+        assert_close(mesh.vertices[16].uv_rect_size, [0.4, 0.7]);
     }
 
     #[test]
-    fn block_destroy_overlay_mesh_degrades_quads_to_cube() {
-        // `Quads` has no crumbling-friendly box, so it degrades to the unit cube crack.
-        let quads = block_destroy_overlay_mesh(BlockDestroyOverlay {
+    fn block_destroy_overlay_mesh_emits_empty_quad_model_as_empty() {
+        let mesh = block_destroy_overlay_mesh(BlockDestroyOverlay {
             pos: [0, 0, 0],
             uv: TerrainUvRect::UNIT,
             shape: TerrainRenderShape::Quads(Vec::new()),
         });
-        let cube = block_destroy_overlay_mesh(cube_overlay([0, 0, 0], TerrainUvRect::UNIT));
 
-        assert_eq!(quads.vertices.len(), 24);
-        assert_eq!(quads.indices.len(), 36);
-        assert_eq!(quads.vertices, cube.vertices);
-        assert_eq!(quads.indices, cube.indices);
+        assert!(mesh.vertices.is_empty());
+        assert!(mesh.indices.is_empty());
+    }
+
+    #[test]
+    fn block_destroy_overlay_mesh_preserves_arbitrary_baked_quad_geometry() {
+        let corners = [
+            [2.0, 1.0, 3.0],
+            [14.0, 4.0, 2.0],
+            [13.0, 15.0, 12.0],
+            [1.0, 11.0, 14.0],
+        ];
+        let normal = [0.2, 0.9, 0.3];
+        let mesh = block_destroy_overlay_mesh(BlockDestroyOverlay {
+            pos: [4, -2, 7],
+            uv: TerrainUvRect {
+                min: [0.25, 0.5],
+                max: [0.375, 0.75],
+            },
+            shape: TerrainRenderShape::Quads(vec![TerrainQuad {
+                corners,
+                normal,
+                uvs: [[0.0; 2]; 4],
+                cull: None,
+                texture_index: 17,
+                tint: TerrainTint::WHITE,
+                transparency: TerrainTransparency::OPAQUE,
+                shade: true,
+                light_emission: 0,
+            }]),
+        });
+
+        assert_eq!(mesh.vertices.len(), 4);
+        assert_eq!(mesh.indices, [0, 1, 2, 0, 2, 3]);
+        assert_close3(
+            mesh.vertices[0].position,
+            [
+                4.0 + 2.0 / 16.0 + normal[0] * BLOCK_DESTROY_FACE_OFFSET,
+                -2.0 + 1.0 / 16.0 + normal[1] * BLOCK_DESTROY_FACE_OFFSET,
+                7.0 + 3.0 / 16.0 + normal[2] * BLOCK_DESTROY_FACE_OFFSET,
+            ],
+        );
+        assert_eq!(mesh.vertices[0].normal, normal);
+        // Up is the nearest direction; its exact sheeted projection is `[x, z]`.
+        assert_close(mesh.vertices[0].decal_uv, [2.0 / 16.0, 3.0 / 16.0]);
+        assert_close(mesh.vertices[3].decal_uv, [1.0 / 16.0, 14.0 / 16.0]);
+        assert_eq!(mesh.vertices[0].uv_rect_min, [0.25, 0.5]);
+        assert_eq!(mesh.vertices[0].uv_rect_size, [0.125, 0.25]);
     }
 
     fn cube_overlay(pos: [i32; 3], uv: TerrainUvRect) -> BlockDestroyOverlay {
@@ -693,5 +758,21 @@ mod tests {
 
     fn dot3(a: [f32; 3], b: [f32; 3]) -> f32 {
         a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    }
+
+    fn assert_close(actual: [f32; 2], expected: [f32; 2]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!(close(actual, expected), "{actual} != {expected}");
+        }
+    }
+
+    fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!(close(actual, expected), "{actual} != {expected}");
+        }
+    }
+
+    fn close(actual: f32, expected: f32) -> bool {
+        (actual - expected).abs() < 1.0e-5
     }
 }

@@ -16,11 +16,12 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
-use glam::{EulerRot, Mat4, Quat, Vec3};
+use glam::{Mat4, Vec3};
 
 use crate::{
     gpu::DEPTH_FORMAT,
     pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
+    sheeted_decal::sheeted_decal_uv,
     Renderer,
 };
 
@@ -320,7 +321,11 @@ impl ItemModelMesh {
                 let local = Vec3::from_array(*corner) * MODEL_SPACE_SCALE;
                 let position = transform.transform_point3(local);
                 let uv = if let Some(inverse) = special_foil_inverse {
-                    sheeted_decal_uv(inverse.transform_point3(position), quad.normal)
+                    sheeted_decal_uv(
+                        inverse.transform_point3(position).to_array(),
+                        quad.normal,
+                        SPECIAL_FOIL_TEXTURE_SCALE,
+                    )
                 } else {
                     *uv
                 };
@@ -562,75 +567,6 @@ fn componentwise_scaled_pose(transform: Mat4, scale: f32) -> Mat4 {
         *value *= scale;
     }
     Mat4::from_cols_array(&values)
-}
-
-fn sheeted_decal_uv(local_position: Vec3, local_normal: [f32; 3]) -> [f32; 2] {
-    let direction = approximate_nearest_direction(Vec3::from_array(local_normal));
-    let world_pos = Mat4::from_rotation_y(std::f32::consts::PI).transform_vector3(local_position);
-    let world_pos =
-        Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2).transform_vector3(world_pos);
-    let world_pos = decal_direction_rotation(direction) * world_pos;
-    [
-        -world_pos.x * SPECIAL_FOIL_TEXTURE_SCALE,
-        -world_pos.y * SPECIAL_FOIL_TEXTURE_SCALE,
-    ]
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DecalDirection {
-    Down,
-    Up,
-    North,
-    South,
-    West,
-    East,
-}
-
-fn approximate_nearest_direction(normal: Vec3) -> DecalDirection {
-    let candidates = [
-        (DecalDirection::Down, Vec3::NEG_Y),
-        (DecalDirection::Up, Vec3::Y),
-        (DecalDirection::North, Vec3::NEG_Z),
-        (DecalDirection::South, Vec3::Z),
-        (DecalDirection::West, Vec3::NEG_X),
-        (DecalDirection::East, Vec3::X),
-    ];
-    let mut result = DecalDirection::North;
-    let mut highest_dot = f32::MIN_POSITIVE;
-    for (direction, vector) in candidates {
-        let dot = normal.dot(vector);
-        if dot > highest_dot {
-            highest_dot = dot;
-            result = direction;
-        }
-    }
-    result
-}
-
-fn decal_direction_rotation(direction: DecalDirection) -> Quat {
-    match direction {
-        DecalDirection::Down => Quat::from_rotation_x(std::f32::consts::PI),
-        DecalDirection::Up => Quat::IDENTITY,
-        DecalDirection::North => Quat::from_euler(
-            EulerRot::XYZ,
-            std::f32::consts::FRAC_PI_2,
-            0.0,
-            std::f32::consts::PI,
-        ),
-        DecalDirection::South => Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
-        DecalDirection::West => Quat::from_euler(
-            EulerRot::XYZ,
-            std::f32::consts::FRAC_PI_2,
-            0.0,
-            std::f32::consts::FRAC_PI_2,
-        ),
-        DecalDirection::East => Quat::from_euler(
-            EulerRot::XYZ,
-            std::f32::consts::FRAC_PI_2,
-            0.0,
-            -std::f32::consts::FRAC_PI_2,
-        ),
-    }
 }
 
 impl Renderer {

@@ -10,7 +10,7 @@ use std::{
 };
 
 use anyhow::{bail, Result};
-use glam::{Mat3, Mat4, Vec3};
+use glam::{Mat3, Mat4};
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -27,6 +27,7 @@ use super::{
     bake_item_model_mesh, sheeted_decal_uv, ItemModelFoil, ItemModelQuad, ITEM_MODEL_GLINT_BLEND,
     ITEM_MODEL_GLINT_CULL_MODE, ITEM_MODEL_GLINT_DEPTH_COMPARE,
     ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED, ITEM_MODEL_PIPELINE_CULL_MODE,
+    SPECIAL_FOIL_TEXTURE_SCALE,
 };
 
 const DEFAULT_MAX_RESIDENT_OWNERS: usize = 4_096;
@@ -1123,12 +1124,13 @@ fn resident_geometry(
         .into_iter()
         .map(|vertex: ItemModelVertex| {
             let decal_uv = sheeted_decal_uv(
-                Vec3::from_array(vertex.position),
+                vertex.position,
                 [
                     vertex.normal_diffuse[0],
                     vertex.normal_diffuse[1],
                     vertex.normal_diffuse[2],
                 ],
+                SPECIAL_FOIL_TEXTURE_SCALE,
             );
             ItemModelResidentVertex {
                 position: vertex.position,
@@ -1449,9 +1451,9 @@ mod tests {
     #[test]
     fn special_foil_resident_decal_uv_matches_legacy_world_bake() {
         let source = [quad(false)];
-        let transform = Mat4::from_translation(Vec3::new(2.0, -1.0, 4.0))
+        let transform = Mat4::from_translation(glam::Vec3::new(2.0, -1.0, 4.0))
             * Mat4::from_rotation_y(0.73)
-            * Mat4::from_scale(Vec3::new(0.5, 0.75, 1.25));
+            * Mat4::from_scale(glam::Vec3::new(0.5, 0.75, 1.25));
         let (vertices, _) = resident_geometry(&source, ItemModelGeometryClass::Solid);
 
         for decal_pose_scale in [1.0, 0.75, 0.5] {
