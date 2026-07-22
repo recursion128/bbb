@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{block_name_is_air, BlockPos, WorldStore};
 
+mod moving;
+
+pub use moving::{MovingPistonRenderBlockState, MovingPistonState};
+
 const MAX_PUSH_DEPTH: usize = 12;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,6 +47,21 @@ impl PistonDirection {
             "east" => Some(Self::East),
             _ => None,
         }
+    }
+
+    pub fn as_name(self) -> &'static str {
+        match self {
+            Self::Down => "down",
+            Self::Up => "up",
+            Self::North => "north",
+            Self::South => "south",
+            Self::West => "west",
+            Self::East => "east",
+        }
+    }
+
+    fn from_legacy_id(id: u8) -> Self {
+        Self::VALUES[usize::from(id & 7) % Self::VALUES.len()]
     }
 
     pub fn opposite(self) -> Self {
@@ -116,6 +135,7 @@ struct PistonStructureResolver<'a> {
     start_pos: BlockPos,
     push_direction: PistonDirection,
     piston_direction: PistonDirection,
+    cleared_arm_pos: Option<BlockPos>,
     to_push: Vec<BlockPos>,
     to_destroy: Vec<BlockPos>,
 }
@@ -134,6 +154,17 @@ impl<'a> PistonStructureResolver<'a> {
             piston_direction.opposite()
         };
         let start_pos = piston_direction.relative(piston_pos, if extending { 1 } else { 2 });
+        // `PistonBaseBlock.moveBlocks` removes an existing head immediately
+        // before constructing the retracting resolver. Keep the pure resolver
+        // non-mutating by projecting only that exact head cell as air.
+        let arm_pos = piston_direction.relative(piston_pos, 1);
+        let cleared_arm_pos = (!extending
+            && world
+                .probe_block(arm_pos)
+                .and_then(|block| block.block_name)
+                .as_deref()
+                == Some("minecraft:piston_head"))
+        .then_some(arm_pos);
         Self {
             world,
             profiles,
@@ -142,6 +173,7 @@ impl<'a> PistonStructureResolver<'a> {
             start_pos,
             push_direction,
             piston_direction,
+            cleared_arm_pos,
             to_push: Vec::new(),
             to_destroy: Vec::new(),
         }
@@ -367,6 +399,9 @@ impl<'a> PistonStructureResolver<'a> {
     }
 
     fn block_name(&self, pos: BlockPos) -> Option<&str> {
+        if self.cleared_arm_pos == Some(pos) {
+            return Some("minecraft:air");
+        }
         // This borrow cannot escape the temporary BlockProbe, so resolve from
         // the stable registry by state id instead.
         let state_id = self.world.probe_block(pos)?.block_state_id;
@@ -377,6 +412,9 @@ impl<'a> PistonStructureResolver<'a> {
     }
 
     fn is_air(&self, pos: BlockPos) -> bool {
+        if self.cleared_arm_pos == Some(pos) {
+            return true;
+        }
         self.world
             .probe_block(pos)
             .is_none_or(|block| block.block_name.as_deref().is_some_and(block_name_is_air))

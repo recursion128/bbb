@@ -1234,6 +1234,25 @@ impl WorldStore {
             }
         }
     }
+
+    /// Runs the client-local level-event 2001 emitted by piston destruction
+    /// without counting it as a received `ClientboundLevelEventPacket`.
+    pub(crate) fn emit_piston_destroy_level_event(
+        &mut self,
+        event: ProtocolLevelEvent,
+        random: &mut LevelEventSoundRandomState,
+        effects: &mut dyn PlayApplyEffects,
+    ) {
+        debug_assert_eq!(event.event_type, 2001);
+        if let Some(state) = self.level_event_sound_with_random(event, || random.next_float()) {
+            let state = self.record_positioned_sound(with_level_event_sound_seed(state, random));
+            effects.positioned_sound(&state);
+        }
+        let particles_consumed_random = effects.level_event_particles(self, &event, random);
+        if !particles_consumed_random {
+            advance_level_event_particle_randoms_without_sink(self, effects, event, random);
+        }
+    }
 }
 
 /// Vanilla camera-relative audio position: the current camera entity when it

@@ -2,9 +2,12 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_EMERGING_ID};
 use bbb_protocol::entity_types::{
-    vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID,
+    vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+    VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+    VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, VANILLA_ENTITY_TYPE_MARKER_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
@@ -28,7 +31,9 @@ use crate::terrain::{
     block_name_is_slab, block_name_is_stair, block_name_is_trapdoor, block_name_is_wall,
     block_name_is_wall_skull, block_name_is_wool_carpet,
 };
-use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
+use crate::{
+    BlockPos, BlockProbe, PistonDirection, TerrainFluidKind, TerrainMaterialClass, WorldStore,
+};
 
 pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
@@ -1979,6 +1984,9 @@ fn block_collision_shape_with_context(
     pos: BlockPos,
     context: LocalPlayerCollisionContext,
 ) -> Option<BlockCollisionShape> {
+    if block.block_name.as_deref() == Some("minecraft:moving_piston") {
+        return moving_piston_collision_shape(world, block, pos, context, false);
+    }
     if context.can_stand_on_lava
         && block.fluid.is_some_and(|fluid| {
             fluid.kind == TerrainFluidKind::Lava && fluid.amount == 8 && !fluid.falling
@@ -2001,6 +2009,347 @@ fn block_collision_shape_with_context(
         return scaffolding_collision_shape(&block.block_properties, pos, context);
     }
     block_collision_shape(block, pos)
+}
+
+fn moving_piston_collision_shape(
+    world: &WorldStore,
+    template: &BlockProbe,
+    pos: BlockPos,
+    context: LocalPlayerCollisionContext,
+    collision_related_only: bool,
+) -> Option<BlockCollisionShape> {
+    let moving = world.moving_piston(pos)?;
+    let mut shape = BlockCollisionShapeBuilder::new();
+    if !collision_related_only && !moving.extending && moving.is_source {
+        let mut base = block_probe_for_state(world, template, moving.moved_block_state_id)?;
+        base.block_properties
+            .insert("extended".to_string(), "true".to_string());
+        if let Some(base_shape) = block_collision_shape_with_context(world, &base, pos, context) {
+            shape.extend(base_shape);
+        }
+    }
+
+    let state_id = if !collision_related_only && moving.is_source {
+        moving_piston_source_head_state_id(world, moving)?
+    } else {
+        moving_piston_collision_related_state_id(world, moving)?
+    };
+    let moved = block_probe_for_state(world, template, state_id)?;
+    let moved_shape = block_collision_shape_with_context(world, &moved, pos, context)?;
+    let [dx, dy, dz] = moving.direction.step();
+    let extended = f64::from(moving.extended_progress(moving.progress));
+    shape.extend(moved_shape.offset(
+        f64::from(dx) * extended,
+        f64::from(dy) * extended,
+        f64::from(dz) * extended,
+    ));
+    Some(shape.build())
+}
+
+fn moving_piston_source_head_state_id(
+    world: &WorldStore,
+    moving: &crate::MovingPistonState,
+) -> Option<i32> {
+    let moved = world.registries.block_state(moving.moved_block_state_id)?;
+    let sticky = moved.name == "minecraft:sticky_piston"
+        || moved
+            .properties
+            .get("type")
+            .is_some_and(|kind| kind == "sticky");
+    let short = moving.extending != (1.0 - moving.progress < 0.25);
+    let properties = BTreeMap::from([
+        ("facing".to_string(), moving.direction.as_name().to_string()),
+        ("short".to_string(), short.to_string()),
+        (
+            "type".to_string(),
+            if sticky { "sticky" } else { "normal" }.to_string(),
+        ),
+    ]);
+    world
+        .registries
+        .block_state_id_by_name_and_properties("minecraft:piston_head", &properties)
+}
+
+fn moving_piston_collision_related_state_id(
+    world: &WorldStore,
+    moving: &crate::MovingPistonState,
+) -> Option<i32> {
+    if !moving.extending && moving.is_source {
+        let moved = world.registries.block_state(moving.moved_block_state_id)?;
+        let facing = moved
+            .properties
+            .get("facing")
+            .map(String::as_str)
+            .unwrap_or_else(|| moving.direction.as_name());
+        let properties = BTreeMap::from([
+            ("facing".to_string(), facing.to_string()),
+            ("short".to_string(), (moving.progress > 0.25).to_string()),
+            (
+                "type".to_string(),
+                if moved.name == "minecraft:sticky_piston" {
+                    "sticky".to_string()
+                } else {
+                    "normal".to_string()
+                },
+            ),
+        ]);
+        world
+            .registries
+            .block_state_id_by_name_and_properties("minecraft:piston_head", &properties)
+    } else {
+        Some(moving.moved_block_state_id)
+    }
+}
+
+fn block_probe_for_state(
+    world: &WorldStore,
+    template: &BlockProbe,
+    state_id: i32,
+) -> Option<BlockProbe> {
+    let state = world.registries.block_state(state_id)?;
+    let mut probe = template.clone();
+    probe.block_state_id = state_id;
+    probe.block_name = Some(state.name.clone());
+    probe.block_properties = state.properties.clone();
+    probe.material = crate::terrain::classify_terrain_material(Some(&state.name));
+    probe.fluid = None;
+    Some(probe)
+}
+
+impl WorldStore {
+    pub(crate) fn move_entities_for_piston_tick(
+        &mut self,
+        moving: &crate::MovingPistonState,
+        new_progress: f32,
+    ) {
+        let delta_progress = f64::from(new_progress - moving.progress);
+        if delta_progress <= 0.0 {
+            return;
+        }
+        let Some(template) = self.probe_block(moving.pos) else {
+            return;
+        };
+        let context = LocalPlayerCollisionContext::new(f64::NEG_INFINITY, false);
+        let Some(shape) = moving_piston_collision_shape(self, &template, moving.pos, context, true)
+        else {
+            return;
+        };
+        let movement = moving.movement_direction();
+        let movement_step = movement.step();
+        let shape_boxes = shape
+            .boxes()
+            .map(|shape_box| world_collision_box(moving.pos, shape_box))
+            .collect::<Vec<_>>();
+        let cause_bounce = self
+            .registries
+            .block_state(moving.moved_block_state_id)
+            .is_some_and(|state| state.name == "minecraft:slime_block");
+
+        let candidates = piston_entity_candidates(self);
+        for candidate in &candidates {
+            if piston_entity_ignores_movement(candidate.entity_type_id) {
+                continue;
+            }
+            let mut delta = 0.0_f64;
+            for shape_box in &shape_boxes {
+                let movement_area = swept_piston_box(*shape_box, movement_step, delta_progress);
+                if world_collision_boxes_intersect(movement_area, candidate.bounds) {
+                    delta = delta.max(piston_separation(movement_area, movement, candidate.bounds));
+                    if delta >= delta_progress {
+                        break;
+                    }
+                }
+            }
+            if delta > 0.0 {
+                let movement_delta = delta.min(delta_progress) + 0.01;
+                move_piston_entity(
+                    self,
+                    candidate.entity_id,
+                    movement,
+                    movement_delta,
+                    cause_bounce,
+                );
+            }
+        }
+
+        if !matches!(movement, PistonDirection::Up | PistonDirection::Down)
+            && self
+                .registries
+                .block_state(moving.moved_block_state_id)
+                .is_some_and(|state| state.name == "minecraft:honey_block")
+        {
+            let sticky_top = shape_boxes
+                .iter()
+                .map(|shape_box| shape_box.max[1])
+                .fold(f64::NEG_INFINITY, f64::max);
+            if sticky_top.is_finite() {
+                let [direction_x, direction_y, direction_z] = moving.direction.step();
+                let extended = f64::from(moving.extended_progress(moving.progress));
+                let offset_x = f64::from(direction_x) * extended;
+                let offset_y = f64::from(direction_y) * extended;
+                let offset_z = f64::from(direction_z) * extended;
+                let sticky = WorldCollisionBox {
+                    min: [
+                        f64::from(moving.pos.x) + offset_x,
+                        sticky_top,
+                        f64::from(moving.pos.z) + offset_z,
+                    ],
+                    max: [
+                        f64::from(moving.pos.x) + offset_x + 1.0,
+                        f64::from(moving.pos.y) + offset_y + 1.500001,
+                        f64::from(moving.pos.z) + offset_z + 1.0,
+                    ],
+                };
+                for candidate in candidates {
+                    if candidate.on_ground
+                        && !piston_entity_ignores_movement(candidate.entity_type_id)
+                        && world_collision_boxes_intersect(sticky, candidate.bounds)
+                    {
+                        move_piston_entity(
+                            self,
+                            candidate.entity_id,
+                            movement,
+                            delta_progress,
+                            false,
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PistonEntityCandidate {
+    entity_id: Option<i32>,
+    entity_type_id: i32,
+    bounds: WorldCollisionBox,
+    on_ground: bool,
+}
+
+fn piston_entity_candidates(world: &WorldStore) -> Vec<PistonEntityCandidate> {
+    let mut candidates = Vec::new();
+    if let Some(pose) = world.local_player_pose() {
+        let bounds = LocalPlayerBounds::for_pose(pose);
+        candidates.push(PistonEntityCandidate {
+            entity_id: None,
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            bounds: WorldCollisionBox {
+                min: [bounds.min_x, bounds.min_y, bounds.min_z],
+                max: [bounds.max_x, bounds.max_y, bounds.max_z],
+            },
+            on_ground: pose.on_ground,
+        });
+    }
+    let local_id = world.local_player_id();
+    for transform in world.entity_transforms() {
+        if local_id == Some(transform.id) {
+            continue;
+        }
+        let Some(relative) = world.probe_entity_pick_bounds(transform.id) else {
+            continue;
+        };
+        candidates.push(PistonEntityCandidate {
+            entity_id: Some(transform.id),
+            entity_type_id: transform.entity_type_id,
+            bounds: WorldCollisionBox {
+                min: [
+                    transform.position.x + f64::from(relative.min[0]),
+                    transform.position.y + f64::from(relative.min[1]),
+                    transform.position.z + f64::from(relative.min[2]),
+                ],
+                max: [
+                    transform.position.x + f64::from(relative.max[0]),
+                    transform.position.y + f64::from(relative.max[1]),
+                    transform.position.z + f64::from(relative.max[2]),
+                ],
+            },
+            on_ground: transform.on_ground.unwrap_or(false),
+        });
+    }
+    candidates
+}
+
+fn piston_entity_ignores_movement(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID
+            | VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID
+            | VANILLA_ENTITY_TYPE_INTERACTION_ID
+            | VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID
+            | VANILLA_ENTITY_TYPE_MARKER_ID
+            | VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID
+            | VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID
+    )
+}
+
+fn swept_piston_box(
+    bounds: WorldCollisionBox,
+    movement: [i32; 3],
+    delta: f64,
+) -> WorldCollisionBox {
+    let moved = WorldCollisionBox {
+        min: std::array::from_fn(|axis| bounds.min[axis] + f64::from(movement[axis]) * delta),
+        max: std::array::from_fn(|axis| bounds.max[axis] + f64::from(movement[axis]) * delta),
+    };
+    WorldCollisionBox {
+        min: std::array::from_fn(|axis| bounds.min[axis].min(moved.min[axis])),
+        max: std::array::from_fn(|axis| bounds.max[axis].max(moved.max[axis])),
+    }
+}
+
+fn piston_separation(
+    piston: WorldCollisionBox,
+    movement: PistonDirection,
+    entity: WorldCollisionBox,
+) -> f64 {
+    match movement {
+        PistonDirection::East => piston.max[0] - entity.min[0],
+        PistonDirection::West => entity.max[0] - piston.min[0],
+        PistonDirection::Up => piston.max[1] - entity.min[1],
+        PistonDirection::Down => entity.max[1] - piston.min[1],
+        PistonDirection::South => piston.max[2] - entity.min[2],
+        PistonDirection::North => entity.max[2] - piston.min[2],
+    }
+}
+
+fn move_piston_entity(
+    world: &mut WorldStore,
+    entity_id: Option<i32>,
+    movement: PistonDirection,
+    delta: f64,
+    cause_bounce: bool,
+) {
+    let [dx, dy, dz] = movement.step();
+    if let Some(entity_id) = entity_id {
+        let _ = world.entities.with_transform_mut(entity_id, |transform| {
+            transform.position.x += f64::from(dx) * delta;
+            transform.position.y += f64::from(dy) * delta;
+            transform.position.z += f64::from(dz) * delta;
+            if cause_bounce {
+                if dx != 0 {
+                    transform.delta_movement.x = f64::from(dx);
+                } else if dy != 0 {
+                    transform.delta_movement.y = f64::from(dy);
+                } else {
+                    transform.delta_movement.z = f64::from(dz);
+                }
+            }
+        });
+    } else if let Some(pose) = world.local_player.pose.as_mut() {
+        pose.position.x += f64::from(dx) * delta;
+        pose.position.y += f64::from(dy) * delta;
+        pose.position.z += f64::from(dz) * delta;
+        if cause_bounce {
+            if dx != 0 {
+                pose.delta_movement.x = f64::from(dx);
+            } else if dy != 0 {
+                pose.delta_movement.y = f64::from(dy);
+            } else {
+                pose.delta_movement.z = f64::from(dz);
+            }
+        }
+    }
 }
 
 fn block_collision_shape_empty_context(
@@ -4233,6 +4582,12 @@ impl BlockCollisionShapeBuilder {
         if self.next_index < MAX_COLLISION_BOXES {
             self.boxes[self.next_index] = Some(shape_box);
             self.next_index += 1;
+        }
+    }
+
+    fn extend(&mut self, shape: BlockCollisionShape) {
+        for shape_box in shape.boxes() {
+            self.push(shape_box);
         }
     }
 

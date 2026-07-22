@@ -89,6 +89,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) block_events: Vec<BlockEventRecord>,
     #[serde(default)]
+    pub(crate) moving_pistons: Vec<crate::MovingPistonState>,
+    #[serde(default)]
     pub(crate) chest_lids: Vec<crate::ChestLidState>,
     #[serde(default)]
     pub(crate) bell_shakes: Vec<crate::BellShakeState>,

@@ -83,6 +83,7 @@ impl WorldStore {
         if !chunk_is_in_view(self.chunk_view, pos) {
             return;
         }
+        self.prune_moving_pistons_in_chunk(pos);
         self.first_chunk.get_or_insert(pos);
         if let Some(existing) = self.chunks.iter_mut().find(|chunk| chunk.pos == pos) {
             *existing = column.into();
@@ -438,6 +439,7 @@ impl WorldStore {
         self.chunks
             .retain(|chunk| chunk_is_in_view(view, chunk.pos));
         for pos in removed {
+            self.prune_moving_pistons_in_chunk(pos);
             self.discard_queued_light_updates_for_chunk(pos);
             self.mark_terrain_chunk_removed(pos);
         }
@@ -453,6 +455,7 @@ impl WorldStore {
             return false;
         };
         self.chunks.remove(index);
+        self.prune_moving_pistons_in_chunk(pos);
         self.counters.chunks_forgotten += 1;
         self.mark_terrain_chunk_removed(pos);
         self.retain_resident_terrain_revisions();
@@ -998,7 +1001,7 @@ impl WorldStore {
         self.local_player.pose = Some(pose);
     }
 
-    fn set_block_state_id(&mut self, pos: BlockPos, block_state_id: i32) -> bool {
+    pub(crate) fn set_block_state_id(&mut self, pos: BlockPos, block_state_id: i32) -> bool {
         if block_state_id < 0 || !self.dimension.contains_y(pos.y) {
             return false;
         }
@@ -1034,8 +1037,9 @@ impl WorldStore {
         // Vanilla `Level.setBlock`: when the block itself changes (not just a
         // state property), the old block entity is removed
         // (`Level.removeBlockEntity`), so a destroyed/replaced sign drops its
-        // text. Restricted to the sign_text payload; general block-entity
-        // record removal on block change is a separate ledger follow-up.
+        // text. Restricted to decoded presentation payloads here because the
+        // client can receive block-entity data before its matching block
+        // update; piston-local mutation removes the whole record explicitly.
         let block_kind_changed = registries
             .block_state(old_block_state_id)
             .map(|state| state.name.as_str())
@@ -1082,8 +1086,26 @@ impl WorldStore {
                 }
             }
         }
+        self.moving_pistons.retain(|moving| moving.pos != pos);
         self.mark_terrain_block_changed(pos);
         true
+    }
+
+    pub(crate) fn remove_block_entity_record_at(&mut self, pos: BlockPos) {
+        let chunk_pos = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let local_x = pos.x.rem_euclid(16) as u8;
+        let local_z = pos.z.rem_euclid(16) as u8;
+        let Ok(y) = i16::try_from(pos.y) else {
+            return;
+        };
+        if let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) {
+            chunk.block_entities.retain(|entity| {
+                entity.local_x != local_x || entity.y != y || entity.local_z != local_z
+            });
+        }
     }
 
     fn local_destroy_legacy_block_state_id(&self, block: &BlockProbe) -> i32 {

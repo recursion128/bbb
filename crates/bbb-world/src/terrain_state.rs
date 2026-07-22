@@ -41,7 +41,9 @@ pub use crate::end_portal_blocks::{
 };
 pub use crate::lectern_books::{is_lectern_block_name, LecternBookModelSourceState};
 pub use crate::note_blocks::NoteBlockParticleState;
-pub use crate::piston_blocks::{PistonDirection, PistonStructureResolution};
+pub use crate::piston_blocks::{
+    MovingPistonRenderBlockState, MovingPistonState, PistonDirection, PistonStructureResolution,
+};
 pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{
     vanilla_air_block_state_id, vanilla_block_state_id, BiomeClientProjection,

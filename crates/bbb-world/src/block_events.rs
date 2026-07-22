@@ -178,6 +178,18 @@ impl WorldStore {
             self.update_spawner_from_block_event(pos, event.b0)
         } else if block_name == "minecraft:note_block" {
             self.trigger_note_block_event(pos, &current.block_properties, random, effects)
+        } else if matches!(
+            block_name.as_str(),
+            "minecraft:piston" | "minecraft:sticky_piston"
+        ) {
+            self.trigger_piston_block_event(
+                pos,
+                &block_name,
+                &current.block_properties,
+                event,
+                random,
+                effects,
+            )
         } else {
             false
         };

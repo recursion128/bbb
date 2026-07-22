@@ -911,6 +911,7 @@ impl WorldStore {
         self.first_chunk = None;
         self.block_destructions.clear();
         self.block_events.clear();
+        self.moving_pistons.clear();
         self.chest_lids.clear();
         self.bell_shakes.clear();
         self.shulker_box_lids.clear();
