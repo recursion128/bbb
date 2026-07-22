@@ -5,16 +5,18 @@
 
 pub mod providers;
 
+use std::collections::BTreeMap;
+
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
-use bbb_render_types::{HudDigitGlyph, HudFontGlyphMap, HudUvRect};
+use bbb_render_types::{HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap, HudUvRect};
 
 use providers::{
     FontBitmapProviderDefinition, FontProviderDefinition, FontSpaceProviderDefinition,
 };
 
-/// The font consumed by every current text consumer (HUD labels, tooltips,
-/// map decoration names): vanilla `Style.DEFAULT_FONT` `minecraft:default`.
+/// Vanilla `Style.DEFAULT_FONT`, also used when a Component does not select a
+/// loaded custom font.
 pub const DEFAULT_FONT_ID: &str = "minecraft:default";
 
 const ASCII_FONT_GRID_COLUMNS: u32 = 16;
@@ -30,15 +32,16 @@ pub struct HudDigitAtlasImage {
     pub glyphs: [HudDigitGlyph; 10],
 }
 
-/// The baked `minecraft:default` font: every bitmap provider page blitted
-/// into one RGBA atlas (pages stacked top to bottom in provider order, each
-/// keeping its original grid layout) plus the codepoint-keyed glyph table.
+/// Every selected resource-pack font baked into one RGBA atlas, plus the
+/// default glyph table retained for HUD consumers and the per-font book used
+/// by world Component text.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudFontAtlasImage {
     pub width: u32,
     pub height: u32,
     pub rgba: Vec<u8>,
     pub glyphs: HudFontGlyphMap,
+    pub fonts: HudFontGlyphBook,
 }
 
 /// One flattened provider ready for atlas baking: bitmap providers carry
@@ -49,14 +52,38 @@ enum FontAtlasEntry {
     Space(FontSpaceProviderDefinition),
 }
 
-/// Loads the `minecraft:default` provider chain and bakes the multi-page
-/// glyph atlas.
+/// Loads every selected `font/*.json` definition and bakes all bitmap pages
+/// into one shared atlas. Per-font glyph maps keep their own first-provider-wins
+/// semantics while their UVs address that shared image, so Component font
+/// changes do not require per-run texture binds.
 pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
-    let definitions = providers::load_font_providers(roots, DEFAULT_FONT_ID)?;
-    if definitions.is_empty() {
-        bail!("font {DEFAULT_FONT_ID} resolved no providers");
+    let stack = roots.resource_stack();
+    let mut fonts = Vec::new();
+    for resource in stack.list_resources("font", ".json")? {
+        let Some(path) = resource
+            .location
+            .path()
+            .strip_prefix("font/")
+            .and_then(|path| path.strip_suffix(".json"))
+        else {
+            continue;
+        };
+        let font_id = format!("{}:{path}", resource.location.namespace());
+        let definitions = providers::load_font_providers(roots, &font_id)?;
+        let entries = load_font_atlas_entries(roots, definitions)?;
+        fonts.push((font_id, entries));
     }
-    let entries = definitions
+    if !fonts.iter().any(|(font_id, _)| font_id == DEFAULT_FONT_ID) {
+        bail!("font {DEFAULT_FONT_ID} has no selected definition");
+    }
+    build_hud_font_book_atlas(&fonts)
+}
+
+fn load_font_atlas_entries(
+    roots: &PackRoots,
+    definitions: Vec<FontProviderDefinition>,
+) -> Result<Vec<FontAtlasEntry>> {
+    definitions
         .into_iter()
         .map(|definition| {
             Ok(match definition {
@@ -67,8 +94,7 @@ pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
                 FontProviderDefinition::Space(space) => FontAtlasEntry::Space(space),
             })
         })
-        .collect::<Result<Vec<_>>>()?;
-    build_hud_font_atlas(&entries)
+        .collect()
 }
 
 pub fn load_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> {
@@ -99,6 +125,7 @@ fn load_font_bitmap_texture(roots: &PackRoots, file: &str) -> Result<SpriteImage
     SpriteImage::from_png_file_with_resource_stack(location.id(), resource.path, &resources)
 }
 
+#[cfg(test)]
 fn build_hud_font_atlas(entries: &[FontAtlasEntry]) -> Result<HudFontAtlasImage> {
     // The atlas dimensions come from the bitmap pages only: `space` providers
     // contribute codepoint advances but no pixels (vanilla `EmptyGlyph`).
@@ -133,11 +160,67 @@ fn build_hud_font_atlas(entries: &[FontAtlasEntry]) -> Result<HudFontAtlasImage>
         }
     }
 
+    let fonts = HudFontGlyphBook::from_fonts(
+        DEFAULT_FONT_ID,
+        BTreeMap::from([(DEFAULT_FONT_ID.to_string(), glyphs.clone())]),
+    );
     Ok(HudFontAtlasImage {
         width,
         height,
         rgba,
         glyphs,
+        fonts,
+    })
+}
+
+fn build_hud_font_book_atlas(fonts: &[(String, Vec<FontAtlasEntry>)]) -> Result<HudFontAtlasImage> {
+    let bitmap_pages = || {
+        fonts.iter().flat_map(|(_, entries)| {
+            entries.iter().filter_map(|entry| match entry {
+                FontAtlasEntry::Bitmap(definition, image) => Some((definition, image)),
+                FontAtlasEntry::Space(_) => None,
+            })
+        })
+    };
+    let width = bitmap_pages()
+        .map(|(_, image)| image.width)
+        .max()
+        .context("font atlas needs at least one bitmap page")?;
+    let height = bitmap_pages()
+        .try_fold(0u32, |height, (_, image)| height.checked_add(image.height))
+        .context("font atlas height overflow")?;
+    if width == 0 || height == 0 {
+        bail!("font bitmap pages must not be empty");
+    }
+
+    let mut rgba = vec![0; rgba_len(width, height)?];
+    let mut maps = BTreeMap::new();
+    let mut page_y = 0u32;
+    for (font_id, entries) in fonts {
+        let mut glyphs = HudFontGlyphMap::new();
+        for entry in entries {
+            match entry {
+                FontAtlasEntry::Bitmap(definition, image) => {
+                    blit_font_page(image, &mut rgba, width, page_y)?;
+                    collect_page_glyphs(definition, image, width, height, page_y, &mut glyphs)?;
+                    page_y += image.height;
+                }
+                FontAtlasEntry::Space(space) => collect_space_glyphs(space, &mut glyphs),
+            }
+        }
+        maps.insert(font_id.clone(), glyphs);
+    }
+    let glyphs = maps
+        .get(DEFAULT_FONT_ID)
+        .cloned()
+        .context("default font glyph map was not built")?;
+    let font_book = HudFontGlyphBook::from_fonts(DEFAULT_FONT_ID, maps);
+    Ok(HudFontAtlasImage {
+        width,
+        height,
+        rgba,
+        glyphs,
+        fonts: font_book,
     })
 }
 
@@ -490,6 +573,50 @@ mod tests {
         assert_eq!(glyph.uv.max, [1.0, 0.5]);
         // Advance from the first page's 4px actual width, not the second's 7px.
         assert_eq!(glyph.advance, 5);
+    }
+
+    #[test]
+    fn font_book_stacks_fonts_into_one_atlas_and_keeps_per_font_metrics() {
+        let default = page_image("default", 8, 8, &[(2, 0)]);
+        let custom = page_image("custom", 16, 8, &[(9, 0)]);
+        let fonts = vec![
+            (
+                DEFAULT_FONT_ID.to_string(),
+                vec![bitmap_entry(
+                    definition("minecraft:font/default.png", 8, 7, &["A"]),
+                    default,
+                )],
+            ),
+            (
+                "example:custom".to_string(),
+                vec![bitmap_entry(
+                    definition("example:font/custom.png", 8, 7, &["A"]),
+                    custom,
+                )],
+            ),
+        ];
+        let atlas = build_hud_font_book_atlas(&fonts).unwrap();
+
+        assert_eq!((atlas.width, atlas.height), (16, 16));
+        assert_eq!(atlas.fonts.font_count(), 2);
+        let default = atlas.fonts.glyphs(None).get('A').unwrap();
+        let custom = atlas.fonts.glyphs(Some("example:custom")).get('A').unwrap();
+        assert_eq!((default.advance, custom.advance), (4, 11));
+        assert_eq!(
+            default.uv,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [0.5, 0.5]
+            }
+        );
+        assert_eq!(
+            custom.uv,
+            HudUvRect {
+                min: [0.0, 0.5],
+                max: [1.0, 1.0]
+            }
+        );
+        assert_eq!(atlas.glyphs, *atlas.fonts.glyphs(None));
     }
 
     #[test]

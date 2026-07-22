@@ -2936,6 +2936,7 @@ pub(crate) fn update_renderer_from_publication(
         targeted_entity_id,
         world.local_player().camera.entity_id,
         !input.hide_gui(),
+        renderer_counters.frame_index,
     );
     let entity_flame_surfaces =
         entity_flame_surfaces(&entity_instances, terrain_textures, camera_pose);
@@ -2953,6 +2954,7 @@ pub(crate) fn update_renderer_from_publication(
         item_runtime,
         terrain_textures,
         camera_pose,
+        renderer_counters.frame_index,
         trim_material_keys.as_deref(),
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),

@@ -4,11 +4,12 @@
 //! the matching see-through layer. See-through lines sort far-to-near by entity
 //! distance; normal lines retain collector submission order.
 
+use bbb_render_types::{HudFontGlyphBook, HudObfuscatedRandom};
 use glam::{Mat4, Vec3};
 
 use crate::entity_models::entity_dispatch_render_offset;
 use crate::particles::camera_billboard_orientation;
-use crate::{CameraPose, EntityModelInstance, HudFontGlyphMap, HudStyledTextRun, Renderer};
+use crate::{CameraPose, EntityModelInstance, Renderer, WorldTextRun};
 
 use super::display_text::{
     append_mesh, append_quad, append_untextured_rect, argb_to_color, display_text_glyph,
@@ -54,7 +55,7 @@ pub struct EntityNameTagSubmission {
     pub entity_id: i32,
     pub submit_sequence: u64,
     pub line_kind: EntityNameTagLineKind,
-    pub runs: Vec<HudStyledTextRun>,
+    pub runs: Vec<WorldTextRun>,
     pub width: u32,
     pub line_offset: i32,
     pub distance_to_camera_sq: f32,
@@ -114,11 +115,12 @@ pub fn bake_entity_name_tag_surfaces(
     line_offset: i32,
     distance_to_camera_sq: f32,
     is_discrete: bool,
-    name_runs: &[HudStyledTextRun],
-    below_name_runs: Option<&[HudStyledTextRun]>,
+    name_runs: &[WorldTextRun],
+    below_name_runs: Option<&[WorldTextRun]>,
     light_coords: u32,
     camera_pose: CameraPose,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
+    obfuscated_seed: u64,
 ) -> Vec<EntityNameTagSurface> {
     let mut surfaces = Vec::with_capacity(usize::from(below_name_runs.is_some()) + 1);
     if let Some(runs) = below_name_runs {
@@ -135,7 +137,8 @@ pub fn bake_entity_name_tag_surfaces(
             runs,
             light_coords,
             camera_pose,
-            glyphs,
+            fonts,
+            obfuscated_seed,
         ) {
             surfaces.push(surface);
         }
@@ -153,7 +156,8 @@ pub fn bake_entity_name_tag_surfaces(
         name_runs,
         light_coords,
         camera_pose,
-        glyphs,
+        fonts,
+        obfuscated_seed,
     ) {
         surfaces.push(surface);
     }
@@ -171,12 +175,13 @@ fn bake_entity_name_tag_line(
     is_discrete: bool,
     line_kind: EntityNameTagLineKind,
     lift_for_below_name: bool,
-    runs: &[HudStyledTextRun],
+    runs: &[WorldTextRun],
     light_coords: u32,
     camera_pose: CameraPose,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
+    obfuscated_seed: u64,
 ) -> Option<EntityNameTagSurface> {
-    let width = display_text_runs_width(runs, glyphs);
+    let width = display_text_runs_width(runs, fonts);
     let name_lift = if lift_for_below_name {
         ENTITY_NAME_TAG_SCORE_TO_NAME_WORLD_LIFT
     } else {
@@ -218,10 +223,19 @@ fn bake_entity_name_tag_line(
         background_argb,
         light: original_light,
     });
-    let normal = bake_layer_mesh(transform, runs, width, line_offset, &normal_layer, glyphs);
+    let line_seed = obfuscated_seed.wrapping_add(submit_sequence);
+    let normal = bake_layer_mesh(
+        transform,
+        runs,
+        width,
+        line_offset,
+        &normal_layer,
+        fonts,
+        line_seed,
+    );
     let see_through = see_through_layer
         .as_ref()
-        .map(|layer| bake_layer_mesh(transform, runs, width, line_offset, layer, glyphs));
+        .map(|layer| bake_layer_mesh(transform, runs, width, line_offset, layer, fonts, line_seed));
     let surface = EntityNameTagSurface {
         submission: EntityNameTagSubmission {
             entity_id,
@@ -244,11 +258,12 @@ fn bake_entity_name_tag_line(
 
 fn bake_layer_mesh(
     transform: Mat4,
-    runs: &[HudStyledTextRun],
+    runs: &[WorldTextRun],
     width: u32,
     line_offset: i32,
     layer: &EntityNameTagLayerSubmission,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
+    obfuscated_seed: u64,
 ) -> ItemModelMesh {
     let mut mesh = ItemModelMesh::new();
     let mut pen_x = -(width as f32) / 2.0;
@@ -269,10 +284,19 @@ fn bake_layer_mesh(
     let alpha = (layer.base_text_argb >> 24) as u8;
     let mut first = true;
     let mut effects = Vec::new();
+    let mut obfuscated_random = HudObfuscatedRandom::with_seed(obfuscated_seed);
     for run in runs {
         let color = argb_to_color(text_argb(run.color, alpha));
         for ch in run.text.chars() {
-            let glyph = display_text_glyph(ch, glyphs);
+            let base_glyph = display_text_glyph(ch, run.font.as_deref(), fonts);
+            let glyph = if run.style.obfuscated && ch != ' ' {
+                fonts
+                    .obfuscated_pool(run.font.as_deref())
+                    .random_glyph(base_glyph.advance, &mut obfuscated_random)
+                    .unwrap_or(base_glyph)
+            } else {
+                base_glyph
+            };
             if glyph.width > 0 && glyph.height > 0 {
                 for quad in glyph.styled_quads(pen_x, y, run.style, false) {
                     append_quad(
@@ -290,10 +314,10 @@ fn bake_layer_mesh(
                     );
                 }
             }
-            for rect in glyph.styled_effect_rects(pen_x, y, run.style, first) {
+            for rect in base_glyph.styled_effect_rects(pen_x, y, run.style, first) {
                 effects.push((rect, color));
             }
-            pen_x += glyph.styled_advance(run.style) as f32;
+            pen_x += base_glyph.styled_advance(run.style) as f32;
             first = false;
         }
     }
@@ -379,13 +403,15 @@ fn shader_light(light_coords: u32) -> [f32; 2] {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::*;
     use crate::{
-        EntityDefaultPlayerSkin, EntityModelKind, EntityPlayerSkin, HudAsciiGlyph, HudTextStyle,
-        HudUvRect, PlayerModelPartVisibility,
+        EntityDefaultPlayerSkin, EntityModelKind, EntityPlayerSkin, HudAsciiGlyph, HudFontGlyphMap,
+        HudTextStyle, HudUvRect, PlayerModelPartVisibility,
     };
 
-    fn glyphs() -> HudFontGlyphMap {
+    fn fonts() -> HudFontGlyphBook {
         let mut glyphs = HudFontGlyphMap::new();
         for ch in ['A', 'B', '?', ' '] {
             glyphs.insert_first_wins(
@@ -402,7 +428,10 @@ mod tests {
                 },
             );
         }
-        glyphs
+        HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([("minecraft:default".to_string(), glyphs)]),
+        )
     }
 
     fn camera() -> CameraPose {
@@ -414,12 +443,8 @@ mod tests {
         }
     }
 
-    fn run(text: &str) -> HudStyledTextRun {
-        HudStyledTextRun {
-            text: text.to_string(),
-            style: HudTextStyle::default(),
-            color: None,
-        }
+    fn run(text: &str) -> WorldTextRun {
+        WorldTextRun::plain(text)
     }
 
     #[test]
@@ -436,7 +461,8 @@ mod tests {
             None,
             (1 << 4) | (9 << 20),
             camera(),
-            &glyphs(),
+            &fonts(),
+            0,
         );
         assert_eq!(surfaces.len(), 1);
         let surface = &surfaces[0];
@@ -487,7 +513,8 @@ mod tests {
             None,
             (5 << 4) | (15 << 20),
             camera(),
-            &glyphs(),
+            &fonts(),
+            0,
         );
         let surface = &surfaces[0];
         assert_eq!(surface.see_through_vertex_count(), 0);
@@ -511,7 +538,8 @@ mod tests {
             Some(&[run("B")]),
             15 << 20,
             camera(),
-            &glyphs(),
+            &fonts(),
+            0,
         );
         assert_eq!(surfaces.len(), 2);
         assert_eq!(
@@ -544,7 +572,8 @@ mod tests {
                 None,
                 15 << 20,
                 camera(),
-                &glyphs(),
+                &fonts(),
+                0,
             )
             .remove(0)
         };
@@ -555,5 +584,64 @@ mod tests {
         // background and starts with the near surface's glyph.
         assert!(geometry.see_through.0[0].position[0] > 8.0);
         assert!(geometry.normal.0[0].position[0] < 2.0);
+    }
+
+    #[test]
+    fn entity_name_tag_dual_layers_share_the_obfuscated_custom_glyph() {
+        let mut custom = HudFontGlyphMap::new();
+        for (ch, min_x) in [('A', 0.4), ('B', 0.5), ('C', 0.6)] {
+            custom.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 7,
+                    ascent: 7,
+                },
+            );
+        }
+        let fonts = HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([
+                ("example:custom".to_string(), custom),
+                ("minecraft:default".to_string(), HudFontGlyphMap::new()),
+            ]),
+        );
+        let runs = [WorldTextRun {
+            text: "A".to_string(),
+            style: HudTextStyle {
+                obfuscated: true,
+                ..Default::default()
+            },
+            color: None,
+            font: Some("example:custom".to_string()),
+        }];
+        let surface = bake_entity_name_tag_surfaces(
+            7,
+            3,
+            [0.0; 3],
+            1.0,
+            0,
+            4.0,
+            false,
+            &runs,
+            None,
+            15 << 20,
+            camera(),
+            &fonts,
+            9,
+        )
+        .remove(0);
+
+        assert_eq!(surface.submission.width, 7);
+        assert_eq!(
+            surface.normal.vertices[0].uv,
+            surface.see_through.as_ref().unwrap().vertices[4].uv
+        );
+        assert!((0.4..=0.6).contains(&surface.normal.vertices[0].uv[0]));
     }
 }

@@ -3,9 +3,9 @@ use std::sync::Arc;
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
-    bake_display_text_surface, CameraPose, DisplayTextSurface, HudStyledTextRun, HudTextStyle,
+    bake_display_text_surface, CameraPose, DisplayTextSurface, HudTextStyle,
     ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawTarget,
-    ItemModelFoil, ItemModelGeometryClass, ItemModelMesh, ItemModelResidencyFrame,
+    ItemModelFoil, ItemModelGeometryClass, ItemModelMesh, ItemModelResidencyFrame, WorldTextRun,
     ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{
@@ -35,6 +35,7 @@ pub(crate) fn display_entity_item_models(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
+    obfuscated_seed: u64,
     trim_material_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
@@ -79,9 +80,9 @@ pub(crate) fn display_entity_item_models(
                 text_opacity,
                 flags,
             } => {
-                let Some((text, glyphs)) = text
+                let Some((text, fonts)) = text
                     .as_ref()
-                    .zip(item_runtime.and_then(NativeItemRuntime::map_text_glyphs))
+                    .zip(item_runtime.and_then(NativeItemRuntime::map_text_fonts))
                 else {
                     continue;
                 };
@@ -97,7 +98,8 @@ pub(crate) fn display_entity_item_models(
                     *text_opacity,
                     *flags,
                     light,
-                    glyphs,
+                    fonts,
+                    obfuscated_seed.wrapping_add(submit_sequence as u64),
                 ));
             }
         }
@@ -105,9 +107,9 @@ pub(crate) fn display_entity_item_models(
     models
 }
 
-fn display_text_runs(runs: &[bbb_protocol::StyledTextRun]) -> Vec<HudStyledTextRun> {
+fn display_text_runs(runs: &[bbb_protocol::StyledTextRun]) -> Vec<WorldTextRun> {
     runs.iter()
-        .map(|run| HudStyledTextRun {
+        .map(|run| WorldTextRun {
             text: run.text.clone(),
             style: HudTextStyle {
                 bold: run.style.bold == Some(true),
@@ -117,6 +119,7 @@ fn display_text_runs(runs: &[bbb_protocol::StyledTextRun]) -> Vec<HudStyledTextR
                 obfuscated: run.style.obfuscated == Some(true),
             },
             color: run.style.color,
+            font: run.style.font.clone(),
         })
         .collect()
 }
@@ -469,6 +472,7 @@ mod tests {
             Some(&runtime),
             &TerrainTextureState::default(),
             None,
+            0,
             None,
             None,
             None,
@@ -482,5 +486,21 @@ mod tests {
         assert_eq!(surface.submission.lines[0].runs[0].text, "native text");
         assert_eq!(surface.submission.background_argb, 0x4000_0000);
         assert_eq!(surface.submission.light, [0.4, 0.8]);
+    }
+
+    #[test]
+    fn display_text_runs_retain_component_font_and_obfuscation() {
+        let runs = display_text_runs(&[bbb_protocol::StyledTextRun {
+            text: "secret".to_string(),
+            style: bbb_protocol::ComponentStyle {
+                obfuscated: Some(true),
+                font: Some("example:display".to_string()),
+                ..bbb_protocol::ComponentStyle::default()
+            },
+        }]);
+
+        assert_eq!(runs.len(), 1);
+        assert!(runs[0].style.obfuscated);
+        assert_eq!(runs[0].font.as_deref(), Some("example:display"));
     }
 }

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 /// Vanilla text-line reference baseline in font pixels: `GlyphBitmap.getTop()`
 /// computes a glyph quad's top edge as `7.0F - getBearingTop()`, where
 /// `getBearingTop()` is the bitmap provider's `ascent`
@@ -70,11 +72,8 @@ pub const HUD_FONT_BOLD_EXTRA_THICKNESS: f32 = 0.1;
 /// (unstyled) text path, so existing HUD callers are unaffected.
 ///
 /// Input end: `bbb_protocol::decode_styled_component_summary` preserves these
-/// keys as flattened `StyledTextRun`s, which world/native project into
-/// [`HudStyledTextRun`]s consumed by the HUD text draw loops. The `italic`
-/// shear and per-tick `obfuscated` glyph substitution are still pending draw
-/// primitives; both flags are carried (widths already correct) but drawn as
-/// upright/original glyphs.
+/// keys as flattened `StyledTextRun`s, which world/native project into the
+/// renderer's styled text runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct HudTextStyle {
     pub bold: bool,
@@ -295,6 +294,60 @@ pub struct HudFontGlyphMap {
     /// Sorted by codepoint for binary-search lookup; each codepoint appears
     /// at most once (the first inserted provider glyph).
     entries: Vec<(char, HudAsciiGlyph)>,
+}
+
+/// Immutable glyph maps for every resource-pack font baked into one shared
+/// atlas. The default map remains the fallback for callers without an explicit
+/// Component font and for unavailable custom ids; each map owns its matching
+/// equal-advance obfuscation pool so frame extraction never rescans all glyphs.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct HudFontGlyphBook {
+    default: HudFontGlyphMap,
+    fonts: BTreeMap<String, HudFontGlyphMap>,
+    default_obfuscated: HudObfuscatedGlyphPool,
+    obfuscated: BTreeMap<String, HudObfuscatedGlyphPool>,
+}
+
+impl HudFontGlyphBook {
+    pub fn from_fonts(default_font_id: &str, fonts: BTreeMap<String, HudFontGlyphMap>) -> Self {
+        let default = fonts.get(default_font_id).cloned().unwrap_or_default();
+        let default_obfuscated = HudObfuscatedGlyphPool::from_glyph_map(&default);
+        let obfuscated = fonts
+            .iter()
+            .map(|(font_id, glyphs)| {
+                (
+                    font_id.clone(),
+                    HudObfuscatedGlyphPool::from_glyph_map(glyphs),
+                )
+            })
+            .collect();
+        Self {
+            default,
+            fonts,
+            default_obfuscated,
+            obfuscated,
+        }
+    }
+
+    pub fn glyphs(&self, font_id: Option<&str>) -> &HudFontGlyphMap {
+        font_id
+            .and_then(|font_id| self.fonts.get(font_id))
+            .unwrap_or(&self.default)
+    }
+
+    pub fn obfuscated_pool(&self, font_id: Option<&str>) -> &HudObfuscatedGlyphPool {
+        font_id
+            .and_then(|font_id| self.obfuscated.get(font_id))
+            .unwrap_or(&self.default_obfuscated)
+    }
+
+    pub fn contains_font(&self, font_id: &str) -> bool {
+        self.fonts.contains_key(font_id)
+    }
+
+    pub fn font_count(&self) -> usize {
+        self.fonts.len()
+    }
 }
 
 impl HudFontGlyphMap {
@@ -550,6 +603,60 @@ mod tests {
         assert_eq!(map.get('é'), Some(first));
         assert_eq!(map.get('e'), None);
         assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn font_book_selects_custom_maps_and_matching_obfuscation_pools() {
+        let glyph = |advance, min_x| HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [min_x, 0.0],
+                max: [min_x + 0.1, 1.0],
+            },
+            width: advance,
+            height: 8,
+            advance,
+            ascent: 7,
+        };
+        let mut default = HudFontGlyphMap::new();
+        default.insert_first_wins('A', glyph(5, 0.0));
+        let mut custom = HudFontGlyphMap::new();
+        custom.insert_first_wins('A', glyph(7, 0.5));
+        let book = HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([
+                ("example:custom".to_string(), custom),
+                ("minecraft:default".to_string(), default),
+            ]),
+        );
+
+        assert_eq!(book.font_count(), 2);
+        assert!(book.contains_font("example:custom"));
+        assert_eq!(
+            book.glyphs(Some("example:custom"))
+                .get('A')
+                .unwrap()
+                .advance,
+            7
+        );
+        assert_eq!(
+            book.glyphs(Some("example:missing"))
+                .get('A')
+                .unwrap()
+                .advance,
+            5
+        );
+        assert_eq!(
+            book.obfuscated_pool(Some("example:custom")).bucket_count(),
+            1
+        );
+        assert!(book
+            .obfuscated_pool(Some("example:custom"))
+            .random_glyph(7, &mut HudObfuscatedRandom::with_seed(1))
+            .is_some());
+        assert!(book
+            .obfuscated_pool(Some("example:missing"))
+            .random_glyph(5, &mut HudObfuscatedRandom::with_seed(1))
+            .is_some());
     }
 
     #[test]

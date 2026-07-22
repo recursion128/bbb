@@ -5,10 +5,11 @@
 //! untextured background before font glyphs. Normal text uses the
 //! `text_polygon_offset` depth state; see-through text disables depth and fog.
 
+use bbb_render_types::{HudFontGlyphBook, HudObfuscatedRandom};
 use glam::{Mat4, Vec3};
 
 use crate::pipeline_builder::{depth_stencil_state, RenderPipelineBuilder};
-use crate::{HudAsciiGlyph, HudFontGlyphMap, HudStyledTextRun, Renderer};
+use crate::{HudAsciiGlyph, HudTextStyle, Renderer};
 
 use super::{item_model_vertex_layout, ItemModelMesh, ItemModelVertex};
 use crate::gpu::DEPTH_FORMAT;
@@ -24,6 +25,26 @@ const DISPLAY_TEXT_FLAG_ALIGN_LEFT: u8 = 8;
 const DISPLAY_TEXT_FLAG_ALIGN_RIGHT: u8 = 16;
 const DISPLAY_TEXT_REPLACEMENT_GLYPH: char = '?';
 const DISPLAY_TEXT_UNTEXTURED_UV: [f32; 2] = [-1.0, -1.0];
+
+/// One flattened world-text run. Entity names and TextDisplay share this
+/// vocabulary so a retained Component font selects its own glyph map without
+/// widening the general HUD run type.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct WorldTextRun {
+    pub text: String,
+    pub style: HudTextStyle,
+    pub color: Option<u32>,
+    pub font: Option<String>,
+}
+
+impl WorldTextRun {
+    pub fn plain(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            ..Self::default()
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DisplayTextAlignment {
@@ -66,7 +87,7 @@ impl DisplayTextAlignment {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DisplayTextLine {
-    pub runs: Vec<HudStyledTextRun>,
+    pub runs: Vec<WorldTextRun>,
     pub width: u32,
 }
 
@@ -109,33 +130,46 @@ impl DisplayTextSurface {
     }
 }
 
-pub(super) fn display_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
+pub(super) fn display_text_glyph(
+    ch: char,
+    font: Option<&str>,
+    fonts: &HudFontGlyphBook,
+) -> HudAsciiGlyph {
+    let glyphs = fonts.glyphs(font);
     glyphs
         .get(ch)
         .or_else(|| glyphs.get(DISPLAY_TEXT_REPLACEMENT_GLYPH))
+        .or_else(|| fonts.glyphs(None).get(DISPLAY_TEXT_REPLACEMENT_GLYPH))
         .unwrap_or_default()
 }
 
-pub(super) fn display_text_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> u32 {
+pub(super) fn display_text_runs_width(runs: &[WorldTextRun], fonts: &HudFontGlyphBook) -> u32 {
     runs.iter()
         .map(|run| {
             run.text
                 .chars()
-                .map(|ch| display_text_glyph(ch, glyphs).styled_advance(run.style))
+                .map(|ch| {
+                    display_text_glyph(ch, run.font.as_deref(), fonts).styled_advance(run.style)
+                })
                 .sum::<u32>()
         })
         .sum()
 }
 
-fn push_styled_char(output: &mut Vec<HudStyledTextRun>, source: &HudStyledTextRun, ch: char) {
+fn push_styled_char(output: &mut Vec<WorldTextRun>, source: &WorldTextRun, ch: char) {
     match output.last_mut() {
-        Some(last) if last.style == source.style && last.color == source.color => {
+        Some(last)
+            if last.style == source.style
+                && last.color == source.color
+                && last.font == source.font =>
+        {
             last.text.push(ch);
         }
-        _ => output.push(HudStyledTextRun {
+        _ => output.push(WorldTextRun {
             text: ch.to_string(),
             style: source.style,
             color: source.color,
+            font: source.font.clone(),
         }),
     }
 }
@@ -146,9 +180,9 @@ fn push_styled_char(output: &mut Vec<HudStyledTextRun>, source: &HudStyledTextRu
 /// non-zero-width glyph may exceed the limit, and a terminal newline produces
 /// the final empty line just like vanilla.
 pub fn split_display_text_lines(
-    runs: &[HudStyledTextRun],
+    runs: &[WorldTextRun],
     max_width: i32,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
 ) -> Vec<DisplayTextLine> {
     let chars: Vec<(usize, char)> = runs
         .iter()
@@ -177,7 +211,9 @@ pub fn split_display_text_lines(
             if ch == ' ' {
                 last_space = Some(index);
             }
-            let advance = display_text_glyph(ch, glyphs).styled_advance(runs[run_index].style);
+            let run = &runs[run_index];
+            let advance =
+                display_text_glyph(ch, run.font.as_deref(), fonts).styled_advance(run.style);
             width = width.saturating_add(advance);
             if had_non_zero_width && width > max_width {
                 let split_at = last_space.unwrap_or(index);
@@ -194,7 +230,7 @@ pub fn split_display_text_lines(
         for &(run_index, ch) in &chars[start..end] {
             push_styled_char(&mut line_runs, &runs[run_index], ch);
         }
-        let line_width = display_text_runs_width(&line_runs, glyphs);
+        let line_width = display_text_runs_width(&line_runs, fonts);
         lines.push(DisplayTextLine {
             runs: line_runs,
             width: line_width,
@@ -279,15 +315,16 @@ pub fn bake_display_text_surface(
     submit_sequence: u64,
     outline_color: Option<u32>,
     display_transform: Mat4,
-    runs: &[HudStyledTextRun],
+    runs: &[WorldTextRun],
     line_width: i32,
     background_color: i32,
     text_opacity: i8,
     flags: i8,
     light: [f32; 2],
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
+    obfuscated_seed: u64,
 ) -> Option<DisplayTextSurface> {
-    let lines = split_display_text_lines(runs, line_width, glyphs);
+    let lines = split_display_text_lines(runs, line_width, fonts);
     if lines.is_empty() {
         return None;
     }
@@ -328,6 +365,7 @@ pub fn bake_display_text_surface(
     }
 
     let mut text = ItemModelMesh::new();
+    let mut obfuscated_random = HudObfuscatedRandom::with_seed(obfuscated_seed);
     for (line_index, line) in lines.iter().enumerate() {
         let mut pen_x = match alignment {
             DisplayTextAlignment::Left => 0.0,
@@ -342,7 +380,15 @@ pub fn bake_display_text_surface(
             let main_color = argb_to_color(argb);
             let shadow_color = argb_to_color(shadow_argb(argb));
             for ch in run.text.chars() {
-                let glyph = display_text_glyph(ch, glyphs);
+                let base_glyph = display_text_glyph(ch, run.font.as_deref(), fonts);
+                let glyph = if run.style.obfuscated && ch != ' ' {
+                    fonts
+                        .obfuscated_pool(run.font.as_deref())
+                        .random_glyph(base_glyph.advance, &mut obfuscated_random)
+                        .unwrap_or(base_glyph)
+                } else {
+                    base_glyph
+                };
                 if glyph.width > 0 && glyph.height > 0 {
                     for quad in glyph.styled_quads(pen_x, y, run.style, shadow) {
                         let color = if quad.shadow {
@@ -365,10 +411,10 @@ pub fn bake_display_text_surface(
                         );
                     }
                 }
-                for rect in glyph.styled_effect_rects(pen_x, y, run.style, first_in_line) {
+                for rect in base_glyph.styled_effect_rects(pen_x, y, run.style, first_in_line) {
                     effects.push((rect, main_color, shadow_color));
                 }
-                pen_x += glyph.styled_advance(run.style) as f32;
+                pen_x += base_glyph.styled_advance(run.style) as f32;
                 first_in_line = false;
             }
         }
@@ -771,10 +817,12 @@ pub(crate) fn create_display_text_see_through_pipeline(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{HudTextStyle, HudUvRect};
+    use std::collections::BTreeMap;
 
-    fn glyphs() -> HudFontGlyphMap {
+    use super::*;
+    use crate::{HudFontGlyphMap, HudTextStyle, HudUvRect};
+
+    fn fonts() -> HudFontGlyphBook {
         let mut glyphs = HudFontGlyphMap::new();
         for ch in ['a', 'b', 'c', '?', ' '] {
             glyphs.insert_first_wins(
@@ -791,24 +839,27 @@ mod tests {
                 },
             );
         }
-        glyphs
+        HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([("minecraft:default".to_string(), glyphs)]),
+        )
     }
 
     #[test]
     fn display_text_wraps_spaces_hard_breaks_and_terminal_newlines() {
-        let glyphs = glyphs();
-        let lines = split_display_text_lines(&[HudStyledTextRun::plain("aa bb")], 14, &glyphs);
+        let fonts = fonts();
+        let lines = split_display_text_lines(&[WorldTextRun::plain("aa bb")], 14, &fonts);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0].runs[0].text, "aa");
         assert_eq!(lines[1].runs[0].text, "bb");
 
-        let lines = split_display_text_lines(&[HudStyledTextRun::plain("abc")], 6, &glyphs);
+        let lines = split_display_text_lines(&[WorldTextRun::plain("abc")], 6, &fonts);
         assert_eq!(
             lines.iter().map(|line| line.width).collect::<Vec<_>>(),
             [6, 6, 6]
         );
 
-        let lines = split_display_text_lines(&[HudStyledTextRun::plain("a\n")], 100, &glyphs);
+        let lines = split_display_text_lines(&[WorldTextRun::plain("a\n")], 100, &fonts);
         assert_eq!(lines.len(), 2);
         assert!(lines[1].runs.is_empty());
     }
@@ -820,13 +871,14 @@ mod tests {
             3,
             Some(0xFF11_2233),
             Mat4::from_translation(Vec3::new(2.0, 3.0, 4.0)),
-            &[HudStyledTextRun::plain("ab\na")],
+            &[WorldTextRun::plain("ab\na")],
             200,
             0,
             -2,
             (DISPLAY_TEXT_FLAG_DEFAULT_BACKGROUND | DISPLAY_TEXT_FLAG_ALIGN_RIGHT) as i8,
             [0.25, 1.0],
-            &glyphs(),
+            &fonts(),
+            0,
         )
         .unwrap();
         assert_eq!(surface.submission.content_width, 12);
@@ -865,7 +917,7 @@ mod tests {
 
     #[test]
     fn display_text_bakes_shadow_bold_and_effect_geometry() {
-        let runs = [HudStyledTextRun {
+        let runs = [WorldTextRun {
             text: "a".to_string(),
             style: HudTextStyle {
                 bold: true,
@@ -873,6 +925,7 @@ mod tests {
                 ..Default::default()
             },
             color: Some(0x80_40_20),
+            font: None,
         }];
         let surface = bake_display_text_surface(
             7,
@@ -885,7 +938,8 @@ mod tests {
             -1,
             DISPLAY_TEXT_FLAG_SHADOW as i8,
             [0.0, 1.0],
-            &glyphs(),
+            &fonts(),
+            0,
         )
         .unwrap();
         // Bold glyph: shadow/main x two quads; underline: shadow/main quads.
@@ -903,6 +957,78 @@ mod tests {
     }
 
     #[test]
+    fn display_text_uses_custom_font_metrics_and_frame_seeded_obfuscation() {
+        let make_glyph = |advance, min_x| HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [min_x, 0.0],
+                max: [min_x + 0.1, 0.5],
+            },
+            width: 5,
+            height: 8,
+            advance,
+            ascent: 7,
+        };
+        let mut default = HudFontGlyphMap::new();
+        default.insert_first_wins('a', make_glyph(6, 0.0));
+        default.insert_first_wins('?', make_glyph(6, 0.1));
+        let mut custom = HudFontGlyphMap::new();
+        for (ch, min_x) in [('a', 0.4), ('b', 0.5), ('c', 0.6)] {
+            custom.insert_first_wins(ch, make_glyph(8, min_x));
+        }
+        let fonts = HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([
+                ("example:custom".to_string(), custom),
+                ("minecraft:default".to_string(), default),
+            ]),
+        );
+        let runs = [WorldTextRun {
+            text: "a".to_string(),
+            style: HudTextStyle {
+                obfuscated: true,
+                ..Default::default()
+            },
+            color: None,
+            font: Some("example:custom".to_string()),
+        }];
+        let mut seen_uvs = Vec::new();
+        for seed in 0..32 {
+            let surface = bake_display_text_surface(
+                1,
+                0,
+                None,
+                Mat4::IDENTITY,
+                &runs,
+                200,
+                0,
+                -1,
+                0,
+                [0.0, 1.0],
+                &fonts,
+                seed,
+            )
+            .unwrap();
+            assert_eq!(surface.submission.content_width, 8);
+            let uv = surface.text.vertices[0].uv;
+            assert!((0.4..=0.6).contains(&uv[0]));
+            if !seen_uvs.contains(&uv) {
+                seen_uvs.push(uv);
+            }
+        }
+        assert!(
+            seen_uvs.len() > 1,
+            "frame seeds should vary the equal-width glyph"
+        );
+
+        let missing = [WorldTextRun {
+            text: "z".to_string(),
+            font: Some("example:custom".to_string()),
+            ..WorldTextRun::default()
+        }];
+        assert_eq!(display_text_runs_width(&missing, &fonts), 6);
+    }
+
+    #[test]
     fn display_text_empty_component_has_no_surface_but_newline_can_have_background() {
         assert!(bake_display_text_surface(
             1,
@@ -915,7 +1041,8 @@ mod tests {
             -1,
             0,
             [0.0, 1.0],
-            &glyphs(),
+            &fonts(),
+            0,
         )
         .is_none());
         let surface = bake_display_text_surface(
@@ -923,13 +1050,14 @@ mod tests {
             0,
             None,
             Mat4::IDENTITY,
-            &[HudStyledTextRun::plain("\n")],
+            &[WorldTextRun::plain("\n")],
             200,
             0x4000_0000,
             -1,
             0,
             [0.0, 1.0],
-            &glyphs(),
+            &fonts(),
+            0,
         )
         .unwrap();
         assert_eq!(surface.submission.lines.len(), 2);
@@ -956,13 +1084,14 @@ mod tests {
                 sequence,
                 None,
                 Mat4::from_translation(Vec3::new(0.0, 0.0, z)),
-                &[HudStyledTextRun::plain("a")],
+                &[WorldTextRun::plain("a")],
                 200,
                 0x4000_0000,
                 -1,
                 flags as i8,
                 [0.0, 1.0],
-                &glyphs(),
+                &fonts(),
+                0,
             )
             .unwrap()
         };

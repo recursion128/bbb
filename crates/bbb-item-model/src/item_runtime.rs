@@ -47,8 +47,8 @@ use bbb_render_types::{
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
     EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, FirstPersonMapBackgroundKind,
-    FirstPersonMapBackgroundTexture, HudFontGlyphMap, HudStyledTextRun, HudTextStyle,
-    ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask,
+    FirstPersonMapBackgroundTexture, HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun,
+    HudTextStyle, ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask,
 };
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.
@@ -155,12 +155,12 @@ fn load_map_background_textures(roots: &PackRoots) -> Result<Vec<FirstPersonMapB
     .collect()
 }
 
-fn load_map_text_glyphs(roots: &PackRoots) -> Result<HudFontGlyphMap> {
-    Ok(load_hud_font_atlas(roots)?.glyphs)
+fn load_map_text_fonts(roots: &PackRoots) -> Result<HudFontGlyphBook> {
+    Ok(load_hud_font_atlas(roots)?.fonts)
 }
 
 #[cfg(any(test, feature = "test-support"))]
-fn test_map_text_glyphs() -> HudFontGlyphMap {
+fn test_map_text_fonts() -> HudFontGlyphBook {
     let mut glyphs = HudFontGlyphMap::new();
     for byte in b' '..=b'~' {
         glyphs.insert_first_wins(
@@ -177,7 +177,10 @@ fn test_map_text_glyphs() -> HudFontGlyphMap {
             },
         );
     }
-    glyphs
+    HudFontGlyphBook::from_fonts(
+        crate::font::DEFAULT_FONT_ID,
+        BTreeMap::from([(crate::font::DEFAULT_FONT_ID.to_string(), glyphs)]),
+    )
 }
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
@@ -242,7 +245,7 @@ pub struct NativeItemRuntime {
     language: LanguageCatalog,
     map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
-    map_text_glyphs: Option<HudFontGlyphMap>,
+    map_text_fonts: Option<HudFontGlyphBook>,
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_textures: RefCell<Option<Box<AsyncDynamicTextureRuntime>>>,
@@ -551,7 +554,7 @@ impl NativeItemRuntime {
             language: self.language.clone(),
             map_background_textures: self.map_background_textures.clone(),
             map_decoration_textures: self.map_decoration_textures.clone(),
-            map_text_glyphs: self.map_text_glyphs.clone(),
+            map_text_fonts: self.map_text_fonts.clone(),
             textures: self.textures.clone(),
             profile_resolutions: RefCell::default(),
             dynamic_textures: RefCell::default(),
@@ -730,10 +733,10 @@ impl NativeItemRuntime {
                 err
             })
             .unwrap_or_default();
-        let map_text_glyphs = load_map_text_glyphs(roots)
-            .context("load map label font metrics")
+        let map_text_fonts = load_map_text_fonts(roots)
+            .context("load shared world-text font metrics")
             .map_err(|err| {
-                tracing::warn!(?err, "continuing without native map label text");
+                tracing::warn!(?err, "continuing without native world text");
                 err
             })
             .ok();
@@ -751,7 +754,7 @@ impl NativeItemRuntime {
             language,
             map_background_textures,
             map_decoration_textures,
-            map_text_glyphs,
+            map_text_fonts,
             item_tags,
             enchantment_tags,
             trim_material_tags,
@@ -782,7 +785,7 @@ impl NativeItemRuntime {
         language: LanguageCatalog,
         map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
         map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
-        map_text_glyphs: Option<HudFontGlyphMap>,
+        map_text_fonts: Option<HudFontGlyphBook>,
         item_tags: Option<TagCatalog>,
         enchantment_tags: Option<TagCatalog>,
         trim_material_tags: Option<TagCatalog>,
@@ -883,7 +886,7 @@ impl NativeItemRuntime {
             language,
             map_background_textures,
             map_decoration_textures,
-            map_text_glyphs,
+            map_text_fonts,
             textures,
             profile_resolutions: RefCell::default(),
             dynamic_textures: RefCell::default(),
@@ -945,7 +948,7 @@ impl NativeItemRuntime {
                 },
             ],
             map_decoration_textures: Vec::new(),
-            map_text_glyphs: Some(test_map_text_glyphs()),
+            map_text_fonts: Some(test_map_text_fonts()),
             textures: ItemTextureState::from_images(vec![missing])
                 .expect("test item texture atlas is valid"),
             profile_resolutions: RefCell::default(),

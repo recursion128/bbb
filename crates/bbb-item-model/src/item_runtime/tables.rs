@@ -238,7 +238,11 @@ impl NativeItemRuntime {
     }
 
     pub fn map_text_glyphs(&self) -> Option<&HudFontGlyphMap> {
-        self.map_text_glyphs.as_ref()
+        self.map_text_fonts.as_ref().map(|fonts| fonts.glyphs(None))
+    }
+
+    pub fn map_text_fonts(&self) -> Option<&HudFontGlyphBook> {
+        self.map_text_fonts.as_ref()
     }
 
     pub fn item_max_stack_sizes_by_protocol_id(&self) -> BTreeMap<i32, i32> {

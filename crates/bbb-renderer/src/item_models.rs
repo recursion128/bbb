@@ -32,8 +32,8 @@ mod sign_text;
 pub use display_text::{
     bake_display_text_surface, split_display_text_lines, DisplayTextAlignment,
     DisplayTextLayerSubmission, DisplayTextLine, DisplayTextRenderType, DisplayTextSubmission,
-    DisplayTextSurface, DISPLAY_TEXT_DEFAULT_BACKGROUND_OPACITY, DISPLAY_TEXT_FONT_TEXTURE,
-    DISPLAY_TEXT_LINE_HEIGHT,
+    DisplayTextSurface, WorldTextRun, DISPLAY_TEXT_DEFAULT_BACKGROUND_OPACITY,
+    DISPLAY_TEXT_FONT_TEXTURE, DISPLAY_TEXT_LINE_HEIGHT,
 };
 pub(crate) use display_text::{
     create_display_text_background_pipeline, create_display_text_pipeline,

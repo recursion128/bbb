@@ -7,7 +7,7 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     bake_entity_name_tag_surfaces, entity_name_tag_root_position, CameraPose, EntityModelInstance,
-    EntityNameTagSurface, HudStyledTextRun, HudTextStyle,
+    EntityNameTagSurface, HudTextStyle, WorldTextRun,
 };
 use bbb_world::{
     EntityNameTagLivingVisibilityState, EntityNameTagRenderSourceState,
@@ -30,9 +30,10 @@ pub(crate) fn entity_name_tag_surfaces(
     targeted_entity_id: Option<i32>,
     camera_entity_id: Option<i32>,
     render_names: bool,
+    obfuscated_seed: u64,
 ) -> Vec<EntityNameTagSurface> {
-    let Some((camera_pose, glyphs)) =
-        camera_pose.zip(item_runtime.and_then(NativeItemRuntime::map_text_glyphs))
+    let Some((camera_pose, fonts)) =
+        camera_pose.zip(item_runtime.and_then(NativeItemRuntime::map_text_fonts))
     else {
         return Vec::new();
     };
@@ -92,7 +93,8 @@ pub(crate) fn entity_name_tag_surfaces(
             below_name_runs.as_deref(),
             instance.render_state.light_coords,
             camera_pose,
-            glyphs,
+            fonts,
+            obfuscated_seed,
         );
         submit_sequence = submit_sequence.saturating_add(baked.len() as u64);
         surfaces.extend(baked);
@@ -176,7 +178,7 @@ fn entity_name_tag_root_position_for_policy(
 fn entity_name_tag_text_runs(
     state: &EntityNameTagTextState,
     item_runtime: Option<&NativeItemRuntime>,
-) -> Vec<HudStyledTextRun> {
+) -> Vec<WorldTextRun> {
     let mut runs = Vec::new();
     for segment in &state.segments {
         match segment {
@@ -202,7 +204,7 @@ fn entity_name_tag_text_runs(
 }
 
 fn append_localized_component_runs(
-    out: &mut Vec<HudStyledTextRun>,
+    out: &mut Vec<WorldTextRun>,
     component: &RichTextComponent,
     inherited: &ComponentStyle,
     item_runtime: Option<&NativeItemRuntime>,
@@ -211,7 +213,7 @@ fn append_localized_component_runs(
 }
 
 fn append_component_value_runs(
-    out: &mut Vec<HudStyledTextRun>,
+    out: &mut Vec<WorldTextRun>,
     value: &NbtSummaryValue,
     inherited: &ComponentStyle,
     item_runtime: Option<&NativeItemRuntime>,
@@ -235,7 +237,7 @@ fn append_component_value_runs(
 }
 
 fn append_primary_component_runs(
-    out: &mut Vec<HudStyledTextRun>,
+    out: &mut Vec<WorldTextRun>,
     entries: &[NbtSummaryEntry],
     style: &ComponentStyle,
     item_runtime: Option<&NativeItemRuntime>,
@@ -271,7 +273,7 @@ fn translation_arguments(
     entries: &[NbtSummaryEntry],
     style: &ComponentStyle,
     item_runtime: Option<&NativeItemRuntime>,
-) -> Vec<Vec<HudStyledTextRun>> {
+) -> Vec<Vec<WorldTextRun>> {
     let Some(with) = find_entry(entries, "with") else {
         return Vec::new();
     };
@@ -290,10 +292,10 @@ fn translation_arguments(
 }
 
 fn append_translation_template(
-    out: &mut Vec<HudStyledTextRun>,
+    out: &mut Vec<WorldTextRun>,
     template: &str,
     style: &ComponentStyle,
-    arguments: &[Vec<HudStyledTextRun>],
+    arguments: &[Vec<WorldTextRun>],
 ) {
     visit_localized_template(template, |part| match part {
         LocalizedTemplatePart::Literal(text) => push_run(out, hud_run(text, style)),
@@ -321,8 +323,8 @@ fn localized_or_fallback(
         .to_string()
 }
 
-fn hud_run(text: &str, style: &ComponentStyle) -> HudStyledTextRun {
-    HudStyledTextRun {
+fn hud_run(text: &str, style: &ComponentStyle) -> WorldTextRun {
+    WorldTextRun {
         text: text.to_string(),
         style: HudTextStyle {
             bold: style.bold == Some(true),
@@ -332,17 +334,17 @@ fn hud_run(text: &str, style: &ComponentStyle) -> HudStyledTextRun {
             obfuscated: style.obfuscated == Some(true),
         },
         color: style.color,
+        font: style.font.clone(),
     }
 }
 
-fn push_run(runs: &mut Vec<HudStyledTextRun>, run: HudStyledTextRun) {
+fn push_run(runs: &mut Vec<WorldTextRun>, run: WorldTextRun) {
     if run.text.is_empty() {
         return;
     }
-    if let Some(previous) = runs
-        .last_mut()
-        .filter(|previous| previous.style == run.style && previous.color == run.color)
-    {
+    if let Some(previous) = runs.last_mut().filter(|previous| {
+        previous.style == run.style && previous.color == run.color && previous.font == run.font
+    }) {
         previous.text.push_str(&run.text);
     } else {
         runs.push(run);
@@ -532,6 +534,7 @@ mod tests {
             segments: vec![EntityNameTagTextSegmentState::Rich(component)],
             inherited_style: ComponentStyle {
                 bold: Some(true),
+                font: Some("example:names".to_string()),
                 ..ComponentStyle::default()
             },
         };
@@ -541,6 +544,9 @@ mod tests {
             "Hello Alex %"
         );
         assert!(runs.iter().all(|run| run.style.bold));
+        assert!(runs
+            .iter()
+            .all(|run| run.font.as_deref() == Some("example:names")));
         assert_eq!(runs[1].color, Some(0x55_FF_FF));
     }
 }
