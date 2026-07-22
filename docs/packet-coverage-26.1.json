@@ -6321,49 +6321,56 @@
       "coverage": {
         "ack_response": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#apply_test_instance_block_status",
+            "crates/bbb-world/src/test_instance_blocks.rs#apply_test_instance_block_status_to_editor",
+            "crates/bbb-native/src/input/test_instance_block.rs#sync_test_instance_block_editor",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTestInstanceBlockStatus",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTestInstanceBlockAction"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION",
+            "crates/bbb-native/src/input/mouse.rs#start_use_item",
+            "crates/bbb-native/src/input/test_instance_block.rs#sync_test_instance_block_editor",
+            "crates/bbb-native/src/input/test_instance_block.rs#handle_test_instance_block_editor_mouse_input",
             "vanilla:net/minecraft/client/player/LocalPlayer.java#openTestInstanceBlock",
             "vanilla:net/minecraft/client/gui/screens/inventory/TestInstanceBlockEditScreen.java#sendToServer"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION",
+            "crates/bbb-protocol/src/packets/test_instance_blocks.rs#encode_play_test_instance_block_action",
+            "crates/bbb-net/src/driver/commands.rs#send_test_instance_block_action",
             "vanilla:net/minecraft/network/protocol/game/ServerboundTestInstanceBlockActionPacket.java#STREAM_CODEC",
             "vanilla:net/minecraft/world/level/block/entity/TestInstanceBlockEntity.java#Data"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#last_test_instance_block_status",
+            "crates/bbb-world/src/test_instance_blocks.rs#try_open_test_instance_block_editor",
+            "crates/bbb-native/src/input/test_instance_block.rs#save_enabled",
+            "crates/bbb-native/src/input/test_instance_block.rs#parse_size",
             "vanilla:net/minecraft/client/gui/screens/inventory/TestInstanceBlockEditScreen.java#updateSaveState",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTestInstanceBlockAction"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_test_instance_block_status_with_optional_size",
-            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
-            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
-            "scripts/generate-packet-catalog.py#extract_catalogs"
+            "crates/bbb-protocol/src/packets/test_instance_blocks.rs#encodes_test_instance_action_wire_order_ids_and_fixed_editor_data",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_test_instance_block_action_encodes_editor_packet",
+            "crates/bbb-world/src/test_instance_blocks.rs#editor_requires_permission_scopes_rich_status_and_rejects_bad_updates_atomically",
+            "crates/bbb-native/src/input/tests.rs#test_instance_block_editor_initializes_queries_and_applies_only_present_response_size",
+            "crates/bbb-native/src/input/tests.rs#test_instance_block_editor_reset_save_and_done_buttons_map_to_exact_actions"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -13664,11 +13671,12 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
+            "crates/bbb-world/src/test_instance_blocks.rs#apply_test_instance_block_status_to_editor",
             "crates/bbb-world/src/client/debug_game.rs#apply_test_instance_block_status",
             "vanilla:net/minecraft/network/protocol/game/ClientboundTestInstanceBlockStatus.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -13687,19 +13695,22 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#last_test_instance_block_status",
+            "crates/bbb-native/src/input/test_instance_block.rs#sync_test_instance_block_editor",
+            "crates/bbb-native/src/runtime.rs#hud_test_instance_block_editor_screen",
+            "crates/bbb-renderer/src/hud.rs#push_hud_test_instance_block_editor_screen",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTestInstanceBlockStatus"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_test_instance_block_status_with_optional_size",
             "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
-            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
-            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+            "crates/bbb-world/src/test_instance_blocks.rs#editor_requires_permission_scopes_rich_status_and_rejects_bad_updates_atomically",
+            "crates/bbb-native/src/input/tests.rs#test_instance_block_editor_initializes_queries_and_applies_only_present_response_size",
+            "crates/bbb-renderer/src/hud.rs#test_instance_block_editor_layout_matches_vanilla_absolute_geometry"
           ],
           "gap": null,
           "status": "complete"

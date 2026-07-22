@@ -1535,7 +1535,7 @@ mod tests {
     }
 
     #[test]
-    fn play_test_instance_status_keeps_rich_screen_update_open() {
+    fn play_test_instance_status_closes_rich_screen_update() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1545,17 +1545,10 @@ mod tests {
                     && entry.constant_name == "CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS"
             })
             .expect("play test instance block status coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -4202,7 +4195,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_test_instance_action_keeps_editor_and_codec_open() {
+    fn play_serverbound_test_instance_action_closes_editor_and_codec() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -4215,7 +4208,7 @@ mod tests {
         assert!(entry
             .coverage
             .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

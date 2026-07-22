@@ -251,3 +251,7 @@
 - **2026-07-22（CommandBlockEditScreen 包闭环）**：权威 command-block block-entity
   投影驱动原生编辑器与七行命令补全，Done 精确发送 typed packet，Cancel/Escape 零发送；
   五类 packet coverage 全部 complete，合同见 `docs/archive/command-block-editor-packet-closure-design.md`。
+- **2026-07-22（TestInstanceBlockEditScreen 双向包闭环）**：typed 嵌套 block-entity
+  数据与 screen-scoped rich status/optional size 驱动原生编辑器；INIT/QUERY、四类关闭动作、
+  Save 守卫和 Cancel/Escape 均有精确发包回归，双向 coverage 全单元 complete，合同见
+  `docs/archive/test-instance-block-editor-packet-closure-design.md`。

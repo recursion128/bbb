@@ -1096,12 +1096,6 @@ back into a todo. Do not delete these.
   through the built-in game-rule catalog, typed-deserialize valid values, ignore
   unknown/invalid entries, remove loading state, and submit changed rules. The
   current unconditional key/string diagnostic snapshot is not rule state.
-- **Test-instance block status screen update.** Preserve the full status
-  Component and apply the optional size only while a native
-  `TestInstanceBlockEditScreen` equivalent is active, matching
-  `ClientPacketListener.handleTestInstanceBlockStatus`. The world currently
-  retains a plain-text diagnostic snapshot. Restart when the test-instance
-  block edit screen has a native UI owner.
 - **Server-data MOTD/icon parity.** Preserve the full trusted MOTD Component,
   validate optional icon bytes like `ServerData.validateIcon`, and update the
   persisted multiplayer server-list entry when that owner exists. The current
