@@ -60,7 +60,11 @@ The synchronized `dimension_type` reference holder is `complete`: Login and
 Respawn retain the `CommonPlayerSpawnInfo` numeric id, and level creation
 resolves it through the current server order before applying identity, shape,
 lighting, skybox, ambient light, clock, and environment projections. The
-persistent direct codec remains a separate partial call.
+persistent direct holder codec is server-only. The shared direct/network element
+codec's `infiniburn` hashed tag is complete through the atomic typed revision:
+its exact tag identity reaches the active level alongside every scalar and
+monster-light provider field, while member order stays in the same frozen
+block-tag revision for registry queries.
 The synchronized `damage_type` reference holder is `complete`: DamageEvent and
 component values retain the current server order, custom network elements are
 strictly projected across the five direct-codec fields, and generated known-pack

@@ -3409,22 +3409,26 @@
     {
       "call_site": "net/minecraft/world/level/dimension/DimensionType.java:95:19:TagKey.hashedCodec",
       "column": 19,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/dimension_types.rs#pub(super) fn decode_dimension_type_client_projection",
+      "decision": "DimensionType.NETWORK_CODEC now validates every required scalar and monster-light provider in the atomic typed registry candidate, normalizes and retains the exact infiniburn TagKey identity, and projects the selected current-session holder into active level diagnostics. Custom reversed block-tag members resolve through the same frozen registry revision, while malformed hashed tags or providers reject the candidate without replacing the prior generation.",
       "evidence": [
+        "vanilla:net/minecraft/world/level/dimension/DimensionType.java#public static final Codec<DimensionType> NETWORK_CODEC",
         "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#SYNCHRONIZED_REGISTRIES = List.of(",
+        "crates/bbb-world/src/registries/dimension_types.rs#pub(super) fn decode_dimension_type_client_projection",
+        "crates/bbb-world/src/registries/tests.rs#fn configuration_candidate_stores_dimension_timeline_and_clock_typed_values",
+        "crates/bbb-world/src/registries/tests.rs#fn malformed_dimension_hashed_tag_rejects_candidate_atomically",
+        "crates/bbb-world/src/level.rs#fn dimension_type_registry_projects_remaining_network_scalars_to_level_state"
       ],
       "factory": "TagKey.hashedCodec",
-      "family": "persistent-hashed-tag",
+      "family": "persistent-hashed-tag-dimension-type-synchronized",
       "kind": "persistent_hashed_tag",
       "line": 95,
       "owner": "net.minecraft.world.level.dimension.DimensionType",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/dimension/DimensionType.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/level/dimension/DimensionType.java:101:19:RegistryCodecs.homogeneousList",

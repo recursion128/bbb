@@ -183,7 +183,11 @@ mod tests {
         assert_eq!(counts["network-holder-set-or-tag"], 10);
         assert_eq!(counts["network-holder-set-or-tag-banner-pattern"], 1);
         assert_eq!(counts["network-tag"], 1);
-        assert_eq!(counts["persistent-hashed-tag"], 7);
+        assert_eq!(counts["persistent-hashed-tag"], 6);
+        assert_eq!(
+            counts["persistent-hashed-tag-dimension-type-synchronized"],
+            1
+        );
         assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(counts["persistent-holder-or-inline-client"], 3);
         assert_eq!(counts["persistent-holder-or-inline-server-only"], 20);
@@ -224,7 +228,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            27
+            26
         );
         assert_eq!(
             ledger
@@ -247,7 +251,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 105);
+        assert_eq!(complete.len(), 106);
         assert_eq!(
             complete
                 .iter()

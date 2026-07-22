@@ -208,3 +208,5 @@
 - **2026-07-22（persistent Holder-or-inline 全量闭环）**：Instrument stream 保留完整 direct
   值并可精确持久化，TestEnvironment/Instrument/SoundEvent 三个客户端行共用 registry-owned named/direct 路由；20 个 worldgen/trial/loot 服务端行裁决为 not-applicable，合同见
   `docs/persistent-holder-or-inline-coverage-design.md`。
+- **2026-07-22（DimensionType.NETWORK_CODEC 全字段闭环）**：原子 typed revision 保留全部标量、
+  `infiniburn` hashed TagKey、七类有界 `IntProvider` 与 monster light settings，并将当前 session holder 投影到 level 快照；合同见 `docs/dimension-type-network-codec-design.md`。

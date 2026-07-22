@@ -88,10 +88,6 @@ Owner: `bbb-protocol`
   decode paths (component trees, SNBT, holder sets) the way the dialog
   semantic-depth budget test pins its depth-64 reference walk; a depth
   constant alone does not bound stack use across build profiles.
-- Finish the remaining `DimensionType.NETWORK_CODEC` scalar/monster fields
-  beyond the atomically published frozen client projection. Extend
-  source-aware built-in fallback only where a concrete consumer requires it,
-  never by applying a bootstrap ordinal to authoritative synchronized contents.
 - Close the remaining SetEntityData family behavior through the entity matrix:
   subclass callbacks, animation/effect ordering, and family-specific renderer,
   audio, particle, save, and debug consumers remain the proof boundary. The
