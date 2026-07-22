@@ -341,6 +341,10 @@ entity_render_state! {
     /// block position. Defaults to [`ENTITY_FULL_BRIGHT_LIGHT_COORDS`]; the
     /// entity scene projects the sampled value with the on-fire override.
     (with_light_coords) light_coords: u32 = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
+    /// Vanilla dispatcher-owned flame dimensions (`boundingBoxWidth`,
+    /// `boundingBoxHeight`) when `EntityRenderState.displayFireAnimation` is
+    /// true. `None` suppresses the solid flame feature.
+    (with_flame_dimensions) flame_dimensions: Option<[f32; 2]> = None;
     /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0`): selects
     /// the red row of `OverlayTexture` so the entity flashes red when hurt.
     (with_has_red_overlay) has_red_overlay: bool = false;
@@ -3007,6 +3011,7 @@ mod tests {
                 death_time: 0.0,
                 ender_dragon_death_time: 0.0,
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+                flame_dimensions: None,
                 has_red_overlay: false,
                 white_overlay_progress: 0.0,
                 creeper_swelling: 0.0,

@@ -407,6 +407,24 @@ impl TerrainTextureState {
         self.atlas.rects.get(index as usize).copied()
     }
 
+    /// Resolves one blocks-atlas sprite like `TextureAtlas.getSprite`: an
+    /// undeclared id uses the atlas `missingno` sprite when present, then the
+    /// terrain owner's established fallback as a final malformed-atlas guard.
+    pub(crate) fn sprite_uv_rect(&self, texture_id: &str) -> TerrainUvRect {
+        let index = self
+            .indices
+            .get(texture_id)
+            .or_else(|| self.indices.get("minecraft:missingno"))
+            .copied()
+            .unwrap_or(self.fallback_index);
+        self.atlas
+            .rects
+            .get(index as usize)
+            .copied()
+            .or_else(|| self.atlas.rects.get(self.fallback_index as usize).copied())
+            .unwrap_or(TerrainUvRect::UNIT)
+    }
+
     fn texture_transparency(&self, texture_id: &str) -> TerrainTransparency {
         self.texture_index_transparency(self.texture_index(texture_id))
     }

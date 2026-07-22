@@ -48,6 +48,59 @@ fn model_source(store: &WorldStore, entity_id: i32) -> EntityModelSourceState {
         .unwrap()
 }
 
+#[test]
+fn model_source_projects_exact_fire_flag_and_current_aabb_dimensions() {
+    let mut store = WorldStore::new();
+    let entity_id = 999;
+    store.apply_add_entity(protocol_add_entity_with_type(
+        entity_id,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let bounds = store.probe_entity_pick_bounds(entity_id).unwrap();
+    let initial = model_source(&store, entity_id);
+    assert!(!initial.display_fire_animation);
+    assert_eq!(initial.bounding_box_width, bounds.max[0] - bounds.min[0]);
+    assert_eq!(initial.bounding_box_height, bounds.max[1] - bounds.min[1]);
+
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: entity_id,
+        values: vec![protocol_byte_data(
+            accessors.shared_flags_data_id,
+            accessors.on_fire_mask,
+        )],
+    }));
+    assert!(model_source(&store, entity_id).display_fire_animation);
+
+    let fire_immune_id = 1_000;
+    store.apply_add_entity(protocol_add_entity_with_type(
+        fire_immune_id,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_BLAZE_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: fire_immune_id,
+        values: vec![protocol_byte_data(
+            accessors.shared_flags_data_id,
+            accessors.on_fire_mask,
+        )],
+    }));
+    assert!(
+        !model_source(&store, fire_immune_id).display_fire_animation,
+        "Entity.isOnFire rejects a synchronized visual-fire flag for fire-immune types"
+    );
+
+    let non_pickable_id = 1_001;
+    store.apply_add_entity(protocol_add_entity_with_type(
+        non_pickable_id,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    ));
+    assert_eq!(store.probe_entity_pick_bounds(non_pickable_id), None);
+    let non_pickable = model_source(&store, non_pickable_id);
+    assert_eq!(non_pickable.bounding_box_width, 0.5);
+    assert_eq!(non_pickable.bounding_box_height, 0.5);
+}
+
 fn add_entity_with_uuid(
     entity_id: i32,
     entity_type_id: i32,

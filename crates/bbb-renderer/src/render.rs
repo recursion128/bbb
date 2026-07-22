@@ -599,6 +599,23 @@ impl Renderer {
             }
         }
 
+        // Vanilla `FeatureRenderDispatcher.renderSolidFeatures` renders
+        // `FlameFeatureRenderer` immediately after model/model-part features
+        // and before leash/item/block/custom features. These quads sample the
+        // blocks atlas through `Sheets.cutoutBlockSheet()`.
+        let (entity_flame_vertices, entity_flame_indices) = self.collect_entity_flame_geometry();
+        if !entity_flame_indices.is_empty() {
+            self.draw_item_model_geometry(
+                &mut *encoder,
+                main_view,
+                &entity_flame_vertices,
+                &entity_flame_indices,
+                &self.terrain_bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.entity_model_draw_calls += 1;
+        }
+
         // Vanilla solid item features are part of FeatureRenderDispatcher.renderSolidFeatures()
         // inside the main pass: after model/model-part features and before target depth copies,
         // translucent terrain, entity-outline post-chain work, and clouds. GUI item icons use

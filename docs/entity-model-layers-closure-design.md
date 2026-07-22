@@ -125,6 +125,37 @@ state;
 `Entity.belowNameDisplay` formatting therefore stays a world-owned query rather
 than being reconstructed from lossy strings in native or renderer code.
 
+The next cross-cutting stage closes the dispatcher-owned fire and shadow
+features in two ordered commits:
+
+1. **Fire.** `bbb-world` projects `Entity.displayFireAnimation()` from the
+   synchronized on-fire flag, generated `EntityType.fireImmune` property, and
+   exact current AABB width/height on the already-culled model source. `bbb-native` resolves
+   `minecraft:block/fire_0` and `fire_1` through the resident blocks atlas and
+   bakes the camera-Y-only layered quads. `bbb-renderer` owns one typed flame
+   surface and draws it in the solid feature phase after entity model/model-part
+   submissions and before leash/item/block/custom submissions. Spectators and
+   hidden first-person camera entities remain excluded by the existing
+   visibility generation; missing atlas sprites follow the blocks-atlas fallback
+   sprite contract rather than suppressing the feature.
+2. **Shadow.** The generated renderer registration catalog owns each fixed
+   renderer's base `shadowRadius` and `shadowStrength`; mob age scaling and
+   Display metadata remain explicit world projection rules. `bbb-world` applies
+   the options/invisibility/distance gates, samples the exact bounded supporting
+   blocks and local raw brightness, and publishes immutable shadow pieces.
+   `bbb-native` resolves the dispatcher-root offset rule (including Avatar's
+   offset cancellation), while `bbb-renderer` owns the shadow texture, blended
+   quad surface, and first position in the translucent entity feature phase.
+
+The fire commit runs focused `bbb-world`, `bbb-native`, and `bbb-renderer`
+entity-feature tests and the renderer-order source guards. The shadow commit
+adds the renderer-catalog generator checks plus focused block/light projection
+tests. Because both stages cross world/native/renderer and alter feature phase
+ordering, each is a clean checkpoint and runs the full gate before the next
+stage starts. The safe stop is a committed, fully gated fire feature with the
+old no-shadow behavior intact; shadow extraction is never landed without its
+texture/pipeline consumer in the same commit.
+
 ### C. Matrix closure and delivery gate
 
 Prove that every official non-noop registration reaches a dedicated/shared

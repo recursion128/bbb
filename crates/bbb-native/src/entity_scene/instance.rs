@@ -557,6 +557,10 @@ pub(super) fn entity_model_instance(
         .with_invisible(entity_invisible(&source.data_values))
         .with_outline_color(outline_color)
         .with_light_coords(light_coords)
+        .with_flame_dimensions(source.display_fire_animation.then_some([
+            source.bounding_box_width,
+            source.bounding_box_height,
+        ]))
         .with_auto_spin_age_ticks(auto_spin_age_ticks)
         .with_upside_down_height(upside_down_height)
         .with_bounding_box_height(drowned_bounding_box_height)

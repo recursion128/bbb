@@ -5708,6 +5708,26 @@ fn entity_light_coords_packs_vanilla_block_and_sky_with_on_fire_override() {
 }
 
 #[test]
+fn on_fire_model_source_reaches_dispatcher_flame_dimensions() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        910,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        [0.0, 64.0, 0.0],
+    ));
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 910,
+        values: vec![entity_on_fire_data()],
+    }));
+
+    let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 910)
+        .unwrap();
+    assert_eq!(instance.render_state.flame_dimensions, Some([0.4, 0.7]));
+}
+
+#[test]
 fn entity_light_coords_applies_vanilla_per_renderer_block_light_overrides() {
     use bbb_world::TerrainLight;
 

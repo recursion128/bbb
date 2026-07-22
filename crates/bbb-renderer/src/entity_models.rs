@@ -5,6 +5,7 @@ mod catalog;
 mod colored;
 mod decorated_pot_patterns;
 mod dispatch;
+mod features;
 mod geometry;
 mod gpu;
 mod gui_preview;
@@ -50,6 +51,10 @@ use colored::{
     wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 pub use decorated_pot_patterns::DecoratedPotPattern;
+pub use features::{
+    bake_entity_flame_surface, EntityFlameSubmission, EntityFlameSurface,
+    ENTITY_FLAME_FIRE_0_SPRITE, ENTITY_FLAME_FIRE_1_SPRITE,
+};
 use geometry::*;
 #[cfg(test)]
 use glam::{Mat4, Vec3};

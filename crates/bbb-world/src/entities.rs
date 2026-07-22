@@ -1945,6 +1945,17 @@ entity_model_source_state! {
     /// of `LivingEntityRenderer.setupRotations` to lift the model before flipping.
     #[serde(default)]
     pub bounding_box_height: f32,
+    /// Vanilla `EntityRenderState.boundingBoxWidth` (`Entity.getBbWidth`): the
+    /// current AABB width in world units. `FlameFeatureRenderer` multiplies this
+    /// by `1.4` to size the dispatcher-owned fire layers.
+    #[serde(default)]
+    pub bounding_box_width: f32,
+    /// Vanilla `EntityRenderState.displayFireAnimation`, extracted from
+    /// `Entity.displayFireAnimation()`. This applies the synchronized on-fire
+    /// flag and generated `EntityType.fireImmune` catalog; spectator players are
+    /// removed before model-source projection.
+    #[serde(default)]
+    pub display_fire_animation: bool,
     /// Vanilla `LivingEntityRenderState.hasPose(Pose.SLEEPING)`: the entity is
     /// lying down in a bed, which `LivingEntityRenderer.setupRotations` lays on its
     /// side. `false` for non-living entities and any entity that is not sleeping.

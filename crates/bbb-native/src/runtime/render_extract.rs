@@ -9,13 +9,13 @@ use std::sync::Arc;
 
 use bbb_renderer::{
     BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
-    DisplayTextSurface, EntityModelInstance, EntityNameTagSurface, FirstPersonMapBackgroundSurface,
-    FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAirSupply,
-    HudBlockItemModel, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
-    HudChatInteraction, HudChatMessage, HudCommandSuggestions, HudDebugOptionsScreen,
-    HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar, HudPauseScreen,
-    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen,
-    HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
+    DisplayTextSurface, EntityFlameSurface, EntityModelInstance, EntityNameTagSurface,
+    FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture, FirstPersonPlayerArm,
+    HudActionBarText, HudAirSupply, HudBlockItemModel, HudBossBar, HudBossBarColor,
+    HudBossBarOverlay, HudChatContext, HudChatInteraction, HudChatMessage, HudCommandSuggestions,
+    HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar,
+    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen,
+    HudStatsScreen, HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
     ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
@@ -1470,6 +1470,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) sign_text_surfaces: Vec<SignTextSurface>,
     pub(crate) display_text_surfaces: Vec<DisplayTextSurface>,
     pub(crate) entity_name_tag_surfaces: Vec<EntityNameTagSurface>,
+    pub(crate) entity_flame_surfaces: Vec<EntityFlameSurface>,
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
@@ -1746,6 +1747,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_sign_text_surfaces(frame.sign_text_surfaces);
     renderer.set_display_text_surfaces(frame.display_text_surfaces);
     renderer.set_entity_name_tag_surfaces(frame.entity_name_tag_surfaces);
+    renderer.set_entity_flame_surfaces(frame.entity_flame_surfaces);
     let recycled_instances = renderer.replace_entity_model_instances(frame.entity_model_instances);
     entity_render_extraction.recycle_instances(recycled_instances);
     renderer.set_camera_hurt_effect(frame.camera_hurt_effect);

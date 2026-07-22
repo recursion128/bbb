@@ -26,7 +26,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use bbb_protocol::entity_types::{
-    vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
+    vanilla_entity_type, vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
@@ -3079,24 +3079,15 @@ impl EntityStore {
         // state.isInvisible && entity.isInvisibleTo(minecraft.player)`. The store-local baseline is
         // the non-spectator / no-friendly-team-override branch, so the world aggregation can clear it
         // for spectator viewers.
-        let invisible_to_player = self
+        let shared_flags = self
             .metadata_byte(
                 id,
                 entity_accessors.shared_flags_data_id,
                 entity_accessors.shared_flags_default,
             )
-            .unwrap_or(entity_accessors.shared_flags_default)
-            & entity_accessors.invisible_mask
-            != 0;
-        let appears_glowing = self
-            .metadata_byte(
-                id,
-                entity_accessors.shared_flags_data_id,
-                entity_accessors.shared_flags_default,
-            )
-            .unwrap_or(entity_accessors.shared_flags_default)
-            & entity_accessors.glowing_mask
-            != 0;
+            .unwrap_or(entity_accessors.shared_flags_default);
+        let invisible_to_player = shared_flags & entity_accessors.invisible_mask != 0;
+        let appears_glowing = shared_flags & entity_accessors.glowing_mask != 0;
         // Vanilla renderer `extractRenderState` assignments project `Mob.isAggressive()` for the
         // zombie/zombie-villager/zombified-piglin, skeleton, and illager paths. PiglinRenderer
         // instead projects `entity.getArmPose()`; bbb resolves that pose from the same synced Mob
@@ -3208,16 +3199,7 @@ impl EntityStore {
         // `OcelotRenderer` leaves `isSitting` at its default.
         let feline_is_crouching = is_feline
             && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
-        let feline_is_sprinting = is_feline
-            && self
-                .metadata_byte(
-                    id,
-                    entity_accessors.shared_flags_data_id,
-                    entity_accessors.shared_flags_default,
-                )
-                .unwrap_or(entity_accessors.shared_flags_default)
-                & entity_accessors.sprinting_mask
-                != 0;
+        let feline_is_sprinting = is_feline && shared_flags & entity_accessors.sprinting_mask != 0;
         let feline_is_sitting = vanilla_is_cat(identity.entity_type_id)
             && vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
                 identity.entity_type_id,
@@ -3310,11 +3292,23 @@ impl EntityStore {
                 .is_some_and(|name| {
                     vanilla_living_entity_renderer_name_is_upside_down(name.as_str())
                 });
-        // Vanilla `EntityRenderState.boundingBoxHeight` (`Entity.getBbHeight`): the
-        // pick-bounds AABB height, used to lift the upside-down model before flipping.
-        let bounding_box_height = self
-            .pick_bounds(id)
+        // Vanilla `EntityRenderState.boundingBoxWidth` / `boundingBoxHeight`
+        // project the current dimensions even for non-pickable renderers. Keep
+        // this separate from `pick_bounds`, whose applicability filter would
+        // collapse those entities to zero-sized flames.
+        let bounding_box = vanilla_model_source_bounds_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(client_animations.animations),
+            metadata.painting_variant_projection.as_ref(),
+        );
+        let bounding_box_height = bounding_box
             .map(|bounds| bounds.max[1] - bounds.min[1])
+            .unwrap_or(0.0);
+        let bounding_box_width = bounding_box
+            .map(|bounds| bounds.max[0] - bounds.min[0])
             .unwrap_or(0.0);
         // Vanilla `LivingEntityRenderState.hasPose(Pose.SLEEPING)`: only living
         // entities lie down. The bed orientation/offset are resolved spatially by
@@ -3681,6 +3675,10 @@ impl EntityStore {
             use_item_off_hand,
             is_upside_down,
             bounding_box_height,
+            bounding_box_width,
+            display_fire_animation: shared_flags & entity_accessors.on_fire_mask != 0
+                && vanilla_entity_type(identity.entity_type_id)
+                    .is_some_and(|entry| !entry.fire_immune),
             is_sleeping,
             sleeping_bed_yaw: None,
             sleeping_bed_offset: [0.0, 0.0],

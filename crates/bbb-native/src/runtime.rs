@@ -98,6 +98,7 @@ use crate::{
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
     end_portal_scene::end_portal_model_instances_from_world_at_partial_tick,
+    entity_features::entity_flame_surfaces,
     entity_name_tags::entity_name_tag_surfaces,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
@@ -2879,6 +2880,8 @@ pub(crate) fn update_renderer_from_publication(
         world.local_player().camera.entity_id,
         !input.hide_gui(),
     );
+    let entity_flame_surfaces =
+        entity_flame_surfaces(&entity_instances, terrain_textures, camera_pose);
     let display_entity_item_models = display_entity_item_models(
         visible_display_entity_render_sources_at_partial_tick(
             world,
@@ -3271,6 +3274,7 @@ pub(crate) fn update_renderer_from_publication(
             sign_text_surfaces,
             display_text_surfaces,
             entity_name_tag_surfaces,
+            entity_flame_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
             camera_hurt_effect,
