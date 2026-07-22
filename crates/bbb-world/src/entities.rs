@@ -35,6 +35,7 @@ mod passengers;
 mod projectiles;
 mod renderer_catalog;
 mod schema;
+mod shadows;
 mod sound_variants;
 mod spawn;
 pub(crate) mod state;
@@ -520,6 +521,7 @@ pub use schema::{
     VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION, VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE,
     VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID, VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID,
 };
+pub use shadows::{EntityShadowPieceState, EntityShadowRenderSourceState};
 pub use sound_variants::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
     PigSoundVariantIdentity, WolfSoundVariantIdentity,
@@ -1277,11 +1279,15 @@ pub struct EntityRenderCandidateState {
     pub uuid: Uuid,
     pub entity_type_id: i32,
     pub position: EntityVec3,
+    /// Current, non-interpolated entity position used by
+    /// `EntityRenderDispatcher.distanceToSqr` during shadow extraction.
+    pub current_position: EntityVec3,
     pub bounds: EntityPickBoundsState,
     pub vehicle_id: Option<i32>,
     pub leash_holder_id: Option<i32>,
     pub fishing_hook_owner_id: Option<i32>,
     pub is_spectator: bool,
+    pub is_invisible: bool,
     pub is_sleeping: bool,
     pub wears_dragon_head: bool,
     pub display_culling: Option<DisplayEntityCullingState>,
@@ -3711,6 +3717,29 @@ impl WorldStore {
         sources.extend(survivors.iter().copied().filter_map(|candidate| {
             self.project_entity_model_source(candidate, partial_ticks, all_candidates)
         }));
+    }
+
+    /// Extracts vanilla dispatcher shadow pieces for the exact visible model-source generation.
+    pub fn fill_entity_shadow_render_sources_for_model_sources(
+        &self,
+        survivors: &[EntityRenderCandidateState],
+        model_sources: &[EntityModelSourceState],
+        partial_ticks: f32,
+        camera_position: EntityVec3,
+        sky_darken: u8,
+        shadows_enabled: bool,
+        sources: &mut Vec<EntityShadowRenderSourceState>,
+    ) {
+        shadows::fill_entity_shadow_render_sources(
+            self,
+            survivors,
+            model_sources,
+            partial_ticks,
+            camera_position,
+            sky_darken,
+            shadows_enabled,
+            sources,
+        );
     }
 
     /// Whether an entity should appear in the rendered model-source set. Vanilla hides spectator

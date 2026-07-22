@@ -98,7 +98,7 @@ use crate::{
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
     end_portal_scene::end_portal_model_instances_from_world_at_partial_tick,
-    entity_features::entity_flame_surfaces,
+    entity_features::{entity_flame_surfaces, entity_shadow_surfaces},
     entity_name_tags::entity_name_tag_surfaces,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
@@ -106,7 +106,8 @@ use crate::{
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
         visible_display_entity_render_sources_at_partial_tick,
         visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick,
-        visible_entity_name_tag_render_sources, EntityRenderVisibilityContext,
+        visible_entity_name_tag_render_sources, visible_entity_shadow_render_sources,
+        EntityRenderVisibilityContext,
     },
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
@@ -293,6 +294,12 @@ const VANILLA_OVERWORLD_SKY_LIGHT_COLOR_KEYFRAMES: [(i64, i32); 4] = [
 ];
 const VANILLA_OVERWORLD_SKY_LIGHT_FACTOR_KEYFRAMES: [(i64, f32); 4] =
     [(730, 1.0), (11_270, 1.0), (13_140, 0.24), (22_860, 0.24)];
+const VANILLA_OVERWORLD_SKY_LIGHT_LEVEL_KEYFRAMES: [(i64, f32); 4] = [
+    (133, 1.0),
+    (11_867, 1.0),
+    (13_670, 0.266_666_68),
+    (22_330, 0.266_666_68),
+];
 const VANILLA_OVERWORLD_SKY_COLOR_MULTIPLIER_KEYFRAMES: [(i64, i32); 4] = [
     (133, -1),
     (11_867, -1),
@@ -1968,6 +1975,53 @@ fn apply_weather_lightmap_layer(
     environment.sky_light_color = rgb24(argb_srgb_lerp(level, base_color, modified_color));
 }
 
+/// Vanilla `Level.skyDarken`, sourced from the gameplay sky-light-level attribute rather than
+/// the visual lightmap factor. Built-in timeline/weather layers are applied when registry data
+/// does not provide the dimension timeline, matching `EnvironmentAttributeSystem` ordering.
+fn entity_shadow_sky_darken(world: &WorldStore) -> u8 {
+    let Some(level) = world.level_info() else {
+        return 0;
+    };
+    let sampled_attributes = world
+        .sampled_client_environment_attributes()
+        .unwrap_or_else(|_| level.environment_attributes());
+    let mut sky_light_level = sampled_attributes.sky_light_level.unwrap_or(15.0);
+    let uses_builtin_dimension_fallback = world
+        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
+        .is_none();
+    if vanilla_lightmap_dimension_kind(level) == VanillaLightmapDimensionKind::Overworld
+        && uses_builtin_dimension_fallback
+    {
+        let day_time = world
+            .world_time()
+            .map(|time| time.day_time)
+            .unwrap_or(VANILLA_LIGHTMAP_DEFAULT_DAY_TIME);
+        sky_light_level *= sample_periodic_float_keyframes(
+            day_time,
+            &VANILLA_OVERWORLD_SKY_LIGHT_LEVEL_KEYFRAMES,
+            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+        );
+    }
+    if level.can_have_weather() {
+        let weather = world.weather();
+        let rain = sanitize_weather_lightmap_level(weather.rain_level);
+        let thunder =
+            (sanitize_weather_lightmap_level(weather.thunder_level) * rain).clamp(0.0, 1.0);
+        let rain = (rain - thunder).max(0.0);
+        sky_light_level =
+            apply_weather_sky_light_level(sky_light_level, rain, VANILLA_WEATHER_RAIN_ALPHA);
+        sky_light_level =
+            apply_weather_sky_light_level(sky_light_level, thunder, VANILLA_WEATHER_THUNDER_ALPHA);
+    }
+    (15.0 - sky_light_level.clamp(0.0, 15.0))
+        .trunc()
+        .clamp(0.0, 15.0) as u8
+}
+
+fn apply_weather_sky_light_level(level: f32, weather_level: f32, alpha: f32) -> f32 {
+    level + weather_level * alpha * (4.0 - level)
+}
+
 fn sanitize_weather_lightmap_level(level: f32) -> f32 {
     if level.is_finite() {
         level.clamp(0.0, 1.0)
@@ -2454,6 +2508,7 @@ pub(crate) fn update_renderer_from_publication(
         client_framerate_limit,
         client_vsync,
         damage_tilt_strength,
+        entity_shadows,
         hud_debug_profiler_chart,
     } = context;
     let state = publication
@@ -2858,6 +2913,8 @@ pub(crate) fn update_renderer_from_publication(
                 camera_fov_degrees,
                 render_distance_chunks,
                 terrain_upload,
+                entity_shadows,
+                shadow_sky_darken: entity_shadow_sky_darken(world),
             },
             entity_render_extraction,
         );
@@ -2882,6 +2939,10 @@ pub(crate) fn update_renderer_from_publication(
     );
     let entity_flame_surfaces =
         entity_flame_surfaces(&entity_instances, terrain_textures, camera_pose);
+    let entity_shadow_surfaces = entity_shadow_surfaces(
+        visible_entity_shadow_render_sources(entity_render_extraction),
+        &entity_instances,
+    );
     let display_entity_item_models = display_entity_item_models(
         visible_display_entity_render_sources_at_partial_tick(
             world,
@@ -3275,6 +3336,7 @@ pub(crate) fn update_renderer_from_publication(
             display_text_surfaces,
             entity_name_tag_surfaces,
             entity_flame_surfaces,
+            entity_shadow_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
             camera_hurt_effect,

@@ -51,9 +51,11 @@ use colored::{
     wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 pub use decorated_pot_patterns::DecoratedPotPattern;
+pub(crate) use features::EntityShadowTextureGpu;
 pub use features::{
-    bake_entity_flame_surface, EntityFlameSubmission, EntityFlameSurface,
-    ENTITY_FLAME_FIRE_0_SPRITE, ENTITY_FLAME_FIRE_1_SPRITE,
+    bake_entity_flame_surface, bake_entity_shadow_surface, EntityFlameSubmission,
+    EntityFlameSurface, EntityShadowPiece, EntityShadowSubmission, EntityShadowSurface,
+    ENTITY_FLAME_FIRE_0_SPRITE, ENTITY_FLAME_FIRE_1_SPRITE, ENTITY_SHADOW_TEXTURE_PATH,
 };
 use geometry::*;
 #[cfg(test)]

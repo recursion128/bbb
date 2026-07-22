@@ -1093,6 +1093,24 @@ fn lightmap_environment_applies_overworld_weather_layers_after_timeline() {
 }
 
 #[test]
+fn entity_shadow_sky_darken_uses_gameplay_timeline_and_weather_layers() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    assert_eq!(entity_shadow_sky_darken(&world), 0);
+
+    set_world_day_time(&mut world, 18_000);
+    assert_eq!(entity_shadow_sky_darken(&world), 11);
+
+    set_world_day_time(&mut world, 6_000);
+    set_world_weather(&mut world, 1.0, 0.0);
+    assert_eq!(entity_shadow_sky_darken(&world), 3);
+    set_world_weather(&mut world, 1.0, 1.0);
+    assert_eq!(entity_shadow_sky_darken(&world), 5);
+    set_world_weather(&mut world, 0.0, 1.0);
+    assert_eq!(entity_shadow_sky_darken(&world), 0);
+}
+
+#[test]
 fn lightmap_tick_state_smooths_rain_fog_multiplier_like_vanilla_atmospheric_fog() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));

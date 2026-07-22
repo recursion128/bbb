@@ -170,6 +170,8 @@ pub(crate) struct Args {
         value_parser = parse_damage_tilt_strength
     )]
     pub(crate) damage_tilt_strength: f32,
+    #[arg(long = "entity-shadows", default_value_t = true, action = ArgAction::Set)]
+    pub(crate) entity_shadows: bool,
     #[arg(long = "hide-lightning-flash")]
     pub(crate) hide_lightning_flash: bool,
     #[arg(long = "advanced-item-tooltips")]
@@ -971,6 +973,15 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--damage-tilt-strength", "0.25"]).unwrap();
         assert_eq!(args.damage_tilt_strength, 0.25);
+    }
+
+    #[test]
+    fn args_accept_entity_shadows_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(default_args.entity_shadows);
+
+        let args = Args::try_parse_from(["bbb-native", "--entity-shadows=false"]).unwrap();
+        assert!(!args.entity_shadows);
     }
 
     #[test]

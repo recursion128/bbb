@@ -846,6 +846,24 @@ impl Renderer {
         stats: &mut FrameDrawStats,
     ) {
         let main_view = &self.main_target.view;
+        // Vanilla `ShadowFeatureRenderer` is the dispatcher-owned first translucent entity
+        // feature. Its view-offset-Z pose avoids coplanar fighting with the support block while
+        // retaining the main depth buffer and disabling depth writes in the pipeline.
+        let (shadow_vertices, shadow_indices) = self.collect_entity_shadow_geometry();
+        if !shadow_indices.is_empty() {
+            if let Some(texture) = &self.entity_shadow_texture {
+                self.draw_item_model_geometry_with_pipeline(
+                    &mut *encoder,
+                    main_view,
+                    &shadow_vertices,
+                    &shadow_indices,
+                    &texture.bind_group,
+                    &self.entity_shadow_pipeline,
+                );
+                stats.pipeline_switches += 1;
+                stats.entity_model_draw_calls += 1;
+            }
+        }
         if self.has_entity_translucent_features() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL),

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from core_registry_catalog_extractor import entity_type_entries, vec3_constant
 from entity_renderer_catalog_extractor import (
+    extract_avatar_renderer_shadow,
     extract_entity_renderer_registrations,
     extract_living_entity_upside_down_names,
 )
@@ -70,6 +71,9 @@ def render(source_root: Path) -> str:
         renderer_sources,
         [entry.constant_name for entry in entity_types],
     )
+    avatar_shadow_radius_bits, avatar_shadow_strength_bits = (
+        extract_avatar_renderer_shadow(renderer_sources)
+    )
     living_entity_renderer_sources = [
         source
         for source in renderer_sources
@@ -94,6 +98,9 @@ def render(source_root: Path) -> str:
     lines.extend(
         [
             "];",
+            "",
+            f"pub(super) const VANILLA_AVATAR_RENDERER_SHADOW_RADIUS_BITS_26_1: u32 = {avatar_shadow_radius_bits};",
+            f"pub(super) const VANILLA_AVATAR_RENDERER_SHADOW_STRENGTH_BITS_26_1: u32 = {avatar_shadow_strength_bits};",
             "",
             "pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1: &[VanillaEntityRendererRegistration] = &[",
         ]
@@ -130,6 +137,8 @@ def render(source_root: Path) -> str:
                     else "None"
                 )
                 + ",",
+                f"        shadow_radius_bits: {entry.shadow_radius_bits},",
+                f"        shadow_strength_bits: {entry.shadow_strength_bits},",
                 "        uses_abstract_feline_model: "
                 + str(entry.uses_abstract_feline_model).lower()
                 + ",",

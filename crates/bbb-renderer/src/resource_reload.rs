@@ -121,6 +121,7 @@ impl Renderer {
         take_owner!(entity_model_item_entity_translucent_cull_mesh);
         take_owner!(entity_model_sorted_main_translucent_draws);
         take_owner!(entity_model_sorted_translucent_draws);
+        take_owner!(entity_shadow_texture);
         take_owner!(entity_model_sorted_item_entity_draws);
         take_owner!(entity_model_eyes_mesh);
         take_owner!(entity_model_dragon_rays_mesh);

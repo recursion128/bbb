@@ -2290,6 +2290,20 @@ impl EntityStore {
         for (_, (identity, transform, metadata, equipment, attributes, animations, mount, leash)) in
             query.iter()
         {
+            let is_invisible =
+                vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+                    metadata
+                        .data_values
+                        .iter()
+                        .find(|value| value.data_id == accessors.shared_flags_data_id)
+                        .and_then(|value| match &value.value {
+                            EntityDataValueKind::Byte(value) => Some(*value),
+                            _ => None,
+                        })
+                        .unwrap_or(accessors.shared_flags_default)
+                        & accessors.invisible_mask
+                        != 0
+                });
             let Some(mut bounds) = vanilla_model_source_bounds_for_entity_data(
                 identity.entity_type_id,
                 identity.data,
@@ -2325,6 +2339,7 @@ impl EntityStore {
                 uuid: identity.uuid,
                 entity_type_id: identity.entity_type_id,
                 position: transform.render_position(partial_ticks),
+                current_position: transform.position,
                 bounds,
                 vehicle_id: mount.and_then(|mount| mount.vehicle_id),
                 leash_holder_id: leash.and_then(|leash| leash.holder_id),
@@ -2332,6 +2347,7 @@ impl EntityStore {
                     == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
                     .then_some(identity.data),
                 is_spectator: false,
+                is_invisible,
                 is_sleeping: vanilla_living_entity_type(identity.entity_type_id)
                     && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID,
                 wears_dragon_head: equipment.equipment.iter().any(|update| {

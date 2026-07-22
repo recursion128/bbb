@@ -1,9 +1,11 @@
 //! Native resolution for dispatcher-owned generic entity features.
 
 use bbb_renderer::{
-    bake_entity_flame_surface, CameraPose, EntityFlameSurface, EntityModelInstance,
-    ENTITY_FLAME_FIRE_0_SPRITE, ENTITY_FLAME_FIRE_1_SPRITE,
+    bake_entity_flame_surface, bake_entity_shadow_surface, CameraPose, EntityFlameSurface,
+    EntityModelInstance, EntityShadowPiece, EntityShadowSurface, ENTITY_FLAME_FIRE_0_SPRITE,
+    ENTITY_FLAME_FIRE_1_SPRITE,
 };
+use bbb_world::EntityShadowRenderSourceState;
 
 use crate::terrain_runtime::TerrainTextureState;
 
@@ -23,10 +25,46 @@ pub(crate) fn entity_flame_surfaces(
         .collect()
 }
 
+pub(crate) fn entity_shadow_surfaces(
+    sources: &[EntityShadowRenderSourceState],
+    instances: &[EntityModelInstance],
+) -> Vec<EntityShadowSurface> {
+    sources
+        .iter()
+        .filter_map(|source| {
+            let instance = instances
+                .iter()
+                .copied()
+                .find(|instance| instance.entity_id == source.entity_id)?;
+            let pieces = source
+                .pieces
+                .iter()
+                .map(|piece| EntityShadowPiece {
+                    relative_position: piece.relative_position,
+                    shape_min: piece.shape_min,
+                    shape_max: piece.shape_max,
+                    alpha: piece.alpha,
+                })
+                .collect::<Vec<_>>();
+            bake_entity_shadow_surface(
+                instance,
+                [
+                    source.origin.x as f32,
+                    source.origin.y as f32,
+                    source.origin.z as f32,
+                ],
+                source.radius,
+                &pieces,
+            )
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use bbb_pack::{AtlasLayout, AtlasRect, AtlasSprite, SpriteTransparency};
     use bbb_renderer::{terrain::TerrainUvRect, EntityModelKind};
+    use bbb_world::{EntityShadowPieceState, EntityVec3};
 
     use super::*;
 
@@ -66,6 +104,33 @@ mod tests {
                 max: [31.5 / 64.0, 15.5 / 16.0],
             }
         );
+    }
+
+    #[test]
+    fn shadow_resolution_joins_world_pieces_to_the_matching_model_instance() {
+        let source = EntityShadowRenderSourceState {
+            entity_id: 7,
+            origin: EntityVec3 {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            radius: 0.5,
+            pieces: vec![EntityShadowPieceState {
+                relative_position: [0.0; 3],
+                shape_min: [0.0; 3],
+                shape_max: [1.0; 3],
+                alpha: 1.0,
+            }],
+        };
+        let instance = EntityModelInstance::new(7, EntityModelKind::NoRender, [4.0, 5.0, 6.0], 0.0);
+
+        let surfaces = entity_shadow_surfaces(std::slice::from_ref(&source), &[instance]);
+
+        assert_eq!(surfaces.len(), 1);
+        assert_eq!(surfaces[0].submission.entity_id, 7);
+        assert_eq!(surfaces[0].submission.root_position, [4.0, 5.0, 6.0]);
+        assert!(entity_shadow_surfaces(&[source], &[]).is_empty());
     }
 
     fn atlas_sprite(id: &str, x: u32) -> AtlasSprite {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import struct
 from dataclasses import dataclass
 
@@ -19,6 +20,7 @@ from vanilla_java_source import (
 
 RENDERER_PACKAGE = "net.minecraft.client.renderer.entity"
 ENTITY_RENDERERS_CLASS = RENDERER_PACKAGE + ".EntityRenderers"
+AVATAR_RENDERER_CLASS = RENDERER_PACKAGE + ".player.AvatarRenderer"
 LIVING_ENTITY_RENDERER_CLASS = RENDERER_PACKAGE + ".LivingEntityRenderer"
 THROWN_ITEM_RENDERER_CLASS = RENDERER_PACKAGE + ".ThrownItemRenderer"
 ABSTRACT_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".AbstractHorseRenderer"
@@ -75,6 +77,8 @@ class EntityRendererRegistration:
     static_full_block_light: bool
     minimum_block_light: int | None
     thrown_item_scale_bits: int | None
+    shadow_radius_bits: int
+    shadow_strength_bits: int
     uses_abstract_feline_model: bool
     uses_abstract_horse_renderer: bool
     uses_mob_item_in_hand_layer: bool
@@ -272,6 +276,253 @@ def _float_literal_bits(source: JavaSource, expression: JavaExpression) -> int:
         return struct.unpack("!I", struct.pack("!f", value))[0]
     except (OverflowError, ValueError, struct.error):
         _fail(source, expression, "invalid ThrownItemRenderer scale literal")
+
+
+def _float_bits(value: float) -> int:
+    if not math.isfinite(value):
+        raise EntityRendererCatalogExtractionError(
+            f"renderer shadow value is not a finite f32: {value}"
+        )
+    try:
+        return struct.unpack("!I", struct.pack("!f", value))[0]
+    except (OverflowError, struct.error) as error:
+        raise EntityRendererCatalogExtractionError(
+            f"renderer shadow value is not a finite f32: {value}: {error}"
+        ) from error
+
+
+def _parameter_name(source: JavaSource, parameter: JavaExpression) -> str:
+    name = parameter.node.child_by_field_name("name")
+    if name is None:
+        _fail(source, parameter, "renderer constructor parameter lacks a name")
+    return source.text(name)
+
+
+def _numeric_expression(
+    source: JavaSource,
+    expression: JavaExpression,
+    environment: dict[str, float | None],
+) -> float | None:
+    node = expression.node
+    if node.type in {"decimal_floating_point_literal", "decimal_integer_literal"}:
+        spelling = expression.canonical.replace("_", "")
+        spelling = spelling.removesuffix("F").removesuffix("f")
+        spelling = spelling.removesuffix("D").removesuffix("d")
+        try:
+            return float(spelling)
+        except ValueError:
+            _fail(source, expression, "invalid renderer constructor number")
+    if node.type == "identifier":
+        return environment.get(expression.canonical)
+    if node.type == "parenthesized_expression" and len(node.named_children) == 1:
+        return _numeric_expression(
+            source, source.expression(node.named_children[0]), environment
+        )
+    if node.type == "unary_expression" and len(node.named_children) == 1:
+        value = _numeric_expression(
+            source, source.expression(node.named_children[0]), environment
+        )
+        if value is None:
+            return None
+        operator = node.child_by_field_name("operator")
+        spelling = source.text(operator) if operator is not None else expression.canonical[0]
+        if spelling == "+":
+            return value
+        if spelling == "-":
+            return -value
+        return None
+    if node.type == "binary_expression":
+        left = node.child_by_field_name("left")
+        right = node.child_by_field_name("right")
+        operator = node.child_by_field_name("operator")
+        if left is None or right is None or operator is None:
+            return None
+        left_value = _numeric_expression(source, source.expression(left), environment)
+        right_value = _numeric_expression(source, source.expression(right), environment)
+        if left_value is None or right_value is None:
+            return None
+        return {
+            "+": lambda: left_value + right_value,
+            "-": lambda: left_value - right_value,
+            "*": lambda: left_value * right_value,
+            "/": lambda: left_value / right_value,
+        }.get(source.text(operator), lambda: None)()
+    return None
+
+
+def _renderer_shadow_values(
+    renderer_class: str,
+    constructor_arguments: tuple[JavaExpression, ...],
+    provider_source: JavaSource,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+    method_reference_argument_count: int = 1,
+) -> tuple[float, float]:
+    """Evaluate the constructor path that initializes EntityRenderer shadow fields."""
+
+    def invoke(
+        renderer_type: JavaType,
+        argument_values: tuple[float | None, ...],
+        stack: tuple[tuple[str, int], ...],
+        forced_constructor_order: int | None = None,
+    ) -> tuple[float, float]:
+        source = source_by_type[renderer_type.fqcn]
+        declared_constructors = [
+            method
+            for method in source.methods_for(renderer_type)
+            if method.is_constructor
+        ]
+        constructors = [
+            constructor
+            for constructor in declared_constructors
+            if len(constructor.parameters) == len(argument_values)
+        ]
+        if not declared_constructors:
+            if renderer_type.superclass in type_by_name:
+                return invoke(type_by_name[renderer_type.superclass], (), stack)
+            return 0.0, 1.0
+        if not constructors:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: no {renderer_type.fqcn}/"
+                f"{len(argument_values)} renderer constructor"
+            )
+        constructors = [
+            constructor
+            for constructor in constructors
+            if (renderer_type.fqcn, constructor.declaration_order) not in stack
+        ]
+        if not constructors:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: cyclic renderer constructor invocation"
+            )
+        if forced_constructor_order is not None:
+            constructors = [
+                constructor
+                for constructor in constructors
+                if constructor.declaration_order == forced_constructor_order
+            ]
+        if len(constructors) > 1:
+            results = {
+                invoke(
+                    renderer_type,
+                    argument_values,
+                    stack,
+                    constructor.declaration_order,
+                )
+                for constructor in constructors
+            }
+            if len(results) == 1:
+                return results.pop()
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: ambiguous {renderer_type.fqcn}/"
+                f"{len(argument_values)} renderer constructor"
+            )
+        if not constructors:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: missing forced renderer constructor"
+            )
+        constructor = constructors[0]
+        key = (renderer_type.fqcn, constructor.declaration_order)
+        if key in stack:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: cyclic renderer constructor invocation"
+            )
+        environment = {
+            _parameter_name(source, parameter): value
+            for parameter, value in zip(constructor.parameters, argument_values)
+        }
+        body = constructor.node.child_by_field_name("body")
+        statements = body.named_children if body is not None else []
+        invocation = next(
+            (
+                statement
+                for statement in statements
+                if statement.type == "explicit_constructor_invocation"
+            ),
+            None,
+        )
+        if invocation is not None:
+            target = invocation.named_children[0]
+            arguments = invocation.named_children[-1]
+            values = tuple(
+                _numeric_expression(source, source.expression(argument), environment)
+                for argument in arguments.named_children
+            )
+            if target.type == "this":
+                shadow_radius, shadow_strength = invoke(
+                    renderer_type, values, (*stack, key)
+                )
+            elif target.type == "super" and renderer_type.superclass in type_by_name:
+                shadow_radius, shadow_strength = invoke(
+                    type_by_name[renderer_type.superclass], values, (*stack, key)
+                )
+            else:
+                shadow_radius, shadow_strength = 0.0, 1.0
+        elif renderer_type.superclass in type_by_name:
+            shadow_radius, shadow_strength = invoke(
+                type_by_name[renderer_type.superclass], (), (*stack, key)
+            )
+        else:
+            shadow_radius, shadow_strength = 0.0, 1.0
+
+        for node in descendants(constructor.node):
+            if node.type != "assignment_expression":
+                continue
+            left = node.child_by_field_name("left")
+            right = node.child_by_field_name("right")
+            if left is None or right is None:
+                continue
+            field = source.expression(left).canonical
+            if field not in {"this.shadowRadius", "this.shadowStrength"}:
+                continue
+            value = _numeric_expression(source, source.expression(right), environment)
+            if value is None:
+                _fail(source, source.expression(right), f"unresolved {field} assignment")
+            if field == "this.shadowRadius":
+                shadow_radius = value
+            else:
+                shadow_strength = value
+        return shadow_radius, shadow_strength
+
+    renderer_type = type_by_name.get(renderer_class)
+    if renderer_type is None:
+        raise EntityRendererCatalogExtractionError(
+            f"missing renderer class {renderer_class}"
+        )
+    if constructor_arguments:
+        argument_values = tuple(
+            _numeric_expression(provider_source, argument, {})
+            for argument in constructor_arguments
+        )
+    else:
+        argument_values = (None,) * method_reference_argument_count
+    return invoke(renderer_type, argument_values, ())
+
+
+def extract_avatar_renderer_shadow(
+    renderer_sources: list[JavaSource],
+) -> tuple[int, int]:
+    """Extract AvatarRenderer's fixed base shadow radius/strength."""
+    all_types = [java_type for source in renderer_sources for java_type in source.types]
+    resolve_class_hierarchy(all_types)
+    type_by_name = {java_type.fqcn: java_type for java_type in all_types}
+    source_by_type = {
+        java_type.fqcn: source
+        for source in renderer_sources
+        for java_type in source.types
+    }
+    avatar_type = type_by_name.get(AVATAR_RENDERER_CLASS)
+    if avatar_type is None:
+        raise EntityRendererCatalogExtractionError("missing AvatarRenderer class")
+    radius, strength = _renderer_shadow_values(
+        AVATAR_RENDERER_CLASS,
+        (),
+        source_by_type[AVATAR_RENDERER_CLASS],
+        source_by_type,
+        type_by_name,
+        method_reference_argument_count=2,
+    )
+    return _float_bits(radius), _float_bits(strength)
 
 
 def _validate_thrown_item_constructor_contract(
@@ -817,6 +1068,16 @@ def extract_entity_renderer_registrations(
                 and constant_name == item_frame_light_constant
                 else None,
                 thrown_item_scale_bits,
+                *(
+                    _float_bits(value)
+                    for value in _renderer_shadow_values(
+                        renderer_class,
+                        constructor_arguments,
+                        entity_renderers_source,
+                        source_by_type,
+                        type_by_name,
+                    )
+                ),
                 _renderer_hierarchy_references_superclass_type(
                     renderer_class,
                     ABSTRACT_FELINE_MODEL_CLASS,

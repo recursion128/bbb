@@ -107,8 +107,9 @@ use bbb_world::{
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityNameTagRenderSourceState, EntityPickTargetState, EntityRenderCandidateState,
-    FarmAnimalVariantModel, FarmAnimalVariantPresentation, FishingHookRenderSourceState,
-    FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
+    EntityShadowRenderSourceState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
+    FishingHookRenderSourceState, FrogVariantPresentation,
+    GuardianBeamSource as WorldGuardianBeamSource,
     HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemFrameFacing as WorldItemFrameFacing,
     LeashRopeSource as WorldLeashRopeSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
     VanillaArmorStandMetadataAccessors, VanillaEntityRendererCullingKind,
@@ -385,6 +386,7 @@ pub(crate) struct EntityRenderExtractionScratch {
     sources: Vec<EntityModelSourceState>,
     display_sources: Vec<DisplayEntityRenderSourceState>,
     name_tag_sources: Vec<EntityNameTagRenderSourceState>,
+    shadow_sources: Vec<EntityShadowRenderSourceState>,
     instances: Vec<EntityModelInstance>,
     observation: EntityRenderExtractionObservation,
 }
@@ -407,6 +409,8 @@ pub(crate) struct EntityRenderVisibilityContext<'a> {
     pub(crate) camera_fov_degrees: f32,
     pub(crate) render_distance_chunks: u32,
     pub(crate) terrain_upload: &'a TerrainUploadState,
+    pub(crate) entity_shadows: bool,
+    pub(crate) shadow_sky_darken: u8,
 }
 
 pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick(
@@ -424,6 +428,7 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
         scratch.candidate_index.capacity(),
         scratch.sources.capacity(),
         scratch.name_tag_sources.capacity(),
+        scratch.shadow_sources.capacity(),
         scratch.instances.capacity(),
     ];
 
@@ -491,6 +496,23 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
         &scratch.sources,
         &mut scratch.name_tag_sources,
     );
+    if let Some(camera_pose) = visibility.camera_pose {
+        world.fill_entity_shadow_render_sources_for_model_sources(
+            &scratch.survivors,
+            &scratch.sources,
+            entity_partial_tick,
+            bbb_world::EntityVec3 {
+                x: f64::from(camera_pose.position[0]),
+                y: f64::from(camera_pose.position[1] + camera_pose.eye_height),
+                z: f64::from(camera_pose.position[2]),
+            },
+            visibility.shadow_sky_darken,
+            visibility.entity_shadows,
+            &mut scratch.shadow_sources,
+        );
+    } else {
+        scratch.shadow_sources.clear();
+    }
 
     let model_started_at = Instant::now();
     let context = EntityVariantRenderContext { world, textures };
@@ -534,6 +556,7 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
         scratch.candidate_index.capacity(),
         scratch.sources.capacity(),
         scratch.name_tag_sources.capacity(),
+        scratch.shadow_sources.capacity(),
         scratch.instances.capacity(),
     ];
     let capacity_growths = previous_capacities
@@ -579,6 +602,13 @@ pub(crate) fn visible_entity_name_tag_render_sources(
     scratch: &EntityRenderExtractionScratch,
 ) -> &[EntityNameTagRenderSourceState] {
     &scratch.name_tag_sources
+}
+
+/// Returns dispatcher shadow pieces extracted from the same visible entity generation.
+pub(crate) fn visible_entity_shadow_render_sources(
+    scratch: &EntityRenderExtractionScratch,
+) -> &[EntityShadowRenderSourceState] {
+    &scratch.shadow_sources
 }
 
 /// Projects the dedicated Display render sources for the exact survivor set

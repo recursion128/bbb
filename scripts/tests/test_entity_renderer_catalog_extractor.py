@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from entity_renderer_catalog_extractor import (  # noqa: E402
     EntityRendererCatalogExtractionError,
+    extract_avatar_renderer_shadow,
     extract_entity_renderer_registrations,
     extract_living_entity_upside_down_names,
 )
@@ -183,7 +184,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 package net.minecraft.client.renderer.entity;
                 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
                 public class AllayRenderer extends MobRenderer {
-                    public AllayRenderer() {
+                    public AllayRenderer(Object context) {
                         this.addLayer(new ItemInHandLayer(this));
                     }
                     public void extractRenderState(Object entity, Object state, float partialTicks) {
@@ -199,7 +200,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 package net.minecraft.client.renderer.entity;
                 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
                 public class ArmorStandRenderer extends EntityRenderer {
-                    public ArmorStandRenderer() {
+                    public ArmorStandRenderer(Object context) {
                         this.addLayer(new ItemInHandLayer(this));
                     }
                     private void addLayer(Object layer) {}
@@ -210,7 +211,11 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "net/minecraft/client/renderer/entity/VexRenderer.java",
                 """
                 package net.minecraft.client.renderer.entity;
-                public class VexRenderer extends AllayRenderer {}
+                public class VexRenderer extends AllayRenderer {
+                    public VexRenderer(Object context) {
+                        super(context);
+                    }
+                }
                 """,
             ),
             java(
@@ -386,6 +391,9 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """
                 package net.minecraft.client.renderer.entity;
                 public class BlazeRenderer extends EntityRenderer {
+                    public BlazeRenderer(Object context) {
+                        this.shadowRadius = 0.75F;
+                    }
                     protected int getBlockLightLevel(Object entity, Object pos) {
                         return 15;
                     }
@@ -570,6 +578,9 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (34, "ZOMBIFIED_PIGLIN", "ZombifiedPiglinRenderer", False, None, None, False, False, False, False, False, False),
             ],
         )
+        blaze = next(entry for entry in entries if entry.constant_name == "BLAZE")
+        self.assertEqual(blaze.shadow_radius_bits, 0x3F400000)
+        self.assertEqual(blaze.shadow_strength_bits, 0x3F800000)
         self.assertEqual(
             [
                 (entry.constant_name, entry.piglin_kind)
@@ -582,6 +593,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 ("ZOMBIFIED_PIGLIN", "ZombifiedPiglin"),
             ],
         )
+
         self.assertEqual(
             [
                 entry.constant_name
@@ -638,6 +650,48 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 ("BAMBOO_RAFT", ("Bamboo", False)),
                 ("BAMBOO_CHEST_RAFT", ("Bamboo", True)),
             ],
+        )
+
+    def test_extracts_avatar_shadow_through_living_constructor(self) -> None:
+        renderer_sources = [
+            java(
+                "net/minecraft/client/renderer/entity/EntityRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class EntityRenderer {
+                    public EntityRenderer(Object context) {}
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/LivingEntityRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class LivingEntityRenderer extends EntityRenderer {
+                    public LivingEntityRenderer(Object context, Object model, float shadow) {
+                        super(context);
+                        this.shadowRadius = shadow;
+                    }
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/player/AvatarRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity.player;
+                import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+                public class AvatarRenderer extends LivingEntityRenderer {
+                    public AvatarRenderer(Object context, boolean slim) {
+                        super(context, new Object(), 0.5F);
+                    }
+                }
+                """,
+            ),
+        ]
+
+        self.assertEqual(
+            extract_avatar_renderer_shadow(renderer_sources),
+            (0x3F000000, 0x3F800000),
         )
 
 

@@ -12,6 +12,8 @@ pub(super) struct VanillaEntityRendererRegistration {
     static_full_block_light: bool,
     minimum_block_light: Option<u8>,
     thrown_item_scale_bits: Option<u32>,
+    shadow_radius_bits: u32,
+    shadow_strength_bits: u32,
     uses_abstract_feline_model: bool,
     uses_abstract_horse_renderer: bool,
     uses_mob_item_in_hand_layer: bool,
@@ -203,6 +205,28 @@ pub fn vanilla_entity_renderer_thrown_item_scales() -> impl Iterator<Item = (i32
                 .thrown_item_scale_bits
                 .map(|bits| (entry.entity_type_id, f32::from_bits(bits)))
         })
+}
+
+/// Fixed constructor-owned shadow values before living scale/age and renderer-specific overrides.
+pub fn vanilla_entity_renderer_base_shadow(entity_type_id: i32) -> (f32, f32) {
+    if matches!(
+        entity_type_id,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID
+            | bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MANNEQUIN_ID
+    ) {
+        return (
+            f32::from_bits(VANILLA_AVATAR_RENDERER_SHADOW_RADIUS_BITS_26_1),
+            f32::from_bits(VANILLA_AVATAR_RENDERER_SHADOW_STRENGTH_BITS_26_1),
+        );
+    }
+    vanilla_entity_renderer_registration(entity_type_id)
+        .map(|entry| {
+            (
+                f32::from_bits(entry.shadow_radius_bits),
+                f32::from_bits(entry.shadow_strength_bits),
+            )
+        })
+        .unwrap_or((0.0, 1.0))
 }
 
 /// Whether the registered vanilla renderer submits through a non-entity-model pass that bbb owns
@@ -887,6 +911,32 @@ mod tests {
         }
         assert_eq!(vanilla_entity_renderer_thrown_item_scale(-1), None);
         assert_eq!(vanilla_entity_renderer_thrown_item_scale(157), None);
+    }
+
+    #[test]
+    fn generated_shadow_values_match_renderer_constructor_paths() {
+        assert_eq!(
+            vanilla_entity_renderer_base_shadow(VANILLA_ENTITY_TYPE_GIANT_ID),
+            (3.0, 1.0)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_base_shadow(VANILLA_ENTITY_TYPE_ITEM_ID),
+            (0.15, 0.75)
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_renderer_base_shadow(entity_type_id),
+                (0.5, 1.0)
+            );
+        }
+        assert_eq!(
+            vanilla_entity_renderer_base_shadow(VANILLA_ENTITY_TYPE_MARKER_ID),
+            (0.0, 1.0)
+        );
+        assert_eq!(vanilla_entity_renderer_base_shadow(-1), (0.0, 1.0));
     }
 
     #[test]

@@ -99,6 +99,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) client_framerate_limit: u32,
     pub(crate) client_vsync: bool,
     pub(crate) damage_tilt_strength: f32,
+    pub(crate) entity_shadows: bool,
     pub(crate) hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
 }
 

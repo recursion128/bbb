@@ -1,6 +1,9 @@
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
-use bbb_renderer::{entity_model_texture_refs, EntityModelTextureImage, EntityModelTextureRef};
+use bbb_renderer::{
+    entity_model_texture_refs, EntityModelTextureImage, EntityModelTextureRef,
+    ENTITY_SHADOW_TEXTURE_PATH,
+};
 
 pub(crate) fn load_entity_model_textures(
     renderer: &mut bbb_renderer::Renderer,
@@ -8,12 +11,12 @@ pub(crate) fn load_entity_model_textures(
 ) {
     let Some(roots) = roots else {
         tracing::warn!(
-            "continuing without vanilla entity textures because pack roots are unavailable"
+            "continuing without vanilla entity feature textures because pack roots are unavailable"
         );
         return;
     };
     if let Err(err) = try_load_entity_model_textures(renderer, roots) {
-        tracing::warn!(?err, "continuing without vanilla entity textures");
+        tracing::warn!(?err, "continuing without vanilla entity feature textures");
     }
 }
 
@@ -22,7 +25,9 @@ pub(crate) fn try_load_entity_model_textures(
     roots: &PackRoots,
 ) -> Result<()> {
     let images = load_entity_model_texture_images(roots)?;
+    let shadow = load_entity_shadow_texture_image(roots)?;
     renderer.upload_entity_model_textures(&images)?;
+    renderer.upload_entity_shadow_texture(shadow.width, shadow.height, &shadow.rgba)?;
     if let Some(glint) = images
         .iter()
         .find(|image| image.texture.path == "textures/misc/enchanted_glint_item.png")
@@ -35,9 +40,22 @@ pub(crate) fn try_load_entity_model_textures(
     }
     tracing::info!(
         textures = images.len(),
-        "loaded vanilla entity model textures"
+        "loaded vanilla entity model and shadow textures"
     );
     Ok(())
+}
+
+fn load_entity_shadow_texture_image(roots: &PackRoots) -> Result<SpriteImage> {
+    let location = ResourceLocation::parse(ENTITY_SHADOW_TEXTURE_PATH)?;
+    let resources = roots.resource_stack();
+    let resource = resources.get_resource(&location).with_context(|| {
+        format!("missing entity shadow texture minecraft:{ENTITY_SHADOW_TEXTURE_PATH}")
+    })?;
+    SpriteImage::from_png_file_with_resource_stack(
+        entity_texture_id(ENTITY_SHADOW_TEXTURE_PATH),
+        resource.path,
+        &resources,
+    )
 }
 
 fn load_entity_model_texture_images(roots: &PackRoots) -> Result<Vec<EntityModelTextureImage>> {
@@ -131,6 +149,25 @@ mod tests {
         assert_eq!(sheep.texture.size, [64, 32]);
         assert_eq!(sheep.size, [32, 32]);
         assert_eq!(sheep.rgba.len(), 32 * 32 * 4);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_entity_shadow_texture_from_resource_stack() {
+        let temp = unique_temp_dir("bbb-entity-shadow-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources
+            .join("assets")
+            .join("minecraft")
+            .join(ENTITY_SHADOW_TEXTURE_PATH);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        write_png(&texture_path, 16, 8);
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+
+        let image = load_entity_shadow_texture_image(&roots).unwrap();
+
+        assert_eq!([image.width, image.height], [16, 8]);
+        assert_eq!(image.rgba.len(), 16 * 8 * 4);
         std::fs::remove_dir_all(temp).unwrap();
     }
 

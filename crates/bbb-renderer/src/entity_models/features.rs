@@ -1,10 +1,11 @@
 //! Dispatcher-owned generic entity features shared by every concrete renderer.
 //!
 //! Flame surfaces use the resident blocks atlas and are rendered in the solid
-//! feature phase after entity models. Shadow surfaces join this owner in the
-//! following stage because both are submitted by `EntityRenderDispatcher`, not
-//! by a concrete entity model.
+//! feature phase after entity models. Shadow surfaces use their dedicated
+//! texture and lead the translucent feature phase. Both are submitted by
+//! `EntityRenderDispatcher`, not by a concrete entity model.
 
+use anyhow::{ensure, Result};
 use glam::{Mat4, Vec3};
 
 use crate::item_models::{ItemModelMesh, ItemModelQuad, ItemModelVertex};
@@ -15,6 +16,50 @@ use super::{entity_dispatch_render_offset, EntityModelInstance};
 
 pub const ENTITY_FLAME_FIRE_0_SPRITE: &str = "minecraft:block/fire_0";
 pub const ENTITY_FLAME_FIRE_1_SPRITE: &str = "minecraft:block/fire_1";
+pub const ENTITY_SHADOW_TEXTURE_PATH: &str = "textures/misc/shadow.png";
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EntityShadowPiece {
+    pub relative_position: [f32; 3],
+    pub shape_min: [f32; 3],
+    pub shape_max: [f32; 3],
+    pub alpha: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EntityShadowSubmission {
+    pub entity_id: i32,
+    pub root_position: [f32; 3],
+    pub radius: f32,
+    pub piece_count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityShadowSurface {
+    pub submission: EntityShadowSubmission,
+    mesh: ItemModelMesh,
+}
+
+impl EntityShadowSurface {
+    pub fn vertex_count(&self) -> usize {
+        self.mesh.vertex_count()
+    }
+
+    pub fn index_count(&self) -> usize {
+        self.mesh.index_count()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.mesh.is_empty()
+    }
+}
+
+pub(crate) struct EntityShadowTextureGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) bind_group: wgpu::BindGroup,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EntityFlameSubmission {
@@ -123,6 +168,74 @@ pub fn bake_entity_flame_surface(
     })
 }
 
+/// Bakes one vanilla `ShadowSubmit`. Avatar render offsets are canceled before shadow submission;
+/// other concrete renderer offsets remain captured in the dispatcher pose.
+pub fn bake_entity_shadow_surface(
+    instance: EntityModelInstance,
+    origin: [f32; 3],
+    radius: f32,
+    pieces: &[EntityShadowPiece],
+) -> Option<EntityShadowSurface> {
+    if !radius.is_finite() || radius <= 0.0 || pieces.is_empty() {
+        return None;
+    }
+    let root_position = if matches!(instance.kind, super::EntityModelKind::Player { .. }) {
+        origin
+    } else {
+        let offset = entity_dispatch_render_offset(instance);
+        [
+            instance.position[0] + offset[0],
+            instance.position[1] + offset[1],
+            instance.position[2] + offset[2],
+        ]
+    };
+    let transform = Mat4::from_translation(Vec3::from_array(root_position));
+    let mut mesh = ItemModelMesh::new();
+    let mut piece_count = 0_u32;
+    for piece in pieces {
+        if !piece.alpha.is_finite() || piece.alpha <= 0.0 {
+            continue;
+        }
+        let x0 = piece.relative_position[0] + piece.shape_min[0];
+        let x1 = piece.relative_position[0] + piece.shape_max[0];
+        let y = piece.relative_position[1] + piece.shape_min[1];
+        let z0 = piece.relative_position[2] + piece.shape_min[2];
+        let z1 = piece.relative_position[2] + piece.shape_max[2];
+        let u0 = -x0 / (2.0 * radius) + 0.5;
+        let u1 = -x1 / (2.0 * radius) + 0.5;
+        let v0 = -z0 / (2.0 * radius) + 0.5;
+        let v1 = -z1 / (2.0 * radius) + 0.5;
+        let quad = ItemModelQuad {
+            corners: [
+                [x0 * 16.0, y * 16.0, z0 * 16.0],
+                [x0 * 16.0, y * 16.0, z1 * 16.0],
+                [x1 * 16.0, y * 16.0, z1 * 16.0],
+                [x1 * 16.0, y * 16.0, z0 * 16.0],
+            ],
+            uvs: [[u0, v0], [u0, v1], [u1, v1], [u1, v0]],
+            tint: [1.0, 1.0, 1.0, vanilla_argb_channel(piece.alpha)],
+            normal: [0.0, 1.0, 0.0],
+            shade: 1.0,
+            translucent: true,
+        };
+        mesh.append_quads(&[quad], transform);
+        piece_count += 1;
+    }
+    (!mesh.is_empty()).then_some(EntityShadowSurface {
+        submission: EntityShadowSubmission {
+            entity_id: instance.entity_id,
+            root_position,
+            radius,
+            piece_count,
+        },
+        mesh,
+    })
+}
+
+fn vanilla_argb_channel(value: f32) -> f32 {
+    (value.clamp(0.0, 1.0) * 255.0).floor() / 255.0
+}
+
 fn flame_corner(x: f32, y: f32, z: f32) -> [f32; 3] {
     [x * 16.0, y * 16.0, z * 16.0]
 }
@@ -146,6 +259,105 @@ pub(crate) fn merge_entity_flame_surfaces(
     (vertices, indices)
 }
 
+pub(crate) fn merge_entity_shadow_surfaces(
+    surfaces: &[EntityShadowSurface],
+) -> (Vec<ItemModelVertex>, Vec<u32>) {
+    let vertex_count = surfaces.iter().map(EntityShadowSurface::vertex_count).sum();
+    let index_count = surfaces.iter().map(EntityShadowSurface::index_count).sum();
+    let mut vertices = Vec::with_capacity(vertex_count);
+    let mut indices = Vec::with_capacity(index_count);
+    for surface in surfaces {
+        let base = u32::try_from(vertices.len()).expect("entity shadow vertex count fits in u32");
+        vertices.extend_from_slice(&surface.mesh.vertices);
+        indices.extend(surface.mesh.indices.iter().map(|index| base + index));
+    }
+    (vertices, indices)
+}
+
+pub(crate) fn create_entity_shadow_texture_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) -> Result<EntityShadowTextureGpu> {
+    ensure!(width > 0 && height > 0, "entity shadow texture is empty");
+    ensure!(
+        rgba.len() == width as usize * height as usize * 4,
+        "entity shadow texture RGBA length mismatch"
+    );
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-entity-shadow-texture"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(width * 4),
+            rows_per_image: Some(height),
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-entity-shadow-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-entity-shadow-bind-group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+    Ok(EntityShadowTextureGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+    })
+}
+
 impl Renderer {
     pub fn set_entity_flame_surfaces(&mut self, surfaces: Vec<EntityFlameSurface>) {
         self.entity_flame_surfaces = surfaces
@@ -156,6 +368,35 @@ impl Renderer {
 
     pub(crate) fn collect_entity_flame_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_entity_flame_surfaces(&self.entity_flame_surfaces)
+    }
+
+    pub fn set_entity_shadow_surfaces(&mut self, surfaces: Vec<EntityShadowSurface>) {
+        self.entity_shadow_surfaces = surfaces
+            .into_iter()
+            .filter(|surface| !surface.is_empty())
+            .collect();
+    }
+
+    pub fn upload_entity_shadow_texture(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.entity_shadow_texture = Some(create_entity_shadow_texture_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            width,
+            height,
+            rgba,
+        )?);
+        Ok(())
+    }
+
+    pub(crate) fn collect_entity_shadow_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_entity_shadow_surfaces(&self.entity_shadow_surfaces)
     }
 }
 
@@ -241,6 +482,51 @@ mod tests {
     }
 
     #[test]
+    fn shadow_quad_matches_vanilla_uv_alpha_and_dispatch_root() {
+        let instance =
+            EntityModelInstance::new(10, EntityModelKind::NoRender, [3.0, 5.0, 7.0], 0.0);
+        let surface = bake_entity_shadow_surface(
+            instance,
+            [2.0, 4.0, 6.0],
+            2.0,
+            &[EntityShadowPiece {
+                relative_position: [-1.0, -0.25, 0.0],
+                shape_min: [0.0; 3],
+                shape_max: [1.0; 3],
+                alpha: 0.5,
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(surface.submission.root_position, [3.0, 5.0, 7.0]);
+        assert_eq!(surface.submission.piece_count, 1);
+        assert_eq!(surface.mesh.vertices[0].position, [2.0, 4.75, 7.0]);
+        assert_eq!(surface.mesh.vertices[0].uv, [0.75, 0.5]);
+        assert_eq!(surface.mesh.vertices[2].uv, [0.5, 0.25]);
+        assert_eq!(surface.mesh.vertices[0].color[3], 127.0 / 255.0);
+    }
+
+    #[test]
+    fn avatar_shadow_cancels_crouch_dispatch_offset() {
+        let instance =
+            EntityModelInstance::player(11, [9.0, 8.0, 7.0], 0.0, false).with_is_crouching(true);
+        let surface = bake_entity_shadow_surface(
+            instance,
+            [1.0, 2.0, 3.0],
+            0.5,
+            &[EntityShadowPiece {
+                relative_position: [0.0; 3],
+                shape_min: [0.0; 3],
+                shape_max: [1.0; 3],
+                alpha: 1.0,
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(surface.submission.root_position, [1.0, 2.0, 3.0]);
+    }
+
+    #[test]
     fn main_pass_orders_flame_between_entity_models_and_item_features() {
         let source = include_str!("../render.rs");
         let model = source
@@ -253,5 +539,20 @@ mod tests {
             .find("self.collect_block_item_model_geometry()")
             .expect("block item feature");
         assert!(model < flame && flame < item);
+    }
+
+    #[test]
+    fn translucent_feature_phase_draws_shadow_before_entity_models() {
+        let source = include_str!("../render.rs");
+        let phase = source
+            .find("fn entity_translucent_feature_pass")
+            .expect("translucent feature pass");
+        let shadow = source[phase..]
+            .find("self.collect_entity_shadow_geometry()")
+            .expect("shadow feature");
+        let model = source[phase..]
+            .find("self.draw_entity_translucent_features(")
+            .expect("translucent entity models");
+        assert!(shadow < model);
     }
 }
