@@ -3,8 +3,10 @@ use super::*;
 const PAINTING_BACK_SPRITE_ID: &str = "minecraft:back";
 
 /// Expands one synchronized painting into vanilla's independently lit 1x1 geometry segments.
-/// `None` leaves non-paintings and painting entities whose synchronized variant/atlas is not ready
-/// on the existing bounded placeholder path.
+/// `None` leaves non-paintings on normal model selection. A painting whose
+/// synchronized variant or atlas is not ready resolves through its catalog
+/// owner to `NoRender`, retaining the source for a later frame without drawing
+/// raw fallback geometry.
 pub(super) fn painting_model_instances(
     source: &EntityModelSourceState,
     world: &WorldStore,

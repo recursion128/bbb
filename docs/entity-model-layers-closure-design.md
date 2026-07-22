@@ -244,6 +244,37 @@ scripts/cargo-dev.sh gate
 scripts/playable-gate.sh
 ```
 
+This final stage is a high-risk generated-catalog change and proceeds in three
+serial checkpoints from fully gated commit `e10be4ff5`:
+
+1. **Reverse classification.** The world renderer catalog derives one exhaustive
+   presentation owner for every fixed type from the 155 generated
+   `EntityRenderers` registrations plus Vanilla's explicit Player/Mannequin
+   avatar exception. Native model selection consumes that owner; catalog tests,
+   generated source guards, and a native reverse test reject `NoRender`, raw
+   `Humanoid`/`Quadruped`, or `Placeholder` results outside the source-proven
+   noop and separately owned special passes.
+   Renderer dispatch names the three raw fallback variants explicitly so a new
+   model kind cannot enter a wildcard fallback silently. Focused tests are the
+   renderer-catalog generator tests, native `entity_model_kind` reverse tests,
+   and renderer entity-model dispatch tests.
+2. **Audit failures.** Any type rejected by the reverse proof is fixed through
+   its existing semantic owner before the matrix changes. The expected first
+   correction is Painting's not-ready path: `PaintingRenderer` is always owned
+   by the tiled painting submission, so missing registry/atlas data must retain
+   diagnostics and suppress geometry rather than falling through to a raw box.
+   Further family gaps use their concrete renderer/model/layer classes and
+   focused suites; animation, passenger/leash, and event/audio work stays in its
+   separate coverage cell.
+3. **Coverage closeout.** Only after the reverse proof is green, update
+   `renderer_audit`, remove the model/layer matrix TODO and stale fallback TODOs,
+   regenerate `docs/entity-coverage-26.1.json`, and append the milestone index.
+   The stage commits at mechanically reviewable checkpoints, runs the full gate
+   after at most four commits, and finishes with both the full gate and
+   `scripts/playable-gate.sh`. A safe stop is a clean, fully gated reverse-proof
+   checkpoint with the matrix still partial; a half-regenerated matrix is not a
+   safe stop.
+
 ## Checkpoints, Failures, and Safe Stops
 
 The baseline was fully gated before work began. Run a full gate at every

@@ -2094,9 +2094,12 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             )
         }
 
-        // Everything else is colored-only fallback/debug geometry; the textured path has no residual
-        // mesh-emitting arm.
-        _ => return false,
+        // These debug constructors are intentionally colored-only. Name them
+        // explicitly so a newly added model kind cannot silently enter the raw
+        // fallback path through a wildcard arm.
+        EntityModelKind::Humanoid { .. }
+        | EntityModelKind::Quadruped { .. }
+        | EntityModelKind::Placeholder { .. } => return false,
     }
     true
 }

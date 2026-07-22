@@ -139,6 +139,28 @@ pub enum VanillaEntityRendererCullingKind {
     ConservativeSpecial,
 }
 
+/// The single native presentation owner for a fixed vanilla entity type.
+///
+/// `EntityRenderers` registers every fixed type except Player and Mannequin,
+/// which vanilla creates through `createAvatarRenderers`. The owner is derived
+/// from that generated registration and its concrete renderer class so native
+/// model selection cannot maintain a second special-pass membership table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityRendererPresentationOwner {
+    AvatarModel,
+    EntityModel,
+    Noop,
+    ThrownItem,
+    BlockAttachment,
+    FireworkItem,
+    ItemFrame,
+    ItemCluster,
+    Lightning,
+    Display,
+    Painting,
+    Unknown,
+}
+
 include!("renderer_catalog/generated_26_1.rs");
 
 pub(super) fn vanilla_living_entity_renderer_name_is_upside_down(name: &str) -> bool {
@@ -164,8 +186,43 @@ pub fn vanilla_entity_renderer_minimum_block_light(entity_type_id: i32) -> Optio
 }
 
 pub fn vanilla_entity_renderer_is_noop(entity_type_id: i32) -> bool {
-    vanilla_entity_renderer_registration(entity_type_id)
-        .is_some_and(|entry| entry.renderer_class == "NoopRenderer")
+    matches!(
+        vanilla_entity_renderer_presentation_owner(entity_type_id),
+        VanillaEntityRendererPresentationOwner::Noop
+    )
+}
+
+/// Resolves the exhaustive native presentation owner from vanilla's generated
+/// renderer provider catalog and explicit avatar exception.
+pub fn vanilla_entity_renderer_presentation_owner(
+    entity_type_id: i32,
+) -> VanillaEntityRendererPresentationOwner {
+    use VanillaEntityRendererPresentationOwner as Owner;
+
+    if matches!(
+        entity_type_id,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID
+            | bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MANNEQUIN_ID
+    ) {
+        return Owner::AvatarModel;
+    }
+    let Some(entry) = vanilla_entity_renderer_registration(entity_type_id) else {
+        return Owner::Unknown;
+    };
+    if entry.thrown_item_scale_bits.is_some() {
+        return Owner::ThrownItem;
+    }
+    match entry.renderer_class {
+        "NoopRenderer" => Owner::Noop,
+        "FallingBlockRenderer" | "TntRenderer" => Owner::BlockAttachment,
+        "FireworkEntityRenderer" => Owner::FireworkItem,
+        "ItemFrameRenderer" => Owner::ItemFrame,
+        "ItemEntityRenderer" | "OminousItemSpawnerRenderer" => Owner::ItemCluster,
+        "LightningBoltRenderer" => Owner::Lightning,
+        "PaintingRenderer" => Owner::Painting,
+        class if class.starts_with("DisplayRenderer.") => Owner::Display,
+        _ => Owner::EntityModel,
+    }
 }
 
 pub fn vanilla_entity_renderer_culling_kind(
@@ -236,18 +293,14 @@ pub fn vanilla_entity_renderer_base_shadow(entity_type_id: i32) -> (f32, f32) {
 /// generated `EntityRenderers` provider catalog, so a provider change cannot leave a parallel
 /// entity-type table stale.
 pub fn vanilla_entity_renderer_uses_native_non_model_pass(entity_type_id: i32) -> bool {
-    vanilla_entity_renderer_registration(entity_type_id).is_some_and(|entry| {
-        matches!(
-            entry.renderer_class,
-            "FallingBlockRenderer"
-                | "FireworkEntityRenderer"
-                | "ItemFrameRenderer"
-                | "ItemEntityRenderer"
-                | "LightningBoltRenderer"
-                | "OminousItemSpawnerRenderer"
-                | "TntRenderer"
-        )
-    })
+    matches!(
+        vanilla_entity_renderer_presentation_owner(entity_type_id),
+        VanillaEntityRendererPresentationOwner::BlockAttachment
+            | VanillaEntityRendererPresentationOwner::FireworkItem
+            | VanillaEntityRendererPresentationOwner::ItemFrame
+            | VanillaEntityRendererPresentationOwner::ItemCluster
+            | VanillaEntityRendererPresentationOwner::Lightning
+    )
 }
 
 pub(super) fn vanilla_entity_renderer_uses_abstract_feline_model(entity_type_id: i32) -> bool {
@@ -402,8 +455,9 @@ mod tests {
     use std::collections::HashSet;
 
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
-        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
+        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ALLAY_ID,
+        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
@@ -417,20 +471,21 @@ mod tests {
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MARKER_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+        VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+        VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+        VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID, VANILLA_ENTITY_TYPE_TNT_ID,
         VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
         VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
@@ -505,6 +560,102 @@ mod tests {
         }
         assert!(!ids.contains(&VANILLA_ENTITY_TYPE_PLAYER_ID));
         assert!(!ids.contains(&VANILLA_ENTITY_TYPE_MANNEQUIN_ID));
+    }
+
+    #[test]
+    fn presentation_owner_exhaustively_partitions_every_fixed_entity_type() {
+        use VanillaEntityRendererPresentationOwner as Owner;
+
+        let ids_for = |owner| {
+            VANILLA_ENTITY_TYPES
+                .iter()
+                .filter_map(|entry| {
+                    (vanilla_entity_renderer_presentation_owner(entry.id) == owner)
+                        .then_some(entry.id)
+                })
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            ids_for(Owner::AvatarModel),
+            vec![
+                VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ]
+        );
+        assert_eq!(ids_for(Owner::EntityModel).len(), 131);
+        assert_eq!(
+            ids_for(Owner::Noop),
+            vec![
+                VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+                VANILLA_ENTITY_TYPE_INTERACTION_ID,
+                VANILLA_ENTITY_TYPE_MARKER_ID,
+            ]
+        );
+        assert_eq!(
+            ids_for(Owner::ThrownItem),
+            vec![
+                VANILLA_ENTITY_TYPE_EGG_ID,
+                VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
+                VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
+                VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+                VANILLA_ENTITY_TYPE_FIREBALL_ID,
+                VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+                VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
+                VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+                VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+            ]
+        );
+        assert_eq!(
+            ids_for(Owner::BlockAttachment),
+            vec![
+                VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+                VANILLA_ENTITY_TYPE_TNT_ID
+            ]
+        );
+        assert_eq!(
+            ids_for(Owner::FireworkItem),
+            vec![VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID]
+        );
+        assert_eq!(
+            ids_for(Owner::ItemFrame),
+            vec![
+                VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+                VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            ]
+        );
+        assert_eq!(
+            ids_for(Owner::ItemCluster),
+            vec![
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+            ]
+        );
+        assert_eq!(
+            ids_for(Owner::Lightning),
+            vec![VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID]
+        );
+        assert_eq!(
+            ids_for(Owner::Display),
+            vec![
+                VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+                VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID,
+                VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID,
+            ]
+        );
+        assert_eq!(
+            ids_for(Owner::Painting),
+            vec![VANILLA_ENTITY_TYPE_PAINTING_ID]
+        );
+        assert!(ids_for(Owner::Unknown).is_empty());
+        assert_eq!(
+            vanilla_entity_renderer_presentation_owner(-1),
+            Owner::Unknown
+        );
+        assert_eq!(
+            vanilla_entity_renderer_presentation_owner(VANILLA_ENTITY_TYPES.len() as i32),
+            Owner::Unknown
+        );
     }
 
     #[test]

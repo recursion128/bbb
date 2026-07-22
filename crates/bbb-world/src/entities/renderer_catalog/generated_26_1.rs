@@ -3994,6 +3994,7 @@ mod generated_catalog_guards {
     #[test]
     fn native_model_selection_does_not_restore_noop_renderer_membership() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        assert!(source.contains("vanilla_entity_renderer_presentation_owner"));
         assert!(!source.contains("VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID"));
     }
 
@@ -4260,7 +4261,7 @@ mod generated_catalog_guards {
         let billboards = include_str!("../../../../bbb-native/src/item_entities.rs");
         assert!(billboards.contains("vanilla_entity_renderer_thrown_item_scales"));
         let kinds = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
-        assert!(kinds.contains("vanilla_entity_renderer_thrown_item_scale"));
+        assert!(kinds.contains("vanilla_entity_renderer_presentation_owner"));
         for removed in [
             "VANILLA_ENTITY_TYPE_EGG_ID",
             "VANILLA_ENTITY_TYPE_ENDER_PEARL_ID",
@@ -4277,9 +4278,12 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn native_model_selection_does_not_restore_non_model_pass_type_membership() {
+    fn native_model_selection_consumes_single_presentation_owner() {
         let kinds = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
-        assert!(kinds.contains("vanilla_entity_renderer_uses_native_non_model_pass"));
+        assert!(kinds.contains("vanilla_entity_renderer_presentation_owner"));
+        assert!(!kinds.contains("vanilla_entity_renderer_is_noop"));
+        assert!(!kinds.contains("vanilla_entity_renderer_thrown_item_scale"));
+        assert!(!kinds.contains("vanilla_entity_renderer_uses_native_non_model_pass"));
         for removed in [
             "VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID",
             "VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID",
@@ -4292,5 +4296,24 @@ mod generated_catalog_guards {
         ] {
             assert!(!kinds.contains(removed), "restored {removed}");
         }
+    }
+
+    #[test]
+    fn renderer_dispatch_does_not_restore_wildcard_raw_fallback() {
+        let source = include_str!("../../../../bbb-renderer/src/entity_models/dispatch.rs");
+        let body = source
+            .split("fn dispatch_uniform_entity_model")
+            .nth(1)
+            .and_then(|source| source.split_once("/// Dispatch-owned renderer layers"))
+            .map(|(body, _)| body)
+            .expect("uniform entity-model dispatch source");
+        for fallback in [
+            "EntityModelKind::Humanoid",
+            "EntityModelKind::Quadruped",
+            "EntityModelKind::Placeholder",
+        ] {
+            assert!(body.contains(fallback), "missing explicit {fallback}");
+        }
+        assert!(!body.contains("_ => return false"));
     }
 }

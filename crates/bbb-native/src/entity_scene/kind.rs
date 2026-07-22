@@ -30,19 +30,22 @@ pub(super) fn entity_model_kind_with_time_and_registries(
     game_time: i64,
     variant_registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
-    if bbb_world::vanilla_entity_renderer_is_noop(entity_type_id) {
-        return EntityModelKind::NoRender;
-    }
-    // Vanilla `ThrownItemRenderer` submits a camera-facing item sprite. The native item-entity
-    // billboard layer owns that path, so the 3D model scene suppresses every generated registration.
-    if bbb_world::vanilla_entity_renderer_thrown_item_scale(entity_type_id).is_some() {
-        return EntityModelKind::NoRender;
-    }
-    // Vanilla block/item/frame/firework/lightning renderers submit through dedicated native passes,
-    // not the entity-model mesh. Resolve their membership from generated `EntityRenderers`
-    // registrations so this scene does not retain a parallel entity-type list.
-    if bbb_world::vanilla_entity_renderer_uses_native_non_model_pass(entity_type_id) {
-        return EntityModelKind::NoRender;
+    use bbb_world::VanillaEntityRendererPresentationOwner as Owner;
+
+    match bbb_world::vanilla_entity_renderer_presentation_owner(entity_type_id) {
+        Owner::Noop
+        | Owner::ThrownItem
+        | Owner::BlockAttachment
+        | Owner::FireworkItem
+        | Owner::ItemFrame
+        | Owner::ItemCluster
+        | Owner::Lightning
+        | Owner::Display
+        | Owner::Painting => return EntityModelKind::NoRender,
+        Owner::AvatarModel | Owner::EntityModel => {}
+        Owner::Unknown => {
+            return placeholder("todo_unknown_entity_type_bounds", 0.75, 0.75, 0.75);
+        }
     }
     if let Some(skeleton_kind) = bbb_world::vanilla_entity_renderer_skeleton_kind(entity_type_id) {
         return match skeleton_kind {
@@ -288,7 +291,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                 ArrowModelTexture::Normal
             },
         },
-        VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => EntityModelKind::DragonFireball,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => EntityModelKind::EnderDragon,
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
@@ -356,13 +358,11 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
-        VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => EntityModelKind::LeashKnot,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => EntityModelKind::LlamaSpit,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
             size: slime_size(entity_type_id, data_values),
         },
-        VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {
             size: phantom_size(entity_type_id, data_values),
@@ -391,7 +391,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             }
         }
         VANILLA_ENTITY_TYPE_TADPOLE_ID => EntityModelKind::Tadpole,
-        VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_TRIDENT_ID => EntityModelKind::Trident,
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
             tropical_fish_model_kind(entity_type_id, data_values)
@@ -413,6 +412,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             )
             .is_some_and(|(data_id, default)| entity_data_bool(data_values, data_id, default)),
         },
-        _ => placeholder("todo_unknown_entity_type_bounds", 0.75, 0.75, 0.75),
+        _ => unreachable!("fixed entity renderer owner lacked native model selection"),
     }
 }

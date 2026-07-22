@@ -264,6 +264,9 @@ pub use crate::entities::{
 pub use crate::entities::{
     vanilla_entity_metadata_wolf_accessors_for_entity_type, VanillaWolfMetadataAccessors,
 };
+pub use crate::entities::{
+    vanilla_entity_renderer_presentation_owner, VanillaEntityRendererPresentationOwner,
+};
 pub use crate::entities::{vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer};
 pub use crate::entities::{
     vanilla_minecart_default_display_offset,

@@ -8689,14 +8689,85 @@ fn entity_model_instances_do_not_drop_pick_target_entity_types() {
 }
 
 #[test]
-fn entity_model_kind_maps_all_vanilla_registry_ids() {
-    for entity_type_id in 0..=VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID {
-        let kind = entity_model_kind(entity_type_id, &[]);
-        assert!(
-                placeholder_name(kind) != Some("todo_unknown_entity_type_bounds"),
-                "vanilla type id {entity_type_id} fell through to unknown renderer entity model fallback"
-            );
+fn entity_model_kind_matches_every_fixed_renderer_presentation_owner() {
+    use bbb_world::VanillaEntityRendererPresentationOwner as Owner;
+
+    for entry in VANILLA_ENTITY_TYPES {
+        let owner = bbb_world::vanilla_entity_renderer_presentation_owner(entry.id);
+        let kind = entity_model_kind(entry.id, &[]);
+        match owner {
+            Owner::AvatarModel => assert!(
+                matches!(kind, EntityModelKind::Player { .. }),
+                "{} avatar renderer projected {kind:?}",
+                entry.resource_id
+            ),
+            Owner::EntityModel => assert!(
+                !matches!(
+                    kind,
+                    EntityModelKind::NoRender
+                        | EntityModelKind::Humanoid { .. }
+                        | EntityModelKind::Quadruped { .. }
+                        | EntityModelKind::Placeholder { .. }
+                ),
+                "{} model renderer projected unowned/raw fallback {kind:?}",
+                entry.resource_id
+            ),
+            Owner::Noop
+            | Owner::ThrownItem
+            | Owner::BlockAttachment
+            | Owner::FireworkItem
+            | Owner::ItemFrame
+            | Owner::ItemCluster
+            | Owner::Lightning
+            | Owner::Display
+            | Owner::Painting => assert_eq!(
+                kind,
+                EntityModelKind::NoRender,
+                "{} separately owned renderer projected {kind:?}",
+                entry.resource_id
+            ),
+            Owner::Unknown => panic!("{} has no renderer presentation owner", entry.resource_id),
+        }
     }
+}
+
+#[test]
+fn painting_without_ready_variant_or_atlas_suppresses_raw_fallback_geometry() {
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:painting_variant",
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:kebab")],
+    );
+    let mut spawn = protocol_add_entity(9300, VANILLA_ENTITY_TYPE_PAINTING_ID, [1.0, 64.0, -2.0]);
+    spawn.data = 3;
+    world.apply_add_entity(spawn);
+    let data_id = bbb_world::vanilla_entity_metadata_painting_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PAINTING_ID,
+    )
+    .expect("generated Painting variant accessor");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 9300,
+        values: vec![EntityDataValue {
+            data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+            value: bbb_protocol::packets::EntityDataValueKind::PaintingVariant(
+                bbb_protocol::packets::PaintingVariantData {
+                    registry: Some(
+                        bbb_protocol::packets::EntityDataRegistryReference::unresolved(0),
+                    ),
+                    direct: None,
+                },
+            ),
+        }],
+    }));
+
+    let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 9300)
+        .expect("not-ready painting presentation source");
+    assert_eq!(instance.kind, EntityModelKind::NoRender);
 }
 
 #[test]
