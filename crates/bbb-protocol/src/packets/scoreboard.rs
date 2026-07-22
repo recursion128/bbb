@@ -1,15 +1,19 @@
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
+use crate::number_format_types::{
+    VANILLA_NUMBER_FORMAT_TYPE_BLANK_ID, VANILLA_NUMBER_FORMAT_TYPE_FIXED_ID,
+    VANILLA_NUMBER_FORMAT_TYPE_STYLED_ID,
+};
 pub use crate::objective_render_types::ObjectiveRenderType;
 pub use crate::scoreboard_display_slots::ScoreboardDisplaySlot;
 pub use crate::scoreboard_methods::{PlayerTeamMethod, SetObjectiveMethod};
 pub use crate::scoreboard_team_options::{TeamCollisionRule, TeamVisibility};
+use crate::{ComponentStyle, RichTextComponent};
 
-use super::{
-    decode_component_summary_from_decoder, decode_nullable_string,
-    decode_optional_component_summary_from_decoder, decode_optional_trailing_number_format,
-    ChatFormatting,
+use super::{decode_nullable_string, ChatFormatting};
+use crate::component::{
+    decode_component_style_from_decoder, decode_rich_text_component_from_decoder,
 };
 
 const MAX_PLAYER_TEAM_PLAYERS: usize = 8192;
@@ -35,9 +39,9 @@ pub struct SetObjective {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetObjectiveParameters {
-    pub display_name: String,
+    pub display_name: RichTextComponent,
     pub render_type: ObjectiveRenderType,
-    pub number_format: Option<Vec<u8>>,
+    pub number_format: Option<NumberFormatSummary>,
 }
 
 impl SetObjectiveMethod {
@@ -51,8 +55,8 @@ pub struct SetScore {
     pub owner: String,
     pub objective_name: String,
     pub score: i32,
-    pub display: Option<String>,
-    pub number_format: Option<Vec<u8>>,
+    pub display: Option<RichTextComponent>,
+    pub number_format: Option<NumberFormatSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,13 +69,24 @@ pub struct SetPlayerTeam {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerTeamParameters {
-    pub display_name: String,
+    pub display_name: RichTextComponent,
     pub options: u8,
     pub nametag_visibility: TeamVisibility,
     pub collision_rule: TeamCollisionRule,
     pub color: ChatFormatting,
-    pub player_prefix: String,
-    pub player_suffix: String,
+    pub player_prefix: RichTextComponent,
+    pub player_suffix: RichTextComponent,
+}
+
+/// The complete client-visible payload of vanilla's three built-in
+/// `NumberFormatTypes`, whose wire discriminants follow the generated bootstrap
+/// registry order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
+pub enum NumberFormatSummary {
+    Blank,
+    Styled(ComponentStyle),
+    Fixed(RichTextComponent),
 }
 
 impl PlayerTeamMethod {
@@ -122,14 +137,14 @@ pub(super) fn decode_set_objective(decoder: &mut Decoder<'_>) -> Result<SetObjec
     })?;
     let parameters = if method.has_parameters() {
         Some(SetObjectiveParameters {
-            display_name: decode_component_summary_from_decoder(decoder)?,
+            display_name: decode_rich_text_component_from_decoder(decoder)?,
             render_type: {
                 let ordinal = decoder.read_var_i32()?;
                 ObjectiveRenderType::from_ordinal(ordinal).ok_or_else(|| {
                     ProtocolError::InvalidData(format!("invalid objective render type {ordinal}"))
                 })?
             },
-            number_format: decode_optional_trailing_number_format(decoder)?,
+            number_format: decode_optional_number_format(decoder)?,
         })
     } else {
         None
@@ -153,8 +168,8 @@ pub(super) fn decode_set_score(decoder: &mut Decoder<'_>) -> Result<SetScore> {
         owner: decoder.read_string(32767)?,
         objective_name: decoder.read_string(32767)?,
         score: decoder.read_var_i32()?,
-        display: decode_optional_component_summary_from_decoder(decoder)?,
-        number_format: decode_optional_trailing_number_format(decoder)?,
+        display: decode_optional_rich_text_component(decoder)?,
+        number_format: decode_optional_number_format(decoder)?,
     };
     if !decoder.is_empty() {
         return Err(ProtocolError::InvalidData(
@@ -199,7 +214,7 @@ pub(super) fn decode_player_team_parameters(
     decoder: &mut Decoder<'_>,
 ) -> Result<PlayerTeamParameters> {
     Ok(PlayerTeamParameters {
-        display_name: decode_component_summary_from_decoder(decoder)?,
+        display_name: decode_rich_text_component_from_decoder(decoder)?,
         options: decoder.read_u8()?,
         nametag_visibility: TeamVisibility::from_id(decoder.read_var_i32()?),
         collision_rule: TeamCollisionRule::from_id(decoder.read_var_i32()?),
@@ -209,9 +224,41 @@ pub(super) fn decode_player_team_parameters(
                 ProtocolError::InvalidData(format!("invalid chat formatting ordinal {ordinal}"))
             })?
         },
-        player_prefix: decode_component_summary_from_decoder(decoder)?,
-        player_suffix: decode_component_summary_from_decoder(decoder)?,
+        player_prefix: decode_rich_text_component_from_decoder(decoder)?,
+        player_suffix: decode_rich_text_component_from_decoder(decoder)?,
     })
+}
+
+fn decode_optional_rich_text_component(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<RichTextComponent>> {
+    decoder
+        .read_bool()?
+        .then(|| decode_rich_text_component_from_decoder(decoder))
+        .transpose()
+}
+
+fn decode_optional_number_format(decoder: &mut Decoder<'_>) -> Result<Option<NumberFormatSummary>> {
+    decoder
+        .read_bool()?
+        .then(|| decode_number_format(decoder))
+        .transpose()
+}
+
+fn decode_number_format(decoder: &mut Decoder<'_>) -> Result<NumberFormatSummary> {
+    let type_id = decoder.read_var_i32()?;
+    match type_id {
+        VANILLA_NUMBER_FORMAT_TYPE_BLANK_ID => Ok(NumberFormatSummary::Blank),
+        VANILLA_NUMBER_FORMAT_TYPE_STYLED_ID => Ok(NumberFormatSummary::Styled(
+            decode_component_style_from_decoder(decoder)?,
+        )),
+        VANILLA_NUMBER_FORMAT_TYPE_FIXED_ID => Ok(NumberFormatSummary::Fixed(
+            decode_rich_text_component_from_decoder(decoder)?,
+        )),
+        _ => Err(ProtocolError::InvalidData(format!(
+            "unknown number format type id {type_id}"
+        ))),
+    }
 }
 
 fn decode_player_team_player_list(decoder: &mut Decoder<'_>) -> Result<Vec<String>> {
@@ -283,9 +330,9 @@ mod tests {
                 objective_name: "kills".to_string(),
                 method: SetObjectiveMethod::Add,
                 parameters: Some(SetObjectiveParameters {
-                    display_name: "Kills".to_string(),
+                    display_name: RichTextComponent::plain("Kills"),
                     render_type: ObjectiveRenderType::Hearts,
-                    number_format: Some(vec![0]),
+                    number_format: Some(NumberFormatSummary::Blank),
                 }),
             })
         );
@@ -369,8 +416,8 @@ mod tests {
                 owner: "Steve".to_string(),
                 objective_name: "kills".to_string(),
                 score: 42,
-                display: Some("Forty two".to_string()),
-                number_format: Some(vec![0]),
+                display: Some(RichTextComponent::plain("Forty two")),
+                number_format: Some(NumberFormatSummary::Blank),
             })
         );
 
@@ -387,6 +434,70 @@ mod tests {
         assert!(error
             .to_string()
             .contains("trailing bytes after set score packet"));
+    }
+
+    #[test]
+    fn decodes_all_scoreboard_number_format_payloads() {
+        let mut styled = Encoder::new();
+        styled.write_string("Steve");
+        styled.write_string("kills");
+        styled.write_var_i32(42);
+        styled.write_bool(false);
+        styled.write_bool(true);
+        styled.write_var_i32(VANILLA_NUMBER_FORMAT_TYPE_STYLED_ID);
+        styled.write_bytes(&nbt_style_root("red", true));
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_SCORE, &styled.into_inner())
+                .unwrap();
+        let PlayClientbound::SetScore(packet) = packet else {
+            panic!("expected set score packet");
+        };
+        assert_eq!(
+            packet.number_format,
+            Some(NumberFormatSummary::Styled(ComponentStyle {
+                bold: Some(true),
+                color: Some(0xFF_55_55),
+                ..ComponentStyle::default()
+            }))
+        );
+
+        let mut fixed = Encoder::new();
+        fixed.write_string("Steve");
+        fixed.write_string("kills");
+        fixed.write_var_i32(42);
+        fixed.write_bool(false);
+        fixed.write_bool(true);
+        fixed.write_var_i32(VANILLA_NUMBER_FORMAT_TYPE_FIXED_ID);
+        fixed.write_bytes(&nbt_string_root("forty-two"));
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_SCORE, &fixed.into_inner()).unwrap();
+        let PlayClientbound::SetScore(packet) = packet else {
+            panic!("expected set score packet");
+        };
+        assert_eq!(
+            packet.number_format,
+            Some(NumberFormatSummary::Fixed(RichTextComponent::plain(
+                "forty-two"
+            )))
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_scoreboard_number_format_type() {
+        let mut payload = Encoder::new();
+        payload.write_string("Steve");
+        payload.write_string("kills");
+        payload.write_var_i32(42);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_var_i32(3);
+
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_SCORE, &payload.into_inner())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("unknown number format type id 3"));
     }
 
     #[test]
@@ -453,13 +564,13 @@ mod tests {
                 name: "red".to_string(),
                 method: PlayerTeamMethod::Add,
                 parameters: Some(PlayerTeamParameters {
-                    display_name: "Red Team".to_string(),
+                    display_name: RichTextComponent::plain("Red Team"),
                     options: 0b11,
                     nametag_visibility: TeamVisibility::HideForOtherTeams,
                     collision_rule: TeamCollisionRule::PushOwnTeam,
                     color: ChatFormatting::Red,
-                    player_prefix: "[R]".to_string(),
-                    player_suffix: "!".to_string(),
+                    player_prefix: RichTextComponent::plain("[R]"),
+                    player_suffix: RichTextComponent::plain("!"),
                 }),
                 players: vec!["Steve".to_string(), "Alex".to_string()],
             })
@@ -520,5 +631,22 @@ mod tests {
         payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
         payload.extend_from_slice(text.as_bytes());
         payload
+    }
+
+    fn nbt_style_root(color: &str, bold: bool) -> Vec<u8> {
+        let mut payload = vec![10];
+        payload.push(8);
+        write_nbt_string(&mut payload, "color");
+        write_nbt_string(&mut payload, color);
+        payload.push(1);
+        write_nbt_string(&mut payload, "bold");
+        payload.push(u8::from(bold));
+        payload.push(0);
+        payload
+    }
+
+    fn write_nbt_string(payload: &mut Vec<u8>, value: &str) {
+        payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        payload.extend_from_slice(value.as_bytes());
     }
 }

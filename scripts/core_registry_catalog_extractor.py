@@ -251,6 +251,33 @@ def damage_type_entries(source: JavaSource) -> list[RegistryEntry]:
     return [RegistryEntry(name, resources[name], effect) for name, effect in registered]
 
 
+def number_format_type_entries(source: JavaSource) -> list[RegistryEntry]:
+    bootstraps = [method for method in source.methods if method.name == "bootstrap"]
+    if len(bootstraps) != 1:
+        raise CoreRegistryExtractionError(
+            f"{source.relative_path}: expected one bootstrap method, found {len(bootstraps)}"
+        )
+    calls = _calls_in_method(source, bootstraps[0], "register")
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    entries: list[RegistryEntry] = []
+    for call in calls:
+        if len(call.arguments) != 3:
+            _fail(
+                source,
+                source.expression(call.node),
+                "number format register expects three arguments",
+            )
+        resource_id = _string_literal(source, call.arguments[1])
+        constant_name = resource_id.removeprefix("minecraft:").upper()
+        entries.append(RegistryEntry(constant_name, resource_id))
+    if len(entries) != 3:
+        raise CoreRegistryExtractionError(
+            f"{source.relative_path}: expected 3 number format types, found {len(entries)}"
+        )
+    _validate_unique(entries, "number format type")
+    return entries
+
+
 def _damage_type_effect(
     source: JavaSource, expression: JavaExpression
 ) -> str | None:

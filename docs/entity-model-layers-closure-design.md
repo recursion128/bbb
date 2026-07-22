@@ -116,6 +116,15 @@ ordered see-through plus normal font passes atomically. `ItemFrameRenderer`'s
 item-stack hover name remains with the item-frame family because it reads the
 displayed stack rather than the entity name.
 
+Its bounded protocol/world prerequisite replaces the old trailing-byte
+`NumberFormat` summary with the source-generated `NumberFormatTypes.bootstrap`
+ids and typed blank/styled/fixed payloads. `SetObjective`, `SetScore`, and
+`SetPlayerTeam` retain their trusted rich Components as exact validated NBT,
+plain compatibility fields, and inherited styled runs in canonical scoreboard
+state;
+`Entity.belowNameDisplay` formatting therefore stays a world-owned query rather
+than being reconstructed from lossy strings in native or renderer code.
+
 ### C. Matrix closure and delivery gate
 
 Prove that every official non-noop registration reaches a dedicated/shared

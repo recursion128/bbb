@@ -3585,9 +3585,9 @@ mod tests {
                 objective_name: "kills".to_string(),
                 method: SetObjectiveMethod::Add,
                 parameters: Some(SetObjectiveParameters {
-                    display_name: "Kills".to_string(),
+                    display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                     render_type: ObjectiveRenderType::Integer,
-                    number_format: Some(vec![9]),
+                    number_format: Some(bbb_protocol::packets::NumberFormatSummary::Blank),
                 }),
             }))
             .await
@@ -3604,7 +3604,7 @@ mod tests {
                 owner: "Steve".to_string(),
                 objective_name: "kills".to_string(),
                 score: 4,
-                display: Some("Four".to_string()),
+                display: Some(bbb_protocol::RichTextComponent::plain("Four")),
                 number_format: None,
             }))
             .await
@@ -3624,13 +3624,13 @@ mod tests {
                 name: "red".to_string(),
                 method: PlayerTeamMethod::Add,
                 parameters: Some(PlayerTeamParameters {
-                    display_name: "Red Team".to_string(),
+                    display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                     options: 0b11,
                     nametag_visibility: TeamVisibility::Always,
                     collision_rule: TeamCollisionRule::Never,
                     color: ChatFormatting::Red,
-                    player_prefix: "[R]".to_string(),
-                    player_suffix: "!".to_string(),
+                    player_prefix: bbb_protocol::RichTextComponent::plain("[R]"),
+                    player_suffix: bbb_protocol::RichTextComponent::plain("!"),
                 }),
                 players: vec!["Steve".to_string()],
             }))
@@ -3648,7 +3648,7 @@ mod tests {
                 objective_name: "missing".to_string(),
                 method: SetObjectiveMethod::Change,
                 parameters: Some(SetObjectiveParameters {
-                    display_name: "Missing".to_string(),
+                    display_name: bbb_protocol::RichTextComponent::plain("Missing"),
                     render_type: ObjectiveRenderType::Integer,
                     number_format: None,
                 }),
@@ -3711,7 +3711,10 @@ mod tests {
         let objective = scoreboard.objectives.get("kills").unwrap();
         assert_eq!(objective.display_name, "Kills");
         assert_eq!(objective.render_type, "integer");
-        assert_eq!(objective.number_format, Some(vec![9]));
+        assert_eq!(
+            objective.number_format,
+            Some(bbb_protocol::packets::NumberFormatSummary::Blank)
+        );
         assert_eq!(
             scoreboard.display_slots.get("sidebar").map(String::as_str),
             Some("kills")

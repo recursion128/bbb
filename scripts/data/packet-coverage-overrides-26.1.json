@@ -2267,9 +2267,8 @@
     },
     "play/clientbound/CLIENTBOUND_SET_OBJECTIVE": {
       "canonical_apply": {
-        "evidence": ["crates/bbb-world/src/client/scoreboard.rs#apply_set_objective", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddObjective"],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "evidence": ["crates/bbb-world/src/client/scoreboard.rs#apply_set_objective", "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_preserves_rich_components_and_formats_below_name_scores", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddObjective"],
+        "status": "complete"
       },
       "decode": {
         "evidence": ["crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_objective_add_and_remove_packets", "crates/bbb-protocol/src/packets/scoreboard.rs#rejects_invalid_scoreboard_method_ids", "vanilla:net/minecraft/network/protocol/game/ClientboundSetObjectivePacket.java#STREAM_CODEC"],
@@ -2292,14 +2291,12 @@
     },
     "play/clientbound/CLIENTBOUND_SET_SCORE": {
       "canonical_apply": {
-        "evidence": ["crates/bbb-world/src/client/scoreboard.rs#apply_set_score", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetScore"],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "evidence": ["crates/bbb-world/src/client/scoreboard.rs#apply_set_score", "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_preserves_rich_components_and_formats_below_name_scores", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetScore"],
+        "status": "complete"
       },
       "decode": {
-        "evidence": ["crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_score_with_optional_display_and_number_format", "vanilla:net/minecraft/network/protocol/game/ClientboundSetScorePacket.java#STREAM_CODEC"],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "evidence": ["crates/bbb-protocol/src/packets/scoreboard.rs#decodes_all_scoreboard_number_format_payloads", "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_score_with_optional_display_and_number_format", "crates/bbb-protocol/src/packets/scoreboard.rs#rejects_unknown_scoreboard_number_format_type", "vanilla:net/minecraft/network/protocol/game/ClientboundSetScorePacket.java#STREAM_CODEC"],
+        "status": "complete"
       },
       "ownership": {
         "evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::SetScore"],
@@ -2311,15 +2308,14 @@
         "status": "partial"
       },
       "tests": {
-        "evidence": ["crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_score_with_optional_display_and_number_format", "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world", "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"],
+        "evidence": ["crates/bbb-protocol/src/packets/scoreboard.rs#decodes_all_scoreboard_number_format_payloads", "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_score_with_optional_display_and_number_format", "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world", "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_preserves_rich_components_and_formats_below_name_scores", "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"],
         "status": "complete"
       }
     },
     "play/clientbound/CLIENTBOUND_SET_PLAYER_TEAM": {
       "canonical_apply": {
-        "evidence": ["crates/bbb-world/src/client/scoreboard.rs#apply_set_player_team", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetPlayerTeamPacket"],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "evidence": ["crates/bbb-world/src/client/scoreboard.rs#apply_set_player_team", "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_preserves_team_component_styles_and_empty_components", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetPlayerTeamPacket"],
+        "status": "complete"
       },
       "decode": {
         "evidence": ["crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_player_team_add_join_and_leave_packets", "crates/bbb-protocol/src/packets/scoreboard.rs#rejects_invalid_scoreboard_method_ids", "vanilla:net/minecraft/network/protocol/game/ClientboundSetPlayerTeamPacket.java#STREAM_CODEC"],

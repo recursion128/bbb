@@ -46,19 +46,6 @@ pub(crate) fn decode_optional_byte_array(
     }
 }
 
-pub(crate) fn decode_optional_trailing_number_format(
-    decoder: &mut Decoder<'_>,
-) -> Result<Option<Vec<u8>>> {
-    if !decoder.read_bool()? {
-        return Ok(None);
-    }
-
-    let len = decoder.remaining_len();
-    Ok(Some(
-        decoder.read_exact(len, "number format payload")?.to_vec(),
-    ))
-}
-
 pub(crate) fn decode_byte_array(
     decoder: &mut Decoder<'_>,
     max_len: usize,

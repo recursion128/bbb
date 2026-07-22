@@ -3621,9 +3621,9 @@ mod tests {
             objective_name: "kills".to_string(),
             method: packets::SetObjectiveMethod::Add,
             parameters: Some(packets::SetObjectiveParameters {
-                display_name: "Kills".to_string(),
+                display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                 render_type: packets::ObjectiveRenderType::Integer,
-                number_format: Some(vec![9]),
+                number_format: Some(packets::NumberFormatSummary::Blank),
             }),
         };
         assert_matching_event!(
@@ -3646,7 +3646,7 @@ mod tests {
             owner: "Steve".to_string(),
             objective_name: "kills".to_string(),
             score: 4,
-            display: Some("Four".to_string()),
+            display: Some(bbb_protocol::RichTextComponent::plain("Four")),
             number_format: None,
         };
         assert_matching_event!(
@@ -3659,13 +3659,13 @@ mod tests {
             name: "red".to_string(),
             method: packets::PlayerTeamMethod::Add,
             parameters: Some(packets::PlayerTeamParameters {
-                display_name: "Red Team".to_string(),
+                display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                 options: 0b11,
                 nametag_visibility: packets::TeamVisibility::Always,
                 collision_rule: packets::TeamCollisionRule::Never,
                 color: packets::ChatFormatting::Red,
-                player_prefix: "[R]".to_string(),
-                player_suffix: "!".to_string(),
+                player_prefix: bbb_protocol::RichTextComponent::plain("[R]"),
+                player_suffix: bbb_protocol::RichTextComponent::plain("!"),
             }),
             players: vec!["Steve".to_string()],
         };

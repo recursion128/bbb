@@ -1241,16 +1241,17 @@ back into a todo. Do not delete these.
 - PlayerCombatKill still needs the local-player identity gate, DeathScreen versus
   respawn branch, and full rich death-message Component preservation.
 - ResetScore owner/nullable-objective decode and all/single-score removal semantics
-  are covered; remaining scoreboard gaps are objective/team text and presentation specific.
+  are covered; remaining scoreboard gaps are presentation specific.
 - SetDisplayObjective slot selection and clear/unknown-objective behavior are covered;
-  rich objective/team content remains tracked by the packets that carry it.
+  remaining sidebar/list presentation is tracked below.
 - SetObjective still rejects unknown method bytes that vanilla decodes as handler no-ops,
-  and its rich Component/NumberFormat values remain summary projections.
-- SetScore preserves numeric state and unknown-objective gating, but optional display
-  Components and NumberFormat values still need typed, presentation-capable semantics.
+  rather than preserving them for the handler no-op.
+- SetScore's optional display Component is retained as styled canonical state but still
+  needs consumption by the remaining sidebar/list presentation.
 - SetPlayerTeam preserves add/change/remove/join/leave membership semantics, including
   moving a player out of the previous team. Unknown method bytes still differ from
-  vanilla's handler no-op, and rich team Components remain plain-text projections.
+  vanilla's handler no-op; retained styled prefix/suffix content still needs generic
+  entity name-display consumption.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

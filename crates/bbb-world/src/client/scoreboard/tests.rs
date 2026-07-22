@@ -4,6 +4,7 @@ use bbb_protocol::packets::{
     ScoreboardDisplaySlot, SetDisplayObjective, SetObjective, SetObjectiveMethod,
     SetObjectiveParameters, SetPlayerTeam, SetScore, TeamCollisionRule, TeamVisibility,
 };
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
 #[test]
 fn scoreboard_objective_lifecycle_clears_display_and_scores() {
@@ -15,7 +16,10 @@ fn scoreboard_objective_lifecycle_clears_display_and_scores() {
         Some(protocol_objective_parameters(
             "Kills",
             ObjectiveRenderType::Integer,
-            Some(vec![1, 2, 3]),
+            Some(NumberFormatSummary::Styled(ComponentStyle {
+                color: Some(0xFF_55_55),
+                ..ComponentStyle::default()
+            })),
         )),
     )));
     assert!(store.apply_set_display_objective(SetDisplayObjective {
@@ -26,8 +30,8 @@ fn scoreboard_objective_lifecycle_clears_display_and_scores() {
         owner: "Alice".to_string(),
         objective_name: "kills".to_string(),
         score: 4,
-        display: Some("Alice".to_string()),
-        number_format: Some(vec![9]),
+        display: Some(RichTextComponent::plain("Alice")),
+        number_format: Some(NumberFormatSummary::Blank),
     }));
     assert!(store.apply_set_objective(protocol_set_objective(
         "kills",
@@ -54,7 +58,7 @@ fn scoreboard_objective_lifecycle_clears_display_and_scores() {
     let score = &store.scoreboard().scores["Alice"]["kills"];
     assert_eq!(score.value, 4);
     assert_eq!(score.display.as_deref(), Some("Alice"));
-    assert_eq!(score.number_format, Some(vec![9]));
+    assert_eq!(score.number_format, Some(NumberFormatSummary::Blank));
 
     assert!(store.apply_set_objective(protocol_set_objective(
         "kills",
@@ -141,6 +145,91 @@ fn scoreboard_sets_and_resets_scores() {
     assert_eq!(counters.reset_score_packets, 3);
     assert_eq!(counters.reset_score_updates_applied, 2);
     assert_eq!(counters.reset_score_updates_ignored, 1);
+}
+
+#[test]
+fn scoreboard_preserves_rich_components_and_formats_below_name_scores() {
+    let mut store = WorldStore::new();
+    let objective_name = styled_component("Health", "green", true);
+    assert!(store.apply_set_objective(protocol_set_objective(
+        "health",
+        SetObjectiveMethod::Add,
+        Some(SetObjectiveParameters {
+            display_name: objective_name,
+            render_type: ObjectiveRenderType::Integer,
+            number_format: Some(NumberFormatSummary::Styled(ComponentStyle {
+                color: Some(0xFF_55_55),
+                ..ComponentStyle::default()
+            })),
+        }),
+    )));
+    assert!(store.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::BelowName,
+        objective_name: Some("health".to_string()),
+    }));
+
+    let missing_score = store.scoreboard().below_name_display_runs("Alice").unwrap();
+    assert_eq!(
+        missing_score
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "0 Health"
+    );
+    assert_eq!(missing_score[0].style.color, Some(0xFF_55_55));
+    assert_eq!(missing_score[2].style.color, Some(0x55_FF_55));
+    assert_eq!(missing_score[2].style.bold, Some(true));
+    assert!(matches!(
+        store.scoreboard().objectives["health"]
+            .display_name_component
+            .as_ref(),
+        Some(NbtSummaryValue::Compound(_))
+    ));
+
+    assert!(store.apply_set_score(SetScore {
+        owner: "Alice".to_string(),
+        objective_name: "health".to_string(),
+        score: 19,
+        display: Some(styled_component("Alice", "yellow", false)),
+        number_format: Some(NumberFormatSummary::Fixed(styled_component(
+            "MAX", "aqua", false,
+        ))),
+    }));
+    let score = &store.scoreboard().scores["Alice"]["health"];
+    assert_eq!(score.display.as_deref(), Some("Alice"));
+    assert_eq!(
+        score.display_styled.as_ref().unwrap()[0].style.color,
+        Some(0xFF_FF_55)
+    );
+    assert!(matches!(
+        score.display_component.as_ref(),
+        Some(NbtSummaryValue::Compound(_))
+    ));
+    let fixed = store.scoreboard().below_name_display_runs("Alice").unwrap();
+    assert_eq!(
+        fixed
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "MAX Health"
+    );
+    assert_eq!(fixed[0].style.color, Some(0x55_FF_FF));
+
+    assert!(store.apply_set_score(SetScore {
+        owner: "Alice".to_string(),
+        objective_name: "health".to_string(),
+        score: 19,
+        display: None,
+        number_format: Some(NumberFormatSummary::Blank),
+    }));
+    let blank = store.scoreboard().below_name_display_runs("Alice").unwrap();
+    assert_eq!(
+        blank
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        " Health"
+    );
 }
 
 #[test]
@@ -314,6 +403,47 @@ fn scoreboard_teams_add_change_join_leave_and_remove() {
     assert_eq!(store.counters().set_player_team_packets, 7);
     assert_eq!(store.counters().set_player_team_updates_applied, 6);
     assert_eq!(store.counters().set_player_team_updates_ignored, 1);
+}
+
+#[test]
+fn scoreboard_preserves_team_component_styles_and_empty_components() {
+    let mut store = WorldStore::new();
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "gold",
+        PlayerTeamMethod::Add,
+        Some(PlayerTeamParameters {
+            display_name: styled_component("Gold Team", "gold", true),
+            options: 3,
+            nametag_visibility: TeamVisibility::Always,
+            collision_rule: TeamCollisionRule::Always,
+            color: ChatFormatting::Gold,
+            player_prefix: styled_component("[G] ", "yellow", false),
+            player_suffix: RichTextComponent::plain(""),
+        }),
+        &["Alice"],
+    )));
+
+    let parameters = store.scoreboard().teams["gold"]
+        .parameters
+        .as_ref()
+        .unwrap();
+    assert_eq!(parameters.display_name, "Gold Team");
+    assert_eq!(parameters.display_name_styled[0].style.bold, Some(true));
+    assert_eq!(parameters.player_prefix, "[G] ");
+    assert_eq!(
+        parameters.player_prefix_styled[0].style.color,
+        Some(0xFF_FF_55)
+    );
+    assert_eq!(parameters.player_suffix, "");
+    assert!(parameters.player_suffix_styled.is_empty());
+    assert!(matches!(
+        parameters.player_prefix_component.as_ref(),
+        Some(NbtSummaryValue::Compound(_))
+    ));
+    assert_eq!(
+        parameters.player_suffix_component.as_ref(),
+        Some(&NbtSummaryValue::String(String::new()))
+    );
 }
 
 #[test]
@@ -556,10 +686,10 @@ fn protocol_set_objective(
 fn protocol_objective_parameters(
     display_name: &str,
     render_type: ObjectiveRenderType,
-    number_format: Option<Vec<u8>>,
+    number_format: Option<NumberFormatSummary>,
 ) -> SetObjectiveParameters {
     SetObjectiveParameters {
-        display_name: display_name.to_string(),
+        display_name: RichTextComponent::plain(display_name),
         render_type,
         number_format,
     }
@@ -589,12 +719,30 @@ fn protocol_team_parameters(
     player_suffix: &str,
 ) -> PlayerTeamParameters {
     PlayerTeamParameters {
-        display_name: display_name.to_string(),
+        display_name: RichTextComponent::plain(display_name),
         options,
         nametag_visibility,
         collision_rule,
         color,
-        player_prefix: player_prefix.to_string(),
-        player_suffix: player_suffix.to_string(),
+        player_prefix: RichTextComponent::plain(player_prefix),
+        player_suffix: RichTextComponent::plain(player_suffix),
     }
+}
+
+fn styled_component(text: &str, color: &str, bold: bool) -> RichTextComponent {
+    RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+        NbtSummaryEntry {
+            name: "text".to_string(),
+            value: NbtSummaryValue::String(text.to_string()),
+        },
+        NbtSummaryEntry {
+            name: "color".to_string(),
+            value: NbtSummaryValue::String(color.to_string()),
+        },
+        NbtSummaryEntry {
+            name: "bold".to_string(),
+            value: NbtSummaryValue::Byte(i8::from(bold)),
+        },
+    ]))
+    .unwrap()
 }

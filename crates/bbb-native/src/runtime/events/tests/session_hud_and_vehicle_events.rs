@@ -332,9 +332,9 @@ fn scoreboard_events_update_world_and_world_counters() {
             objective_name: "kills".to_string(),
             method: bbb_protocol::packets::SetObjectiveMethod::Add,
             parameters: Some(bbb_protocol::packets::SetObjectiveParameters {
-                display_name: "Kills".to_string(),
+                display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                 render_type: bbb_protocol::packets::ObjectiveRenderType::Integer,
-                number_format: Some(vec![9]),
+                number_format: Some(bbb_protocol::packets::NumberFormatSummary::Blank),
             }),
         },
     )))
@@ -351,7 +351,7 @@ fn scoreboard_events_update_world_and_world_counters() {
             owner: "Steve".to_string(),
             objective_name: "kills".to_string(),
             score: 4,
-            display: Some("Four".to_string()),
+            display: Some(bbb_protocol::RichTextComponent::plain("Four")),
             number_format: None,
         },
     )))
@@ -371,13 +371,13 @@ fn scoreboard_events_update_world_and_world_counters() {
             name: "red".to_string(),
             method: bbb_protocol::packets::PlayerTeamMethod::Add,
             parameters: Some(bbb_protocol::packets::PlayerTeamParameters {
-                display_name: "Red Team".to_string(),
+                display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                 options: 0b11,
                 nametag_visibility: bbb_protocol::packets::TeamVisibility::Always,
                 collision_rule: bbb_protocol::packets::TeamCollisionRule::Never,
                 color: bbb_protocol::packets::ChatFormatting::Red,
-                player_prefix: "[R]".to_string(),
-                player_suffix: "!".to_string(),
+                player_prefix: bbb_protocol::RichTextComponent::plain("[R]"),
+                player_suffix: bbb_protocol::RichTextComponent::plain("!"),
             }),
             players: vec!["Steve".to_string()],
         },
@@ -395,7 +395,7 @@ fn scoreboard_events_update_world_and_world_counters() {
             objective_name: "missing".to_string(),
             method: bbb_protocol::packets::SetObjectiveMethod::Change,
             parameters: Some(bbb_protocol::packets::SetObjectiveParameters {
-                display_name: "Missing".to_string(),
+                display_name: bbb_protocol::RichTextComponent::plain("Missing"),
                 render_type: bbb_protocol::packets::ObjectiveRenderType::Integer,
                 number_format: None,
             }),
@@ -464,7 +464,10 @@ fn scoreboard_events_update_world_and_world_counters() {
     let objective = scoreboard.objectives.get("kills").unwrap();
     assert_eq!(objective.display_name, "Kills");
     assert_eq!(objective.render_type, "integer");
-    assert_eq!(objective.number_format, Some(vec![9]));
+    assert_eq!(
+        objective.number_format,
+        Some(bbb_protocol::packets::NumberFormatSummary::Blank)
+    );
     assert_eq!(
         scoreboard.display_slots.get("sidebar").map(String::as_str),
         Some("kills")

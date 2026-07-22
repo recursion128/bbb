@@ -3616,9 +3616,9 @@ fn client_scoreboard_reads_canonical_world_state() {
             objective_name: "kills".to_string(),
             method: SetObjectiveMethod::Add,
             parameters: Some(SetObjectiveParameters {
-                display_name: "Kills".to_string(),
+                display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                 render_type: ObjectiveRenderType::Hearts,
-                number_format: Some(vec![1, 2, 3]),
+                number_format: Some(bbb_protocol::packets::NumberFormatSummary::Blank),
             }),
         }));
         assert!(store.apply_set_display_objective(SetDisplayObjective {
@@ -3629,20 +3629,20 @@ fn client_scoreboard_reads_canonical_world_state() {
             owner: "Alice".to_string(),
             objective_name: "kills".to_string(),
             score: 4,
-            display: Some("Alice".to_string()),
-            number_format: Some(vec![9]),
+            display: Some(bbb_protocol::RichTextComponent::plain("Alice")),
+            number_format: Some(bbb_protocol::packets::NumberFormatSummary::Blank),
         }));
         assert!(store.apply_set_player_team(SetPlayerTeam {
             name: "red".to_string(),
             method: PlayerTeamMethod::Add,
             parameters: Some(PlayerTeamParameters {
-                display_name: "Red Team".to_string(),
+                display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                 options: 3,
                 nametag_visibility: TeamVisibility::Always,
                 collision_rule: TeamCollisionRule::PushOtherTeams,
                 color: ChatFormatting::Red,
-                player_prefix: "[R] ".to_string(),
-                player_suffix: "!".to_string(),
+                player_prefix: bbb_protocol::RichTextComponent::plain("[R] "),
+                player_suffix: bbb_protocol::RichTextComponent::plain("!"),
             }),
             players: vec!["Alice".to_string(), "Bob".to_string()],
         }));
@@ -3663,14 +3663,14 @@ fn client_scoreboard_reads_canonical_world_state() {
     assert_eq!(scoreboard["objectives"]["kills"]["render_type"], "hearts");
     assert_eq!(
         scoreboard["objectives"]["kills"]["number_format"],
-        json!([1, 2, 3])
+        json!({"type": "blank"})
     );
     assert_eq!(scoreboard["display_slots"]["sidebar"], "kills");
     assert_eq!(scoreboard["scores"]["Alice"]["kills"]["value"], 4);
     assert_eq!(scoreboard["scores"]["Alice"]["kills"]["display"], "Alice");
     assert_eq!(
         scoreboard["scores"]["Alice"]["kills"]["number_format"],
-        json!([9])
+        json!({"type": "blank"})
     );
     assert_eq!(
         scoreboard["teams"]["red"]["parameters"]["display_name"],

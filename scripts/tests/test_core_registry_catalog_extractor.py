@@ -19,6 +19,7 @@ from core_registry_catalog_extractor import (  # noqa: E402
     data_component_predicate_type_entries,
     data_component_type_entries,
     entity_type_entries,
+    number_format_type_entries,
     particle_type_entries,
     vec3_constant,
 )
@@ -26,6 +27,30 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class CoreRegistryCatalogExtractorTests(unittest.TestCase):
+    def test_number_format_types_follow_bootstrap_registration_order(self) -> None:
+        source = parse_source(
+            "fixture/NumberFormatTypes.java",
+            b"""
+package fixture;
+public class NumberFormatTypes {
+  public static NumberFormatType<?> bootstrap(Registry<NumberFormatType<?>> registry) {
+    Registry.register(registry, "blank", BlankFormat.TYPE);
+    Registry.register(registry, "styled", StyledFormat.TYPE);
+    return Registry.register(registry, "fixed", FixedFormat.TYPE);
+  }
+}
+""",
+        )
+        entries = number_format_type_entries(source)
+        self.assertEqual(
+            [(entry.constant_name, entry.resource_id) for entry in entries],
+            [
+                ("BLANK", "minecraft:blank"),
+                ("STYLED", "minecraft:styled"),
+                ("FIXED", "minecraft:fixed"),
+            ],
+        )
+
     def test_animal_variant_components_join_holder_types_to_registry_keys(self) -> None:
         component_source = parse_source(
             "fixture/DataComponents.java",

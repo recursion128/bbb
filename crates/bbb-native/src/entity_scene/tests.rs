@@ -9891,13 +9891,13 @@ fn entity_model_instances_project_glowing_shared_flag_from_world() {
         name: "green".to_string(),
         method: PlayerTeamMethod::Add,
         parameters: Some(PlayerTeamParameters {
-            display_name: "Green".to_string(),
+            display_name: bbb_protocol::RichTextComponent::plain("Green"),
             options: 0,
             nametag_visibility: TeamVisibility::Always,
             collision_rule: TeamCollisionRule::Always,
             color: ChatFormatting::Green,
-            player_prefix: String::new(),
-            player_suffix: String::new(),
+            player_prefix: bbb_protocol::RichTextComponent::plain(""),
+            player_suffix: bbb_protocol::RichTextComponent::plain(""),
         }),
         players: vec![sheep_uuid.to_string()],
     }));

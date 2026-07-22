@@ -51,6 +51,7 @@ pub mod item_component_value_types;
 pub mod item_types;
 pub mod menu_types;
 pub mod mob_effect_types;
+pub mod number_format_types;
 pub mod objective_render_types;
 pub mod packet_catalog;
 pub mod packet_coverage;

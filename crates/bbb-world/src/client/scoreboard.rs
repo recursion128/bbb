@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_protocol::{
     chat_formattings::vanilla_chat_formatting_color_by_name,
     packets::{
-        ChatFormatting as ProtocolChatFormatting,
+        ChatFormatting as ProtocolChatFormatting, NumberFormatSummary,
         ObjectiveRenderType as ProtocolObjectiveRenderType,
         PlayerTeamMethod as ProtocolPlayerTeamMethod,
         PlayerTeamParameters as ProtocolPlayerTeamParameters, ResetScore as ProtocolResetScore,
@@ -13,6 +13,7 @@ use bbb_protocol::{
         SetScore as ProtocolSetScore, TeamCollisionRule as ProtocolTeamCollisionRule,
         TeamVisibility as ProtocolTeamVisibility,
     },
+    ComponentStyle, NbtSummaryValue, RichTextComponent, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,15 +31,23 @@ pub struct ScoreboardState {
 pub struct ScoreboardObjective {
     pub name: String,
     pub display_name: String,
+    #[serde(default)]
+    pub display_name_styled: Vec<StyledTextRun>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name_component: Option<NbtSummaryValue>,
     pub render_type: String,
-    pub number_format: Option<Vec<u8>>,
+    pub number_format: Option<NumberFormatSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoreboardScore {
     pub value: i32,
     pub display: Option<String>,
-    pub number_format: Option<Vec<u8>>,
+    #[serde(default)]
+    pub display_styled: Option<Vec<StyledTextRun>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_component: Option<NbtSummaryValue>,
+    pub number_format: Option<NumberFormatSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -51,12 +60,24 @@ pub struct ScoreboardTeam {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoreboardTeamParameters {
     pub display_name: String,
+    #[serde(default)]
+    pub display_name_styled: Vec<StyledTextRun>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name_component: Option<NbtSummaryValue>,
     pub options: i32,
     pub nametag_visibility: String,
     pub collision_rule: String,
     pub color: String,
     pub player_prefix: String,
+    #[serde(default)]
+    pub player_prefix_styled: Vec<StyledTextRun>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_prefix_component: Option<NbtSummaryValue>,
     pub player_suffix: String,
+    #[serde(default)]
+    pub player_suffix_styled: Vec<StyledTextRun>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_suffix_component: Option<NbtSummaryValue>,
 }
 
 impl ScoreboardState {
@@ -89,6 +110,36 @@ impl ScoreboardState {
                 .parameters
                 .as_ref()
                 .is_some_and(ScoreboardTeamParameters::can_see_friendly_invisibles)
+    }
+
+    /// Vanilla `Entity.belowNameDisplay`: format the score override (or the
+    /// objective's default, falling back to unstyled decimal zero), append one
+    /// space, then preserve the objective display component's inherited runs.
+    pub fn below_name_display_runs(&self, scoreboard_name: &str) -> Option<Vec<StyledTextRun>> {
+        let objective_name = self.display_slots.get("below_name")?;
+        let objective = self.objectives.get(objective_name)?;
+        let score = self
+            .scores
+            .get(scoreboard_name)
+            .and_then(|scores| scores.get(objective_name));
+        let value = score.map_or(0, |score| score.value);
+        let number_format = score
+            .and_then(|score| score.number_format.as_ref())
+            .or(objective.number_format.as_ref());
+        let mut runs = format_score_value(value, number_format);
+        runs.push(StyledTextRun {
+            text: " ".to_string(),
+            style: ComponentStyle::default(),
+        });
+        if objective.display_name_styled.is_empty() && !objective.display_name.is_empty() {
+            runs.push(StyledTextRun {
+                text: objective.display_name.clone(),
+                style: ComponentStyle::default(),
+            });
+        } else {
+            runs.extend(objective.display_name_styled.iter().cloned());
+        }
+        Some(runs)
     }
 
     /// Vanilla `EntitySelector.pushableBy`: applies both teams' collision rules
@@ -140,9 +191,13 @@ impl WorldStore {
                 let Some(parameters) = packet.parameters else {
                     return self.finish_set_objective_update(false);
                 };
+                let (display_name, display_name_styled, display_name_component) =
+                    rich_text_projection(parameters.display_name);
                 let objective = ScoreboardObjective {
                     name: packet.objective_name.clone(),
-                    display_name: parameters.display_name,
+                    display_name,
+                    display_name_styled,
+                    display_name_component: Some(display_name_component),
                     render_type: objective_render_type_name(parameters.render_type),
                     number_format: parameters.number_format,
                 };
@@ -162,7 +217,11 @@ impl WorldStore {
                 else {
                     return self.finish_set_objective_update(false);
                 };
-                objective.display_name = parameters.display_name;
+                let (display_name, display_name_styled, display_name_component) =
+                    rich_text_projection(parameters.display_name);
+                objective.display_name = display_name;
+                objective.display_name_styled = display_name_styled;
+                objective.display_name_component = Some(display_name_component);
                 objective.render_type = objective_render_type_name(parameters.render_type);
                 objective.number_format = parameters.number_format;
                 true
@@ -181,6 +240,11 @@ impl WorldStore {
             return self.finish_set_score_update(false);
         }
 
+        let (display, display_styled, display_component) =
+            packet.display.map_or((None, None, None), |component| {
+                let (text, styled, exact) = rich_text_projection(component);
+                (Some(text), Some(styled), Some(exact))
+            });
         self.scoreboard
             .scores
             .entry(packet.owner)
@@ -189,7 +253,9 @@ impl WorldStore {
                 packet.objective_name,
                 ScoreboardScore {
                     value: packet.score,
-                    display: packet.display,
+                    display,
+                    display_styled,
+                    display_component,
                     number_format: packet.number_format,
                 },
             );
@@ -395,14 +461,60 @@ fn chat_formatting_rgb(color: &str) -> Option<u32> {
 fn scoreboard_team_parameters(
     parameters: ProtocolPlayerTeamParameters,
 ) -> ScoreboardTeamParameters {
+    let (display_name, display_name_styled, display_name_component) =
+        rich_text_projection(parameters.display_name);
+    let (player_prefix, player_prefix_styled, player_prefix_component) =
+        rich_text_projection(parameters.player_prefix);
+    let (player_suffix, player_suffix_styled, player_suffix_component) =
+        rich_text_projection(parameters.player_suffix);
     ScoreboardTeamParameters {
-        display_name: parameters.display_name,
+        display_name,
+        display_name_styled,
+        display_name_component: Some(display_name_component),
         options: i32::from(parameters.options),
         nametag_visibility: team_visibility_name(parameters.nametag_visibility),
         collision_rule: team_collision_rule_name(parameters.collision_rule),
         color: chat_formatting_name(parameters.color),
-        player_prefix: parameters.player_prefix,
-        player_suffix: parameters.player_suffix,
+        player_prefix,
+        player_prefix_styled,
+        player_prefix_component: Some(player_prefix_component),
+        player_suffix,
+        player_suffix_styled,
+        player_suffix_component: Some(player_suffix_component),
+    }
+}
+
+fn rich_text_projection(
+    component: RichTextComponent,
+) -> (String, Vec<StyledTextRun>, NbtSummaryValue) {
+    let text = if matches!(component.component(), NbtSummaryValue::String(value) if value.is_empty())
+    {
+        String::new()
+    } else {
+        component.text().to_string()
+    };
+    (
+        text,
+        component.styled().to_vec(),
+        component.component().clone(),
+    )
+}
+
+fn format_score_value(
+    value: i32,
+    number_format: Option<&NumberFormatSummary>,
+) -> Vec<StyledTextRun> {
+    match number_format {
+        Some(NumberFormatSummary::Blank) => Vec::new(),
+        Some(NumberFormatSummary::Styled(style)) => vec![StyledTextRun {
+            text: value.to_string(),
+            style: style.clone(),
+        }],
+        Some(NumberFormatSummary::Fixed(component)) => component.styled().to_vec(),
+        None => vec![StyledTextRun {
+            text: value.to_string(),
+            style: ComponentStyle::default(),
+        }],
     }
 }
 
