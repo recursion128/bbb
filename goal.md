@@ -310,12 +310,12 @@ save/debug、dimensions/collision/pick、model/texture/layers 已全量 complete
 （tick/movement 工程合同
 已闭环归档至 `docs/archive/entity-client-tick-movement-design.md`；save/debug
 与 dimensions 均于 2026-07-21 经全 vanilla override 枚举审计闭环）；开放类目
-为：animation、equipment/passenger/leash、event/particle/audio。
+为：equipment/passenger/leash、event/particle/audio。
 
 已闭环的 `model/texture/layers` family 工程合同与逆向证明见
 `docs/entity-model-layers-closure-design.md`。
-当前 `animation` family closure 的工程合同、owner 边界与门禁位置见
-`docs/entity-animation-closure-design.md`。
+当前 `event/particle/audio` family closure 的工程合同、owner 边界与门禁位置见
+`docs/entity-event-particle-audio-closure-design.md`。
 
 规则：
 

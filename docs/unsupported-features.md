@@ -1424,18 +1424,23 @@ back into a todo. Do not delete these.
 - **Broader collision-clipping parity** for special contexts beyond the covered
   `WakeParticle` case.
 - **Player-coupled particle emitters** beyond the currently covered scoped cases.
+- **Idle/tick block-entity client effects** beyond packet-owned level events (the
+  vault event `3015` context remains the audit anchor).
+- **LevelEvent-adjacent parity owned elsewhere**: terrain/item atlas rendering,
+  block-entity client-effect presentation, and audio-device/runtime parity. The
+  `LevelEventHandler` switch cases themselves are covered.
 
 ### Entity coverage matrix events particles and audio
 
-- **Broader entity-event particle/audio parity** outside the covered fixed attack
-  sounds and Fox family, including slime/magma-cube particle/audio coupling and
-  crumbling.
-- **Broader firework presentation** outside the Starter particle/audio path and
-  the `FireworkRocketEntity` client-tick trail.
-- **Idle/tick block-entity client effects** (the vault event `3015` context).
-- **LevelEvent-adjacent parity owned elsewhere**: terrain/item atlas rendering,
-  block-entity client-effect presentation, audio-device/runtime parity. The
-  `LevelEventHandler` switch cases themselves are covered.
+- Reverse-close all 35 generated `handleEntityEvent` declarations and the three
+  `ClientPacketListener` special ids. Confirmed missing consumers are Rabbit
+  event `1`'s sprint block particle and Hoglin/Zoglin/Creaking event sounds.
+- Complete Slime/Magma Cube landing coupling: exact item-slime/flame particle
+  ring, size-scaled squish sound, and client-local RNG order alongside the
+  existing squish animation state.
+- Prove the existing Firework event `17` explosion shapes, colors, trail,
+  twinkle, near/far audio, empty fallback, and client-tick launch/trail path in
+  the fixed-type reverse closure.
 
 ---
 
