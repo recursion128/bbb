@@ -4,12 +4,13 @@ use bbb_protocol::packets::{
     ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate,
     ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
     ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
-    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-    ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCreativeModeSlot, SetStructureBlock,
-    SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
+    InteractEntity, InteractionHand, JigsawGenerate, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
+    RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
+    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
+    SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity,
+    TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
 };
 use uuid::Uuid;
 
@@ -319,6 +320,22 @@ pub(crate) async fn send_set_command_block(
     packet: SetCommandBlock,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_set_command_block(&packet)?;
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_set_jigsaw_block(
+    conn: &mut RawConnection,
+    packet: SetJigsawBlock,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_set_jigsaw_block(&packet)?;
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_jigsaw_generate(
+    conn: &mut RawConnection,
+    packet: JigsawGenerate,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_jigsaw_generate(packet);
     conn.send_packet(id, &payload).await
 }
 

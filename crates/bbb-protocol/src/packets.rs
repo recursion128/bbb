@@ -14,6 +14,7 @@ pub mod debug_game;
 pub mod entities;
 mod exports;
 pub mod inventory;
+pub mod jigsaw_blocks;
 pub mod maps;
 pub mod merchant;
 pub mod movement;

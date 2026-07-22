@@ -45,7 +45,7 @@ pub fn decode_level_chunk_with_light(
             actual: sections.len(),
         });
     }
-    let block_entities = decode_block_entities(chunk_data.block_entities)?;
+    let block_entities = decode_block_entities(chunk_data.block_entities, &sections, dimension)?;
     let light = light_data.into();
     validate_light_data(&light, expected_sections.saturating_add(2))?;
 
@@ -152,6 +152,8 @@ fn decode_paletted_container(
 
 fn decode_block_entities(
     block_entities: Vec<ProtocolLevelChunkBlockEntity>,
+    sections: &[ChunkSection],
+    dimension: WorldDimension,
 ) -> Result<Vec<BlockEntityRecord>> {
     let mut out = Vec::with_capacity(block_entities.len());
     for entity in block_entities {
@@ -192,6 +194,18 @@ fn decode_block_entities(
         } else {
             None
         };
+        let jigsaw_block = if block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID
+        {
+            let default_joint =
+                jigsaw_default_joint_for_chunk_block(sections, dimension, packed_xz, y);
+            Some(crate::jigsaw_blocks::decode_jigsaw_block_entity_data(
+                &raw_nbt,
+                default_joint,
+            )?)
+        } else {
+            None
+        };
         let test_instance_block = if block_entity_type_id
             == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
         {
@@ -221,11 +235,39 @@ fn decode_block_entities(
             spawner,
             command_block,
             structure_block,
+            jigsaw_block,
             test_instance_block,
             note_block_sound,
         });
     }
     Ok(out)
+}
+
+fn jigsaw_default_joint_for_chunk_block(
+    sections: &[ChunkSection],
+    dimension: WorldDimension,
+    packed_xz: u8,
+    y: i16,
+) -> bbb_protocol::packets::JigsawJoint {
+    let y = i32::from(y);
+    let section_y = y.div_euclid(16);
+    let Some(section_index) = usize::try_from(section_y - dimension.min_section_y()).ok() else {
+        return bbb_protocol::packets::JigsawJoint::Rollable;
+    };
+    let Some(section) = sections.get(section_index) else {
+        return bbb_protocol::packets::JigsawJoint::Rollable;
+    };
+    let local_x = packed_xz >> 4;
+    let local_z = packed_xz & 0x0f;
+    let block_index = crate::section_block_index(local_x, y.rem_euclid(16) as u8, local_z);
+    let block_state_registry = crate::BlockStateRegistry::vanilla_26_1();
+    let orientation = section
+        .block_states
+        .value_at(block_index)
+        .and_then(|value| block_state_registry.by_id(value.global_id))
+        .and_then(|state| state.properties.get("orientation"))
+        .map(String::as_str);
+    crate::jigsaw_blocks::jigsaw_default_joint_for_orientation(orientation)
 }
 
 fn read_var_i32_array(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
@@ -327,4 +369,60 @@ fn read_nbt_len(decoder: &mut Decoder<'_>) -> Result<usize> {
         return Err(WorldDecodeError::NegativeNbtArrayLength(len));
     }
     Ok(len as usize)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use bbb_protocol::packets::JigsawJoint;
+
+    use super::*;
+
+    #[test]
+    fn jigsaw_chunk_default_joint_uses_decoded_block_orientation() {
+        let dimension = WorldDimension {
+            min_y: 0,
+            height: 16,
+        };
+        for (orientation, expected) in [
+            ("north_up", JigsawJoint::Aligned),
+            ("up_north", JigsawJoint::Rollable),
+        ] {
+            let block_state_id = crate::vanilla_block_state_id(
+                "minecraft:jigsaw",
+                &BTreeMap::from([("orientation".to_string(), orientation.to_string())]),
+            )
+            .unwrap();
+            let sections = [ChunkSection {
+                non_empty_block_count: 4096,
+                fluid_count: 0,
+                block_states: single_value_palette(
+                    PaletteDomain::BlockStates,
+                    block_state_id,
+                    4096,
+                ),
+                biomes: single_value_palette(PaletteDomain::Biomes, 0, 64),
+            }];
+            assert_eq!(
+                jigsaw_default_joint_for_chunk_block(&sections, dimension, 0x23, 1),
+                expected
+            );
+        }
+    }
+
+    fn single_value_palette(
+        domain: PaletteDomain,
+        global_id: i32,
+        entry_count: usize,
+    ) -> PalettedContainerData {
+        PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        }
+    }
 }

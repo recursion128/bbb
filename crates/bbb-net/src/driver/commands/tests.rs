@@ -5,12 +5,13 @@ use super::{
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_custom_payload,
     send_debug_subscription_request, send_edit_book, send_entity_tag_query, send_interact_entity,
-    send_lock_difficulty, send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity,
-    send_ping_request, send_place_recipe, send_player_abilities_command, send_player_action,
-    send_player_command, send_player_input_command, send_player_move_command,
-    send_recipe_book_change_settings, send_recipe_book_seen_recipe, send_rename_item,
-    send_seen_advancements, send_select_bundle_item, send_select_trade, send_set_beacon,
-    send_set_command_block, send_set_creative_mode_slot, send_set_held_slot_command,
+    send_jigsaw_generate, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
+    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_player_abilities_command, send_player_action, send_player_command,
+    send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
+    send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
+    send_select_bundle_item, send_select_trade, send_set_beacon, send_set_command_block,
+    send_set_creative_mode_slot, send_set_held_slot_command, send_set_jigsaw_block,
     send_set_structure_block, send_sign_update, send_spectate_entity, send_swing_command,
     send_teleport_to_entity, send_test_instance_block_action, send_use_item, send_use_item_on,
     send_vehicle_move_command,
@@ -29,15 +30,15 @@ use bbb_protocol::{
         ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
         ContainerSlotStateChanged, DataComponentPatchSummary, Difficulty, EditBook, EntityTagQuery,
         GameType, HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity,
-        InteractionHand, ItemStackSummary, LockDifficultyCommand, PaddleBoat, PickItemFromEntity,
-        PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
-        PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-        RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
-        SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-        SetCreativeModeSlot, SetStructureBlock, SignUpdate, SpectateEntity, StructureBlockMirror,
-        StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind, TeleportToEntity,
-        TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation, Vec3d,
-        Vec3i,
+        InteractionHand, ItemStackSummary, JigsawGenerate, JigsawJoint, LockDifficultyCommand,
+        PaddleBoat, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+        PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
+        RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements,
+        SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
+        SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity,
+        StructureBlockMirror, StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind,
+        TeleportToEntity, TestInstanceBlockAction, TestInstanceBlockActionKind,
+        TestInstanceBlockRotation, Vec3d, Vec3i,
     },
 };
 use std::{
@@ -1714,6 +1715,74 @@ async fn send_set_command_block_encodes_command_block_packet() {
             track_output: true,
             conditional: true,
             automatic: true,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_jigsaw_editor_packets_encode_set_before_generate() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection::from_stream(stream, None);
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("set jigsaw command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_JIGSAW_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -274_877_898_688);
+        assert_eq!(decoder.read_string(128).unwrap(), "example:entry");
+        assert_eq!(decoder.read_string(128).unwrap(), "example:target");
+        assert_eq!(decoder.read_string(128).unwrap(), "example:pool");
+        assert_eq!(decoder.read_string(256).unwrap(), "minecraft:air");
+        assert_eq!(decoder.read_string(16).unwrap(), "aligned");
+        assert_eq!(decoder.read_var_i32().unwrap(), -2);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("jigsaw generate command should follow set")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_JIGSAW_GENERATE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -274_877_898_688);
+        assert_eq!(decoder.read_var_i32().unwrap(), 20);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+    let pos = BlockPos { x: -1, y: 64, z: 2 };
+
+    send_set_jigsaw_block(
+        &mut conn,
+        SetJigsawBlock {
+            pos,
+            name: "example:entry".to_string(),
+            target: "example:target".to_string(),
+            pool: "example:pool".to_string(),
+            final_state: "minecraft:air".to_string(),
+            joint: JigsawJoint::Aligned,
+            selection_priority: -2,
+            placement_priority: 3,
+        },
+    )
+    .await
+    .unwrap();
+    send_jigsaw_generate(
+        &mut conn,
+        JigsawGenerate {
+            pos,
+            levels: 20,
+            keep_jigsaws: true,
         },
     )
     .await

@@ -21,6 +21,7 @@ mod exports;
 mod fluid;
 mod internal;
 mod item_profiles;
+mod jigsaw_blocks;
 mod lectern_books;
 mod level;
 mod maps;

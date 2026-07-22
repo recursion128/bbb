@@ -20,15 +20,15 @@ pub(crate) use commands::{
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_custom_click_action,
     send_custom_payload, send_debug_subscription_request, send_edit_book, send_entity_tag_query,
-    send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
-    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_interact_entity, send_jigsaw_generate, send_lock_difficulty, send_paddle_boat,
+    send_pick_item_from_block, send_pick_item_from_entity, send_ping_request, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
     send_set_beacon, send_set_command_block, send_set_creative_mode_slot,
-    send_set_held_slot_command, send_set_structure_block, send_sign_update, send_spectate_entity,
-    send_swing_command, send_teleport_to_entity, send_test_instance_block_action, send_use_item,
-    send_use_item_on,
+    send_set_held_slot_command, send_set_jigsaw_block, send_set_structure_block, send_sign_update,
+    send_spectate_entity, send_swing_command, send_teleport_to_entity,
+    send_test_instance_block_action, send_use_item, send_use_item_on,
 };
 use commands::{
     send_client_tick_end, send_player_loaded, send_player_move_command,
@@ -254,6 +254,12 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::SetCommandBlock(packet)) => {
                         send_set_command_block(conn, packet).await?;
                     }
+                    Some(NetCommand::SetJigsawBlock(packet)) => {
+                        send_set_jigsaw_block(conn, packet).await?;
+                    }
+                    Some(NetCommand::JigsawGenerate(packet)) => {
+                        send_jigsaw_generate(conn, packet).await?;
+                    }
                     Some(NetCommand::SetStructureBlock(packet)) => {
                         send_set_structure_block(conn, packet).await?;
                     }
@@ -374,6 +380,8 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::SelectTrade(_)) => {}
                     Some(NetCommand::SetBeacon(_)) => {}
                     Some(NetCommand::SetCommandBlock(_)) => {}
+                    Some(NetCommand::SetJigsawBlock(_)) => {}
+                    Some(NetCommand::JigsawGenerate(_)) => {}
                     Some(NetCommand::SetStructureBlock(_)) => {}
                     Some(NetCommand::TestInstanceBlockAction(_)) => {}
                     Some(NetCommand::SetCreativeModeSlot(_)) => {}
@@ -419,17 +427,17 @@ mod tests {
             ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
             ContainerSlotStateChanged, CustomClickAction, DataComponentPatchSummary, Difficulty,
             Direction, EditBook, EntityTagQuery, GameType, HashedStack, InteractEntity,
-            InteractionHand, ItemStackSummary, LockDifficultyCommand, PaddleBoat,
-            PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-            PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
-            RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
-            RecipeDisplayId, RenameItem, ResourcePackResponseAction, SeenAdvancements,
-            SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
-            SetCommandBlock, SetCreativeModeSlot, SetStructureBlock, SignUpdate, SpectateEntity,
-            StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
-            StructureBlockUpdateKind, TeleportToEntity, TestInstanceBlockAction,
-            TestInstanceBlockActionKind, TestInstanceBlockRotation, UseItem, UseItemOn, Vec3d,
-            Vec3i,
+            InteractionHand, ItemStackSummary, JigsawGenerate, JigsawJoint, LockDifficultyCommand,
+            PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+            PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
+            PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
+            RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
+            ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+            ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCreativeModeSlot,
+            SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity, StructureBlockMirror,
+            StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind, TeleportToEntity,
+            TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
+            UseItem, UseItemOn, Vec3d, Vec3i,
         },
     };
     use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
@@ -1369,6 +1377,46 @@ mod tests {
         assert_eq!(decoder.read_string(32_500).unwrap(), "say routed");
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert_eq!(decoder.read_u8().unwrap(), 0b010);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_jigsaw_set_before_generate_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        let pos = BlockPos { x: 1, y: 2, z: 3 };
+        tx.send(NetCommand::SetJigsawBlock(SetJigsawBlock {
+            pos,
+            name: "example:entry".to_string(),
+            target: "example:target".to_string(),
+            pool: "example:pool".to_string(),
+            final_state: "minecraft:air".to_string(),
+            joint: JigsawJoint::Rollable,
+            selection_priority: 1,
+            placement_priority: 2,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::JigsawGenerate(JigsawGenerate {
+            pos,
+            levels: 7,
+            keep_jigsaws: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, _) = read_server_packet(&mut server, "set jigsaw block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_JIGSAW_BLOCK);
+        let (packet_id, payload) = read_server_packet(&mut server, "jigsaw generate").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_JIGSAW_GENERATE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(!decoder.read_bool().unwrap());
         assert!(decoder.is_empty());
     }
 

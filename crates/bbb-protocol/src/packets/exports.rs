@@ -12,6 +12,7 @@ pub use super::connection::*;
 pub use super::debug_game::*;
 pub use super::entities::*;
 pub use super::inventory::*;
+pub use super::jigsaw_blocks::*;
 pub use super::maps::*;
 pub use super::merchant::*;
 pub use super::movement::*;

@@ -906,6 +906,7 @@ impl WorldStore {
 
     fn clear_level_bound_state(&mut self) {
         self.close_structure_block_editor();
+        self.close_jigsaw_block_editor();
         self.clear_debug_subscriber_values();
         self.clear_queued_light_updates();
         self.chunks.clear();

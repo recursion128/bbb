@@ -2,13 +2,13 @@ use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
     ChatAcknowledgement, ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick,
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook,
-    EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
-    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    EntityTagQuery, InteractEntity, InteractionHand, JigsawGenerate, LockDifficultyCommand,
+    PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
     PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
     RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
     SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-    SetCreativeModeSlot, SetStructureBlock, SignUpdate, SpectateEntity, TeleportToEntity,
-    TestInstanceBlockAction, UseItem, UseItemOn, Vec3d,
+    SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity,
+    TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn, Vec3d,
 };
 use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
 use serde::{Deserialize, Serialize};
@@ -243,6 +243,8 @@ pub enum NetCommand {
     SelectTrade(SelectTradeCommand),
     SetBeacon(SetBeacon),
     SetCommandBlock(SetCommandBlock),
+    SetJigsawBlock(SetJigsawBlock),
+    JigsawGenerate(JigsawGenerate),
     SetStructureBlock(SetStructureBlock),
     TestInstanceBlockAction(TestInstanceBlockAction),
     SetCreativeModeSlot(SetCreativeModeSlot),
