@@ -6,6 +6,8 @@
 //! geometry uses for its sag curve. The store gathers per-entity inputs; everything here is
 //! pure math against the vanilla formulas.
 
+#[cfg(test)]
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID;
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
 };
@@ -283,7 +285,7 @@ mod tests {
         rope_hold_position_owner: &'static str,
     ) -> LeashEndpointInputs {
         LeashEndpointInputs {
-            entity_type_id: 0,
+            entity_type_id: VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
             leash_offset_owner,
             rope_hold_position_owner,
             position: EntityVec3 {
