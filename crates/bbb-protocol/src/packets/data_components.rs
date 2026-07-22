@@ -19,6 +19,7 @@ use crate::{
         styled_runs_summary_text, StyledTextRun,
     },
     consume_effect_types::ConsumeEffectType,
+    entity_types::vanilla_entity_type,
     equipment_slots::{
         vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
         VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID, VANILLA_EQUIPMENT_SLOT_MAINHAND_ID,
@@ -27,6 +28,7 @@ use crate::{
         FireworkExplosionShapeSummary, ItemRaritySummary, ItemUseAnimationSummary,
         MapPostProcessingSummary, SwingAnimationTypeSummary,
     },
+    mob_effect_types::vanilla_mob_effect_type,
     nbt_summary::decode_nbt_summary_from_decoder,
     potion_types::vanilla_potion,
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
@@ -971,7 +973,49 @@ fn decode_holder_registry_id(decoder: &mut Decoder<'_>) -> Result<i32> {
     Ok(id)
 }
 
-fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSummary> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NetworkHolderSetRegistry {
+    BannerPattern,
+    Block,
+    DamageType,
+    EntityType,
+    Item,
+    MobEffect,
+}
+
+impl NetworkHolderSetRegistry {
+    fn validate_holder_id(self, holder_id: i32) -> Result<i32> {
+        let valid = match self {
+            Self::BannerPattern | Self::Block | Self::DamageType => holder_id >= 0,
+            Self::EntityType => vanilla_entity_type(holder_id).is_some(),
+            Self::Item => crate::item_types::vanilla_item_type(holder_id).is_some(),
+            Self::MobEffect => vanilla_mob_effect_type(holder_id).is_some(),
+        };
+        if valid {
+            return Ok(holder_id);
+        }
+        Err(ProtocolError::InvalidData(format!(
+            "invalid {} holder id {holder_id}",
+            self.wire_name()
+        )))
+    }
+
+    const fn wire_name(self) -> &'static str {
+        match self {
+            Self::BannerPattern => "banner pattern",
+            Self::Block => "block",
+            Self::DamageType => "damage type",
+            Self::EntityType => "entity type",
+            Self::Item => "item",
+            Self::MobEffect => "mob effect",
+        }
+    }
+}
+
+fn decode_holder_set_summary(
+    decoder: &mut Decoder<'_>,
+    registry: NetworkHolderSetRegistry,
+) -> Result<HolderSetSummary> {
     let encoded_count = decoder.read_var_i32()?;
     if encoded_count < 0 {
         return Err(ProtocolError::NegativeLength(encoded_count));
@@ -993,7 +1037,7 @@ fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSumma
     }
     let mut registry_ids = Vec::with_capacity(count);
     for _ in 0..count {
-        registry_ids.push(decode_holder_registry_id(decoder)?);
+        registry_ids.push(registry.validate_holder_id(decoder.read_var_i32()?)?);
     }
     Ok(HolderSetSummary {
         registry_ids,
@@ -1123,7 +1167,7 @@ struct HolderSetSummary {
 
 fn decode_block_predicate_summary(decoder: &mut Decoder<'_>) -> Result<BlockPredicateSummary> {
     let blocks = if decoder.read_bool()? {
-        let blocks = decode_holder_set_summary(decoder)?;
+        let blocks = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::Block)?;
         Some(BlockHolderSetSummary {
             registry_ids: blocks.registry_ids,
             tag: blocks.tag,
@@ -1360,7 +1404,7 @@ fn decode_consume_effect_summary(decoder: &mut Decoder<'_>) -> Result<ConsumeEff
             })
         }
         ConsumeEffectType::RemoveEffects => {
-            let effects = decode_holder_set_summary(decoder)?;
+            let effects = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::MobEffect)?;
             Ok(ConsumeEffectSummary::RemoveEffects {
                 effect_registry_ids: effects.registry_ids,
                 effect_tag: effects.tag,
@@ -1449,7 +1493,7 @@ fn decode_tool(decoder: &mut Decoder<'_>) -> Result<ToolSummary> {
     let rule_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut rules = Vec::with_capacity(rule_count);
     for _ in 0..rule_count {
-        let blocks = decode_holder_set_summary(decoder)?;
+        let blocks = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::Block)?;
         rules.push(ToolRuleSummary {
             block_registry_ids: blocks.registry_ids,
             block_tag: blocks.tag,
@@ -1535,7 +1579,7 @@ fn decode_optional_damage_type_holder_set(
     if !decoder.read_bool()? {
         return Ok(None);
     }
-    let holder_set = decode_holder_set_summary(decoder)?;
+    let holder_set = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::DamageType)?;
     Ok(Some(DamageTypeHolderSetSummary {
         registry_ids: holder_set.registry_ids,
         tag: holder_set.tag,
@@ -1584,7 +1628,7 @@ fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<EquippableSummary> {
     let asset_id = decode_optional_identifier_value(decoder)?;
     let camera_overlay = decode_optional_identifier_value(decoder)?;
     let allowed_entities = if decoder.read_bool()? {
-        let holder_set = decode_holder_set_summary(decoder)?;
+        let holder_set = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::EntityType)?;
         Some(EntityTypeHolderSetSummary {
             registry_ids: holder_set.registry_ids,
             tag: holder_set.tag,
@@ -2414,6 +2458,48 @@ mod tests {
     use super::*;
     use crate::codec::Encoder;
     use uuid::Uuid;
+
+    #[test]
+    fn fixed_registry_network_holder_sets_reject_unknown_direct_ids() {
+        for (registry, invalid_id, expected) in [
+            (
+                NetworkHolderSetRegistry::Item,
+                crate::item_types::VANILLA_ITEM_TYPES.len() as i32,
+                "invalid item holder id",
+            ),
+            (
+                NetworkHolderSetRegistry::MobEffect,
+                crate::mob_effect_types::VANILLA_MOB_EFFECT_TYPES.len() as i32,
+                "invalid mob effect holder id",
+            ),
+            (
+                NetworkHolderSetRegistry::EntityType,
+                crate::entity_types::VANILLA_ENTITY_TYPES.len() as i32,
+                "invalid entity type holder id",
+            ),
+        ] {
+            let mut payload = Encoder::new();
+            payload.write_var_i32(2);
+            payload.write_var_i32(invalid_id);
+            let bytes = payload.into_inner();
+            let Err(error) = decode_holder_set_summary(&mut Decoder::new(&bytes), registry) else {
+                panic!("unknown direct holder unexpectedly decoded for {registry:?}");
+            };
+            assert!(error.to_string().contains(expected), "{error}");
+        }
+
+        for registry in [
+            NetworkHolderSetRegistry::Item,
+            NetworkHolderSetRegistry::MobEffect,
+            NetworkHolderSetRegistry::EntityType,
+        ] {
+            let mut payload = Encoder::new();
+            payload.write_var_i32(2);
+            payload.write_var_i32(-1);
+            let bytes = payload.into_inner();
+            assert!(decode_holder_set_summary(&mut Decoder::new(&bytes), registry).is_err());
+        }
+    }
 
     #[test]
     fn decodes_supported_data_component_patch_values() {

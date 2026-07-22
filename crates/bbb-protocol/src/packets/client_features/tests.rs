@@ -543,6 +543,33 @@ fn update_recipes_rejects_out_of_range_builtin_item_holders() {
     .unwrap_err()
     .to_string()
     .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
+
+    for invalid_ingredient in [invalid_item_id, crate::item_types::VANILLA_ITEM_AIR_ID] {
+        let mut ingredient = Encoder::new();
+        ingredient.write_var_i32(0);
+        ingredient.write_var_i32(1);
+        ingredient.write_var_i32(2);
+        ingredient.write_var_i32(invalid_ingredient);
+        assert!(decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_RECIPES,
+            &ingredient.into_inner(),
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("item"));
+    }
+
+    let mut empty_ingredient = Encoder::new();
+    empty_ingredient.write_var_i32(0);
+    empty_ingredient.write_var_i32(1);
+    empty_ingredient.write_var_i32(1);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &empty_ingredient.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("ingredient holder set must not be empty"));
 }
 
 #[test]

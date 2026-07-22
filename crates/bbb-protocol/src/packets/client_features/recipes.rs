@@ -445,6 +445,11 @@ fn decode_ingredient_summary(decoder: &mut Decoder<'_>) -> Result<IngredientSumm
     }
 
     let count = (encoded - 1) as usize;
+    if count == 0 {
+        return Err(ProtocolError::InvalidData(
+            "ingredient holder set must not be empty".to_string(),
+        ));
+    }
     if count > MAX_RECIPE_BOOK_NESTED_LIST {
         return Err(ProtocolError::PacketTooLarge(
             count,
@@ -453,7 +458,7 @@ fn decode_ingredient_summary(decoder: &mut Decoder<'_>) -> Result<IngredientSumm
     }
     let mut item_ids = Vec::with_capacity(count);
     for _ in 0..count {
-        item_ids.push(decoder.read_var_i32()?);
+        item_ids.push(inventory::decode_non_empty_item_holder_id(decoder)?);
     }
     Ok(IngredientSummary {
         tag: None,

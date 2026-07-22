@@ -436,7 +436,7 @@ fn decode_damage_resistant(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let types = decode_holder_set_summary(decoder)?;
+    let types = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::DamageType)?;
     summary.damage_resistant_type_registry_ids = types.registry_ids;
     summary.damage_resistant_type_tag = types.tag;
     Ok(())
@@ -466,7 +466,7 @@ fn decode_repairable(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let items = decode_holder_set_summary(decoder)?;
+    let items = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::Item)?;
     summary.repairable_item_registry_ids = items.registry_ids;
     summary.repairable_item_tag = items.tag;
     Ok(())
@@ -722,7 +722,7 @@ fn decode_provides_banner_patterns(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let patterns = decode_holder_set_summary(decoder)?;
+    let patterns = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::BannerPattern)?;
     summary.provides_banner_pattern_registry_ids = patterns.registry_ids;
     summary.provides_banner_pattern_tag = patterns.tag;
     Ok(())
