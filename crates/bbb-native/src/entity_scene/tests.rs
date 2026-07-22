@@ -3093,6 +3093,35 @@ fn entity_model_instance_projects_elytra_animation_state_from_source() {
 }
 
 #[test]
+fn entity_model_instance_projects_player_flight_swim_state_without_rederiving_it() {
+    let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+        "entity_id": 233,
+        "entity_type_id": VANILLA_ENTITY_TYPE_PLAYER_ID,
+        "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+        "y_rot": 0.0,
+        "swim_amount": 0.61,
+        "humanoid_speed_value": 19.5,
+        "is_fall_flying": true,
+        "is_visually_swimming": false,
+        "player_fall_flying_time_in_ticks": 7.25,
+        "player_should_apply_flying_y_rot": true,
+        "player_flying_y_rot": -0.73,
+        "data_values": []
+    }))
+    .unwrap();
+
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
+    let state = instance.render_state;
+    assert!((state.swim_amount - 0.61).abs() < 1.0e-6);
+    assert!((state.humanoid_speed_value - 19.5).abs() < 1.0e-6);
+    assert!(state.is_fall_flying);
+    assert!(!state.is_visually_swimming);
+    assert!((state.player_fall_flying_time_in_ticks - 7.25).abs() < 1.0e-6);
+    assert!(state.player_should_apply_flying_y_rot);
+    assert!((state.player_flying_y_rot + 0.73).abs() < 1.0e-6);
+}
+
+#[test]
 fn entity_model_instances_project_witch_item_and_potion_state() {
     // `WitchRenderState.isHoldingItem` only needs a non-empty main hand, so it projects without the
     // item runtime. `isHoldingPotion` needs registry resolution (`Items.POTION`), so it stays false

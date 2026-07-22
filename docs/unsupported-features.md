@@ -811,8 +811,7 @@ Submission surfaces:
 
 Living-entity render state:
 
-- Track and apply the fall-flying and swimming `head.xRot` overrides in the
-  head-look projection; both currently default upright.
+- Project the remaining conversion-time shaking input;
   `LivingEntityRenderer.isShaking` reads it, but `conversionTime` is currently
   server-side only.
 - Project guardian eye target tracking (`lookAtPosition` / `lookDirection` /
@@ -828,8 +827,6 @@ Models and layers:
   part-list model.
 - Implement the remaining zombie-family and piglin-family armor nuances and
   held-item refinements.
-- Implement player swim arm poses and elytra `speedValue` poses. The client does
-  not track their continuous animation inputs yet.
 - Implement villager/illager live profiled-player skin presentation and the
   illager arm pose.
 - Implement equine boost presentation and the remaining non-base-equine

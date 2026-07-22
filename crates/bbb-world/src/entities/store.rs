@@ -15,8 +15,9 @@ use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
 };
 use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
-    VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_FALL_FLYING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID,
 };
 use bbb_protocol::packets::{
     AttributeModifier as ProtocolAttributeModifier, AttributeSnapshot as ProtocolAttributeSnapshot,
@@ -86,13 +87,13 @@ use super::schema::{
 };
 
 use super::{
-    is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_can_wear_horse_armor_type,
-    is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
-    vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
-    BlazeAmbientParticleState, DisplayEntityRenderSourceState, EnderAmbientParticleState,
-    EntityAttachmentFace, EntityAttributes, EntityBlockEffectBaseTickReset,
-    EntityBlockEffectMovement, EntityBlockEffectMovementIter, EntityBlockEffectQuery,
-    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    calculate_view_vector, is_vanilla_abstract_nautilus_type, is_vanilla_boat_type,
+    is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type, is_vanilla_minecart_type,
+    is_vanilla_vehicle_entity_type, vanilla_entity_event_kind, vanilla_entity_type_is_squid,
+    ArmorMaterialKind, BlazeAmbientParticleState, DisplayEntityRenderSourceState,
+    EnderAmbientParticleState, EntityAttachmentFace, EntityAttributes,
+    EntityBlockEffectBaseTickReset, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
+    EntityBlockEffectQuery, EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
     EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
@@ -121,12 +122,12 @@ use crate::entities::animations::{
     boat_paddle_states, camel_is_dashing, cat_is_lying, cat_relax_state_one,
     copper_golem_animation_flags, creaking_can_move, creaking_is_tearing_down,
     entity_animation_uses_in_water, entity_chunk_coordinate, entity_data_bool, entity_data_int,
-    entity_data_long, entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id,
-    guardian_is_moving, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
-    player_is_using_item, sniffer_can_play_digging_sound, warden_heartbeat_delay,
-    wither_side_head_target_ids, wither_side_head_target_rotation, wolf_is_interested,
-    EntityClientTickParticleTriggers, GuardianAttackTargetTickInput, RiddenJumpState,
-    WitherHeadTargetRotations,
+    entity_data_long, entity_is_fall_flying, entity_is_swimming, guardian_attack_duration,
+    guardian_attack_target_id, guardian_is_moving, piglin_is_charging_crossbow,
+    pillager_is_charging_crossbow, player_is_using_item, sniffer_can_play_digging_sound,
+    warden_heartbeat_delay, wither_side_head_target_ids, wither_side_head_target_rotation,
+    wolf_is_interested, EntityClientTickParticleTriggers, GuardianAttackTargetTickInput,
+    RiddenJumpState, WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -171,6 +172,31 @@ use crate::registries::{armor_trim_sprite, ArmorTrimLayer, RegistrySet};
 use crate::ItemEquipmentSlot;
 use crate::LocalPlayerPoseState;
 use bbb_protocol::entity_types::*;
+
+fn avatar_flight_y_rotation(
+    previous_delta_movement: EntityVec3,
+    delta_movement: EntityVec3,
+    look_angle: EntityVec3,
+    partial_ticks: f32,
+) -> (bool, f32) {
+    let partial_ticks = f64::from(partial_ticks);
+    let movement_x =
+        previous_delta_movement.x + (delta_movement.x - previous_delta_movement.x) * partial_ticks;
+    let movement_z =
+        previous_delta_movement.z + (delta_movement.z - previous_delta_movement.z) * partial_ticks;
+    let movement_length_squared = movement_x * movement_x + movement_z * movement_z;
+    let look_length_squared = look_angle.x * look_angle.x + look_angle.z * look_angle.z;
+    if movement_length_squared <= 1.0e-5 || look_length_squared <= 1.0e-5 {
+        return (false, 0.0);
+    }
+
+    let movement_length = movement_length_squared.sqrt();
+    let look_length = look_length_squared.sqrt();
+    let dot = movement_x / movement_length * (look_angle.x / look_length)
+        + movement_z / movement_length * (look_angle.z / look_length);
+    let cross = movement_x * look_angle.z - movement_z * look_angle.x;
+    (true, (cross.signum() * dot.abs().min(1.0).acos()) as f32)
+}
 
 fn within_death_tick_distance(
     position: super::EntityVec3,
@@ -3365,6 +3391,22 @@ impl EntityStore {
             VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID
         ) && entity_data_pose(&metadata.data_values)
             == VANILLA_ENTITY_POSE_CROUCHING_ID;
+        let is_fall_flying = vanilla_living_entity_type(identity.entity_type_id)
+            && entity_is_fall_flying(&metadata.data_values);
+        let pose = entity_data_pose(&metadata.data_values);
+        let is_visually_swimming = vanilla_living_entity_type(identity.entity_type_id)
+            && (pose == VANILLA_ENTITY_POSE_SWIMMING_ID
+                || (pose == VANILLA_ENTITY_POSE_FALL_FLYING_ID && !is_fall_flying));
+        let humanoid_speed_value = if is_fall_flying {
+            let length_squared = (transform.delta_movement.x * transform.delta_movement.x
+                + transform.delta_movement.y * transform.delta_movement.y
+                + transform.delta_movement.z * transform.delta_movement.z)
+                as f32;
+            let normalized = length_squared / 0.2;
+            (normalized * normalized * normalized).max(1.0)
+        } else {
+            1.0
+        };
         // Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the SCALE
         // attribute): only living entities carry a render scale; everything else
         // renders at its default size.
@@ -3390,6 +3432,33 @@ impl EntityStore {
             } else {
                 (0.0, 0.0, 0.0)
             };
+        let (
+            player_fall_flying_time_in_ticks,
+            player_should_apply_flying_y_rot,
+            player_flying_y_rot,
+        ) = if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            let look_angle = calculate_view_vector(
+                transform.render_x_rot(partial_ticks),
+                transform.render_y_rot(partial_ticks),
+            );
+            let (should_apply, y_rot) = avatar_flight_y_rotation(
+                client_animations
+                    .animations
+                    .player_previous_delta_movement(),
+                transform.delta_movement,
+                look_angle,
+                partial_ticks,
+            );
+            (
+                client_animations
+                    .animations
+                    .player_fall_flying_time(partial_ticks),
+                should_apply,
+                y_rot,
+            )
+        } else {
+            (0.0, false, 0.0)
+        };
         // Vanilla `AvatarRenderer.extractRenderState` copies the two inherited LivingEntity INT
         // accessors into `AvatarRenderState`; only the player renderer registers their layers.
         // Preserve the synchronized values here (including hostile/negative values); the renderer
@@ -3724,6 +3793,8 @@ impl EntityStore {
             vex_charging,
             wither_invulnerable_ticks,
             is_crouching,
+            is_fall_flying,
+            is_visually_swimming,
             // Vanilla `HumanoidMobRenderer.extractHumanoidRenderState` copies
             // `LivingEntity.elytraAnimationState.getRotX/Y/Z(partialTick)` into
             // `HumanoidRenderState`; `WingsLayer` consumes those rotations when
@@ -3734,6 +3805,9 @@ impl EntityStore {
             player_cape_flap,
             player_cape_lean,
             player_cape_lean2,
+            player_fall_flying_time_in_ticks,
+            player_should_apply_flying_y_rot,
+            player_flying_y_rot,
             player_arrow_count,
             player_stinger_count,
             player_left_shoulder_parrot,
@@ -3756,6 +3830,7 @@ impl EntityStore {
             swim_amount: client_animations
                 .animations
                 .living_swim_amount(partial_ticks),
+            humanoid_speed_value,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             goat_lower_head_tick: client_animations.animations.goat_lower_head_tick(),
             iron_golem_attack_ticks_remaining: client_animations
@@ -6550,7 +6625,7 @@ impl EntityStore {
                 let bat_is_resting = entity_type_id == VANILLA_ENTITY_TYPE_BAT_ID
                     && bat_is_resting(entity_type_id, &metadata.data_values);
                 let is_swimming = entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
-                    && pose == Some(VANILLA_ENTITY_POSE_SWIMMING_ID);
+                    && entity_is_swimming(&metadata.data_values);
                 // The per-tick world fact (`isInWater()`) the world resolved before
                 // this mutable pass, defaulting to `false` for non-consumers, and the
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.

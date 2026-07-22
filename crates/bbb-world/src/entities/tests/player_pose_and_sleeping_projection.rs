@@ -1,7 +1,8 @@
 use super::*;
 use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
-    VANILLA_ENTITY_POSE_STANDING_ID,
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_FALL_FLYING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID,
 };
 
 fn entity_metadata_accessors() -> VanillaEntityMetadataAccessors {
@@ -248,6 +249,98 @@ fn entity_model_sources_project_elytra_animation_state() {
     }));
     boat.advance_entity_client_animations(1);
     assert_eq!(elytra(&boat, 77, 1.0), (DEFAULT_X, DEFAULT_Y, DEFAULT_Z));
+}
+
+#[test]
+fn player_flight_swim_projects_visual_pose_speed_time_and_signed_yaw() {
+    let source = |store: &WorldStore, id: i32, partial_tick: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .expect("player model source")
+    };
+
+    // `LivingEntity.isVisuallySwimming` accepts the explicit swimming pose and
+    // the crawling FALL_FLYING pose only while the real flying flag is clear.
+    let mut crawling = WorldStore::new();
+    crawling.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(crawling.apply_set_entity_data(ProtocolSetEntityData {
+        id: 77,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_FALL_FLYING_ID)],
+    }));
+    crawling.advance_entity_client_animations(1);
+    let crawling_source = source(&crawling, 77, 1.0);
+    assert!(!crawling_source.is_fall_flying);
+    assert!(crawling_source.is_visually_swimming);
+    assert!((crawling_source.swim_amount - 0.09).abs() < 1.0e-6);
+
+    assert!(crawling.apply_set_entity_data(ProtocolSetEntityData {
+        id: 77,
+        values: vec![
+            entity_pose_data(VANILLA_ENTITY_POSE_SWIMMING_ID),
+            entity_shared_flags_data(entity_metadata_accessors().swimming_mask),
+        ],
+    }));
+    assert!(source(&crawling, 77, 1.0).is_visually_swimming);
+
+    let mut flying = WorldStore::new();
+    flying.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(flying.apply_set_entity_data(ProtocolSetEntityData {
+        id: 78,
+        values: vec![
+            entity_pose_data(VANILLA_ENTITY_POSE_FALL_FLYING_ID),
+            entity_shared_flags_data(entity_metadata_accessors().fall_flying_mask),
+        ],
+    }));
+    assert!(flying.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 78,
+        delta_movement: ProtocolVec3d {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        },
+    }));
+    flying.advance_entity_client_animations(1);
+    assert!(flying.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 78,
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 1.0,
+        },
+    }));
+
+    let flying_source = source(&flying, 78, 0.5);
+    assert!(flying_source.is_fall_flying);
+    assert!(!flying_source.is_visually_swimming);
+    assert_eq!(flying_source.player_fall_flying_time_in_ticks, 1.5);
+    assert_eq!(flying_source.humanoid_speed_value, 125.0);
+    assert!(flying_source.player_should_apply_flying_y_rot);
+
+    let look = calculate_view_vector(-10.0, 20.0);
+    let movement_length = 0.5_f64.hypot(0.5);
+    let look_length = look.x.hypot(look.z);
+    let dot = 0.5 / movement_length * (look.x / look_length)
+        + 0.5 / movement_length * (look.z / look_length);
+    let cross = 0.5 * look.z - 0.5 * look.x;
+    let expected_yaw = (cross.signum() * dot.abs().min(1.0).acos()) as f32;
+    assert!((flying_source.player_flying_y_rot - expected_yaw).abs() < 1.0e-6);
+
+    let mut standing = WorldStore::new();
+    standing.apply_add_entity(protocol_add_entity_with_type(
+        79,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let standing_source = source(&standing, 79, 0.5);
+    assert!(!standing_source.player_should_apply_flying_y_rot);
+    assert_eq!(standing_source.player_flying_y_rot, 0.0);
 }
 
 #[test]

@@ -475,6 +475,9 @@ entity_render_state! {
     /// `DrownedRenderer.setupRotations` and the `DrownedModel.setupAnim` swim limb override. `0.0`
     /// for a living entity that is not visually swimming and every non-living entity.
     (with_swim_amount) swim_amount: f32 = 0.0;
+    /// Vanilla `HumanoidRenderState.speedValue`: fall-flying movement speed
+    /// normalization used to divide the inherited humanoid limb swing.
+    (with_humanoid_speed_value) humanoid_speed_value: f32 = 1.0;
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that models feed into the `cos(animationPos * 0.6662 ...)` leg/arm sway in
@@ -691,6 +694,13 @@ entity_render_state! {
     (with_player_cape_lean) player_cape_lean: f32 = 0.0;
     /// Vanilla `AvatarRenderState.capeLean2`, produced by `AvatarRenderer.extractCapeState`.
     (with_player_cape_lean2) player_cape_lean2: f32 = 0.0;
+    /// Vanilla `AvatarRenderState.fallFlyingTimeInTicks`, including the render
+    /// partial tick, used by `AvatarRenderer.setupRotations`' pitch ramp.
+    (with_player_fall_flying_time_in_ticks) player_fall_flying_time_in_ticks: f32 = 0.0;
+    /// Vanilla `AvatarRenderState.shouldApplyFlyingYRot` flight-data threshold.
+    (with_player_should_apply_flying_y_rot) player_should_apply_flying_y_rot: bool = false;
+    /// Vanilla `AvatarRenderState.flyingYRot`, the signed horizontal movement/look angle in radians.
+    (with_player_flying_y_rot) player_flying_y_rot: f32 = 0.0;
     /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` use-item arm pose `BLOCK` (`poseBlockingArm`):
     /// while a player raises a blocking item (`isUsingItem` + the using hand holds a non-consumable
     /// `BLOCKS_ATTACKS` item, normally the shield) the holding arm tucks the item forward along the head
@@ -1307,6 +1317,12 @@ entity_render_state! {
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
     (with_is_crouching) is_crouching: bool = false;
+    /// Vanilla `HumanoidRenderState.isFallFlying`, sourced from the base Entity
+    /// fall-flying flag rather than inferred from equipped wings.
+    (with_is_fall_flying) is_fall_flying: bool = false;
+    /// Vanilla `HumanoidRenderState.isVisuallySwimming`, including the
+    /// FALL_FLYING-pose crawling fallback while not actually fall-flying.
+    (with_is_visually_swimming) is_visually_swimming: bool = false;
     /// Vanilla `HumanoidRenderState.elytraRotX` from `LivingEntity.elytraAnimationState`. Defaults to
     /// `ElytraAnimationState`'s steady non-flying target (`PI/12`) until the native world projects the
     /// animated per-entity state.
@@ -3053,6 +3069,7 @@ mod tests {
                 scale: 1.0,
                 age_scale: 1.0,
                 swim_amount: 0.0,
+                humanoid_speed_value: 1.0,
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,
                 worn_head_animation_pos: 0.0,
@@ -3106,6 +3123,9 @@ mod tests {
                 player_cape_flap: 0.0,
                 player_cape_lean: 0.0,
                 player_cape_lean2: 0.0,
+                player_fall_flying_time_in_ticks: 0.0,
+                player_should_apply_flying_y_rot: false,
+                player_flying_y_rot: 0.0,
                 player_blocking: false,
                 player_throwing_trident: false,
                 player_drawing_bow: false,
@@ -3261,6 +3281,8 @@ mod tests {
                 hoglin_attack_animation_tick: 0,
                 armor_stand_wiggle: 5.0,
                 is_crouching: false,
+                is_fall_flying: false,
+                is_visually_swimming: false,
                 elytra_rot_x: ELYTRA_DEFAULT_X_ROT,
                 elytra_rot_y: ELYTRA_DEFAULT_Y_ROT,
                 elytra_rot_z: ELYTRA_DEFAULT_Z_ROT,

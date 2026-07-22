@@ -200,6 +200,37 @@ consumer path lands in one clean checkpoint commit and runs the full gate. A
 safe stop exists only before implementation or after that fully wired commit;
 the world counts are never landed without the bounded renderer consumer.
 
+The next cross-boundary stage closes `AvatarRenderer` / `HumanoidModel`'s
+continuous fall-flying and swimming pose contract. `bbb-world` owns the
+client-tick facts: the generated fall-flying flag, LivingEntity's exact
+`isVisuallySwimming` pose fallback, `getSwimAmount(partialTick)`, current
+velocity-derived `HumanoidRenderState.speedValue`, player fall-flying ticks,
+and `ClientAvatarState.deltaMovementOnPreviousTick`. At render extraction it
+also computes `AvatarRenderer.extractFlightData` from the interpolated view
+vector and previous-to-current velocity. `bbb-native` forwards these typed
+values without re-running tick or trigonometric state.
+
+`bbb-renderer` inserts `AvatarRenderer.setupRotations` after the shared living
+setup rotation and before the model flip: fall flying applies the squared-time
+pitch blend and optional movement/look yaw, while swimming applies the
+in-water/crawling pitch and visually-swimming translation. The shared
+humanoid pose uses `speedValue` for the initial limb swing and applies the
+fall-flying/swimming head pitch override. `PlayerModel` then preserves vanilla
+26.1 ordering for arm poses: item arm poses, attack, crouch, non-spyglass arm
+bob, the three-phase 26-tick swim stroke with SPEAR/attack-arm suppression,
+and the swim leg kick. Existing elytra wing rotations remain sourced from the
+already canonical `ElytraAnimationState`; this stage changes their owning body
+pose, not the wing animation source.
+
+This stage does not change item classification, handedness policy, mob-specific
+held-item refinements, or add a second animation clock. Focused tests are the
+`player_flight_swim` tests in `bbb-world`, `bbb-native`, and `bbb-renderer`,
+plus existing player, zombie, skeleton, piglin, wings, and stuck-projectile
+pose regressions affected by the shared humanoid inputs. The complete
+tick-to-render path lands in one clean checkpoint commit and runs the full
+gate. A safe stop exists before implementation or after that fully wired
+commit; renderer flight transforms never land with defaulted world inputs.
+
 ### C. Matrix closure and delivery gate
 
 Prove that every official non-noop registration reaches a dedicated/shared

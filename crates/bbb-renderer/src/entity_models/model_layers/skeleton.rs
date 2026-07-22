@@ -1,5 +1,5 @@
 use super::{
-    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_mob_spear_arm_poses,
+    apply_humanoid_attack_animation, apply_humanoid_head_look, apply_humanoid_mob_spear_arm_poses,
     apply_humanoid_walk, bogged_clothing_root, humanoid_arm_bob_pose, stray_clothing_root,
     PartPose, PART_POSE_ZERO,
 };
@@ -580,16 +580,19 @@ impl EntityModel for SkeletonModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
-        apply_head_look(
+        apply_humanoid_head_look(
             self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
+            render_state.is_fall_flying,
+            render_state.swim_amount,
         );
         apply_humanoid_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
+            render_state.humanoid_speed_value,
         );
         apply_skeleton_humanoid_mob_arm_poses(&mut self.root, instance);
         // Vanilla `HumanoidModel.setupAttackAnimation` (in `super.setupAnim`): the body twists for a
@@ -641,16 +644,19 @@ impl EntityModel for SkeletonClothingModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
-        apply_head_look(
+        apply_humanoid_head_look(
             self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
+            render_state.is_fall_flying,
+            render_state.swim_amount,
         );
         apply_humanoid_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
+            render_state.humanoid_speed_value,
         );
         // The clothing overlay tracks the body arms, so it aims / melees with them (vanilla poses the
         // overlay with the same `SkeletonModel.setupAnim`).

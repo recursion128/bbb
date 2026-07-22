@@ -1,12 +1,13 @@
 use super::{
     apply_crossbow_charge_pose_for_hand, apply_crossbow_hold_pose,
-    apply_crossbow_hold_pose_for_hand, apply_head_look, apply_humanoid_attack_animation,
-    apply_humanoid_block_pose, apply_humanoid_bow_pose, apply_humanoid_brush_pose,
-    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose,
+    apply_crossbow_hold_pose_for_hand, apply_humanoid_arm_bob_named,
+    apply_humanoid_attack_animation, apply_humanoid_block_pose, apply_humanoid_bow_pose,
+    apply_humanoid_brush_pose, apply_humanoid_crouch_named, apply_humanoid_head_look,
+    apply_humanoid_item_hold_pose, apply_humanoid_limb_walk,
     apply_humanoid_no_swing_attack_animation, apply_humanoid_spear_arm_pose,
     apply_humanoid_spear_use_pose, apply_humanoid_spyglass_pose,
     apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
-    apply_humanoid_toot_horn_pose, apply_humanoid_walk, humanoid_crouch_head_pose, PartPose,
+    apply_humanoid_toot_horn_pose, humanoid_crouch_head_pose, humanoid_rot_lerp_rad, PartPose,
     CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
@@ -306,13 +307,123 @@ fn player_ears_tree() -> ModelPart {
     )
 }
 
+fn player_arm_has_spear_pose(instance: &EntityModelInstance, left_arm: bool) -> bool {
+    let state = &instance.render_state;
+    let main_arm_left = state.main_arm_left;
+    (state.player_main_hand_spear_pose && main_arm_left == left_arm)
+        || (state.player_off_hand_spear_pose && main_arm_left != left_arm)
+        || (state.player_using_spear.is_some()
+            && if state.use_item_off_hand {
+                main_arm_left != left_arm
+            } else {
+                main_arm_left == left_arm
+            })
+}
+
+/// Vanilla `PlayerModel.setupAnim` swim cycle, including its asymmetric
+/// `rotLerpRad`/ordinary-lerp arm interpolation and always-active leg kick.
+fn apply_player_swim_pose(root: &mut ModelPart, instance: &EntityModelInstance) {
+    let state = &instance.render_state;
+    let swim_amount = state.swim_amount;
+    if swim_amount <= 0.0 {
+        return;
+    }
+
+    let attack_arm_left = if state.attack_arm_off_hand {
+        !state.main_arm_left
+    } else {
+        state.main_arm_left
+    };
+    let right_amount = if !player_arm_has_spear_pose(instance, false)
+        && (attack_arm_left || state.attack_anim <= 0.0)
+    {
+        swim_amount
+    } else {
+        0.0
+    };
+    let left_amount = if !player_arm_has_spear_pose(instance, true)
+        && (!attack_arm_left || state.attack_anim <= 0.0)
+    {
+        swim_amount
+    } else {
+        0.0
+    };
+    let animation_position = state.walk_animation_pos % 26.0;
+
+    if !state.is_using_item {
+        if animation_position < 14.0 {
+            let arm_update = -65.0 * animation_position + animation_position * animation_position;
+            let left = root.child_mut("left_arm");
+            left.pose.rotation[0] = humanoid_rot_lerp_rad(left_amount, left.pose.rotation[0], 0.0);
+            left.pose.rotation[1] =
+                humanoid_rot_lerp_rad(left_amount, left.pose.rotation[1], std::f32::consts::PI);
+            left.pose.rotation[2] = humanoid_rot_lerp_rad(
+                left_amount,
+                left.pose.rotation[2],
+                std::f32::consts::PI + 1.870_796_4 * arm_update / (-65.0 * 14.0 + 14.0 * 14.0),
+            );
+            let right = root.child_mut("right_arm");
+            right.pose.rotation[0] += right_amount * (0.0 - right.pose.rotation[0]);
+            right.pose.rotation[1] +=
+                right_amount * (std::f32::consts::PI - right.pose.rotation[1]);
+            right.pose.rotation[2] += right_amount
+                * (std::f32::consts::PI
+                    - 1.870_796_4 * arm_update / (-65.0 * 14.0 + 14.0 * 14.0)
+                    - right.pose.rotation[2]);
+        } else if animation_position < 22.0 {
+            let phase = (animation_position - 14.0) / 8.0;
+            let left = root.child_mut("left_arm");
+            left.pose.rotation[0] = humanoid_rot_lerp_rad(
+                left_amount,
+                left.pose.rotation[0],
+                std::f32::consts::FRAC_PI_2 * phase,
+            );
+            left.pose.rotation[1] =
+                humanoid_rot_lerp_rad(left_amount, left.pose.rotation[1], std::f32::consts::PI);
+            left.pose.rotation[2] = humanoid_rot_lerp_rad(
+                left_amount,
+                left.pose.rotation[2],
+                5.012_389 - 1.870_796_4 * phase,
+            );
+            let right = root.child_mut("right_arm");
+            right.pose.rotation[0] +=
+                right_amount * (std::f32::consts::FRAC_PI_2 * phase - right.pose.rotation[0]);
+            right.pose.rotation[1] +=
+                right_amount * (std::f32::consts::PI - right.pose.rotation[1]);
+            right.pose.rotation[2] +=
+                right_amount * (1.270_796_3 + 1.870_796_4 * phase - right.pose.rotation[2]);
+        } else if animation_position < 26.0 {
+            let phase = (animation_position - 22.0) / 4.0;
+            let target_x = std::f32::consts::FRAC_PI_2 * (1.0 - phase);
+            let left = root.child_mut("left_arm");
+            left.pose.rotation[0] =
+                humanoid_rot_lerp_rad(left_amount, left.pose.rotation[0], target_x);
+            left.pose.rotation[1] =
+                humanoid_rot_lerp_rad(left_amount, left.pose.rotation[1], std::f32::consts::PI);
+            left.pose.rotation[2] =
+                humanoid_rot_lerp_rad(left_amount, left.pose.rotation[2], std::f32::consts::PI);
+            let right = root.child_mut("right_arm");
+            right.pose.rotation[0] += right_amount * (target_x - right.pose.rotation[0]);
+            right.pose.rotation[1] +=
+                right_amount * (std::f32::consts::PI - right.pose.rotation[1]);
+            right.pose.rotation[2] +=
+                right_amount * (std::f32::consts::PI - right.pose.rotation[2]);
+        }
+    }
+
+    let left_leg_target = 0.3 * (animation_position * 0.333_333_34 + std::f32::consts::PI).cos();
+    let left_leg = root.child_mut("left_leg");
+    left_leg.pose.rotation[0] += swim_amount * (left_leg_target - left_leg.pose.rotation[0]);
+    let right_leg_target = 0.3 * (animation_position * 0.333_333_34).cos();
+    let right_leg = root.child_mut("right_leg");
+    right_leg.pose.rotation[0] += swim_amount * (right_leg_target - right_leg.pose.rotation[0]);
+}
+
 /// Mutable player model, mirroring vanilla `PlayerModel extends HumanoidModel`. The unified tree is
 /// built for the `slim`/wide arm model with the vanilla child names; each of the six base parts (head,
-/// body, arms, legs) carries one skin overlay child (hat/jacket/sleeve/pants). `setup_anim` looks the
-/// head, runs the inherited `HumanoidModel` walk swing + idle arm bob ([`apply_humanoid_walk`]),
-/// the crouch sneaking pose ([`apply_humanoid_crouch_named`]), then the melee swing
-/// ([`apply_humanoid_attack_animation`], vanilla `setupAttackAnimation`). The held-item arm pose, the
-/// per-item swing types (STAB / NONE), swim, and the elytra defer.
+/// body, arms, legs) carries one skin overlay child (hat/jacket/sleeve/pants). `setup_anim` follows
+/// vanilla's inherited order: fall/swim-aware head look, speed-scaled limb swing, held-item arm poses,
+/// attack, crouch, idle arm bob, then the three-phase player swim stroke.
 pub(in crate::entity_models) struct PlayerModel {
     root: ModelPart,
 }
@@ -388,24 +499,28 @@ impl EntityModel for PlayerModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
-        apply_head_look(
+        apply_humanoid_head_look(
             self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
+            render_state.is_fall_flying,
+            render_state.swim_amount,
         );
-        apply_humanoid_walk(
+        let head_yaw_degrees = self.root.child_mut("head").pose.rotation[1].to_degrees();
+        let head_pitch_degrees = self.root.child_mut("head").pose.rotation[0].to_degrees();
+        apply_humanoid_limb_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
-            render_state.age_in_ticks,
+            render_state.humanoid_speed_value,
         );
         // Vanilla `HumanoidModel.setupAnim` poses the using arm (here SPYGLASS) BEFORE the crouch block,
         // so the crouch `arm.xRot += 0.4` still lands on top of the raised arm.
         if render_state.player_using_spyglass {
             apply_humanoid_spyglass_pose(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 render_state.use_item_off_hand,
                 render_state.is_crouching,
             );
@@ -413,8 +528,8 @@ impl EntityModel for PlayerModel {
         if render_state.player_tooting_horn {
             apply_humanoid_toot_horn_pose(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 render_state.use_item_off_hand,
             );
         }
@@ -424,8 +539,8 @@ impl EntityModel for PlayerModel {
         if render_state.player_blocking {
             apply_humanoid_block_pose(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 render_state.use_item_off_hand,
             );
         }
@@ -437,8 +552,8 @@ impl EntityModel for PlayerModel {
         if render_state.player_drawing_bow {
             apply_humanoid_bow_pose(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 render_state.use_item_off_hand,
             );
         }
@@ -456,8 +571,8 @@ impl EntityModel for PlayerModel {
         if let Some(kinetic_weapon) = render_state.player_using_spear {
             apply_humanoid_spear_use_pose(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 render_state.use_item_off_hand,
                 render_state.swim_amount,
                 render_state.crossbow_charge_ticks,
@@ -471,8 +586,8 @@ impl EntityModel for PlayerModel {
         if render_state.player_off_hand_spear_pose {
             apply_humanoid_spear_arm_pose(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 true,
                 render_state.swim_amount,
             );
@@ -480,8 +595,8 @@ impl EntityModel for PlayerModel {
         if render_state.player_main_hand_spear_pose {
             apply_humanoid_spear_arm_pose(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 false,
                 render_state.swim_amount,
             );
@@ -502,11 +617,7 @@ impl EntityModel for PlayerModel {
         // vanilla runs `poseRightArm` last for this case, overwriting any off-hand ITEM, so it is applied
         // after the ITEM blocks (and before crouch/attack).
         if render_state.player_crossbow_hold {
-            apply_crossbow_hold_pose(
-                &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
-            );
+            apply_crossbow_hold_pose(&mut self.root, head_yaw_degrees, head_pitch_degrees);
         }
         // Vanilla's off-hand `CROSSBOW_HOLD` uses `poseLeftArm`, applying the mirrored
         // `AnimationUtils.animateCrossbowHold(..., holdingInRightArm = false)` after the main hand's
@@ -514,18 +625,13 @@ impl EntityModel for PlayerModel {
         if render_state.player_crossbow_hold_off_hand {
             apply_crossbow_hold_pose_for_hand(
                 &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
+                head_yaw_degrees,
+                head_pitch_degrees,
                 true,
             );
         }
-        if render_state.is_crouching {
-            apply_humanoid_crouch_named(&mut self.root);
-        }
-        // Vanilla `HumanoidModel.setupAnim` runs `setupAttackAnimation` last (after the pose / crouch):
-        // a swinging player twists the body and drives the attacking arm. The projected age scale is
-        // `1.0` for players. An attack-arm spear lunges (`STAB`), `NONE` keeps only the shared prologue,
-        // and everything else chops (`WHACK`).
+        // Vanilla inherited order is arm poses, attack, crouch, idle bob, then
+        // the player swim cycle. The attack type selects STAB / NONE / WHACK.
         if render_state.main_hand_swing_is_stab {
             apply_humanoid_stab_attack_animation(
                 &mut self.root,
@@ -545,10 +651,22 @@ impl EntityModel for PlayerModel {
                 &mut self.root,
                 render_state.attack_anim,
                 render_state.attack_arm_off_hand,
-                render_state.head_pitch,
+                head_pitch_degrees,
                 render_state.age_scale,
             );
         }
+        if render_state.is_crouching {
+            apply_humanoid_crouch_named(&mut self.root);
+        }
+        let spyglass_right = render_state.player_using_spyglass && !render_state.use_item_off_hand;
+        let spyglass_left = render_state.player_using_spyglass && render_state.use_item_off_hand;
+        apply_humanoid_arm_bob_named(
+            &mut self.root,
+            render_state.age_in_ticks,
+            !spyglass_right,
+            !spyglass_left,
+        );
+        apply_player_swim_pose(&mut self.root, instance);
     }
 }
 
@@ -578,7 +696,13 @@ impl EntityModel for PlayerEarsModel {
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
         let head = self.root.child_mut("head");
-        apply_head_look(head, render_state.head_yaw, render_state.head_pitch);
+        apply_humanoid_head_look(
+            head,
+            render_state.head_yaw,
+            render_state.head_pitch,
+            render_state.is_fall_flying,
+            render_state.swim_amount,
+        );
         if render_state.is_crouching {
             head.pose = humanoid_crouch_head_pose(head.pose);
         }

@@ -1,10 +1,10 @@
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROAKING_ID, VANILLA_ENTITY_POSE_DIGGING_ID,
-    VANILLA_ENTITY_POSE_EMERGING_ID, VANILLA_ENTITY_POSE_INHALING_ID,
-    VANILLA_ENTITY_POSE_LONG_JUMPING_ID, VANILLA_ENTITY_POSE_ROARING_ID,
-    VANILLA_ENTITY_POSE_SHOOTING_ID, VANILLA_ENTITY_POSE_SLIDING_ID,
-    VANILLA_ENTITY_POSE_SNIFFING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
-    VANILLA_ENTITY_POSE_USING_TONGUE_ID,
+    VANILLA_ENTITY_POSE_EMERGING_ID, VANILLA_ENTITY_POSE_FALL_FLYING_ID,
+    VANILLA_ENTITY_POSE_INHALING_ID, VANILLA_ENTITY_POSE_LONG_JUMPING_ID,
+    VANILLA_ENTITY_POSE_ROARING_ID, VANILLA_ENTITY_POSE_SHOOTING_ID,
+    VANILLA_ENTITY_POSE_SLIDING_ID, VANILLA_ENTITY_POSE_SNIFFING_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID, VANILLA_ENTITY_POSE_USING_TONGUE_ID,
 };
 use bbb_protocol::packets::{EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind};
 use serde::{Deserialize, Serialize};
@@ -1126,6 +1126,12 @@ pub struct PlayerCloakAnimationState {
     pub bob_old: f32,
     pub bob: f32,
     pub fall_flying_ticks: u32,
+    /// Vanilla `ClientAvatarState.deltaMovementOnPreviousTick`. Despite the
+    /// name, `ClientAvatarState.tick` replaces it with the current movement once
+    /// per client tick; render extraction lerps this snapshot toward the live
+    /// entity movement for the partial frame.
+    #[serde(default)]
+    pub delta_movement_on_previous_tick: EntityVec3,
 }
 
 impl Default for PlayerCloakAnimationState {
@@ -1141,6 +1147,7 @@ impl Default for PlayerCloakAnimationState {
             bob_old: 0.0,
             bob: 0.0,
             fall_flying_ticks: 0,
+            delta_movement_on_previous_tick: EntityVec3::default(),
         }
     }
 }
@@ -1167,6 +1174,8 @@ impl PlayerCloakAnimationState {
             self.cloak_position_old = position;
             self.cloak_position = position;
         }
+
+        self.delta_movement_on_previous_tick = delta_movement;
 
         let previous_position = self.entity_position;
         self.entity_position_old = previous_position;
@@ -4412,8 +4421,14 @@ impl EntityClientAnimationState {
                     self.death = None;
                 }
             }
-            let visually_swimming =
-                entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SWIMMING_ID;
+            // Vanilla `LivingEntity.isVisuallySwimming()` also treats the
+            // FALL_FLYING pose as swimming while the shared fall-flying flag is
+            // clear. This is the crawling transition used by humanoid head/root
+            // animation, not merely `Entity.isSwimming()`.
+            let pose = entity_data_pose(data_values);
+            let visually_swimming = pose == VANILLA_ENTITY_POSE_SWIMMING_ID
+                || (pose == VANILLA_ENTITY_POSE_FALL_FLYING_ID
+                    && !entity_is_fall_flying(data_values));
             if let Some(swim) = self.living_swim.as_mut() {
                 swim.set_visually_swimming(visually_swimming);
             } else if visually_swimming {
@@ -5260,6 +5275,21 @@ impl EntityClientAnimationState {
     pub fn player_cape_state(&self, partial_tick: f32, y_body_rot: f32) -> (f32, f32, f32) {
         self.player_cloak.map_or((0.0, 0.0, 0.0), |state| {
             state.cape_state(partial_tick, y_body_rot)
+        })
+    }
+
+    /// Vanilla `AvatarRenderState.fallFlyingTimeInTicks`.
+    pub fn player_fall_flying_time(&self, partial_tick: f32) -> f32 {
+        self.player_cloak.map_or(partial_tick, |state| {
+            state.fall_flying_ticks as f32 + partial_tick
+        })
+    }
+
+    /// Vanilla `ClientAvatarState.deltaMovementOnPreviousTick`, used only for
+    /// the avatar fall-flying yaw interpolation.
+    pub fn player_previous_delta_movement(&self) -> EntityVec3 {
+        self.player_cloak.map_or(EntityVec3::default(), |state| {
+            state.delta_movement_on_previous_tick
         })
     }
 
@@ -6993,6 +7023,21 @@ pub(crate) fn entity_is_fall_flying(data_values: &[EntityDataValue]) -> bool {
         accessors.shared_flags_default,
     ) as u8
         & accessors.fall_flying_mask as u8
+        != 0
+}
+
+/// Vanilla `Entity.isSwimming()` reads the generated base Entity shared-flags
+/// accessor and its named swimming mask. This is intentionally distinct from
+/// the pose-backed `isVisuallySwimming()` used by `LivingEntity.updateSwimAmount`.
+pub(crate) fn entity_is_swimming(data_values: &[EntityDataValue]) -> bool {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    entity_data_byte(
+        data_values,
+        accessors.shared_flags_data_id,
+        accessors.shared_flags_default,
+    ) as u8
+        & accessors.swimming_mask as u8
         != 0
 }
 

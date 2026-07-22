@@ -1,8 +1,8 @@
 use super::{
-    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_leg_swing_named,
+    apply_humanoid_attack_animation, apply_humanoid_head_look, apply_humanoid_leg_swing_named,
     apply_humanoid_mob_spear_arm_poses, apply_humanoid_stab_attack_animation, apply_humanoid_walk,
-    apply_zombie_arms_held_out_named, drowned_outer_root, humanoid_arm_bob_pose, PartPose,
-    PART_POSE_ZERO,
+    apply_zombie_arms_held_out_named, drowned_outer_root, humanoid_arm_bob_pose,
+    humanoid_rot_lerp_rad, PartPose, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::ZombieVariantModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -744,10 +744,12 @@ fn zombie_villager_tree(baby: bool) -> ModelPart {
 /// ([`apply_zombie_arms_held_out_named`], `isAggressive`-driven and swung by `attack_anim`).
 fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let render_state = &instance.render_state;
-    apply_head_look(
+    apply_humanoid_head_look(
         root.child_mut("head"),
         render_state.head_yaw,
         render_state.head_pitch,
+        render_state.is_fall_flying,
+        render_state.swim_amount,
     );
     if render_state.main_hand_swing_is_stab {
         apply_humanoid_walk(
@@ -755,6 +757,7 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
+            render_state.humanoid_speed_value,
         );
         apply_humanoid_mob_spear_arm_poses(
             root,
@@ -781,6 +784,7 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
             root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
+            render_state.humanoid_speed_value,
         );
         apply_humanoid_attack_animation(
             root,
@@ -819,36 +823,24 @@ fn apply_drowned_swim_pose(root: &mut ModelPart, instance: &EntityModelInstance)
 
     let age_wave = (0.1 * instance.render_state.age_in_ticks).sin();
     let right = root.child_mut("right_arm");
-    right.pose.rotation[0] = rot_lerp_rad(
+    right.pose.rotation[0] = humanoid_rot_lerp_rad(
         swim_amount,
         right.pose.rotation[0],
         -std::f32::consts::PI * 4.0 / 5.0,
     ) + swim_amount * 0.35 * age_wave;
-    right.pose.rotation[2] = rot_lerp_rad(swim_amount, right.pose.rotation[2], -0.15);
+    right.pose.rotation[2] = humanoid_rot_lerp_rad(swim_amount, right.pose.rotation[2], -0.15);
 
     let left = root.child_mut("left_arm");
-    left.pose.rotation[0] = rot_lerp_rad(
+    left.pose.rotation[0] = humanoid_rot_lerp_rad(
         swim_amount,
         left.pose.rotation[0],
         -std::f32::consts::PI * 4.0 / 5.0,
     ) - swim_amount * 0.35 * age_wave;
-    left.pose.rotation[2] = rot_lerp_rad(swim_amount, left.pose.rotation[2], 0.15);
+    left.pose.rotation[2] = humanoid_rot_lerp_rad(swim_amount, left.pose.rotation[2], 0.15);
 
     root.child_mut("left_leg").pose.rotation[0] -= swim_amount * 0.55 * age_wave;
     root.child_mut("right_leg").pose.rotation[0] += swim_amount * 0.55 * age_wave;
     root.child_mut("head").pose.rotation[0] = 0.0;
-}
-
-/// Vanilla `Mth.rotLerpRad(a, from, to)`: wraps the angular delta to `[-π, π)` before lerping.
-fn rot_lerp_rad(a: f32, from: f32, to: f32) -> f32 {
-    let mut diff = to - from;
-    while diff < -std::f32::consts::PI {
-        diff += 2.0 * std::f32::consts::PI;
-    }
-    while diff >= std::f32::consts::PI {
-        diff -= 2.0 * std::f32::consts::PI;
-    }
-    from + a * diff
 }
 
 /// Mutable zombie model, mirroring vanilla `ZombieModel` (an `AbstractZombieModel` over `HumanoidModel`).

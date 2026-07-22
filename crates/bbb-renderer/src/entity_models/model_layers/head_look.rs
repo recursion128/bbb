@@ -113,6 +113,40 @@ pub(in crate::entity_models) fn apply_head_look(
     head.pose = head_look_pose(head.pose, head_yaw_deg, head_pitch_deg);
 }
 
+/// Vanilla `Mth.rotLerpRad`: wraps the angular delta to `[-PI, PI)` before
+/// applying the interpolation amount.
+pub(in crate::entity_models) fn humanoid_rot_lerp_rad(amount: f32, from: f32, to: f32) -> f32 {
+    let mut difference = to - from;
+    while difference < -std::f32::consts::PI {
+        difference += std::f32::consts::TAU;
+    }
+    while difference >= std::f32::consts::PI {
+        difference -= std::f32::consts::TAU;
+    }
+    from + amount * difference
+}
+
+/// Vanilla `HumanoidModel.setupAnim` head stage: apply the ordinary look, then
+/// force a `-PI/4` fall-flying pitch or blend toward that pitch while swimming.
+pub(in crate::entity_models) fn apply_humanoid_head_look(
+    head: &mut ModelPart,
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
+    is_fall_flying: bool,
+    swim_amount: f32,
+) {
+    apply_head_look(head, head_yaw_deg, head_pitch_deg);
+    if is_fall_flying {
+        head.pose.rotation[0] = -std::f32::consts::FRAC_PI_4;
+    } else if swim_amount > 0.0 {
+        head.pose.rotation[0] = humanoid_rot_lerp_rad(
+            swim_amount,
+            head.pose.rotation[0],
+            -std::f32::consts::FRAC_PI_4,
+        );
+    }
+}
+
 /// Vanilla `QuadrupedModel.setupAnim` leg swing applied to a model root's four named leg children
 /// ([`quadruped_leg_swing_pose`]). Shared by the quadruped family models, which build a unified tree
 /// with the vanilla `QuadrupedModel` child names. A no-op while the limbs are at rest
@@ -144,9 +178,9 @@ pub(in crate::entity_models) fn apply_quadruped_leg_swing(
 /// coordinated against the same-side arm. Both legs sit at `z = 0`, so the phase is
 /// resolved from the `x` sign alone (the `QuadrupedModel` `x * z` rule would be
 /// ambiguous). The base leg pose carries no `xRot`, so it is set (not accumulated),
-/// matching the vanilla assignment. `state.speedValue` is `1.0` for every entity
-/// that is not elytra fall-flying (a deferred pose) so it is omitted; the constant
-/// `±0.005` leg yaw/roll splay vanilla always applies is ~0.3° and is omitted too.
+/// matching the vanilla assignment. The named humanoid walk wrappers divide the
+/// amplitude by projected `state.speedValue` before calling this pose helper; the
+/// constant `±0.005` leg yaw/roll splay vanilla always applies is ~0.3° and is omitted.
 pub(in crate::entity_models) fn humanoid_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -174,10 +208,9 @@ pub(in crate::entity_models) fn humanoid_leg_swing_pose(
 /// `x < 0`) is the half-cycle out of phase (`cos(... + π)`) and the left arm in phase —
 /// the opposite phasing to the same-side leg, the natural walking counter-swing. The
 /// base arm pose carries no `xRot`, so it is set (not accumulated). Vanilla also divides
-/// by `state.speedValue` (`1.0` except in the deferred crouch/swim/elytra poses) and
-/// layers the `ageInTicks` idle bob ([`humanoid_arm_bob_pose`], applied separately on
-/// top) and the held-item/attack/crouch/swim arm poses on top — the latter still
-/// deferred because the client does not yet track that state. This helper is also reused
+/// by `state.speedValue` (the named humanoid walk wrappers do that before calling it)
+/// and layers the `ageInTicks` idle bob ([`humanoid_arm_bob_pose`], applied separately on
+/// top) and the held-item/attack/crouch/swim arm poses on top. This helper is also reused
 /// by the pillager's separate arms and the enderman (which are not `HumanoidModel` and so
 /// do *not* get the idle bob), so the bob is kept out of this swing helper.
 pub(in crate::entity_models) fn humanoid_arm_swing_pose(
@@ -237,7 +270,22 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
     walk_animation_pos: f32,
     walk_animation_speed: f32,
     age_in_ticks: f32,
+    speed_value: f32,
 ) {
+    apply_humanoid_limb_walk(root, walk_animation_pos, walk_animation_speed, speed_value);
+    apply_humanoid_arm_bob_named(root, age_in_ticks, true, true);
+}
+
+/// The inherited humanoid limb-swing stage without the later idle arm bob. A
+/// fall-flying `speedValue` divides both arm and leg amplitudes exactly as in
+/// `HumanoidModel.setupAnim`.
+pub(in crate::entity_models) fn apply_humanoid_limb_walk(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+    speed_value: f32,
+) {
+    let walk_animation_speed = walk_animation_speed / speed_value.max(1.0);
     let swinging = !limb_swing_at_rest(walk_animation_speed);
     if swinging {
         for name in ["right_leg", "left_leg"] {
@@ -245,13 +293,28 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
             leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
         }
     }
-    for name in ["right_arm", "left_arm"] {
-        let arm = root.child_mut(name);
-        let mut pose = arm.pose;
-        if swinging {
-            pose = humanoid_arm_swing_pose(pose, walk_animation_pos, walk_animation_speed);
+    if swinging {
+        for name in ["right_arm", "left_arm"] {
+            let arm = root.child_mut(name);
+            arm.pose = humanoid_arm_swing_pose(arm.pose, walk_animation_pos, walk_animation_speed);
         }
-        arm.pose = humanoid_arm_bob_pose(pose, age_in_ticks);
+    }
+}
+
+/// Vanilla inherited humanoid idle-arm bob stage. Individual arms may be
+/// disabled for `ArmPose.SPYGLASS`, whose pose remains exact through this stage.
+pub(in crate::entity_models) fn apply_humanoid_arm_bob_named(
+    root: &mut ModelPart,
+    age_in_ticks: f32,
+    bob_right_arm: bool,
+    bob_left_arm: bool,
+) {
+    for (name, should_bob) in [("right_arm", bob_right_arm), ("left_arm", bob_left_arm)] {
+        if !should_bob {
+            continue;
+        }
+        let arm = root.child_mut(name);
+        arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
     }
 }
 
@@ -265,9 +328,10 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
 /// 0.7) · 0.75`, `yRot += bodyYRot · 2`, `zRot += sin(t · π) · -0.4`. `head_pitch_degrees` is the head
 /// look pitch (vanilla `head.xRot`); `age_scale` is `LivingEntityRenderState.ageScale`, independent
 /// of the SCALE attribute-backed entity model scale. A no-op at
-/// `attack_anim <= 0`. Runs LAST — after the walk swing / arm pose — accumulating onto their rotations
-/// and overwriting the arm anchor offsets. Use [`apply_humanoid_stab_attack_animation`] for the per-item
-/// STAB branch and [`apply_humanoid_no_swing_attack_animation`] for the per-item NONE branch.
+/// `attack_anim <= 0`. It runs after the walk swing / arm pose, accumulating onto their rotations
+/// and overwriting the arm anchor offsets; inherited crouch, idle bob, and swim stages follow it.
+/// Use [`apply_humanoid_stab_attack_animation`] for the per-item STAB branch and
+/// [`apply_humanoid_no_swing_attack_animation`] for the per-item NONE branch.
 pub(in crate::entity_models) fn apply_humanoid_attack_animation(
     root: &mut ModelPart,
     attack_anim: f32,
@@ -493,9 +557,9 @@ pub(in crate::entity_models) fn apply_humanoid_spear_use_pose(
 /// using a spyglass, the holding arm raises it to the eye along the head look. The arm pitch is
 /// `clamp(head.xRot − 1.9198622 − (crouch ? π/12 : 0), −2.4, 3.3)` and the yaw is `head.yRot ∓ π/12`
 /// (right arm `− π/12`, left arm `+ π/12`). Vanilla also SKIPS the idle `bobModelPart` for the spyglass
-/// arm, so this resets the arm roll (`zRot`) to its bind — undoing the bob that `apply_humanoid_walk`
-/// already applied. Vanilla applies this BEFORE the crouch block, so the crouch `arm.xRot += 0.4` still
-/// lands on top; call it before [`apply_humanoid_crouch_named`]. `head_*_degrees` are the head look
+/// arm. This resets the arm roll (`zRot`) to its bind, and the player caller then excludes that arm
+/// from the later bob stage. Vanilla applies this BEFORE the crouch block, so the crouch
+/// `arm.xRot += 0.4` still lands on top; call it before [`apply_humanoid_crouch_named`]. `head_*_degrees` are the head look
 /// (vanilla `head.xRot`/`head.yRot`).
 pub(in crate::entity_models) fn apply_humanoid_spyglass_pose(
     root: &mut ModelPart,
@@ -523,8 +587,8 @@ pub(in crate::entity_models) fn apply_humanoid_spyglass_pose(
 /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `TOOT_HORN` use-item arm pose: while a player is
 /// tooting a goat horn, the holding arm raises it to the mouth — `xRot = clamp(head.xRot, −1.2, 1.2) −
 /// 1.4835298`, `yRot = head.yRot ± π/6` (right arm `− π/6`, left arm `+ π/6`). Unlike `SPYGLASS`, vanilla
-/// keeps the idle bob on this arm, so the bob's roll (`zRot`, already applied by `apply_humanoid_walk`)
-/// is left in place. Applied before the crouch block so the crouch `arm.xRot += 0.4` still lands on top.
+/// keeps the idle bob on this arm, so the later shared bob stage remains enabled. Applied before the
+/// crouch block so the crouch `arm.xRot += 0.4` still lands on top.
 pub(in crate::entity_models) fn apply_humanoid_toot_horn_pose(
     root: &mut ModelPart,
     head_yaw_degrees: f32,
@@ -548,9 +612,8 @@ pub(in crate::entity_models) fn apply_humanoid_toot_horn_pose(
 /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `BRUSH` use-item arm pose (also the generic `ITEM`
 /// pose with `π/10` instead of `π/5`): while a player is brushing, the holding arm lowers toward the
 /// block — `xRot = arm.xRot · 0.5 − π/5`, `yRot = 0`. Unlike the spyglass/horn this READS the arm's
-/// current pitch and halves it (the vanilla pose runs before the idle bob, which bbb folds into
-/// `apply_humanoid_walk`, so the halved value carries bbb's small bob component — the shared posed-arm
-/// bob convention, see the renderer-scene-parity note). Applied before the crouch block.
+/// current pre-bob pitch and halves it, then the shared bob stage runs later. Applied before the
+/// crouch block.
 pub(in crate::entity_models) fn apply_humanoid_brush_pose(root: &mut ModelPart, off_hand: bool) {
     use std::f32::consts::PI;
     let arm_name = if off_hand { "left_arm" } else { "right_arm" };
@@ -562,9 +625,7 @@ pub(in crate::entity_models) fn apply_humanoid_brush_pose(root: &mut ModelPart, 
 /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` generic `ITEM` arm pose (the `AvatarRenderer.getArmPose`
 /// fallback for a player holding any plain item): the holding arm lowers and halves its swing —
 /// `xRot = arm.xRot · 0.5 − π/10`, `yRot = 0`. Like the brush pose this READS the arm's current pitch and
-/// halves it (vanilla runs it before the idle bob, which bbb folds into `apply_humanoid_walk`, so the halved
-/// value carries bbb's small bob component — the shared posed-arm bob convention, see the
-/// renderer-scene-parity note). Applied before the crouch/attack blocks (vanilla `poseArm` precedes
+/// halves it before the later idle bob stage. Applied before the crouch/attack blocks (vanilla `poseArm` precedes
 /// `setupAttackAnimation`, and crouch/attack commute as additive offsets).
 pub(in crate::entity_models) fn apply_humanoid_item_hold_pose(
     root: &mut ModelPart,
@@ -583,8 +644,8 @@ pub(in crate::entity_models) fn apply_humanoid_item_hold_pose(
 /// shield), the holding arm tucks the item forward along the head look. The arm pitch is
 /// `arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)` and the yaw is
 /// `(right ? −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)` (vanilla's `±30°` in radians). Like the brush pose
-/// this READS the arm's current pitch and halves it (the folded-in idle bob rides along — the shared
-/// posed-arm bob convention); the bob roll (`zRot`) is kept (vanilla applies the bob after `poseArm` and does
+/// this READS the arm's current pre-bob pitch and halves it; the bob roll (`zRot`) is added later
+/// (vanilla applies the bob after `poseArm` and does
 /// NOT skip it for BLOCK). Applied before the crouch block so the crouch `arm.xRot += 0.4` still lands on top.
 pub(in crate::entity_models) fn apply_humanoid_block_pose(
     root: &mut ModelPart,
@@ -831,7 +892,9 @@ pub(in crate::entity_models) fn apply_humanoid_leg_swing_named(
     root: &mut ModelPart,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
+    speed_value: f32,
 ) {
+    let walk_animation_speed = walk_animation_speed / speed_value.max(1.0);
     if limb_swing_at_rest(walk_animation_speed) {
         return;
     }

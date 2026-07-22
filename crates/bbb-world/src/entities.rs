@@ -1879,6 +1879,15 @@ entity_model_source_state! {
     /// non-Avatar entity.
     #[serde(default)]
     pub is_crouching: bool,
+    /// Vanilla `HumanoidRenderState.isFallFlying`, sourced from the shared
+    /// fall-flying entity flag. Humanoid head animation and the avatar renderer
+    /// consume it independently of whether a WINGS equipment layer is visible.
+    #[serde(default)]
+    pub is_fall_flying: bool,
+    /// Vanilla `HumanoidRenderState.isVisuallySwimming`: true for pose SWIMMING,
+    /// or for pose FALL_FLYING while the actual fall-flying flag is clear.
+    #[serde(default)]
+    pub is_visually_swimming: bool,
     /// Vanilla `HumanoidRenderState.elytraRotX`, sampled from
     /// `LivingEntity.elytraAnimationState.getRotX(partialTick)`. The renderer consumes
     /// it only for humanoid WINGS layers; non-humanoid source rows keep the default.
@@ -1906,6 +1915,18 @@ entity_model_source_state! {
     /// `-20..=20`. `0.0` for non-player entities.
     #[serde(default)]
     pub player_cape_lean2: f32,
+    /// Vanilla `AvatarRenderState.fallFlyingTimeInTicks` = the client tick
+    /// counter plus the current partial tick. `0.0` for non-player entities.
+    #[serde(default)]
+    pub player_fall_flying_time_in_ticks: f32,
+    /// Whether `AvatarRenderer.extractFlightData` found non-trivial horizontal
+    /// movement and look vectors and therefore applies [`player_flying_y_rot`].
+    #[serde(default)]
+    pub player_should_apply_flying_y_rot: bool,
+    /// Vanilla signed horizontal angle between the player's interpolated
+    /// movement and look vector, in radians.
+    #[serde(default)]
+    pub player_flying_y_rot: f32,
     /// Vanilla `AvatarRenderState.arrowCount`, read from LivingEntity's generated synchronized
     /// `DATA_ARROW_COUNT_ID`. Only player render sources retain it because `ArrowLayer` is registered
     /// by `AvatarRenderer`; non-player living entities keep zero.
@@ -2003,6 +2024,11 @@ entity_model_source_state! {
     /// consumes it for the body pitch and limb swim overrides; `0.0` for dry/non-swimming entities.
     #[serde(default)]
     pub swim_amount: f32,
+    /// Vanilla `HumanoidRenderState.speedValue`: fall-flying squared velocity
+    /// normalized by `/ 0.2`, then cubed and clamped to at least `1.0`. It slows
+    /// humanoid walk swing while moving quickly through the air.
+    #[serde(default = "entity_model_source_default_scale")]
+    pub humanoid_speed_value: f32,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
     /// Vanilla `Goat.lowerHeadTick` (the `0..=20` ram counter, advanced from entity events 58/59): the

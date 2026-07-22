@@ -21,6 +21,220 @@ const PLAYER_FIXTURE_RIGHT_LEG_POSE: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
+fn assert_player_mat4_close(actual: Mat4, expected: Mat4) {
+    for (actual, expected) in actual
+        .to_cols_array()
+        .into_iter()
+        .zip(expected.to_cols_array())
+    {
+        assert!(
+            (actual - expected).abs() < 1.0e-5,
+            "expected matrix component {expected}, got {actual}"
+        );
+    }
+}
+
+#[test]
+fn player_flight_swim_root_transform_matches_avatar_setup_rotation_order() {
+    let base = EntityModelInstance::player(980, [0.0; 3], 0.0, false);
+    let flip = Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0));
+    let avatar_scale = Mat4::from_scale(Vec3::splat(0.9375));
+    let model_offset = Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+    let initial_yaw = Mat4::from_rotation_y(std::f32::consts::PI);
+
+    let flying = base
+        .with_head_look(0.0, 10.0)
+        .with_is_fall_flying(true)
+        .with_player_fall_flying_time_in_ticks(5.0)
+        .with_player_should_apply_flying_y_rot(true)
+        .with_player_flying_y_rot(0.3);
+    let expected_flying = initial_yaw
+        * Mat4::from_rotation_x((-25.0_f32).to_radians())
+        * Mat4::from_rotation_y(0.3)
+        * flip
+        * avatar_scale
+        * model_offset;
+    assert_player_mat4_close(player_model_root_transform(flying), expected_flying);
+
+    let swimming = base
+        .with_head_look(0.0, 20.0)
+        .with_swim_amount(0.5)
+        .with_in_water(true)
+        .with_is_visually_swimming(true);
+    let expected_swimming = initial_yaw
+        * Mat4::from_rotation_x((-55.0_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, -1.0, 0.3))
+        * flip
+        * avatar_scale
+        * model_offset;
+    assert_player_mat4_close(player_model_root_transform(swimming), expected_swimming);
+
+    let spinning = base.with_auto_spin_age_ticks(Some(4.0));
+    let expected_spinning_flight = initial_yaw
+        * Mat4::from_rotation_x((-90.0_f32).to_radians())
+        * Mat4::from_rotation_y((-300.0_f32).to_radians())
+        * Mat4::from_rotation_y(1.0)
+        * flip
+        * avatar_scale
+        * model_offset;
+    assert_player_mat4_close(
+        player_model_root_transform(
+            spinning
+                .with_is_fall_flying(true)
+                .with_player_fall_flying_time_in_ticks(20.0)
+                .with_player_should_apply_flying_y_rot(true)
+                .with_player_flying_y_rot(1.0),
+        ),
+        expected_spinning_flight,
+    );
+}
+
+#[test]
+fn player_flight_swim_head_and_speed_value_match_humanoid_setup_anim() {
+    let base = EntityModelInstance::player(981, [0.0; 3], 0.0, false)
+        .with_head_look(0.0, 30.0)
+        .with_walk_animation(1.0, 0.8);
+    let mut ordinary = PlayerModel::new(false);
+    ordinary.prepare(&base);
+    let ordinary_right_arm = ordinary.root_mut().child_mut("right_arm").pose.rotation[0];
+    let ordinary_right_leg = ordinary.root_mut().child_mut("right_leg").pose.rotation[0];
+
+    let mut flying = PlayerModel::new(false);
+    flying.prepare(
+        &base
+            .with_is_fall_flying(true)
+            .with_humanoid_speed_value(8.0),
+    );
+    assert!(
+        (flying.root_mut().child_mut("head").pose.rotation[0] + std::f32::consts::FRAC_PI_4).abs()
+            < 1.0e-6
+    );
+    assert!(
+        (flying.root_mut().child_mut("right_arm").pose.rotation[0] - ordinary_right_arm / 8.0)
+            .abs()
+            < 1.0e-6
+    );
+    assert!(
+        (flying.root_mut().child_mut("right_leg").pose.rotation[0] - ordinary_right_leg / 8.0)
+            .abs()
+            < 1.0e-6
+    );
+
+    let mut swimming = PlayerModel::new(false);
+    swimming.prepare(&base.with_swim_amount(0.5).with_is_using_item(true));
+    assert!(
+        (swimming.root_mut().child_mut("head").pose.rotation[0] - (-7.5_f32).to_radians()).abs()
+            < 1.0e-6
+    );
+}
+
+#[test]
+fn player_flight_swim_arm_cycle_covers_all_three_vanilla_phases() {
+    let base = EntityModelInstance::player(982, [0.0; 3], 0.0, false).with_swim_amount(1.0);
+    let cases = [
+        (
+            7.0,
+            [
+                0.0,
+                -std::f32::consts::PI,
+                -std::f32::consts::PI
+                    + 1.870_796_4 * (-65.0 * 7.0 + 7.0 * 7.0) / (-65.0 * 14.0 + 14.0 * 14.0),
+            ],
+            [
+                0.0,
+                std::f32::consts::PI,
+                std::f32::consts::PI
+                    - 1.870_796_4 * (-65.0 * 7.0 + 7.0 * 7.0) / (-65.0 * 14.0 + 14.0 * 14.0),
+            ],
+        ),
+        (
+            18.0,
+            [
+                std::f32::consts::FRAC_PI_4,
+                -std::f32::consts::PI,
+                5.012_389 - 1.870_796_4 * 0.5 - std::f32::consts::TAU,
+            ],
+            [
+                std::f32::consts::FRAC_PI_4,
+                std::f32::consts::PI,
+                2.206_194_4,
+            ],
+        ),
+        (
+            24.0,
+            [
+                std::f32::consts::FRAC_PI_4,
+                -std::f32::consts::PI,
+                -std::f32::consts::PI,
+            ],
+            [
+                std::f32::consts::FRAC_PI_4,
+                std::f32::consts::PI,
+                std::f32::consts::PI,
+            ],
+        ),
+    ];
+    for (animation_position, expected_left, expected_right) in cases {
+        let mut model = PlayerModel::new(false);
+        model.prepare(&base.with_walk_animation(animation_position, 0.0));
+        let left = model.root_mut().child_mut("left_arm").pose.rotation;
+        let right = model.root_mut().child_mut("right_arm").pose.rotation;
+        for axis in 0..3 {
+            assert!(
+                (left[axis] - expected_left[axis]).abs() < 1.0e-5,
+                "phase {animation_position}, left axis {axis}: {} vs {}",
+                left[axis],
+                expected_left[axis]
+            );
+            assert!(
+                (right[axis] - expected_right[axis]).abs() < 1.0e-5,
+                "phase {animation_position}, right axis {axis}: {} vs {}",
+                right[axis],
+                expected_right[axis]
+            );
+        }
+    }
+}
+
+#[test]
+fn player_flight_swim_suppresses_using_and_attacking_arms_but_keeps_leg_kick() {
+    let base = EntityModelInstance::player(983, [0.0; 3], 0.0, false)
+        .with_walk_animation(18.0, 0.0)
+        .with_swim_amount(1.0)
+        .with_is_fall_flying(true)
+        .with_attack_anim(0.4);
+    let mut attack = PlayerModel::new(false);
+    attack.prepare(&base);
+    let attack_right = attack.root_mut().child_mut("right_arm").pose.rotation;
+    let attack_left = attack.root_mut().child_mut("left_arm").pose.rotation;
+
+    let mut using = PlayerModel::new(false);
+    using.prepare(&base.with_is_using_item(true));
+    let using_right = using.root_mut().child_mut("right_arm").pose.rotation;
+    let using_left = using.root_mut().child_mut("left_arm").pose.rotation;
+    assert_eq!(
+        attack_right, using_right,
+        "the attacking right arm skips swim"
+    );
+    assert_ne!(attack_left, using_left, "the free left arm still swims");
+
+    let mut dry = PlayerModel::new(false);
+    dry.prepare(&base.with_swim_amount(0.0).with_is_using_item(true));
+    assert_eq!(
+        using_right,
+        dry.root_mut().child_mut("right_arm").pose.rotation
+    );
+    assert_eq!(
+        using_left,
+        dry.root_mut().child_mut("left_arm").pose.rotation
+    );
+    assert_ne!(
+        using.root_mut().child_mut("right_leg").pose.rotation[0],
+        dry.root_mut().child_mut("right_leg").pose.rotation[0],
+        "using an item suppresses only the arms; the swim leg kick remains"
+    );
+}
+
 #[test]
 fn player_model_parts_match_vanilla_26_1_body_layers() {
     // The player builds a named-children tree (each base part nests one skin overlay child:

@@ -1,6 +1,6 @@
 use super::{
-    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look,
-    apply_humanoid_attack_animation, apply_humanoid_mob_spear_arm_poses,
+    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_humanoid_attack_animation,
+    apply_humanoid_head_look, apply_humanoid_mob_spear_arm_poses,
     apply_humanoid_no_swing_attack_animation, apply_humanoid_stab_attack_animation,
     apply_humanoid_walk, apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named,
     humanoid_arm_bob_pose, piglin_ear_flap_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS,
@@ -575,12 +575,20 @@ impl EntityModel for PiglinModel {
         let limb_swing = render_state.walk_animation_pos;
         let limb_swing_amount = render_state.walk_animation_speed;
         let age_in_ticks = render_state.age_in_ticks;
-        apply_head_look(
+        apply_humanoid_head_look(
             self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
+            render_state.is_fall_flying,
+            render_state.swim_amount,
         );
-        apply_humanoid_walk(&mut self.root, limb_swing, limb_swing_amount, age_in_ticks);
+        apply_humanoid_walk(
+            &mut self.root,
+            limb_swing,
+            limb_swing_amount,
+            age_in_ticks,
+            render_state.humanoid_speed_value,
+        );
         apply_humanoid_mob_spear_arm_poses(
             &mut self.root,
             render_state.head_yaw,

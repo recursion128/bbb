@@ -71,6 +71,18 @@ fn living_entity_model_root_transform_with_extra_setup_rotation(
     instance: EntityModelInstance,
     setup_rotation_tail: Mat4,
 ) -> Mat4 {
+    living_entity_model_root_transform_with_setup_and_renderer_transform(
+        instance,
+        setup_rotation_tail,
+        Mat4::IDENTITY,
+    )
+}
+
+fn living_entity_model_root_transform_with_setup_and_renderer_transform(
+    instance: EntityModelInstance,
+    setup_rotation_tail: Mat4,
+    renderer_transform: Mat4,
+) -> Mat4 {
     entity_root_position_transform(instance)
         * entity_render_offset_transform(instance)
         * entity_pre_scale_translation(instance)
@@ -78,6 +90,7 @@ fn living_entity_model_root_transform_with_extra_setup_rotation(
         * entity_setup_rotations_transform(instance)
         * setup_rotation_tail
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
 
@@ -103,14 +116,11 @@ fn living_entity_model_root_transform_with_renderer_transform(
     instance: EntityModelInstance,
     renderer_transform: Mat4,
 ) -> Mat4 {
-    entity_root_position_transform(instance)
-        * entity_render_offset_transform(instance)
-        * entity_pre_scale_translation(instance)
-        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
-        * entity_setup_rotations_transform(instance)
-        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
-        * renderer_transform
-        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+    living_entity_model_root_transform_with_setup_and_renderer_transform(
+        instance,
+        Mat4::IDENTITY,
+        renderer_transform,
+    )
 }
 
 fn entity_render_offset_transform(instance: EntityModelInstance) -> Mat4 {
@@ -1270,8 +1280,40 @@ fn slime_squish_scale(squish: f32, size: i32) -> Mat4 {
 }
 
 pub(in crate::entity_models) fn player_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    living_entity_model_root_transform_with_renderer_transform(
+    let render_state = instance.render_state;
+    let setup_rotation_tail = if render_state.is_fall_flying {
+        let pitch = if render_state.auto_spin_age_ticks.is_some() {
+            Mat4::IDENTITY
+        } else {
+            let pitch_scale =
+                (render_state.player_fall_flying_time_in_ticks.powi(2) / 100.0).clamp(0.0, 1.0);
+            let pitch = pitch_scale * (-90.0 - render_state.head_pitch);
+            Mat4::from_rotation_x(pitch.to_radians())
+        };
+        pitch
+            * if render_state.player_should_apply_flying_y_rot {
+                Mat4::from_rotation_y(render_state.player_flying_y_rot)
+            } else {
+                Mat4::IDENTITY
+            }
+    } else if render_state.swim_amount > 0.0 {
+        let target_pitch = if render_state.in_water {
+            -90.0 - render_state.head_pitch
+        } else {
+            -90.0
+        };
+        Mat4::from_rotation_x((render_state.swim_amount * target_pitch).to_radians())
+            * if render_state.is_visually_swimming {
+                Mat4::from_translation(Vec3::new(0.0, -1.0, 0.3))
+            } else {
+                Mat4::IDENTITY
+            }
+    } else {
+        Mat4::IDENTITY
+    };
+    living_entity_model_root_transform_with_setup_and_renderer_transform(
         instance,
+        setup_rotation_tail,
         Mat4::from_scale(Vec3::splat(AVATAR_RENDERER_SCALE)),
     )
 }
