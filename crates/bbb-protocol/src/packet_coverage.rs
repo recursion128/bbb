@@ -2348,24 +2348,33 @@ mod tests {
     }
 
     #[test]
-    fn play_boss_event_keeps_rich_lerp_order_and_environment_effects_open() {
+    fn play_boss_event_closes_rich_ordered_lerp_environment_and_music_paths() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_BOSS_EVENT")
             .expect("play boss event coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
-        );
+            .all(|(_, cell)| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["decode"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("decodes_boss_event_operations")));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("linked_hash_map_order")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("interpolates_progress_for_exactly")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("restarts_after_backend_reports")));
     }
 
     #[test]

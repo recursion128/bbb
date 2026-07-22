@@ -234,3 +234,7 @@
   任意 baked block quad 与 Vanilla 允许的 block-entity model submission；精确
   `SheetedDecalTextureGenerator` UV、render-type 筛选及共享 crumbling pass 均有语义
   回归，合同见 `docs/block-destruction-packet-closure-design.md`。
+- **2026-07-22（BossEvent 包闭环）**：trusted rich Component 与 `LinkedHashMap` 顺序
+  进入 canonical world，native HUD 复现 100ms `LerpingBossEvent`，三类环境 flag 覆盖
+  lightmap/fog/sky 与 backend-telemetry 驱动的 End boss music；合同见
+  `docs/boss-event-packet-closure-design.md`。

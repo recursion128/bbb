@@ -1247,12 +1247,6 @@ back into a todo. Do not delete these.
   names are already complete for when it lands.
 - **Air bubble-pop sound** (`playAirBubblePoppedSound`, `Gui.java:930-937`).
   Restart when a HUD-side sound sink exists.
-- **Boss bar `darken_screen` / `create_world_fog` / `play_music`.** The first two
-  sit behind `boss_overlay_should_*` queries with no sky/fog consumer; the third
-  has no audio consumer.
-- **Boss bar rich names, insertion order, and 100ms progress lerp.** Preserve
-  trusted Component runs, retain packet-add order, and match
-  `LerpingBossEvent` instead of projecting the latest value immediately.
 - **Accessibility text backdrop** (`textWithBackdrop`, option default `0`).
 - **Jukebox now-playing path** (`Gui.setNowPlaying`, the only `animate_color=true`
   producer). The flag is already carried end to end.
