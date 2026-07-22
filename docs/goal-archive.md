@@ -202,3 +202,6 @@
 - **2026-07-22（persistent HolderSet identity 全量闭环）**：48 个 `RegistryCodecs.homogeneousList`
   调用点由 registry-owned scalar/list/`#tag` 解析器统一收口；14 个客户端组件/谓词与 6 个同步附魔行翻为 complete，28 个服务端专属行以同步边界裁决为 not-applicable，合同见
   `docs/persistent-holder-set-coverage-design.md`。
+- **2026-07-22（persistent Holder reference identity 全量闭环）**：38 个 named persistent
+  Holder 调用点由 registry-owned resource identity 解析器统一收口；25 个客户端/同步 registry 行翻为 complete，13 个服务端专属行裁决为 not-applicable，DamageType 与 GameEvent 引用纳入同步附魔原子校验，合同见
+  `docs/persistent-holder-reference-coverage-design.md`。
