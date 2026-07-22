@@ -739,6 +739,10 @@ fn first_local_boat_mount_aligns_yaw_and_shows_dismount_overlay_once() {
             animate_color: false,
         })
     );
+    let narrations = store.take_pending_chat_narrations();
+    assert_eq!(narrations.len(), 1);
+    assert_eq!(narrations[0].kind, crate::ChatNarrationKind::SystemNow);
+    assert_eq!(narrations[0].content, "Press Left Shift to Dismount");
 
     store.advance_hud_text_ticks(50);
     let mut pose = store.local_player_pose().unwrap();
@@ -755,6 +759,7 @@ fn first_local_boat_mount_aligns_yaw_and_shows_dismount_overlay_once() {
     assert_eq!(store.local_player_pose().unwrap().y_rot, -45.0);
     assert_eq!(store.probe_entity(99).unwrap().y_head_rot, -20.0);
     assert_eq!(store.action_bar().unwrap().display_ticks, 10);
+    assert!(store.take_pending_chat_narrations().is_empty());
 }
 
 #[test]

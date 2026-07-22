@@ -44,6 +44,19 @@ pub(crate) trait SystemNarrator {
     fn say_system_queued(&mut self, message: &str);
 }
 
+pub(crate) fn submit_chat_narration(
+    narrator: &mut dyn SystemNarrator,
+    kind: bbb_world::ChatNarrationKind,
+    message: &str,
+) {
+    match kind {
+        bbb_world::ChatNarrationKind::Chat => narrator.say_chat_queued(message),
+        bbb_world::ChatNarrationKind::SystemChat => narrator.say_system_chat_queued(message),
+        bbb_world::ChatNarrationKind::System => narrator.say_system_queued(message),
+        bbb_world::ChatNarrationKind::SystemNow => narrator.say_system_now(message),
+    }
+}
+
 /// Vanilla orders collected screen narration first by element kind and then by
 /// nesting depth, with at most one value retained for each pair.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -389,6 +402,41 @@ mod tests {
         fn say_system_queued(&mut self, message: &str) {
             self.0.push(message.to_string());
         }
+    }
+
+    #[test]
+    fn typed_chat_narration_dispatch_preserves_interrupting_system_requests() {
+        #[derive(Default)]
+        struct DispatchRecorder(Vec<&'static str>);
+
+        impl SystemNarrator for DispatchRecorder {
+            fn say_system_now(&mut self, _message: &str) {
+                self.0.push("system_now");
+            }
+
+            fn say_chat_queued(&mut self, _message: &str) {
+                self.0.push("chat");
+            }
+
+            fn say_system_chat_queued(&mut self, _message: &str) {
+                self.0.push("system_chat");
+            }
+
+            fn say_system_queued(&mut self, _message: &str) {
+                self.0.push("system");
+            }
+        }
+
+        let mut recorder = DispatchRecorder::default();
+        for kind in [
+            bbb_world::ChatNarrationKind::Chat,
+            bbb_world::ChatNarrationKind::SystemChat,
+            bbb_world::ChatNarrationKind::System,
+            bbb_world::ChatNarrationKind::SystemNow,
+        ] {
+            submit_chat_narration(&mut recorder, kind, "message");
+        }
+        assert_eq!(recorder.0, ["chat", "system_chat", "system", "system_now"]);
     }
 
     #[test]

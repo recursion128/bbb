@@ -349,7 +349,15 @@ impl WorldStore {
         // `mount.onboard` with `Options.keyShift`. BBB currently has one fixed
         // sneak binding (`Left Shift`), so keep the localized English projection
         // beside the HUD owner until configurable key bindings/localization exist.
-        self.set_overlay_message("Press Left Shift to Dismount".to_string());
+        let content = "Press Left Shift to Dismount".to_string();
+        self.set_overlay_message(content.clone());
+        self.push_interrupting_system_narration(
+            content.clone(),
+            vec![StyledTextRun {
+                text: content,
+                style: bbb_protocol::ComponentStyle::default(),
+            }],
+        );
     }
 
     fn set_overlay_message(&mut self, content: String) {

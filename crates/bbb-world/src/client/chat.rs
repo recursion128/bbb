@@ -371,13 +371,30 @@ impl WorldStore {
         content: String,
         styled_content: Vec<StyledTextRun>,
     ) {
+        self.push_pending_chat_narration(ChatNarrationKind::System, content, styled_content);
+    }
+
+    pub(crate) fn push_interrupting_system_narration(
+        &mut self,
+        content: String,
+        styled_content: Vec<StyledTextRun>,
+    ) {
+        self.push_pending_chat_narration(ChatNarrationKind::SystemNow, content, styled_content);
+    }
+
+    fn push_pending_chat_narration(
+        &mut self,
+        kind: ChatNarrationKind,
+        content: String,
+        styled_content: Vec<StyledTextRun>,
+    ) {
         let sequence = self.client_chat.delivery_revision.saturating_add(1);
         self.client_chat.delivery_revision = sequence;
         self.client_chat
             .pending_narrations
             .push(ChatNarrationRequest {
                 sequence,
-                kind: ChatNarrationKind::System,
+                kind,
                 translation_key: None,
                 arguments: Vec::new(),
                 styled_content,

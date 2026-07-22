@@ -672,10 +672,6 @@ Movement:
 - Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
   interpolation, indirect-passenger reposition/old-pose reset, and locally-
   authoritative vehicle echo.
-- Speak the first-local-mount SetPassengers
-  `mount.onboard` message as vanilla system narration. Removed-vehicle recovery
-  reset, the pre-packet indirect-passenger once guard, boat body/head yaw
-  alignment, and the 60-tick dismount-key HUD overlay are already covered.
 - Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`):
   gate it on Player, clear the bed's local occupied state, resolve the safe
   stand-up position/yaw, move to that position, set standing pose, clear

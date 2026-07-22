@@ -108,6 +108,7 @@ pub enum ChatNarrationKind {
     Chat,
     SystemChat,
     System,
+    SystemNow,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

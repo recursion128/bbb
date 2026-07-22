@@ -2991,10 +2991,11 @@
         "evidence": [
           "crates/bbb-world/src/entities/passengers.rs#apply_set_passengers",
           "crates/bbb-world/src/client/hud.rs#set_mount_onboard_overlay",
+          "crates/bbb-world/src/client/chat.rs#push_interrupting_system_narration",
+          "crates/bbb-native/src/narrator_runtime.rs#submit_chat_narration",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEntityPassengersPacket"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
@@ -3003,6 +3004,7 @@
           "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#first_local_boat_mount_aligns_yaw_and_shows_dismount_overlay_once",
           "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#reparenting_within_existing_vehicle_chain_does_not_replay_first_mount",
           "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#first_local_boat_mount_projects_yaw_and_dismount_overlay",
+          "crates/bbb-native/src/narrator_runtime.rs#typed_chat_narration_dispatch_preserves_interrupting_system_requests",
           "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses"
         ],
         "status": "complete"

@@ -299,13 +299,7 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                 let Some(narrator) = self.narrator.as_deref_mut() else {
                     return;
                 };
-                match kind {
-                    bbb_world::ChatNarrationKind::Chat => narrator.say_chat_queued(&text),
-                    bbb_world::ChatNarrationKind::SystemChat => {
-                        narrator.say_system_chat_queued(&text)
-                    }
-                    bbb_world::ChatNarrationKind::System => narrator.say_system_queued(&text),
-                }
+                narrator_runtime::submit_chat_narration(narrator, kind, &text);
             }
             PlatformEffect::Exit => *self.exit_requested = true,
         }
