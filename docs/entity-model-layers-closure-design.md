@@ -277,6 +277,15 @@ serial checkpoints from fully gated commit `e10be4ff5`:
    checkpoint with the matrix still partial; a half-regenerated matrix is not a
    safe stop.
 
+Closeout evidence is now green: the generated registration catalog uniquely
+partitions all 157 fixed types, the native reverse test rejects every raw model
+fallback for production `EntityModel` owners, and the renderer source guard
+keeps those fallbacks out of wildcard dispatch. Separately owned item, frame,
+display, painting, lightning, and block-attachment passes retain explicit
+`NoRender` ownership; world Component text also selects resource-pack fonts and
+frame-seeded equal-advance obfuscation. The full and playable gates below remain
+the delivery exit criterion for the closeout commit.
+
 ## Checkpoints, Failures, and Safe Stops
 
 The baseline was fully gated before work began. Run a full gate at every

@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
-  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, and the source-derived transform/interpolation family partition apply to every catalog row. Generic callback, rendering, event, and debug implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, source-derived transform/interpolation, and the renderer-presentation owner partition apply to every catalog row. Generic animation, equipment/passenger/leash, and event implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
   "uncertainties": [
     "Generic passenger state is present, but family-specific attachment, controlling-passenger, equipment applicability, and leash presentation have not been reverse-audited together.",
     "Generated dimensions and broad pick tests exist, but each pose/scale/collision exception has not been proven for every family.",
-    "Renderer and animation coverage is extensive, but no reverse proof yet shows that every non-noop EntityRenderers registration has exact model, texture, layers, and animation.",
+    "Animation coverage is extensive, but no reverse proof yet shows that every applicable renderer family has exact keyframe/procedural animation and partial interpolation.",
     "Entity-event coverage has many focused mappings, but the complete vanilla subclass override inventory is still open.",
     "Shift-local save projection covers many families, but server-private versus client-observable fields still need a family-by-family audit."
   ],
@@ -143,13 +143,45 @@
     },
     "renderer_audit": {
       "implementation": [
-        "crates/bbb-native/src/entity_scene/kind.rs#fn entity_model_kind"
+        "crates/bbb-world/src/entities/renderer_catalog/generated_26_1.rs#VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1",
+        "crates/bbb-world/src/entities/renderer_catalog.rs#pub fn vanilla_entity_renderer_presentation_owner",
+        "crates/bbb-native/src/entity_scene/kind.rs#fn entity_model_kind",
+        "crates/bbb-renderer/src/entity_models/dispatch.rs#fn dispatch_uniform_entity_model",
+        "crates/bbb-native/src/item_entities.rs#fn item_entity_billboards_from_world",
+        "crates/bbb-native/src/item_models/dropped.rs#fn entity_block_models",
+        "crates/bbb-native/src/item_models/dropped.rs#fn dropped_item_models",
+        "crates/bbb-native/src/item_models/dropped.rs#fn ominous_item_spawner_models",
+        "crates/bbb-native/src/item_frames.rs#fn item_frame_models_with_map_cache",
+        "crates/bbb-native/src/entity_scene/painting.rs#fn painting_model_instances",
+        "crates/bbb-native/src/runtime/render_extract.rs#fn lightning_bolts_for_world",
+        "crates/bbb-renderer/src/weather.rs#fn append_lightning_bolt",
+        "crates/bbb-native/src/entity_name_tags.rs#fn entity_name_tag_surfaces",
+        "crates/bbb-native/src/item_models/display.rs#fn display_entity_item_models"
       ],
       "tests": [
-        "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_chest_equipment_layers"
+        "crates/bbb-world/src/entities/renderer_catalog.rs#generated_registration_catalog_is_complete_and_unique",
+        "crates/bbb-world/src/entities/renderer_catalog.rs#presentation_owner_exhaustively_partitions_every_fixed_entity_type",
+        "crates/bbb-world/src/entities/renderer_catalog/generated_26_1.rs#renderer_dispatch_does_not_restore_wildcard_raw_fallback",
+        "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_matches_every_fixed_renderer_presentation_owner",
+        "crates/bbb-native/src/entity_scene/tests.rs#painting_without_ready_variant_or_atlas_suppresses_raw_fallback_geometry",
+        "crates/bbb-native/src/entity_scene/tests.rs#falling_block_uses_block_attachment_renderer_not_placeholder_bounds",
+        "crates/bbb-native/src/entity_scene/tests.rs#firework_rocket_uses_item_billboard_renderer_not_placeholder_bounds",
+        "crates/bbb-native/src/entity_scene/tests.rs#item_entity_uses_item_model_renderer_not_placeholder_bounds",
+        "crates/bbb-native/src/entity_scene/tests.rs#lightning_bolt_uses_weather_target_renderer_not_entity_placeholder",
+        "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton",
+        "crates/bbb-native/src/item_models/tests.rs#entity_block_attachments_apply_falling_block_state_and_should_render_gate",
+        "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_decoded_full_frame_map_when_data_exists",
+        "crates/bbb-native/src/runtime/tests.rs#weather_render_state_projects_lightning_bolts_without_rain",
+        "crates/bbb-renderer/src/weather.rs#lightning_mesh_uses_vanilla_seeded_quad_pattern",
+        "crates/bbb-renderer/src/item_models/display_text.rs#display_text_uses_custom_font_metrics_and_frame_seeded_obfuscation"
       ],
       "vanilla": [
-        "vanilla:net/minecraft/client/renderer/entity/EntityRenderers.java#static {"
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderers.java#static {",
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#public void submit",
+        "vanilla:net/minecraft/client/renderer/entity/LivingEntityRenderer.java#public void submit",
+        "vanilla:net/minecraft/client/renderer/entity/ItemFrameRenderer.java#public void submit",
+        "vanilla:net/minecraft/client/renderer/entity/FallingBlockRenderer.java#public void submit",
+        "vanilla:net/minecraft/client/renderer/entity/DisplayRenderer.java#public abstract class DisplayRenderer"
       ]
     },
     "noop_renderer": {
@@ -334,9 +366,8 @@
       "evidence_ref": "dimensions_pick_audit"
     },
     "model/texture/layers": {
-      "status": "partial",
-      "evidence_ref": "renderer_audit",
-      "gap": "docs/unsupported-features.md#entity-coverage-matrix-model-texture-and-layers"
+      "status": "complete",
+      "evidence_ref": "renderer_audit"
     },
     "animation": {
       "status": "partial",

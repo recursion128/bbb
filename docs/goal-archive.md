@@ -182,3 +182,7 @@
 - **2026-07-21（generic entity name display 工程切片）**：闭环 rich/team/score
   world 投影、camera/crosshair/F1 可见性、生成 attachment 与 dispatcher 偏移，
   以及 score→name、see-through→normal 的有序双层字体提交。
+- **2026-07-22（entity model/texture/layers 全量闭环）**：生成的 155 个
+  `EntityRenderers` 注册加 Player/Mannequin 例外唯一分区全部 157 行，native
+  逆向测试拒绝生产 raw fallback；独立 pass、族模型/纹理/层、世界文字自定义
+  字体与等宽扰动均有语义证据，矩阵第七类目翻为 complete。

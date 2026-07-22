@@ -801,10 +801,6 @@ Submission surfaces:
   ordered text phase. Texture-backed special geometry added by these surfaces
   must record complete submission metadata before atlas lookup rather than
   reuse the no-texture custom-geometry path.
-- Finish shared world-text font parity for entity names and display text:
-  retained custom Component font ids still use the active default atlas, and
-  obfuscated runs still draw their literal glyphs instead of frame-varying
-  equal-advance substitutes.
 
 Living-entity render state:
 
@@ -817,14 +813,6 @@ Living-entity render state:
   `ArmorStandRenderer.extractRenderState` copies all six synced `Rotations`
   getters directly without partial-tick interpolation. Only `yRot` uses
   `Mth.rotLerp`, and hit `wiggle` adds `partialTicks`; bbb already covers both.
-
-Models and layers:
-
-- Replace the placeholder raw-cuboid `Humanoid` fallback with a vanilla-faithful
-  part-list model.
-- Implement the remaining zombie-family and piglin-family armor nuances and
-  held-item refinements.
-- Implement slime and magma-cube particle/audio coupling and crumbling.
 
 Attachment and spawner presentation:
 
@@ -1355,13 +1343,6 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
-### Entity coverage matrix model texture and layers
-
-- Audit every non-noop vanilla renderer registration for exact model family,
-  texture/variant, shadow/culling, held-item/equipment, emissive, overlay, and
-  attachment layers. A generic cuboid or missing-texture fallback remains
-  partial.
-
 ### Entity coverage matrix animation
 
 - Close every applicable keyframe/procedural animation, render-state partial
@@ -1472,7 +1453,8 @@ back into a todo. Do not delete these.
 ### Entity coverage matrix events particles and audio
 
 - **Broader entity-event particle/audio parity** outside the covered fixed attack
-  sounds and Fox family.
+  sounds and Fox family, including slime/magma-cube particle/audio coupling and
+  crumbling.
 - **Broader firework presentation** outside the Starter particle/audio path and
   the `FireworkRocketEntity` client-tick trail.
 - **Idle/tick block-entity client effects** (the vault event `3015` context).
