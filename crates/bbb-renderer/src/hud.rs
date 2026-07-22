@@ -18288,6 +18288,31 @@ mod tests {
     }
 
     #[test]
+    fn boss_bar_draws_preserve_styled_name_runs() {
+        let glyphs = styled_test_glyphs();
+        let styled_name = HudStyledTextRun {
+            text: "Boss".to_string(),
+            style: HudTextStyle {
+                bold: true,
+                underlined: true,
+                ..HudTextStyle::default()
+            },
+            color: Some(0xFF_55_55),
+        };
+        let bars = [HudBossBar {
+            name_runs: vec![styled_name.clone()],
+            progress: 1.0,
+            color: HudBossBarColor::Purple,
+            overlay: HudBossBarOverlay::Progress,
+        }];
+
+        let draws = hud_boss_bar_draws(&bars, &glyphs, PhysicalSize::new(320, 240));
+
+        assert_eq!(draws.len(), 1);
+        assert_eq!(draws[0].name.runs, &[styled_name]);
+    }
+
+    #[test]
     fn boss_bar_draws_submit_after_status_bars_and_before_the_overlay_message() {
         // Vanilla `Gui.extractRenderState` order: hotbar/status decorations,
         // then the boss overlay stratum, then the overlay message / title

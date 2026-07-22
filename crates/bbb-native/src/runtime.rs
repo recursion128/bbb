@@ -623,6 +623,7 @@ const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_TPS_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_INTERVAL: Duration = Duration::from_millis(50);
+const BOSS_BAR_PROGRESS_LERP_DURATION: Duration = Duration::from_millis(100);
 const CHUNK_BORDER_NEIGHBOR_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 0.5];
 const CHUNK_BORDER_CELL_COLOR: [f32; 4] = [0.0, 155.0 / 255.0, 155.0 / 255.0, 1.0];
 const CHUNK_BORDER_YELLOW_COLOR: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
@@ -657,6 +658,18 @@ pub(crate) struct HudRenderRuntime {
     low_disk_space_toast: SystemToastAnimationState,
     stats_screen_narration: Option<ScreenNarrationFrame>,
     chat_cache_key: Option<HudChatCacheKey>,
+    boss_connection_generation: Option<u64>,
+    boss_progress: BTreeMap<uuid::Uuid, BossBarProgressPresentation>,
+}
+
+#[derive(Debug)]
+struct BossBarProgressPresentation {
+    instance_revision: u64,
+    progress_revision: u64,
+    start_progress: f32,
+    target_progress: f32,
+    started_at: Instant,
+    published_complete: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -694,6 +707,88 @@ impl HudRenderRuntime {
         }
         self.chat_cache_key = Some(key);
         RendererFrameUpdate::Replace(hud_chat_messages_from_world(world, item_runtime))
+    }
+
+    fn boss_bars_update(
+        &mut self,
+        world: &WorldStore,
+        connection_generation: u64,
+        change_anchor: Instant,
+        render_now: Instant,
+        stable_world_unchanged: bool,
+    ) -> RendererFrameUpdate<Vec<bbb_renderer::HudBossBar>> {
+        let connection_changed = self.boss_connection_generation != Some(connection_generation);
+        if connection_changed {
+            self.boss_connection_generation = Some(connection_generation);
+            self.boss_progress.clear();
+        }
+        self.boss_progress
+            .retain(|id, _| world.boss_bar(*id).is_some());
+
+        let mut must_replace = connection_changed || !stable_world_unchanged;
+        let mut bars = Vec::with_capacity(world.boss_bars().len());
+        for bar in world.boss_bars() {
+            let presentation =
+                self.boss_progress
+                    .entry(bar.id)
+                    .or_insert_with(|| BossBarProgressPresentation {
+                        instance_revision: bar.instance_revision,
+                        progress_revision: bar.progress_revision,
+                        start_progress: bar.progress,
+                        target_progress: bar.progress,
+                        started_at: change_anchor,
+                        published_complete: true,
+                    });
+            if presentation.instance_revision != bar.instance_revision {
+                *presentation = BossBarProgressPresentation {
+                    instance_revision: bar.instance_revision,
+                    progress_revision: bar.progress_revision,
+                    start_progress: bar.progress,
+                    target_progress: bar.progress,
+                    started_at: change_anchor,
+                    published_complete: true,
+                };
+            } else if presentation.progress_revision != bar.progress_revision {
+                let visible_progress = presentation.progress_at(change_anchor);
+                presentation.progress_revision = bar.progress_revision;
+                presentation.start_progress = visible_progress;
+                presentation.target_progress = bar.progress;
+                presentation.started_at = change_anchor;
+                presentation.published_complete = false;
+            }
+
+            let progress = presentation.progress_at(render_now);
+            let active = presentation.is_active_at(render_now);
+            if active || !presentation.published_complete {
+                must_replace = true;
+            }
+            if !active {
+                presentation.published_complete = true;
+            }
+            if let Some(projected) = hud_boss_bar_from_world_state(bar, progress) {
+                bars.push(projected);
+            }
+        }
+
+        if must_replace {
+            RendererFrameUpdate::Replace(bars)
+        } else {
+            RendererFrameUpdate::Unchanged
+        }
+    }
+}
+
+impl BossBarProgressPresentation {
+    fn progress_at(&self, now: Instant) -> f32 {
+        let elapsed = now.saturating_duration_since(self.started_at);
+        let fraction =
+            (elapsed.as_secs_f32() / BOSS_BAR_PROGRESS_LERP_DURATION.as_secs_f32()).clamp(0.0, 1.0);
+        self.start_progress + fraction * (self.target_progress - self.start_progress)
+    }
+
+    fn is_active_at(&self, now: Instant) -> bool {
+        self.start_progress != self.target_progress
+            && now.saturating_duration_since(self.started_at) < BOSS_BAR_PROGRESS_LERP_DURATION
     }
 }
 
@@ -2704,13 +2799,16 @@ pub(crate) fn update_renderer_from_publication(
         queued_messages: queued_chat_messages,
         queue_text: queued_chat_messages_text,
     };
-    // Vanilla `Gui.extractBossOverlay` re-walks the tracked boss events every
-    // frame with no countdown state, so the projection is pure world state.
-    let hud_boss_bars = if stable_world_unchanged {
-        RendererFrameUpdate::Unchanged
-    } else {
-        RendererFrameUpdate::Replace(hud_boss_bars_from_world(world))
-    };
+    // `LerpingBossEvent` owns a 100ms wall-clock presentation curve outside
+    // canonical packet state. Anchor newly published targets at the
+    // simulation change time, then sample them at this render's wall clock.
+    let hud_boss_bars = hud_render_runtime.boss_bars_update(
+        world,
+        net_counters.connection_generation,
+        now,
+        render_started_at,
+        stable_world_unchanged,
+    );
     let item_model_keybind_context = input.item_model_keybind_context();
     let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(
         world,

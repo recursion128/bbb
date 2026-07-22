@@ -296,6 +296,13 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     colors: CameraEnvironmentColors,
     hide_lightning_flash: bool,
 ) -> SkyEnvironment {
+    // `GameRenderer.renderLevel` passes `!shouldCreateBossFog` as
+    // `LevelRenderer.renderLevel`'s `shouldRenderSky` argument. Boss fog only
+    // suppresses the sky pass; atmospheric fog and End-flash light remain
+    // separate consumers of the same aggregate property.
+    if world.boss_overlay_should_create_world_fog() {
+        return SkyEnvironment::disabled();
+    }
     match world
         .level_info()
         .map(WorldLevelInfo::skybox)
@@ -1291,28 +1298,38 @@ fn push_hud_chat_literal(
 /// list, mirroring `BossHealthOverlay.extractRenderState`'s walk over its
 /// event map (BossHealthOverlay.java:57-82). The world retains the
 /// `LinkedHashMap` packet-add order, including in-place replacement and
-/// remove/re-add behavior. Rich names and `LerpingBossEvent`'s 100ms
-/// wall-clock smoothing are projected by the HUD presentation owner in the
-/// boss-event closure stage; this direct helper retains the plain/latest
-/// fallback for focused extraction callers. Bars whose stored color/overlay
-/// names fall outside the vanilla `BossEvent` getName vocabularies
+/// remove/re-add behavior. Names retain their trusted inherited styled runs;
+/// the `HudRenderRuntime` caller replaces the latest target progress with
+/// `LerpingBossEvent`'s 100ms wall-clock presentation value. Bars whose stored
+/// color/overlay names fall outside the vanilla `BossEvent` getName vocabularies
 /// (impossible via the protocol path, reachable only through deserialized
 /// state) are dropped. The darken-screen / world-fog flags stay behind the
 /// world's `boss_overlay_should_*` queries; they are sky/fog effects, not
 /// bar draws.
+#[cfg(test)]
 pub(crate) fn hud_boss_bars_from_world(world: &WorldStore) -> Vec<HudBossBar> {
     world
         .boss_bars()
         .iter()
-        .filter_map(|bar| {
-            Some(HudBossBar {
-                name_runs: vec![HudStyledTextRun::plain(bar.name.text())],
-                progress: bar.progress,
-                color: HudBossBarColor::from_name(&bar.color)?,
-                overlay: HudBossBarOverlay::from_name(&bar.overlay)?,
-            })
-        })
+        .filter_map(|bar| hud_boss_bar_from_world_state(bar, bar.progress))
         .collect()
+}
+
+pub(crate) fn hud_boss_bar_from_world_state(
+    bar: &bbb_world::BossBarState,
+    progress: f32,
+) -> Option<HudBossBar> {
+    Some(HudBossBar {
+        name_runs: bar
+            .name
+            .styled()
+            .iter()
+            .map(|run| hud_chat_run(&run.text, &run.style))
+            .collect(),
+        progress,
+        color: HudBossBarColor::from_name(&bar.color)?,
+        overlay: HudBossBarOverlay::from_name(&bar.overlay)?,
+    })
 }
 
 pub(crate) fn hud_player_list_from_world(

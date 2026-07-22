@@ -4791,7 +4791,7 @@ fn hud_boss_bar_projection_keeps_packet_add_order_and_maps_style_names() {
     world.apply_boss_event(bbb_protocol::packets::BossEvent {
         id: dragon,
         operation: bbb_protocol::packets::BossEventOperation::Add {
-            name: Box::new(bbb_protocol::RichTextComponent::plain("Ender Dragon")),
+            name: styled_boss_component("Ender Dragon"),
             progress: 0.75,
             color: bbb_protocol::packets::BossBarColor::Purple,
             overlay: bbb_protocol::packets::BossBarOverlay::Progress,
@@ -4819,10 +4819,10 @@ fn hud_boss_bar_projection_keeps_packet_add_order_and_maps_style_names() {
 
     let bars = hud_boss_bars_from_world(&world);
     assert_eq!(bars.len(), 2);
-    assert_eq!(
-        bars[0].name_runs,
-        vec![bbb_renderer::HudStyledTextRun::plain("Ender Dragon")]
-    );
+    assert_eq!(bars[0].name_runs.len(), 1);
+    assert_eq!(bars[0].name_runs[0].text, "Ender Dragon");
+    assert!(bars[0].name_runs[0].style.bold);
+    assert_eq!(bars[0].name_runs[0].color, Some(0xFF_55_55));
     assert_eq!(bars[0].progress, 0.75);
     assert_eq!(bars[0].color, bbb_renderer::HudBossBarColor::Purple);
     assert_eq!(bars[0].overlay, bbb_renderer::HudBossBarOverlay::Progress);
@@ -4853,6 +4853,158 @@ fn hud_boss_bar_projection_keeps_packet_add_order_and_maps_style_names() {
     let bars = hud_boss_bars_from_world(&world);
     assert_eq!(bars.len(), 1);
     assert_eq!(bars[0].progress, 0.75);
+}
+
+#[test]
+fn hud_boss_bar_runtime_interpolates_progress_for_exactly_one_hundred_milliseconds() {
+    let id = uuid::Uuid::from_u128(7);
+    let start = Instant::now();
+    let mut world = WorldStore::new();
+    add_boss_bar_with_id_and_progress(&mut world, id, 0.0);
+    let mut runtime = HudRenderRuntime::default();
+
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(&world, 1, start, start, false)),
+        Some(vec![0.0])
+    );
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id,
+        operation: ProtocolBossEventOperation::UpdateProgress { progress: 1.0 },
+    }));
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(&world, 1, start, start, false)),
+        Some(vec![0.0])
+    );
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            1,
+            start,
+            start + Duration::from_millis(50),
+            true,
+        )),
+        Some(vec![0.5])
+    );
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            1,
+            start,
+            start + Duration::from_millis(100),
+            true,
+        )),
+        Some(vec![1.0])
+    );
+    assert!(matches!(
+        runtime.boss_bars_update(&world, 1, start, start + Duration::from_millis(101), true,),
+        RendererFrameUpdate::Unchanged
+    ));
+}
+
+#[test]
+fn hud_boss_bar_runtime_samples_interrupted_and_equal_target_updates() {
+    let id = uuid::Uuid::from_u128(8);
+    let start = Instant::now();
+    let mut world = WorldStore::new();
+    add_boss_bar_with_id_and_progress(&mut world, id, 0.0);
+    let mut runtime = HudRenderRuntime::default();
+    let _ = runtime.boss_bars_update(&world, 1, start, start, false);
+
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id,
+        operation: ProtocolBossEventOperation::UpdateProgress { progress: 1.0 },
+    }));
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            1,
+            start,
+            start + Duration::from_millis(50),
+            false,
+        )),
+        Some(vec![0.5])
+    );
+
+    // Even an equal-valued packet restarts `LerpingBossEvent` from the
+    // currently visible value rather than being coalesced away.
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id,
+        operation: ProtocolBossEventOperation::UpdateProgress { progress: 1.0 },
+    }));
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            1,
+            start + Duration::from_millis(50),
+            start + Duration::from_millis(100),
+            false,
+        )),
+        Some(vec![0.75])
+    );
+
+    // An interrupted update likewise samples the active curve at the packet
+    // time, then begins the replacement curve from that visible value.
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id,
+        operation: ProtocolBossEventOperation::UpdateProgress { progress: 0.0 },
+    }));
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            1,
+            start + Duration::from_millis(100),
+            start + Duration::from_millis(150),
+            false,
+        )),
+        Some(vec![0.375])
+    );
+}
+
+#[test]
+fn hud_boss_bar_runtime_jumps_on_add_replacement_remove_and_connection_reset() {
+    let id = uuid::Uuid::from_u128(9);
+    let start = Instant::now();
+    let mut world = WorldStore::new();
+    add_boss_bar_with_id_and_progress(&mut world, id, 0.25);
+    let mut runtime = HudRenderRuntime::default();
+    let _ = runtime.boss_bars_update(&world, 4, start, start, false);
+
+    add_boss_bar_with_id_and_progress(&mut world, id, 0.8);
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            4,
+            start + Duration::from_millis(10),
+            start + Duration::from_millis(10),
+            false,
+        )),
+        Some(vec![0.8])
+    );
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            5,
+            start + Duration::from_millis(20),
+            start + Duration::from_millis(20),
+            true,
+        )),
+        Some(vec![0.8])
+    );
+
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id,
+        operation: ProtocolBossEventOperation::Remove,
+    }));
+    assert_eq!(
+        boss_bar_progresses(runtime.boss_bars_update(
+            &world,
+            5,
+            start + Duration::from_millis(30),
+            start + Duration::from_millis(30),
+            false,
+        )),
+        Some(Vec::new())
+    );
 }
 
 #[test]
@@ -5824,6 +5976,22 @@ fn sky_environment_projects_end_skybox_state() {
     assert!(sky.end_sky_visible());
     assert!(!sky.is_visible());
     assert_eq!(sky.sunrise_sunset_color[3], 0.0);
+}
+
+#[test]
+fn sky_environment_suppresses_every_sky_pass_for_boss_world_fog() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    add_boss_bar(&mut world, false, true);
+
+    assert_eq!(
+        sky_environment_for_world_at_camera(
+            &world,
+            &TerrainTextureState::default(),
+            camera_pose_from_world(&world),
+            false,
+        ),
+        SkyEnvironment::disabled()
+    );
 }
 
 #[test]
@@ -7462,6 +7630,54 @@ fn add_boss_bar(world: &mut WorldStore, darken_screen: bool, create_world_fog: b
             },
         },
     }));
+}
+
+fn styled_boss_component(text: &str) -> Box<bbb_protocol::RichTextComponent> {
+    Box::new(
+        bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String(text.to_string()),
+            },
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String("red".to_string()),
+            },
+        ]))
+        .unwrap(),
+    )
+}
+
+fn add_boss_bar_with_id_and_progress(world: &mut WorldStore, id: uuid::Uuid, progress: f32) {
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id,
+        operation: ProtocolBossEventOperation::Add {
+            name: Box::new(bbb_protocol::RichTextComponent::plain("Boss")),
+            progress,
+            color: BossBarColor::Purple,
+            overlay: BossBarOverlay::Progress,
+            flags: ProtocolBossEventFlags {
+                darken_screen: false,
+                play_music: false,
+                create_world_fog: false,
+            },
+        },
+    }));
+}
+
+fn boss_bar_progresses(
+    update: RendererFrameUpdate<Vec<bbb_renderer::HudBossBar>>,
+) -> Option<Vec<f32>> {
+    match update {
+        RendererFrameUpdate::Unchanged => None,
+        RendererFrameUpdate::Replace(bars) => {
+            Some(bars.into_iter().map(|bar| bar.progress).collect())
+        }
+    }
 }
 
 fn clear_boss_overlay_properties(world: &mut WorldStore) {
