@@ -401,7 +401,8 @@ pub(super) fn entity_model_instance(
             item_types::VANILLA_ITEM_POTION_ID,
         );
     // Vanilla `CopperGolemModel.setupAnim`: either rendered hand item state selects the held-item arm
-    // clamp before `ItemInHandLayer` reads the hand transform. The walk-with-item keyframe stays deferred.
+    // clamp before `ItemInHandLayer` reads the fully posed hand transform, including the projected
+    // walk-with-item keyframe.
     let copper_golem_holding_item = matches!(kind, EntityModelKind::CopperGolem { .. })
         && (entity_main_hand_non_empty(world, source.entity_id)
             || entity_offhand_non_empty(world, source.entity_id));
@@ -421,7 +422,8 @@ pub(super) fn entity_model_instance(
         && entity_offhand_holds_loved_item(world, source.entity_id);
     // Vanilla `Piglin.getArmPose` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow, not
     // dancing (top priority), not admiring (an offhand loved item, higher priority), and not mid-draw
-    // (`CROSSBOW_CHARGE`, whose pull-back pose is deferred). The higher-priority `ATTACKING_WITH_MELEE_WEAPON`
+    // (`CROSSBOW_CHARGE`, whose projected use duration drives the pull-back pose). The higher-priority
+    // `ATTACKING_WITH_MELEE_WEAPON`
     // needs a tool main-hand item, so a charged-crossbow hand excludes it. Resolve the held item just for it.
     let piglin_crossbow_hold =
         matches!(

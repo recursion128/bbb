@@ -1341,13 +1341,6 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
-### Entity coverage matrix animation
-
-- Close every applicable keyframe/procedural animation, render-state partial
-  interpolation, baby transform, and family-specific client animation counter.
-  Unobservable random starting phases require a narrow evidence-backed
-  not-applicable decision rather than a fabricated seed.
-
 ### Entity coverage matrix equipment passenger and leash
 
 - Audit equipment slot applicability and presentation, passenger attachment and
@@ -1381,8 +1374,9 @@ back into a todo. Do not delete these.
   animation.
 - **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves
   from synced `DATA_VARIANT_ID` by bootstrap order.
-- **Rabbit `IDLE_HEAD_TILT` keyframe.** `shouldPlayIdleAnimation` is gated on a
-  `random.nextInt(40) + 180` timeout and is not reconstructable client-side.
+- **Rabbit `IDLE_HEAD_TILT` keyframe — not-needed.** Vanilla starts it from the
+  entity's client-local `random.nextInt(40) + 180` timeout, so a remote client's
+  particular phase is not reconstructable and bbb must not fabricate a seed.
 - **Local TNT movement / fuse countdown simulation.** The current slice consumes
   world entity position and synced/default fuse metadata. Restart with broader
   entity-physics parity.

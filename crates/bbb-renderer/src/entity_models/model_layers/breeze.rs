@@ -184,8 +184,8 @@ pub(in crate::entity_models) const BREEZE_WIND_TOP_POSE: PartPose = PartPose {
 // Vanilla 26.1 `BreezeAnimation.IDLE` (length 2.0s, looping). The head bobs on a CATMULLROM position
 // spline; the rods spin a full `1080°` of yaw per cycle (LINEAR) while bobbing on a LINEAR position
 // spline. The `wind_top` / `wind_mid` pivots sway on their own LINEAR position splines; those bones
-// live only in the deferred wind layer ([`BreezeWindModel`]), so the base body's `apply_breeze_anim`
-// (which samples `body`/`head`/`rods`) ignores them while the wind layer picks them up.
+// live only in the separate wind layer ([`BreezeWindModel`]), so the base body's
+// `apply_breeze_anim` ignores them while the wind model samples them.
 const BREEZE_IDLE_WIND_TOP_POS: [Keyframe; 6] = [
     keyframe(0.0, pos_vec(0.5, 0.0, 0.0), Linear),
     keyframe(0.25, pos_vec(0.5, 0.0, -0.5), Linear),
@@ -261,7 +261,7 @@ pub(in crate::entity_models) const BREEZE_IDLE: AnimationDefinition = AnimationD
 
 // ----- `BreezeAnimation.SHOOT` (length 1.125s, NOT looping). All keyframes LINEAR. The
 // body-layer bones (`body`/`head`/`rods`) are applied here; the `wind_*` channels target the
-// deferred wind-body layer's parts (absent from this model, so `sample_bone_offsets` skips them). -----
+// separate wind model's parts (absent here, so `sample_bone_offsets` skips them). -----
 const BREEZE_SHOOT_HEAD_ROT: [Keyframe; 5] = [
     keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
     keyframe(0.25, degree_vec(-12.5, 0.0, 0.0), LINEAR),
@@ -376,7 +376,7 @@ pub(in crate::entity_models) const BREEZE_SHOOT: AnimationDefinition = Animation
 
 // ----- `BreezeAnimation.JUMP` (length 0.5s, NOT looping). All keyframes LINEAR. The
 // body-layer bones (`body`/`head`/`rods`) are applied here; the `wind_*` channels target the
-// deferred wind-body layer's parts (absent from this model, so `sample_bone_offsets` skips them). -----
+// separate wind model's parts (absent here, so `sample_bone_offsets` skips them). -----
 const BREEZE_JUMP_BODY_POS: [Keyframe; 3] = [
     keyframe(0.0, pos_vec(0.0, -10.0, 0.0), LINEAR),
     keyframe(0.125, pos_vec(0.0, 11.0, 0.0), LINEAR),
@@ -481,7 +481,7 @@ pub(in crate::entity_models) const BREEZE_JUMP: AnimationDefinition = AnimationD
 
 // ----- `BreezeAnimation.INHALE` (length 2.0s, NOT looping). All keyframes LINEAR. The
 // body-layer bones (`body`/`head`/`rods`) are applied here; the `wind_*` channels target the
-// deferred wind-body layer's parts (absent from this model, so `sample_bone_offsets` skips them). -----
+// separate wind model's parts (absent here, so `sample_bone_offsets` skips them). -----
 const BREEZE_INHALE_BODY_POS: [Keyframe; 3] = [
     keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
     keyframe(0.5, pos_vec(0.0, -10.0, 0.0), LINEAR),
@@ -586,7 +586,7 @@ pub(in crate::entity_models) const BREEZE_INHALE: AnimationDefinition = Animatio
 
 // ----- `BreezeAnimation.SLIDE` (length 0.2s, NOT looping). All keyframes LINEAR. The
 // body-layer bones (`body`/`head`/`rods`) are applied here; the `wind_*` channels target the
-// deferred wind-body layer's parts (absent from this model, so `sample_bone_offsets` skips them). -----
+// separate wind model's parts (absent here, so `sample_bone_offsets` skips them). -----
 const BREEZE_SLIDE_BODY_POS: [Keyframe; 2] = [
     keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
     keyframe(0.2, pos_vec(0.0, 0.0, -6.0), LINEAR),
@@ -627,7 +627,7 @@ pub(in crate::entity_models) const BREEZE_SLIDE: AnimationDefinition = Animation
 
 // ----- `BreezeAnimation.SLIDE_BACK` (length 0.1s, NOT looping). All keyframes LINEAR. The
 // body-layer bones (`body`/`head`/`rods`) are applied here; the `wind_*` channels target the
-// deferred wind-body layer's parts (absent from this model, so `sample_bone_offsets` skips them). -----
+// separate wind model's parts (absent here, so `sample_bone_offsets` skips them). -----
 const BREEZE_SLIDE_BACK_BODY_POS: [Keyframe; 2] = [
     keyframe(0.0, pos_vec(0.0, 0.0, -6.0), LINEAR),
     keyframe(0.1, pos_vec(0.0, 0.0, 0.0), LINEAR),
@@ -674,8 +674,7 @@ pub(in crate::entity_models) const BREEZE_SLIDE_BACK: AnimationDefinition = Anim
 /// channel) plus the pose-driven action one-shots `SHOOT`/`SLIDE`/`SLIDE_BACK`/`INHALE`/`JUMP`, each
 /// ADDED on top in vanilla `setupAnim` order over its projected elapsed seconds (the non-looping
 /// actions clamp past their length to the final frame). The actions' `wind_*` channels target the
-/// deferred wind layer's parts and are skipped (those bones are absent). The emissive eyes and the
-/// translucent wind body stay deferred entity-side state.
+/// separately submitted wind model and are skipped here because those bones are absent.
 fn apply_breeze_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let idle_seconds =
         keyframe_elapsed_seconds(&BREEZE_IDLE, instance.render_state.age_in_ticks * 0.05);
@@ -717,8 +716,8 @@ fn apply_breeze_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
 /// Mutable breeze model, mirroring vanilla `BreezeModel`'s base body layer. A synthetic root holds the
 /// `body` pivot → (`head`, `rods` pivot → the three rods at their fixed bind poses); each cube carries
 /// both the colored tint and the textured UV, so one tree drives both render paths. `setup_anim` runs
-/// [`apply_breeze_anim`] (idle + the pose-driven action one-shots). The translucent wind body and the
-/// emissive eyes layers stay deferred.
+/// [`apply_breeze_anim`] (idle + pose-driven action one-shots); typed passes submit the posed
+/// translucent wind body and emissive eyes layers.
 pub(in crate::entity_models) struct BreezeModel {
     root: ModelPart,
 }

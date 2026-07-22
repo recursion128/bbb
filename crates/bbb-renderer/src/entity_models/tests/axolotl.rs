@@ -126,7 +126,7 @@ fn axolotl_mesh_selects_adult_or_baby_body_layer() {
 #[test]
 fn axolotl_adult_body_turns_toward_the_look_yaw() {
     // Vanilla `AdultAxolotlModel.setupAnim` turns the whole body toward the look:
-    // `body.yRot += yRot·π/180`, unconditionally and before the deferred procedural sways. The body
+    // `body.yRot += yRot·π/180`, unconditionally and before the procedural land/water sways. The body
     // is the root part, so the yaw rotates every vertex about the body pivot.
     let adult_rest = entity_model_mesh(&[EntityModelInstance::axolotl(
         82,

@@ -866,8 +866,8 @@ fn zombie_family_swings_its_legs_when_walking() {
     // * speed` (the right leg in phase, the left out of phase) before the zombie arm
     // pose runs, and zombies inherit those legs unchanged. A standing zombie is
     // inert, a walking one lifts its feet (a shorter model) and splays its legs
-    // forward/back (a deeper footprint). The held-out zombie arm pose is a separate
-    // deferred feature, so the arms stay put.
+    // forward/back (a deeper footprint). The projected zombie arm pose is applied after the
+    // inherited walk swing; this test isolates the leg region.
     let instances: [(&str, EntityModelInstance); 5] = [
         (
             "zombie",
@@ -1027,8 +1027,8 @@ fn zombie_textured_mesh_matches_colored_geometry_and_legs_swing() {
         assert_close3(tmin, cmin);
         assert_close3(tmax, cmax);
 
-        // Vanilla runs the leg swing every frame; advancing the walk animation re-poses the
-        // legs (the held-out arms stay deferred, like the colored path).
+        // Vanilla runs the leg swing every frame; advancing the walk animation re-poses the legs
+        // while the projected zombie-arm branch is shared with the colored path.
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];
@@ -1126,7 +1126,7 @@ fn husk_textured_mesh_matches_colored_geometry_and_legs_swing() {
         assert_close3(tmax, cmax);
 
         // Vanilla runs the leg swing every frame; advancing the walk animation re-poses the legs
-        // (the held-out arms stay deferred, like the colored path).
+        // while the projected zombie-arm branch is shared with the colored path.
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];
@@ -1683,7 +1683,7 @@ fn zombie_villager_textured_mesh_matches_colored_geometry_and_legs_swing() {
         assert_close3(tmin, cmin);
         assert_close3(tmax, cmax);
 
-        // Walking re-poses the legs on both render paths (the held-out arms stay deferred).
+        // Walking re-poses the legs on both render paths; both share the projected zombie-arm branch.
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];

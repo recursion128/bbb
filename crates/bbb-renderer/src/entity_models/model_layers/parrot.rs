@@ -26,10 +26,10 @@ pub(in crate::entity_models) const MODEL_LAYER_PARROT: &str = "minecraft:parrot#
 // the tail adds its walk swing, and the wings set `zRot = ±(0.0873 + flapAngle)`. `flapAngle` is the
 // projected `parrot_flap_angle` (vanilla `(sin(flap) + 1) * flapSpeed`); a grounded parrot has
 // `flapSpeed == 0 → flapAngle == 0`, so the wings settle to `zRot = ±0.0873` and the bob vanishes.
-// DEFERRED: the ON_SHOULDER pose (needs the shoulder-riding render path) — a shoulder parrot falls
-// back to STANDING/FLYING. The five `Parrot.Variant` colors live on the texture-backed path, so the
-// colored debug path renders one body tint plus a beak tint. Parrot uses a plain `MobRenderer` with no
-// transform overrides.
+// The player's parrot-on-shoulder layer selects `ON_SHOULDER`, which uses vanilla's shoulder
+// preparation branch and holds the wings instead of applying the free-flight bob. The five `Parrot.Variant`
+// colors live on the texture-backed path, so the colored debug path renders one body tint plus a beak
+// tint. Parrot uses a plain `MobRenderer` with no transform overrides.
 
 // `body`: the 3×6×3 torso at texOffs(2, 8).
 pub(in crate::entity_models) const PARROT_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(

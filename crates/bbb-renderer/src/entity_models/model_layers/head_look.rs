@@ -1084,8 +1084,8 @@ pub(in crate::entity_models) fn apply_half_amplitude_leg_swing(
 /// half-cycle out (`cos(pos + π)`); that diagonal pairing is exactly the legs whose
 /// part offset satisfies `x * z > 0` (right-front is `x < 0, z < 0`; left-hind is
 /// `x > 0, z > 0`), the opposite sign from the `QuadrupedModel` rule. The base leg
-/// pose carries no `xRot`, so it is set (not accumulated). The ear sway and the
-/// headbutt head tilt are separate deferred animations.
+/// pose carries no `xRot`, so it is set (not accumulated). Ear sway and the projected headbutt
+/// timer are applied by `HoglinModel` after this shared leg helper.
 pub(in crate::entity_models) fn hoglin_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -1288,8 +1288,8 @@ pub(in crate::entity_models) fn apply_wolf_sitting_pose(
 /// is a custom `EntityModel`, but the leg swing follows the `QuadrupedModel` phase
 /// (the right-hind/left-front pair in phase, resolved from `x * z < 0`) with a
 /// shorter `0.4` amplitude (vanilla `legRot = 0.4 * walkAnimationSpeed`, no `1.4`
-/// factor). The base leg pose carries no `xRot`, so it is set (not accumulated). The
-/// neck/mouth attack/stun/roar poses are separate deferred event animations.
+/// factor). The base leg pose carries no `xRot`, so it is set (not accumulated). `RavagerModel`
+/// applies the projected neck/mouth attack, stun, and roar timers after this helper.
 pub(in crate::entity_models) fn ravager_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -1330,8 +1330,8 @@ pub(in crate::entity_models) enum IronGolemWalkPart {
 /// `Mth.triangleWave(walkAnimationPos, 13)`. Legs: `xRot = ±1.5 * triangleWave *
 /// speed`. Arms (the default branch, when not attacking and not offering a flower):
 /// `xRot = (-0.2 ± 1.5 * triangleWave) * speed`. The base pose carries no `xRot`, so
-/// it is set (not accumulated). The attack swing and the offer-flower arm pose are
-/// separate deferred event animations driven by server-authoritative timers.
+/// it is set (not accumulated). `IronGolemModel` applies the attack swing and offer-flower arm pose
+/// afterwards from projected server-authoritative timers.
 pub(in crate::entity_models) fn iron_golem_walk_pose(
     base: PartPose,
     walk_animation_pos: f32,

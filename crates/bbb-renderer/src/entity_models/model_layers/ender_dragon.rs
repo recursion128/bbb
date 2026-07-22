@@ -8,11 +8,10 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // plus a 56×0×56 membrane plane and a wing tip — and the four three-segment legs). The whole
 // `EnderDragonModel.setupAnim` is procedural: every neck/tail segment is re-placed from the
 // `DragonFlightHistory` path each frame, the wings flap (`flapTime`), the jaw opens, and the root
-// gets the `bounce` y / fixed `z = -48` / `xRot` adjustments. All of that is deferred (like the
-// guardian's procedural tail), so the model renders at this straight bind layout. `EnderDragonRenderer`
-// applies the flight-history yaw, a pitch, a fixed `translate(0, 0, 1)`, and the standard flip /
-// y-offset (captured by `ender_dragon_model_root_transform`). The dying dissolve and nearest-crystal
-// healing beam are deferred; the base texture path and emissive eyes pass are wired. The colored
+// gets the `bounce` y / fixed `z = -48` / `xRot` adjustments. `EnderDragonRenderer` applies the
+// flight-history yaw, pitch, fixed `translate(0, 0, 1)`, and standard flip / y-offset through
+// `ender_dragon_model_root_transform`. Dying dissolve, death rays, the nearest-crystal healing beam,
+// base texture, and emissive eyes all use dedicated submissions. The colored
 // debug path renders the body dark and the wing membranes a lighter tint. Each unified cube carries
 // both the colored debug tint (`DRAGON_BODY` / `DRAGON_MEMBRANE`) and the textured `uv_size` /
 // `texOffs`.
@@ -381,11 +380,10 @@ fn dragon_wing(
     )
 }
 
-/// Static ender-dragon model mirroring vanilla `EnderDragonModel` at its `createBodyLayer` straight
-/// bind layout: the mesh root holds the head (parenting the jaw), the five neck and twelve tail spine
-/// segments, and the body (parenting the two wings and four legs). The whole `setupAnim` is
-/// procedural and deferred to `ender_dragon_model_root_transform`, so the model has no per-frame
-/// `setup_anim`. Each cube carries the colored tint and the textured UV.
+/// Ender-dragon model mirroring vanilla `EnderDragonModel`: the mesh root holds the head (parenting
+/// the jaw), five neck and twelve tail spine segments, and the body (parenting two wings and four
+/// legs). Per-frame `setup_anim` replays the projected flight history and flap/phase state. Each cube
+/// carries the colored tint and textured UV.
 pub(in crate::entity_models) struct EnderDragonModel {
     root: ModelPart,
 }

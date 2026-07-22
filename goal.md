@@ -247,8 +247,8 @@ effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域�
 foundation、entity matrix+schema+spawn/transform、playable session lifecycle 四个
 foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺序调整为：
 
-1. entity 矩阵其余开放类目（animation、equipment/passenger/leash、
-   event/particle/audio）的 family closure；
+1. entity 矩阵其余开放类目（equipment/passenger/leash、event/particle/audio）
+   的 family closure；
 2. play packet family 与 registry consumer 长尾——优先随上述垂直 slice 顺带
    关闭；独立立项仅当其阻塞前两者或本身构成 hardest-ready 工程；
 3. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。

@@ -13,8 +13,8 @@ pub(in crate::entity_models) const MODEL_LAYER_WIND_CHARGE: &str = "minecraft:wi
 // children off `ageInTicks` ([`wind_charge_spin_yrot`]): `wind.yRot = age·16°` (a *set*, overwriting
 // the -π/4 bind) and `windCharge.yRot = -age·16°`. The whole model uses `RenderTypes::entityTranslucent`
 // and the `WindChargeRenderer` draws the scrolling `breezeWind` texture (a plain `EntityRenderer`, no
-// flip/scale), both deferred, so the colored debug path renders the wind shell and core as opaque
-// tinted geometry with the counter-spin applied.
+// flip/scale); the colored debug path renders opaque tints while the textured path records the
+// translucent scrolling submission.
 
 pub(in crate::entity_models) const WIND_CHARGE_WIND_CUBES: [ModelCube; 2] = [
     ModelCube::new(
@@ -59,9 +59,8 @@ pub(in crate::entity_models) fn wind_charge_spin_yrot(age_in_ticks: f32) -> f32 
 }
 
 /// Mutable wind charge model, mirroring vanilla `WindChargeModel`. The cubeless `bone` root parents
-/// the named `wind` shell and `wind_charge` core, built from the baked colored geometry. Colored-only
-/// (the scrolling translucent texture is deferred): `setup_anim` counter-spins the two children off
-/// `ageInTicks` via `child_mut`.
+/// the named `wind` shell and `wind_charge` core. `setup_anim` counter-spins both children off
+/// `ageInTicks`; colored and translucent textured paths consume the same posed tree.
 pub(in crate::entity_models) struct WindChargeModel {
     root: ModelPart,
 }

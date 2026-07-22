@@ -1780,13 +1780,12 @@ entity_model_source_state! {
     pub fox_is_sitting: bool,
     /// Vanilla `FoxRenderState.isPouncing` (`Fox.isPouncing()`, the synced `DATA_FLAGS_ID & 16`): a
     /// pouncing fox, whose `FoxModel.setupAnim` runs `setPouncingPose`. Projected only for the fox;
-    /// `false` for every other entity. The `FoxRenderer.setupRotations` body-pitch flip stays deferred.
+    /// `false` for every other entity. The renderer root transform applies the body-pitch flip.
     #[serde(default)]
     pub fox_is_pouncing: bool,
     /// Vanilla `FoxRenderState.isFaceplanted` (`Fox.isFaceplanted()`, the synced `DATA_FLAGS_ID & 64`):
     /// a face-planted fox, whose `FoxModel.setupAnim` twitches all four legs. Projected only for the
-    /// fox; `false` for every other entity. The `FoxRenderer.setupRotations` body-pitch flip stays
-    /// deferred.
+    /// fox; `false` for every other entity. The renderer root transform applies the body-pitch flip.
     #[serde(default)]
     pub fox_is_faceplanted: bool,
     /// Vanilla `FelineRenderState.isCrouching` (`Entity.isCrouching()`, pose `CROUCHING`): a stalking
@@ -2222,8 +2221,7 @@ entity_model_source_state! {
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that sways the model's legs/arms. `0.0` for a standing entity, every
-    /// non-living entity, and the entities whose `updateWalkAnimation` override is
-    /// deferred.
+    /// non-living entity, and entities whose vanilla `updateWalkAnimation` produces no limb swing.
     #[serde(default)]
     pub walk_animation_position: f32,
     /// Vanilla `LivingEntityRenderState.walkAnimationSpeed`

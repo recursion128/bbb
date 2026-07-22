@@ -636,8 +636,8 @@ fn iron_golem_walk_pose_matches_vanilla_triangle_wave() {
 fn iron_golem_swings_its_limbs_when_walking() {
     // `IronGolemModel.setupAnim` swings the legs and (default branch) the arms by
     // `Mth.triangleWave(pos, 13) * speed`. A standing golem is inert; a walking one
-    // moves its arms and legs and lifts its feet. The attack swing and offer-flower
-    // arm pose are deferred. Colored path here, textured below.
+    // moves its arms and legs and lifts its feet. Focused event-pose tests cover the attack swing
+    // and offer-flower arm pose. Colored path here, textured below.
     let base = EntityModelInstance::iron_golem(270, [0.0, 64.0, 0.0], 0.0);
     let rest = entity_model_mesh(&[base]);
     let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);

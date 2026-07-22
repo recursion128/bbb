@@ -1519,9 +1519,10 @@ pub(super) fn ageable_baby(
 
 /// Vanilla `ArmadilloModel.setupAnim` `isHidingInShell` swap, projected from the synced
 /// `Armadillo.ARMADILLO_STATE` (the `ArmadilloState` enum; SCARED uses the generated ordinal).
-/// Only the steady SCARED state is server-derivable: it hides the body in the shell for every
-/// `inStateTicks`, whereas ROLLING/UNROLLING gate the hide on the un-synced `inStateTicks`, so
-/// they stay deferred (treated as not rolled up). Defaults to IDLE (not rolled up).
+/// This metadata-only fallback can derive only steady SCARED: ROLLING/UNROLLING gate the hide on
+/// `inStateTicks`. The integrated entity-scene path replaces it with the world-owned reconstructed
+/// `armadillo_is_hiding_in_shell` timer, so all three state transitions reach the model. Defaults to
+/// IDLE (not rolled up).
 pub(super) fn armadillo_rolled_up(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],

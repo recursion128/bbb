@@ -230,8 +230,8 @@ fn snow_golem_tree() -> ModelPart {
 /// vanilla child names: `head`, `body`, `right_arm`/`left_arm`, `right_leg`/`left_leg`. `setup_anim`
 /// follows the head look ([`apply_head_look`] on `head`) then swings the arms and legs
 /// ([`apply_iron_golem_walk`]), then overrides the arms with the attack smash / offer-flower poses
-/// ([`apply_iron_golem_arm_events`]) while their event timers are active. The held poppy block is the
-/// only deferred piece.
+/// ([`apply_iron_golem_arm_events`]) while their event timers are active. The held poppy follows the
+/// posed flower arm through the block-attachment pass.
 pub(in crate::entity_models) struct IronGolemModel {
     root: ModelPart,
 }

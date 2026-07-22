@@ -1751,9 +1751,9 @@ fn apply_copper_golem_full_keyframe(
 
 /// Mutable copper golem model, mirroring vanilla `CopperGolemModel.createBodyLayer`. The base
 /// renderer uses this same tree for both the cutout body and the emissive eyes texture. The vanilla
-/// remaining interaction keyframe animations and custom head are deferred; the head look, walking /
-/// walking-with-item keyframes, idle / noitem-get interaction keyframes, static held-item arm clamp,
-/// and antenna block transform are projected now.
+/// head look, walking / walking-with-item, idle, get/drop item/no-item interaction keyframes, static
+/// held-item arm clamp, and antenna block transform are projected. Custom-head presentation is a
+/// separate typed layer.
 pub(in crate::entity_models) struct CopperGolemModel {
     root: ModelPart,
 }

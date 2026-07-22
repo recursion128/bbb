@@ -215,8 +215,8 @@ fn illager_family_swings_its_legs_when_walking() {
     // a walking one lifts its feet (a shorter model) and splays its legs along Z, for
     // every family (the crossed-arms evoker/vindicator/illusioner lists legs at
     // [3, 4], the uncrossed pillager at [2, 3]). The pillager also swings its separate arms
-    // (see `pillager_swings_its_arms_when_walking`); the arm-pose overrides and the riding
-    // sit pose are deferred.
+    // (see `pillager_swings_its_arms_when_walking`); focused tests cover the projected arm-pose
+    // overrides. The riding sit pose remains in the passenger coverage category.
     let families = [
         ("evoker", IllagerModelFamily::Evoker),
         ("vindicator", IllagerModelFamily::Vindicator),

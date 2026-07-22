@@ -119,8 +119,8 @@ pub enum EntityModelKind {
     },
     /// Allay (`AllayModel`, `AllayRenderer`). The idle/flying wing flap, arm bob, head look,
     /// body tilt, and vertical bob read `EntityRenderState.age_in_ticks`, the walk
-    /// animation, and the head yaw/pitch. The dance pose (`isDancing`/`isSpinning`) and
-    /// held-item arm poses are deferred entity-side state.
+    /// animation, and the head yaw/pitch. Projected `isDancing` / `isSpinning` state drives the
+    /// dance pose, and held-item progress raises both arms through the same model owner.
     Allay,
     /// Strider (`AdultStriderModel` / `BabyStriderModel`, `StriderRenderer`). The body sway,
     /// vertical bob, leg swing/lift, and bristle flow read `EntityRenderState.age_in_ticks`,
@@ -135,8 +135,8 @@ pub enum EntityModelKind {
     /// Turtle (`AdultTurtleModel` / `BabyTurtleModel`, `TurtleRenderer`). The
     /// `QuadrupedModel` head look plus the `TurtleModel.setupAnim` land walk / water swim leg
     /// branch (`isOnLand = !isInWater && onGround`) read the projected look angles, walk
-    /// animation, water, and ground state. The egg-laying leg amplitude (`isLayingEgg`) and the
-    /// `egg_belly` shell (`hasEgg`) are deferred entity-side state.
+    /// animation, water, and ground state. Projected `isLayingEgg` amplifies the land gait and
+    /// adult `hasEgg` selects the lowered `egg_belly` shell.
     Turtle {
         baby: bool,
     },
@@ -160,8 +160,8 @@ pub enum EntityModelKind {
     /// Breeze (`BreezeModel`, `BreezeRenderer`). The base body layer (head + three rods) driven by
     /// the looping `BreezeAnimation.IDLE` keyframe animation (the second keyframe entity, and the
     /// first to use CATMULLROM), sampled from `EntityRenderState`'s `age_in_ticks`. The swirling
-    /// translucent wind layer, the emissive eyes, and the shoot/slide/inhale/jump action animations
-    /// are deferred entity-side state.
+    /// translucent wind layer, emissive eyes, and shoot/slide/inhale/jump action animations are
+    /// projected and submitted by their typed model/layer owners.
     Breeze,
     /// Dolphin (`DolphinModel`, `DolphinRenderer`). The procedural `DolphinModel.setupAnim` steers
     /// the body by the look pitch/yaw and, while moving (`isMoving`, the synced velocity), adds the
@@ -177,9 +177,9 @@ pub enum EntityModelKind {
     Guardian {
         elder: bool,
     },
-    /// `FrogModel` at its `createBodyLayer` rest pose, textured by temperature variant
-    /// (`FrogVariant` asset). The keyframe animations (jump, croak, tongue, swim/walk,
-    /// idle-in-water) are deferred.
+    /// `FrogModel` textured by temperature variant (`FrogVariant` asset). Projected client
+    /// animation states drive the exact jump, croak, tongue, swim/walk, and idle-in-water
+    /// definitions; prey-target aiming is a separate non-model edge.
     Frog {
         variant: FrogModelVariant,
     },
@@ -196,9 +196,8 @@ pub enum EntityModelKind {
     Sniffer {
         baby: bool,
     },
-    /// `WardenModel` at its `createBodyLayer` rest pose. The head look, walk, idle wobble,
-    /// tendril sway, the attack / sonic-boom / digging / emerge / roar / sniff keyframe
-    /// animations, and the four emissive overlay layers are deferred.
+    /// `WardenModel` with projected head look, walk, idle wobble, tendril sway, attack / sonic-boom /
+    /// digging / emerge / roar / sniff keyframes, and the four emissive overlay layers.
     Warden,
     /// `AdultArmadilloModel` / `BabyArmadilloModel` (`baby` selects the baby body layer). When
     /// `rolled_up`, `setupAnim`'s `isHidingInShell` swap is emitted — the body cubes, tail, and
@@ -210,20 +209,18 @@ pub enum EntityModelKind {
     },
     /// `AdultAxolotlModel` / `BabyAxolotlModel` at their `createBodyLayer` rest pose (`baby`
     /// selects the baby body layer), textured by the five `Axolotl.Variant` colors × age
-    /// (`AxolotlRenderer.TEXTURE_BY_TYPE`). The body yaw, the swimming / water-hovering /
-    /// ground-crawling / lay-still procedural sways and baby keyframe animations, the play-dead
-    /// pose, and the mirror-leg copy are deferred.
+    /// (`AxolotlRenderer.TEXTURE_BY_TYPE`). The body yaw, swimming / water-hovering /
+    /// ground-crawling / lay-still procedural sways, baby keyframe definitions, play-dead pose,
+    /// and mirror-leg copy are all applied by the selected model.
     Axolotl {
         baby: bool,
         variant: AxolotlModelVariant,
     },
-    /// `TadpoleModel` at its `createBodyLayer` rest pose. The tail yaw sway (`tail.yRot`) is
-    /// deferred.
+    /// `TadpoleModel` with the age/in-water-scaled `tail.yRot` swim sway from `setupAnim`.
     Tadpole,
-    /// `ParrotModel` at its `createBodyLayer` STANDING rest pose, textured per the five
-    /// `Parrot.Variant` colours (`variant`, the synced `DATA_VARIANT_ID`). The head look, the per-pose
-    /// `prepare` offsets, the leg walk swing, the wing flap, the flap bob, and the PARTY dance are
-    /// deferred.
+    /// `ParrotModel` textured per the five `Parrot.Variant` colours (`variant`, the synced
+    /// `DATA_VARIANT_ID`). Head look, per-pose `prepare` offsets, leg walk, wing flap/bob, and PARTY
+    /// dance consume projected pose state; the player shoulder layer explicitly selects ON_SHOULDER.
     Parrot {
         variant: ParrotModelVariant,
     },
@@ -247,8 +244,8 @@ pub enum EntityModelKind {
     /// `EndCrystalRenderer`). The diagonal spin, vertical bob, `showsBottom` base toggle, and
     /// `DATA_BEAM_TARGET` custom beam are projected.
     EndCrystal,
-    /// `EvokerFangsModel` at its `createBodyLayer` closed-jaw rest pose (the base block plus the two
-    /// jaws). The bite open/close, the base drop, and the emerge scale are deferred.
+    /// `EvokerFangsModel` (the base block plus two jaws). Projected bite progress drives the exact
+    /// jaw open/close, base drop, emerge scale, and terminal visibility gate.
     EvokerFangs,
     /// `LeashKnotModel` — the single 6×8×6 knot box. The model has no `setupAnim`, so the geometry
     /// is complete; only the texture-backed path is deferred.
@@ -420,8 +417,8 @@ pub enum EntityModelKind {
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
     /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
     /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;
-    /// the spectral arrow binds `arrow_spectral.png`). The impact-shake wobble is deferred;
-    /// `ArrowRenderer` orients it along its flight.
+    /// the spectral arrow binds `arrow_spectral.png`). Projected shake time applies the impact
+    /// wobble and `ArrowRenderer` orientation follows flight.
     Arrow {
         texture: ArrowModelTexture,
     },
@@ -447,13 +444,13 @@ pub enum EntityModelKind {
     ShulkerBullet,
     /// `WindChargeModel` — the `bone` root parenting the `wind` shell (a fixed `-π/4` bind rotation,
     /// two boxes) and the `wind_charge` core box. Shared by the wind charge and breeze wind charge.
-    /// The `setupAnim` counter-rotation, the translucent scrolling `breezeWind` texture, and the
-    /// texture-backed path are deferred.
+    /// `setupAnim` counter-rotates the shell/core, and the textured path submits the translucent
+    /// scrolling `breezeWind` layer.
     WindCharge,
-    /// `EnderDragonModel` at its `createBodyLayer` straight bind layout (head + jaw, five neck and
-    /// twelve tail segments, body with wings and four legs). The fully procedural `setupAnim` (the
-    /// flight-history neck/tail placement, the wing flap, the jaw, the root bounce), the dying
-    /// dissolve and nearest-crystal healing beam are deferred; the emissive eyes layer is projected.
+    /// `EnderDragonModel` (head + jaw, five neck and twelve tail segments, body with wings and four
+    /// legs). Procedural `setupAnim` consumes flight history, flap time, phase, and exact podium
+    /// distance for neck/tail placement, wings, jaw, and root bounce; dying dissolve, death rays,
+    /// nearest-crystal beam, and emissive eyes use their dedicated submissions.
     EnderDragon,
     /// Entities whose vanilla renderer is `NoopRenderer` — the area effect cloud (its potion cloud
     /// is particles, not a model), the marker (a pure data entity), and the interaction (an
@@ -553,11 +550,9 @@ pub enum EntityModelKind {
     },
     /// `PandaModel` / `BabyPandaModel` (both `QuadrupedModel`s) at their `createBodyLayer` rest pose
     /// (`baby` selects the baby body layout — body-first, no body pitch). The shared
-    /// `QuadrupedModel.setupAnim` head look and four-leg walk swing are reproduced; every panda-specific
-    /// pose (`isUnhappy`, `isSneezing`, `sitAmount`, `lieOnBackAmount`, `rollAmount`) reads un-projected
-    /// `PandaRenderState` state and stays deferred. The gene-driven base texture IS projected: `variant`
-    /// is the displayed `Panda.Gene` (`PandaRenderer.getTextureLocation` keys the 7-gene × age texture
-    /// matrix off it).
+    /// `QuadrupedModel.setupAnim` head look and four-leg walk swing are reproduced; projected unhappy,
+    /// sneeze, sit/eat/scared, lie-on-back, and roll state drives every panda-specific branch. The
+    /// gene-driven base texture uses displayed `Panda.Gene` (`variant`) across the 7-gene × age matrix.
     Panda {
         baby: bool,
         variant: PandaModelVariant,
@@ -585,19 +580,18 @@ pub enum EntityModelKind {
         collar: Option<EntityDyeColor>,
     },
     /// `AdultFoxModel` / `BabyFoxModel` (custom `EntityModel`s) at their `createBodyLayer` rest pose
-    /// (`baby` selects the baby body layout). The `setupAnim` head look and the curled sleeping pose
-    /// are reproduced, and the texture switches on the `variant` (red/snow) × age × sleeping matrix
-    /// (`FoxRenderer.getTextureLocation`). The walk leg swing, the `headRollAngle` tilt, and the
-    /// remaining poses (`isCrouching`, `isSitting`, `isPouncing`, `isFaceplanted`) stay deferred.
+    /// (`baby` selects the baby body layout). The exact walking, crouching, sleeping, sitting,
+    /// pouncing, and faceplanted branches plus head-roll interpolation are reproduced, and the
+    /// texture switches on the `variant` (red/snow) × age × sleeping matrix.
     Fox {
         baby: bool,
         variant: FoxModelVariant,
     },
     /// `NautilusModel` (a custom `EntityModel`, the new rideable nautilus) at its `createBodyMesh` /
     /// `createBabyBodyLayer` rest pose (`baby` selects the smaller hatchling geometry, the same
-    /// `root → shell + body → mouths` structure). The `setupAnim` body look — clamped to ±10° — is
-    /// reproduced; the looping `NautilusAnimation.SWIMMING` keyframe undulation and body armor
-    /// equipment layer are deferred. The adult saddle equipment layer is driven through render state.
+    /// `root → shell + body → mouths` structure). The clamped ±10° body look and looping
+    /// `NautilusAnimation.SWIMMING` definition are reproduced. Body armor remains an equipment-layer
+    /// gap; the adult saddle equipment layer is driven through render state.
     Nautilus {
         baby: bool,
     },
@@ -614,9 +608,9 @@ pub enum EntityModelKind {
     /// `AdultRabbitModel` / `BabyRabbitModel` at their `createBodyLayer` rest pose (`baby` selects the
     /// baby body layout — a deeper `_r1`-nested hierarchy whose head is `body`'s third child),
     /// textured by the seven `Rabbit.Variant` colours × age, with the `toast` named-rabbit override
-    /// (`RabbitRenderer.getTextureLocation`). `RabbitModel.setupAnim` turns the head by the look
-    /// angles (reproduced). The looping `RabbitAnimation.HOP` / `BabyRabbitAnimation` and
-    /// `IDLE_HEAD_TILT` keyframe animations need un-projected `AnimationState`s and stay deferred.
+    /// (`RabbitRenderer.getTextureLocation`). `RabbitModel.setupAnim` turns the head and applies the
+    /// event-driven adult/baby HOP definition. `IDLE_HEAD_TILT` starts from client-local entity RNG,
+    /// so a remote official-client phase is intentionally not fabricated.
     Rabbit {
         baby: bool,
         variant: RabbitModelVariant,
@@ -633,8 +627,9 @@ pub enum EntityModelKind {
     /// `CopperGolemModel` at its vanilla `createBodyLayer` rest pose, textured by
     /// `WeatheringCopper.WeatherState` (`CopperGolemRenderer.getTextureLocation`) and re-rendered
     /// with the matching emissive eyes texture through vanilla `LivingEntityEmissiveLayer`.
-    /// The standard held-item layer is projected; interaction keyframes, custom head, and the antenna
-    /// block decoration stay deferred entity-side layers.
+    /// Walking, walking-with-item, idle, and all four chest-interaction keyframes are projected. The
+    /// standard held-item and antenna block attachment use typed layers; custom-head presentation is
+    /// owned separately from model animation.
     CopperGolem {
         weathering: CopperGolemWeathering,
     },

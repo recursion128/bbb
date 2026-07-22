@@ -82,8 +82,8 @@ fn creeper_leg(offset: [f32; 3], leg_cubes: &[ModelCube]) -> ModelPart {
 /// vanilla `QuadrupedModel` child names: `head`, `body`, then the four legs. `setup_anim` follows the
 /// head look ([`apply_head_look`] on `head`) and applies the standard `QuadrupedModel` leg swing
 /// ([`apply_quadruped_leg_swing`]). The `CreeperRenderer.scale` swell inflate-and-flicker is
-/// folded into the root transform (`creeper_model_root_transform`); the powered charge layer is
-/// deferred.
+/// folded into the root transform (`creeper_model_root_transform`); the powered charge layer uses
+/// its scrolling energy-swirl submission.
 pub(in crate::entity_models) struct CreeperModel {
     root: ModelPart,
 }

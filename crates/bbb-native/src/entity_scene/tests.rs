@@ -9299,9 +9299,9 @@ fn entity_model_kind_maps_experience_orb_to_billboard_quad() {
 #[test]
 fn entity_model_kind_maps_allay_to_real_model() {
     // The allay was a placeholder render box; it now resolves to the real `AllayModel`. Its
-    // idle/flying wing flap, arm bob, head look, and vertical bob read the projected age,
-    // walk animation, and look angles; the dance pose and held item are deferred
-    // entity-side state.
+    // idle/flying wing flap, arm bob, head look, vertical bob, and dance pose read the projected age,
+    // walk animation, look angles, and dancing state. Held-item rendering is a separate equipment
+    // concern.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_ALLAY_ID, &[]),
         EntityModelKind::Allay
@@ -9311,8 +9311,8 @@ fn entity_model_kind_maps_allay_to_real_model() {
 #[test]
 fn entity_model_kind_maps_bat_to_real_model() {
     // The bat was a placeholder render box; it now resolves to the real `BatModel`, the
-    // first keyframe-animated entity. Its looping `BAT_FLYING` wing flap reads the projected
-    // age; the resting pose (`isResting` / `BAT_RESTING`) is deferred entity-side state.
+    // first keyframe-animated entity. Its looping `BAT_FLYING` wing flap and the synced
+    // `isResting` / `BAT_RESTING` branch read projected render state.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_BAT_ID, &[]),
         EntityModelKind::Bat
@@ -9390,8 +9390,8 @@ fn entity_model_kind_projects_bee_nectar_and_angry_texture_flags() {
 fn entity_model_kind_projects_dolphin_baby_from_data() {
     // The dolphin was a placeholder render box; it now resolves to the real `DolphinModel`,
     // keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default adult). Its swim body
-    // tilt / tail wave reads the projected `isMoving` (the synced velocity); the held-item
-    // carry layer is deferred entity-side state.
+    // tilt / tail wave reads the projected `isMoving` (the synced velocity); the held-item carry
+    // layer remains a separate equipment concern.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_DOLPHIN_ID, &[]),
         EntityModelKind::Dolphin { baby: false }
@@ -9549,9 +9549,8 @@ fn entity_model_kind_maps_frog_to_real_model() {
 #[test]
 fn entity_model_kind_maps_breeze_to_real_model() {
     // The breeze was a placeholder render box; it now resolves to the real `BreezeModel`, the
-    // second keyframe entity (and the first to use CATMULLROM). Its looping `IDLE` head bob /
-    // rod spin reads the projected age; the wind layer, eyes, and action animations are
-    // deferred entity-side state.
+    // second keyframe entity (and the first to use CATMULLROM). Its looping `IDLE` head bob / rod
+    // spin, triggered actions, typed wind model, and eyes layer all read projected render state.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_BREEZE_ID, &[]),
         EntityModelKind::Breeze
@@ -9562,9 +9561,8 @@ fn entity_model_kind_maps_breeze_to_real_model() {
 fn entity_model_kind_projects_turtle_baby_from_data() {
     // The turtle was a placeholder render box; it now resolves to the real
     // `AdultTurtleModel` / `BabyTurtleModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
-    // (index 16, default adult). The head look and land-walk / water-swim leg branch read
-    // the projected look angles, walk animation, water, and ground state; the egg-laying
-    // amplitude and the egg-belly shell are deferred entity-side state.
+    // (index 16, default adult). The head look, land-walk / water-swim branch, egg-laying amplitude,
+    // and egg-belly shell read projected look, walk, environment, and synced turtle state.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_TURTLE_ID, &[]),
         EntityModelKind::Turtle { baby: false }
@@ -10351,10 +10349,9 @@ fn entity_model_kind_maps_sniffer_to_real_model() {
 #[test]
 fn entity_model_kind_maps_warden_to_real_model() {
     // The warden was a placeholder bounds box; it now resolves to the real `WardenModel`. The
-    // head look, walk, idle wobble, and tendril sway are driven by projected render state (age,
-    // walk, head look, and the event-driven tendril pulse), not by this kind mapping; the attack
-    // / sonic-boom / digging / emerge / roar / sniff keyframe animations and the four emissive
-    // overlay layers stay deferred. The kind mapping itself reads no synced data.
+    // head look, walk, idle wobble, tendril sway, triggered keyframes, and emissive layers are driven
+    // by projected render state rather than this kind mapping. The kind mapping itself reads no
+    // synced data.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_WARDEN_ID, &[]),
         EntityModelKind::Warden
@@ -10482,9 +10479,9 @@ fn entity_model_kind_projects_axolotl_baby_from_data() {
 
 #[test]
 fn entity_model_kind_maps_tadpole_to_real_model() {
-    // The tadpole was a placeholder bounds box; it now resolves to the real `TadpoleModel` at
-    // its rest pose. The tail yaw sway is deferred entity-side state, so no synced data is read
-    // (the tadpole is an `AbstractFish`, not an `AgeableMob`, so it carries no baby flag).
+    // The tadpole was a placeholder bounds box; it now resolves to the real `TadpoleModel`; its tail
+    // yaw sway reads projected age. No synced data is needed here (the tadpole is an `AbstractFish`,
+    // not an `AgeableMob`, so it carries no baby flag).
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_TADPOLE_ID, &[]),
         EntityModelKind::Tadpole
@@ -10495,8 +10492,8 @@ fn entity_model_kind_maps_tadpole_to_real_model() {
 fn entity_model_kind_maps_parrot_to_real_model() {
     // The parrot resolves to the real `ParrotModel` at its STANDING rest pose, textured per the
     // five `Parrot.Variant` colours read from the generated synced `DATA_VARIANT_ID` via
-    // `Parrot.Variant.byId`. The head look, per-pose offsets, and wing flap / dance animations are
-    // deferred entity-side state.
+    // `Parrot.Variant.byId`. Projected render state drives the head look, pose branch, wing flap,
+    // and dance; the player shoulder layer constructs the separate ON_SHOULDER pose.
     // No synced data → the vanilla DEFAULT (RED_BLUE).
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[]),
@@ -10525,9 +10522,9 @@ fn entity_model_kind_maps_parrot_to_real_model() {
 fn entity_model_kind_maps_shulker_to_real_model() {
     let accessors = shulker_metadata_accessors();
     // The shulker resolves to the real `ShulkerModel` at its closed rest pose, textured by the
-    // dye colour read from `DATA_COLOR_ID`. With no synced colour it defaults to the
-    // uncolored texture (`None`). The peek open/close, head look, and attach-face rotation stay
-    // deferred entity-side state.
+    // dye colour read from `DATA_COLOR_ID`. With no synced colour it defaults to the uncolored
+    // texture (`None`). Projected render state drives peek open/close, head look, and attach-face
+    // rotation.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_ID, &[]),
         EntityModelKind::Shulker { color: None }
@@ -10562,8 +10559,9 @@ fn entity_model_kind_maps_shulker_to_real_model() {
 #[test]
 fn entity_model_kind_maps_wither_to_real_model() {
     // The wither was a placeholder bounds box; it now resolves to the real `WitherBossModel` at
-    // its bind rest pose. The procedural ribcage/tail breathing sway, the head look, and the
-    // invulnerable-shimmer overlay are deferred entity-side state, so no synced data is read.
+    // its bind rest pose. Projected render state drives the procedural ribcage/tail breathing sway,
+    // head look, spawn transform, and invulnerable/powered layers; no synced data is read by the kind
+    // mapping itself.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_WITHER_ID, &[]),
         EntityModelKind::Wither
@@ -10596,8 +10594,8 @@ fn entity_model_kind_maps_end_crystal_to_real_model() {
 #[test]
 fn entity_model_kind_maps_evoker_fangs_to_real_model() {
     // The evoker fangs were a placeholder bounds box; they now resolve to the real
-    // `EvokerFangsModel` at the closed-jaw rest pose. The bite animation, the base drop, and the
-    // emerge scale are deferred entity-side state, so no synced data is read.
+    // `EvokerFangsModel` at the closed-jaw rest pose. Projected age drives the bite, base drop, and
+    // emerge scale, while the kind mapping itself reads no synced data.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, &[]),
         EntityModelKind::EvokerFangs
@@ -10772,8 +10770,8 @@ fn entity_model_kind_maps_llama_spit_to_real_model() {
 #[test]
 fn entity_model_kind_maps_shulker_bullet_to_real_model() {
     // The shulker bullet was a placeholder box; it now resolves to the real `ShulkerBulletModel`.
-    // Its facing comes from the projected yaw/pitch; the age-driven tumble and the translucent
-    // outer-shell pass are deferred entity-side state, so no synced data is read.
+    // Its facing and age-driven tumble come from projected render state; the textured path adds the
+    // translucent outer-shell pass. The kind mapping itself reads no synced data.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, &[]),
         EntityModelKind::ShulkerBullet
@@ -10783,9 +10781,9 @@ fn entity_model_kind_maps_shulker_bullet_to_real_model() {
 #[test]
 fn entity_model_kind_maps_wind_charges_to_real_model() {
     // The wind charge and breeze wind charge were placeholder boxes; both share the real
-    // `WindChargeModel` (vanilla registers `WindChargeRenderer` for both). The counter-rotation,
-    // the scrolling translucent texture, and the texture-backed path are deferred entity-side
-    // state, so no synced data is read.
+    // `WindChargeModel` (vanilla registers `WindChargeRenderer` for both). Projected age drives the
+    // counter-rotation and scrolling translucent texture; the kind mapping itself reads no synced
+    // data.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, &[]),
         EntityModelKind::WindCharge
@@ -10799,9 +10797,9 @@ fn entity_model_kind_maps_wind_charges_to_real_model() {
 #[test]
 fn entity_model_kind_maps_ender_dragon_to_real_model() {
     // The ender dragon was a placeholder bounds box; it now resolves to the real
-    // `EnderDragonModel` at its bind layout. The fully procedural flight animation, the dying
-    // dissolve, and the nearest-crystal healing beam are deferred entity-side state; the emissive
-    // eyes pass is renderer-owned and no synced data is read here.
+    // `EnderDragonModel` at its bind layout. Projected world/render state drives the procedural
+    // flight animation, dying dissolve/rays, nearest-crystal healing beam, and renderer-owned
+    // emissive eyes; no synced data is read by the kind mapping itself.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, &[]),
         EntityModelKind::EnderDragon

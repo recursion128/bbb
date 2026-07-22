@@ -190,8 +190,8 @@ const HURT_ANIMATION_DURATION: i32 = 10;
 const KINETIC_HIT_FEEDBACK_RETRIGGER_TICKS: i32 = 10;
 /// Vanilla `SwingAnimation.DEFAULT.duration()`: the empty hand and common-item
 /// WHACK swing ramps `attackAnim` from `0` to `1` over six client ticks.
-/// Per-item default durations are recorded on each triggered swing; dig-speed /
-/// mining-fatigue modifiers remain deferred.
+/// Per-item default durations and dig-speed / mining-fatigue modifiers are recorded on each
+/// triggered swing and refreshed when runtime state changes.
 pub(crate) const ATTACK_SWING_DURATION: i32 = 6;
 
 const fn default_attack_swing_duration() -> i32 {
@@ -2181,7 +2181,7 @@ impl HoglinAnimationState {
 /// clearing `jumpDuration`) when they meet — so the hop runs for exactly one 15-tick window per jump,
 /// matching the 0.75s looping `RabbitAnimation.HOP`. The random idle-head-tilt animation
 /// (`shouldPlayIdleAnimation` gated on a `random.nextInt(40) + 180` timeout) is NOT reconstructable
-/// and stays deferred, so the hop branch always governs.
+/// from the wire and is intentionally not synthesized, so the hop branch always governs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RabbitHopAnimationState {
     /// Vanilla `Rabbit.jumpTicks`.
@@ -2201,7 +2201,8 @@ impl RabbitHopAnimationState {
     }
 
     /// One client tick in vanilla order: `Rabbit.baseTick` runs `setupAnimationStates` (the hop
-    /// branch — idle deferred — `startIfStopped`/`stop` on `jumpTicks > 0`) BEFORE `Rabbit.aiStep`
+    /// branch — the client-local random idle is intentionally absent — `startIfStopped`/`stop` on
+    /// `jumpTicks > 0`) BEFORE `Rabbit.aiStep`
     /// advances `jumpTicks` (`++` until it meets `jumpDuration`, then both reset to `0`).
     fn advance_client_tick(&mut self, age_ticks: u32) {
         self.hop.animate_when(self.jump_ticks > 0, age_ticks);
@@ -3044,8 +3045,8 @@ impl GuardianTailAnimationState {
 /// client tick saves the previous value (the lerp endpoint), then IN WATER eases `spikes_animation`
 /// toward `0` while `isMoving()` (the spikes retract as it swims) by `0.25` or toward `1` while idle
 /// (the spikes fully extend) by `0.06`. Vanilla OUT OF WATER instead sets it to a fresh
-/// `random.nextFloat()` every tick; that flicker is not seeded on the client, so it is deferred (held
-/// at the last value) rather than faked — a guardian out of water is a flopping/dying edge case.
+/// `random.nextFloat()` every tick; that flicker is not seeded on the client, so it is intentionally
+/// held at the last value rather than faked — a guardian out of water is a flopping/dying edge case.
 /// `getSpikesAnimation` lerps the pair, which `GuardianModel.setupAnim` turns into
 /// `withdrawal = (1 - spikesAnimation) · 0.55`, the per-spike inset subtracted from each spike offset.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
@@ -6025,7 +6026,7 @@ impl EntityClientAnimationState {
 
     /// Vanilla `EnderDragonRenderState.deathTime`: `dragonDeathTime + partialTick` once the dragon's
     /// own death counter starts ticking, used by `EnderDragonRenderer` for the dissolve body and
-    /// deferred death rays.
+    /// procedural death rays.
     pub fn ender_dragon_death_time(&self, partial_tick: f32) -> f32 {
         self.ender_dragon
             .map_or(0.0, |dragon| dragon.death_time(partial_tick))

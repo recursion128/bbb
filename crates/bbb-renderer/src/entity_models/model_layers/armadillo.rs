@@ -324,8 +324,7 @@ fn adult_armadillo_root() -> ModelPart {
 /// the tail, and both HIND legs hide; the cubeless `body` pivot keeps just its `head` child, the two
 /// FRONT legs stay, and the 10×10×10 shell-ball `cube` shows → six cubes. Shown whenever the
 /// projected `armadillo_is_hiding_in_shell` holds (the steady SCARED ball and the `inStateTicks`-gated
-/// ROLLING/UNROLLING windows); the rendered ball is held static (vanilla's `cube` rollUp/peek wobble
-/// stays deferred).
+/// ROLLING/UNROLLING windows); the roll-up/out and peek definitions animate the visible `cube`.
 fn adult_armadillo_rolled_root() -> ModelPart {
     ModelPart::new(
         PART_POSE_ZERO,
@@ -686,7 +685,7 @@ fn baby_armadillo_rolled_root() -> ModelPart {
 // `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`. The `body` channel rolls the trunk
 // (a CatmullRom z-sway with a slight y-bob), the four legs swing (rotation + position), the `tail`
 // rocks, and the `head` channel adds a small z-roll onto the look the head already tracks. The baby
-// (`BabyArmadilloAnimation.ARMADILLO_BABY_WALK`, a different cycle and topology) stays deferred.
+// samples its distinct `BabyArmadilloAnimation.ARMADILLO_BABY_WALK` cycle and topology.
 
 const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
 const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;

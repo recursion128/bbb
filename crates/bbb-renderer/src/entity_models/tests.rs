@@ -1904,8 +1904,8 @@ fn assert_same_geometry(actual: &EntityModelMesh, expected: &EntityModelMesh) {
 
 /// Asserts two meshes share the same body-layer model structure (cube count, faces, and
 /// indices) without requiring byte-identical vertex positions — used when two entities reuse
-/// the same model but animate it differently (e.g. the zombified piglin defers its arm pose
-/// to rest while the regular piglin applies the always-on idle arm bob).
+/// the same model but animate it differently (e.g. the zombified piglin applies zombie arms while
+/// the regular piglin applies its selected arm pose and always-on idle bob).
 fn assert_same_structure(actual: &EntityModelMesh, expected: &EntityModelMesh) {
     assert_eq!(actual.opaque_faces, expected.opaque_faces);
     assert_eq!(actual.indices, expected.indices);

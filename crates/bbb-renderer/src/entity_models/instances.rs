@@ -333,8 +333,8 @@ entity_render_state! {
     (with_death_time) death_time: f32 = 0.0;
     /// Vanilla `EnderDragonRenderState.deathTime` (`entity.dragonDeathTime > 0 ?
     /// entity.dragonDeathTime + partialTick : 0`): drives the dragon-only
-    /// `entityCutoutDissolve(dragon.png, dragon_exploding.png)` body submission and the deferred
-    /// death rays. `0.0` for living dragons and every non-dragon entity.
+    /// `entityCutoutDissolve(dragon.png, dragon_exploding.png)` body submission and procedural death
+    /// rays. `0.0` for living dragons and every non-dragon entity.
     (with_ender_dragon_death_time) ender_dragon_death_time: f32 = 0.0;
     /// Vanilla `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block,
     /// sky)`): the packed block+sky light sampled at the entity's light-probe
@@ -816,8 +816,8 @@ entity_render_state! {
     /// driven by `Camel.setupAnimationStates()` while the camel is NOT visually sitting but still in
     /// the stand-up pose transition (`isInPoseTransition() && getPoseTime() >= 0`). Its elapsed is
     /// `getPoseTime`. `CamelModel.setupAnim` applies `standupAnimation.apply(...)` ADDITIVELY;
-    /// `-1.0` for every other entity and a camel that is not standing up. (`idle` stays deferred;
-    /// see `docs/unsupported-features.md`.)
+    /// `-1.0` for every other entity and a camel that is not standing up. The independent projected
+    /// idle state is carried by [`camel_idle_seconds`](Self::camel_idle_seconds).
     (with_camel_standup_seconds) camel_standup_seconds: f32 = -1.0;
     /// Vanilla `Camel.dashAnimationState` elapsed seconds (the looping 0.5 s `CAMEL_DASH`), driven by
     /// `Camel.setupAnimationStates()`'s `dashAnimationState.animateWhen(isDashing(), tickCount)` — the
@@ -919,12 +919,12 @@ entity_render_state! {
     /// Vanilla `FoxRenderState.isPouncing` (`Fox.isPouncing()`, the synced `DATA_FLAGS_ID & 16`): a
     /// pouncing fox, whose `FoxModel.setPouncingPose` (adult only) drops the body/head by
     /// `crouchAmount/2`. `false` for every other entity and for a fox that is not pouncing. The
-    /// `FoxRenderer.setupRotations` body-pitch flip is a deferred renderer concern.
+    /// renderer root transform applies the projected body-pitch flip.
     (with_fox_is_pouncing) fox_is_pouncing: bool = false;
     /// Vanilla `FoxRenderState.isFaceplanted` (`Fox.isFaceplanted()`, the synced `DATA_FLAGS_ID &
     /// 64`): a face-planted fox, whose `FoxModel.setupAnim` twitches all four legs on `ageInTicks`.
-    /// `false` for every other entity and for an upright fox. The `FoxRenderer.setupRotations`
-    /// body-pitch flip is a deferred renderer concern.
+    /// `false` for every other entity and for an upright fox. The renderer root transform applies
+    /// the projected body-pitch flip.
     (with_fox_is_faceplanted) fox_is_faceplanted: bool = false;
     /// Vanilla `FelineRenderState.isCrouching` (`Entity.isCrouching()`, pose `CROUCHING`): a stalking
     /// cat or ocelot lowers its body/head and uses the crouch lower-tail wobble amplitude. `false` for
@@ -1235,7 +1235,8 @@ entity_render_state! {
     /// holds a melee weapon (a main-hand item carrying the `minecraft:tool` data component) raises the
     /// weapon overhead at rest ([`attack_anim`](Self::attack_anim) `== 0`) and chops it down across the
     /// swing (`attack_anim > 0`). `false` for every other entity, a dancing piglin, and a piglin holding a
-    /// crossbow or no melee weapon. The zombified piglin instead does the deferred `animateZombieArms`.
+    /// crossbow or no melee weapon. The zombified piglin instead uses its projected
+    /// `animateZombieArms` pose.
     (with_piglin_attacking_with_melee) piglin_attacking_with_melee: bool = false;
     /// Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinModel.setupAnim`): a regular piglin holding a
     /// piglin-loved item in its OFFHAND tilts its head down to look at it (`head.xRot = 0.5`) and lifts the

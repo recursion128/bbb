@@ -348,7 +348,7 @@ fn chicken_swings_its_legs_when_walking() {
     // Vanilla `ChickenModel.setupAnim` swings the two legs with the `HumanoidModel` phase
     // `cos(pos * 0.6662 [+ π]) * 1.4 * speed`. A standing chicken is inert; a walking one
     // lifts its feet off the ground (the adult, cold, and headless-baby layers all show
-    // it). The chicken has no head look; the wing flap is deferred. Colored path.
+    // it). The chicken has no head look; focused tests cover the projected wing flap. Colored path.
     for base in [
         EntityModelInstance::chicken(26, [0.0, 64.0, 0.0], 0.0, false),
         EntityModelInstance::chicken_variant(

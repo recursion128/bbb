@@ -204,8 +204,8 @@ pub(in crate::entity_models) const MODEL_LAYER_CAMEL_HUSK_SADDLE: &str =
 // The `root` channel rolls the whole model (a CatmullRom z-sway applied at the entity root), the four
 // legs swing (rotation + position), the `head` adds a small pitch onto the clamped look, the two ears
 // flap (z-roll), and the `tail` swishes. All keyframes are CatmullRom except the two `left_hind_leg`
-// closing keyframes. The baby (`CamelBabyAnimation.CAMEL_BABY_WALK`, a different cycle/topology) stays
-// deferred. The adult `head`/leg/ear/tail bone names line up with the colored and textured layers.
+// closing keyframes. Babies sample the distinct `CamelBabyAnimation.CAMEL_BABY_WALK` cycle and
+// topology. The adult `head`/leg/ear/tail bone names line up with the colored and textured layers.
 
 const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
 const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;

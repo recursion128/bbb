@@ -1202,8 +1202,8 @@ fn wolf_swings_its_legs_when_walking() {
     // Z. The adult (with its tall legs) also lifts its feet; the baby's short legs swing
     // inside the head/body bounding box, so only the Z splay shows. The Z splay is
     // measured over the leg vertex region so the tail's resting `tailAngle` droop (which
-    // for the baby overrides the layer pose) does not mask the gait. The water-shake body
-    // roll and the sitting pose are deferred. Colored path.
+    // for the baby overrides the layer pose) does not mask the gait. Water-shake roll and
+    // sitting are exercised by their focused pose tests. Colored path.
     let z_extent = |verts: &[EntityModelVertex]| -> f32 {
         let mut lo = f32::MAX;
         let mut hi = f32::MIN;

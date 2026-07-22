@@ -17,8 +17,8 @@ pub(in crate::entity_models) const MODEL_LAYER_RABBIT_BABY: &str = "minecraft:ra
 // rather than adds) when the idle-head-tilt animation is not playing, then applies the looping
 // `RabbitAnimation.HOP` additively over every bone while the rabbit is mid-jump ([`RABBIT_HOP`],
 // event-`1`-driven via the projected `rabbit_hop_seconds`); the random-timed `IDLE_HEAD_TILT`
-// keyframe (gated on a `random.nextInt(40) + 180` timeout) is not reconstructable and stays deferred,
-// so a resting rabbit renders at this bind pose plus the head look. The seven `Rabbit.Variant` colors and
+// keyframe is gated on client-local entity RNG and is intentionally not synthesized, so a resting
+// remote rabbit renders at this bind pose plus the head look. The seven `Rabbit.Variant` colors and
 // the baby body layer live on the textured / baby paths; the colored debug path renders one brown
 // tint while each unified cube also carries the textured `uv_size` / `texOffs` / `mirror`. The two ears
 // and the two haunches share their bbb box geometry but vanilla gives the left and right sides distinct
@@ -840,7 +840,7 @@ pub(in crate::entity_models) const RABBIT_HOP: AnimationDefinition = AnimationDe
 /// parts hang off a synthetic root, built from the baked geometry for the selected `baby` layout.
 /// `setup_anim` turns the body-nested `head` (`child_mut("body").child_mut("head")`) to the look
 /// angles, then layers the looping `RABBIT_HOP` keyframe over every bone while the hop runs (the
-/// random-timed idle-head-tilt keyframe stays deferred).
+/// client-RNG-only idle-head-tilt phase is not fabricated).
 pub(in crate::entity_models) struct RabbitModel {
     root: ModelPart,
 }

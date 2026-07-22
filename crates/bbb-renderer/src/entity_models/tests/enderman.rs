@@ -394,8 +394,9 @@ fn enderman_swings_its_legs_when_walking() {
     // `EndermanModel extends HumanoidModel`; its legs swing the inherited swing,
     // halved and clamped. A standing enderman is inert; a walking one lifts its feet
     // and splays its legs along Z. The arm halve/clamp is covered separately by
-    // `enderman_swings_its_arms_when_walking`; the carried-block and creepy poses are
-    // deferred. Colored path here, textured below.
+    // `enderman_swings_its_arms_when_walking`; focused tests cover the projected creepy pose, while
+    // the carried block remains in the held-equipment coverage category. Colored path here, textured
+    // below.
     let base = EntityModelInstance::enderman(260, [0.0, 64.0, 0.0], 0.0);
     let rest = entity_model_mesh(&[base]);
     let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);

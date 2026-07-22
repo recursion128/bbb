@@ -650,8 +650,9 @@ pub(in crate::entity_models) fn ender_dragon_model_root_transform(
 /// Vanilla `EndCrystalRenderer.submit`: a plain `EntityRenderer` (not `LivingEntityRenderer`), so
 /// there is no body-yaw / `setupRotations` flip. The model is authored right-side-up (the base at
 /// model-y `0..4`, the glass orbiting at model-y `24`), and the renderer applies only
-/// `poseStack.scale(2.0)` then `poseStack.translate(0, -0.5, 0)` before submitting the model. The
-/// procedural spin and the `getY` vertical bob are deferred, so this is the static transform.
+/// `poseStack.scale(2.0)` then `poseStack.translate(0, -0.5, 0)` before submitting the model. This
+/// function owns only that static root transform; the textured submission applies the projected
+/// `getY` vertical bob and both procedural glass rotations.
 pub(in crate::entity_models) fn end_crystal_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
@@ -663,8 +664,9 @@ pub(in crate::entity_models) fn end_crystal_model_root_transform(
 /// Vanilla `EvokerFangsRenderer.submit`: a plain `EntityRenderer` that applies the standard model
 /// flip and `-1.501` y-offset, but a distinct yaw `Axis.YP.rotationDegrees(90 - yRot)` (the entity's
 /// own yaw, not a `LivingEntityRenderer` body rotation) and no render scale / setup-rotations chain.
-/// The bite animation, the base drop, and the emerge scale are deferred, so this is the static
-/// transform. The fang yaw is projected through `body_rot` (the instance's `y_rot`).
+/// This function owns only that static renderer transform; `EvokerFangsModel.setup_anim` applies the
+/// projected bite, base drop, and emerge scale. The fang yaw is projected through `body_rot` (the
+/// instance's `y_rot`).
 pub(in crate::entity_models) fn evoker_fangs_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
@@ -1067,13 +1069,13 @@ pub(in crate::entity_models) fn wither_skull_model_root_transform(
         * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
 }
 
-/// Vanilla `ShulkerBulletRenderer.submit` reduced to its non-animated parts: the constant
+/// Vanilla `ShulkerBulletRenderer.submit`: the constant
 /// `translate(0, 0.15, 0)` lift and the `scale(-0.5, -0.5, 0.5)` (the flip + half size), followed by
 /// the `ShulkerBulletModel.setupAnim` facing (`main.yRot = yRot`, `main.xRot = xRot`, here folded
-/// into the root since the single part sits at ZERO). The `ageInTicks`-driven tumble (`Ry(sin(t·0.1)·
-/// 180) · Rx(cos(t·0.1)·180) · Rz(sin(t·0.15)·360)`, applied before the scale) and the second
-/// translucent 1.5× outer-shell pass are deferred. The yaw/pitch are projected through `body_rot` /
-/// `head_pitch`.
+/// into the root since the single part sits at ZERO). The root also applies the `ageInTicks`-driven
+/// tumble (`Ry(sin(t·0.1)·180) · Rx(cos(t·0.1)·180) · Rz(sin(t·0.15)·360)`) before the scale.
+/// The yaw/pitch are projected through `body_rot` / `head_pitch`; the textured path submits the
+/// translucent 1.5× outer shell separately.
 pub(in crate::entity_models) fn shulker_bullet_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
@@ -1095,8 +1097,9 @@ pub(in crate::entity_models) fn shulker_bullet_model_root_transform(
 
 /// Vanilla `WindChargeRenderer`: a plain `EntityRenderer` whose `submit` applies no extra transform
 /// (no flip, scale, or y-offset), so the model renders at the entity position. The `bone` root sits
-/// at ZERO; the `wind`/`wind_charge` counter-rotation and the scrolling `breezeWind` translucent
-/// texture are deferred. Shared by the wind charge and breeze wind charge.
+/// at ZERO, so this function owns only the entity translation. `WindChargeModel.setup_anim`
+/// counter-rotates `wind`/`wind_charge`, and the textured submission applies the scrolling
+/// `breezeWind` layer. Shared by the wind charge and breeze wind charge.
 pub(in crate::entity_models) fn wind_charge_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {

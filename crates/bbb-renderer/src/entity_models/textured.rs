@@ -7148,7 +7148,8 @@ pub(in crate::entity_models) fn render_horse_textured_layers(
 /// color, carries the look). The adult layer uses `HorseModel.createBodyLayer` (legs `[2, 3, 4, 5]`,
 /// neck `1`, `getTailXRotOffset = 0`, `ageScale = 1`); the baby uses `BabyHorseModel.createBabyLayer`,
 /// which re-parents the parts (legs `[1, 2, 3, 4]`, neck `5`) and overrides `getTailXRotOffset = −π/2`,
-/// `ageScale = 0.5`, and the projected `animateTail` yRot wag. The ridden/eat/stand poses are deferred.
+/// `ageScale = 0.5`, and the projected `animateTail` yRot wag. The shared posed submission also folds
+/// in the projected ridden, eating, feeding, and standing-up poses.
 pub(in crate::entity_models) fn render_undead_horse_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
     instance: &EntityModelInstance,

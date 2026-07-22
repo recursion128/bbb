@@ -250,10 +250,10 @@ fn ease_out_quart(x: f32) -> f32 {
 }
 
 /// The model→world transform used by vanilla `CopperGolemModel.translateToHand` plus
-/// `ItemInHandLayer.submitArmWithItem`. bbb currently projects the renderer's steady `IDLE` hand branch:
-/// `root -> body -> arm`, a ±90° Y rotation (right/left), a small forward offset, then the standard
-/// third-person hand rotation and adult hand offset. Interaction keyframe hand placement stays deferred
-/// with the copper golem interaction animations.
+/// `ItemInHandLayer.submitArmWithItem`. The model is prepared from the complete projected copper-golem
+/// animation state first, so `root -> body -> arm` includes the held-item clamp and interaction keyframe
+/// placement. Vanilla then adds a ±90° Y rotation (right/left), a small forward offset, the standard
+/// third-person hand rotation, and the adult hand offset.
 pub fn copper_golem_hand_attach_transform(
     instance: &EntityModelInstance,
     left_hand: bool,

@@ -5,7 +5,7 @@
     "not-applicable",
     "partial"
   ],
-  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, source-derived transform/interpolation, and the renderer-presentation owner partition apply to every catalog row. Generic animation, equipment/passenger/leash, and event implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, source-derived transform/interpolation, renderer-presentation ownership, and the reverse-audited animation path apply to every catalog row. Generic equipment/passenger/leash and event implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
   "catalog_source": "crates/bbb-protocol/src/entity_types.rs#VANILLA_ENTITY_TYPES",
   "cell_categories": [
@@ -28,8 +28,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -78,8 +77,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -128,8 +126,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -178,8 +175,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -229,8 +225,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -279,8 +274,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -329,8 +323,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -379,8 +372,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -429,8 +421,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -479,8 +470,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -529,8 +519,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -579,8 +568,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -629,8 +617,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -679,8 +666,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -729,8 +715,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -779,8 +764,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -829,8 +813,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -879,8 +862,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -929,8 +911,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -979,8 +960,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1029,8 +1009,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1079,8 +1058,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1129,8 +1107,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1179,8 +1156,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1229,8 +1205,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1279,8 +1254,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1329,8 +1303,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1379,8 +1352,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1429,8 +1401,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1479,8 +1450,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1529,8 +1499,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1579,8 +1548,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1629,8 +1597,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1679,8 +1646,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1729,8 +1695,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1779,8 +1744,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1829,8 +1793,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1879,8 +1842,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1929,8 +1891,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -1979,8 +1940,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2029,8 +1989,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2079,8 +2038,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2129,8 +2087,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2179,8 +2136,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2229,8 +2185,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2279,8 +2234,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2329,8 +2283,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2379,8 +2332,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2429,8 +2381,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2479,8 +2430,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2529,8 +2479,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2579,8 +2528,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2629,8 +2577,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2679,8 +2626,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2729,8 +2675,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2779,8 +2724,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2829,8 +2773,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2879,8 +2822,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2929,8 +2871,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -2979,8 +2920,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3029,8 +2969,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3079,8 +3018,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3129,8 +3067,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3179,8 +3116,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3229,8 +3165,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3279,8 +3214,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3329,8 +3263,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3379,8 +3312,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3429,8 +3361,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3479,8 +3410,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3530,8 +3460,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3580,8 +3509,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3630,8 +3558,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3680,8 +3607,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3730,8 +3656,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3780,8 +3705,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3830,8 +3754,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3880,8 +3803,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3930,8 +3852,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -3980,8 +3901,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4030,8 +3950,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4080,8 +3999,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4130,8 +4048,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4180,8 +4097,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4230,8 +4146,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4281,8 +4196,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4331,8 +4245,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4381,8 +4294,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4431,8 +4343,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4481,8 +4392,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4531,8 +4441,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4581,8 +4490,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4631,8 +4539,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4681,8 +4588,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4731,8 +4637,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4781,8 +4686,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4831,8 +4735,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4881,8 +4784,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4931,8 +4833,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -4981,8 +4882,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5031,8 +4931,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5081,8 +4980,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5131,8 +5029,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5181,8 +5078,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5231,8 +5127,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5281,8 +5176,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5331,8 +5225,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5381,8 +5274,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5430,9 +5322,8 @@
       "constant_name": "RABBIT",
       "coverage": {
         "animation": {
-          "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "evidence_ref": "rabbit_animation",
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5481,8 +5372,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5531,8 +5421,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5581,8 +5470,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5631,8 +5519,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5681,8 +5568,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5731,8 +5617,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5781,8 +5666,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5831,8 +5715,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5881,8 +5764,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5931,8 +5813,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -5981,8 +5862,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6031,8 +5911,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6081,8 +5960,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6131,8 +6009,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6181,8 +6058,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6231,8 +6107,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6281,8 +6156,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6331,8 +6205,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6381,8 +6254,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6431,8 +6303,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6481,8 +6352,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6531,8 +6401,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6581,8 +6450,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6631,8 +6499,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6681,8 +6548,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6731,8 +6597,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6781,8 +6646,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6831,8 +6695,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6929,8 +6792,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -6979,8 +6841,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7029,8 +6890,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7079,8 +6939,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7129,8 +6988,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7179,8 +7037,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7229,8 +7086,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7279,8 +7135,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7329,8 +7184,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7379,8 +7233,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7429,8 +7282,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7479,8 +7331,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7529,8 +7380,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7579,8 +7429,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7629,8 +7478,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7679,8 +7527,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7729,8 +7576,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7779,8 +7625,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7829,8 +7674,7 @@
       "coverage": {
         "animation": {
           "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -7878,13 +7722,32 @@
   "evidence_sets": {
     "animation_audit": {
       "implementation": [
-        "crates/bbb-world/src/entities/animations.rs#pub fn advance_entity_client_animations"
+        "crates/bbb-world/src/entities/animations.rs#pub fn advance_entity_client_animations",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn model_source",
+        "crates/bbb-native/src/entity_scene/kind.rs#pub(super) fn entity_model_kind",
+        "crates/bbb-renderer/src/entity_models/model.rs#pub(in crate::entity_models) trait EntityModel",
+        "crates/bbb-renderer/src/entity_models/dispatch.rs#pub(in crate::entity_models) fn dispatch_uniform_entity_model",
+        "crates/bbb-renderer/src/entity_models/colored/runtime.rs#pub(in crate::entity_models) fn entity_model_mesh"
       ],
       "tests": [
-        "crates/bbb-world/src/entities/tests/small_mob_and_walk_animation.rs#entity_model_sources_walk_animation_scales_position_for_babies"
+        "crates/bbb-world/src/entities/renderer_catalog.rs#presentation_owner_exhaustively_partitions_every_fixed_entity_type",
+        "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_matches_every_fixed_renderer_presentation_owner",
+        "crates/bbb-world/src/entities/tests/small_mob_and_walk_animation.rs#entity_model_sources_walk_animation_scales_position_for_babies",
+        "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#breeze_pose_drives_the_action_animations",
+        "crates/bbb-renderer/src/entity_models/tests/armadillo.rs#armadillo_roll_up_and_out_animations_match_vanilla_definitions",
+        "crates/bbb-renderer/src/entity_models/tests/axolotl.rs#baby_axolotl_animation_definitions_match_vanilla_26_1",
+        "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#creaking_combat_events_and_tearing_down_drive_the_keyframes",
+        "crates/bbb-renderer/src/entity_models/tests/guardian.rs#guardian_eye_tracks_target_with_vanilla_horizontal_and_vertical_formula",
+        "crates/bbb-renderer/src/entity_models/tests/ender_dragon.rs#ender_dragon_setup_anim_replays_vanilla_flight_history",
+        "crates/bbb-renderer/src/entity_models/tests/player.rs#player_holding_an_item_lowers_the_main_arm"
       ],
       "vanilla": [
-        "vanilla:net/minecraft/client/renderer/entity/EntityRenderers.java#register(EntityType"
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderers.java#register(EntityType",
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#public void extractRenderState",
+        "vanilla:net/minecraft/client/renderer/entity/LivingEntityRenderer.java#public void extractRenderState",
+        "vanilla:net/minecraft/client/model/Model.java#public void setupAnim",
+        "vanilla:net/minecraft/client/animation/KeyframeAnimation.java#public class KeyframeAnimation",
+        "vanilla:net/minecraft/world/entity/AnimationState.java#public class AnimationState"
       ]
     },
     "client_tick_audit": {
@@ -8052,6 +7915,24 @@
         "vanilla:net/minecraft/client/renderer/entity/EntityRenderers.java#NoopRenderer::new"
       ]
     },
+    "rabbit_animation": {
+      "implementation": [
+        "crates/bbb-world/src/entities/animations.rs#pub fn rabbit_hop_seconds",
+        "crates/bbb-renderer/src/entity_models/model_layers/rabbit.rs#impl EntityModel for RabbitModel"
+      ],
+      "tests": [
+        "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#rabbit_jump_event_drives_the_hop_window",
+        "crates/bbb-renderer/src/entity_models/tests/rabbit.rs#rabbit_hop_animation_matches_vanilla_definition",
+        "crates/bbb-renderer/src/entity_models/tests/rabbit.rs#rabbit_hop_re_poses_off_the_bind_pose_and_swings_the_legs"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/world/entity/animal/rabbit/Rabbit.java#private void setupAnimationStates",
+        "vanilla:net/minecraft/world/entity/animal/rabbit/Rabbit.java#private boolean shouldPlayIdleAnimation",
+        "vanilla:net/minecraft/client/model/animal/rabbit/RabbitModel.java#public void setupAnim",
+        "vanilla:net/minecraft/client/animation/definitions/RabbitAnimation.java#public static final AnimationDefinition HOP",
+        "vanilla:net/minecraft/client/animation/definitions/RabbitAnimation.java#public static final AnimationDefinition IDLE_HEAD_TILT"
+      ]
+    },
     "renderer_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/renderer_catalog/generated_26_1.rs#VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1",
@@ -8215,7 +8096,6 @@
   "uncertainties": [
     "Generic passenger state is present, but family-specific attachment, controlling-passenger, equipment applicability, and leash presentation have not been reverse-audited together.",
     "Generated dimensions and broad pick tests exist, but each pose/scale/collision exception has not been proven for every family.",
-    "Animation coverage is extensive, but no reverse proof yet shows that every applicable renderer family has exact keyframe/procedural animation and partial interpolation.",
     "Entity-event coverage has many focused mappings, but the complete vanilla subclass override inventory is still open.",
     "Shift-local save projection covers many families, but server-private versus client-observable fields still need a family-by-family audit."
   ],

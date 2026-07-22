@@ -746,7 +746,7 @@ fn humanoid_limb_swing_parts_assign_vanilla_skeleton_leg_phases_by_side() {
 #[test]
 fn skeleton_family_swings_its_legs_when_walking() {
     // SkeletonModel extends HumanoidModel and inherits its leg swing unchanged
-    // (only the arms are overridden, when aiming, which is deferred). A standing
+    // (the projected melee/aiming branches override only the arms). A standing
     // skeleton is inert; a walking one lifts its feet (a shorter model) and splays
     // its legs forward/back (a deeper footprint), for every family variant. This
     // exercises the colored path (the texture-backed render is checked separately).
@@ -1038,7 +1038,7 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
 #[test]
 fn skeleton_family_swings_its_arms_when_walking() {
     // SkeletonModel inherits the HumanoidModel arm counter-swing in its default state
-    // (the arms are overridden only in the deferred melee/aiming poses). In the colored
+    // (the projected melee/aiming poses override the arms). In the colored
     // body layer the parts emit head(0)+hat(1)+body(2), then right_arm(3), left_arm(4),
     // right_leg(5), left_leg(6) as 24-vertex blocks, so the head/body occupy vertices
     // [0, 72), the arms [72, 120) and the legs [120, 168). A standing skeleton is inert;

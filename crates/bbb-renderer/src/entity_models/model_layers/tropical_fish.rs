@@ -185,8 +185,8 @@ pub(in crate::entity_models) fn tropical_fish_tail_yrot(age_in_ticks: f32, in_wa
 
 // Vanilla 26.1 `ModelLayers.TROPICAL_FISH_SMALL` / `TROPICAL_FISH_LARGE`
 // (`TropicalFishRenderer`). The pattern overlay layers
-// (`TROPICAL_FISH_{SMALL,LARGE}_PATTERN`) inflate by `FISH_PATTERN_DEFORMATION` and are
-// deferred.
+// (`TROPICAL_FISH_{SMALL,LARGE}_PATTERN`) inflate by `FISH_PATTERN_DEFORMATION` and use their
+// pattern texture/tint submissions.
 pub(in crate::entity_models) const MODEL_LAYER_TROPICAL_FISH_SMALL: &str =
     "minecraft:tropical_fish_small#main";
 pub(in crate::entity_models) const MODEL_LAYER_TROPICAL_FISH_LARGE: &str =

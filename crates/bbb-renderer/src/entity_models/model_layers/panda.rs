@@ -274,7 +274,7 @@ fn panda_tree(baby: bool) -> ModelPart {
 /// Mutable panda model, mirroring vanilla `PandaModel` / `BabyPandaModel` (both `QuadrupedModel`s). The
 /// unified tree is built for the selected `baby` layout with the vanilla child names. `setup_anim` runs
 /// the shared `QuadrupedModel` head look ([`apply_head_look`] on `head`) and four-leg swing
-/// ([`apply_quadruped_leg_swing`]); every panda-specific pose stays deferred.
+/// ([`apply_quadruped_leg_swing`]), then applies every projected panda-specific pose below.
 /// Vanilla `PandaModel.setupAnim`'s `isUnhappy` and `isSneezing` branches, applied after the inherited
 /// `QuadrupedModel` head look + four-leg swing. An unhappy panda shakes its head (`yRot = zRot =
 /// 0.35·sin(0.6·age)`, overwriting the look yaw) and paddles its front legs (`xRot = ∓0.75·sin(0.3·age)`,

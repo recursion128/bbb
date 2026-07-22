@@ -186,3 +186,6 @@
   `EntityRenderers` 注册加 Player/Mannequin 例外唯一分区全部 157 行，native
   逆向测试拒绝生产 raw fallback；独立 pass、族模型/纹理/层、世界文字自定义
   字体与等宽扰动均有语义证据，矩阵第七类目翻为 complete。
+- **2026-07-22（entity animation 全量闭环）**：逆向 157 个 presentation owner
+  与生产 model kind，补齐 Armadillo、baby Axolotl、Creaking、Guardian、Humanoid
+  顺序和 Dragon heightmap 边缘；Rabbit 本地 RNG idle 明确为 not-needed，矩阵第八类目翻为 complete。

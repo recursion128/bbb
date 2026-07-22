@@ -358,7 +358,7 @@ fn goat_swings_its_legs_when_walking() {
     // ramming head tilt, so the four legs swing. A standing goat is inert; a walking
     // adult lifts its feet and splays its legs along Z; the baby's short legs swing
     // too but the motion stays inside its bounding box, so only the adult asserts the
-    // extent change. The ramming head tilt is deferred. Colored path.
+    // extent change. Focused tests cover the event-driven ramming head tilt. Colored path.
     for (name, base, adult_size) in [
         (
             "goat_adult",

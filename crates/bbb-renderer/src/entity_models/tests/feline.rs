@@ -302,7 +302,7 @@ fn baby_feline_head_look_turns_only_the_head() {
 #[test]
 fn feline_standing_drops_the_lower_tail() {
     // Vanilla `AdultFelineModel.setupAnim` sets `tail2.xRot = 1.7278761` while not sitting (the base the
-    // deferred walk wobble adds onto), a real change from the `0` bind rotation; the bind-0.9 `tail1`
+    // projected walk wobble adds onto), a real change from the `0` bind rotation; the bind-0.9 `tail1`
     // is left alone at rest.
     let mut model = FelineModel::new(false);
     model.prepare(&EntityModelInstance::feline(

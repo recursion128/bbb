@@ -4742,8 +4742,8 @@ pub fn guardian_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &GUARDIAN_ENTITY_TEXTURE_REFS
 }
 
-// The warden's base body texture (atlas 128×128). The four emissive overlay layers (tendrils,
-// heart, bioluminescent, pulsating spots) and the dig/emerge spawn animations stay deferred.
+// The warden's base body texture (atlas 128×128). Four emissive overlay layers (tendrils, heart,
+// bioluminescent, pulsating spots) follow their posed part subsets; dig/emerge use model keyframes.
 pub(in crate::entity_models) const WARDEN_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/warden/warden.png",

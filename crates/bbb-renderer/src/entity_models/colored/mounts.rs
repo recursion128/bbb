@@ -240,7 +240,8 @@ pub(in crate::entity_models) fn emit_horse_model(
     // equine gait (front amplitude 0.8, hind 0.5), the neck (`head_parts`) takes the head
     // look/bob (yaw clamped to ±20°, pitch onto the π/6 tilt, plus a walk bob), and the
     // tail lifts with the gait (baby horse `getTailXRotOffset = −π/2`, `ageScale = 0.5`)
-    // and wags on yRot when `animateTail` is projected. The ridden/eat/stand poses are deferred.
+    // and wags on yRot when `animateTail` is projected. `emit_equine_posed` also folds in the
+    // projected ridden, eating, feeding, and standing-up poses.
     emit_equine_posed(
         mesh,
         if baby {
