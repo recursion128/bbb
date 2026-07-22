@@ -1042,7 +1042,9 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
     login.common_spawn_info.dimension = "minecraft:the_nether".to_string();
     nether.apply_login(&login);
     nether
-        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet_with_sections(
+            nether.dimension().section_count(),
+        ))
         .unwrap();
     set_test_block(&mut nether, block_pos(16, 0, -32), tip_id);
     set_test_block(&mut nether, block_pos(16, 1, -32), stone_id);

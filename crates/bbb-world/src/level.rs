@@ -905,6 +905,7 @@ impl WorldStore {
 
     fn clear_level_bound_state(&mut self) {
         self.clear_debug_subscriber_values();
+        self.clear_queued_light_updates();
         self.chunks.clear();
         self.clear_terrain_revisions();
         self.first_chunk = None;

@@ -65,7 +65,7 @@ use bbb_world::{
     RabbitSprintParticleState, RavagerRoarParticleState, RegistryPacketEntry,
     SnowballHitParticleState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
     VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile,
-    WorldStore,
+    WorldDimension, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -1250,13 +1250,19 @@ fn vanilla_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) 
 }
 
 fn synthetic_native_level_chunk_packet() -> LevelChunkWithLight {
+    synthetic_native_level_chunk_packet_with_sections(WorldDimension::default().section_count())
+}
+
+fn synthetic_native_level_chunk_packet_with_sections(section_count: usize) -> LevelChunkWithLight {
     let mut sections = Encoder::new();
-    sections.write_i16(0);
-    sections.write_i16(0);
-    sections.write_u8(0);
-    sections.write_var_i32(0);
-    sections.write_u8(0);
-    sections.write_var_i32(0);
+    for _ in 0..section_count {
+        sections.write_i16(0);
+        sections.write_i16(0);
+        sections.write_u8(0);
+        sections.write_var_i32(0);
+        sections.write_u8(0);
+        sections.write_var_i32(0);
+    }
 
     LevelChunkWithLight {
         x: 1,
@@ -1294,7 +1300,9 @@ fn single_biome_payload(biome_id: i32) -> Vec<u8> {
     let mut payload = Encoder::new();
     payload.write_u8(0);
     payload.write_var_i32(biome_id);
-    payload.into_inner()
+    payload
+        .into_inner()
+        .repeat(WorldDimension::default().section_count())
 }
 
 fn sign_text_nbt(front: [&str; 4], back: [&str; 4]) -> Vec<u8> {

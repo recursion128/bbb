@@ -351,6 +351,35 @@ mod tests {
     }
 
     #[test]
+    fn queued_light_poll_follows_the_single_network_drain_before_presentation_sync() {
+        let runtime = include_str!("runtime.rs");
+        let advance = runtime
+            .split_once("pub(crate) fn advance_simulation(")
+            .expect("advance_simulation")
+            .1
+            .split_once("pub(crate) fn update_renderer_from_publication(")
+            .expect("advance_simulation end")
+            .0;
+        let drain = advance
+            .find("events::drain_net_events_with_sinks_and_debug(")
+            .expect("single network drain");
+        let light_poll = advance
+            .find("world.poll_queued_light_updates();")
+            .expect("queued light poll");
+        let presentation = advance
+            .find("server_resource_packs.synchronize(")
+            .expect("first presentation synchronization");
+        assert_eq!(
+            advance
+                .matches("events::drain_net_events_with_sinks_and_debug(")
+                .count(),
+            1
+        );
+        assert!(drain < light_poll);
+        assert!(light_poll < presentation);
+    }
+
+    #[test]
     fn main_spawns_one_named_simulation_owner_and_only_consumes_its_outputs() {
         let main = include_str!("main.rs");
         let thread = include_str!("simulation/thread.rs");

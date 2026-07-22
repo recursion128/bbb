@@ -32,7 +32,7 @@ use super::{
     },
     merge_light_data, sample_terrain_light,
     sign_text::decode_sign_block_entity_text,
-    updated_light_section_indices,
+    updated_light_section_indices, validate_light_data, QueuedLightUpdate,
 };
 
 impl WorldStore {
@@ -44,15 +44,31 @@ impl WorldStore {
             x: packet.x,
             z: packet.z,
         };
-        let decoded = decode_level_chunk_with_light(pos, packet.chunk_data, packet.light_data);
-        let column = match decoded {
+        let decoded = decode_level_chunk_with_light(
+            pos,
+            packet.chunk_data,
+            packet.light_data,
+            self.dimension,
+        );
+        let mut column = match decoded {
             Ok(column) => column,
             Err(err) => {
                 self.record_apply_error("level_chunk_with_light", &err);
                 return Err(err);
             }
         };
+        let light = std::mem::take(&mut column.light);
+        let light_array_count = light.sky_updates.len() + light.block_updates.len();
         self.insert_decoded_chunk(column);
+        self.counters.light_arrays_seen += light_array_count;
+        if self.probe_chunk(pos).is_some() {
+            self.queued_light_updates.push_back(QueuedLightUpdate {
+                pos,
+                light,
+                schedule_rebuild: false,
+                counted_packet: false,
+            });
+        }
         Ok(pos)
     }
 
@@ -214,24 +230,102 @@ impl WorldStore {
     }
 
     pub fn apply_light_update(&mut self, update: ProtocolLightUpdate) -> Result<bool> {
-        self.counters.light_updates_received += 1;
         let update_light = update.light_data.into();
-        let updated_sections = updated_light_section_indices(&update_light);
         let pos = ChunkPos {
             x: update.chunk_x,
             z: update.chunk_z,
         };
+        if let Err(err) = self.validate_light_update(&update_light) {
+            self.record_apply_error("light_update", &err);
+            return Err(err);
+        }
+        self.counters.light_updates_received += 1;
+        Ok(self.apply_light_data(pos, update_light, true, true))
+    }
+
+    pub fn queue_light_update(&mut self, update: ProtocolLightUpdate) -> Result<()> {
+        let light = update.light_data.into();
+        if let Err(err) = self.validate_light_update(&light) {
+            self.record_apply_error("light_update", &err);
+            return Err(err);
+        }
+        self.counters.light_updates_received += 1;
+        self.queued_light_updates.push_back(QueuedLightUpdate {
+            pos: ChunkPos {
+                x: update.chunk_x,
+                z: update.chunk_z,
+            },
+            light,
+            schedule_rebuild: true,
+            counted_packet: true,
+        });
+        Ok(())
+    }
+
+    pub fn queued_light_update_count(&self) -> usize {
+        self.queued_light_updates.len()
+    }
+
+    pub fn poll_queued_light_updates(&mut self) -> usize {
+        let queued = self.queued_light_updates.len();
+        let budget = if queued < 1_000 {
+            10.max(queued / 10)
+        } else {
+            queued
+        };
+        let mut applied = 0;
+        for _ in 0..budget.min(queued) {
+            let Some(update) = self.queued_light_updates.pop_front() else {
+                break;
+            };
+            self.apply_light_data(
+                update.pos,
+                update.light,
+                update.schedule_rebuild,
+                update.counted_packet,
+            );
+            applied += 1;
+        }
+        applied
+    }
+
+    pub(crate) fn clear_queued_light_updates(&mut self) {
+        let ignored = self
+            .queued_light_updates
+            .iter()
+            .filter(|update| update.counted_packet)
+            .count();
+        self.counters.light_updates_ignored += ignored;
+        self.queued_light_updates.clear();
+    }
+
+    fn validate_light_update(&self, light: &crate::LightData) -> Result<()> {
+        validate_light_data(light, self.dimension.section_count().saturating_add(2))
+    }
+
+    fn apply_light_data(
+        &mut self,
+        pos: ChunkPos,
+        update_light: crate::LightData,
+        schedule_rebuild: bool,
+        counted_packet: bool,
+    ) -> bool {
+        let updated_sections = updated_light_section_indices(&update_light);
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == pos) else {
-            self.counters.light_updates_ignored += 1;
-            return Ok(false);
+            if counted_packet {
+                self.counters.light_updates_ignored += 1;
+            }
+            return false;
         };
 
         merge_light_data(&mut chunk.light, update_light);
-        self.counters.light_updates_applied += 1;
-        if !updated_sections.is_empty() {
+        if counted_packet {
+            self.counters.light_updates_applied += 1;
+        }
+        if schedule_rebuild && !updated_sections.is_empty() {
             self.mark_terrain_light_sections_changed(pos, &updated_sections);
         }
-        Ok(true)
+        true
     }
 
     pub fn apply_biome_update(&mut self, update: ProtocolChunksBiomes) -> Result<usize> {
@@ -331,6 +425,7 @@ impl WorldStore {
         self.chunks
             .retain(|chunk| chunk_is_in_view(view, chunk.pos));
         for pos in removed {
+            self.discard_queued_light_updates_for_chunk(pos);
             self.mark_terrain_chunk_removed(pos);
         }
         self.retain_resident_terrain_revisions();
@@ -339,6 +434,7 @@ impl WorldStore {
     pub fn forget_chunk(&mut self, pos: ChunkPos) -> bool {
         self.counters.chunk_forgets_received += 1;
         self.drop_debug_chunk(pos);
+        self.discard_queued_light_updates_for_chunk(pos);
         let Some(index) = self.chunks.iter().position(|chunk| chunk.pos == pos) else {
             self.counters.chunk_forgets_ignored += 1;
             return false;
@@ -348,6 +444,18 @@ impl WorldStore {
         self.mark_terrain_chunk_removed(pos);
         self.retain_resident_terrain_revisions();
         true
+    }
+
+    fn discard_queued_light_updates_for_chunk(&mut self, pos: ChunkPos) {
+        let mut ignored = 0;
+        self.queued_light_updates.retain(|update| {
+            let keep = update.pos != pos;
+            if !keep && update.counted_packet {
+                ignored += 1;
+            }
+            keep
+        });
+        self.counters.light_updates_ignored += ignored;
     }
 
     pub fn probe_chunk(&self, pos: ChunkPos) -> Option<&ChunkColumn> {

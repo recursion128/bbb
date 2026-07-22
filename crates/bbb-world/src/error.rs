@@ -9,6 +9,31 @@ pub enum WorldDecodeError {
     InvalidPalettedBits(u8),
     #[error("chunk section buffer has {actual} bytes, max is {max}")]
     ChunkSectionBufferTooLarge { actual: usize, max: usize },
+    #[error("chunk has {actual} sections, expected {expected} for the active dimension")]
+    ChunkSectionCountMismatch { expected: usize, actual: usize },
+    #[error(
+        "{field} contains light section {section}, but the active dimension has {section_count} light sections"
+    )]
+    LightMaskOutsideDimension {
+        field: &'static str,
+        section: usize,
+        section_count: usize,
+    },
+    #[error("{layer} light data and empty masks overlap")]
+    OverlappingLightMasks { layer: &'static str },
+    #[error("{field} has {actual} data layers, expected {expected} from its mask")]
+    LightDataLayerCountMismatch {
+        field: &'static str,
+        expected: usize,
+        actual: usize,
+    },
+    #[error("{field}[{index}] has {actual} bytes, expected {expected}")]
+    LightDataLayerSizeMismatch {
+        field: &'static str,
+        index: usize,
+        expected: usize,
+        actual: usize,
+    },
     #[error("byte array has {actual} bytes, max is {max}")]
     ByteArrayTooLarge { actual: usize, max: usize },
     #[error("biome update has {remaining} trailing bytes")]

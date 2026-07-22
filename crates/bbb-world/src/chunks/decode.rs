@@ -4,9 +4,10 @@ use bbb_protocol::packets::{
     LevelChunkData as ProtocolLevelChunkData, LightUpdateData as ProtocolLightUpdateData,
 };
 
-use crate::{ChunkPos, Result, WorldDecodeError};
+use crate::{ChunkPos, Result, WorldDecodeError, WorldDimension};
 
 use super::{
+    light::validate_light_data,
     palette::{packed_long_len, palette_kind, PaletteDomain, PaletteKind, PalettedContainerData},
     sign_text::decode_sign_block_entity_text,
     state::{
@@ -20,6 +21,7 @@ pub fn decode_level_chunk_with_light(
     pos: ChunkPos,
     chunk_data: ProtocolLevelChunkData,
     light_data: ProtocolLightUpdateData,
+    dimension: WorldDimension,
 ) -> Result<ChunkColumn> {
     if chunk_data.section_data.len() > MAX_CHUNK_SECTION_BUFFER {
         return Err(WorldDecodeError::ChunkSectionBufferTooLarge {
@@ -36,7 +38,16 @@ pub fn decode_level_chunk_with_light(
         })
         .collect();
     let sections = decode_sections(&chunk_data.section_data)?;
+    let expected_sections = dimension.section_count();
+    if sections.len() != expected_sections {
+        return Err(WorldDecodeError::ChunkSectionCountMismatch {
+            expected: expected_sections,
+            actual: sections.len(),
+        });
+    }
     let block_entities = decode_block_entities(chunk_data.block_entities)?;
+    let light = light_data.into();
+    validate_light_data(&light, expected_sections.saturating_add(2))?;
 
     Ok(ChunkColumn {
         pos,
@@ -44,7 +55,7 @@ pub fn decode_level_chunk_with_light(
         heightmaps,
         sections,
         block_entities,
-        light: light_data.into(),
+        light,
     })
 }
 

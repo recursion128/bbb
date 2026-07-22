@@ -1,11 +1,48 @@
 use bbb_protocol::packets::LightUpdateData;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::{
+    collections::{BTreeSet, VecDeque},
+    ops::{Deref, DerefMut},
+};
 
-use crate::{section_block_index, TerrainLight, WorldDimension};
+use crate::{
+    section_block_index, ChunkPos, Result, TerrainLight, WorldDecodeError, WorldDimension,
+};
 
-#[cfg(test)]
 pub(crate) const LIGHT_ARRAY_BYTES: usize = 2048;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct QueuedLightUpdate {
+    pub(crate) pos: ChunkPos,
+    pub(crate) light: LightData,
+    pub(crate) schedule_rebuild: bool,
+    pub(crate) counted_packet: bool,
+}
+
+/// Process-local pending work. Cloning a WorldStore builds a publication
+/// generation, so pending closures deliberately do not cross that boundary.
+#[derive(Debug, Default)]
+pub(crate) struct RuntimeLightUpdateQueue(VecDeque<QueuedLightUpdate>);
+
+impl Clone for RuntimeLightUpdateQueue {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl Deref for RuntimeLightUpdateQueue {
+    type Target = VecDeque<QueuedLightUpdate>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for RuntimeLightUpdateQueue {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct LightData {
@@ -28,6 +65,73 @@ impl From<LightUpdateData> for LightData {
             block_updates: update.block_updates,
         }
     }
+}
+
+pub(crate) fn validate_light_data(light: &LightData, section_count: usize) -> Result<()> {
+    validate_light_mask("sky_y_mask", &light.sky_y_mask, section_count)?;
+    validate_light_mask("block_y_mask", &light.block_y_mask, section_count)?;
+    validate_light_mask("empty_sky_y_mask", &light.empty_sky_y_mask, section_count)?;
+    validate_light_mask(
+        "empty_block_y_mask",
+        &light.empty_block_y_mask,
+        section_count,
+    )?;
+
+    if masks_overlap(&light.sky_y_mask, &light.empty_sky_y_mask) {
+        return Err(WorldDecodeError::OverlappingLightMasks { layer: "sky" });
+    }
+    if masks_overlap(&light.block_y_mask, &light.empty_block_y_mask) {
+        return Err(WorldDecodeError::OverlappingLightMasks { layer: "block" });
+    }
+
+    validate_light_layers("sky_updates", &light.sky_y_mask, &light.sky_updates)?;
+    validate_light_layers("block_updates", &light.block_y_mask, &light.block_updates)?;
+    Ok(())
+}
+
+fn validate_light_mask(field: &'static str, mask: &[i64], section_count: usize) -> Result<()> {
+    if let Some(section) = set_bit_indices(mask)
+        .into_iter()
+        .find(|section| *section >= section_count)
+    {
+        return Err(WorldDecodeError::LightMaskOutsideDimension {
+            field,
+            section,
+            section_count,
+        });
+    }
+    Ok(())
+}
+
+fn masks_overlap(left: &[i64], right: &[i64]) -> bool {
+    left.iter()
+        .zip(right)
+        .any(|(left, right)| (*left as u64 & *right as u64) != 0)
+}
+
+fn validate_light_layers(field: &'static str, mask: &[i64], layers: &[Vec<u8>]) -> Result<()> {
+    let expected = mask
+        .iter()
+        .map(|word| (*word as u64).count_ones() as usize)
+        .sum();
+    if layers.len() != expected {
+        return Err(WorldDecodeError::LightDataLayerCountMismatch {
+            field,
+            expected,
+            actual: layers.len(),
+        });
+    }
+    for (index, layer) in layers.iter().enumerate() {
+        if layer.len() != LIGHT_ARRAY_BYTES {
+            return Err(WorldDecodeError::LightDataLayerSizeMismatch {
+                field,
+                index,
+                expected: LIGHT_ARRAY_BYTES,
+                actual: layer.len(),
+            });
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn merge_light_data(target: &mut LightData, update: LightData) {

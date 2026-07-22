@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_pack::KnownPackDataSource;
 use serde::{Deserialize, Serialize};
 
+use crate::chunks::RuntimeLightUpdateQueue;
 use crate::item_profiles::ItemProfiles;
 use crate::terrain::TerrainChunkRenderRevisions;
 use crate::{
@@ -62,6 +63,10 @@ pub struct WorldStore {
     pub(crate) insecure_chat_warning_count: usize,
     pub(crate) registries: PublicationShared<RegistrySet>,
     pub(crate) chunks: Vec<PublicationShared<ChunkColumn>>,
+    /// Vanilla's ClientLevel light-update queue. Pending work is runtime-only:
+    /// canonical snapshots publish light only after the bounded frame poll.
+    #[serde(skip)]
+    pub(crate) queued_light_updates: RuntimeLightUpdateQueue,
     /// Runtime extraction revisions for the chunk terrain cache. These are
     /// deterministic derivatives of canonical chunk mutations, but are not
     /// part of serialized world snapshots: a restored runtime starts with an

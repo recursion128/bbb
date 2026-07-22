@@ -57,6 +57,7 @@ impl ProbeContext {
         let connection_packet =
             self.world
                 .apply_play_packet(packet, &mut self.level_event_sound_random, &mut effects);
+        self.world.poll_queued_light_updates();
 
         if let Some(reason) = effects.chat_disconnect {
             bail!("invalid signed-chat stream: {reason:?}");
@@ -1458,6 +1459,7 @@ mod tests {
             .unwrap();
 
         let chunk = probe.world.probe_chunk(chunk_pos).unwrap();
+        assert_eq!(probe.world.queued_light_update_count(), 0);
         assert_eq!(chunk.light.sky_y_mask, vec![0b10]);
         assert_eq!(chunk.light.block_y_mask, vec![0b10]);
         assert_eq!(chunk.light.sky_updates.len(), 1);
@@ -5115,12 +5117,14 @@ mod tests {
 
     fn synthetic_probe_level_chunk_packet() -> LevelChunkWithLight {
         let mut sections = Encoder::new();
-        sections.write_i16(0);
-        sections.write_i16(0);
-        sections.write_u8(0);
-        sections.write_var_i32(0);
-        sections.write_u8(0);
-        sections.write_var_i32(0);
+        for _ in 0..bbb_world::WorldDimension::default().section_count() {
+            sections.write_i16(0);
+            sections.write_i16(0);
+            sections.write_u8(0);
+            sections.write_var_i32(0);
+            sections.write_u8(0);
+            sections.write_var_i32(0);
+        }
 
         LevelChunkWithLight {
             x: 1,
@@ -5162,7 +5166,9 @@ mod tests {
         let mut payload = Encoder::new();
         payload.write_u8(0);
         payload.write_var_i32(biome_id);
-        payload.into_inner()
+        payload
+            .into_inner()
+            .repeat(bbb_world::WorldDimension::default().section_count())
     }
 
     fn sign_text_nbt(front: [&str; 4], back: [&str; 4]) -> Vec<u8> {

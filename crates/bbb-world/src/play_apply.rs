@@ -1007,7 +1007,7 @@ impl WorldStore {
                 effects.level_particles(self, &update);
             }
             PlayClientbound::LightUpdate(update) => {
-                let _ = self.apply_light_update(update);
+                let _ = self.queue_light_update(update);
             }
             PlayClientbound::ChunksBiomes(update) => {
                 let _ = self.apply_biome_update(update);

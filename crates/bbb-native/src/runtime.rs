@@ -2235,6 +2235,7 @@ pub(crate) fn advance_simulation(
             Some(&mut network_terminated),
         );
     }
+    world.poll_queued_light_updates();
     let pump_net_drained_at = Instant::now();
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);

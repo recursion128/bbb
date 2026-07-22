@@ -38,8 +38,14 @@ mod terrain_materials;
 #[test]
 fn decodes_level_chunk_with_light_structure() {
     let packet = synthetic_level_chunk_packet();
-    let mut store = WorldStore::new();
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
     let pos = store.insert_level_chunk_with_light(packet).unwrap();
+    assert_eq!(store.queued_light_update_count(), 1);
+    assert!(store.probe_chunk(pos).unwrap().light.sky_updates.is_empty());
+    assert_eq!(store.poll_queued_light_updates(), 1);
     let chunk = store.probe_chunk(pos).unwrap();
 
     assert_eq!(pos, ChunkPos { x: 1, z: -2 });
@@ -401,10 +407,14 @@ fn terrain_revision_tracks_view_selection_and_level_clear_lifecycle() {
 
 #[test]
 fn probes_chunk_summary_from_world_store() {
-    let mut store = WorldStore::new();
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
     let pos = store
         .insert_level_chunk_with_light(synthetic_level_chunk_packet())
         .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
 
     let summary = store.probe_chunk_summary(pos).unwrap();
 
@@ -538,6 +548,165 @@ fn applies_light_update_to_existing_chunk_sections() {
         terrain.cells[terrain_cell_index(2, 1, 3, 16)].light,
         TerrainLight { sky: 4, block: 0 }
     );
+}
+
+#[test]
+fn queued_light_updates_preserve_fifo_order_and_vanilla_poll_budget() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
+
+    for value in 0..11u8 {
+        store
+            .queue_light_update(ProtocolLightUpdate {
+                chunk_x: 2,
+                chunk_z: -3,
+                light_data: light_update_data(
+                    &[0b10],
+                    &[],
+                    &[],
+                    &[],
+                    vec![vec![value; LIGHT_ARRAY_BYTES]],
+                    Vec::new(),
+                ),
+            })
+            .unwrap();
+    }
+
+    assert_eq!(store.poll_queued_light_updates(), 10);
+    assert_eq!(store.queued_light_update_count(), 1);
+    assert_eq!(
+        store
+            .probe_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .light
+            .sky_updates[0][0],
+        9
+    );
+    assert_eq!(store.poll_queued_light_updates(), 1);
+    assert_eq!(
+        store
+            .probe_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .light
+            .sky_updates[0][0],
+        10
+    );
+
+    for _ in 0..1_000 {
+        store
+            .queue_light_update(ProtocolLightUpdate {
+                chunk_x: 2,
+                chunk_z: -3,
+                light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+            })
+            .unwrap();
+    }
+    assert_eq!(store.poll_queued_light_updates(), 1_000);
+    assert_eq!(store.queued_light_update_count(), 0);
+    assert_eq!(store.counters().light_updates_received, 1_011);
+    assert_eq!(store.counters().light_updates_applied, 1_011);
+}
+
+#[test]
+fn light_validation_rejects_wrong_dimension_domains_before_mutation() {
+    let dimension = WorldDimension {
+        min_y: 0,
+        height: 16,
+    };
+    let mut store = WorldStore::with_dimension(dimension);
+    let err = store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet_with_sections(2))
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        crate::WorldDecodeError::ChunkSectionCountMismatch {
+            expected: 1,
+            actual: 2
+        }
+    ));
+    assert!(store.chunk_positions().is_empty());
+    assert_eq!(store.queued_light_update_count(), 0);
+    assert_eq!(store.counters().chunks_received, 0);
+
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
+    let before = store.probe_chunk(ChunkPos { x: 2, z: -3 }).unwrap().clone();
+    let err = store
+        .queue_light_update(ProtocolLightUpdate {
+            chunk_x: 2,
+            chunk_z: -3,
+            light_data: light_update_data(
+                &[0b1000],
+                &[],
+                &[],
+                &[],
+                vec![vec![1; LIGHT_ARRAY_BYTES]],
+                Vec::new(),
+            ),
+        })
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        crate::WorldDecodeError::LightMaskOutsideDimension {
+            field: "sky_y_mask",
+            section: 3,
+            section_count: 3
+        }
+    ));
+    assert_eq!(store.queued_light_update_count(), 0);
+    assert_eq!(store.counters().light_updates_received, 0);
+    assert_eq!(store.probe_chunk(before.pos).unwrap().light, before.light);
+}
+
+#[test]
+fn forget_and_level_clear_discard_pending_light_without_stale_application() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    store
+        .queue_light_update(ProtocolLightUpdate {
+            chunk_x: 2,
+            chunk_z: -3,
+            light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+        })
+        .unwrap();
+    assert_eq!(store.queued_light_update_count(), 2);
+    assert_eq!(store.publication_snapshot().queued_light_update_count(), 0);
+    assert_eq!(store.queued_light_update_count(), 2);
+    assert!(store.forget_chunk(ChunkPos { x: 2, z: -3 }));
+    assert_eq!(store.queued_light_update_count(), 0);
+    assert_eq!(store.counters().light_updates_received, 1);
+    assert_eq!(store.counters().light_updates_applied, 0);
+    assert_eq!(store.counters().light_updates_ignored, 1);
+
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    store
+        .queue_light_update(ProtocolLightUpdate {
+            chunk_x: 2,
+            chunk_z: -3,
+            light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+        })
+        .unwrap();
+    store.clear_client_level();
+    assert_eq!(store.queued_light_update_count(), 0);
+    assert_eq!(store.poll_queued_light_updates(), 0);
+    assert_eq!(store.counters().light_updates_received, 2);
+    assert_eq!(store.counters().light_updates_applied, 0);
+    assert_eq!(store.counters().light_updates_ignored, 2);
 }
 
 #[test]
@@ -1121,7 +1290,10 @@ fn chunk_cache_updates_track_view_state() {
 
 #[test]
 fn chunk_cache_view_prunes_and_rejects_columns_outside_vanilla_storage_range() {
-    let mut store = WorldStore::new();
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
     for x in [0, 5, 6, 20] {
         let mut packet = synthetic_level_chunk_packet();
         packet.x = x;

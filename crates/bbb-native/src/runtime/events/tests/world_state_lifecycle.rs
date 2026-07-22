@@ -260,7 +260,7 @@ fn terrain_chunk_events_update_world_counters() {
 
     assert_chunk_counter!(chunks_received, 1);
     assert_chunk_counter!(chunks_decoded, 1);
-    assert_chunk_counter!(sections_decoded, 1);
+    assert_chunk_counter!(sections_decoded, 24);
     assert_chunk_counter!(block_entities_seen, 1);
     assert_chunk_counter!(light_arrays_seen, 0);
     assert_chunk_counter!(block_updates_received, 2);
@@ -270,14 +270,53 @@ fn terrain_chunk_events_update_world_counters() {
     assert_chunk_counter!(block_entity_updates_applied, 1);
     assert_chunk_counter!(block_entity_updates_ignored, 0);
     assert_chunk_counter!(light_updates_received, 1);
-    assert_chunk_counter!(light_updates_applied, 1);
-    assert_chunk_counter!(light_updates_ignored, 0);
+    assert_chunk_counter!(light_updates_applied, 0);
+    assert_chunk_counter!(light_updates_ignored, 1);
     assert_chunk_counter!(biome_updates_received, 1);
     assert_chunk_counter!(biome_updates_applied, 1);
     assert_chunk_counter!(biome_updates_ignored, 0);
     assert_chunk_counter!(chunk_forgets_received, 1);
     assert_chunk_counter!(chunks_forgotten, 1);
     assert_chunk_counter!(chunk_forgets_ignored, 0);
+}
+
+#[test]
+fn network_drain_queues_light_until_the_runtime_poll_boundary() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LightUpdate(LightUpdate {
+        chunk_x: 1,
+        chunk_z: -2,
+        light_data: LightUpdateData {
+            sky_y_mask: vec![0b10],
+            block_y_mask: Vec::new(),
+            empty_sky_y_mask: Vec::new(),
+            empty_block_y_mask: Vec::new(),
+            sky_updates: vec![vec![7; 2_048]],
+            block_updates: Vec::new(),
+        },
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+    let pos = ChunkPos { x: 1, z: -2 };
+    assert_eq!(world.queued_light_update_count(), 2);
+    assert!(world.probe_chunk(pos).unwrap().light.sky_updates.is_empty());
+    assert_eq!(world.counters().light_updates_received, 1);
+    assert_eq!(world.counters().light_updates_applied, 0);
+
+    assert_eq!(world.poll_queued_light_updates(), 2);
+    assert_eq!(world.queued_light_update_count(), 0);
+    assert_eq!(world.probe_chunk(pos).unwrap().light.sky_updates[0][0], 7);
+    assert_eq!(world.counters().light_updates_applied, 1);
 }
 
 #[test]
