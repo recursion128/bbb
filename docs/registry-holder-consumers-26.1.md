@@ -24,10 +24,17 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
 42 checked families. Coverage selectors may narrow a shared vanilla source by
-concrete resource id without classifying its unrelated registry calls. The
-remaining partial families name their current bbb resource-id or tag resolver surface. They remain
-`partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 150 rows. The
+concrete resource id without classifying its unrelated registry calls. All rows
+are closed: 107 client-observable calls are `complete`, and 87 generic helper or
+server-owned persistent calls are `not-applicable` to the native client. The
+single network `TagKey` call belongs to `TagSlotDisplay`: protocol retains its
+normalized item-tag identity, and native recipe presentation resolves ordered
+members from the current `UpdateTags` revision on every read. Replacement and
+removal are covered without a parallel tag cache. The remaining persistent
+TagKey/hashed-tag, custom HolderSet, and named-or-inline HolderSet rows are
+generic codec delegation or server advancement, block bootstrap, recipe data,
+worldgen, and loot inputs; Vanilla's client paths use their separately
+inventoried stream/network codecs where applicable. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -70,13 +77,13 @@ component values retain the current server order, custom network elements are
 strictly projected across the five direct-codec fields, and generated known-pack
 effects plus custom reordered effects select the six vanilla player hurt sounds
 through the native audio command path. Persistent codec and holder-set calls
-remain separate partial rows.
+remain separate classified rows.
 The `map_decoration_type` reference holder is `complete` against its immutable
 client built-in registry: MapItemData keeps the numeric holder, the generated
 35-entry order supplies sprite and item-frame visibility, and both first-person
 and item-frame map surfaces consume it. Configuration registry injection is
 explicitly tested not to remap that order; the persistent named codec remains a
-separate partial row.
+separate classified row.
 The two item reference calls are `complete` against the immutable 1506-entry
 client built-in registry. All direct `Item.STREAM_CODEC` owners validate ids at
 their packet boundary, item-stack templates reject air, serverbound hashed stacks

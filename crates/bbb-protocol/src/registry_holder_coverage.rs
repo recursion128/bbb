@@ -130,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn coverage_uses_narrow_families_without_premature_completion() {
+    fn coverage_uses_narrow_families_and_closes_every_inventory_row() {
         let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
         let counts = ledger
             .entries
@@ -182,8 +182,8 @@ mod tests {
         assert_eq!(counts["network-holder-reference-helper"], 1);
         assert_eq!(counts["network-holder-set-or-tag"], 10);
         assert_eq!(counts["network-holder-set-or-tag-banner-pattern"], 1);
-        assert_eq!(counts["network-tag"], 1);
-        assert_eq!(counts["persistent-hashed-tag"], 6);
+        assert_eq!(counts["network-tag-slot-display"], 1);
+        assert_eq!(counts["persistent-hashed-tag-server-only"], 6);
         assert_eq!(
             counts["persistent-hashed-tag-dimension-type-synchronized"],
             1
@@ -204,12 +204,12 @@ mod tests {
             1
         );
         assert_eq!(counts["persistent-holder-or-inline-trims"], 2);
-        assert_eq!(counts["persistent-holder-set-custom"], 3);
+        assert_eq!(counts["persistent-holder-set-custom-server-only"], 3);
         assert_eq!(
             counts["persistent-holder-set-or-inline-dialog-synchronized"],
             1
         );
-        assert_eq!(counts["persistent-holder-set-or-inline"], 5);
+        assert_eq!(counts["persistent-holder-set-or-inline-server-only"], 5);
         assert_eq!(counts["persistent-holder-set-or-tag-client-components"], 14);
         assert_eq!(
             counts["persistent-holder-set-or-tag-enchantment-synchronized"],
@@ -221,14 +221,14 @@ mod tests {
             counts["persistent-holder-set-or-tag-timeline-synchronized"],
             1
         );
-        assert_eq!(counts["persistent-tag"], 11);
+        assert_eq!(counts["persistent-tag-server-only"], 11);
         assert_eq!(
             ledger
                 .entries
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            26
+            0
         );
         assert_eq!(
             ledger
@@ -244,14 +244,14 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::NotApplicable)
                 .count(),
-            62
+            87
         );
         let complete = ledger
             .entries
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 106);
+        assert_eq!(complete.len(), 107);
         assert_eq!(
             complete
                 .iter()
@@ -380,6 +380,80 @@ mod tests {
                 "network holder-set persistence lost structural guard {required}"
             );
         }
+    }
+
+    #[test]
+    fn final_tag_and_custom_holder_set_families_keep_client_and_server_boundaries() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        let network = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.family == "network-tag-slot-display")
+            .collect::<Vec<_>>();
+        assert_eq!(network.len(), 1);
+        assert_eq!(network[0].status, RegistryHolderCoverageStatus::Complete);
+        assert_eq!(network[0].resource_id.as_deref(), Some("minecraft:item"));
+        assert!(network[0]
+            .consumer
+            .as_deref()
+            .is_some_and(|consumer| consumer.contains("push_slot_display_item_stack_candidates")));
+        for required in [
+            "decode_slot_display_body",
+            "decodes_update_recipes_with_tag_slot_display",
+            "hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+        ] {
+            assert!(network[0]
+                .evidence
+                .iter()
+                .any(|evidence| evidence.contains(required)));
+        }
+
+        for (family, count) in [
+            ("persistent-hashed-tag-server-only", 6),
+            ("persistent-holder-set-custom-server-only", 3),
+            ("persistent-holder-set-or-inline-server-only", 5),
+            ("persistent-tag-server-only", 11),
+        ] {
+            let entries = ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.family == family)
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), count, "final server-only family {family}");
+            assert!(entries.iter().all(|entry| {
+                entry.status == RegistryHolderCoverageStatus::NotApplicable
+                    && entry.consumer.is_none()
+            }));
+        }
+
+        let custom = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.family == "persistent-holder-set-custom-server-only")
+            .unwrap();
+        assert!(custom
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("Ingredient.java")));
+
+        let homogeneous = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.family == "persistent-holder-set-or-inline-server-only")
+            .unwrap();
+        assert!(homogeneous
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("Biome.NETWORK_CODEC")));
+
+        let persistent_tags = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.family == "persistent-tag-server-only")
+            .unwrap();
+        assert!(persistent_tags
+            .decision
+            .contains("recipe displays reach the client through SlotDisplay.STREAM_CODEC"));
     }
 
     #[test]

@@ -664,35 +664,41 @@
       "decision": "All ten network HolderSet factories retain the exact named-tag or bounded direct-holder wire shape. Fixed item, mob-effect, and entity-type ids are rejected at protocol decode; block and all named sets resolve through generated/frozen registry identity; synchronized damage-type direct sets use server order. Recipe packets validate every Ingredient atomically before replacing state, persistent component reconstruction fails closed without the required tag revision, UpdateTags replacement invalidates removed names, and reverse-order custom damage holders cannot alias bootstrap ordinals. Ingredient's optional empty direct set has no 26.1 clientbound packet consumer in bbb; every present Ingredient decoded by the two clientbound recipe paths uses Vanilla's nonempty CONTENTS_STREAM_CODEC constraints."
     },
     {
-      "id": "network-tag",
+      "id": "network-tag-slot-display",
       "selector": {
         "kind": "network_tag"
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/recipe_book_ui.rs#fn push_slot_display_item_stack_candidates",
       "evidence": [
+        "vanilla:net/minecraft/world/item/crafting/display/SlotDisplay.java#record TagSlotDisplay(TagKey<Item> tag)",
         "vanilla:net/minecraft/tags/TagKey.java#public static <T> StreamCodec<ByteBuf, TagKey<T>> streamCodec",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_slot_display_body",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn decodes_update_recipes_with_tag_slot_display",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+        "crates/bbb-native/src/recipe_book_ui.rs#fn push_slot_display_item_stack_candidates",
+        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "Vanilla TagSlotDisplay.STREAM_CODEC sends one item TagKey through recipe display packets and resolves it against the current item registry lookup. Protocol retains the normalized tag identity, while ghost-recipe and recipe-book presentation resolve ordered members from the current UpdateTags revision on every read. Replacement changes the selected candidate, removal yields no candidate, and neither path substitutes a bootstrap item ordinal."
     },
     {
-      "id": "persistent-hashed-tag",
+      "id": "persistent-hashed-tag-server-only",
       "selector": {
         "kind": "persistent_hashed_tag",
         "exclude_source_paths": [
           "net/minecraft/world/level/dimension/DimensionType.java"
         ]
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "status": "not-applicable",
+      "consumer": null,
       "evidence": [
         "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
         "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/level/levelgen/GeodeBlockSettings.java#public static final Codec<GeodeBlockSettings> CODEC",
+        "vanilla:net/minecraft/world/level/levelgen/structure/templatesystem/ProtectedBlockProcessor.java#public static final MapCodec<ProtectedBlockProcessor> CODEC"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "The HolderSetCodec call is generic persistent-codec delegation; the five concrete non-DimensionType calls belong to geode, root-system, vegetation-patch, and structure-template worldgen inputs. None of those enclosing codecs is serialized by RegistryDataLoader.SYNCHRONIZED_REGISTRIES, so bbb has no client consumer for these hashed TagKey call sites. DimensionType's synchronized infiniburn field is split into its complete family."
     },
     {
       "id": "persistent-hashed-tag-dimension-type-synchronized",
@@ -974,18 +980,20 @@
       "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites."
     },
     {
-      "id": "persistent-holder-set-custom",
+      "id": "persistent-holder-set-custom-server-only",
       "selector": {
         "kind": "persistent_holder_set_custom"
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "status": "not-applicable",
+      "consumer": null,
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public static <E> Codec<HolderSet<E>> create(",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final Codec<Ingredient> CODEC",
+        "vanilla:net/minecraft/world/item/crafting/Ingredient.java#public static final StreamCodec<RegistryFriendlyByteBuf, Ingredient> CONTENTS_STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_ingredient_summary"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "Two rows are generic RegistryCodecs factory delegation and the concrete Ingredient row is the persistent recipe/datapack CODEC. Vanilla client recipe packets use Ingredient.CONTENTS_STREAM_CODEC instead; bbb decodes that separately inventoried network HolderSet shape with nonempty item validation. No persistent custom HolderSet call here is a client wire consumer."
     },
     {
       "id": "persistent-holder-set-or-inline-dialog-synchronized",
@@ -1009,20 +1017,23 @@
       "decision": "Dialog homogeneous holder sets preserve direct-reference versus direct-inline homogeneity, resolve named tags and resource references through one frozen session revision, retain tag order, and reject mixed, missing, stub, or malformed entries without falling back to bootstrap order."
     },
     {
-      "id": "persistent-holder-set-or-inline",
+      "id": "persistent-holder-set-or-inline-server-only",
       "selector": {
         "kind": "persistent_holder_set_or_inline",
         "exclude_source_paths": [
           "net/minecraft/server/dialog/Dialog.java"
         ]
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "status": "not-applicable",
+      "consumer": null,
       "evidence": [
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/world/level/biome/Biome.java#public static final Codec<HolderSet<Biome>> LIST_CODEC",
+        "vanilla:net/minecraft/world/level/biome/Biome.java#public static final Codec<Biome> NETWORK_CODEC",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.BIOME, Biome.NETWORK_CODEC)",
+        "vanilla:net/minecraft/world/level/levelgen/placement/PlacedFeature.java#public static final Codec<HolderSet<PlacedFeature>> LIST_CODEC"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "These five homogeneous-list codecs are worldgen inputs for biome lists, configured carvers/features, and placed features. Vanilla synchronizes each Biome value with Biome.NETWORK_CODEC rather than Biome.LIST_CODEC, and the remaining registries are not synchronized client registries. Their persistent named-or-inline HolderSet forms therefore have no bbb client consumer; synchronized Dialog holder sets remain a separate complete family."
     },
     {
       "id": "persistent-holder-set-or-tag-banner-pattern",
@@ -1159,17 +1170,22 @@
       "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet."
     },
     {
-      "id": "persistent-tag",
+      "id": "persistent-tag-server-only",
       "selector": {
         "kind": "persistent_tag"
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "status": "not-applicable",
+      "consumer": null,
       "evidence": [
         "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/world/item/crafting/display/SlotDisplay.java#record TagSlotDisplay(TagKey<Item> tag)",
+        "vanilla:net/minecraft/advancements/criterion/TagPredicate.java#public record TagPredicate<T>(TagKey<T> tag, boolean expected)",
+        "vanilla:net/minecraft/world/level/levelgen/blockpredicates/MatchingBlockTagPredicate.java#public class MatchingBlockTagPredicate",
+        "vanilla:net/minecraft/world/level/storage/loot/entries/TagEntry.java#public class TagEntry",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/ExplorationMapFunction.java#public class ExplorationMapFunction",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static void packRegistries"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "These persistent TagKey codecs belong to server advancement predicates, static block bootstrap constructors, recipe/datapack SlotDisplay input, worldgen block predicates and processors, and loot functions/entries. RegistrySynchronization does not serialize those enclosing codecs; recipe displays reach the client through SlotDisplay.STREAM_CODEC, whose network tag is covered separately. bbb therefore has no client consumer for these eleven persistent call sites."
     }
   ]
 }

@@ -73,11 +73,6 @@ Owner: `bbb-protocol`
   remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
-- Close the owning decoder/encoder registry context plus custom-reorder tests
-  behind the remaining `partial` network-tag, persistent TagKey/hashed-tag,
-  custom HolderSet, and HolderSet-or-inline rows in
-  `docs/registry-holder-consumer-coverage-26.1.json` before marking those
-  families complete.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while
   preserving an explicit unknown result in context-free callers.
