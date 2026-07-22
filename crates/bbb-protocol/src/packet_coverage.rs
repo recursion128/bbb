@@ -2290,24 +2290,29 @@ mod tests {
     }
 
     #[test]
-    fn play_block_event_keeps_registry_validation_and_trigger_families_open() {
+    fn play_block_event_registry_dispatch_and_presentation_are_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_BLOCK_EVENT")
             .expect("play block event coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["decode"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
-        );
+            .any(|evidence| evidence.contains("decode_block_event")));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("tunable_note_uses_current_state")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("interpolated_moving_piston_blocks")));
     }
 
     #[test]

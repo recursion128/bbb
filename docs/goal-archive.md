@@ -222,3 +222,7 @@
   与击退，原生 `ClientExplosionTracker` 实现 512 上限、空气筛选、权重采样和 level
   generation 清理。packet coverage 全单元 complete，合同见
   `docs/explosion-packet-closure-design.md`。
+- **2026-07-22（BlockEvent 包闭环）**：固定 block holder 严格解码后按当前位置状态
+  分派完整 `triggerEvent` 族；note block 音画与 piston 原子移动、碰撞、running tick、
+  插值场景提交共用 world canonical 状态。packet coverage 全单元 complete，合同见
+  `docs/block-event-packet-closure-design.md`。

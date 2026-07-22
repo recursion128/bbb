@@ -6957,19 +6957,25 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/block_events.rs#apply_block_event",
-            "crates/bbb-world/src/chest_lids.rs#block_event_opens_and_ticks_chest_lid_like_vanilla",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockEvent"
+            "crates/bbb-world/src/note_blocks.rs#tunable_note_uses_current_state_and_emits_particle_before_sound",
+            "crates/bbb-world/src/piston_blocks/moving.rs#extension_mutates_atomically_emits_destroy_before_piston_sound_and_completes_after_retention",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockEvent",
+            "vanilla:net/minecraft/world/level/Level.java#blockEvent",
+            "vanilla:net/minecraft/world/level/block/NoteBlock.java#triggerEvent",
+            "vanilla:net/minecraft/world/level/block/piston/PistonBaseBlock.java#triggerEvent"
           ],
-          "gap": "docs/unsupported-features.md#renderer-scene-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/chunks.rs#decode_block_event",
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "crates/bbb-protocol/src/block_types.rs#vanilla_block_type",
             "vanilla:net/minecraft/network/protocol/game/ClientboundBlockEventPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -6980,21 +6986,37 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/chest_lids.rs#block_event_opens_and_ticks_chest_lid_like_vanilla",
             "crates/bbb-world/src/bell_blocks.rs#block_event_starts_and_ticks_the_shake_like_vanilla",
             "crates/bbb-world/src/decorated_pot_blocks.rs#block_event_starts_and_expires_the_wobble_like_vanilla",
+            "crates/bbb-world/src/end_portal_blocks.rs#gateway_block_event_starts_cooldown_beam",
+            "crates/bbb-world/src/shulker_box_blocks.rs#block_event_opens_and_ticks_the_lid_like_vanilla",
             "crates/bbb-world/src/spawner_blocks.rs#spawner_block_event_resets_delay_to_min_spawn_delay",
-            "vanilla:net/minecraft/world/level/Level.java#blockEvent"
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#note_block_event_emits_current_state_sound_and_particle",
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#piston_block_event_emits_native_sound_and_destroy_particles",
+            "crates/bbb-native/src/item_models/tests.rs#entity_block_attachments_submit_interpolated_moving_piston_blocks",
+            "crates/bbb-native/src/runtime/tests.rs#renderer_frame_item_and_entity_projections_extract_after_tick_advances",
+            "vanilla:net/minecraft/world/level/Level.java#blockEvent",
+            "vanilla:net/minecraft/client/renderer/blockentity/PistonHeadRenderer.java#submit"
           ],
-          "gap": "docs/unsupported-features.md#renderer-scene-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
             "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_block_and_level_events_to_world",
+            "crates/bbb-world/src/chest_lids.rs#block_event_opens_and_ticks_chest_lid_like_vanilla",
+            "crates/bbb-world/src/bell_blocks.rs#block_event_starts_and_ticks_the_shake_like_vanilla",
+            "crates/bbb-world/src/decorated_pot_blocks.rs#block_event_starts_and_expires_the_wobble_like_vanilla",
+            "crates/bbb-world/src/end_portal_blocks.rs#gateway_block_event_starts_cooldown_beam",
             "crates/bbb-world/src/shulker_box_blocks.rs#block_event_opens_and_ticks_the_lid_like_vanilla",
-            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#block_and_level_events_update_world_and_world_counters"
+            "crates/bbb-world/src/spawner_blocks.rs#spawner_block_event_resets_delay_to_min_spawn_delay",
+            "crates/bbb-world/src/note_blocks.rs#tunable_note_uses_current_state_and_emits_particle_before_sound",
+            "crates/bbb-world/src/piston_blocks/moving.rs#extension_mutates_atomically_emits_destroy_before_piston_sound_and_completes_after_retention",
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#piston_block_event_emits_native_sound_and_destroy_particles",
+            "crates/bbb-native/src/item_models/tests.rs#entity_block_attachments_submit_interpolated_moving_piston_blocks"
           ],
           "gap": null,
           "status": "complete"

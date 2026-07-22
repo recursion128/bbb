@@ -769,11 +769,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
   keyed by absolute position, refresh their 10-second expiry, render the padded
   translucent cuboid and always-on-top relative-position text, and clear them on
   level reset. The current last-position diagnostic snapshot is not a gizmo.
-- Complete ClientLevel block-event dispatch for the remaining client
-  `triggerEvent` families (including piston and note-block behavior), resolving
-  the packet block holder through session RegistryAccess and validating it
-  against the current block before applying the event.
-
 Submission surfaces:
 
 - Add renderer submission surfaces for remaining block-feature submissions,
