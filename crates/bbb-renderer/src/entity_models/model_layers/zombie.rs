@@ -1,6 +1,7 @@
 use super::{
-    apply_humanoid_attack_animation, apply_humanoid_head_look, apply_humanoid_leg_swing_named,
-    apply_humanoid_mob_spear_arm_poses, apply_humanoid_stab_attack_animation, apply_humanoid_walk,
+    apply_humanoid_arm_bob_named, apply_humanoid_attack_animation, apply_humanoid_head_look,
+    apply_humanoid_limb_walk, apply_humanoid_mob_spear_arm_poses,
+    apply_humanoid_no_swing_attack_animation, apply_humanoid_stab_attack_animation,
     apply_zombie_arms_held_out_named, drowned_outer_root, humanoid_arm_bob_pose,
     humanoid_rot_lerp_rad, PartPose, PART_POSE_ZERO,
 };
@@ -751,41 +752,35 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
         render_state.is_fall_flying,
         render_state.swim_amount,
     );
+    apply_humanoid_limb_walk(
+        root,
+        render_state.walk_animation_pos,
+        render_state.walk_animation_speed,
+        render_state.humanoid_speed_value,
+    );
+    apply_humanoid_mob_spear_arm_poses(
+        root,
+        render_state.head_yaw,
+        render_state.head_pitch,
+        render_state.humanoid_mob_main_hand_spear_pose,
+        render_state.humanoid_mob_off_hand_spear_pose,
+        render_state.swim_amount,
+    );
     if render_state.main_hand_swing_is_stab {
-        apply_humanoid_walk(
-            root,
-            render_state.walk_animation_pos,
-            render_state.walk_animation_speed,
-            render_state.age_in_ticks,
-            render_state.humanoid_speed_value,
-        );
-        apply_humanoid_mob_spear_arm_poses(
-            root,
-            render_state.head_yaw,
-            render_state.head_pitch,
-            render_state.humanoid_mob_main_hand_spear_pose,
-            render_state.humanoid_mob_off_hand_spear_pose,
-            render_state.swim_amount,
-        );
         apply_humanoid_stab_attack_animation(
             root,
             render_state.attack_anim,
             render_state.attack_arm_off_hand,
             render_state.age_scale,
         );
-        // Vanilla `AnimationUtils.animateZombieArms` still runs after `super.setupAnim`, but the STAB branch
-        // skips the held-out arm rewrite and only applies `bobArms`.
-        for name in ["right_arm", "left_arm"] {
-            let arm = root.child_mut(name);
-            arm.pose = humanoid_arm_bob_pose(arm.pose, render_state.age_in_ticks);
-        }
-    } else {
-        apply_humanoid_leg_swing_named(
+    } else if render_state.main_hand_swing_is_none {
+        apply_humanoid_no_swing_attack_animation(
             root,
-            render_state.walk_animation_pos,
-            render_state.walk_animation_speed,
-            render_state.humanoid_speed_value,
+            render_state.attack_anim,
+            render_state.attack_arm_off_hand,
+            render_state.age_scale,
         );
+    } else {
         apply_humanoid_attack_animation(
             root,
             render_state.attack_anim,
@@ -793,6 +788,18 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
             render_state.head_pitch,
             render_state.age_scale,
         );
+    }
+    // This is HumanoidModel's shared post-pose/post-attack bob. The zombie subclass then either
+    // overwrites the arms with its held-out pose or, for STAB, preserves them and bobs once more.
+    apply_humanoid_arm_bob_named(root, render_state.age_in_ticks, true, true);
+    if render_state.main_hand_swing_is_stab {
+        // Vanilla `AnimationUtils.animateZombieArms` still runs after `super.setupAnim`, but the STAB branch
+        // skips the held-out arm rewrite and only applies `bobArms`.
+        for name in ["right_arm", "left_arm"] {
+            let arm = root.child_mut(name);
+            arm.pose = humanoid_arm_bob_pose(arm.pose, render_state.age_in_ticks);
+        }
+    } else {
         apply_zombie_arms_held_out_named(
             root,
             render_state.is_aggressive,

@@ -1234,26 +1234,31 @@ fn skeleton_model_aims_both_arms_for_bow_and_arrow() {
     // Vanilla `AbstractSkeletonRenderer.getArmPose` returns `BOW_AND_ARROW` when the skeleton
     // `isAggressive() && getMainHandItem().is(Items.BOW)`, so `HumanoidModel.poseRightArm`'s
     // `BOW_AND_ARROW` case raises both arms forward along the head look (right-handed bow, the off
-    // arm splayed `0.4` outward), overwriting the idle walk swing's xRot/yRot while preserving zRot.
+    // arm splayed `0.4` outward), overwriting the walk swing's xRot/yRot before the inherited idle bob.
     let yaw = 30.0_f32;
     let pitch = -12.5_f32;
     let yaw_rad = yaw.to_radians();
     let pitch_rad = pitch.to_radians();
     let aim_pitch = -std::f32::consts::FRAC_PI_2 + pitch_rad;
+    let age = 11.0_f32;
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
 
     let mut model = SkeletonModel::new(None);
     let aiming = EntityModelInstance::skeleton(810, [0.0, 64.0, 0.0], 0.0)
         .with_head_look(yaw, pitch)
+        .with_age_in_ticks(age)
         .with_is_aggressive(true)
         .with_main_hand_holds_bow(true);
     model.prepare(&aiming);
 
     let right = model.root_mut().child_mut("right_arm");
     assert!(
-        (right.pose.rotation[0] - aim_pitch).abs() < 1e-6,
-        "right arm aims down the head pitch: {} vs {aim_pitch}",
+        (right.pose.rotation[0] - (aim_pitch + bob_x)).abs() < 1e-6,
+        "right arm aims before adding idle bob: {}",
         right.pose.rotation[0]
     );
+    assert!((right.pose.rotation[2] - bob_z).abs() < 1e-6);
     assert!(
         (right.pose.rotation[1] - (-0.1 + yaw_rad)).abs() < 1e-6,
         "right arm yaws -0.1 off the head yaw: {}",
@@ -1261,10 +1266,11 @@ fn skeleton_model_aims_both_arms_for_bow_and_arrow() {
     );
     let left = model.root_mut().child_mut("left_arm");
     assert!(
-        (left.pose.rotation[0] - aim_pitch).abs() < 1e-6,
-        "left arm aims down the head pitch: {} vs {aim_pitch}",
+        (left.pose.rotation[0] - (aim_pitch - bob_x)).abs() < 1e-6,
+        "left arm aims before adding mirrored idle bob: {}",
         left.pose.rotation[0]
     );
+    assert!((left.pose.rotation[2] + bob_z).abs() < 1e-6);
     assert!(
         (left.pose.rotation[1] - (0.1 + yaw_rad + 0.4)).abs() < 1e-6,
         "left arm splays 0.4 outward off the head yaw: {}",
@@ -1301,29 +1307,38 @@ fn skeleton_humanoid_mob_spear_pose_points_arm_along_head_look() {
         .to_degrees()
         .clamp(-120.0, 30.0)
         .to_radians();
+    let age = 11.0_f32;
+    let bob_x = (age * 0.067).sin() * 0.05;
 
     // Vanilla `HumanoidMobRenderer.getArmPose`: a calm skeleton holding a spear in the main hand gets
     // `ArmPose.SPEAR`, which runs `SpearAnimations.thirdPersonHandUse` without kinetic sway.
     let main_spear = EntityModelInstance::skeleton(813, [0.0, 64.0, 0.0], 0.0)
         .with_head_look(yaw, pitch)
+        .with_age_in_ticks(age)
         .with_humanoid_mob_main_hand_spear_pose(true);
     let mut main = SkeletonModel::new(None);
     main.prepare(&main_spear);
     let right = main.root_mut().child_mut("right_arm").pose;
-    assert!((right.rotation[0] - spear_pitch).abs() < 1e-6);
+    assert!((right.rotation[0] - (spear_pitch + bob_x)).abs() < 1e-6);
     assert!((right.rotation[1] - (-0.1 + yaw_rad)).abs() < 1e-6);
+    assert_eq!(
+        main.root_mut().child_mut("left_arm").pose.rotation[1],
+        0.0,
+        "the off-arm EMPTY pose resets yRot before the main spear pose"
+    );
 
     // In the right-handed, non-using dispatch, an off-hand SPEAR runs first and suppresses the main-hand
     // pose. This also suppresses an otherwise valid aggressive bow aim.
     let off_spear = EntityModelInstance::skeleton(814, [0.0, 64.0, 0.0], 0.0)
         .with_head_look(yaw, pitch)
+        .with_age_in_ticks(age)
         .with_is_aggressive(true)
         .with_main_hand_holds_bow(true)
         .with_humanoid_mob_off_hand_spear_pose(true);
     let mut off = SkeletonModel::new(None);
     off.prepare(&off_spear);
     let left = off.root_mut().child_mut("left_arm").pose;
-    assert!((left.rotation[0] - spear_pitch).abs() < 1e-6);
+    assert!((left.rotation[0] - (spear_pitch - bob_x)).abs() < 1e-6);
     assert!((left.rotation[1] - (0.1 + yaw_rad)).abs() < 1e-6);
     let right = off.root_mut().child_mut("right_arm").pose;
     let bow_right_pitch = -std::f32::consts::FRAC_PI_2 + pitch.to_radians();
@@ -1336,7 +1351,7 @@ fn skeleton_humanoid_mob_spear_pose_points_arm_along_head_look() {
     overlay.prepare(&off_spear);
     let overlay_left = overlay.root_mut().child_mut("left_arm").pose;
     assert!(
-        (overlay_left.rotation[0] - spear_pitch).abs() < 1e-6,
+        (overlay_left.rotation[0] - (spear_pitch - bob_x)).abs() < 1e-6,
         "stray/bogged clothing overlay tracks the same spear arm pose"
     );
 }

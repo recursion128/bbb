@@ -1374,11 +1374,6 @@ back into a todo. Do not delete these.
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
   resolved vanilla spear ids.
-- **Exact humanoid arm-pose idle-bob ordering.** The halved `arm.xRot` folds
-  bbb's idle bob in, where vanilla applies the bob afterwards. The full
-  bob-reorder that makes the multiply exact is the shared deferred convention.
-- **Off-arm `EMPTY` reset use-item arm-pose edge.** A near-no-op: at rest the off
-  arm's `yRot` is already `0`.
 - **GPU outline presentation for `submitOnlyOutline` entity-attached block-model
   layers** (snow-golem carved pumpkin, mooshroom mushroom). Outline-only
   attachment metadata is recorded and ordinary block-quad baking is suppressed.

@@ -259,23 +259,6 @@ pub(in crate::entity_models) fn humanoid_arm_bob_pose(
     }
 }
 
-/// Vanilla `HumanoidModel.setupAnim` arm + leg walk swing applied to a model root's named children.
-/// The legs (`right_leg`/`left_leg`) swing ([`humanoid_leg_swing_pose`]) and the arms
-/// (`right_arm`/`left_arm`) swing ([`humanoid_arm_swing_pose`]) only while moving, but the arms ALWAYS
-/// carry the continuous idle bob ([`humanoid_arm_bob_pose`]). The swing/bob resolves each limb's phase
-/// from its own offset, so the names may be declared in any order (the baby layouts swap head/body but
-/// keep the same arm/leg names).
-pub(in crate::entity_models) fn apply_humanoid_walk(
-    root: &mut ModelPart,
-    walk_animation_pos: f32,
-    walk_animation_speed: f32,
-    age_in_ticks: f32,
-    speed_value: f32,
-) {
-    apply_humanoid_limb_walk(root, walk_animation_pos, walk_animation_speed, speed_value);
-    apply_humanoid_arm_bob_named(root, age_in_ticks, true, true);
-}
-
 /// The inherited humanoid limb-swing stage without the later idle arm bob. A
 /// fall-flying `speedValue` divides both arm and leg amplitudes exactly as in
 /// `HumanoidModel.setupAnim`.
@@ -502,6 +485,11 @@ pub(in crate::entity_models) fn apply_humanoid_mob_spear_arm_poses(
         );
         return true;
     }
+    // Right-handed, non-using dispatch evaluates the off (left) arm first whenever that pose is
+    // not two-handed. Its ordinary `EMPTY` pose explicitly clears yRot before the main arm runs.
+    // This is normally a bind-pose no-op, but keeping it here makes the ordering exact and prevents
+    // a preceding model-specific write from leaking through this shared Humanoid stage.
+    root.child_mut("left_arm").pose.rotation[1] = 0.0;
     if main_hand_spear_pose {
         apply_humanoid_spear_arm_pose(
             root,
@@ -510,6 +498,10 @@ pub(in crate::entity_models) fn apply_humanoid_mob_spear_arm_poses(
             false,
             swim_amount,
         );
+    } else {
+        // With neither arm holding a spear both Humanoid arm poses are `EMPTY`; the main/right arm
+        // follows the left and performs the same yRot reset.
+        root.child_mut("right_arm").pose.rotation[1] = 0.0;
     }
     false
 }
@@ -882,25 +874,6 @@ pub(in crate::entity_models) fn apply_humanoid_crouch_named(root: &mut ModelPart
     for name in ["right_leg", "left_leg"] {
         let leg = root.child_mut(name);
         leg.pose = humanoid_crouch_leg_pose(leg.pose);
-    }
-}
-
-/// Vanilla `HumanoidModel.setupAnim` leg swing only, applied to a model root's named leg children
-/// `right_leg`/`left_leg` ([`humanoid_leg_swing_pose`]). A no-op while at rest. Used by the zombified
-/// piglin and the zombie family, whose arms are overridden by a held-out pose instead of swinging.
-pub(in crate::entity_models) fn apply_humanoid_leg_swing_named(
-    root: &mut ModelPart,
-    walk_animation_pos: f32,
-    walk_animation_speed: f32,
-    speed_value: f32,
-) {
-    let walk_animation_speed = walk_animation_speed / speed_value.max(1.0);
-    if limb_swing_at_rest(walk_animation_speed) {
-        return;
-    }
-    for name in ["right_leg", "left_leg"] {
-        let leg = root.child_mut(name);
-        leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
     }
 }
 

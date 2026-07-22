@@ -281,8 +281,8 @@ pub(in crate::entity_models) const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3
 /// the limbs move) plus the always-on `ageInTicks` idle bob ([`humanoid_arm_bob_pose`]).
 /// Because the idle bob advances every frame, the arms are always re-posed (the parts are
 /// never borrowed unchanged). The humanoid models now pose their arms through
-/// [`apply_humanoid_walk`] directly, so this `Cow`-slice variant is retained only as the
-/// reference the arm-phase unit test asserts against.
+/// the named limb-walk and trailing arm-bob stages directly, so this `Cow`-slice variant is retained
+/// only as the reference the arm-phase unit test asserts against.
 #[cfg(test)]
 pub(in crate::entity_models) fn humanoid_arm_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,

@@ -2816,28 +2816,39 @@ fn player_holding_an_item_lowers_the_main_arm() {
     use std::f32::consts::PI;
 
     // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM` (`HumanoidModel.poseRightArm` ITEM case): a player
-    // holding a plain main-hand item lowers/halves the arm — `xRot = arm.xRot · 0.5 − π/10`, `yRot = 0`. At
-    // rest (age 0, not walking) the arm pitch is `0`, so the ITEM pose lands the right arm at exactly `−π/10`.
-    let base =
-        EntityModelInstance::player(930, [0.0, 64.0, 0.0], 0.0, false).with_head_look(20.0, -10.0);
+    // holding a plain main-hand item lowers/halves the walk swing, then the shared idle bob is added:
+    // `xRot = walkXRot · 0.5 − π/10 + bobX`. A nonzero age proves bob is not incorrectly halved.
+    let age = 11.0_f32;
+    let walk_pos = 0.7_f32;
+    let walk_speed = 0.8_f32;
+    let base = EntityModelInstance::player(930, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(20.0, -10.0)
+        .with_age_in_ticks(age)
+        .with_walk_animation(walk_pos, walk_speed);
+    let walk_x = (walk_pos * 0.6662 + PI).cos() * walk_speed;
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let expected_x = walk_x * 0.5 - PI / 10.0 + bob_x;
 
     let mut held = PlayerModel::new(false);
     held.prepare(&base.with_player_main_hand_item_pose(true));
     let right = held.root_mut().child_mut("right_arm").pose;
     assert!(
-        (right.rotation[0] - (-PI / 10.0)).abs() < 1e-6,
-        "the right arm lowers to −π/10: {}",
+        (right.rotation[0] - expected_x).abs() < 1e-6,
+        "the right arm halves walk before adding bob: {} vs {expected_x}",
         right.rotation[0]
     );
     assert_eq!(right.rotation[1], 0.0, "the ITEM pose zeroes the arm yaw");
 
-    // An empty-handed player keeps its (much higher) idle arm pitch — holding an item visibly lowers it.
+    // The empty-handed arm keeps the full walk swing before the same bob, proving ITEM performed the
+    // half-and-lower transform rather than merely inheriting the unposed arm.
     let mut idle = PlayerModel::new(false);
     idle.prepare(&base);
+    let idle_x = idle.root_mut().child_mut("right_arm").pose.rotation[0];
     assert!(
-        idle.root_mut().child_mut("right_arm").pose.rotation[0] > -PI / 10.0 + 0.3,
-        "an empty-handed player does not lower the arm"
+        (idle_x - (walk_x + bob_x)).abs() < 1e-6,
+        "the empty hand keeps the full walk swing before bob: {idle_x}"
     );
+    assert!((idle_x - right.rotation[0]).abs() > 1e-3);
 
     // The main-hand ITEM pose is right-arm only; the left arm is untouched.
     let mut held_left = PlayerModel::new(false);
@@ -2857,17 +2868,25 @@ fn player_holding_an_off_hand_item_lowers_the_left_arm() {
     use std::f32::consts::PI;
 
     // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM` (`HumanoidModel.poseLeftArm` ITEM
-    // case): a player holding a plain off-hand item lowers/halves the OFF (left) arm — `xRot = arm.xRot ·
-    // 0.5 − π/10`, `yRot = 0`. At rest the arm pitch is `0`, so the left arm lands at exactly `−π/10`.
-    let base =
-        EntityModelInstance::player(940, [0.0, 64.0, 0.0], 0.0, false).with_head_look(20.0, -10.0);
+    // case): a player holding a plain off-hand item lowers/halves the OFF (left) walk swing before the
+    // mirrored idle bob: `xRot = walkXRot · 0.5 − π/10 − bobX`.
+    let age = 11.0_f32;
+    let walk_pos = 0.7_f32;
+    let walk_speed = 0.8_f32;
+    let base = EntityModelInstance::player(940, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(20.0, -10.0)
+        .with_age_in_ticks(age)
+        .with_walk_animation(walk_pos, walk_speed);
+    let walk_x = (walk_pos * 0.6662).cos() * walk_speed;
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let expected_x = walk_x * 0.5 - PI / 10.0 - bob_x;
 
     let mut held = PlayerModel::new(false);
     held.prepare(&base.with_player_off_hand_item_pose(true));
     let left = held.root_mut().child_mut("left_arm").pose;
     assert!(
-        (left.rotation[0] - (-PI / 10.0)).abs() < 1e-6,
-        "the left arm lowers to −π/10: {}",
+        (left.rotation[0] - expected_x).abs() < 1e-6,
+        "the left arm halves walk before adding mirrored bob: {} vs {expected_x}",
         left.rotation[0]
     );
     assert_eq!(
@@ -3308,7 +3327,7 @@ fn player_swings_its_arms_when_walking() {
     // visible the colored mesh emits head+body (verts 0..96), the two arms with their
     // sleeves (96..192), then the two legs with their pants (192..288). A standing player
     // is inert; a walking one moves the arms (and legs) while the head and body stay put
-    // (no head look here). The held-item/attack arm poses and the idle bob are deferred.
+    // (no head look here). Held-item/attack ordering and the idle bob are covered separately.
     for slim in [false, true] {
         let base = EntityModelInstance::player(920, [0.0, 64.0, 0.0], 0.0, slim);
         let rest = entity_model_mesh(&[base]);

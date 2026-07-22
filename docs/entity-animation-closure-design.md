@@ -74,6 +74,10 @@ Initial confirmed gaps are:
 - The reverse production inventory additionally found `GuardianModel` eye tracking: the current
   camera entity is the ordinary target, a live synchronized attack target takes priority, and the
   model converts the three world-space `GuardianRenderState` vectors into eye-part offsets.
+- The shared `HumanoidModel.setupAnim` order separates limb swing from its
+  trailing arm bob. Skeleton, piglin, and zombie-family paths must preserve
+  pose/attack dispatch before that bob, including explicit `EMPTY` off-arm
+  `yRot` reset and the subclass bob passes that intentionally run afterwards.
 - `RabbitModel`'s random idle-head animation starts from client-local entity RNG;
   wire state cannot recover a particular official-client phase, so closure
   requires a source-backed `not-applicable` edge rather than a fabricated seed.

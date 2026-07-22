@@ -1,10 +1,10 @@
 use super::{
-    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_humanoid_attack_animation,
-    apply_humanoid_head_look, apply_humanoid_mob_spear_arm_poses,
-    apply_humanoid_no_swing_attack_animation, apply_humanoid_stab_attack_animation,
-    apply_humanoid_walk, apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named,
-    humanoid_arm_bob_pose, piglin_ear_flap_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS,
-    PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_humanoid_arm_bob_named,
+    apply_humanoid_attack_animation, apply_humanoid_head_look, apply_humanoid_limb_walk,
+    apply_humanoid_mob_spear_arm_poses, apply_humanoid_no_swing_attack_animation,
+    apply_humanoid_stab_attack_animation, apply_humanoid_weapon_swing_down,
+    apply_zombie_arms_held_out_named, humanoid_arm_bob_pose, piglin_ear_flap_pose, PartPose,
+    CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -535,7 +535,8 @@ fn apply_piglin_admire(root: &mut ModelPart) {
 /// Mutable piglin model, mirroring vanilla `AbstractPiglinModel extends HumanoidModel` (the piglin,
 /// piglin brute, and zombified piglin). The unified tree is built for the `family`/`baby` layout with
 /// the vanilla child names. `setup_anim` runs `super.setupAnim` — the head look ([`apply_head_look`]
-/// on `head`) and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk`]) — then it always
+/// on `head`), the humanoid limb swing ([`apply_humanoid_limb_walk`]), arm poses/attack, and trailing
+/// bob ([`apply_humanoid_arm_bob_named`]) — then it always
 /// flaps the two ears ([`piglin_ear_flap_pose`], head children). Zombified piglins overwrite the inherited
 /// arm swing with the held-out `animateZombieArms` pose ([`apply_zombie_arms_held_out_named`]). A regular
 /// piglin holding a charged crossbow then levels it ([`apply_crossbow_hold_pose`], the `CROSSBOW_HOLD`
@@ -582,11 +583,10 @@ impl EntityModel for PiglinModel {
             render_state.is_fall_flying,
             render_state.swim_amount,
         );
-        apply_humanoid_walk(
+        apply_humanoid_limb_walk(
             &mut self.root,
             limb_swing,
             limb_swing_amount,
-            age_in_ticks,
             render_state.humanoid_speed_value,
         );
         apply_humanoid_mob_spear_arm_poses(
@@ -597,6 +597,42 @@ impl EntityModel for PiglinModel {
             render_state.humanoid_mob_off_hand_spear_pose,
             render_state.swim_amount,
         );
+        // Dynamic dispatch of `HumanoidModel.setupAttackAnimation` happens before the inherited
+        // arm bob. A live Piglin melee swing replaces the generic attack with `swingWeaponDown`
+        // (which includes its own bob); every other branch uses the item swing type normally.
+        if self.family != PiglinModelFamily::ZombifiedPiglin
+            && render_state.piglin_attacking_with_melee
+            && render_state.attack_anim > 0.0
+        {
+            apply_humanoid_weapon_swing_down(
+                &mut self.root,
+                render_state.attack_anim,
+                age_in_ticks,
+            );
+        } else if render_state.main_hand_swing_is_stab {
+            apply_humanoid_stab_attack_animation(
+                &mut self.root,
+                render_state.attack_anim,
+                render_state.attack_arm_off_hand,
+                render_state.age_scale,
+            );
+        } else if render_state.main_hand_swing_is_none {
+            apply_humanoid_no_swing_attack_animation(
+                &mut self.root,
+                render_state.attack_anim,
+                render_state.attack_arm_off_hand,
+                render_state.age_scale,
+            );
+        } else {
+            apply_humanoid_attack_animation(
+                &mut self.root,
+                render_state.attack_anim,
+                render_state.attack_arm_off_hand,
+                render_state.head_pitch,
+                render_state.age_scale,
+            );
+        }
+        apply_humanoid_arm_bob_named(&mut self.root, age_in_ticks, true, true);
         // Flap the two ears (head children) every frame.
         let default_ear_angle = piglin_default_ear_angle(self.baby_layout);
         let head = self.root.child_mut("head");
@@ -623,12 +659,6 @@ impl EntityModel for PiglinModel {
             // `AbstractPiglinModel`: WHACK replaces the inherited arm pose, while STAB skips that rewrite
             // and only applies the trailing `bobArms`.
             if render_state.main_hand_swing_is_stab {
-                apply_humanoid_stab_attack_animation(
-                    &mut self.root,
-                    render_state.attack_anim,
-                    render_state.attack_arm_off_hand,
-                    render_state.age_scale,
-                );
                 for name in ["right_arm", "left_arm"] {
                     let arm = self.root.child_mut(name);
                     arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
@@ -639,36 +669,6 @@ impl EntityModel for PiglinModel {
                     render_state.is_aggressive,
                     render_state.attack_anim,
                     age_in_ticks,
-                );
-            }
-        }
-        if self.family != PiglinModelFamily::ZombifiedPiglin
-            && !render_state.piglin_attacking_with_melee
-        {
-            // Vanilla `PiglinModel.setupAttackAnimation`: only ATTACKING_WITH_MELEE_WEAPON replaces the
-            // inherited attack animation with `swingWeaponDown`; default/hold/charge/admire/dance poses
-            // still run `HumanoidModel.setupAttackAnimation` first, including STAB/NONE swing types.
-            if render_state.main_hand_swing_is_stab {
-                apply_humanoid_stab_attack_animation(
-                    &mut self.root,
-                    render_state.attack_anim,
-                    render_state.attack_arm_off_hand,
-                    render_state.age_scale,
-                );
-            } else if render_state.main_hand_swing_is_none {
-                apply_humanoid_no_swing_attack_animation(
-                    &mut self.root,
-                    render_state.attack_anim,
-                    render_state.attack_arm_off_hand,
-                    render_state.age_scale,
-                );
-            } else {
-                apply_humanoid_attack_animation(
-                    &mut self.root,
-                    render_state.attack_anim,
-                    render_state.attack_arm_off_hand,
-                    render_state.head_pitch,
-                    render_state.age_scale,
                 );
             }
         }
@@ -701,13 +701,7 @@ impl EntityModel for PiglinModel {
         // overwriting the walk arm swing. Higher priority than CROSSBOW_HOLD (and item-exclusive with it),
         // applied after it; lower than DANCING, applied before the dance block so a dancing piglin wins.
         if render_state.piglin_attacking_with_melee {
-            if render_state.attack_anim > 0.0 {
-                apply_humanoid_weapon_swing_down(
-                    &mut self.root,
-                    render_state.attack_anim,
-                    age_in_ticks,
-                );
-            } else {
+            if render_state.attack_anim <= 0.0 {
                 hold_weapon_high(&mut self.root);
             }
         }

@@ -301,8 +301,10 @@ fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
     // `SpearAnimations.thirdPersonAttackHand`; the subsequent `AnimationUtils.animateZombieArms` sees STAB
     // and skips the held-out rewrite, keeping only its final `bobArms`.
     let t = 0.1_f32;
-    let base =
-        EntityModelInstance::zombie(64, [0.0, 64.0, 0.0], 0.0, false).with_head_look(0.0, -10.0);
+    let age = 11.0_f32;
+    let base = EntityModelInstance::zombie(64, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(0.0, -10.0)
+        .with_age_in_ticks(age);
 
     let stab_instance = base
         .with_attack_anim(t)
@@ -340,21 +342,23 @@ fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
         let retract = in_out_expo(progress(t, 0.4, 1.0));
         (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians()
     };
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
     let right = stab_model.root_mut().child_mut("right_arm").pose;
     assert!((right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1e-6);
     assert!((right.offset[2] - (body_yrot.sin() * 5.0)).abs() < 1e-6);
     assert!(
-        (right.rotation[0] - stab_lunge).abs() < 1e-6,
-        "right arm lunges from the walk pose because the zombie off-hand SPEAR pose suppresses it: {} vs {}",
+        (right.rotation[0] - (stab_lunge + 2.0 * bob_x)).abs() < 1e-6,
+        "right arm lunges then takes Humanoid + zombie-subclass bob: {} vs {}",
         right.rotation[0],
-        stab_lunge
+        stab_lunge + 2.0 * bob_x
     );
     assert!(
         right.rotation[1].abs() < 1e-6,
         "thirdPersonAttackHand cancels the body-yRot arm yaw addition"
     );
     assert!(
-        (right.rotation[2] - 0.2).abs() < 1e-6,
+        (right.rotation[2] - 2.0 * bob_z).abs() < 1e-6,
         "HumanoidModel bob plus animateZombieArms STAB bob both remain"
     );
 

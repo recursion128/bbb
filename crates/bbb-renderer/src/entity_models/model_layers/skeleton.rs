@@ -1,7 +1,7 @@
 use super::{
-    apply_humanoid_attack_animation, apply_humanoid_head_look, apply_humanoid_mob_spear_arm_poses,
-    apply_humanoid_walk, bogged_clothing_root, humanoid_arm_bob_pose, stray_clothing_root,
-    PartPose, PART_POSE_ZERO,
+    apply_humanoid_arm_bob_named, apply_humanoid_attack_animation, apply_humanoid_head_look,
+    apply_humanoid_limb_walk, apply_humanoid_mob_spear_arm_poses, bogged_clothing_root,
+    humanoid_arm_bob_pose, stray_clothing_root, PartPose, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::SkeletonModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -587,11 +587,10 @@ impl EntityModel for SkeletonModel {
             render_state.is_fall_flying,
             render_state.swim_amount,
         );
-        apply_humanoid_walk(
+        apply_humanoid_limb_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
-            render_state.age_in_ticks,
             render_state.humanoid_speed_value,
         );
         apply_skeleton_humanoid_mob_arm_poses(&mut self.root, instance);
@@ -604,6 +603,7 @@ impl EntityModel for SkeletonModel {
             render_state.head_pitch,
             render_state.age_scale,
         );
+        apply_humanoid_arm_bob_named(&mut self.root, render_state.age_in_ticks, true, true);
         // A melee (aggressive, no bow) skeleton raises and chops its arms (vanilla `SkeletonModel.setupAnim`).
         if skeleton_is_meleeing(instance) {
             apply_skeleton_melee_arms(
@@ -651,11 +651,10 @@ impl EntityModel for SkeletonClothingModel {
             render_state.is_fall_flying,
             render_state.swim_amount,
         );
-        apply_humanoid_walk(
+        apply_humanoid_limb_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
-            render_state.age_in_ticks,
             render_state.humanoid_speed_value,
         );
         // The clothing overlay tracks the body arms, so it aims / melees with them (vanilla poses the
@@ -668,6 +667,7 @@ impl EntityModel for SkeletonClothingModel {
             render_state.head_pitch,
             render_state.age_scale,
         );
+        apply_humanoid_arm_bob_named(&mut self.root, render_state.age_in_ticks, true, true);
         if skeleton_is_meleeing(instance) {
             apply_skeleton_melee_arms(
                 &mut self.root,

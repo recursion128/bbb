@@ -357,20 +357,24 @@ fn piglin_humanoid_mob_spear_pose_points_arm_along_head_look() {
         .to_degrees()
         .clamp(-120.0, 30.0)
         .to_radians();
+    let age = 11.0_f32;
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
 
     // Vanilla `PiglinRenderer` inherits `HumanoidMobRenderer.getArmPose`: when no higher-priority
     // `PiglinArmPose` overrides it, a held spear uses `HumanoidModel.ArmPose.SPEAR`.
     let spear =
         EntityModelInstance::piglin(160, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
             .with_head_look(yaw, pitch)
+            .with_age_in_ticks(age)
             .with_humanoid_mob_main_hand_spear_pose(true);
     let mut model = PiglinModel::new(PiglinModelFamily::Piglin, false);
     model.prepare(&spear);
     let right = model.root_mut().child_mut("right_arm").pose;
-    assert!((right.rotation[0] - spear_pitch).abs() < 1.0e-6);
+    assert!((right.rotation[0] - (spear_pitch + bob_x)).abs() < 1.0e-6);
     assert!((right.rotation[1] - (-0.1 + yaw_rad)).abs() < 1.0e-6);
     assert!(
-        (right.rotation[2] - 0.1).abs() < 1.0e-6,
+        (right.rotation[2] - bob_z).abs() < 1.0e-6,
         "the inherited idle bob remains on top of the spear pose"
     );
 
@@ -400,6 +404,9 @@ fn zombified_piglin_stab_type_skips_held_out_rewrite() {
     let prepare = -((PI * progress(t, 0.0, 0.05)).cos() - 1.0) / 2.0;
     let attack = progress(t, 0.05, 0.2).powi(2);
     let stab_lunge = (90.0 * prepare - 120.0 * attack).to_radians();
+    let age = 11.0_f32;
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
 
     // `ZombifiedPiglinRenderer` inherits base `HumanoidMobRenderer`, not the zombie renderer's
     // opposite-hand override. A main-hand spear therefore poses the main/right arm, and
@@ -412,15 +419,16 @@ fn zombified_piglin_stab_type_skips_held_out_rewrite() {
         false,
     )
     .with_head_look(0.0, -10.0)
+    .with_age_in_ticks(age)
     .with_attack_anim(t)
     .with_main_hand_swing_is_stab(true)
     .with_humanoid_mob_main_hand_spear_pose(true);
     let mut model = PiglinModel::new(PiglinModelFamily::ZombifiedPiglin, false);
     model.prepare(&spear);
     let right = model.root_mut().child_mut("right_arm").pose;
-    assert!((right.rotation[0] - (spear_base_x + stab_lunge)).abs() < 1.0e-6);
+    assert!((right.rotation[0] - (spear_base_x + stab_lunge + 2.0 * bob_x)).abs() < 1.0e-6);
     assert!((right.rotation[1] - (-0.1)).abs() < 1.0e-6);
-    assert!((right.rotation[2] - 0.2).abs() < 1.0e-6);
+    assert!((right.rotation[2] - 2.0 * bob_z).abs() < 1.0e-6);
 
     let mut held_out = PiglinModel::new(PiglinModelFamily::ZombifiedPiglin, false);
     held_out.prepare(&EntityModelInstance::piglin(
@@ -1103,7 +1111,7 @@ fn piglin_raises_and_swings_its_melee_weapon_when_attacking() {
         let expected_right = -1.8849558
             + (age * 0.09).cos() * 0.15
             + (attack2 * 2.2 - attack * 0.4)
-            + (age * 0.067).sin() * 0.05; // + the shared idle bob (right arm, scale +1)
+            + (age * 0.067).sin() * 0.1; // swingWeaponDown bob + trailing HumanoidModel bob
         let swing_right = swing_model.root_mut().child_mut("right_arm").pose.rotation[0];
         assert!(
             (swing_right - expected_right).abs() < 1.0e-5,
