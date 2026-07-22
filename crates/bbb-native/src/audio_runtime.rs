@@ -86,6 +86,7 @@ impl NativeAudioRuntime {
 
     pub(crate) fn counters(&self) -> AudioCounters {
         let mut counters = self.counters.clone();
+        counters.active_music_event_id = self.playback.active_music_event_id().map(str::to_string);
         let observation = self.playback.residency_observation();
         counters.sound_cache_buffers = observation.static_buffers;
         counters.sound_cache_bytes = observation.static_decoded_bytes;

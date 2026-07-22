@@ -42,6 +42,7 @@ mod item_registry_test_fixture;
 mod lectern_book_scene;
 mod level_load_runtime;
 mod map_textures;
+mod music_runtime;
 mod narrator_runtime;
 mod particle_runtime;
 mod platform;
@@ -72,6 +73,7 @@ use entity_variant_textures::NativeEntityVariantTextureRuntime;
 use hud_assets::load_hud_textures;
 use input::{ClientInputState, DebugClipboard};
 use level_load_runtime::LevelLoadRuntime;
+use music_runtime::BossMusicRuntime;
 use narrator_runtime::{
     NarratorStatus, NativeNarratorRuntime, ScreenNarrationInput, ScreenNarrationRuntime,
 };
@@ -669,6 +671,7 @@ fn main() -> Result<()> {
         hud_debug_tps_sampler,
         lightmap_ticks,
         level_event_sound_random,
+        boss_music: BossMusicRuntime::default(),
         particle_runtime,
         terrain_textures: terrain_textures.clone(),
         item_runtime: simulation_item_runtime,

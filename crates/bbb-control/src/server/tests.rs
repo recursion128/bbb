@@ -231,6 +231,7 @@ fn audio_counters_reads_runtime_projection() {
         next.audio = AudioCounters {
             enabled: false,
             disabled_reason: Some("initialize Kira audio runtime".to_string()),
+            active_music_event_id: Some("minecraft:music.dragon".to_string()),
             resolve_failures: 2,
             submit_failures: 1,
             last_resolve_error: Some("missing sound event minecraft:missing".to_string()),
@@ -252,6 +253,7 @@ fn audio_counters_reads_runtime_projection() {
     let audio = response.result.unwrap();
     assert_eq!(audio["enabled"], false);
     assert_eq!(audio["disabled_reason"], "initialize Kira audio runtime");
+    assert_eq!(audio["active_music_event_id"], "minecraft:music.dragon");
     assert_eq!(audio["resolve_failures"], 2);
     assert_eq!(audio["submit_failures"], 1);
     assert_eq!(

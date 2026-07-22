@@ -74,6 +74,20 @@ impl KiraAudioRuntime {
         self.residency.observation()
     }
 
+    /// Returns the most recently started music-category event that the audio
+    /// backend still considers active. Stopped handles remain observable in
+    /// `playing` until the next mutating command, so this query filters their
+    /// live Kira state without requiring simulation to touch backend owners.
+    pub fn active_music_event_id(&self) -> Option<&str> {
+        latest_active_music_event_id(self.playing.iter().map(|sound| {
+            (
+                sound.event_id.as_str(),
+                &sound.category,
+                sound.handle.state() != PlaybackState::Stopped,
+            )
+        }))
+    }
+
     pub fn reset_resource_generation(&mut self, resource_generation: u64) {
         self.delayed_positioned.clear();
         for sound in &mut self.playing {
@@ -431,6 +445,14 @@ impl KiraPlayingSound {
 
 fn sound_matches_stop(sound: &KiraPlayingSound, command: &StopSoundCommand) -> bool {
     stop_filter_matches(&sound.event_id, &sound.category, command)
+}
+
+fn latest_active_music_event_id<'a>(
+    sounds: impl DoubleEndedIterator<Item = (&'a str, &'a AudioCategory, bool)>,
+) -> Option<&'a str> {
+    sounds.rev().find_map(|(event_id, category, active)| {
+        (active && category == &AudioCategory::Music).then_some(event_id)
+    })
 }
 
 fn stop_delayed_positioned_sounds(
@@ -907,6 +929,37 @@ mod tests {
                 name: Some("minecraft:music.game".to_string()),
             },
         ));
+    }
+
+    #[test]
+    fn backend_music_identity_ignores_stopped_and_naturally_completed_handles() {
+        let music = AudioCategory::Music;
+        let blocks = AudioCategory::Blocks;
+        let active = [
+            ("minecraft:music.game", &music, true),
+            ("minecraft:block.note_block.harp", &blocks, true),
+            ("minecraft:music.dragon", &music, true),
+        ];
+        assert_eq!(
+            latest_active_music_event_id(active.into_iter()),
+            Some("minecraft:music.dragon")
+        );
+
+        // Explicit stop and natural completion both surface as Kira's
+        // `PlaybackState::Stopped`; the previous live music becomes visible.
+        let dragon_stopped = [
+            ("minecraft:music.game", &music, true),
+            ("minecraft:music.dragon", &music, false),
+        ];
+        assert_eq!(
+            latest_active_music_event_id(dragon_stopped.into_iter()),
+            Some("minecraft:music.game")
+        );
+        let all_completed = [("minecraft:music.dragon", &music, false)];
+        assert_eq!(
+            latest_active_music_event_id(all_completed.into_iter()),
+            None
+        );
     }
 
     fn test_resolved_sound(event_id: &str) -> ResolvedSound {

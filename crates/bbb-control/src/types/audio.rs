@@ -5,6 +5,10 @@ pub struct AudioCounters {
     pub enabled: bool,
     #[serde(default)]
     pub disabled_reason: Option<String>,
+    /// Render-owned Kira playback identity projected back to simulation.
+    /// `None` includes explicit stop and natural completion.
+    #[serde(default)]
+    pub active_music_event_id: Option<String>,
     #[serde(default)]
     pub catalog_events: usize,
     #[serde(default)]
@@ -72,5 +76,6 @@ mod tests {
         assert_eq!(counters.sound_cache_evictions, 0);
         assert_eq!(counters.sound_admission_rejections, 0);
         assert_eq!(counters.sound_streaming_starts, 0);
+        assert_eq!(counters.active_music_event_id, None);
     }
 }
