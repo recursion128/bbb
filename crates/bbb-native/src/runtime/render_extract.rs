@@ -1289,13 +1289,12 @@ fn push_hud_chat_literal(
 
 /// Projects the world's tracked boss bars into the renderer's ordered frame
 /// list, mirroring `BossHealthOverlay.extractRenderState`'s walk over its
-/// event map (BossHealthOverlay.java:57-82). Vanilla iterates a
-/// LinkedHashMap in packet-arrival order; the world keys bars by UUID in a
-/// BTreeMap, so bars project in UUID order — deterministic and stable across
-/// frames, but not vanilla's insertion order (ledgered). The protocol layer
-/// flattens names to plain text, so each name is a single unstyled run, and
-/// progress is the latest packet value (`LerpingBossEvent`'s 100ms
-/// wall-clock smoothing is not modeled). Bars whose stored color/overlay
+/// event map (BossHealthOverlay.java:57-82). The world retains the
+/// `LinkedHashMap` packet-add order, including in-place replacement and
+/// remove/re-add behavior. Rich names and `LerpingBossEvent`'s 100ms
+/// wall-clock smoothing are projected by the HUD presentation owner in the
+/// boss-event closure stage; this direct helper retains the plain/latest
+/// fallback for focused extraction callers. Bars whose stored color/overlay
 /// names fall outside the vanilla `BossEvent` getName vocabularies
 /// (impossible via the protocol path, reachable only through deserialized
 /// state) are dropped. The darken-screen / world-fog flags stay behind the
@@ -1304,10 +1303,10 @@ fn push_hud_chat_literal(
 pub(crate) fn hud_boss_bars_from_world(world: &WorldStore) -> Vec<HudBossBar> {
     world
         .boss_bars()
-        .values()
+        .iter()
         .filter_map(|bar| {
             Some(HudBossBar {
-                name_runs: vec![HudStyledTextRun::plain(bar.name.clone())],
+                name_runs: vec![HudStyledTextRun::plain(bar.name.text())],
                 progress: bar.progress,
                 color: HudBossBarColor::from_name(&bar.color)?,
                 overlay: HudBossBarOverlay::from_name(&bar.overlay)?,

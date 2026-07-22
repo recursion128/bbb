@@ -3548,7 +3548,7 @@ mod tests {
             .handle_play_packet(PlayClientbound::BossEvent(BossEvent {
                 id: boss_id,
                 operation: BossEventOperation::Add {
-                    name: "Ender Dragon".to_string(),
+                    name: Box::new(bbb_protocol::RichTextComponent::plain("Ender Dragon")),
                     progress: 0.75,
                     color: BossBarColor::Purple,
                     overlay: BossBarOverlay::Progress,
@@ -3591,9 +3591,9 @@ mod tests {
             .unwrap();
 
         let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
-        let boss = report.world.boss_bars().get(&boss_id).unwrap();
+        let boss = report.world.boss_bar(boss_id).unwrap();
 
-        assert_eq!(boss.name, "Ender Dragon");
+        assert_eq!(boss.name.text(), "Ender Dragon");
         assert_eq!(boss.progress, 0.25);
         assert_eq!(boss.color, "purple");
         assert_eq!(boss.overlay, "progress");

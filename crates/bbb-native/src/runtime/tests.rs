@@ -4780,19 +4780,18 @@ fn debug_supporting_block_remote_legacy_effect_uses_biased_cyan_outline() {
 }
 
 #[test]
-fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
+fn hud_boss_bar_projection_keeps_packet_add_order_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());
 
-    // Insert the higher UUID first: the world keys bars in a BTreeMap, so
-    // the projection orders by UUID (deterministic across frames; vanilla's
-    // LinkedHashMap packet-arrival order is not tracked).
+    // Insert the higher UUID first: Vanilla's LinkedHashMap and the world
+    // both preserve packet-add order rather than sorting by UUID.
     let dragon = uuid::Uuid::from_u128(7);
     let wither = uuid::Uuid::from_u128(2);
     world.apply_boss_event(bbb_protocol::packets::BossEvent {
         id: dragon,
         operation: bbb_protocol::packets::BossEventOperation::Add {
-            name: "Ender Dragon".to_string(),
+            name: Box::new(bbb_protocol::RichTextComponent::plain("Ender Dragon")),
             progress: 0.75,
             color: bbb_protocol::packets::BossBarColor::Purple,
             overlay: bbb_protocol::packets::BossBarOverlay::Progress,
@@ -4806,7 +4805,7 @@ fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     world.apply_boss_event(bbb_protocol::packets::BossEvent {
         id: wither,
         operation: bbb_protocol::packets::BossEventOperation::Add {
-            name: "Wither".to_string(),
+            name: Box::new(bbb_protocol::RichTextComponent::plain("Wither")),
             progress: 0.5,
             color: bbb_protocol::packets::BossBarColor::Red,
             overlay: bbb_protocol::packets::BossBarOverlay::Notched10,
@@ -4822,17 +4821,17 @@ fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     assert_eq!(bars.len(), 2);
     assert_eq!(
         bars[0].name_runs,
-        vec![bbb_renderer::HudStyledTextRun::plain("Wither")]
-    );
-    assert_eq!(bars[0].progress, 0.5);
-    assert_eq!(bars[0].color, bbb_renderer::HudBossBarColor::Red);
-    assert_eq!(bars[0].overlay, bbb_renderer::HudBossBarOverlay::Notched10);
-    assert_eq!(
-        bars[1].name_runs,
         vec![bbb_renderer::HudStyledTextRun::plain("Ender Dragon")]
     );
-    assert_eq!(bars[1].color, bbb_renderer::HudBossBarColor::Purple);
-    assert_eq!(bars[1].overlay, bbb_renderer::HudBossBarOverlay::Progress);
+    assert_eq!(bars[0].progress, 0.75);
+    assert_eq!(bars[0].color, bbb_renderer::HudBossBarColor::Purple);
+    assert_eq!(bars[0].overlay, bbb_renderer::HudBossBarOverlay::Progress);
+    assert_eq!(
+        bars[1].name_runs,
+        vec![bbb_renderer::HudStyledTextRun::plain("Wither")]
+    );
+    assert_eq!(bars[1].color, bbb_renderer::HudBossBarColor::Red);
+    assert_eq!(bars[1].overlay, bbb_renderer::HudBossBarOverlay::Notched10);
 
     // Style updates re-project; removing a bar drops it from the list. The
     // darken/fog flags never ride the bar draw (they stay behind the world's
@@ -4845,8 +4844,8 @@ fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
         },
     });
     let bars = hud_boss_bars_from_world(&world);
-    assert_eq!(bars[0].color, bbb_renderer::HudBossBarColor::Yellow);
-    assert_eq!(bars[0].overlay, bbb_renderer::HudBossBarOverlay::Notched20);
+    assert_eq!(bars[1].color, bbb_renderer::HudBossBarColor::Yellow);
+    assert_eq!(bars[1].overlay, bbb_renderer::HudBossBarOverlay::Notched20);
     world.apply_boss_event(bbb_protocol::packets::BossEvent {
         id: wither,
         operation: bbb_protocol::packets::BossEventOperation::Remove,
@@ -4886,7 +4885,7 @@ fn hud_boss_bar_projection_covers_every_vanilla_color_and_overlay() {
             world.apply_boss_event(bbb_protocol::packets::BossEvent {
                 id: uuid::Uuid::from_u128(id),
                 operation: bbb_protocol::packets::BossEventOperation::Add {
-                    name: format!("boss {id}"),
+                    name: Box::new(bbb_protocol::RichTextComponent::plain(format!("boss {id}"))),
                     progress: 1.0,
                     color,
                     overlay,
@@ -7452,7 +7451,7 @@ fn add_boss_bar(world: &mut WorldStore, darken_screen: bool, create_world_fog: b
     assert!(world.apply_boss_event(ProtocolBossEvent {
         id: uuid::Uuid::from_u128(1),
         operation: ProtocolBossEventOperation::Add {
-            name: "Boss".to_string(),
+            name: Box::new(bbb_protocol::RichTextComponent::plain("Boss")),
             progress: 1.0,
             color: BossBarColor::Purple,
             overlay: BossBarOverlay::Progress,

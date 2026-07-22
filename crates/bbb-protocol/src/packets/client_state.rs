@@ -85,7 +85,7 @@ pub struct BossEvent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BossEventOperation {
     Add {
-        name: String,
+        name: Box<RichTextComponent>,
         progress: f32,
         color: BossBarColor,
         overlay: BossBarOverlay,
@@ -96,7 +96,7 @@ pub enum BossEventOperation {
         progress: f32,
     },
     UpdateName {
-        name: String,
+        name: Box<RichTextComponent>,
     },
     UpdateStyle {
         color: BossBarColor,
@@ -266,7 +266,7 @@ pub(super) fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> 
     })?;
     let operation = match operation_type {
         BossEventOperationType::Add => BossEventOperation::Add {
-            name: decode_component_summary_from_decoder(decoder)?,
+            name: decode_boxed_rich_text_component_from_decoder(decoder)?,
             progress: decoder.read_f32()?,
             color: decode_boss_bar_color(decoder)?,
             overlay: decode_boss_bar_overlay(decoder)?,
@@ -277,7 +277,7 @@ pub(super) fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> 
             progress: decoder.read_f32()?,
         },
         BossEventOperationType::UpdateName => BossEventOperation::UpdateName {
-            name: decode_component_summary_from_decoder(decoder)?,
+            name: decode_boxed_rich_text_component_from_decoder(decoder)?,
         },
         BossEventOperationType::UpdateStyle => BossEventOperation::UpdateStyle {
             color: decode_boss_bar_color(decoder)?,

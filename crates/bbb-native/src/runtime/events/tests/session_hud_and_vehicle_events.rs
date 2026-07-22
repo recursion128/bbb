@@ -494,7 +494,7 @@ fn hud_session_events_update_world_and_world_counters() {
         bbb_protocol::packets::BossEvent {
             id: boss_id,
             operation: bbb_protocol::packets::BossEventOperation::Add {
-                name: "Ender Dragon".to_string(),
+                name: Box::new(bbb_protocol::RichTextComponent::plain("Ender Dragon")),
                 progress: 0.75,
                 color: bbb_protocol::packets::BossBarColor::Purple,
                 overlay: bbb_protocol::packets::BossBarOverlay::Progress,
@@ -544,8 +544,8 @@ fn hud_session_events_update_world_and_world_counters() {
         5
     );
 
-    let boss = world.boss_bars().get(&boss_id).unwrap();
-    assert_eq!(boss.name, "Ender Dragon");
+    let boss = world.boss_bar(boss_id).unwrap();
+    assert_eq!(boss.name.text(), "Ender Dragon");
     assert_eq!(boss.progress, 0.25);
     assert_eq!(boss.color, "purple");
     assert_eq!(boss.overlay, "progress");

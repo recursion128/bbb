@@ -2454,7 +2454,7 @@ mod tests {
         let boss_event = packets::BossEvent {
             id: uuid::Uuid::from_u128(1),
             operation: packets::BossEventOperation::Add {
-                name: "Ender Dragon".to_string(),
+                name: Box::new(bbb_protocol::RichTextComponent::plain("Ender Dragon")),
                 progress: 0.75,
                 color: packets::BossBarColor::Purple,
                 overlay: packets::BossBarOverlay::Progress,

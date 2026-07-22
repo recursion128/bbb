@@ -11,7 +11,7 @@ fn decodes_boss_event_operations() {
     let id = Uuid::from_u128(0xaaaaaaaa_bbbb_cccc_dddd_eeeeeeeeeeee);
 
     let payload = boss_event_payload(id, 0, |payload| {
-        payload.write_bytes(&nbt_string_root("Raid"));
+        payload.write_bytes(&styled_component_root("Raid"));
         payload.write_f32(0.75);
         payload.write_var_i32(5);
         payload.write_var_i32(3);
@@ -23,7 +23,25 @@ fn decodes_boss_event_operations() {
         PlayClientbound::BossEvent(BossEvent {
             id,
             operation: BossEventOperation::Add {
-                name: "Raid".to_string(),
+                name: Box::new(
+                    crate::RichTextComponent::try_from_component_nbt(
+                        crate::NbtSummaryValue::Compound(vec![
+                            crate::NbtSummaryEntry {
+                                name: "text".to_string(),
+                                value: crate::NbtSummaryValue::String("Raid".to_string()),
+                            },
+                            crate::NbtSummaryEntry {
+                                name: "bold".to_string(),
+                                value: crate::NbtSummaryValue::Byte(1),
+                            },
+                            crate::NbtSummaryEntry {
+                                name: "color".to_string(),
+                                value: crate::NbtSummaryValue::String("red".to_string()),
+                            },
+                        ]),
+                    )
+                    .unwrap(),
+                ),
                 progress: 0.75,
                 color: BossBarColor::Purple,
                 overlay: BossBarOverlay::Notched12,
@@ -59,7 +77,7 @@ fn decodes_boss_event_operations() {
     );
 
     let payload = boss_event_payload(id, 3, |payload| {
-        payload.write_bytes(&nbt_string_root("Dragon"));
+        payload.write_bytes(&styled_component_root("Dragon"));
     });
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap();
     assert_eq!(
@@ -67,7 +85,25 @@ fn decodes_boss_event_operations() {
         PlayClientbound::BossEvent(BossEvent {
             id,
             operation: BossEventOperation::UpdateName {
-                name: "Dragon".to_string(),
+                name: Box::new(
+                    crate::RichTextComponent::try_from_component_nbt(
+                        crate::NbtSummaryValue::Compound(vec![
+                            crate::NbtSummaryEntry {
+                                name: "text".to_string(),
+                                value: crate::NbtSummaryValue::String("Dragon".to_string()),
+                            },
+                            crate::NbtSummaryEntry {
+                                name: "bold".to_string(),
+                                value: crate::NbtSummaryValue::Byte(1),
+                            },
+                            crate::NbtSummaryEntry {
+                                name: "color".to_string(),
+                                value: crate::NbtSummaryValue::String("red".to_string()),
+                            },
+                        ]),
+                    )
+                    .unwrap(),
+                ),
             },
         })
     );
@@ -950,4 +986,24 @@ fn nbt_string_root(text: &str) -> Vec<u8> {
     payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
     payload.extend_from_slice(text.as_bytes());
     payload
+}
+
+fn styled_component_root(text: &str) -> Vec<u8> {
+    let mut payload = vec![10];
+    write_named_nbt_string(&mut payload, "text", text);
+    payload.push(1);
+    payload.extend_from_slice(&4_u16.to_be_bytes());
+    payload.extend_from_slice(b"bold");
+    payload.push(1);
+    write_named_nbt_string(&mut payload, "color", "red");
+    payload.push(0);
+    payload
+}
+
+fn write_named_nbt_string(payload: &mut Vec<u8>, name: &str, value: &str) {
+    payload.push(8);
+    payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+    payload.extend_from_slice(name.as_bytes());
+    payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    payload.extend_from_slice(value.as_bytes());
 }

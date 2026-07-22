@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use bbb_protocol::packets::{
     BossBarColor as ProtocolBossBarColor, BossBarOverlay as ProtocolBossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventOperation as ProtocolBossEventOperation,
@@ -12,14 +10,16 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use bbb_protocol::{NbtSummaryValue, StyledTextRun};
+use bbb_protocol::{NbtSummaryValue, RichTextComponent, StyledTextRun};
 
 use crate::WorldStore;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ClientHudState {
     #[serde(default)]
-    pub boss_bars: BTreeMap<Uuid, BossBarState>,
+    pub boss_bars: Vec<BossBarState>,
+    #[serde(default)]
+    pub boss_bar_instance_revision: u64,
     #[serde(default)]
     pub tab_list: TabListState,
     #[serde(default)]
@@ -35,7 +35,8 @@ pub struct ClientHudState {
 impl Default for ClientHudState {
     fn default() -> Self {
         Self {
-            boss_bars: BTreeMap::new(),
+            boss_bars: Vec::new(),
+            boss_bar_instance_revision: 0,
             tab_list: TabListState::default(),
             difficulty: DifficultyState::default(),
             system_chat: None,
@@ -47,8 +48,13 @@ impl Default for ClientHudState {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BossBarState {
-    pub name: String,
+    pub id: Uuid,
+    pub name: RichTextComponent,
     pub progress: f32,
+    #[serde(default)]
+    pub instance_revision: u64,
+    #[serde(default)]
+    pub progress_revision: u64,
     pub color: String,
     pub overlay: String,
     pub darken_screen: bool,
@@ -134,47 +140,77 @@ impl WorldStore {
                 overlay,
                 flags,
             } => {
-                self.client_hud.boss_bars.insert(
-                    packet.id,
-                    BossBarState {
-                        name,
-                        progress,
-                        color: boss_bar_color_name(color).to_string(),
-                        overlay: boss_bar_overlay_name(overlay).to_string(),
-                        darken_screen: flags.darken_screen,
-                        play_music: flags.play_music,
-                        create_world_fog: flags.create_world_fog,
-                    },
-                );
+                self.client_hud.boss_bar_instance_revision =
+                    self.client_hud.boss_bar_instance_revision.saturating_add(1);
+                let bar = BossBarState {
+                    id: packet.id,
+                    name: *name,
+                    progress,
+                    instance_revision: self.client_hud.boss_bar_instance_revision,
+                    progress_revision: 0,
+                    color: boss_bar_color_name(color).to_string(),
+                    overlay: boss_bar_overlay_name(overlay).to_string(),
+                    darken_screen: flags.darken_screen,
+                    play_music: flags.play_music,
+                    create_world_fog: flags.create_world_fog,
+                };
+                if let Some(existing) = self
+                    .client_hud
+                    .boss_bars
+                    .iter_mut()
+                    .find(|existing| existing.id == packet.id)
+                {
+                    *existing = bar;
+                } else {
+                    self.client_hud.boss_bars.push(bar);
+                }
                 true
             }
             ProtocolBossEventOperation::Remove => {
-                let removed = self.client_hud.boss_bars.remove(&packet.id).is_some();
+                let previous_len = self.client_hud.boss_bars.len();
+                self.client_hud.boss_bars.retain(|bar| bar.id != packet.id);
+                let removed = self.client_hud.boss_bars.len() != previous_len;
                 if !removed {
                     self.counters.boss_events_ignored += 1;
                 }
                 removed
             }
             ProtocolBossEventOperation::UpdateProgress { progress } => {
-                let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                let Some(bar) = self
+                    .client_hud
+                    .boss_bars
+                    .iter_mut()
+                    .find(|bar| bar.id == packet.id)
+                else {
                     self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
                 };
                 bar.progress = progress;
+                bar.progress_revision = bar.progress_revision.saturating_add(1);
                 true
             }
             ProtocolBossEventOperation::UpdateName { name } => {
-                let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                let Some(bar) = self
+                    .client_hud
+                    .boss_bars
+                    .iter_mut()
+                    .find(|bar| bar.id == packet.id)
+                else {
                     self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
                 };
-                bar.name = name;
+                bar.name = *name;
                 true
             }
             ProtocolBossEventOperation::UpdateStyle { color, overlay } => {
-                let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                let Some(bar) = self
+                    .client_hud
+                    .boss_bars
+                    .iter_mut()
+                    .find(|bar| bar.id == packet.id)
+                else {
                     self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
@@ -184,7 +220,12 @@ impl WorldStore {
                 true
             }
             ProtocolBossEventOperation::UpdateProperties { flags } => {
-                let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                let Some(bar) = self
+                    .client_hud
+                    .boss_bars
+                    .iter_mut()
+                    .find(|bar| bar.id == packet.id)
+                else {
                     self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
@@ -302,22 +343,30 @@ impl WorldStore {
         &self.client_hud
     }
 
-    pub fn boss_bars(&self) -> &BTreeMap<Uuid, BossBarState> {
+    pub fn boss_bars(&self) -> &[BossBarState] {
         &self.client_hud.boss_bars
+    }
+
+    pub fn boss_bar(&self, id: Uuid) -> Option<&BossBarState> {
+        self.client_hud.boss_bars.iter().find(|bar| bar.id == id)
     }
 
     pub fn boss_overlay_should_darken_screen(&self) -> bool {
         self.client_hud
             .boss_bars
-            .values()
+            .iter()
             .any(|bar| bar.darken_screen)
     }
 
     pub fn boss_overlay_should_create_world_fog(&self) -> bool {
         self.client_hud
             .boss_bars
-            .values()
+            .iter()
             .any(|bar| bar.create_world_fog)
+    }
+
+    pub fn boss_overlay_should_play_music(&self) -> bool {
+        self.client_hud.boss_bars.iter().any(|bar| bar.play_music)
     }
 
     pub fn tab_list(&self) -> &TabListState {
@@ -426,6 +475,32 @@ mod tests {
         SystemChat as ProtocolSystemChat,
     };
 
+    fn plain_component(text: &str) -> Box<bbb_protocol::RichTextComponent> {
+        Box::new(bbb_protocol::RichTextComponent::plain(text))
+    }
+
+    fn styled_component(text: &str) -> Box<bbb_protocol::RichTextComponent> {
+        Box::new(
+            bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(
+                vec![
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "text".to_string(),
+                        value: NbtSummaryValue::String(text.to_string()),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "bold".to_string(),
+                        value: NbtSummaryValue::Byte(1),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "color".to_string(),
+                        value: NbtSummaryValue::String("red".to_string()),
+                    },
+                ],
+            ))
+            .unwrap(),
+        )
+    }
+
     #[test]
     fn boss_events_add_update_remove_and_ignore_unknown_updates() {
         let mut store = WorldStore::new();
@@ -435,7 +510,7 @@ mod tests {
         assert!(store.apply_boss_event(ProtocolBossEvent {
             id,
             operation: ProtocolBossEventOperation::Add {
-                name: "Ender Dragon".to_string(),
+                name: styled_component("Ender Dragon"),
                 progress: 0.75,
                 color: ProtocolBossBarColor::Purple,
                 overlay: ProtocolBossBarOverlay::Progress,
@@ -446,27 +521,35 @@ mod tests {
                 },
             },
         }));
-        assert_eq!(
-            store.boss_bars().get(&id),
-            Some(&BossBarState {
-                name: "Ender Dragon".to_string(),
-                progress: 0.75,
-                color: "purple".to_string(),
-                overlay: "progress".to_string(),
-                darken_screen: true,
-                play_music: false,
-                create_world_fog: true,
-            })
-        );
+        let bar = store.boss_bar(id).unwrap();
+        assert_eq!(bar.id, id);
+        assert_eq!(bar.name.text(), "Ender Dragon");
+        assert_eq!(bar.name.styled().len(), 1);
+        assert_eq!(bar.name.styled()[0].style.bold, Some(true));
+        assert_eq!(bar.name.styled()[0].style.color, Some(0xff5555));
+        assert!(matches!(bar.name.component(), NbtSummaryValue::Compound(_)));
+        assert_eq!(bar.progress, 0.75);
+        assert_eq!(bar.instance_revision, 1);
+        assert_eq!(bar.progress_revision, 0);
+        assert_eq!(bar.color, "purple");
+        assert_eq!(bar.overlay, "progress");
+        assert!(bar.darken_screen);
+        assert!(bar.create_world_fog);
 
         assert!(store.apply_boss_event(ProtocolBossEvent {
             id,
             operation: ProtocolBossEventOperation::UpdateProgress { progress: 0.5 },
         }));
+        assert_eq!(store.boss_bar(id).unwrap().progress_revision, 1);
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id,
+            operation: ProtocolBossEventOperation::UpdateProgress { progress: 0.5 },
+        }));
+        assert_eq!(store.boss_bar(id).unwrap().progress_revision, 2);
         assert!(store.apply_boss_event(ProtocolBossEvent {
             id,
             operation: ProtocolBossEventOperation::UpdateName {
-                name: "Wither".to_string(),
+                name: plain_component("Wither"),
             },
         }));
         assert!(store.apply_boss_event(ProtocolBossEvent {
@@ -492,25 +575,22 @@ mod tests {
             operation: ProtocolBossEventOperation::UpdateProgress { progress: 1.0 },
         }));
         assert_eq!(store.boss_bars().len(), 1);
-        assert_eq!(
-            store.boss_bars().get(&id),
-            Some(&BossBarState {
-                name: "Wither".to_string(),
-                progress: 0.5,
-                color: "red".to_string(),
-                overlay: "notched_10".to_string(),
-                darken_screen: false,
-                play_music: true,
-                create_world_fog: false,
-            })
-        );
+        let bar = store.boss_bar(id).unwrap();
+        assert_eq!(bar.name.text(), "Wither");
+        assert_eq!(bar.progress, 0.5);
+        assert_eq!(bar.progress_revision, 2);
+        assert_eq!(bar.color, "red");
+        assert_eq!(bar.overlay, "notched_10");
+        assert!(!bar.darken_screen);
+        assert!(bar.play_music);
+        assert!(!bar.create_world_fog);
 
         assert!(store.apply_boss_event(ProtocolBossEvent {
             id,
             operation: ProtocolBossEventOperation::Remove,
         }));
         assert!(store.boss_bars().is_empty());
-        assert_eq!(store.counters().boss_event_packets, 7);
+        assert_eq!(store.counters().boss_event_packets, 8);
         assert_eq!(store.counters().boss_bars_tracked, 0);
         assert_eq!(store.counters().boss_events_ignored, 1);
     }
@@ -523,11 +603,12 @@ mod tests {
 
         assert!(!store.boss_overlay_should_darken_screen());
         assert!(!store.boss_overlay_should_create_world_fog());
+        assert!(!store.boss_overlay_should_play_music());
 
         assert!(store.apply_boss_event(ProtocolBossEvent {
             id: darkening_id,
             operation: ProtocolBossEventOperation::Add {
-                name: "Dark".to_string(),
+                name: plain_component("Dark"),
                 progress: 1.0,
                 color: ProtocolBossBarColor::Purple,
                 overlay: ProtocolBossBarOverlay::Progress,
@@ -541,7 +622,7 @@ mod tests {
         assert!(store.apply_boss_event(ProtocolBossEvent {
             id: fog_id,
             operation: ProtocolBossEventOperation::Add {
-                name: "Fog".to_string(),
+                name: plain_component("Fog"),
                 progress: 1.0,
                 color: ProtocolBossBarColor::Red,
                 overlay: ProtocolBossBarOverlay::Progress,
@@ -561,19 +642,90 @@ mod tests {
             operation: ProtocolBossEventOperation::UpdateProperties {
                 flags: ProtocolBossEventFlags {
                     darken_screen: false,
-                    play_music: false,
+                    play_music: true,
                     create_world_fog: false,
                 },
             },
         }));
         assert!(!store.boss_overlay_should_darken_screen());
         assert!(store.boss_overlay_should_create_world_fog());
+        assert!(store.boss_overlay_should_play_music());
 
         assert!(store.apply_boss_event(ProtocolBossEvent {
             id: fog_id,
             operation: ProtocolBossEventOperation::Remove,
         }));
         assert!(!store.boss_overlay_should_create_world_fog());
+        assert!(store.boss_overlay_should_play_music());
+    }
+
+    #[test]
+    fn boss_event_adds_keep_linked_hash_map_order_and_round_trip_exact_names() {
+        let mut store = WorldStore::new();
+        let first = Uuid::from_u128(7);
+        let second = Uuid::from_u128(2);
+        let add = |id, name| ProtocolBossEvent {
+            id,
+            operation: ProtocolBossEventOperation::Add {
+                name,
+                progress: 1.0,
+                color: ProtocolBossBarColor::White,
+                overlay: ProtocolBossBarOverlay::Progress,
+                flags: ProtocolBossEventFlags::default(),
+            },
+        };
+
+        assert!(store.apply_boss_event(add(first, styled_component("First"))));
+        assert!(store.apply_boss_event(add(second, plain_component("Second"))));
+        assert_eq!(
+            store
+                .boss_bars()
+                .iter()
+                .map(|bar| bar.id)
+                .collect::<Vec<_>>(),
+            vec![first, second]
+        );
+
+        let first_revision = store.boss_bar(first).unwrap().instance_revision;
+        assert!(store.apply_boss_event(add(first, plain_component("Replaced"))));
+        assert_eq!(
+            store
+                .boss_bars()
+                .iter()
+                .map(|bar| bar.id)
+                .collect::<Vec<_>>(),
+            vec![first, second]
+        );
+        assert!(store.boss_bar(first).unwrap().instance_revision > first_revision);
+        assert_eq!(store.boss_bar(first).unwrap().name.text(), "Replaced");
+
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id: first,
+            operation: ProtocolBossEventOperation::Remove,
+        }));
+        assert!(store.apply_boss_event(add(first, styled_component("Appended"))));
+        assert_eq!(
+            store
+                .boss_bars()
+                .iter()
+                .map(|bar| bar.id)
+                .collect::<Vec<_>>(),
+            vec![second, first]
+        );
+
+        let encoded = serde_json::to_value(&store).unwrap();
+        let restored: WorldStore = serde_json::from_value(encoded).unwrap();
+        assert_eq!(restored.boss_bars(), store.boss_bars());
+        assert_eq!(
+            restored.boss_bar(first).unwrap().name.styled()[0]
+                .style
+                .bold,
+            Some(true)
+        );
+        assert_eq!(
+            restored.boss_bar(first).unwrap().name.component(),
+            store.boss_bar(first).unwrap().name.component()
+        );
     }
 
     #[test]
