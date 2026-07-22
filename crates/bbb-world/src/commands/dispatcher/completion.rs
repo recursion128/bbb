@@ -45,6 +45,10 @@ use super::{
 };
 use crate::FrozenRegistryAccess;
 
+mod blocks;
+mod items;
+mod selector;
+
 pub(in crate::commands) struct CommandCompletionSources<'a> {
     pub(in crate::commands) registry_access: FrozenRegistryAccess<'a>,
     pub(in crate::commands) online_player_names: Vec<&'a str>,
@@ -161,12 +165,12 @@ fn push_parser_candidates(
             push_string_candidates(output, remaining, ["true", "false"]);
         }
         VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID | VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID => {
-            push_string_candidates(
+            selector::push_candidates(
                 output,
                 remaining,
-                sources.online_player_names.iter().copied(),
+                type_id == VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID,
+                sources,
             );
-            push_string_candidates(output, remaining, ["@p", "@a", "@r", "@s", "@e", "@n"]);
         }
         VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID | VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID => {
             push_coordinate_candidates(output, remaining, 3);
@@ -175,22 +179,16 @@ fn push_parser_candidates(
             push_coordinate_candidates(output, remaining, 2);
         }
         VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_STATE_ID => {
-            push_block_candidates(output, remaining, false, sources.registry_access);
+            blocks::push_candidates(output, remaining, false, sources.registry_access);
         }
         VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_PREDICATE_ID => {
-            push_block_candidates(output, remaining, true, sources.registry_access);
+            blocks::push_candidates(output, remaining, true, sources.registry_access);
         }
         VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_STACK_ID => {
-            push_item_candidates(output, remaining, sources.registry_access);
+            items::push_candidates(output, remaining, sources.registry_access);
         }
         VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_PREDICATE_ID => {
-            push_registry_candidates(
-                output,
-                remaining,
-                "minecraft:item",
-                true,
-                sources.registry_access,
-            );
+            items::push_predicate_candidates(output, remaining, sources.registry_access);
         }
         VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID => push_string_candidates(
             output,
@@ -405,56 +403,6 @@ fn push_registry_candidates(
         }
     }
     true
-}
-
-fn push_block_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
-    remaining: &str,
-    include_tags: bool,
-    access: FrozenRegistryAccess<'_>,
-) {
-    push_registry_candidates(output, remaining, "minecraft:block", include_tags, access);
-}
-
-fn push_item_candidates(
-    output: &mut BTreeMap<String, Option<String>>,
-    remaining: &str,
-    access: FrozenRegistryAccess<'_>,
-) {
-    let Some((item, components)) = remaining.split_once('[') else {
-        push_registry_candidates(output, remaining, "minecraft:item", false, access);
-        if access
-            .resource_ids_in_holder_order("minecraft:item")
-            .is_some_and(|resources| {
-                resources
-                    .into_iter()
-                    .any(|candidate| candidate == remaining)
-            })
-        {
-            output.entry(format!("{remaining}[")).or_default();
-        }
-        return;
-    };
-    if components.contains([',', '=', ']']) {
-        return;
-    }
-    let Some(component_ids) = access.resource_ids_in_holder_order("minecraft:data_component_type")
-    else {
-        return;
-    };
-    if components.is_empty() {
-        output.entry(format!("{item}[!")).or_default();
-    }
-    let prefix = components.strip_prefix('!').map_or("", |_| "!");
-    let component_remaining = components.strip_prefix('!').unwrap_or(components);
-    let mut nested = BTreeMap::new();
-    push_resource_candidates(&mut nested, component_remaining, component_ids, "");
-    for component in nested.into_keys() {
-        let suffix = if prefix.is_empty() { "=" } else { "" };
-        output
-            .entry(format!("{item}[{prefix}{component}{suffix}"))
-            .or_default();
-    }
 }
 
 fn push_objective_criteria_candidates(

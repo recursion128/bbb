@@ -6,6 +6,111 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandEntitySelectorOptionKind {
+    Name,
+    Once,
+    Limit,
+    Sort,
+    Gamemode,
+    Team,
+    Type,
+    Repeatable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CommandEntitySelectorOption {
+    pub name: &'static str,
+    pub kind: CommandEntitySelectorOptionKind,
+}
+
+pub const VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS: &[CommandEntitySelectorOption] = &[
+    CommandEntitySelectorOption {
+        name: "name",
+        kind: CommandEntitySelectorOptionKind::Name,
+    },
+    CommandEntitySelectorOption {
+        name: "distance",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "level",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "x",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "y",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "z",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "dx",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "dy",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "dz",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "x_rotation",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "y_rotation",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "limit",
+        kind: CommandEntitySelectorOptionKind::Limit,
+    },
+    CommandEntitySelectorOption {
+        name: "sort",
+        kind: CommandEntitySelectorOptionKind::Sort,
+    },
+    CommandEntitySelectorOption {
+        name: "gamemode",
+        kind: CommandEntitySelectorOptionKind::Gamemode,
+    },
+    CommandEntitySelectorOption {
+        name: "team",
+        kind: CommandEntitySelectorOptionKind::Team,
+    },
+    CommandEntitySelectorOption {
+        name: "type",
+        kind: CommandEntitySelectorOptionKind::Type,
+    },
+    CommandEntitySelectorOption {
+        name: "tag",
+        kind: CommandEntitySelectorOptionKind::Repeatable,
+    },
+    CommandEntitySelectorOption {
+        name: "nbt",
+        kind: CommandEntitySelectorOptionKind::Repeatable,
+    },
+    CommandEntitySelectorOption {
+        name: "scores",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "advancements",
+        kind: CommandEntitySelectorOptionKind::Once,
+    },
+    CommandEntitySelectorOption {
+        name: "predicate",
+        kind: CommandEntitySelectorOptionKind::Repeatable,
+    },
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntitySelectorPrefix {
     pub consumed: usize,
     pub multiple: bool,
@@ -693,7 +798,9 @@ fn is_java_positive_hex_long(part: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_entity_selector_prefix;
+    use std::collections::BTreeSet;
+
+    use super::{parse_entity_selector_prefix, VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS};
 
     fn is_valid_entity_selector(value: &str) -> bool {
         parse_entity_selector_prefix(value).is_some_and(|parsed| parsed.consumed == value.len())
@@ -722,6 +829,37 @@ mod tests {
             "@e[x_rotation=1...2]",
         ] {
             assert!(is_valid_entity_selector(selector), "rejected {selector:?}");
+        }
+    }
+
+    #[test]
+    fn completion_option_catalog_is_unique_and_accepted_by_the_selector_owner() {
+        let names = VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS
+            .iter()
+            .map(|option| option.name)
+            .collect::<BTreeSet<_>>();
+        assert_eq!(names.len(), VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS.len());
+        for option in VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS {
+            let value = match option.name {
+                "name" => "Pig",
+                "distance" => "1..2",
+                "level" => "1..2",
+                "x" | "y" | "z" | "dx" | "dy" | "dz" => "1",
+                "x_rotation" | "y_rotation" => "-90..90",
+                "limit" => "1",
+                "sort" => "nearest",
+                "gamemode" => "creative",
+                "team" => "red",
+                "type" => "minecraft:pig",
+                "tag" => "boss",
+                "nbt" => "{}",
+                "scores" => "{kills=1}",
+                "advancements" => "{minecraft:story/root=true}",
+                "predicate" => "minecraft:test",
+                unknown => panic!("missing selector option fixture for {unknown}"),
+            };
+            let selector = format!("@e[{}={value}]", option.name);
+            assert!(is_valid_entity_selector(&selector), "rejected {selector:?}");
         }
     }
 

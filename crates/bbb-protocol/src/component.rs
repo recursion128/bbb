@@ -20,8 +20,9 @@ pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPaylo
 pub use command::{
     parse_command_coordinates_prefix, parse_command_entity_selector_prefix,
     parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_snbt_value_prefix,
-    parse_command_uuid_prefix, CommandCoordinatesKind, CommandEntitySelectorPrefix,
-    CommandSnbtKind,
+    parse_command_uuid_prefix, CommandCoordinatesKind, CommandEntitySelectorOption,
+    CommandEntitySelectorOptionKind, CommandEntitySelectorPrefix, CommandSnbtKind,
+    VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
 };
 
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`

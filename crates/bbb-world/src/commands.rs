@@ -248,8 +248,11 @@ mod tests {
     use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
         CommandArgumentParser, CommandNode, CommandNodeType, Commands, RegistryTags,
-        TagNetworkPayload, UpdateTags, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_BOOL_ID,
+        TagNetworkPayload, UpdateTags, VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_PREDICATE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_STATE_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_BOOL_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_PREDICATE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_STACK_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID, VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID,
         VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID,
@@ -606,6 +609,142 @@ mod tests {
             .iter()
             .any(|suggestion| suggestion.text == "minecraft:stone["));
         assert!(!item.request_server);
+    }
+
+    #[test]
+    fn selector_completion_tracks_nested_option_applicability_and_value_providers() {
+        let mut store = WorldStore::new();
+        let mut tree = command_tree("target", "brigadier:string");
+        tree.nodes[2].suggestions = None;
+        tree.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
+            name: "minecraft:entity".to_string(),
+            properties: vec![0],
+        });
+        assert!(store.apply_commands(tree));
+
+        assert_completion_contains(&store, "/target @e[so", "@e[sort=");
+        assert_completion_contains(&store, "/target @e[sort=n", "@e[sort=nearest");
+        assert_completion_contains(&store, "/target @e[sort=nearest", "@e[sort=nearest]");
+        assert_completion_contains(&store, "/target @e[type=!mine", "@e[type=!minecraft:zombie");
+        let repeated = store.complete_command("/target @e[type=!minecraft:zombie,type=");
+        assert!(repeated
+            .suggestions
+            .iter()
+            .all(|suggestion| suggestion.text.contains("type=!")));
+        let current = store.complete_command("/target @s[");
+        assert!(current
+            .suggestions
+            .iter()
+            .all(|suggestion| !matches!(suggestion.text.as_str(), "@s[limit=" | "@s[sort=")));
+        let players = store.complete_command("/target @p[");
+        assert!(players
+            .suggestions
+            .iter()
+            .all(|suggestion| suggestion.text != "@p[type="));
+    }
+
+    #[test]
+    fn block_completion_uses_exact_state_and_active_tag_property_values() {
+        let mut store = WorldStore::new();
+        let mut tree = command_tree("block", "brigadier:string");
+        tree.nodes[2].suggestions = None;
+        tree.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_STATE_ID,
+            name: "minecraft:block_state".to_string(),
+            properties: Vec::new(),
+        });
+        assert!(store.apply_commands(tree));
+
+        assert_completion_contains(&store, "/block oak_log[", "oak_log[axis=");
+        assert_completion_contains(&store, "/block oak_log[axis=", "oak_log[axis=x");
+        assert_completion_contains(&store, "/block oak_log[axis=x", "oak_log[axis=x]");
+        assert_completion_contains(&store, "/block chest", "chest{");
+
+        let oak_log =
+            bbb_protocol::block_types::vanilla_block_type_for_resource_id("minecraft:oak_log")
+                .unwrap()
+                .id;
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:logs".to_string(),
+                    entries: vec![oak_log],
+                }],
+            }],
+        });
+        let mut tree = command_tree("match", "brigadier:string");
+        tree.nodes[2].suggestions = None;
+        tree.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_PREDICATE_ID,
+            name: "minecraft:block_predicate".to_string(),
+            properties: Vec::new(),
+        });
+        assert!(store.apply_commands(tree));
+        assert_completion_contains(&store, "/match #logs[", "#logs[axis=");
+        assert_completion_contains(&store, "/match #logs[axis=", "#logs[axis=z");
+    }
+
+    #[test]
+    fn item_completion_follows_component_assignment_removal_and_delimiter_states() {
+        let mut store = WorldStore::new();
+        let mut tree = command_tree("give", "brigadier:string");
+        tree.nodes[2].suggestions = None;
+        tree.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_STACK_ID,
+            name: "minecraft:item_stack".to_string(),
+            properties: Vec::new(),
+        });
+        assert!(store.apply_commands(tree));
+
+        assert_completion_contains(
+            &store,
+            "/give stone[max_stack",
+            "stone[minecraft:max_stack_size=",
+        );
+        assert_completion_contains(&store, "/give stone[!custom_name", "stone[!custom_name]");
+        let value_start = store.complete_command("/give stone[max_stack_size=");
+        assert!(value_start.suggestions.is_empty());
+        assert_completion_contains(
+            &store,
+            "/give stone[max_stack_size=16",
+            "stone[max_stack_size=16]",
+        );
+        assert_completion_contains(
+            &store,
+            "/give stone[max_stack_size=16,cu",
+            "stone[max_stack_size=16,minecraft:custom_data=",
+        );
+
+        let mut predicate = command_tree("clear", "brigadier:string");
+        predicate.nodes[2].suggestions = None;
+        predicate.nodes[2].parser = Some(CommandArgumentParser {
+            type_id: VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_PREDICATE_ID,
+            name: "minecraft:item_predicate".to_string(),
+            properties: Vec::new(),
+        });
+        assert!(store.apply_commands(predicate));
+        assert_completion_contains(&store, "/clear *[max_stack", "*[minecraft:max_stack_size");
+        assert_completion_contains(&store, "/clear *[max_stack_size", "*[max_stack_size=");
+        assert_completion_contains(&store, "/clear *[count~{min:1}", "*[count~{min:1}]");
+        assert_completion_contains(
+            &store,
+            "/clear *[count~{min:1}|da",
+            "*[count~{min:1}|minecraft:damage",
+        );
+    }
+
+    fn assert_completion_contains(store: &WorldStore, input: &str, expected: &str) {
+        let completion = store.complete_command(input);
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.text == expected),
+            "missing {expected:?} for {input:?}: {completion:?}"
+        );
+        assert!(!completion.request_server);
     }
 
     #[test]

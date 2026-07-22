@@ -5,6 +5,11 @@ use crate::{
 
 mod entity_selector;
 
+pub use entity_selector::{
+    CommandEntitySelectorOption, CommandEntitySelectorOptionKind,
+    VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CommandEntitySelectorPrefix {
     pub consumed: usize,

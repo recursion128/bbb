@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, fmt, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    sync::Arc,
+};
 
 use bbb_protocol::attribute_types::{
     vanilla_attribute_type, vanilla_attribute_type_for_resource_id,
@@ -745,6 +749,19 @@ impl<'a> FrozenRegistryAccess<'a> {
                 .map(String::as_str)
                 .collect(),
         )
+    }
+
+    pub fn resource_ids_for_tag(self, registry: &str, tag: &str) -> Option<Vec<&'a str>> {
+        self.registries
+            .resource_ids_for_tag(registry, tag)
+            .ok()
+            .flatten()
+    }
+
+    pub fn block_property_values(self, resource_id: &str) -> BTreeMap<&'a str, BTreeSet<&'a str>> {
+        self.registries
+            .block_states
+            .block_property_values(resource_id)
     }
 
     pub fn block_properties_membership(

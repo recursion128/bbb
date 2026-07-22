@@ -11,9 +11,10 @@ pub use component::{
     parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_snbt_value_prefix,
     parse_command_uuid_prefix, styled_component_runs_from_nbt_value, styled_runs_summary_text,
     validate_component_nbt, visit_component_payloads, CanonicalComponentOwnerValue,
-    CommandCoordinatesKind, CommandEntitySelectorPrefix, CommandSnbtKind, ComponentClickEvent,
-    ComponentHoverEvent, ComponentPayload, ComponentStyle, RichTextComponent, SignBlockEntityNbt,
-    SignTextNbt, StyledTextRun,
+    CommandCoordinatesKind, CommandEntitySelectorOption, CommandEntitySelectorOptionKind,
+    CommandEntitySelectorPrefix, CommandSnbtKind, ComponentClickEvent, ComponentHoverEvent,
+    ComponentPayload, ComponentStyle, RichTextComponent, SignBlockEntityNbt, SignTextNbt,
+    StyledTextRun, VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
 };
 pub use nbt_summary::{decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry, NbtSummaryValue};
 

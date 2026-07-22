@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     sync::{Arc, OnceLock},
 };
 
@@ -93,6 +93,24 @@ impl BlockStateRegistry {
                         .is_some_and(|actual| actual == value)
                 })
         })
+    }
+
+    pub fn block_property_values<'a>(&'a self, name: &str) -> BTreeMap<&'a str, BTreeSet<&'a str>> {
+        let mut properties = BTreeMap::<&str, BTreeSet<&str>>::new();
+        for state in self
+            .states
+            .iter()
+            .flatten()
+            .filter(|state| state.name == name)
+        {
+            for (property, value) in &state.properties {
+                properties
+                    .entry(property.as_str())
+                    .or_default()
+                    .insert(value.as_str());
+            }
+        }
+        properties
     }
 
     pub fn block_registry_len(&self) -> usize {
