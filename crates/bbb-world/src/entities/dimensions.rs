@@ -16,7 +16,6 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
     vanilla_entity_metadata_area_effect_cloud_radius_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
@@ -27,6 +26,7 @@ use super::schema::{
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
+    vanilla_entity_metadata_passenger_attachment_owner,
     vanilla_entity_metadata_phantom_size_accessor_for_entity_type,
     vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
     vanilla_entity_metadata_salmon_variant_accessor_for_entity_type,
@@ -36,14 +36,12 @@ use super::schema::{
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
+    vanilla_entity_metadata_vehicle_attachment_owner,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_scale_sanitizer, VanillaArmorStandMetadataAccessors, VanillaEntityBabyBehavior,
     VanillaEntityScaleSanitizer, VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
-use super::{
-    is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_entity_type_is_squid,
-    EntityClientAnimationState, EntityVec3,
-};
+use super::{vanilla_entity_type_is_squid, EntityClientAnimationState, EntityVec3};
 use bbb_protocol::entity_types::*;
 
 mod block_attached;
@@ -644,7 +642,9 @@ fn vanilla_passenger_attachment_point(
     passenger_entity_type_id: i32,
     game_time: i64,
 ) -> [f64; 3] {
-    if is_vanilla_boat_type(vehicle_entity_type_id) {
+    let attachment_owner =
+        vanilla_entity_metadata_passenger_attachment_owner(vehicle_entity_type_id);
+    if attachment_owner == Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat") {
         return rotated_y(
             boat_passenger_attachment_point(
                 vehicle_entity_type_id,
@@ -657,7 +657,7 @@ fn vanilla_passenger_attachment_point(
         );
     }
 
-    if vanilla_entity_metadata_type_is_camel(vehicle_entity_type_id) {
+    if attachment_owner == Some("net.minecraft.world.entity.animal.camel.Camel") {
         return rotated_y(
             camel_passenger_attachment_point(
                 vehicle_entity_type_id,
@@ -673,7 +673,7 @@ fn vanilla_passenger_attachment_point(
         );
     }
 
-    if is_vanilla_minecart_type(vehicle_entity_type_id)
+    if attachment_owner == Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart")
         && (passenger_entity_type_id == VANILLA_ENTITY_TYPE_VILLAGER_ID
             || passenger_entity_type_id == VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID)
     {
@@ -706,9 +706,26 @@ fn vanilla_passenger_attachment_point(
         vehicle_data_values,
     );
 
-    if let Some((data_id, default)) =
-        vanilla_entity_metadata_slime_size_accessor_for_entity_type(vehicle_entity_type_id)
-    {
+    if attachment_owner == Some("net.minecraft.world.entity.monster.Strider") {
+        // Vanilla `Strider.getPassengerAttachmentPoint` adds this only on the
+        // client. `position()` / `speed()` are the current (non-partial)
+        // WalkAnimationState values used by `positionRider` each client tick;
+        // render interpolation comes from the root-to-leaf passenger pose.
+        let (animation_position, animation_speed) = vehicle_client_animations
+            .map(|animations| {
+                (
+                    animations.walk_animation_position(1.0),
+                    animations.walk_animation_speed(1.0).min(0.25),
+                )
+            })
+            .unwrap_or((0.0, 0.0));
+        let scale = vanilla_age_scale(vehicle_entity_type_id, vehicle_data_values)
+            * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32;
+        point[1] += 0.12 * (animation_position * 1.5).cos() * 2.0 * animation_speed * scale;
+    } else if attachment_owner == Some("net.minecraft.world.entity.monster.Slime") {
+        let (data_id, default) =
+            vanilla_entity_metadata_slime_size_accessor_for_entity_type(vehicle_entity_type_id)
+                .expect("generated Slime attachment owner must expose its size accessor");
         point = [
             0.0,
             bounds_height(vehicle_bounds)
@@ -717,7 +734,7 @@ fn vanilla_passenger_attachment_point(
                     * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32,
             0.0,
         ];
-    } else if vanilla_entity_renderer_uses_abstract_horse_renderer(vehicle_entity_type_id) {
+    } else if attachment_owner == Some("net.minecraft.world.entity.animal.equine.AbstractHorse") {
         let stand_animation = vehicle_client_animations
             .map(|animations| animations.equine_stand_animation(0.0))
             .unwrap_or(0.0);
@@ -767,9 +784,13 @@ fn vanilla_vehicle_attachment_point(
     let vehicle_width = bounds_width(vehicle_bounds);
     let passenger_width = bounds_width(bounds);
     if vehicle_width <= passenger_width {
-        let spider_y = match entity_type_id {
-            VANILLA_ENTITY_TYPE_SPIDER_ID => Some(SPIDER_VEHICLE_ATTACHMENT_Y),
-            VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => Some(CAVE_SPIDER_VEHICLE_ATTACHMENT_Y),
+        let spider_y = match vanilla_entity_metadata_vehicle_attachment_owner(entity_type_id) {
+            Some("net.minecraft.world.entity.monster.spider.Spider") => {
+                Some(SPIDER_VEHICLE_ATTACHMENT_Y)
+            }
+            Some("net.minecraft.world.entity.monster.spider.CaveSpider") => {
+                Some(CAVE_SPIDER_VEHICLE_ATTACHMENT_Y)
+            }
             _ => None,
         };
         if let Some(y) = spider_y {

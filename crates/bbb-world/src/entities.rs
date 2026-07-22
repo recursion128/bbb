@@ -1315,8 +1315,10 @@ pub struct EntityRenderCandidateState {
     pub uuid: Uuid,
     pub entity_type_id: i32,
     pub position: EntityVec3,
-    /// Current, non-interpolated entity position used by
-    /// `EntityRenderDispatcher.distanceToSqr` during shadow extraction.
+    /// Current, non-interpolated render position used by
+    /// `EntityRenderDispatcher.distanceToSqr` during shadow extraction. For a
+    /// passenger this is projected from the current root pose without mutating
+    /// its packet-owned transform.
     pub current_position: EntityVec3,
     pub bounds: EntityPickBoundsState,
     pub vehicle_id: Option<i32>,
@@ -3829,8 +3831,11 @@ impl WorldStore {
         partial_ticks: f32,
         candidates: &mut Vec<EntityRenderCandidateState>,
     ) {
+        let game_time = self.world_time().map_or(0, |time| time.game_time);
         self.entities.fill_model_candidates_at_partial_tick(
             partial_ticks,
+            game_time,
+            self.is_feature_enabled("minecraft:minecart_improvements"),
             &self.registries,
             candidates,
         );
@@ -3857,6 +3862,7 @@ impl WorldStore {
             let mut source = self
                 .entities
                 .display_render_source_at_partial_tick(candidate.entity_id, partial_ticks)?;
+            source.position = candidate.position;
             source.light = self
                 .sample_block_light(entity_light_block_pos(source.position))
                 .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
@@ -4604,8 +4610,31 @@ impl WorldStore {
         hook_id: i32,
         partial_ticks: f32,
     ) -> Option<FishingHookRenderSourceState> {
-        self.entities
-            .fishing_hook_render_source_at_partial_tick(hook_id, partial_ticks.clamp(0.0, 1.0))
+        let partial_ticks = partial_ticks.clamp(0.0, 1.0);
+        let mut source = self
+            .entities
+            .fishing_hook_render_source_at_partial_tick(hook_id, partial_ticks)?;
+        let game_time = self.world_time().map_or(0, |time| time.game_time);
+        let minecart_improvements_enabled =
+            self.is_feature_enabled("minecraft:minecart_improvements");
+        source.hook_position = self.entities.render_position_at_partial_tick(
+            hook_id,
+            partial_ticks,
+            game_time,
+            minecart_improvements_enabled,
+        )?;
+        let owner_transform = self.entities.transform(source.owner_id)?;
+        let owner_position = owner_transform.render_position(partial_ticks);
+        let projected_owner_position = self.entities.render_position_at_partial_tick(
+            source.owner_id,
+            partial_ticks,
+            game_time,
+            minecart_improvements_enabled,
+        )?;
+        source.owner_eye_position.x += projected_owner_position.x - owner_position.x;
+        source.owner_eye_position.y += projected_owner_position.y - owner_position.y;
+        source.owner_eye_position.z += projected_owner_position.z - owner_position.z;
+        Some(source)
     }
 
     pub fn local_player_vehicle_id(&self) -> Option<i32> {

@@ -384,6 +384,167 @@ fn living_passenger_body_rotation_follows_interpolated_living_vehicle() {
 }
 
 #[test]
+fn passenger_render_positions_follow_the_partial_tick_root_pose_through_nested_edges() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 12.0,
+            y: 72.0,
+            z: 7.0,
+        },
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 50.0,
+            y: 90.0,
+            z: 50.0,
+        },
+        ..protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_COW_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: -30.0,
+            y: 40.0,
+            z: -30.0,
+        },
+        ..protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_CHICKEN_ID)
+    });
+    store.entities.with_transform_mut(10, |transform| {
+        transform.old_position = EntityVec3 {
+            x: 8.0,
+            y: 68.0,
+            z: 3.0,
+        };
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![30],
+    }));
+
+    let source_position = |entity_id| {
+        store
+            .entity_model_source_at_partial_tick(entity_id, 0.5)
+            .expect("nested passenger model source")
+            .position
+    };
+    assert_entity_vec3_close(
+        source_position(20),
+        EntityVec3 {
+            x: 10.0,
+            y: 70.1875,
+            z: 5.0,
+        },
+    );
+    assert_entity_vec3_close(
+        source_position(30),
+        EntityVec3 {
+            x: 10.0,
+            y: 71.55625,
+            z: 5.0,
+        },
+    );
+    assert_eq!(
+        store.entities.transform(20).unwrap().position,
+        EntityVec3 {
+            x: 50.0,
+            y: 90.0,
+            z: 50.0,
+        },
+        "render projection must not mutate the packet-owned passenger transform"
+    );
+}
+
+#[test]
+fn malformed_passenger_cycle_falls_back_to_packet_positions_within_the_loaded_entity_bound() {
+    let mut store = WorldStore::new();
+    for (id, x) in [(10, 10.0), (20, 20.0)] {
+        store.apply_add_entity(ProtocolAddEntity {
+            position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+            ..protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_COW_ID)
+        });
+    }
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![10],
+    }));
+
+    for (id, x) in [(10, 10.0), (20, 20.0)] {
+        assert_eq!(
+            store
+                .entity_model_source_at_partial_tick(id, 0.5)
+                .expect("cyclic passenger source")
+                .position,
+            EntityVec3 { x, y: 64.0, z: 0.0 }
+        );
+    }
+}
+
+#[test]
+fn strider_passenger_attachment_includes_the_client_walk_bob() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        },
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_STRIDER_ID)
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 10,
+            position: ProtocolVec3d {
+                x: 0.5,
+                y: 64.0,
+                z: 0.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
+    store.advance_entity_client_animations(1);
+
+    let strider = store
+        .entity_model_source_at_partial_tick(10, 1.0)
+        .expect("Strider source");
+    assert!(strider.walk_animation_speed > 0.0);
+    let expected_bob = 0.12
+        * (strider.walk_animation_position * 1.5).cos()
+        * 2.0
+        * strider.walk_animation_speed.min(0.25);
+    let passenger = store
+        .entity_model_source_at_partial_tick(20, 1.0)
+        .expect("Strider passenger source");
+    assert!(
+        (passenger.position.y - (strider.position.y + 1.7 + f64::from(expected_bob))).abs()
+            < 1.0e-6,
+        "passenger y: {}, strider y: {}, bob: {expected_bob}",
+        passenger.position.y,
+        strider.position.y
+    );
+}
+
+#[test]
 fn shulker_mount_edges_reset_attach_position_interpolation() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -4776,7 +4937,7 @@ fn minecart_pending_queue_preserves_the_combined_step_limit() {
 }
 
 #[test]
-fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
+fn new_minecart_passengers_follow_the_weighted_vehicle_render_pose() {
     let mut store = WorldStore::new();
     enable_minecart_improvements(&mut store);
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -4809,9 +4970,9 @@ fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
     assert_eq!(
         still,
         EntityVec3 {
-            x: 5.0,
-            y: 70.0,
-            z: 9.0,
+            x: 1.0,
+            y: 64.1875,
+            z: -2.0,
         }
     );
 
@@ -4830,26 +4991,24 @@ fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
     assert_eq!(passenger_position(&store, 0.5), still);
     store.advance_entity_client_animations(1);
 
-    // Vanilla `EntityRenderer.extractRenderState`: passengerOffset =
-    // `NewMinecartBehavior.getCartLerpPosition(partialTicks)` minus the cart's normal
-    // xOld/getX interpolation. After the promotion tick, the canonical cart is only
-    // one third through the batch. At partial 0.5 the weighted render position is
-    // (1.1458333, 64.0583333, -2.1458333), while the normal interpolation is
-    // (1.1416667, 64.0533333, -2.1416667).
+    // After the promotion tick, the canonical cart is only one third through
+    // the batch. At partial 0.5 the weighted render position is
+    // (1.1458333, 64.0583333, -2.1458333); the cow follows that pose plus the
+    // minecart's generated 0.1875 passenger attachment.
     let shifted = passenger_position(&store, 0.5);
     assert!(
-        (shifted.x - 5.004166666666666).abs() < 1.0e-6,
-        "x offset: {}",
+        (shifted.x - 1.1458333333333333).abs() < 1.0e-6,
+        "x position: {}",
         shifted.x
     );
     assert!(
-        (shifted.y - 70.005).abs() < 1.0e-6,
-        "y offset: {}",
+        (shifted.y - 64.24583333333334).abs() < 1.0e-6,
+        "y position: {}",
         shifted.y
     );
     assert!(
-        (shifted.z - 8.995833333333334).abs() < 1.0e-6,
-        "z offset: {}",
+        (shifted.z - -2.1458333333333335).abs() < 1.0e-6,
+        "z position: {}",
         shifted.z
     );
 
@@ -4857,11 +5016,11 @@ fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
     assert_eq!(
         passenger_position(&store, 0.5),
         EntityVec3 {
-            x: 5.0,
-            y: 70.0,
-            z: 9.0,
+            x: 1.75,
+            y: 64.3875,
+            z: -2.75,
         },
-        "after the minecart lerp drains, passengers no longer get a render-only offset"
+        "after the lerp drains, passengers stay attached to the final cart pose"
     );
 }
 

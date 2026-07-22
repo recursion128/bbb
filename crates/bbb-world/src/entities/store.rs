@@ -30,8 +30,8 @@ use bbb_protocol::entity_types::{
     vanilla_entity_type, vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-    VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
 use bbb_protocol::item_types::{
     VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_DRAGON_HEAD_ID, VANILLA_ITEM_FISHING_ROD_ID,
@@ -2376,6 +2376,8 @@ impl EntityStore {
     pub(crate) fn fill_model_candidates_at_partial_tick(
         &self,
         partial_ticks: f32,
+        game_time: i64,
+        minecart_improvements_enabled: bool,
         registries: &RegistrySet,
         candidates: &mut Vec<super::EntityRenderCandidateState>,
     ) {
@@ -2463,6 +2465,33 @@ impl EntityStore {
                     &metadata.data_values,
                 ),
             });
+        }
+        drop(query);
+        let candidate_ids = candidates
+            .iter()
+            .map(|candidate| candidate.entity_id)
+            .collect::<Vec<_>>();
+        let render_positions = self.render_positions_at_partial_tick(
+            &candidate_ids,
+            partial_ticks,
+            game_time,
+            minecart_improvements_enabled,
+        );
+        let current_positions = self.render_positions_at_partial_tick(
+            &candidate_ids,
+            1.0,
+            game_time,
+            minecart_improvements_enabled,
+        );
+        for candidate in candidates.iter_mut() {
+            candidate.position = render_positions
+                .get(&candidate.entity_id)
+                .copied()
+                .unwrap_or(candidate.position);
+            candidate.current_position = current_positions
+                .get(&candidate.entity_id)
+                .copied()
+                .unwrap_or(candidate.current_position);
         }
     }
 
@@ -2563,7 +2592,13 @@ impl EntityStore {
         registries: &RegistrySet,
     ) -> Vec<super::EntityRenderCandidateState> {
         let mut candidates = Vec::new();
-        self.fill_model_candidates_at_partial_tick(partial_ticks, registries, &mut candidates);
+        self.fill_model_candidates_at_partial_tick(
+            partial_ticks,
+            0,
+            false,
+            registries,
+            &mut candidates,
+        );
         candidates
     }
 
@@ -2709,36 +2744,46 @@ impl EntityStore {
         self.transform_state_for_entity(entity)
     }
 
-    fn new_minecart_passenger_render_offset(
+    fn render_position_and_y_rot_at_partial_tick(
         &self,
-        vehicle_id: i32,
+        id: i32,
         partial_ticks: f32,
-    ) -> Option<super::EntityVec3> {
-        let vehicle = self.by_protocol_id.get(&vehicle_id).copied()?;
-        let identity = self.ecs.get::<&EntityIdentity>(vehicle).ok()?;
-        if !is_vanilla_minecart_type(identity.entity_type_id) {
-            return None;
+        minecart_improvements_enabled: bool,
+    ) -> Option<(super::EntityVec3, f32)> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut query = self
+            .ecs
+            .query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                Option<&EntityMinecartLerp>,
+            )>(entity)
+            .ok()?;
+        let (identity, transform, minecart_lerp) = query.get()?;
+        if minecart_improvements_enabled && is_vanilla_minecart_type(identity.entity_type_id) {
+            if let Some(render_step) =
+                minecart_lerp.and_then(|lerp| lerp.render_step(partial_ticks))
+            {
+                return Some((
+                    super::movement::entity_vec3(render_step.position),
+                    render_step.y_rot,
+                ));
+            }
         }
-        let transform = self.ecs.get::<&EntityTransform>(vehicle).ok()?;
-        let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(vehicle).ok()?;
-        let old_step = minecart_lerp.old_step?;
-        let render_step = minecart_lerp.render_step(partial_ticks)?;
-        let cart_lerp_position = lerp_entity_vec3(
-            partial_ticks,
-            super::movement::entity_vec3(old_step.position),
-            transform.position,
-        );
-        Some(sub_entity_vec3(
-            super::movement::entity_vec3(render_step.position),
-            cart_lerp_position,
+        Some((
+            transform.render_position(partial_ticks),
+            transform.render_y_rot(partial_ticks),
         ))
     }
 
-    fn turtle_passenger_render_position(
+    fn passenger_position_from_vehicle_render_pose(
         &self,
         passenger_id: i32,
         vehicle_id: i32,
+        vehicle_position: super::EntityVec3,
+        vehicle_y_rot: f32,
         partial_ticks: f32,
+        game_time: i64,
     ) -> Option<super::EntityVec3> {
         let passenger_bounds = self.pick_bounds(passenger_id)?;
         let passenger_entity = self.by_protocol_id.get(&passenger_id).copied()?;
@@ -2755,7 +2800,6 @@ impl EntityStore {
             .ecs
             .query_one::<(
                 &EntityIdentity,
-                &EntityTransform,
                 &EntityMount,
                 &EntityMetadata,
                 &EntityAttributes,
@@ -2764,20 +2808,15 @@ impl EntityStore {
             .ok()?;
         let (
             vehicle_identity,
-            vehicle_transform,
             vehicle_mount,
             vehicle_metadata,
             vehicle_attributes,
             vehicle_client_animations,
         ) = vehicle_query.get()?;
-        if vehicle_identity.entity_type_id != VANILLA_ENTITY_TYPE_TURTLE_ID {
-            return None;
-        }
-
         vanilla_passenger_position_for_entity_data(
             vehicle_identity.entity_type_id,
-            vehicle_transform.render_position(partial_ticks),
-            vehicle_transform.render_y_rot(partial_ticks),
+            vehicle_position,
+            vehicle_y_rot,
             vehicle_bounds,
             &vehicle_metadata.data_values,
             &vehicle_attributes.attributes,
@@ -2788,8 +2827,104 @@ impl EntityStore {
             passenger_transform.render_y_rot(partial_ticks),
             passenger_bounds,
             &passenger_metadata.data_values,
-            0,
+            game_time,
         )
+    }
+
+    fn render_positions_at_partial_tick(
+        &self,
+        ids: &[i32],
+        partial_ticks: f32,
+        game_time: i64,
+        minecart_improvements_enabled: bool,
+    ) -> HashMap<i32, super::EntityVec3> {
+        let mut resolved = HashMap::with_capacity(ids.len());
+        let mut path = Vec::new();
+        let mut path_ids = HashSet::new();
+        for &id in ids {
+            if resolved.contains_key(&id) {
+                continue;
+            }
+            path.clear();
+            path_ids.clear();
+            let mut cursor = id;
+            let base = loop {
+                if let Some(position) = resolved.get(&cursor).copied() {
+                    break Some(position);
+                }
+                if !path_ids.insert(cursor) || path.len() >= self.len() {
+                    break None;
+                }
+                let Some(own_position) = self
+                    .render_position_and_y_rot_at_partial_tick(
+                        cursor,
+                        partial_ticks,
+                        minecart_improvements_enabled,
+                    )
+                    .map(|(position, _)| position)
+                else {
+                    break None;
+                };
+                let Some(vehicle_id) = self.mount(cursor).and_then(|mount| mount.vehicle_id) else {
+                    resolved.insert(cursor, own_position);
+                    break Some(own_position);
+                };
+                path.push((cursor, vehicle_id, own_position));
+                cursor = vehicle_id;
+            };
+
+            let Some(mut position) = base else {
+                // Broken/missing/cyclic graphs preserve every packet-owned
+                // render endpoint already discovered on this walk.
+                for &(entity_id, _, own_position) in &path {
+                    resolved.entry(entity_id).or_insert(own_position);
+                }
+                continue;
+            };
+            for &(passenger_id, vehicle_id, own_position) in path.iter().rev() {
+                let next_position = self
+                    .render_position_and_y_rot_at_partial_tick(
+                        vehicle_id,
+                        partial_ticks,
+                        minecart_improvements_enabled,
+                    )
+                    .and_then(|(_, vehicle_y_rot)| {
+                        self.passenger_position_from_vehicle_render_pose(
+                            passenger_id,
+                            vehicle_id,
+                            position,
+                            vehicle_y_rot,
+                            partial_ticks,
+                            game_time,
+                        )
+                    })
+                    .unwrap_or(own_position);
+                resolved.insert(passenger_id, next_position);
+                position = next_position;
+            }
+        }
+        resolved
+    }
+
+    /// Projects one entity from the current render pose of the root vehicle
+    /// through each immediate passenger edge. The packet-owned transforms are
+    /// never mutated. A malformed cycle or broken edge falls back to the
+    /// entity's own interpolated transform after at most one pass over the
+    /// loaded entity count.
+    pub(crate) fn render_position_at_partial_tick(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+        game_time: i64,
+        minecart_improvements_enabled: bool,
+    ) -> Option<super::EntityVec3> {
+        self.render_positions_at_partial_tick(
+            &[id],
+            partial_ticks,
+            game_time,
+            minecart_improvements_enabled,
+        )
+        .remove(&id)
     }
 
     fn living_body_render_y_rot(&self, id: i32, partial_ticks: f32) -> Option<f32> {
@@ -3646,28 +3781,6 @@ impl EntityStore {
                 source_y_rot = render_step.y_rot;
                 source_x_rot = render_step.x_rot;
             }
-        }
-        if let Some(passenger_position) = mount
-            .as_ref()
-            .and_then(|mount| mount.vehicle_id)
-            .and_then(|vehicle_id| {
-                self.turtle_passenger_render_position(id, vehicle_id, partial_ticks)
-            })
-        {
-            source_position = passenger_position;
-        }
-        if let Some(offset) = minecart_improvements_enabled
-            .then_some(())
-            .and_then(|()| mount.as_ref())
-            .and_then(|mount| mount.vehicle_id)
-            .and_then(|vehicle_id| {
-                self.new_minecart_passenger_render_offset(vehicle_id, partial_ticks)
-            })
-        {
-            // Vanilla `EntityRenderer.extractRenderState` adds this via `passengerOffset`
-            // when a new-behavior minecart's weighted render position diverges from its
-            // normal xOld/getX interpolation.
-            source_position = add_entity_vec3(source_position, offset);
         }
         if is_shulker {
             if let Some(offset) = client_animations.animations.shulker_render_offset(
@@ -8363,27 +8476,6 @@ fn expand_bounds_towards_offset(
         bounds.max[axis] = bounds.max[axis].max(bounds.max[axis] + value);
     }
     bounds
-}
-
-fn sub_entity_vec3(left: super::EntityVec3, right: super::EntityVec3) -> super::EntityVec3 {
-    super::EntityVec3 {
-        x: left.x - right.x,
-        y: left.y - right.y,
-        z: left.z - right.z,
-    }
-}
-
-fn lerp_entity_vec3(
-    alpha: f32,
-    from: super::EntityVec3,
-    to: super::EntityVec3,
-) -> super::EntityVec3 {
-    let alpha = f64::from(alpha);
-    super::EntityVec3 {
-        x: from.x + (to.x - from.x) * alpha,
-        y: from.y + (to.y - from.y) * alpha,
-        z: from.z + (to.z - from.z) * alpha,
-    }
 }
 
 fn solve_living_passenger_body_y_rot(head_y_rot: f32, vehicle_body_y_rot: f32) -> f32 {

@@ -716,6 +716,12 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub default_attributes: &'static [VanillaEntityDefaultAttribute],
     /// Nearest vanilla class that declares `handleEntityEvent(byte)` for this runtime type.
     pub handle_entity_event_owner: Option<&'static str>,
+    /// Nearest runtime-class declarations for the two attachment hooks and
+    /// the controller decision. These close the fixed-type reverse inventory
+    /// without duplicating family membership in handwritten code.
+    pub passenger_attachment_owner: Option<&'static str>,
+    pub vehicle_attachment_owner: Option<&'static str>,
+    pub controlling_passenger_owner: Option<&'static str>,
     /// Nearest runtime-class declarations for the methods driven by
     /// `ClientLevel.tickNonPassenger` / `tickPassenger`. These are generated
     /// audit facts, not a claim that each whole method body executes client side.
@@ -4254,6 +4260,30 @@ pub fn vanilla_entity_metadata_handle_entity_event_owner(
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)
         .and_then(|entry| entry.handle_entity_event_owner)
+}
+
+pub(crate) fn vanilla_entity_metadata_passenger_attachment_owner(
+    entity_type_id: i32,
+) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.passenger_attachment_owner)
+}
+
+pub(crate) fn vanilla_entity_metadata_vehicle_attachment_owner(
+    entity_type_id: i32,
+) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.vehicle_attachment_owner)
+}
+
+pub(crate) fn vanilla_entity_metadata_controlling_passenger_owner(
+    entity_type_id: i32,
+) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.controlling_passenger_owner)
 }
 
 /// Resolves the vanilla declaration that consumes one entity event after following the

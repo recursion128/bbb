@@ -17,8 +17,7 @@ use bbb_protocol::{
     entity_types::{
         vanilla_entity_type_can_float_while_ridden, vanilla_entity_type_is_non_controlling_rider,
         VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
     },
     item_types::{VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID},
     mob_effect_types::{
@@ -34,7 +33,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
-    vanilla_entity_metadata_entity_accessors,
+    vanilla_entity_metadata_controlling_passenger_owner, vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     vanilla_entity_metadata_item_based_steering_boost_time_accessor_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
@@ -2022,6 +2021,7 @@ impl WorldStore {
 
     pub(crate) fn entity_controlling_passenger(&self, entity_id: i32) -> Option<i32> {
         let entity_type_id = self.entities.entity_type_id(entity_id)?;
+        let controller_owner = vanilla_entity_metadata_controlling_passenger_owner(entity_type_id)?;
         let first_passenger_id = self
             .entities
             .mount(entity_id)?
@@ -2029,7 +2029,7 @@ impl WorldStore {
             .first()
             .copied()?;
 
-        if is_vanilla_boat_type(entity_type_id) {
+        if controller_owner == "net.minecraft.world.entity.vehicle.boat.AbstractBoat" {
             return self
                 .entity_id_is_living(first_passenger_id)
                 .then_some(first_passenger_id);
@@ -2038,20 +2038,22 @@ impl WorldStore {
         let has_saddle = self
             .entities
             .saddle_slot_contains_saddle_item(entity_id, &self.items.default_item_equipment_slots);
-        if is_vanilla_abstract_horse_type(entity_type_id)
-            || is_vanilla_abstract_nautilus_type(entity_type_id)
-        {
+        if matches!(
+            controller_owner,
+            "net.minecraft.world.entity.animal.equine.AbstractHorse"
+                | "net.minecraft.world.entity.animal.nautilus.AbstractNautilus"
+        ) {
             if has_saddle && self.entity_id_is_player(first_passenger_id) {
                 return Some(first_passenger_id);
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID {
+        } else if controller_owner == "net.minecraft.world.entity.animal.pig.Pig" {
             if has_saddle
                 && self.entity_id_is_player(first_passenger_id)
                 && self.player_holds_item(first_passenger_id, VANILLA_ITEM_CARROT_ON_A_STICK_ID)
             {
                 return Some(first_passenger_id);
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID {
+        } else if controller_owner == "net.minecraft.world.entity.monster.Strider" {
             if has_saddle
                 && self.entity_id_is_player(first_passenger_id)
                 && self
@@ -2059,7 +2061,7 @@ impl WorldStore {
             {
                 return Some(first_passenger_id);
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
+        } else if controller_owner == "net.minecraft.world.entity.animal.happyghast.HappyGhast" {
             let accessors =
                 vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(entity_type_id)?;
             let stays_still = self.entities.metadata_bool_for_entity(
@@ -2075,6 +2077,8 @@ impl WorldStore {
             {
                 return Some(first_passenger_id);
             }
+        } else if controller_owner != "net.minecraft.world.entity.Mob" {
+            return None;
         }
 
         // Vanilla `Mob.getControllingPassenger`: subclass overrides above fall

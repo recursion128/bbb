@@ -7758,10 +7758,16 @@
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
-        "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers"
+        "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers",
+        "crates/bbb-world/src/entities/passengers.rs#pub(crate) fn entity_controlling_passenger",
+        "crates/bbb-world/src/entities/dimensions.rs#pub(crate) fn vanilla_passenger_position_for_entity_data",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn render_position_at_partial_tick"
       ],
       "tests": [
-        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates"
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#passenger_render_positions_follow_the_partial_tick_root_pose_through_nested_edges",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#strider_passenger_attachment_includes_the_client_walk_bob",
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#passenger_attachment_and_controller_owners_cover_every_entity_type"
       ],
       "vanilla": [
         "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEquipment"
@@ -7915,7 +7921,7 @@
       "implementation": [
         "crates/bbb-protocol/src/entity_types.rs#pub fn vanilla_entity_type_vehicle_attachment",
         "crates/bbb-world/src/entities/dimensions.rs#pub(crate) fn vanilla_passenger_position_for_entity_data",
-        "crates/bbb-world/src/entities/store.rs#fn turtle_passenger_render_position",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn render_position_at_partial_tick",
         "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers",
         "crates/bbb-world/src/entities/renderer_catalog.rs#fn vanilla_entity_renderer_uses_mob_item_in_hand_layer",
         "crates/bbb-world/src/entities/updates.rs#pub fn apply_set_entity_link"
