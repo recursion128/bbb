@@ -28,6 +28,9 @@
 ^crates/bbb-native/src/runtime/events/control_state[.]rs$	unsupported_packet
 ^crates/bbb-native/src/input/component_patch[.]rs$	unsupported_exact
 ^crates/bbb-protocol/src/packets/entities[.]rs$	unsupported entity data serializer
+# The generated serializer catalog's inline reverse guard quotes the production
+# diagnostic to prove unknown ids remain rejected; it is test evidence, not a fallback.
+^crates/bbb-protocol/src/entity_data_serializers[.]rs$	unsupported entity data serializer
 ^crates/bbb-protocol/src/packets/data_components[.]rs$	unsupported data component type id
 ^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	unsupported built-in enum component type id
 ^crates/bbb-protocol/src/component/codec[.]rs$	unsupported scheme
