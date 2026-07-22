@@ -103,6 +103,31 @@ class EntityCoverageLedgerTests(unittest.TestCase):
             {"entity_event_audit", "turtle_event_particle_audio"},
         )
 
+    def test_fixed_entity_matrix_has_no_partial_or_deferred_cells(self) -> None:
+        self.assertEqual(
+            [
+                (entry["resource_id"], category, cell["status"])
+                for entry in self.ledger["entries"]
+                for category, cell in entry["coverage"].items()
+                if cell["status"] in {"partial", "deferred"}
+            ],
+            [],
+        )
+        self.assertEqual(
+            {
+                entry["coverage"]["equipment/passenger/leash"]["status"]
+                for entry in self.ledger["entries"]
+            },
+            {"complete"},
+        )
+        self.assertEqual(
+            {
+                entry["coverage"]["equipment/passenger/leash"]["evidence_ref"]
+                for entry in self.ledger["entries"]
+            },
+            {"equipment_passenger_leash_audit"},
+        )
+
     def test_catalog_addition_requires_a_new_explicit_audit(self) -> None:
         new_catalog = list(self.catalog)
         new_catalog.append(

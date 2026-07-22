@@ -5,7 +5,7 @@
     "not-applicable",
     "partial"
   ],
-  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, source-derived transform/interpolation, renderer-presentation ownership, the reverse-audited animation path, and the generated event/client-tick audiovisual closure apply to every catalog row. Generic equipment/passenger/leash implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Source-backed family audits cover all ten client-observable categories for every fixed Vanilla 26.1 entity type. Generated class, attachment, controller, equipment-applicability, renderer, animation, event, movement, dimensions, save, leash-offset, and rope-holder owners provide the reverse closure; semantic tests prove their canonical consumers. Vanilla NoopRenderer registrations are the only narrow not-applicable cells.",
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
   "catalog_source": "crates/bbb-protocol/src/entity_types.rs#VANILLA_ENTITY_TYPES",
   "cell_categories": [
@@ -40,8 +40,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -88,8 +87,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -136,8 +134,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -184,8 +181,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -233,8 +229,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -281,8 +276,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -329,8 +323,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -377,8 +370,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -425,8 +417,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -473,8 +464,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -521,8 +511,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -569,8 +558,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -617,8 +605,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -665,8 +652,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -713,8 +699,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -761,8 +746,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -809,8 +793,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -857,8 +840,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -905,8 +887,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -953,8 +934,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1001,8 +981,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1049,8 +1028,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1097,8 +1075,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1145,8 +1122,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1193,8 +1169,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1241,8 +1216,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1289,8 +1263,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1337,8 +1310,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1385,8 +1357,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1433,8 +1404,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1481,8 +1451,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1529,8 +1498,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1577,8 +1545,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1625,8 +1592,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1673,8 +1639,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1721,8 +1686,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1769,8 +1733,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1817,8 +1780,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1865,8 +1827,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1913,8 +1874,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -1961,8 +1921,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2009,8 +1968,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2057,8 +2015,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2105,8 +2062,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2153,8 +2109,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2201,8 +2156,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2249,8 +2203,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2297,8 +2250,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2345,8 +2297,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2393,8 +2344,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2441,8 +2391,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2489,8 +2438,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2537,8 +2485,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2585,8 +2532,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2633,8 +2579,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2681,8 +2626,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2729,8 +2673,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2777,8 +2720,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2825,8 +2767,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2873,8 +2814,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2921,8 +2861,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -2969,8 +2908,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3017,8 +2955,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3065,8 +3002,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3113,8 +3049,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3161,8 +3096,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3209,8 +3143,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3257,8 +3190,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3305,8 +3237,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3353,8 +3284,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3402,8 +3332,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3450,8 +3379,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3498,8 +3426,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3546,8 +3473,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3594,8 +3520,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3642,8 +3567,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3690,8 +3614,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3738,8 +3661,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3786,8 +3708,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3834,8 +3755,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3882,8 +3802,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3930,8 +3849,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -3978,8 +3896,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4026,8 +3943,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4074,8 +3990,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4123,8 +4038,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4171,8 +4085,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4219,8 +4132,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4267,8 +4179,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4315,8 +4226,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4363,8 +4273,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4411,8 +4320,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4459,8 +4367,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4507,8 +4414,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4555,8 +4461,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4603,8 +4508,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4651,8 +4555,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4699,8 +4602,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4747,8 +4649,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4795,8 +4696,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4843,8 +4743,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4891,8 +4790,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4939,8 +4837,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -4987,8 +4884,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5035,8 +4931,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5083,8 +4978,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5131,8 +5025,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5179,8 +5072,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5227,8 +5119,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5275,8 +5166,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5323,8 +5213,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5371,8 +5260,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5419,8 +5307,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5467,8 +5354,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5515,8 +5401,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5563,8 +5448,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5611,8 +5495,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5659,8 +5542,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5707,8 +5589,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5755,8 +5636,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5803,8 +5683,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5851,8 +5730,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5899,8 +5777,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5947,8 +5824,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -5995,8 +5871,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6043,8 +5918,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6091,8 +5965,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6139,8 +6012,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6187,8 +6059,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6235,8 +6106,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6283,8 +6153,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6331,8 +6200,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6379,8 +6247,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6427,8 +6294,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6475,8 +6341,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6523,8 +6388,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6571,8 +6435,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6618,9 +6481,8 @@
           "status": "complete"
         },
         "equipment/passenger/leash": {
-          "evidence_ref": "turtle_equipment_passenger_leash",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "evidence_ref": "equipment_passenger_leash_audit",
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "turtle_event_particle_audio",
@@ -6667,8 +6529,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6715,8 +6576,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6763,8 +6623,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6811,8 +6670,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6859,8 +6717,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6907,8 +6764,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -6955,8 +6811,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7003,8 +6858,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7051,8 +6905,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7099,8 +6952,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7147,8 +6999,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7195,8 +7046,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7243,8 +7093,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7291,8 +7140,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7339,8 +7187,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7387,8 +7234,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7435,8 +7281,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7483,8 +7328,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7531,8 +7375,7 @@
         },
         "equipment/passenger/leash": {
           "evidence_ref": "equipment_passenger_leash_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash",
-          "status": "partial"
+          "status": "complete"
         },
         "event/particle/audio": {
           "evidence_ref": "entity_event_audit",
@@ -7757,20 +7600,66 @@
     },
     "equipment_passenger_leash_audit": {
       "implementation": [
+        "crates/bbb-protocol/src/equipment_slots.rs#pub const VANILLA_EQUIPMENT_SLOTS",
+        "crates/bbb-protocol/src/packets/entities.rs#pub(super) fn decode_set_equipment",
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#pub const VANILLA_ENTITY_TYPE_METADATA_26_1",
+        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_type_can_use_every_equipment_slot",
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
+        "crates/bbb-world/src/entities.rs#pub fn equipment_item",
+        "crates/bbb-pack/src/equipment_assets.rs#pub struct EquipmentAssetCatalog",
+        "crates/bbb-item-model/src/item_runtime.rs#pub struct NativeItemRuntime",
+        "crates/bbb-renderer/src/entity_models/textured.rs#pub(in crate::entity_models) fn render_worn_humanoid_armor",
+        "crates/bbb-renderer/src/entity_models/textured.rs#pub(in crate::entity_models) fn render_happy_ghast_harness_layer",
+        "crates/bbb-renderer/src/entity_models/textured.rs#pub(in crate::entity_models) fn render_pig_saddle_layer",
+        "crates/bbb-renderer/src/entity_models/textured.rs#pub(in crate::entity_models) fn render_equine_body_armor_layer",
+        "crates/bbb-renderer/src/entity_models/textured.rs#pub(in crate::entity_models) fn render_wings_layer",
         "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers",
         "crates/bbb-world/src/entities/passengers.rs#pub(crate) fn entity_controlling_passenger",
         "crates/bbb-world/src/entities/dimensions.rs#pub(crate) fn vanilla_passenger_position_for_entity_data",
-        "crates/bbb-world/src/entities/store.rs#pub(crate) fn render_position_at_partial_tick"
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn render_position_at_partial_tick",
+        "crates/bbb-world/src/entities/updates.rs#pub fn apply_set_entity_link",
+        "crates/bbb-world/src/entities/leash.rs#pub(crate) fn leash_render_states",
+        "crates/bbb-world/src/entities.rs#pub fn entity_leash_render_states_at_partial_tick",
+        "crates/bbb-renderer/src/entity_models/textured.rs#pub(in crate::entity_models) fn render_leash_ropes"
       ],
       "tests": [
+        "crates/bbb-protocol/src/equipment_slots.rs#fn equipment_slot_catalog_preserves_distinct_ordinals_and_ids",
+        "crates/bbb-protocol/src/packets/entities/tests.rs#fn decodes_set_equipment_slots_and_item_stacks",
+        "crates/bbb-world/src/entities/schema.rs#fn generated_entity_type_catalog_resolves_all_fixed_types",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn equipment_item_queries_non_hand_slots_and_skips_empty_stacks",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn set_equipment_ignores_non_living_entities",
+        "crates/bbb-pack/src/equipment_assets.rs#fn equipment_asset_catalog_uses_resource_pack_precedence",
+        "crates/bbb-item-model/src/item_runtime/tests.rs#fn humanoid_armor_asset_query_excludes_head_equippable_non_armor",
+        "crates/bbb-world/src/entities/renderer_catalog.rs#fn generated_mob_item_in_hand_membership_matches_renderer_layers",
+        "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#fn entity_model_sources_project_worn_armor_materials",
+        "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#fn entity_model_sources_project_happy_ghast_harness_leash_holder_and_ridden_state",
+        "crates/bbb-native/src/entity_scene/tests.rs#fn entity_model_instances_project_chest_equipment_layers",
+        "crates/bbb-renderer/src/entity_models/tests/armor.rs#fn standard_humanoid_wearers_all_drape_armor",
+        "crates/bbb-renderer/src/entity_models/tests/happy_ghast.rs#fn happy_ghast_harness_renders_for_both_ages_and_moves_ridden_goggles",
         "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates",
         "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#passenger_render_positions_follow_the_partial_tick_root_pose_through_nested_edges",
         "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#strider_passenger_attachment_includes_the_client_walk_bob",
-        "crates/bbb-world/src/entities/schema/generated_26_1.rs#passenger_attachment_and_controller_owners_cover_every_entity_type"
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#passenger_attachment_and_controller_owners_cover_every_entity_type",
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#leash_offset_and_rope_holder_owners_cover_every_entity_type",
+        "crates/bbb-world/src/entities/leash.rs#fn every_generated_leash_offset_owner_has_its_vanilla_formula",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#fn leash_endpoints_follow_the_generated_passenger_render_pose",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#fn camel_leash_offset_keeps_attribute_scale_out_of_the_animation_scale",
+        "crates/bbb-renderer/src/entity_models/tests/leash.rs#fn leashed_entity_emits_vanilla_two_strip_rope_mesh"
       ],
       "vanilla": [
-        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEquipment"
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#public void handleSetEquipment",
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#public void handleSetEntityPassengersPacket",
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#public void handleEntityLinkPacket",
+        "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean canUseSlot",
+        "vanilla:net/minecraft/world/entity/Entity.java#protected void positionRider",
+        "vanilla:net/minecraft/world/entity/Entity.java#public @Nullable LivingEntity getControllingPassenger",
+        "vanilla:net/minecraft/world/entity/Leashable.java#default Vec3 getLeashOffset",
+        "vanilla:net/minecraft/world/entity/Entity.java#public Vec3 getRopeHoldPosition",
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#public void extractRenderState",
+        "vanilla:net/minecraft/client/renderer/entity/layers/HumanoidArmorLayer.java#public class HumanoidArmorLayer",
+        "vanilla:net/minecraft/client/renderer/entity/layers/ItemInHandLayer.java#public class ItemInHandLayer",
+        "vanilla:net/minecraft/client/renderer/entity/layers/SimpleEquipmentLayer.java#public class SimpleEquipmentLayer",
+        "vanilla:net/minecraft/client/renderer/entity/layers/WingsLayer.java#public class WingsLayer"
       ]
     },
     "fixed_metadata_schema": {
@@ -7917,30 +7806,6 @@
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPushable()"
       ]
     },
-    "turtle_equipment_passenger_leash": {
-      "implementation": [
-        "crates/bbb-protocol/src/entity_types.rs#pub fn vanilla_entity_type_vehicle_attachment",
-        "crates/bbb-world/src/entities/dimensions.rs#pub(crate) fn vanilla_passenger_position_for_entity_data",
-        "crates/bbb-world/src/entities/store.rs#pub(crate) fn render_position_at_partial_tick",
-        "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers",
-        "crates/bbb-world/src/entities/renderer_catalog.rs#fn vanilla_entity_renderer_uses_mob_item_in_hand_layer",
-        "crates/bbb-world/src/entities/updates.rs#pub fn apply_set_entity_link"
-      ],
-      "tests": [
-        "crates/bbb-protocol/src/entity_types.rs#passenger_attachments_come_from_generated_builder_metadata",
-        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#turtle_passengers_render_at_adult_baby_scale_and_vehicle_attachments",
-        "crates/bbb-world/src/entities/renderer_catalog.rs#generated_mob_item_in_hand_membership_matches_renderer_layers",
-        "crates/bbb-world/src/entities/schema.rs#generated_class_graph_resolves_leashable_capability"
-      ],
-      "vanilla": [
-        "vanilla:net/minecraft/world/entity/EntityType.java#public static final EntityType<Turtle> TURTLE",
-        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static final EntityDimensions BABY_DIMENSIONS",
-        "vanilla:net/minecraft/world/entity/Entity.java#protected void positionRider",
-        "vanilla:net/minecraft/world/entity/LivingEntity.java#public Vec3 getPassengerRidingPosition",
-        "vanilla:net/minecraft/world/entity/Avatar.java#public static final Vec3 DEFAULT_VEHICLE_ATTACHMENT",
-        "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#public void extractRenderState"
-      ]
-    },
     "turtle_event_particle_audio": {
       "implementation": [
         "crates/bbb-world/src/client/audio.rs#pub fn apply_sound_event",
@@ -7981,11 +7846,7 @@
   },
   "generated_by": "scripts/generate-entity-coverage.py",
   "schema_version": 1,
-  "uncertainties": [
-    "Generic passenger state is present, but family-specific attachment, controlling-passenger, equipment applicability, and leash presentation have not been reverse-audited together.",
-    "Generated dimensions and broad pick tests exist, but each pose/scale/collision exception has not been proven for every family.",
-    "Shift-local save projection covers many families, but server-private versus client-observable fields still need a family-by-family audit."
-  ],
+  "uncertainties": [],
   "update_command": "scripts/vanilla-source-tools.sh scripts/generate-entity-coverage.py",
   "vanilla_version": "26.1"
 }

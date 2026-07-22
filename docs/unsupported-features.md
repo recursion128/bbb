@@ -1337,26 +1337,6 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
-### Entity coverage matrix equipment passenger and leash
-
-- Audit equipment slot applicability and presentation, passenger attachment and
-  controlling-passenger rules, vehicle recovery, and leash state/presentation
-  for every applicable family.
-- Leash packet state and presentation are CLOSED end to end (2026-07-22): the
-  generated 157-type catalog records the effective `getLeashOffset` owner
-  (interface default plus all sixteen concrete declarations) and all four
-  `getRopeHoldPosition` owners. World endpoint projection covers Camel's
-  partial-tick body-anchor curve with its distinct age/attribute scaling,
-  Llama/Fox/Copper Golem/Snow Golem/Boat offsets, AbstractVillager, the exact
-  gliding Player view vector, generated passenger render poses, Turtle's
-  inherited `Leashable` state, quad ordering, endpoint light, and slack. The
-  renderer submits the `LeashFeatureRenderer` two-strip rope as
-  `RenderTypes.leash()` custom geometry. A perfectly vertical rope deliberately
-  retains the finite zero-cross-section fallback documented in the closure
-  contract instead of propagating Vanilla's `invSqrt(0)` NaNs into the shared
-  mesh. The broader matrix cell remains open only for equipment evidence and
-  final coverage closeout.
-
 ### Deferred model and animation details
 
 - **Remaining mob-specific armor models.**

@@ -244,13 +244,11 @@ effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域�
 
 本节只列开放路线图。P1～P4 保留为依赖/里程碑说明与 hardest-ready 难度相当时的
 裁决依据，不要求按章节顺序串行消化。protocol/session、RegistryAccess typed
-foundation、entity matrix+schema+spawn/transform、playable session lifecycle 四个
+foundation、entity matrix、playable session lifecycle 四个
 foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺序调整为：
 
-1. entity 矩阵剩余开放类目 equipment/passenger/leash 的 family closure；
-2. play packet family 与 registry consumer 长尾——优先随上述垂直 slice 顺带
-   关闭；独立立项仅当其阻塞前两者或本身构成 hardest-ready 工程；
-3. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。
+1. play packet family 与 registry consumer 长尾；
+2. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。
 
 （playable 基础游玩交互与扩展失败证据两阶段均已闭环，见下节；playable 门禁
 转入维护态：新交互场景随对应垂直 slice 扩展，不再单列队列。）
@@ -297,60 +295,6 @@ renderer/audio/net/world counters、pending 写探针双采样和最终 screensh
 `playable-gate` 一条命令完成上述场景并稳定回收；合法 session 无 panic、hang、
 required unknown packet 或状态泄漏；每个核心用户动作同时有 server 结果、world
 状态和适用呈现断言；大 milestone 关闭前必须通过该门禁。
-
-### P1：157 entity family 客户端行为覆盖矩阵
-
-覆盖 `VANILLA_ENTITY_TYPES` 全部 157 项的客户端可观察行为，不移植服务端
-AI/寻路/刷怪/战利品/权威战斗。矩阵入口 `docs/entity-coverage-26.1.json`（经
-`scripts/generate-entity-coverage.py` 更新/检查，分类输入在
-`scripts/data/entity-coverage-overrides-26.1.json`）。十类目中
-metadata/schema、spawn/default、transform/interpolation、client tick/movement、
-save/debug、dimensions/collision/pick、model/texture/layers、animation、
-event/particle/audio 已全量 complete
-（tick/movement 工程合同
-已闭环归档至 `docs/archive/entity-client-tick-movement-design.md`；save/debug
-与 dimensions 均于 2026-07-21 经全 vanilla override 枚举审计闭环）；开放类目
-类目仅余 equipment/passenger/leash。
-
-已闭环的 `model/texture/layers` family 工程合同与逆向证明见
-`docs/entity-model-layers-closure-design.md`。
-已闭环的 `event/particle/audio` family 工程合同、owner 边界与门禁位置见
-`docs/entity-event-particle-audio-closure-design.md`。
-当前 `equipment/passenger/leash` family closure 的工程合同、owner 边界与门禁位置见
-`docs/entity-equipment-passenger-leash-closure-design.md`。
-
-规则：
-
-- 共同父类行为按 family/schema 实现一次，具体 entity 只登记差异；禁止为
-  涂绿矩阵加空分支、恒等 placeholder 或复制 match。`complete` 必须引用权威
-  实现与 semantic test；`partial/deferred/not-applicable` 必须链接账本原因
-  与 vanilla 证据。
-- 客户端只实现 vanilla multiplayer 客户端实际推进的行为：local-player
-  prediction、locally-controlled vehicle movement/回报、remote transform
-  interpolation、`ClientLevel` 实际执行的 subclass tick/animation/粒子/音频、
-  projectile presentation；server correction 覆盖预测。命中、伤害、爆炸、
-  mob AI、寻路、刷怪、繁殖、战利品和不可重建 server RNG 标 `not-applicable`，
-  不得以 synthetic state 冒充。
-- 渲染与动画类目补齐 model family、baby/scale、texture/variant、layer、
-  keyframe/procedural animation、name/tag、shadow/culling/bounds；missing
-  asset 保留明确 vanilla fallback 与 diagnostics，不能用 raw-cuboid/identity
-  长期冒充 complete。
-- save/debug：F3+I 以匹配 transaction 的 server entity-tag query response 为
-  完整 NBT 权威；Shift-local `saveWithoutId` 只投影实际可观察字段，server
-  私有状态标 `not-applicable`，不得用 default/heuristic 猜测。
-- registry-backed variant cell 在对应 registry family 的 custom-reorder 测试
-  通过前不得标 `complete`。允许窄 `not-applicable`，不允许以“已有通用
-  fallback”把缺专属模型/动画/client tick 标绿。
-- family 关闭门禁：每个 family slice 同时更新矩阵与账本，运行相应 focused
-  tests；coverage test 保证 157 项都有行、每个 `complete` cell 有实现/测试
-  引用、catalog 新增项默认失败、生产 entity type 分支只引用 catalog
-  常量/schema API。每关闭一个 family 运行 playable-gate。
-
-完成标准：矩阵恰好覆盖 157 项；所有客户端适用 cell 均 `complete`，其余仅为
-有 vanilla 证据的 `not-applicable`，不再存在 `partial/deferred`；canonical
-state 对所有类型可保留和 probe；每个有官方 renderer 的 entity 都有正确
-model/texture/layer/animation 路径或官方 fallback；账本不再包含 vanilla
-entity family 行为缺口。
 
 ### P1：Protocol / session 行为覆盖矩阵长尾
 

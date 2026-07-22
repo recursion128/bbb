@@ -193,3 +193,6 @@
   `handleEntityEvent` 声明与三个 listener special 全量逆向，补齐 Rabbit、Hoglin/
   Zoglin/Creaking 和 Slime/Magma Cube 音画消费者，并以 Firework event/tick 守卫证明
   既有爆炸、轨迹及近远音频路径；矩阵第九类目 157 行翻为 complete。
+- **2026-07-22（157 entity family 矩阵全量闭环）**：equipment packet Living gate、8 个 wire slot、生成 `canUseSlot`、canonical query 与资源包装备 layer；passenger attachment/controller owner、当前 render-pose 投影与 first-mount side effect；leash 全 offset/rope-holder owner 与两条 rope strip 均有反向门禁。
+  第十类目 157 行翻为 complete，矩阵只余 3 个 Vanilla NoopRenderer 的窄 not-applicable cell；工程合同见
+  `docs/entity-equipment-passenger-leash-closure-design.md`。
