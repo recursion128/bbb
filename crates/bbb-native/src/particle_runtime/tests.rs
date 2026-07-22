@@ -3,6 +3,7 @@ use bbb_pack::{
     BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, GrassColorModifier,
     SpriteAnimation, SpriteAnimationFrame,
 };
+use bbb_protocol::packets::ParticlePayload;
 use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
@@ -1663,6 +1664,47 @@ fn count_zero_emits_single_spawn_with_offset_velocity() {
     assert!(command.always_show);
     assert_eq!(command.raw_options_len, 2);
     assert_eq!(command.initial_delay_ticks, 0);
+}
+
+#[test]
+fn explosion_primary_particle_uses_packet_options_and_unit_x_velocity() {
+    let mut runtime = NativeParticleRuntime {
+        resolver: test_resolver(0),
+    };
+    let state = ExplosionEventState {
+        center: Vec3d {
+            x: 10.0,
+            y: 64.5,
+            z: -3.25,
+        },
+        radius: 4.0,
+        block_count: 2,
+        player_knockback: None,
+        explosion_particle: ParticlePayload {
+            particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+            raw_options: Vec::new(),
+        },
+        explosion_sound: bbb_protocol::packets::SoundEventHolder::Reference { registry_id: 41 },
+        block_particles: vec![bbb_protocol::packets::WeightedExplosionParticle {
+            particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            scaling: 0.5,
+            speed: 1.25,
+            weight: 3,
+        }],
+    };
+
+    let batch =
+        runtime.spawn_explosion_particles(&state, LevelParticleSpawnContext::default(), None, None);
+
+    assert_eq!(batch.commands.len(), 1);
+    let command = &batch.commands[0];
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_CLOUD_ID);
+    assert_eq!(command.position, [10.0, 64.5, -3.25]);
+    assert_eq!(command.velocity, [1.0, 0.0, 0.0]);
+    assert!(!command.always_show);
 }
 
 #[test]

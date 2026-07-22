@@ -1878,6 +1878,24 @@ impl WorldStore {
         state
     }
 
+    pub(crate) fn record_explosion_sound(
+        &mut self,
+        explosion: &crate::ExplosionEventState,
+        random: &mut LevelEventSoundRandomState,
+    ) -> SoundEventState {
+        let pitch = (1.0 + (random.next_float() - random.next_float()) * 0.2) * 0.7;
+        let state = SoundEventState {
+            sound: sound_holder_state(explosion.explosion_sound.clone()),
+            source: SoundSource::Blocks.as_str().to_string(),
+            position: explosion.center,
+            volume: 4.0,
+            pitch,
+            seed: random.next_long(),
+            distance_delay: false,
+        };
+        self.record_positioned_sound(state)
+    }
+
     fn level_event_block_break_sound_state(
         &self,
         event: ProtocolLevelEvent,

@@ -13,7 +13,7 @@ use bbb_protocol::particle_types::{
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
     BlockPos as WorldBlockPos, ChatDisconnectReason, DolphinHappyParticleState,
-    EntityTamingParticleState, EntityTrackingEmitterParticleKind,
+    EntityTamingParticleState, EntityTrackingEmitterParticleKind, ExplosionEventState,
     FireworkRocketExplosionParticleState, FoxEatParticleState, HoneyBlockParticleState,
     LevelEventGrowthRandomMode, LevelEventSoundRandomState, LivingEntityDrownParticleState,
     LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
@@ -443,6 +443,35 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
             Some(&biome_sampler),
             self.item_runtime,
         );
+    }
+
+    fn explosion_particles(&mut self, world: &WorldStore, state: &ExplosionEventState) {
+        let packet = LevelParticles {
+            override_limiter: false,
+            always_show: false,
+            position: state.center,
+            offset: ProtocolVec3d {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            max_speed: 1.0,
+            count: 0,
+            particle: state.explosion_particle.clone(),
+        };
+        let biome_sampler = WorldParticleBiomeSampler { world };
+        let Some(particle_events) = self.particle_events.as_deref_mut() else {
+            return;
+        };
+        let batch = particle_events.spawn_explosion_particles(
+            state,
+            level_particle_spawn_context(world, &packet),
+            Some(&biome_sampler),
+            self.item_runtime,
+        );
+        if let Some(renderer) = self.particle_target.as_deref_mut() {
+            renderer.submit_particle_batch(batch);
+        }
     }
 
     fn firework_empty_explosion_particles(&mut self, world: &WorldStore, position: [f64; 3]) {

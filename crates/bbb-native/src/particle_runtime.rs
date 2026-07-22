@@ -29,14 +29,15 @@ use bbb_world::{
     BlazeAmbientParticleState, BlockPos as WorldBlockPos, DolphinHappyParticleState,
     EnderAmbientParticleState, EntityClientMovementParticleState,
     EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState,
-    EntityTamingParticleState, EyeOfEnderTrailParticleState, FireworkRocketExplosionParticleState,
-    FireworkRocketTrailParticleState, FoxEatParticleState, GuardianAmbientParticleState,
-    GuardianAttackParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
-    LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, LlamaSpitRecreationParticleState,
-    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RabbitSprintParticleState,
-    RavagerRoarParticleState, ShulkerBulletTrailParticleState, SlimeLandingParticleKind,
-    SlimeLandingParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    EntityTamingParticleState, ExplosionEventState, EyeOfEnderTrailParticleState,
+    FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    GuardianAmbientParticleState, GuardianAttackParticleState, HoneyBlockParticleState,
+    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LlamaSpitRecreationParticleState, OminousItemSpawnerParticleState,
+    PowderSnowFlakeParticleState, RabbitSprintParticleState, RavagerRoarParticleState,
+    ShulkerBulletTrailParticleState, SlimeLandingParticleKind, SlimeLandingParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState,
     TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
     VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
     WitchMagicParticleState,
@@ -69,6 +70,16 @@ pub(crate) trait ParticleEventSink {
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
         item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
+    fn spawn_explosion_particles(
+        &mut self,
+        state: &ExplosionEventState,
+        context: LevelParticleSpawnContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        let _ = (state, context, biome_sampler, item_runtime);
+        ParticleSpawnBatch::default()
+    }
     fn spawn_level_event_particles(
         &mut self,
         event: &LevelEvent,
@@ -369,6 +380,33 @@ impl ParticleEventSink for NativeParticleRuntime {
     ) -> ParticleSpawnBatch {
         self.resolver.resolve_level_particles_with_context(
             packet,
+            context,
+            biome_sampler,
+            item_runtime,
+        )
+    }
+
+    fn spawn_explosion_particles(
+        &mut self,
+        state: &ExplosionEventState,
+        context: LevelParticleSpawnContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        self.resolver.resolve_level_particles_with_context(
+            &LevelParticles {
+                override_limiter: false,
+                always_show: false,
+                position: state.center,
+                offset: Vec3d {
+                    x: 1.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                max_speed: 1.0,
+                count: 0,
+                particle: state.explosion_particle.clone(),
+            },
             context,
             biome_sampler,
             item_runtime,

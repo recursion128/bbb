@@ -52,16 +52,13 @@ pub struct LevelParticlesEventState {
 
 impl WorldStore {
     pub fn apply_explosion(&mut self, packet: ProtocolExplosion) -> ExplosionEventState {
+        let state = self.record_explosion(packet);
+        self.apply_explosion_knockback(&state);
+        state
+    }
+
+    pub(crate) fn record_explosion(&mut self, packet: ProtocolExplosion) -> ExplosionEventState {
         self.counters.explosion_packets += 1;
-        if let (Some(knockback), Some(pose)) =
-            (packet.player_knockback, self.local_player.pose.as_mut())
-        {
-            if vec3_is_finite(knockback) {
-                pose.delta_movement.x += knockback.x;
-                pose.delta_movement.y += knockback.y;
-                pose.delta_movement.z += knockback.z;
-            }
-        }
         let state = ExplosionEventState {
             center: packet.center,
             radius: packet.radius,
@@ -73,6 +70,19 @@ impl WorldStore {
         };
         self.client_effects.last_explosion = Some(state.clone());
         state
+    }
+
+    pub(crate) fn apply_explosion_knockback(&mut self, state: &ExplosionEventState) {
+        let (Some(knockback), Some(pose)) =
+            (state.player_knockback, self.local_player.pose.as_mut())
+        else {
+            return;
+        };
+        if vec3_is_finite(knockback) {
+            pose.delta_movement.x += knockback.x;
+            pose.delta_movement.y += knockback.y;
+            pose.delta_movement.z += knockback.z;
+        }
     }
 
     pub fn apply_level_particles(

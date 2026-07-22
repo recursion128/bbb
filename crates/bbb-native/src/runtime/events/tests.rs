@@ -639,6 +639,8 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
 struct RecordingParticleSink {
     packets: Vec<LevelParticles>,
     contexts: Vec<LevelParticleSpawnContext>,
+    explosions: Vec<bbb_world::ExplosionEventState>,
+    explosion_contexts: Vec<LevelParticleSpawnContext>,
     level_events: Vec<LevelEvent>,
     level_event_contexts: Vec<LevelEventParticleContext>,
     firework_empty_explosion_positions: Vec<[f64; 3]>,
@@ -680,6 +682,23 @@ impl ParticleEventSink for RecordingParticleSink {
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.packets.push(packet.clone());
         self.contexts.push(context);
+        let batch = bbb_renderer::ParticleSpawnBatch {
+            missing_definition_count: 1,
+            ..bbb_renderer::ParticleSpawnBatch::default()
+        };
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_explosion_particles(
+        &mut self,
+        state: &bbb_world::ExplosionEventState,
+        context: LevelParticleSpawnContext,
+        _biome_sampler: Option<&dyn crate::particle_runtime::ParticleBiomeSampler>,
+        _item_runtime: Option<&bbb_item_model::NativeItemRuntime>,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.explosions.push(state.clone());
+        self.explosion_contexts.push(context);
         let batch = bbb_renderer::ParticleSpawnBatch {
             missing_definition_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()

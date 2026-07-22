@@ -135,6 +135,105 @@ fn world_effect_events_update_world_counters() {
 }
 
 #[test]
+fn typed_explosion_reaches_positioned_audio_and_primary_particle_sinks() {
+    let packet = Explosion {
+        center: ProtocolVec3d {
+            x: 10.0,
+            y: 64.5,
+            z: -3.25,
+        },
+        radius: 4.0,
+        block_count: 2,
+        player_knockback: Some(ProtocolVec3d {
+            x: 0.25,
+            y: 0.5,
+            z: -0.75,
+        }),
+        explosion_particle: ParticlePayload {
+            particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID,
+            raw_options: Vec::new(),
+        },
+        explosion_sound: SoundEventHolder::Direct {
+            location: "minecraft:entity.cat.ambient".to_string(),
+            fixed_range: None,
+        },
+        block_particles: vec![bbb_protocol::packets::WeightedExplosionParticle {
+            particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                raw_options: Vec::new(),
+            },
+            scaling: 0.5,
+            speed: 1.25,
+            weight: 3,
+        }],
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::Explosion(packet.clone())))
+        .unwrap();
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.5,
+            y: -0.25,
+            z: 1.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut random = LevelEventSoundRandomState::with_seed(9);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            None,
+            &mut random,
+        ),
+        1
+    );
+
+    let AudioCommand::PlayPositionedSound(sound) = &audio.commands[0] else {
+        panic!("expected positioned explosion sound");
+    };
+    assert_eq!(sound.position, [10.0, 64.5, -3.25]);
+    assert_eq!(sound.category, AudioCategory::Blocks);
+    assert_eq!(sound.packet_volume, 4.0);
+    assert!(!sound.distance_delay);
+    assert_eq!(
+        particles.explosions,
+        vec![world.last_explosion().unwrap().clone()]
+    );
+    assert_eq!(
+        particles.explosion_contexts,
+        vec![LevelParticleSpawnContext {
+            camera_position: Some([1.0, 3.62, 3.0]),
+            vibration_entity_position: None,
+        }]
+    );
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(
+        world.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d {
+            x: 0.75,
+            y: 0.25,
+            z: 0.25,
+        }
+    );
+}
+
+#[test]
 fn level_particles_emit_particle_runtime_batch_and_world_counters() {
     let packet = LevelParticles {
         override_limiter: false,

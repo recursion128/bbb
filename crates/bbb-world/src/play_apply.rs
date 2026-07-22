@@ -113,6 +113,7 @@ pub trait PlayApplyEffects {
         _packet: &bbb_protocol::packets::LevelParticles,
     ) {
     }
+    fn explosion_particles(&mut self, _world: &WorldStore, _state: &crate::ExplosionEventState) {}
     fn firework_empty_explosion_particles(&mut self, _world: &WorldStore, _position: [f64; 3]) {}
     fn llama_spit_recreation_particles(
         &mut self,
@@ -433,7 +434,11 @@ impl WorldStore {
                 self.apply_entity_position_sync(update);
             }
             PlayClientbound::Explosion(update) => {
-                self.apply_explosion(update);
+                let state = self.record_explosion(update);
+                let sound = self.record_explosion_sound(&state, random);
+                effects.positioned_sound(&sound);
+                effects.explosion_particles(self, &state);
+                self.apply_explosion_knockback(&state);
             }
             PlayClientbound::EntityEvent(update) => {
                 let event_kind =
@@ -1675,7 +1680,8 @@ mod tests {
     use std::collections::BTreeMap;
 
     use crate::{
-        DamageTypeEffects, LocalPlayerPoseState, RegistryPacketEntry, DAMAGE_TYPE_REGISTRY,
+        DamageTypeEffects, ExplosionEventState, LocalPlayerPoseState, RegistryPacketEntry,
+        DAMAGE_TYPE_REGISTRY,
     };
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID;
     use bbb_protocol::entity_data_serializers::{
@@ -1705,6 +1711,9 @@ mod tests {
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
     use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
+    use bbb_protocol::particle_types::{
+        VANILLA_PARTICLE_TYPE_CLOUD_ID, VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+    };
 
     // Wire-event fixture ids. Production dispatch consumes the source-generated handler catalog
     // through `VanillaEntityEventKind` and does not own a parallel numeric table.
@@ -1751,10 +1760,11 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, DamageEvent, DeleteChat,
         EntityAnimation, EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind,
-        EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, GameEvent,
-        ItemStackSummary, LevelEvent, PackedMessageSignature, PlayTime, PlayerHealth,
-        RemoveEntities, SetEntityData, SetEquipment, SetPassengers, SoundEvent, SoundEventHolder,
-        SoundEventSummary, SoundSource, TakeItemEntity, TeleportEntity, Vec3d,
+        EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion, GameEvent,
+        ItemStackSummary, LevelEvent, PackedMessageSignature, ParticlePayload, PlayTime,
+        PlayerHealth, RemoveEntities, SetEntityData, SetEquipment, SetPassengers, SoundEvent,
+        SoundEventHolder, SoundEventSummary, SoundSource, TakeItemEntity, TeleportEntity, Vec3d,
+        WeightedExplosionParticle,
     };
     use uuid::Uuid;
 
@@ -1775,6 +1785,8 @@ mod tests {
     #[derive(Default)]
     struct RecordingEffects {
         positioned_sounds: Vec<SoundEventState>,
+        explosions: Vec<ExplosionEventState>,
+        explosion_callback_delta_movements: Vec<Option<Vec3d>>,
         entity_sounds: Vec<(SoundEntityEventState, Option<[f64; 3]>)>,
         llama_spit_recreation_particles: Vec<LlamaSpitRecreationParticleState>,
         llama_spit_world_entity_visible: Vec<bool>,
@@ -1806,6 +1818,12 @@ mod tests {
     impl PlayApplyEffects for RecordingEffects {
         fn positioned_sound(&mut self, state: &SoundEventState) {
             self.positioned_sounds.push(state.clone());
+        }
+
+        fn explosion_particles(&mut self, world: &WorldStore, state: &ExplosionEventState) {
+            self.explosions.push(state.clone());
+            self.explosion_callback_delta_movements
+                .push(world.local_player_pose().map(|pose| pose.delta_movement));
         }
 
         fn entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>) {
@@ -2558,6 +2576,106 @@ mod tests {
         assert!(leftover.is_none());
         assert_eq!(effects.positioned_sounds.len(), 1);
         assert_eq!(effects.positioned_sounds[0].seed, 42);
+    }
+
+    #[test]
+    fn apply_play_packet_orders_typed_explosion_effects_before_knockback() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            delta_movement: Vec3d {
+                x: 0.5,
+                y: -0.25,
+                z: 1.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        let mut random = LevelEventSoundRandomState::with_seed(12_345);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(12_345);
+        let expected_pitch =
+            (1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2) * 0.7;
+        let expected_seed = expected_random.next_long();
+        let mut effects = RecordingEffects::default();
+        let packet = Explosion {
+            center: Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            radius: 4.5,
+            block_count: 7,
+            player_knockback: Some(Vec3d {
+                x: 0.25,
+                y: -0.5,
+                z: 1.5,
+            }),
+            explosion_particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            explosion_sound: SoundEventHolder::Reference { registry_id: 41 },
+            block_particles: vec![WeightedExplosionParticle {
+                particle: ParticlePayload {
+                    particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                    raw_options: Vec::new(),
+                },
+                scaling: 0.5,
+                speed: 1.25,
+                weight: 3,
+            }],
+        };
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::Explosion(packet.clone()),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        assert_eq!(effects.positioned_sounds[0].position, packet.center);
+        assert_eq!(effects.positioned_sounds[0].source, "block");
+        assert_eq!(effects.positioned_sounds[0].volume, 4.0);
+        assert_eq!(effects.positioned_sounds[0].pitch, expected_pitch);
+        assert_eq!(effects.positioned_sounds[0].seed, expected_seed);
+        assert!(!effects.positioned_sounds[0].distance_delay);
+        assert_eq!(
+            effects.explosions,
+            vec![store.last_explosion().unwrap().clone()]
+        );
+        assert_eq!(
+            effects.explosion_callback_delta_movements,
+            vec![Some(Vec3d {
+                x: 0.5,
+                y: -0.25,
+                z: 1.0,
+            })]
+        );
+        assert_eq!(
+            store.local_player_pose().unwrap().delta_movement,
+            Vec3d {
+                x: 0.75,
+                y: -0.75,
+                z: 2.5,
+            }
+        );
+        let mut sinkless_store = WorldStore::new();
+        let mut sinkless_random = LevelEventSoundRandomState::with_seed(12_345);
+        assert!(sinkless_store
+            .apply_play_packet(
+                PlayClientbound::Explosion(packet),
+                &mut sinkless_random,
+                &mut NoPlayApplyEffects,
+            )
+            .is_none());
+        assert_eq!(
+            sinkless_store.last_sound(),
+            store.last_sound(),
+            "sink-less apply must retain the same canonical sound"
+        );
+        let expected_next = expected_random.next_float();
+        assert_eq!(random.next_float(), expected_next);
+        assert_eq!(sinkless_random.next_float(), expected_next);
     }
 
     #[test]
