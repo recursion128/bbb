@@ -2251,7 +2251,7 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
 }
 
 #[test]
-fn entity_model_sources_project_happy_ghast_body_item_harness_and_ridden_state() {
+fn entity_model_sources_project_happy_ghast_harness_leash_holder_and_ridden_state() {
     use std::collections::BTreeMap;
 
     const WHITE_HARNESS_ITEM_ID: i32 = 841;
@@ -2280,11 +2280,22 @@ fn entity_model_sources_project_happy_ghast_body_item_harness_and_ridden_state()
             source.happy_ghast_harness,
             source.happy_ghast_harness_trim,
             source.happy_ghast_harness_foil,
+            source.happy_ghast_body_item_is_harness,
+            source.happy_ghast_is_leash_holder,
             source.happy_ghast_ridden,
         )
     };
 
     let mut store = WorldStore::new();
+    store.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                tag: "minecraft:harnesses".to_string(),
+                entries: vec![WHITE_HARNESS_ITEM_ID],
+            }],
+        }],
+    });
     store.apply_add_entity(protocol_add_entity_with_type(
         88,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
@@ -2306,8 +2317,14 @@ fn entity_model_sources_project_happy_ghast_body_item_harness_and_ridden_state()
             }],
         }));
     }
-    assert_eq!(state(&store, 88), (true, None, None, false, false));
-    assert_eq!(state(&store, 89), (false, None, None, false, false));
+    assert_eq!(
+        state(&store, 88),
+        (true, None, None, false, false, false, false)
+    );
+    assert_eq!(
+        state(&store, 89),
+        (false, None, None, false, false, false, false)
+    );
 
     store.set_default_happy_ghast_harness_colors(BTreeMap::from([(
         WHITE_HARNESS_ITEM_ID,
@@ -2330,14 +2347,29 @@ fn entity_model_sources_project_happy_ghast_body_item_harness_and_ridden_state()
                 decal: false,
             }),
             true,
+            true,
+            false,
             false,
         )
     );
+    let accessors = vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    )
+    .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 88,
+        values: vec![ProtocolEntityDataValue {
+            data_id: accessors.is_leash_holder_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(state(&store, 88).5);
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 88,
         passenger_ids: vec![90],
     }));
-    assert!(state(&store, 88).4);
+    assert!(state(&store, 88).6);
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 88,
@@ -2346,7 +2378,10 @@ fn entity_model_sources_project_happy_ghast_body_item_harness_and_ridden_state()
             item: stack(WHITE_HARNESS_ITEM_ID, 0),
         }],
     }));
-    assert_eq!(state(&store, 88), (false, None, None, false, true));
+    assert_eq!(
+        state(&store, 88),
+        (false, None, None, false, false, true, true)
+    );
 }
 
 #[test]

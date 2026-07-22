@@ -106,9 +106,10 @@ use super::textured::{
     render_end_portal_block_model, render_ender_dragon_beam, render_ender_dragon_death_rays,
     render_equine_body_armor_layer, render_equine_saddle_layer, render_experience_orb,
     render_fishing_hook, render_guardian_beam, render_happy_ghast_harness_layer,
-    render_horse_textured_layers, render_llama_decor_layer, render_nautilus_body_armor_layer,
-    render_nautilus_saddle_layer, render_no_overlay_scrolled_textured_layers, render_painting_tile,
-    render_pig_saddle_layer, render_player_cape_layer, render_player_extra_ears_layer,
+    render_happy_ghast_ropes_layer, render_horse_textured_layers, render_llama_decor_layer,
+    render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
+    render_no_overlay_scrolled_textured_layers, render_painting_tile, render_pig_saddle_layer,
+    render_player_cape_layer, render_player_extra_ears_layer,
     render_player_parrot_on_shoulder_layer, render_player_spin_attack_effect_layer,
     render_player_textured_layers, render_skeleton_clothing_layer, render_skull_block_model,
     render_strider_saddle_layer, render_textured_layers,
@@ -396,6 +397,9 @@ pub(in crate::entity_models) trait EntityModelSink {
     fn skeleton_clothing_layer(&mut self, _instance: &EntityModelInstance) {}
 
     fn villager_profession_layers(&mut self, _instance: &EntityModelInstance) {}
+
+    fn happy_ghast_layers(&mut self, _instance: &EntityModelInstance, _first_submit_sequence: u32) {
+    }
 
     fn horse_model(
         &mut self,
@@ -860,12 +864,17 @@ impl EntityModelSink for TexturedSink<'_> {
             instance,
             &happy_ghast_textured_layer_passes(baby),
         );
-        render_happy_ghast_harness_layer(
+    }
+
+    fn happy_ghast_layers(&mut self, instance: &EntityModelInstance, first_submit_sequence: u32) {
+        let next_submit_sequence = render_happy_ghast_harness_layer(
             self.meshes,
             *instance,
             self.atlas,
             self.dynamic_player_texture_atlas,
+            first_submit_sequence,
         );
+        render_happy_ghast_ropes_layer(self.meshes, *instance, self.atlas, next_submit_sequence);
     }
 
     fn zombie_nautilus_model(
@@ -2135,6 +2144,7 @@ pub(in crate::entity_models) fn dispatch_vanilla_entity_layers<S: EntityModelSin
             sink.custom_head_skull_layer(instance);
             sink.villager_profession_layers(instance);
         }
+        EntityModelKind::HappyGhast { .. } => sink.happy_ghast_layers(instance, 1),
         _ => {}
     }
 }
@@ -2144,10 +2154,10 @@ pub(in crate::entity_models) fn dispatch_vanilla_entity_layers<S: EntityModelSin
 pub(in crate::entity_models) fn dispatch_invisible_living_ungated_layers<S: EntityModelSink>(
     instance: &EntityModelInstance,
     sink: &mut S,
-    wolf_submit_sequence_start: u32,
+    layer_submit_sequence_start: u32,
 ) {
     if matches!(instance.kind, EntityModelKind::Wolf { .. }) {
-        sink.wolf_body_armor_layer(instance, wolf_submit_sequence_start);
+        sink.wolf_body_armor_layer(instance, layer_submit_sequence_start);
     }
     match instance.kind {
         EntityModelKind::Player { .. } => {
@@ -2177,6 +2187,9 @@ pub(in crate::entity_models) fn dispatch_invisible_living_ungated_layers<S: Enti
         | EntityModelKind::WanderingTrader
         | EntityModelKind::CopperGolem { .. } => {
             sink.custom_head_skull_layer(instance);
+        }
+        EntityModelKind::HappyGhast { .. } => {
+            sink.happy_ghast_layers(instance, layer_submit_sequence_start)
         }
         _ => {}
     }

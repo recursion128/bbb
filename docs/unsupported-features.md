@@ -826,7 +826,6 @@ Models and layers:
 
 - Replace the placeholder raw-cuboid `Humanoid` fallback with a vanilla-faithful
   part-list model.
-- Implement the happy-ghast rope/lead layer.
 - Implement the remaining zombie-family and piglin-family armor nuances and
   held-item refinements.
 - Implement player arrows/stingers stuck in body, name display, swim arm poses,

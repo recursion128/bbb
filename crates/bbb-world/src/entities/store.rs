@@ -155,6 +155,7 @@ use crate::entities::renderer_catalog::{
 };
 use crate::entities::schema::{
     vanilla_entity_metadata_entity_accessors,
+    vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_type_interpolation_steps,
@@ -191,6 +192,8 @@ fn within_death_tick_distance(
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
 const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
+/// Vanilla `ItemTags.HARNESSES`, consumed by `RopesLayer` independently of equipment-asset lookup.
+const VANILLA_HAPPY_GHAST_HARNESSES_ITEM_TAG: &str = "minecraft:harnesses";
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
 /// Vanilla 26.1 `EntityType.WOLF` registry id, used to gate `WolfArmorLayer`.
@@ -3003,6 +3006,29 @@ impl EntityStore {
         let happy_ghast_harness_foil = happy_ghast_harness
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
+        let happy_ghast_body_item_is_harness = identity.entity_type_id
+            == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            && body_slot_item_id().is_some_and(|item_id| {
+                registries.holder_is_in_tag(
+                    "minecraft:item",
+                    VANILLA_HAPPY_GHAST_HARNESSES_ITEM_TAG,
+                    item_id,
+                )
+            });
+        let happy_ghast_is_leash_holder = if identity.entity_type_id
+            == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+        {
+            vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(identity.entity_type_id)
+                .is_some_and(|accessors| {
+                    entity_data_bool(
+                        &metadata.data_values,
+                        accessors.is_leash_holder_data_id,
+                        accessors.is_leash_holder_default,
+                    )
+                })
+        } else {
+            false
+        };
         let happy_ghast_ridden = identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
             && mount
                 .as_ref()
@@ -3989,6 +4015,8 @@ impl EntityStore {
             happy_ghast_harness,
             happy_ghast_harness_trim,
             happy_ghast_harness_foil,
+            happy_ghast_body_item_is_harness,
+            happy_ghast_is_leash_holder,
             happy_ghast_ridden,
             guardian_beam: self.guardian_beam_source(
                 identity.entity_type_id,

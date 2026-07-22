@@ -156,6 +156,22 @@ stage starts. The safe stop is a committed, fully gated fire feature with the
 old no-shadow behavior intact; shadow extraction is never landed without its
 texture/pipeline consumer in the same commit.
 
+The next coherent renderer-family stage closes `HappyGhastRenderer`'s
+`RopesLayer`. `bbb-world` projects the generated `IS_LEASH_HOLDER` Boolean only
+for happy ghasts and retains the existing pack-derived harness classification;
+`bbb-native` forwards that narrow fact without inspecting metadata; and
+`bbb-renderer` submits the adult or baby `HappyGhastModel` baked from
+`createBodyLayer(..., CubeDeformation(0.2F))` with
+`happy_ghast_ropes.png`. The layer renders only when both the synchronized
+leash-holder flag and synchronized `minecraft:harnesses` item-tag membership
+are present, reuses the base model's
+tentacle animation and body-item squeeze, and follows `SimpleEquipmentLayer` in
+constructor order. Player stuck-projectile layers and procedural arm/elytra
+poses are non-goals for this stage because they require a separate random
+attachment and animation-state contract. Focused tests are the `happy_ghast`
+tests in `bbb-world`, `bbb-native`, and `bbb-renderer`; the complete path lands
+in one clean commit and runs the full gate before another renderer family.
+
 ### C. Matrix closure and delivery gate
 
 Prove that every official non-noop registration reaches a dedicated/shared

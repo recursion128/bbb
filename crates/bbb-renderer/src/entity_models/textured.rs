@@ -48,21 +48,22 @@ use super::{
         wolf_armor_crackiness_texture_ref, wolf_body_armor_texture_layers, ArmorStandModel,
         ArrowModel, BoatWaterPatchModel, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
-        EquineAnimationPose, GuardianModel, HappyGhastHarnessModel, HumanoidArmorModelLayerSet,
-        HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, ParrotModel, PigModel,
-        PiglinModel, PlayerEarsModel, PlayerModel, SkeletonClothingModel, SkeletonModel,
-        SpinAttackEffectModel, StriderModel, TridentModel, VillagerModel, WitherModel, WolfModel,
-        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, DRAGON_FIREBALL_TEXTURE_REF,
-        ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_PORTAL_TEXTURE_REF,
-        END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
-        EXPERIENCE_ORB_TEXTURE_REF, FISHING_HOOK_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        EquineAnimationPose, GuardianModel, HappyGhastHarnessModel, HappyGhastModel,
+        HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
+        NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
+        SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel, TridentModel,
+        VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
+        DRAGON_FIREBALL_TEXTURE_REF, ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+        ENDER_DRAGON_EXPLODING_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        END_PORTAL_TEXTURE_REF, END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+        EQUINE_STANDARD_LEG_STAND_CONFIG, EXPERIENCE_ORB_TEXTURE_REF, FISHING_HOOK_TEXTURE_REF,
+        HAPPY_GHAST_ROPES_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -78,17 +79,17 @@ use super::{
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MODEL_LAYER_CAMEL_HUSK_SADDLE, MODEL_LAYER_CAMEL_SADDLE,
         MODEL_LAYER_DONKEY_SADDLE, MODEL_LAYER_ELYTRA, MODEL_LAYER_ELYTRA_BABY,
-        MODEL_LAYER_HAPPY_GHAST_BABY_HARNESS, MODEL_LAYER_HAPPY_GHAST_HARNESS,
-        MODEL_LAYER_HORSE_ARMOR, MODEL_LAYER_HORSE_SADDLE, MODEL_LAYER_LLAMA_BABY_DECOR,
-        MODEL_LAYER_LLAMA_DECOR, MODEL_LAYER_MULE_SADDLE, MODEL_LAYER_NAUTILUS_ARMOR,
-        MODEL_LAYER_NAUTILUS_SADDLE, MODEL_LAYER_PIG_SADDLE, MODEL_LAYER_SKELETON_HORSE_SADDLE,
-        MODEL_LAYER_STRIDER_SADDLE, MODEL_LAYER_UNDEAD_HORSE_ARMOR, MODEL_LAYER_WOLF_ARMOR,
-        MODEL_LAYER_ZOMBIE_HORSE_SADDLE, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
-        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-        ZOMBIE_TEXTURE_REF,
+        MODEL_LAYER_HAPPY_GHAST_BABY_HARNESS, MODEL_LAYER_HAPPY_GHAST_BABY_ROPES,
+        MODEL_LAYER_HAPPY_GHAST_HARNESS, MODEL_LAYER_HAPPY_GHAST_ROPES, MODEL_LAYER_HORSE_ARMOR,
+        MODEL_LAYER_HORSE_SADDLE, MODEL_LAYER_LLAMA_BABY_DECOR, MODEL_LAYER_LLAMA_DECOR,
+        MODEL_LAYER_MULE_SADDLE, MODEL_LAYER_NAUTILUS_ARMOR, MODEL_LAYER_NAUTILUS_SADDLE,
+        MODEL_LAYER_PIG_SADDLE, MODEL_LAYER_SKELETON_HORSE_SADDLE, MODEL_LAYER_STRIDER_SADDLE,
+        MODEL_LAYER_UNDEAD_HORSE_ARMOR, MODEL_LAYER_WOLF_ARMOR, MODEL_LAYER_ZOMBIE_HORSE_SADDLE,
+        MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
+        PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF,
+        PLAYER_PROFILE_ELYTRA_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
@@ -4893,16 +4894,14 @@ pub(in crate::entity_models) fn render_happy_ghast_harness_layer(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
-) {
+    first_submit_sequence: u32,
+) -> u32 {
     let Some(color) = instance.render_state.happy_ghast_harness else {
-        return;
+        return first_submit_sequence;
     };
     let EntityModelKind::HappyGhast { baby } = instance.kind else {
-        return;
+        return first_submit_sequence;
     };
-    if meshes.current_force_transparent || meshes.current_outline_only {
-        return;
-    }
 
     let transform = happy_ghast_model_root_transform(instance, baby);
     let model_layer = if baby {
@@ -4920,12 +4919,12 @@ pub(in crate::entity_models) fn render_happy_ghast_harness_layer(
         texture,
         [1.0; 4],
         0,
-        1,
+        first_submit_sequence,
     );
     render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
 
     let mut next_order = 1;
-    let mut next_submit_sequence = 2;
+    let mut next_submit_sequence = first_submit_sequence + 1;
     if instance.render_state.happy_ghast_harness_foil {
         let pass = equipment_layer_pass(
             EntityModelLayerKind::HappyGhastHarness,
@@ -4972,8 +4971,53 @@ pub(in crate::entity_models) fn render_happy_ghast_harness_layer(
                     );
                 },
             );
+            next_submit_sequence += 1;
         }
     }
+    next_submit_sequence
+}
+
+/// Vanilla `HappyGhastRenderer` `RopesLayer`: after the harness equipment layer, render a second
+/// happy-ghast model inflated by `CubeDeformation(0.2F)`. The synchronized leash-holder bit and the
+/// harness item tag are independent gates in vanilla; bbb projects the latter from the synchronized
+/// `minecraft:item` registry tags rather than inferring it from the equipment asset.
+pub(in crate::entity_models) fn render_happy_ghast_ropes_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    submit_sequence: u32,
+) {
+    if !instance.render_state.happy_ghast_is_leash_holder
+        || !instance.render_state.happy_ghast_body_item_is_harness
+    {
+        return;
+    }
+    let EntityModelKind::HappyGhast { baby } = instance.kind else {
+        return;
+    };
+
+    let mut model = HappyGhastModel::new_ropes(baby);
+    model.prepare(&instance);
+    let pass = equipment_layer_pass(
+        EntityModelLayerKind::HappyGhastRopes,
+        EntityModelLayerRenderType::EntityCutout,
+        if baby {
+            MODEL_LAYER_HAPPY_GHAST_BABY_ROPES
+        } else {
+            MODEL_LAYER_HAPPY_GHAST_ROPES
+        },
+        HAPPY_GHAST_ROPES_TEXTURE_REF,
+        [1.0; 4],
+        0,
+        submit_sequence,
+    );
+    render_textured_no_overlay_layer_pass(
+        meshes,
+        &model,
+        happy_ghast_model_root_transform(instance, baby),
+        pass,
+        atlas,
+    );
 }
 
 /// Vanilla `PigRenderer` `SimpleEquipmentLayer(PIG_SADDLE)`: when the saddle slot contains the

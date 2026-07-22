@@ -1152,6 +1152,11 @@ entity_render_state! {
     (with_happy_ghast_harness_trim) happy_ghast_harness_trim: Option<EntityArmorTrim> = None;
     /// Vanilla `ItemStack.hasFoil()` for the recognized harness.
     (with_happy_ghast_harness_foil) happy_ghast_harness_foil: bool = false;
+    /// Whether the BODY item belongs to the synchronized `minecraft:harnesses` item tag.
+    (with_happy_ghast_body_item_is_harness) happy_ghast_body_item_is_harness: bool = false;
+    /// Vanilla synchronized `HappyGhastRenderState.isLeashHolder`; the ropes layer additionally
+    /// requires BODY-item membership in the synchronized harness tag.
+    (with_happy_ghast_is_leash_holder) happy_ghast_is_leash_holder: bool = false;
     /// True while a happy ghast has passengers; lowers the harness goggles into their ridden pose.
     (with_happy_ghast_ridden) happy_ghast_ridden: bool = false;
     /// Vanilla `SnowGolemRenderState.headBlock`: a carved pumpkin block model on the snow golem head
@@ -3211,6 +3216,8 @@ mod tests {
                 happy_ghast_harness: None,
                 happy_ghast_harness_trim: None,
                 happy_ghast_harness_foil: false,
+                happy_ghast_body_item_is_harness: false,
+                happy_ghast_is_leash_holder: false,
                 happy_ghast_ridden: false,
                 snow_golem_pumpkin: false,
                 llama_body_decor: None,

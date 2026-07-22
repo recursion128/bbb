@@ -17,6 +17,7 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
+    vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     ArmorMaterialKind as WorldArmorMaterialKind, ChunkColumn, ChunkPos, ChunkState,
     EntityPickBoundsState, EntityVec3, HappyGhastHarnessColor as WorldHappyGhastHarnessColor,
     ItemEquipmentSlot, LightData, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
@@ -7777,7 +7778,7 @@ fn entity_model_instances_project_llama_body_decor_render_state() {
 }
 
 #[test]
-fn entity_model_instances_project_happy_ghast_harness_render_state() {
+fn entity_model_instances_project_happy_ghast_harness_and_ropes_render_state() {
     const WHITE_HARNESS_ITEM_ID: i32 = 747;
     let trim_texture = EntityDynamicTexture { handle: 42_4312 };
     let trim_lookup = ReadyArmorTrimLookup {
@@ -7806,6 +7807,15 @@ fn entity_model_instances_project_happy_ghast_harness_render_state() {
     };
 
     let mut world = WorldStore::new();
+    world.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:harnesses".to_string(),
+                entries: vec![WHITE_HARNESS_ITEM_ID],
+            }],
+        }],
+    });
     world.set_default_happy_ghast_harness_colors(std::collections::BTreeMap::from([(
         WHITE_HARNESS_ITEM_ID,
         WorldHappyGhastHarnessColor::White,
@@ -7821,6 +7831,18 @@ fn entity_model_instances_project_happy_ghast_harness_render_state() {
         [2.0, 64.0, -3.0],
     ));
     assert!(world.apply_set_equipment(harness(126)));
+    let accessors = vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    )
+    .unwrap();
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 126,
+        values: vec![EntityDataValue {
+            data_id: accessors.is_leash_holder_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id: 126,
         passenger_ids: vec![128],
@@ -7851,6 +7873,8 @@ fn entity_model_instances_project_happy_ghast_harness_render_state() {
             })
         );
         assert!(instance.render_state.happy_ghast_harness_foil);
+        assert!(instance.render_state.happy_ghast_body_item_is_harness);
+        assert!(instance.render_state.happy_ghast_is_leash_holder);
         assert_eq!(instance.render_state.happy_ghast_ridden, ridden);
     }
 }

@@ -2855,6 +2855,14 @@ pub(in crate::entity_models) const HAPPY_GHAST_BABY_TEXTURE_REF: EntityModelText
         size: [64, 64],
     };
 
+/// Vanilla `HappyGhastRenderer.GHAST_ROPES`. The asset is physically 128x128 in the vanilla jar,
+/// while `HappyGhastModel.createBodyLayer` bakes its UVs against a logical 64x64 layer definition.
+pub(in crate::entity_models) const HAPPY_GHAST_ROPES_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/ghast/happy_ghast_ropes.png",
+        size: [64, 64],
+    };
+
 macro_rules! happy_ghast_harness_texture_ref {
     ($name:ident, $color:literal) => {
         pub(in crate::entity_models) const $name: EntityModelTextureRef = EntityModelTextureRef {
@@ -2908,9 +2916,10 @@ pub(in crate::entity_models) const fn happy_ghast_harness_texture_ref(
     }
 }
 
-pub(in crate::entity_models) const HAPPY_GHAST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 18] = [
+pub(in crate::entity_models) const HAPPY_GHAST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 19] = [
     HAPPY_GHAST_TEXTURE_REF,
     HAPPY_GHAST_BABY_TEXTURE_REF,
+    HAPPY_GHAST_ROPES_TEXTURE_REF,
     HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF,
     HAPPY_GHAST_HARNESS_ORANGE_TEXTURE_REF,
     HAPPY_GHAST_HARNESS_MAGENTA_TEXTURE_REF,

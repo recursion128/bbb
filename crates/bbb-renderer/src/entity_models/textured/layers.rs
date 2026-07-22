@@ -135,6 +135,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     GhastBase,
     HappyGhastBase,
     HappyGhastHarness,
+    HappyGhastRopes,
     MinecartBase,
     ParrotBase,
     ZombieBase,

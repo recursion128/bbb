@@ -87,7 +87,7 @@ fn happy_ghast_texture_ref_matches_vanilla_renderer() {
     assert_eq!(HAPPY_GHAST_TEXTURE_REF.size, [64, 64]);
     assert_eq!(MODEL_LAYER_HAPPY_GHAST, "minecraft:happy_ghast#main");
     assert!(entity_model_texture_refs().contains(&HAPPY_GHAST_TEXTURE_REF));
-    assert_eq!(happy_ghast_entity_texture_refs().len(), 18);
+    assert_eq!(happy_ghast_entity_texture_refs().len(), 19);
     assert_eq!(
         happy_ghast_entity_texture_refs()[0],
         HAPPY_GHAST_TEXTURE_REF
@@ -95,6 +95,19 @@ fn happy_ghast_texture_ref_matches_vanilla_renderer() {
     assert_eq!(
         happy_ghast_entity_texture_refs()[1],
         HAPPY_GHAST_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        happy_ghast_entity_texture_refs()[2],
+        HAPPY_GHAST_ROPES_TEXTURE_REF
+    );
+    assert_eq!(HAPPY_GHAST_ROPES_TEXTURE_REF.size, [64, 64]);
+    assert_eq!(
+        MODEL_LAYER_HAPPY_GHAST_ROPES,
+        "minecraft:happy_ghast_ropes#main"
+    );
+    assert_eq!(
+        MODEL_LAYER_HAPPY_GHAST_BABY_ROPES,
+        "minecraft:happy_ghast_baby_ropes#main"
     );
     assert_eq!(
         happy_ghast_harness_texture_ref(EntityDyeColor::White),
@@ -231,6 +244,90 @@ fn happy_ghast_harness_renders_for_both_ages_and_moves_ridden_goggles() {
 }
 
 #[test]
+fn happy_ghast_ropes_require_leash_holder_and_harness_tag_and_use_inflated_model() {
+    let (atlas, _) = build_entity_model_texture_atlas(&happy_ghast_texture_images()).unwrap();
+    let base = EntityModelInstance::happy_ghast(64, [0.0, 64.0, 0.0], 0.0);
+    let no_tag =
+        entity_model_textured_meshes(&[base.with_happy_ghast_is_leash_holder(true)], &atlas);
+    assert_eq!(no_tag.submissions.len(), 1);
+
+    let tagged_without_renderable_asset = base
+        .with_happy_ghast_body_item(true)
+        .with_happy_ghast_body_item_is_harness(true)
+        .with_happy_ghast_is_leash_holder(true);
+    let tagged_meshes = entity_model_textured_meshes(&[tagged_without_renderable_asset], &atlas);
+    assert_eq!(tagged_meshes.submissions.len(), 2);
+    assert_eq!(
+        tagged_meshes.submissions[1].texture,
+        HAPPY_GHAST_ROPES_TEXTURE_REF
+    );
+
+    let harness = base.with_happy_ghast_harness(Some(EntityDyeColor::White));
+    let no_holder = entity_model_textured_meshes(&[harness], &atlas);
+    assert_eq!(no_holder.submissions.len(), 2);
+    let base_cutout_vertex_count = no_holder.cutout.vertices.len();
+
+    let ropes = entity_model_textured_meshes(
+        &[harness
+            .with_happy_ghast_body_item(true)
+            .with_happy_ghast_body_item_is_harness(true)
+            .with_happy_ghast_is_leash_holder(true)],
+        &atlas,
+    );
+    assert_eq!(ropes.submissions.len(), 3);
+    let rope = ropes.submissions[2];
+    assert_eq!(rope.texture, HAPPY_GHAST_ROPES_TEXTURE_REF);
+    assert_eq!(rope.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!((rope.order, rope.submit_sequence), (0, 2));
+    assert_eq!(rope.overlay, ENTITY_VERTEX_NO_OVERLAY);
+    assert_eq!(ropes.cutout.vertices.len(), base_cutout_vertex_count * 2);
+    assert_ne!(
+        ropes.cutout.vertices[..24],
+        ropes.cutout.vertices[base_cutout_vertex_count..base_cutout_vertex_count + 24],
+        "the rope body is the base body inflated by CubeDeformation(0.2)"
+    );
+
+    let hidden = entity_model_textured_meshes(
+        &[harness
+            .with_happy_ghast_body_item(true)
+            .with_happy_ghast_body_item_is_harness(true)
+            .with_happy_ghast_is_leash_holder(true)
+            .with_invisible(true)
+            .with_invisible_to_player(true)],
+        &atlas,
+    );
+    assert_eq!(hidden.submissions.len(), 2);
+    assert_eq!(
+        hidden.submissions[0].texture,
+        HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF
+    );
+    assert_eq!(hidden.submissions[1].texture, HAPPY_GHAST_ROPES_TEXTURE_REF);
+    assert_eq!(hidden.submissions[0].submit_sequence, 0);
+    assert_eq!(hidden.submissions[1].submit_sequence, 1);
+
+    let baby = EntityModelInstance::new(
+        65,
+        EntityModelKind::HappyGhast { baby: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_happy_ghast_harness(Some(EntityDyeColor::Black))
+    .with_happy_ghast_body_item(true)
+    .with_happy_ghast_body_item_is_harness(true)
+    .with_happy_ghast_is_leash_holder(true);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.submissions.len(), 3);
+    assert_eq!(
+        baby_meshes.submissions[2].texture,
+        HAPPY_GHAST_ROPES_TEXTURE_REF
+    );
+    assert_eq!(
+        baby_meshes.submissions[2].transform,
+        happy_ghast_model_root_transform(baby, true)
+    );
+}
+
+#[test]
 fn happy_ghast_harness_foil_and_trim_follow_the_base_layer() {
     let (atlas, _) = build_entity_model_texture_atlas(&happy_ghast_texture_images()).unwrap();
     let trim_texture = EntityDynamicTexture { handle: 62_401 };
@@ -243,6 +340,9 @@ fn happy_ghast_harness_foil_and_trim_follow_the_base_layer() {
     .0;
     let instance = EntityModelInstance::happy_ghast(63, [0.0, 64.0, 0.0], 0.0)
         .with_happy_ghast_harness(Some(EntityDyeColor::Blue))
+        .with_happy_ghast_body_item(true)
+        .with_happy_ghast_body_item_is_harness(true)
+        .with_happy_ghast_is_leash_holder(true)
         .with_happy_ghast_harness_foil(true)
         .with_happy_ghast_harness_trim(Some(EntityArmorTrim {
             texture: trim_texture,
@@ -254,9 +354,9 @@ fn happy_ghast_harness_foil_and_trim_follow_the_base_layer() {
         None,
         Some(&dynamic_atlas),
     );
-    assert_eq!(meshes.submissions.len(), 4);
-    let [base, harness, foil, trim] = meshes.submissions.as_slice() else {
-        panic!("expected base, harness, foil, and trim")
+    assert_eq!(meshes.submissions.len(), 5);
+    let [base, harness, foil, trim, ropes] = meshes.submissions.as_slice() else {
+        panic!("expected base, harness, foil, trim, and ropes")
     };
     assert_eq!(base.texture, HAPPY_GHAST_TEXTURE_REF);
     assert_eq!(harness.texture, HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF);
@@ -278,6 +378,9 @@ fn happy_ghast_harness_foil_and_trim_follow_the_base_layer() {
         EntityModelLayerRenderType::ArmorTrimCutoutNoCull
     );
     assert_eq!((trim.order, trim.submit_sequence), (2, 3));
+    assert_eq!(ropes.texture, HAPPY_GHAST_ROPES_TEXTURE_REF);
+    assert_eq!(ropes.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!((ropes.order, ropes.submit_sequence), (0, 4));
 }
 
 #[test]

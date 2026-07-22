@@ -2505,6 +2505,15 @@ entity_model_source_state! {
     /// Vanilla `ItemStack.hasFoil()` for a recognized happy-ghast harness item.
     #[serde(default)]
     pub happy_ghast_harness_foil: bool,
+    /// Whether the happy ghast's current BODY item belongs to the synchronized
+    /// `minecraft:harnesses` item tag. This is deliberately independent of whether bbb can resolve
+    /// the item's equipment asset for the harness model.
+    #[serde(default)]
+    pub happy_ghast_body_item_is_harness: bool,
+    /// Vanilla `HappyGhastRenderState.isLeashHolder`, copied from the generated
+    /// `IS_LEASH_HOLDER` synchronized Boolean. `RopesLayer` combines this with the harness tag gate.
+    #[serde(default)]
+    pub happy_ghast_is_leash_holder: bool,
     /// Vanilla `HappyGhastRenderState.isRidden`: true while the happy ghast has passengers; the
     /// harness model uses it to lower the goggles into the ridden pose.
     #[serde(default)]

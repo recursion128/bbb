@@ -13,6 +13,14 @@ pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST_HARNESS: &str =
     "minecraft:happy_ghast_harness#main";
 pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST_BABY_HARNESS: &str =
     "minecraft:happy_ghast_baby_harness#main";
+pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST_ROPES: &str =
+    "minecraft:happy_ghast_ropes#main";
+pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST_BABY_ROPES: &str =
+    "minecraft:happy_ghast_baby_ropes#main";
+
+/// Vanilla `LayerDefinitions`: both happy-ghast rope model layers use
+/// `HappyGhastModel.createBodyLayer(..., new CubeDeformation(0.2F))`.
+pub(in crate::entity_models) const HAPPY_GHAST_ROPES_DEFORMATION: f32 = 0.2;
 
 /// The nine happy-ghast tentacle lengths, baked verbatim from vanilla 26.1
 /// `HappyGhastModel.createBodyLayer` (each `addBox(-1, 0, -1, 2, len, 2)`). Unlike the regular
@@ -119,13 +127,21 @@ pub(in crate::entity_models) struct HappyGhastModel {
 
 impl HappyGhastModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        Self::with_deformation(baby, 0.0)
+    }
+
+    pub(in crate::entity_models) fn new_ropes(baby: bool) -> Self {
+        Self::with_deformation(baby, HAPPY_GHAST_ROPES_DEFORMATION)
+    }
+
+    fn with_deformation(baby: bool, deformation: f32) -> Self {
         let mut body_children: Vec<(&'static str, ModelPart)> = Vec::with_capacity(10);
         if baby {
             body_children.push((
                 "inner_body",
                 ModelPart::leaf(
                     HAPPY_GHAST_BABY_INNER_BODY_POSE,
-                    HAPPY_GHAST_BABY_INNER_BODY_CUBE.to_vec(),
+                    deformed_cubes(&HAPPY_GHAST_BABY_INNER_BODY_CUBE, deformation),
                 ),
             ));
         }
@@ -134,7 +150,7 @@ impl HappyGhastModel {
                 name,
                 ModelPart::leaf(
                     happy_ghast_tentacle_pose(i),
-                    vec![happy_ghast_tentacle_cube(i)],
+                    vec![deformed_cube(happy_ghast_tentacle_cube(i), deformation)],
                 ),
             ));
         }
@@ -146,12 +162,36 @@ impl HappyGhastModel {
                     "body",
                     ModelPart::new(
                         HAPPY_GHAST_BODY_POSE,
-                        HAPPY_GHAST_BODY_CUBE.to_vec(),
+                        deformed_cubes(&HAPPY_GHAST_BODY_CUBE, deformation),
                         body_children,
                     ),
                 )],
             ),
         }
+    }
+}
+
+fn deformed_cubes(cubes: &[ModelCube], deformation: f32) -> Vec<ModelCube> {
+    cubes
+        .iter()
+        .copied()
+        .map(|cube| deformed_cube(cube, deformation))
+        .collect()
+}
+
+fn deformed_cube(cube: ModelCube, deformation: f32) -> ModelCube {
+    ModelCube {
+        min: [
+            cube.min[0] - deformation,
+            cube.min[1] - deformation,
+            cube.min[2] - deformation,
+        ],
+        size: [
+            cube.size[0] + deformation * 2.0,
+            cube.size[1] + deformation * 2.0,
+            cube.size[2] + deformation * 2.0,
+        ],
+        ..cube
     }
 }
 
