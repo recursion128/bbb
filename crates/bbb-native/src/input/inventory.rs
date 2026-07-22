@@ -524,6 +524,7 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
     }
     if button_num == 0
         && maybe_queue_merchant_trade_click(
+            input,
             world,
             counters,
             net_commands,
@@ -1087,6 +1088,7 @@ fn maybe_queue_beacon_button_click(
 }
 
 fn maybe_queue_merchant_trade_click(
+    input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -1096,6 +1098,12 @@ fn maybe_queue_merchant_trade_click(
     let Some(item) = merchant_trade_at_position(world, cursor_position, surface_size) else {
         return false;
     };
+    input.merchant_focused_trade_row = world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.merchant_offers.as_ref())
+        .map(|offers| item - offers.local_scroll_offset);
     world.set_local_merchant_selected_offer(item);
     queue_select_trade_command(counters, net_commands, SelectTradeCommand { item });
     true

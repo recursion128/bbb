@@ -11,7 +11,10 @@ use bbb_pack::{
     FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,
 };
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID;
-use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID;
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+};
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -17448,7 +17451,19 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
     assert!(world.set_local_merchant_selected_offer(2));
     assert!(world.scroll_local_merchant_offers(1));
 
-    let screen = hud_inventory_screen(&world, None, Some(38), 0.0).unwrap();
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        Some(38),
+        InventoryHudLocalState {
+            cursor_position: Some((6, 19)),
+            merchant_focused_trade_row: Some(1),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
 
     assert_eq!(screen.width, 276);
     assert_eq!(screen.height, 166);
@@ -17465,9 +17480,42 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
             [276.0 / 512.0, 166.0 / 256.0],
         )
     );
-    assert_eq!(
-        screen.background_layers[1],
-        hud_inventory_background_layer(
+    assert!(screen
+        .background_layers
+        .contains(&hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted,
+            5,
+            18,
+            88,
+            20,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        )));
+    assert!(screen
+        .background_layers
+        .contains(&hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted,
+            5,
+            38,
+            88,
+            20,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        )));
+    assert!(screen
+        .background_layers
+        .contains(&hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::WidgetButton,
+            5,
+            58,
+            88,
+            20,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        )));
+    assert!(screen
+        .background_layers
+        .contains(&hud_inventory_background_layer(
             HudInventoryBackgroundTexture::VillagerTradeArrow,
             60,
             22,
@@ -17475,11 +17523,10 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
             9,
             [0.0, 0.0],
             [1.0, 1.0],
-        )
-    );
-    assert_eq!(
-        screen.background_layers[2],
-        hud_inventory_background_layer(
+        )));
+    assert!(screen
+        .background_layers
+        .contains(&hud_inventory_background_layer(
             HudInventoryBackgroundTexture::VillagerTradeArrowOutOfStock,
             60,
             42,
@@ -17487,8 +17534,18 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
             9,
             [0.0, 0.0],
             [1.0, 1.0],
-        )
-    );
+        )));
+    assert!(screen
+        .foreground_layers
+        .contains(&hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::VillagerDiscountStrikethrough,
+            17,
+            31,
+            9,
+            2,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        )));
     assert!(screen
         .background_layers
         .contains(&hud_inventory_background_layer(
@@ -17536,13 +17593,217 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_merchant_future_xp_result() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+        title: "Merchant".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+    items[2] = item_stack(101, 1);
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    assert!(world.apply_merchant_offers(merchant_offers(7, 8, None)));
+    assert!(world.set_local_merchant_selected_offer(2));
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+    assert!(screen
+        .background_layers
+        .contains(&hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::VillagerExperienceBarResult,
+            199,
+            16,
+            10,
+            5,
+            [63.0 / 102.0, 0.0],
+            [73.0 / 102.0, 1.0],
+        )));
+}
+
+#[test]
+fn hud_inventory_screen_projects_merchant_component_cost_decorations_and_tooltips() {
+    let root = unique_runtime_temp_dir("merchant-trade-presentation");
+    write_runtime_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+        title: "Merchant".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut packet = merchant_offers(7, 1, None);
+    let offer = &mut packet.offers[0];
+    offer.buy_a = item_cost(1, 10);
+    offer.buy_a.component_predicate.components.added = 2;
+    offer.buy_a.component_predicate.components.added_type_ids = vec![
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+    ];
+    offer.buy_a.component_predicate.components.custom_name = Some("Predicate Cost".to_string());
+    offer.buy_a.component_predicate.components.item_model =
+        Some("minecraft:test_combo".to_string());
+    offer.buy_b = Some(item_cost(0, 2));
+    offer.sell = item_stack(0, 3);
+    offer.sell.component_patch.added = 1;
+    offer
+        .sell
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID);
+    offer.sell.component_patch.custom_name = Some("Trade Result".to_string());
+    offer.sell.component_patch.max_damage = Some(20);
+    offer.sell.component_patch.damage = Some(5);
+    offer.special_price_diff = -2;
+    offer.price_multiplier = 0.0;
+    offer.demand = 0;
+    let result = offer.sell.clone();
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+    items[2] = result;
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    assert!(world.apply_merchant_offers(packet.clone()));
+
+    let screen_at = |cursor_position| {
+        hud_inventory_screen_with_local_state(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            None,
+            InventoryHudLocalState {
+                cursor_position: Some(cursor_position),
+                ..InventoryHudLocalState::default()
+            },
+            0.0,
+        )
+        .unwrap()
+    };
+    let cost_a_screen = screen_at((10, 19));
+
+    assert_eq!(cost_a_screen.floating_items.len(), 5);
+    assert_eq!(
+        cost_a_screen
+            .floating_items
+            .iter()
+            .take(3)
+            .map(|item| (item.x, item.y, item.draw_decorations))
+            .collect::<Vec<_>>(),
+        vec![(10, 19, false), (40, 19, true), (73, 19, true)]
+    );
+    assert!(!cost_a_screen.floating_items[0].icon.layers.is_empty());
+    assert_eq!(
+        cost_a_screen.floating_items[1]
+            .icon
+            .count_label
+            .as_ref()
+            .map(|label| label.text.as_str()),
+        Some("2")
+    );
+    assert_eq!(
+        cost_a_screen.floating_items[2]
+            .icon
+            .count_label
+            .as_ref()
+            .map(|label| label.text.as_str()),
+        Some("3")
+    );
+    assert!(cost_a_screen.floating_items[2]
+        .icon
+        .durability_bar
+        .is_some());
+    assert!(cost_a_screen.foreground_items.is_empty());
+    assert_eq!(
+        cost_a_screen
+            .floating_items
+            .iter()
+            .skip(3)
+            .map(|item| {
+                (
+                    item.x,
+                    item.y,
+                    item.icon
+                        .count_label
+                        .as_ref()
+                        .map(|label| label.text.as_str()),
+                    item.icon.layers.is_empty(),
+                    item.draw_decorations,
+                )
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (10, 19, Some("10"), true, true),
+            (24, 19, Some("8"), true, true),
+        ]
+    );
+    assert_eq!(
+        cost_a_screen.tooltip.as_ref().unwrap().lines[0].text,
+        "Predicate Cost"
+    );
+    assert_eq!(
+        screen_at((40, 19)).tooltip.unwrap().lines[0].text,
+        "Test Combo"
+    );
+    assert_eq!(
+        screen_at((73, 19)).tooltip.unwrap().lines[0].text,
+        "Trade Result"
+    );
+    packet.offers[0].is_out_of_stock = true;
+    packet.offers[0].uses = packet.offers[0].max_uses;
+    assert!(world.apply_merchant_offers(packet));
+    let deprecated = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((186, 35)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+    assert!(!deprecated.background_layers.iter().any(|layer| {
+        layer.texture == HudInventoryBackgroundTexture::VillagerExperienceBarResult
+    }));
+    let deprecated = deprecated.tooltip.unwrap();
+    assert_eq!(
+        (deprecated.slot_id, deprecated.x, deprecated.y),
+        (u16::MAX, 186, 35)
+    );
+    assert_eq!(
+        deprecated.lines,
+        vec![HudInventoryTooltipLine {
+            text: "Villagers restock up to two times per day.".to_string(),
+            tint: TOOLTIP_TEST_WHITE,
+            runs: Vec::new(),
+        }]
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn merchant_offer_cost_a_stack_uses_vanilla_modified_cost_count() {
     let mut world = WorldStore::new();
     world.set_default_item_max_stack_sizes(std::collections::BTreeMap::from([(42, 16)]));
     let mut buy_a = item_cost(42, 10);
     buy_a.component_predicate.components.added = 1;
-    buy_a.component_predicate.components.added_type_ids =
-        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID];
+    buy_a.component_predicate.components.added_type_ids = vec![
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+    ];
+    buy_a.component_predicate.components.max_stack_size = Some(12);
     buy_a.component_predicate.components.item_model = Some("minecraft:emerald".to_string());
     let offer = bbb_world::MerchantOfferState {
         buy_a,
@@ -17559,11 +17820,15 @@ fn merchant_offer_cost_a_stack_uses_vanilla_modified_cost_count() {
 
     let stack = merchant_offer_cost_a_stack(&world, &offer);
     assert_eq!(stack.item_id, Some(42));
-    assert_eq!(stack.count, 16);
+    assert_eq!(stack.count, 12);
     assert_eq!(
         stack.component_patch.added_type_ids,
-        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID]
+        vec![
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+        ]
     );
+    assert_eq!(stack.component_patch.max_stack_size, Some(12));
     assert_eq!(
         stack.component_patch.item_model.as_deref(),
         Some("minecraft:emerald")

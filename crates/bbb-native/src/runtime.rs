@@ -547,6 +547,10 @@ const FURNACE_BURN_PROGRESS_SPRITE_WIDTH: u32 = 24;
 const FURNACE_BURN_PROGRESS_SPRITE_HEIGHT: u32 = 16;
 const ITEM_DURABILITY_BAR_MAX_WIDTH: i32 = 13;
 const MERCHANT_VISIBLE_OFFER_COUNT: usize = 7;
+const MERCHANT_TRADE_BUTTON_X: i32 = 5;
+const MERCHANT_TRADE_BUTTON_Y: i32 = 18;
+const MERCHANT_TRADE_BUTTON_WIDTH: u32 = 88;
+const MERCHANT_TRADE_BUTTON_HEIGHT: u32 = 20;
 const MERCHANT_TRADE_COST_A_X: i32 = 10;
 const MERCHANT_TRADE_COST_B_X: i32 = 40;
 const MERCHANT_TRADE_RESULT_X: i32 = 73;
@@ -556,6 +560,10 @@ const MERCHANT_TRADE_ARROW_X: i32 = 60;
 const MERCHANT_TRADE_ARROW_Y: i32 = 22;
 const MERCHANT_TRADE_ARROW_WIDTH: u32 = 10;
 const MERCHANT_TRADE_ARROW_HEIGHT: u32 = 9;
+const MERCHANT_DISCOUNT_STRIKETHROUGH_X: i32 = 17;
+const MERCHANT_DISCOUNT_STRIKETHROUGH_Y: i32 = 31;
+const MERCHANT_DISCOUNT_STRIKETHROUGH_WIDTH: u32 = 9;
+const MERCHANT_DISCOUNT_STRIKETHROUGH_HEIGHT: u32 = 2;
 const MERCHANT_SCROLLER_X: i32 = 94;
 const MERCHANT_SCROLLER_Y: i32 = 18;
 const MERCHANT_SCROLLER_WIDTH: u32 = 6;
@@ -566,6 +574,10 @@ const MERCHANT_OUT_OF_STOCK_X: i32 = 182;
 const MERCHANT_OUT_OF_STOCK_Y: i32 = 35;
 const MERCHANT_OUT_OF_STOCK_WIDTH: u32 = 28;
 const MERCHANT_OUT_OF_STOCK_HEIGHT: u32 = 21;
+const MERCHANT_DEPRECATED_TOOLTIP_X: i32 = 186;
+const MERCHANT_DEPRECATED_TOOLTIP_Y: i32 = 35;
+const MERCHANT_DEPRECATED_TOOLTIP_WIDTH: i32 = 22;
+const MERCHANT_DEPRECATED_TOOLTIP_HEIGHT: i32 = 21;
 const MERCHANT_XP_BAR_X: i32 = 136;
 const MERCHANT_XP_BAR_Y: i32 = 16;
 const MERCHANT_XP_BAR_WIDTH: u32 = 102;
@@ -611,6 +623,7 @@ struct InventoryHudLocalState {
     advancement_hover_fade: f32,
     dialog_ime_preedit: Option<DialogImePreeditHudState>,
     cursor_position: Option<(i32, i32)>,
+    merchant_focused_trade_row: Option<i32>,
     quick_craft_button_num: Option<i8>,
     quick_craft_slots: Vec<i16>,
     shift_down: bool,
@@ -2935,6 +2948,7 @@ pub(crate) fn update_renderer_from_publication(
                 advancement_hover_fade,
                 dialog_ime_preedit: input.dialog_ime_preedit_hud_state(),
                 cursor_position: input.inventory_cursor_position(),
+                merchant_focused_trade_row: input.merchant_focused_trade_row(),
                 quick_craft_button_num: input.inventory_quick_craft_button_num(),
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
                 shift_down: input.shift_down(),
@@ -7628,12 +7642,38 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
     }
     offset_hud_inventory_text_labels(&mut recipe_book_text_labels, recipe_book_x);
     text_labels.extend(recipe_book_text_labels);
+    let foreground_layers = if layout.background == InventoryScreenBackground::Merchant {
+        hud_merchant_discount_layers(world)
+    } else {
+        Vec::new()
+    };
+    let inventory_tooltip = hud_inventory_tooltip(
+        world,
+        item_runtime,
+        hovered_slot_id,
+        &layout.slots,
+        container,
+        local_state.advanced_item_tooltips,
+        world.gameplay().game_type == GameType::Creative.id(),
+    );
+    let tooltip = if layout.background == InventoryScreenBackground::Merchant {
+        hud_merchant_trade_tooltip(
+            world,
+            item_runtime,
+            local_state.cursor_position,
+            local_state.advanced_item_tooltips,
+            world.gameplay().game_type == GameType::Creative.id(),
+        )
+        .or(inventory_tooltip)
+    } else {
+        inventory_tooltip
+    };
 
     Some(HudInventoryScreen {
         width: u32::try_from(layout.width).unwrap_or_default(),
         height: u32::try_from(layout.height).unwrap_or_default(),
         background_layers,
-        foreground_layers: Vec::new(),
+        foreground_layers,
         fill_layers,
         slots,
         floating_items,
@@ -7644,15 +7684,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         scroll_area: None,
         preedit_overlay: None,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
-        tooltip: hud_inventory_tooltip(
-            world,
-            item_runtime,
-            hovered_slot_id,
-            &layout.slots,
-            container,
-            local_state.advanced_item_tooltips,
-            world.gameplay().game_type == GameType::Creative.id(),
-        ),
+        tooltip,
     })
 }
 
@@ -11127,6 +11159,73 @@ fn hud_inventory_tooltip(
     })
 }
 
+fn hud_merchant_trade_tooltip(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<(i32, i32)>,
+    advanced: bool,
+    creative: bool,
+) -> Option<HudInventoryTooltip> {
+    let (cursor_x, cursor_y) = cursor_position?;
+    let offers = merchant_offers_state(world)?;
+    if offers.can_restock
+        && merchant_selected_offer(offers).is_some_and(|offer| offer.is_out_of_stock)
+        && cursor_x >= MERCHANT_DEPRECATED_TOOLTIP_X
+        && cursor_x < MERCHANT_DEPRECATED_TOOLTIP_X + MERCHANT_DEPRECATED_TOOLTIP_WIDTH
+        && cursor_y >= MERCHANT_DEPRECATED_TOOLTIP_Y
+        && cursor_y < MERCHANT_DEPRECATED_TOOLTIP_Y + MERCHANT_DEPRECATED_TOOLTIP_HEIGHT
+    {
+        return Some(HudInventoryTooltip {
+            slot_id: u16::MAX,
+            x: cursor_x,
+            y: cursor_y,
+            lines: vec![HudInventoryTooltipLine {
+                text: localized_gui_text(
+                    item_runtime,
+                    "merchant.deprecated",
+                    "Villagers restock up to two times per day.",
+                ),
+                tint: [1.0, 1.0, 1.0, 1.0],
+                runs: Vec::new(),
+            }],
+        });
+    }
+
+    if cursor_x < MERCHANT_TRADE_BUTTON_X
+        || cursor_x >= MERCHANT_TRADE_BUTTON_X + MERCHANT_TRADE_BUTTON_WIDTH as i32
+        || cursor_y < MERCHANT_TRADE_BUTTON_Y
+    {
+        return None;
+    }
+    let row = (cursor_y - MERCHANT_TRADE_BUTTON_Y) / MERCHANT_TRADE_ROW_HEIGHT;
+    if !(0..MERCHANT_VISIBLE_OFFER_COUNT as i32).contains(&row)
+        || cursor_y
+            >= MERCHANT_TRADE_BUTTON_Y
+                + row * MERCHANT_TRADE_ROW_HEIGHT
+                + MERCHANT_TRADE_BUTTON_HEIGHT as i32
+    {
+        return None;
+    }
+    let offer_index = merchant_scroll_offset(offers).checked_add(usize::try_from(row).ok()?)?;
+    let offer = offers.offers.get(offer_index)?;
+    let item = if cursor_x < MERCHANT_TRADE_BUTTON_X + 20 {
+        merchant_offer_cost_a_stack(world, offer)
+    } else if cursor_x > MERCHANT_TRADE_BUTTON_X + 30 && cursor_x < MERCHANT_TRADE_BUTTON_X + 50 {
+        let cost_b = offer.buy_b.as_ref()?;
+        item_cost_stack(cost_b, cost_b.count)
+    } else if cursor_x > MERCHANT_TRADE_BUTTON_X + 65 {
+        offer.sell.clone()
+    } else {
+        return None;
+    };
+    Some(HudInventoryTooltip {
+        slot_id: u16::MAX,
+        x: cursor_x,
+        y: cursor_y,
+        lines: hud_item_tooltip_lines(world, item_runtime, &item, advanced, creative)?,
+    })
+}
+
 fn hud_item_tooltip_lines(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -11268,6 +11367,15 @@ fn hud_inventory_floating_items(
         ),
         _ => Vec::new(),
     };
+    if background == InventoryScreenBackground::Merchant {
+        items.extend(hud_merchant_trade_decorations(
+            world,
+            item_runtime,
+            shift_down,
+            keybind_context,
+            partial_tick,
+        ));
+    }
     if main_offset_x != 0 {
         for item in &mut items {
             item.x += main_offset_x;
@@ -11846,7 +11954,12 @@ fn hud_inventory_background_layers(
                 [0.0, 0.0],
                 [276.0 / 512.0, 166.0 / 256.0],
             )];
-            push_merchant_trade_layers(world, &mut layers);
+            push_merchant_trade_layers(
+                world,
+                &mut layers,
+                local_state.cursor_position,
+                local_state.merchant_focused_trade_row,
+            );
             layers
         }
         InventoryScreenBackground::ShulkerBox => {
@@ -11929,6 +12042,9 @@ fn hud_merchant_trade_items(
         .enumerate()
     {
         let row_y = MERCHANT_TRADE_ITEM_Y + row as i32 * MERCHANT_TRADE_ROW_HEIGHT;
+        let cost_a = merchant_offer_cost_a_stack(world, offer);
+        let base_cost_a = merchant_offer_base_cost_a_stack(offer);
+        let cost_a_is_modified = cost_a.count != base_cost_a.count;
         push_merchant_trade_item(
             world,
             item_runtime,
@@ -11939,7 +12055,8 @@ fn hud_merchant_trade_items(
             &mut items,
             MERCHANT_TRADE_COST_A_X,
             row_y,
-            merchant_offer_cost_a_stack(world, offer),
+            cost_a,
+            !cost_a_is_modified,
         );
         if let Some(cost_b) = offer.buy_b.as_ref() {
             push_merchant_trade_item(
@@ -11953,6 +12070,7 @@ fn hud_merchant_trade_items(
                 MERCHANT_TRADE_COST_B_X,
                 row_y,
                 item_cost_stack(cost_b, cost_b.count),
+                true,
             );
         }
         push_merchant_trade_item(
@@ -11966,6 +12084,7 @@ fn hud_merchant_trade_items(
             MERCHANT_TRADE_RESULT_X,
             row_y,
             offer.sell.clone(),
+            true,
         );
     }
     items
@@ -11982,6 +12101,7 @@ fn push_merchant_trade_item(
     x: i32,
     y: i32,
     item: ItemStackSummary,
+    draw_decorations: bool,
 ) {
     if let Some(icon) = hud_item_icon_for_stack(
         world,
@@ -12005,10 +12125,105 @@ fn push_merchant_trade_item(
             scale_y: 1.0,
             icon,
             scissor: None,
-            draw_decorations: true,
+            draw_decorations,
             block_model,
         });
     }
+}
+
+fn hud_merchant_trade_decorations(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    let Some(offers) = merchant_offers_state(world) else {
+        return Vec::new();
+    };
+    let mut decorations = Vec::new();
+    for (row, offer) in offers
+        .offers
+        .iter()
+        .skip(merchant_scroll_offset(offers))
+        .take(MERCHANT_VISIBLE_OFFER_COUNT)
+        .enumerate()
+    {
+        let base_cost = merchant_offer_base_cost_a_stack(offer);
+        let modified_cost = merchant_offer_cost_a_stack(world, offer);
+        if base_cost.count == modified_cost.count {
+            continue;
+        }
+        let y = MERCHANT_TRADE_ITEM_Y + row as i32 * MERCHANT_TRADE_ROW_HEIGHT;
+        push_merchant_trade_decoration(
+            world,
+            item_runtime,
+            shift_down,
+            keybind_context,
+            partial_tick,
+            &mut decorations,
+            MERCHANT_TRADE_COST_A_X,
+            y,
+            &base_cost,
+        );
+        push_merchant_trade_decoration(
+            world,
+            item_runtime,
+            shift_down,
+            keybind_context,
+            partial_tick,
+            &mut decorations,
+            MERCHANT_TRADE_COST_A_X + 14,
+            y,
+            &modified_cost,
+        );
+    }
+    decorations
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_merchant_trade_decoration(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+    decorations: &mut Vec<HudInventoryItem>,
+    x: i32,
+    y: i32,
+    item: &ItemStackSummary,
+) {
+    let Some(mut icon) = hud_item_icon_for_stack(
+        world,
+        item_runtime,
+        item,
+        None,
+        false,
+        false,
+        false,
+        false,
+        shift_down,
+        keybind_context,
+        0,
+        partial_tick,
+    ) else {
+        return;
+    };
+    icon.layers.clear();
+    icon.foil = HudItemFoil::None;
+    if item.count == 1 {
+        icon.count_label = Some(HudItemCountLabel::new("1"));
+    }
+    decorations.push(HudInventoryItem {
+        x,
+        y,
+        scale: 1.0,
+        scale_y: 1.0,
+        icon,
+        scissor: None,
+        draw_decorations: true,
+        block_model: None,
+    });
 }
 
 fn hud_stonecutter_recipe_items(
@@ -12234,7 +12449,12 @@ fn stonecutter_slot_display_item_stack(display: &SlotDisplaySummary) -> Option<I
     }
 }
 
-fn push_merchant_trade_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackgroundLayer>) {
+fn push_merchant_trade_layers(
+    world: &WorldStore,
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    cursor_position: Option<(i32, i32)>,
+    focused_trade_row: Option<i32>,
+) {
     let Some(offers) = merchant_offers_state(world) else {
         return;
     };
@@ -12242,13 +12462,39 @@ fn push_merchant_trade_layers(world: &WorldStore, layers: &mut Vec<HudInventoryB
         return;
     }
 
-    for (row, offer) in offers
+    let visible_offers = offers
         .offers
         .iter()
         .skip(merchant_scroll_offset(offers))
         .take(MERCHANT_VISIBLE_OFFER_COUNT)
-        .enumerate()
-    {
+        .enumerate();
+    for (row, _) in visible_offers.clone() {
+        let row = i32::try_from(row).unwrap_or_default();
+        let row_y = MERCHANT_TRADE_BUTTON_Y + row * MERCHANT_TRADE_ROW_HEIGHT;
+        let highlighted = focused_trade_row == Some(row)
+            || cursor_position.is_some_and(|(cursor_x, cursor_y)| {
+                cursor_x >= MERCHANT_TRADE_BUTTON_X
+                    && cursor_x < MERCHANT_TRADE_BUTTON_X + MERCHANT_TRADE_BUTTON_WIDTH as i32
+                    && cursor_y >= row_y
+                    && cursor_y < row_y + MERCHANT_TRADE_BUTTON_HEIGHT as i32
+            });
+        layers.push(hud_inventory_background_layer(
+            if highlighted {
+                HudInventoryBackgroundTexture::WidgetButtonHighlighted
+            } else {
+                HudInventoryBackgroundTexture::WidgetButton
+            },
+            MERCHANT_TRADE_BUTTON_X,
+            row_y,
+            MERCHANT_TRADE_BUTTON_WIDTH,
+            MERCHANT_TRADE_BUTTON_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+
+    for (row, offer) in visible_offers {
+        let row = i32::try_from(row).unwrap_or_default();
         layers.push(hud_inventory_background_layer(
             if offer.is_out_of_stock {
                 HudInventoryBackgroundTexture::VillagerTradeArrowOutOfStock
@@ -12256,7 +12502,7 @@ fn push_merchant_trade_layers(world: &WorldStore, layers: &mut Vec<HudInventoryB
                 HudInventoryBackgroundTexture::VillagerTradeArrow
             },
             MERCHANT_TRADE_ARROW_X,
-            MERCHANT_TRADE_ARROW_Y + row as i32 * MERCHANT_TRADE_ROW_HEIGHT,
+            MERCHANT_TRADE_ARROW_Y + row * MERCHANT_TRADE_ROW_HEIGHT,
             MERCHANT_TRADE_ARROW_WIDTH,
             MERCHANT_TRADE_ARROW_HEIGHT,
             [0.0, 0.0],
@@ -12310,8 +12556,51 @@ fn push_merchant_trade_layers(world: &WorldStore, layers: &mut Vec<HudInventoryB
                 [0.0, 0.0],
                 [current_width as f32 / MERCHANT_XP_BAR_WIDTH as f32, 1.0],
             ));
+            if let Some(result_width) = merchant_xp_result_width(world, offers, current_width) {
+                layers.push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::VillagerExperienceBarResult,
+                    MERCHANT_XP_BAR_X + current_width as i32,
+                    MERCHANT_XP_BAR_Y,
+                    result_width,
+                    MERCHANT_XP_BAR_HEIGHT,
+                    [current_width as f32 / MERCHANT_XP_BAR_WIDTH as f32, 0.0],
+                    [
+                        (current_width + result_width) as f32 / MERCHANT_XP_BAR_WIDTH as f32,
+                        1.0,
+                    ],
+                ));
+            }
         }
     }
+}
+
+fn hud_merchant_discount_layers(world: &WorldStore) -> Vec<HudInventoryBackgroundLayer> {
+    let Some(offers) = merchant_offers_state(world) else {
+        return Vec::new();
+    };
+    offers
+        .offers
+        .iter()
+        .skip(merchant_scroll_offset(offers))
+        .take(MERCHANT_VISIBLE_OFFER_COUNT)
+        .enumerate()
+        .filter(|(_, offer)| {
+            merchant_offer_base_cost_a_stack(offer).count
+                != merchant_offer_cost_a_stack(world, offer).count
+        })
+        .map(|(row, _)| {
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerDiscountStrikethrough,
+                MERCHANT_DISCOUNT_STRIKETHROUGH_X,
+                MERCHANT_DISCOUNT_STRIKETHROUGH_Y
+                    + i32::try_from(row).unwrap_or_default() * MERCHANT_TRADE_ROW_HEIGHT,
+                MERCHANT_DISCOUNT_STRIKETHROUGH_WIDTH,
+                MERCHANT_DISCOUNT_STRIKETHROUGH_HEIGHT,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+        })
+        .collect()
 }
 
 fn merchant_offers_state(world: &WorldStore) -> Option<&MerchantOffersState> {
@@ -12339,13 +12628,30 @@ fn merchant_scroll_offset(offers: &MerchantOffersState) -> usize {
 }
 
 fn merchant_offer_cost_a_stack(world: &WorldStore, offer: &MerchantOfferState) -> ItemStackSummary {
-    let max_stack_size = world.item_max_stack_size_for_protocol_id(offer.buy_a.item_id);
+    let max_stack_size = offer
+        .buy_a
+        .component_predicate
+        .components
+        .max_stack_size
+        .unwrap_or_else(|| world.item_max_stack_size_for_protocol_id(offer.buy_a.item_id))
+        .clamp(
+            1,
+            bbb_protocol::item_types::VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE,
+        );
     let demand_diff = (offer.buy_a.count as f32 * offer.demand as f32 * offer.price_multiplier)
         .floor()
         .max(0.0) as i32;
-    let count =
-        (offer.buy_a.count + demand_diff + offer.special_price_diff).clamp(1, max_stack_size);
+    let count = offer
+        .buy_a
+        .count
+        .wrapping_add(demand_diff)
+        .wrapping_add(offer.special_price_diff)
+        .clamp(1, max_stack_size);
     item_cost_stack(&offer.buy_a, count)
+}
+
+fn merchant_offer_base_cost_a_stack(offer: &MerchantOfferState) -> ItemStackSummary {
+    item_cost_stack(&offer.buy_a, offer.buy_a.count)
 }
 
 fn item_cost_stack(cost: &ItemCostSummary, count: i32) -> ItemStackSummary {
@@ -12385,6 +12691,33 @@ fn merchant_xp_current_width(offers: &MerchantOffersState) -> Option<u32> {
     let multiplier = MERCHANT_XP_BAR_WIDTH as f32 / (max_xp - min_xp) as f32;
     let width = (multiplier * (offers.villager_xp - min_xp) as f32).floor() as u32;
     Some(width.min(MERCHANT_XP_BAR_WIDTH))
+}
+
+fn merchant_xp_result_width(
+    world: &WorldStore,
+    offers: &MerchantOffersState,
+    current_width: u32,
+) -> Option<u32> {
+    let offer = merchant_selected_offer(offers)?;
+    if offer.is_out_of_stock || offer.xp <= 0 {
+        return None;
+    }
+    let result = open_container_slot_item(world, 2)?;
+    if item_stack_is_empty(result) || result != &offer.sell {
+        return None;
+    }
+    let level = usize::try_from(offers.villager_level).ok()?;
+    if !(1..5).contains(&level) {
+        return None;
+    }
+    let min_xp = VILLAGER_NEXT_LEVEL_XP_THRESHOLDS[level - 1];
+    let max_xp = VILLAGER_NEXT_LEVEL_XP_THRESHOLDS[level];
+    if max_xp <= min_xp {
+        return None;
+    }
+    let multiplier = MERCHANT_XP_BAR_WIDTH as f32 / (max_xp - min_xp) as f32;
+    let width = (offer.xp as f32 * multiplier).floor() as u32;
+    Some(width.min(MERCHANT_XP_BAR_WIDTH.saturating_sub(current_width))).filter(|width| *width > 0)
 }
 
 fn anvil_input_slot_has_item(world: &WorldStore) -> bool {

@@ -3315,6 +3315,7 @@ fn merchant_trade_row_click_queues_select_trade_command() {
 
     assert_eq!(counters.select_trade_commands_queued, 1);
     assert_eq!(counters.container_click_commands_queued, 0);
+    assert_eq!(input.merchant_focused_trade_row(), Some(3));
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::SelectTrade(SelectTradeCommand { item: 3 })
@@ -3508,6 +3509,7 @@ fn merchant_trade_row_click_ignores_missing_offer() {
 
     assert_eq!(counters.select_trade_commands_queued, 0);
     assert_eq!(counters.container_click_commands_queued, 0);
+    assert_eq!(input.merchant_focused_trade_row(), None);
     assert!(rx.try_recv().is_err());
 }
 

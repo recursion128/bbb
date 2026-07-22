@@ -660,6 +660,7 @@ pub(crate) struct ClientInputState {
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
+    merchant_focused_trade_row: Option<i32>,
     chat_entry: Option<ChatEntryState>,
     chat_scroll_lines: usize,
     #[cfg(test)]
@@ -1035,6 +1036,7 @@ impl ClientInputState {
             sign_editor: self.sign_editor.clone(),
             dismissed_sign_editor: self.dismissed_sign_editor.clone(),
             merchant_trade_scrolling: self.merchant_trade_scrolling,
+            merchant_focused_trade_row: self.merchant_focused_trade_row,
             chat_entry: self.chat_entry.clone(),
             chat_scroll_lines: self.chat_scroll_lines,
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
@@ -1187,6 +1189,7 @@ impl ClientInputState {
         self.inventory_quick_craft_slots.clear();
         self.loom_pattern_scrolling = false;
         self.merchant_trade_scrolling = false;
+        self.merchant_focused_trade_row = None;
         self.stonecutter_recipe_scrolling = false;
         self.anvil_rename_input = None;
         self.anvil_rename_text.clear();
@@ -1645,6 +1648,10 @@ impl ClientInputState {
 
     pub(crate) fn inventory_cursor_position(&self) -> Option<(i32, i32)> {
         self.inventory_cursor_position
+    }
+
+    pub(crate) fn merchant_focused_trade_row(&self) -> Option<i32> {
+        self.merchant_focused_trade_row
     }
 
     pub(crate) fn update_screen_cursor_position(
