@@ -155,13 +155,13 @@ fn enderman_creepy_render_offset_seed(instance: EntityModelInstance) -> i64 {
     seed as i64
 }
 
-struct LegacyRandom {
+pub(in crate::entity_models) struct LegacyRandom {
     seed: u64,
     next_gaussian: Option<f64>,
 }
 
 impl LegacyRandom {
-    fn new(seed: i64) -> Self {
+    pub(in crate::entity_models) fn new(seed: i64) -> Self {
         Self {
             seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
             next_gaussian: None,
@@ -181,6 +181,27 @@ impl LegacyRandom {
         let high = u64::from(self.next_bits(26)) << 27;
         let low = u64::from(self.next_bits(27));
         (high + low) as f64 / ((1_u64 << 53) as f64)
+    }
+
+    /// Java `BitRandomSource.nextInt(bound)`, including the power-of-two fast path and signed
+    /// overflow rejection condition used by `SingleThreadedRandomSource`.
+    pub(in crate::entity_models) fn next_int_bound(&mut self, bound: i32) -> i32 {
+        assert!(bound > 0, "bound must be positive");
+        if (bound & (bound - 1)) == 0 {
+            return ((i64::from(bound) * i64::from(self.next_bits(31))) >> 31) as i32;
+        }
+        loop {
+            let sample = self.next_bits(31) as i32;
+            let modulo = sample % bound;
+            if sample.wrapping_sub(modulo).wrapping_add(bound - 1) >= 0 {
+                return modulo;
+            }
+        }
+    }
+
+    /// Java `BitRandomSource.nextFloat`: the next 24 random bits scaled by `2^-24`.
+    pub(in crate::entity_models) fn next_float(&mut self) -> f32 {
+        self.next_bits(24) as f32 * 5.960_464_5e-8
     }
 
     fn next_gaussian(&mut self) -> f64 {

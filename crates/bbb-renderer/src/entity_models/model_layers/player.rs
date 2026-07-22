@@ -11,7 +11,7 @@ use super::{
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelCubeAttachment, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER: &str = "minecraft:player#main";
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER_SLIM: &str = "minecraft:player_slim#main";
@@ -318,6 +318,16 @@ pub(in crate::entity_models) struct PlayerModel {
 }
 
 impl PlayerModel {
+    /// Exact `PlayerModel.bodyParts` order used by vanilla `getRandomBodyPart`.
+    const STUCK_BODY_PARTS: [&'static str; 6] = [
+        "head",
+        "body",
+        "left_arm",
+        "right_arm",
+        "left_leg",
+        "right_leg",
+    ];
+
     pub(in crate::entity_models) fn new(slim: bool) -> Self {
         Self {
             root: player_tree(slim),
@@ -343,6 +353,27 @@ impl PlayerModel {
         for (base, overlay, visible) in overlays {
             self.root.child_mut(base).child_mut(overlay).visible = visible;
         }
+    }
+
+    pub(in crate::entity_models) fn stuck_body_part_count(&self) -> usize {
+        Self::STUCK_BODY_PARTS.len()
+    }
+
+    pub(in crate::entity_models) fn stuck_body_part_cube_count(
+        &self,
+        body_part_index: usize,
+    ) -> Option<usize> {
+        self.root
+            .try_child_cube_count(*Self::STUCK_BODY_PARTS.get(body_part_index)?)
+    }
+
+    pub(in crate::entity_models) fn stuck_body_attachment(
+        &self,
+        body_part_index: usize,
+        cube_index: usize,
+    ) -> Option<ModelCubeAttachment> {
+        self.root
+            .try_child_cube_attachment(*Self::STUCK_BODY_PARTS.get(body_part_index)?, cube_index)
     }
 }
 

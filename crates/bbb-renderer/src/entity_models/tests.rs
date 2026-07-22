@@ -70,6 +70,7 @@ mod phantom;
 mod pig;
 mod piglin;
 mod player;
+mod player_stuck;
 mod polar_bear;
 mod pufferfish;
 mod rabbit;

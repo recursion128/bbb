@@ -578,6 +578,12 @@ pub(in crate::entity_models) const BEE_TEXTURE_REF: EntityModelTextureRef = Enti
     path: "textures/entity/bee/bee.png",
     size: [64, 64],
 };
+/// Vanilla `BeeStingerLayer.BEE_STINGER_LOCATION`; the model layer declares a 16×16 UV sheet.
+pub(in crate::entity_models) const BEE_STINGER_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_stinger.png",
+        size: [16, 16],
+    };
 pub(in crate::entity_models) const BEE_BABY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/bee/bee_baby.png",
@@ -1254,7 +1260,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 709] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 710] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1915,6 +1921,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     TURTLE_BABY_TEXTURE_REF,
     BAT_TEXTURE_REF,
     BEE_TEXTURE_REF,
+    BEE_STINGER_TEXTURE_REF,
     BEE_BABY_TEXTURE_REF,
     BEE_ANGRY_TEXTURE_REF,
     BEE_NECTAR_TEXTURE_REF,

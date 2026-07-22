@@ -3,7 +3,7 @@ use super::colored::{
     boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
     ender_dragon_model_root_transform, happy_ghast_model_root_transform,
     trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
-    GIANT_SCALE, HORSE_SCALE,
+    LegacyRandom, GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{
     dispatch_invisible_living_ungated_layers, dispatch_uniform_entity_model,
@@ -46,9 +46,9 @@ use super::{
         head_look_at_rest, horse_body_armor_texture_layers, limb_swing_at_rest,
         llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
         wolf_armor_crackiness_texture_ref, wolf_body_armor_texture_layers, ArmorStandModel,
-        ArrowModel, BoatWaterPatchModel, BreezeWindModel, CamelModel, CreeperModel,
-        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
-        EquineAnimationPose, GuardianModel, HappyGhastHarnessModel, HappyGhastModel,
+        ArrowModel, BeeStingerModel, BoatWaterPatchModel, BreezeWindModel, CamelModel,
+        CreeperModel, CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
+        ElytraModel, EquineAnimationPose, GuardianModel, HappyGhastHarnessModel, HappyGhastModel,
         HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
         NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
         SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel, TridentModel,
@@ -57,23 +57,24 @@ use super::{
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        DRAGON_FIREBALL_TEXTURE_REF, ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
-        ENDER_DRAGON_EXPLODING_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        END_PORTAL_TEXTURE_REF, END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
-        EQUINE_STANDARD_LEG_STAND_CONFIG, EXPERIENCE_ORB_TEXTURE_REF, FISHING_HOOK_TEXTURE_REF,
-        HAPPY_GHAST_ROPES_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
-        HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
-        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
-        HUMANOID_ARMOR_MODEL_LAYERS_HUSK, HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_PARCHED, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
-        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
-        HUMANOID_ARMOR_MODEL_LAYERS_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_STRAY,
-        HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
+        ARROW_TEXTURE_REF, BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED,
+        BEE_STINGER_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, DRAGON_FIREBALL_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_PORTAL_TEXTURE_REF,
+        END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
+        EXPERIENCE_ORB_TEXTURE_REF, FISHING_HOOK_TEXTURE_REF, HAPPY_GHAST_ROPES_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND,
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL, HUMANOID_ARMOR_MODEL_LAYERS_BOGGED,
+        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_GIANT, HUMANOID_ARMOR_MODEL_LAYERS_HUSK,
+        HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PARCHED,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER,
+        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM, HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
+        HUMANOID_ARMOR_MODEL_LAYERS_STRAY, HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
@@ -104,8 +105,11 @@ const PLAYER_CAPE_CUBE: TexturedModelCubeDesc = TexturedModelCubeDesc {
     tex: [0.0, 0.0],
     mirror: false,
 };
-const PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 3;
-const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 4;
+const PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 4;
+const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 5;
+const PLAYER_ARROW_LAYER_SUBMIT_SEQUENCE: u32 = 1;
+const PLAYER_STINGER_LAYER_SUBMIT_SEQUENCE: u32 = 9;
+const MAX_PLAYER_STUCK_ITEMS_PER_KIND: usize = 64;
 const ARMOR_STAND_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 1;
 const ARMOR_STAND_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 2;
 const NON_PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 1;
@@ -6163,6 +6167,142 @@ fn emit_villager_profession_layer(
             );
         }
     });
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StuckBodyPlacement {
+    InCube,
+    OnSurface,
+}
+
+pub(in crate::entity_models) fn render_player_stuck_arrow_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let model = ArrowModel::new();
+    render_player_stuck_body_layer(
+        meshes,
+        instance,
+        atlas,
+        &model,
+        ARROW_TEXTURE_REF,
+        instance.render_state.player_arrow_count,
+        StuckBodyPlacement::InCube,
+        PLAYER_ARROW_LAYER_SUBMIT_SEQUENCE,
+        0.9,
+    );
+}
+
+pub(in crate::entity_models) fn render_player_stinger_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let model = BeeStingerModel::new();
+    render_player_stuck_body_layer(
+        meshes,
+        instance,
+        atlas,
+        &model,
+        BEE_STINGER_TEXTURE_REF,
+        instance.render_state.player_stinger_count,
+        StuckBodyPlacement::OnSurface,
+        PLAYER_STINGER_LAYER_SUBMIT_SEQUENCE,
+        1.0,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_player_stuck_body_layer<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    stuck_model: &M,
+    texture: EntityModelTextureRef,
+    synchronized_count: i32,
+    placement: StuckBodyPlacement,
+    submit_sequence: u32,
+    model_scale: f32,
+) {
+    let EntityModelKind::Player { skin, .. } = instance.kind else {
+        return;
+    };
+    let count = usize::try_from(synchronized_count)
+        .unwrap_or(0)
+        .min(MAX_PLAYER_STUCK_ITEMS_PER_KIND);
+    if count == 0 {
+        return;
+    }
+
+    // Vanilla's layer reads the already-posed parent model. Rebuild through the same PlayerModel
+    // constructor/setup path as the base submission so attachment transforms cannot drift into a
+    // second pose implementation.
+    let mut host = PlayerModel::new(skin.is_slim());
+    host.prepare(&instance);
+    let mut random = LegacyRandom::new(i64::from(instance.entity_id));
+    let root = player_model_root_transform(instance);
+    for _ in 0..count {
+        let part_index = random.next_int_bound(host.stuck_body_part_count() as i32) as usize;
+        let Some(cube_count) = host.stuck_body_part_cube_count(part_index) else {
+            continue;
+        };
+        let Ok(cube_bound) = i32::try_from(cube_count) else {
+            continue;
+        };
+        if cube_bound == 0 {
+            continue;
+        }
+        // Even every vanilla player base part's one-cube list consumes nextInt(1).
+        let cube_index = random.next_int_bound(cube_bound) as usize;
+        let Some(attachment) = host.stuck_body_attachment(part_index, cube_index) else {
+            continue;
+        };
+        let mut mid = [
+            random.next_float(),
+            random.next_float(),
+            random.next_float(),
+        ];
+        if placement == StuckBodyPlacement::OnSurface {
+            let plane = random.next_int_bound(3) as usize;
+            mid[plane] = if mid[plane] > 0.5 { 1.0 } else { 0.5 };
+        }
+        let point = Vec3::from_array(std::array::from_fn(|axis| {
+            (attachment.min[axis] + mid[axis] * (attachment.max[axis] - attachment.min[axis]))
+                / 16.0
+        }));
+        let direction = Vec3::new(
+            -(mid[0] * 2.0 - 1.0),
+            -(mid[1] * 2.0 - 1.0),
+            -(mid[2] * 2.0 - 1.0),
+        );
+        let direction_xz = (direction.x * direction.x + direction.z * direction.z).sqrt();
+        let y_rot = direction.x.atan2(direction.z) - std::f32::consts::FRAC_PI_2;
+        let z_rot = direction.y.atan2(direction_xz);
+        let transform = root
+            * attachment.transform
+            * Mat4::from_translation(point)
+            * Mat4::from_rotation_y(y_rot)
+            * Mat4::from_rotation_z(z_rot)
+            * Mat4::from_scale(Vec3::splat(model_scale));
+        let submit = no_overlay_submission(
+            EntityModelLayerRenderType::EntityCutoutCull,
+            texture,
+            [1.0; 4],
+            transform,
+            0,
+            submit_sequence,
+        );
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            stuck_model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+    }
 }
 
 pub(in crate::entity_models) fn render_player_textured_layers(

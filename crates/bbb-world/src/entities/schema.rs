@@ -476,6 +476,10 @@ pub struct VanillaLivingEntityMetadataAccessors {
     pub spin_attack_mask: i8,
     pub health_data_id: u8,
     pub health_default: f32,
+    pub arrow_count_data_id: u8,
+    pub arrow_count_default: i32,
+    pub stinger_count_data_id: u8,
+    pub stinger_count_default: i32,
     pub sleeping_pos_data_id: u8,
 }
 
@@ -3841,11 +3845,25 @@ pub fn vanilla_entity_metadata_living_entity_accessors_for_entity_type(
     )?;
     let health =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_HEALTH_ID")?;
+    let arrow_count =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ARROW_COUNT_ID")?;
+    let stinger_count =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_STINGER_COUNT_ID")?;
     let sleeping_pos =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "SLEEPING_POS_ID")?;
-    let (flags_default, health_default) = match (
+    let (flags_default, health_default, arrow_count_default, stinger_count_default) = match (
         (flags.owner, flags.serializer_name, flags.typed_default),
         (health.owner, health.serializer_name, health.typed_default),
+        (
+            arrow_count.owner,
+            arrow_count.serializer_name,
+            arrow_count.typed_default,
+        ),
+        (
+            stinger_count.owner,
+            stinger_count.serializer_name,
+            stinger_count.typed_default,
+        ),
         (
             sleeping_pos.owner,
             sleeping_pos.serializer_name,
@@ -3865,10 +3883,25 @@ pub fn vanilla_entity_metadata_living_entity_accessors_for_entity_type(
             ),
             (
                 "net.minecraft.world.entity.LivingEntity",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(arrow_count_default)),
+            ),
+            (
+                "net.minecraft.world.entity.LivingEntity",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(stinger_count_default)),
+            ),
+            (
+                "net.minecraft.world.entity.LivingEntity",
                 "OPTIONAL_BLOCK_POS",
                 Some(VanillaEntityMetadataDefault::OptionalBlockPosNone),
             ),
-        ) => (flags_default, health_default),
+        ) => (
+            flags_default,
+            health_default,
+            arrow_count_default,
+            stinger_count_default,
+        ),
         _ => return None,
     };
     let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::LivingEntity);
@@ -3887,6 +3920,10 @@ pub fn vanilla_entity_metadata_living_entity_accessors_for_entity_type(
         spin_attack_mask: mask("LIVING_ENTITY_FLAG_SPIN_ATTACK")?,
         health_data_id: health.data_id,
         health_default,
+        arrow_count_data_id: arrow_count.data_id,
+        arrow_count_default,
+        stinger_count_data_id: stinger_count.data_id,
+        stinger_count_default,
         sleeping_pos_data_id: sleeping_pos.data_id,
     })
 }
@@ -9033,6 +9070,10 @@ mod tests {
             spin_attack_mask: VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK,
             health_data_id: VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
             health_default: 1.0,
+            arrow_count_data_id: VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID,
+            arrow_count_default: 0,
+            stinger_count_data_id: VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID,
+            stinger_count_default: 0,
             sleeping_pos_data_id: VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
         };
         for entity_type_id in [

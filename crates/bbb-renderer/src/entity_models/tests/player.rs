@@ -349,7 +349,7 @@ fn player_deadmau5_ears_layer_records_vanilla_submission_and_geometry() {
     assert_eq!(ears_pass.render_type.vanilla_name(), "entitySolid");
     assert_eq!(ears_pass.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
     assert_eq!(ears_pass.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((ears_pass.order, ears_pass.submit_sequence), (0, 1));
+    assert_eq!((ears_pass.order, ears_pass.submit_sequence), (0, 2));
 
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let instance = EntityModelInstance::player_with_skin(
@@ -389,7 +389,7 @@ fn player_deadmau5_ears_layer_records_vanilla_submission_and_geometry() {
     let ears_submit = meshes
         .submissions
         .iter()
-        .find(|submit| submit.submit_sequence == 1)
+        .find(|submit| submit.submit_sequence == 2)
         .expect("deadmau5 ears submission");
     assert_eq!(
         ears_submit.render_type,
@@ -404,7 +404,7 @@ fn player_deadmau5_ears_layer_records_vanilla_submission_and_geometry() {
     assert_eq!(ears_submit.light, body_submit.light);
     assert_eq!(ears_submit.overlay, [0.0, body_submit.overlay[1]]);
     assert_ne!(ears_submit.overlay, body_submit.overlay);
-    assert_eq!((ears_submit.order, ears_submit.submit_sequence), (0, 1));
+    assert_eq!((ears_submit.order, ears_submit.submit_sequence), (0, 2));
 
     assert_eq!(meshes.cutout.vertices.len(), 288);
     assert_eq!(meshes.cutout_cull.vertices.len(), 48);
@@ -449,7 +449,7 @@ fn ready_dynamic_player_skin_deadmau5_ears_use_dynamic_skin_atlas_submission() {
     let ears_submit = meshes
         .submissions
         .iter()
-        .find(|submit| submit.submit_sequence == 1)
+        .find(|submit| submit.submit_sequence == 2)
         .expect("dynamic skin ears submission");
     assert_eq!(
         ears_submit.render_type,
@@ -466,7 +466,7 @@ fn ready_dynamic_player_skin_deadmau5_ears_use_dynamic_skin_atlas_submission() {
         ears_submit.overlay,
         [0.0, instance.render_state.overlay_coords()[1]]
     );
-    assert_eq!((ears_submit.order, ears_submit.submit_sequence), (0, 1));
+    assert_eq!((ears_submit.order, ears_submit.submit_sequence), (0, 2));
     assert!(meshes.cutout.vertices.is_empty());
     assert_eq!(meshes.dynamic_player_skin_cutout.vertices.len(), 288);
     assert_eq!(meshes.dynamic_player_skin_cutout_cull.vertices.len(), 48);
@@ -495,7 +495,7 @@ fn player_deadmau5_ears_layer_is_suppressed_when_player_is_invisible() {
     assert!(meshes
         .submissions
         .iter()
-        .all(|submit| submit.submit_sequence != 1));
+        .all(|submit| submit.submit_sequence != 2));
 }
 
 #[test]
@@ -510,7 +510,7 @@ fn player_spin_attack_effect_records_vanilla_submission_and_geometry() {
     assert_eq!(pass.render_type.vanilla_name(), "entityCutout");
     assert_eq!(pass.texture, TRIDENT_RIPTIDE_TEXTURE_REF);
     assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((pass.order, pass.submit_sequence), (0, 7));
+    assert_eq!((pass.order, pass.submit_sequence), (0, 8));
 
     let (atlas, _) = build_entity_model_texture_atlas(&steve_and_riptide_texture_images()).unwrap();
     let instance = EntityModelInstance::player_with_skin(
@@ -561,7 +561,7 @@ fn player_spin_attack_effect_records_vanilla_submission_and_geometry() {
     assert_eq!(spin_submit.light, body_submit.light);
     assert_eq!(spin_submit.overlay, [0.0, 10.0]);
     assert_ne!(spin_submit.overlay, body_submit.overlay);
-    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 7));
+    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 8));
 
     let riptide_entry = atlas
         .entries
@@ -631,7 +631,7 @@ fn player_spin_attack_submission_survives_missing_texture_atlas_entry() {
     assert_eq!(spin_submit.transform, player_model_root_transform(instance));
     assert_eq!(spin_submit.light, body_submit.light);
     assert_eq!(spin_submit.overlay, [0.0, 10.0]);
-    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 7));
+    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 8));
     assert_eq!(meshes.cutout.vertices.len(), 288);
     assert!(meshes
         .cutout
@@ -661,7 +661,7 @@ fn player_parrot_on_shoulder_layer_records_vanilla_submissions_and_geometry() {
         parrot_texture_ref(ParrotModelVariant::Blue)
     );
     assert_eq!(left_pass.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((left_pass.order, left_pass.submit_sequence), (0, 5));
+    assert_eq!((left_pass.order, left_pass.submit_sequence), (0, 6));
 
     let right_pass = player_parrot_on_shoulder_layer_pass(ParrotModelVariant::Gray, false);
     assert_eq!(
@@ -672,7 +672,7 @@ fn player_parrot_on_shoulder_layer_records_vanilla_submissions_and_geometry() {
         right_pass.texture,
         parrot_texture_ref(ParrotModelVariant::Gray)
     );
-    assert_eq!((right_pass.order, right_pass.submit_sequence), (0, 6));
+    assert_eq!((right_pass.order, right_pass.submit_sequence), (0, 7));
 
     let (atlas, _) = build_entity_model_texture_atlas(&steve_and_parrot_texture_images()).unwrap();
     let instance = EntityModelInstance::player_with_skin(
@@ -721,7 +721,7 @@ fn player_parrot_on_shoulder_layer_records_vanilla_submissions_and_geometry() {
     assert_eq!(left_submit.light, body_submit.light);
     assert_eq!(left_submit.overlay, [0.0, 10.0]);
     assert_ne!(left_submit.overlay, body_submit.overlay);
-    assert_eq!((left_submit.order, left_submit.submit_sequence), (0, 5));
+    assert_eq!((left_submit.order, left_submit.submit_sequence), (0, 6));
 
     let right_submit = meshes
         .submissions
@@ -740,7 +740,7 @@ fn player_parrot_on_shoulder_layer_records_vanilla_submissions_and_geometry() {
     );
     assert_eq!(right_submit.light, body_submit.light);
     assert_eq!(right_submit.overlay, [0.0, 10.0]);
-    assert_eq!((right_submit.order, right_submit.submit_sequence), (0, 6));
+    assert_eq!((right_submit.order, right_submit.submit_sequence), (0, 7));
 
     for (variant, submit) in [
         (ParrotModelVariant::Blue, left_submit),
@@ -795,7 +795,7 @@ fn player_parrot_on_shoulder_layer_uses_crouching_y_offset() {
         submit.transform,
         player_model_root_transform(instance) * Mat4::from_translation(Vec3::new(0.4, -1.3, 0.0))
     );
-    assert_eq!((submit.order, submit.submit_sequence), (0, 5));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 6));
 }
 
 #[test]
@@ -834,7 +834,7 @@ fn player_shoulder_parrot_submission_survives_missing_texture_atlas_entry() {
     );
     assert_eq!(
         (shoulder_submit.order, shoulder_submit.submit_sequence),
-        (0, 5)
+        (0, 6)
     );
     assert_eq!(meshes.cutout.vertices.len(), 288);
 }
@@ -1481,7 +1481,7 @@ fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
     assert_eq!(pass.render_type.vanilla_name(), "entitySolid");
     assert_eq!(pass.texture, PLAYER_PROFILE_CAPE_TEXTURE_REF);
     assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((pass.order, pass.submit_sequence), (0, 2));
+    assert_eq!((pass.order, pass.submit_sequence), (0, 3));
 
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
@@ -1539,7 +1539,7 @@ fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
     assert_eq!(cape_submit.light, body_submit.light);
     assert_eq!(cape_submit.overlay, [0.0, 10.0]);
     assert_ne!(cape_submit.overlay, body_submit.overlay);
-    assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 2));
+    assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 3));
     assert_eq!(meshes.dynamic_player_texture_cutout_cull.cutout_faces, 6);
     assert_eq!(meshes.dynamic_player_texture_cutout_cull.vertices.len(), 24);
     assert!(meshes
@@ -1718,7 +1718,7 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
         player_model_root_transform(instance)
             * Mat4::from_translation(Vec3::new(0.0, -0.053125, 0.06875))
     );
-    assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 2));
+    assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 3));
     assert_eq!(cape_submit.light, instance.render_state.shader_light());
     assert_eq!(cape_submit.overlay, [0.0, 10.0]);
     assert_ne!(cape_submit.overlay, instance.render_state.overlay_coords());
@@ -1790,7 +1790,7 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
     assert_eq!(wings_submit.light, body_submit.light);
     assert_eq!(wings_submit.overlay, [0.0, 10.0]);
     assert_ne!(wings_submit.overlay, body_submit.overlay);
-    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 4));
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 5));
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 0);
     assert_eq!(meshes.cutout.vertices.len(), 288);
     assert_eq!(meshes.armor_cutout.vertices.len(), 48);
@@ -1862,7 +1862,7 @@ fn player_wings_layer_static_submission_survives_missing_texture_atlas_entry() {
     assert_eq!(wings_submit.light, body_submit.light);
     assert_eq!(wings_submit.overlay, [0.0, 10.0]);
     assert_ne!(wings_submit.overlay, body_submit.overlay);
-    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 4));
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 5));
     assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
     assert!(meshes
         .cutout
@@ -1951,7 +1951,7 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
     assert_eq!(wings_submit.light, body_submit.light);
     assert_eq!(wings_submit.overlay, [0.0, 10.0]);
     assert_ne!(wings_submit.overlay, body_submit.overlay);
-    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 4));
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 5));
     assert!(meshes
         .submissions
         .iter()
@@ -2046,7 +2046,7 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
     assert_eq!(wings_submit.light, body_submit.light);
     assert_eq!(wings_submit.overlay, [0.0, 10.0]);
     assert_ne!(wings_submit.overlay, body_submit.overlay);
-    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 4));
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 5));
     assert_eq!(
         meshes.dynamic_player_texture_armor_cutout.vertices.len(),
         48

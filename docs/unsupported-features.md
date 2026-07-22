@@ -828,8 +828,8 @@ Models and layers:
   part-list model.
 - Implement the remaining zombie-family and piglin-family armor nuances and
   held-item refinements.
-- Implement player arrows/stingers stuck in body, name display, swim arm poses,
-  and elytra `speedValue` poses. The client does not track them yet.
+- Implement player swim arm poses and elytra `speedValue` poses. The client does
+  not track their continuous animation inputs yet.
 - Implement villager/illager live profiled-player skin presentation and the
   illager arm pose.
 - Implement equine boost presentation and the remaining non-base-equine

@@ -111,12 +111,13 @@ use super::textured::{
     render_no_overlay_scrolled_textured_layers, render_painting_tile, render_pig_saddle_layer,
     render_player_cape_layer, render_player_extra_ears_layer,
     render_player_parrot_on_shoulder_layer, render_player_spin_attack_effect_layer,
-    render_player_textured_layers, render_skeleton_clothing_layer, render_skull_block_model,
-    render_strider_saddle_layer, render_textured_layers,
-    render_textured_layers_with_dynamic_texture, render_trident_foil_submission,
-    render_undead_horse_textured_layers, render_villager_profession_layers, render_wings_layer,
-    render_wither_energy_swirl, render_wolf_body_armor_layer, render_worn_humanoid_armor,
-    salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_box_textured_layer_passes,
+    render_player_stinger_layer, render_player_stuck_arrow_layer, render_player_textured_layers,
+    render_skeleton_clothing_layer, render_skull_block_model, render_strider_saddle_layer,
+    render_textured_layers, render_textured_layers_with_dynamic_texture,
+    render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_villager_profession_layers, render_wings_layer, render_wither_energy_swirl,
+    render_wolf_body_armor_layer, render_worn_humanoid_armor, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_box_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     sign_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
     slime_textured_layer_passes, sniffer_textured_layer_passes, snow_golem_textured_layer_passes,
@@ -361,6 +362,10 @@ pub(in crate::entity_models) trait EntityModelSink {
     );
 
     fn player_post_wings_layers(&mut self, _instance: &EntityModelInstance) {}
+
+    fn player_arrow_layer(&mut self, _instance: &EntityModelInstance) {}
+
+    fn player_stinger_layer(&mut self, _instance: &EntityModelInstance) {}
 
     fn wolf_body_armor_layer(
         &mut self,
@@ -960,6 +965,7 @@ impl EntityModelSink for TexturedSink<'_> {
             self.atlas,
             self.dynamic_player_skin_atlas,
         );
+        render_player_stuck_arrow_layer(self.meshes, *instance, self.atlas);
         render_player_extra_ears_layer(
             self.meshes,
             *instance,
@@ -972,6 +978,15 @@ impl EntityModelSink for TexturedSink<'_> {
     fn player_post_wings_layers(&mut self, instance: &EntityModelInstance) {
         render_player_parrot_on_shoulder_layer(self.meshes, *instance, self.atlas);
         render_player_spin_attack_effect_layer(self.meshes, *instance, self.atlas);
+        render_player_stinger_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn player_arrow_layer(&mut self, instance: &EntityModelInstance) {
+        render_player_stuck_arrow_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn player_stinger_layer(&mut self, instance: &EntityModelInstance) {
+        render_player_stinger_layer(self.meshes, *instance, self.atlas);
     }
 
     fn wolf_body_armor_layer(
@@ -2162,8 +2177,15 @@ pub(in crate::entity_models) fn dispatch_invisible_living_ungated_layers<S: Enti
     match instance.kind {
         EntityModelKind::Player { .. } => {
             sink.worn_humanoid_armor(instance);
+            // Force-transparent / outline players already submitted ArrowLayer beside their base
+            // model. A completely hidden base bypassed `player_model`, so restore that ungated layer
+            // here before the later constructor layers.
+            if layer_submit_sequence_start == 0 {
+                sink.player_arrow_layer(instance);
+            }
             sink.custom_head_skull_layer(instance);
             sink.wings_layer(instance);
+            sink.player_stinger_layer(instance);
         }
         EntityModelKind::ArmorStand { .. } => {
             sink.worn_humanoid_armor(instance);

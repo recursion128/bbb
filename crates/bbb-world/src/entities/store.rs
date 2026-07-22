@@ -3390,6 +3390,31 @@ impl EntityStore {
             } else {
                 (0.0, 0.0, 0.0)
             };
+        // Vanilla `AvatarRenderer.extractRenderState` copies the two inherited LivingEntity INT
+        // accessors into `AvatarRenderState`; only the player renderer registers their layers.
+        // Preserve the synchronized values here (including hostile/negative values); the renderer
+        // owns the per-frame non-positive gate and bounded submission limit.
+        let (player_arrow_count, player_stinger_count) =
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                living_accessors
+                    .map(|accessors| {
+                        (
+                            entity_data_int(
+                                &metadata.data_values,
+                                accessors.arrow_count_data_id,
+                                accessors.arrow_count_default,
+                            ),
+                            entity_data_int(
+                                &metadata.data_values,
+                                accessors.stinger_count_data_id,
+                                accessors.stinger_count_default,
+                            ),
+                        )
+                    })
+                    .unwrap_or((0, 0))
+            } else {
+                (0, 0)
+            };
         let (player_left_shoulder_parrot, player_right_shoulder_parrot) =
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
                 (
@@ -3709,6 +3734,8 @@ impl EntityStore {
             player_cape_flap,
             player_cape_lean,
             player_cape_lean2,
+            player_arrow_count,
+            player_stinger_count,
             player_left_shoulder_parrot,
             player_right_shoulder_parrot,
             show_extra_ears: false,

@@ -32,7 +32,7 @@ fn expected_skull_transform_with_root(instance: &EntityModelInstance, root: Mat4
 
 fn expected_skull_submit_sequence(instance: &EntityModelInstance) -> u32 {
     match instance.kind {
-        EntityModelKind::Player { .. } => 3,
+        EntityModelKind::Player { .. } => 4,
         EntityModelKind::ArmorStand { .. } => 2,
         _ => 1,
     }

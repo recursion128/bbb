@@ -655,6 +655,14 @@ entity_render_state! {
     /// `Player.DATA_SHOULDER_PARROT_RIGHT`: same render path as the left shoulder, mirrored to
     /// `x = -0.4`.
     (with_player_right_shoulder_parrot) player_right_shoulder_parrot: Option<ParrotModelVariant> = None;
+    /// Vanilla `AvatarRenderState.arrowCount`: synchronized arrows submitted by `ArrowLayer` at
+    /// deterministic points inside the posed player's six base body cubes. Non-player instances and
+    /// players with no arrows keep zero.
+    (with_player_arrow_count) player_arrow_count: i32 = 0;
+    /// Vanilla `AvatarRenderState.stingerCount`: synchronized bee stingers submitted by
+    /// `BeeStingerLayer` at deterministic cube-surface points. Non-player instances and unstung
+    /// players keep zero.
+    (with_player_stinger_count) player_stinger_count: i32 = 0;
     /// Vanilla `AvatarRenderState.showExtraEars`: the exact lowercase `deadmau5` profile-name
     /// easter egg that enables `Deadmau5EarsLayer`. The layer also requires the player not to be
     /// invisible.
@@ -3087,6 +3095,8 @@ mod tests {
                 player_elytra_texture: None,
                 player_left_shoulder_parrot: None,
                 player_right_shoulder_parrot: None,
+                player_arrow_count: 0,
+                player_stinger_count: 0,
                 show_extra_ears: false,
                 chest_wings_layer: None,
                 chest_wings_trim: None,

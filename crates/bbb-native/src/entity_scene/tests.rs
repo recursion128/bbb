@@ -4496,6 +4496,34 @@ fn entity_model_instances_project_player_main_hand_item_pose() {
 }
 
 #[test]
+fn player_stuck_counts_flow_unchanged_from_world_to_renderer_state() {
+    let accessors = bbb_world::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    )
+    .expect("generated LivingEntity metadata accessors");
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        263,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [1.0, 64.0, 8.0],
+    ));
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 263,
+        values: vec![
+            protocol_int_data(accessors.arrow_count_data_id, -7),
+            protocol_int_data(accessors.stinger_count_data_id, 1_000),
+        ],
+    }));
+
+    let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 263)
+        .expect("player model instance");
+    assert_eq!(instance.render_state.player_arrow_count, -7);
+    assert_eq!(instance.render_state.player_stinger_count, 1_000);
+}
+
+#[test]
 fn entity_model_instances_project_player_off_hand_item_pose() {
     // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM`: a player holding a plain off-hand
     // item lowers/halves the OFF arm. Gated to the player kind + a non-empty off hand, suppressed only

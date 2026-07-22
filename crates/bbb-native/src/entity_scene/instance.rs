@@ -790,6 +790,8 @@ pub(super) fn entity_model_instance(
         with_player_cape_flap player_cape_flap,
         with_player_cape_lean player_cape_lean,
         with_player_cape_lean2 player_cape_lean2,
+        with_player_arrow_count player_arrow_count,
+        with_player_stinger_count player_stinger_count,
         with_is_using_item is_using_item,
         with_use_item_off_hand use_item_off_hand,
         with_crossbow_charge_ticks crossbow_charge_ticks,

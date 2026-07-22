@@ -438,13 +438,13 @@ fn player_custom_head_slot_sits_between_cape_and_wings() {
         .iter()
         .find(|submit| submit.texture == SKELETON_TEXTURE_REF)
         .expect("custom head skull");
-    assert_eq!((skull.order, skull.submit_sequence), (0, 3));
+    assert_eq!((skull.order, skull.submit_sequence), (0, 4));
     let wings = meshes
         .submissions
         .iter()
         .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
         .expect("wings");
-    assert_eq!((wings.order, wings.submit_sequence), (0, 4));
+    assert_eq!((wings.order, wings.submit_sequence), (0, 5));
     let armor = meshes
         .submissions
         .iter()
@@ -609,7 +609,7 @@ fn hidden_player_keeps_wings_layer_without_base_submission() {
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, [0.0, 10.0]);
     assert_eq!(submit.outline_color, 0);
-    assert_eq!((submit.order, submit.submit_sequence), (0, 4));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 5));
     assert_eq!(elytra_vertex_positions(&meshes, &atlas).len(), 48);
     assert_elytra_vertices_have_vanilla_metadata(&meshes, &atlas, instance);
     assert!(meshes.translucent.vertices.is_empty());
@@ -761,14 +761,14 @@ fn wings_trim_follows_foil_for_static_and_profile_textures() {
         .iter()
         .find(|submit| submit.dynamic_player_texture == Some(profile_elytra))
         .expect("profile wings base");
-    assert_eq!((profile_base.order, profile_base.submit_sequence), (0, 4));
+    assert_eq!((profile_base.order, profile_base.submit_sequence), (0, 5));
     let profile_trim = player_meshes
         .submissions
         .iter()
         .find(|submit| submit.dynamic_texture == Some(trim_texture))
         .expect("profile wings trim");
     assert_eq!(profile_trim.texture, PLAYER_PROFILE_ELYTRA_TEXTURE_REF);
-    assert_eq!((profile_trim.order, profile_trim.submit_sequence), (2, 4));
+    assert_eq!((profile_trim.order, profile_trim.submit_sequence), (2, 5));
     assert_eq!(player_meshes.armor_entity_glint.vertices.len(), 48);
     assert_eq!(
         player_meshes

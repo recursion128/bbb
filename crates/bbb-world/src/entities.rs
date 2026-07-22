@@ -1906,6 +1906,16 @@ entity_model_source_state! {
     /// `-20..=20`. `0.0` for non-player entities.
     #[serde(default)]
     pub player_cape_lean2: f32,
+    /// Vanilla `AvatarRenderState.arrowCount`, read from LivingEntity's generated synchronized
+    /// `DATA_ARROW_COUNT_ID`. Only player render sources retain it because `ArrowLayer` is registered
+    /// by `AvatarRenderer`; non-player living entities keep zero.
+    #[serde(default)]
+    pub player_arrow_count: i32,
+    /// Vanilla `AvatarRenderState.stingerCount`, read from LivingEntity's generated synchronized
+    /// `DATA_STINGER_COUNT_ID`. Only player render sources retain it because `BeeStingerLayer` is
+    /// registered by `AvatarRenderer`; non-player living entities keep zero.
+    #[serde(default)]
+    pub player_stinger_count: i32,
     /// Vanilla `AvatarRenderState.parrotOnLeftShoulder`, decoded from Player metadata id 19
     /// (`DATA_SHOULDER_PARROT_LEFT`, `OPTIONAL_UNSIGNED_INT`): the parrot variant id placed on the
     /// left shoulder, or `None` when that shoulder is empty. Non-player entities always project

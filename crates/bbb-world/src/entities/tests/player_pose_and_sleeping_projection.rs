@@ -50,6 +50,68 @@ fn living_sleeping_pos_data(
 }
 
 #[test]
+fn player_stuck_counts_project_generated_living_metadata_only_to_avatar_sources() {
+    let counts = |store: &WorldStore, entity_id| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .expect("entity model source");
+        (source.player_arrow_count, source.player_stinger_count)
+    };
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    )
+    .expect("generated LivingEntity metadata accessors");
+    assert_eq!(
+        (
+            accessors.arrow_count_data_id,
+            accessors.stinger_count_data_id,
+            accessors.arrow_count_default,
+            accessors.stinger_count_default,
+        ),
+        (
+            VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID,
+            VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID,
+            0,
+            0,
+        )
+    );
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        201,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        202,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert_eq!(counts(&store, 201), (0, 0));
+    assert_eq!(counts(&store, 202), (0, 0));
+
+    for entity_id in [201, 202] {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: entity_id,
+            values: vec![
+                protocol_int_data(accessors.arrow_count_data_id, -7),
+                protocol_int_data(accessors.stinger_count_data_id, 1_000),
+            ],
+        }));
+    }
+    assert_eq!(
+        counts(&store, 201),
+        (-7, 1_000),
+        "world preserves synchronized values; renderer owns the bounded/non-positive gate"
+    );
+    assert_eq!(
+        counts(&store, 202),
+        (0, 0),
+        "non-player LivingEntity renderers do not register the avatar stuck layers"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_elytra_animation_state() {
     const EPSILON: f32 = 1.0e-6;
     const DEFAULT_X: f32 = std::f32::consts::PI / 12.0;

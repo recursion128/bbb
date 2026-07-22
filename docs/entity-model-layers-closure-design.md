@@ -172,6 +172,34 @@ attachment and animation-state contract. Focused tests are the `happy_ghast`
 tests in `bbb-world`, `bbb-native`, and `bbb-renderer`; the complete path lands
 in one clean commit and runs the full gate before another renderer family.
 
+The following cross-boundary stage closes `AvatarRenderer`'s `ArrowLayer` and
+`BeeStingerLayer`. `bbb-world` reads the generated LivingEntity
+`DATA_ARROW_COUNT_ID` / `DATA_STINGER_COUNT_ID` INT accessors only for players
+and preserves the synchronized values; `bbb-native` forwards the two counts
+without sampling attachment points. `bbb-renderer` owns the deterministic
+`StuckInBodyLayer` placement because it alone owns the posed `PlayerModel` cube
+tree: seed the 48-bit `SingleThreadedRandomSource` with `EntityRenderState.id`,
+select the vanilla body-part order `head, body, leftArm, rightArm, leftLeg,
+rightLeg`, consume the cube selection, then sample three coordinates. Arrows
+use `IN_CUBE`; bee stingers use `ON_SURFACE`, including the extra random plane
+and `value > 0.5 ? 1.0 : 0.5` face snap. Both layers inherit the selected posed
+part transform, use no overlay and the entity outline color, and retain
+`AvatarRenderer` constructor order: arrow after item-in-hand and before extra
+ears, stinger after the spin effect. The renderer caps each untrusted synced
+count at 64 per player per frame; ordinary vanilla state is unchanged while a
+hostile INT cannot create an unbounded submission loop.
+
+This stage reuses the existing `ArrowModel`/normal arrow texture and adds the
+16x16 `BeeStingerModel` crossed-plane layer and
+`textures/entity/bee/bee_stinger.png`. It does not implement swim-arm or elytra
+`speedValue` poses, which require continuous animation inputs rather than this
+metadata-to-layer contract. Focused tests are the `player_stuck` tests in
+`bbb-world`, `bbb-native`, and `bbb-renderer`, plus the existing player and
+renderer-catalog tests affected by layer ordering. The entire projection and
+consumer path lands in one clean checkpoint commit and runs the full gate. A
+safe stop exists only before implementation or after that fully wired commit;
+the world counts are never landed without the bounded renderer consumer.
+
 ### C. Matrix closure and delivery gate
 
 Prove that every official non-noop registration reaches a dedicated/shared

@@ -108,6 +108,16 @@ pub(in crate::entity_models) struct ModelPart {
     pub(in crate::entity_models) scale: [f32; 3],
 }
 
+/// A selected cube in a posed direct child, used by player stuck-in-body layers. The transform
+/// reaches the selected part frame from this part's parent frame; `min`/`max` retain vanilla's
+/// baked `ModelPart.Cube` bounds in model pixels.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(in crate::entity_models) struct ModelCubeAttachment {
+    pub(in crate::entity_models) transform: Mat4,
+    pub(in crate::entity_models) min: [f32; 3],
+    pub(in crate::entity_models) max: [f32; 3],
+}
+
 impl ModelPart {
     /// Builds a part at `pose` carrying `cubes` and the named `children`, capturing `pose` as the
     /// bind pose that [`ModelPart::reset_pose`] restores.
@@ -187,6 +197,37 @@ impl ModelPart {
             .find(|(child_name, _)| *child_name == name)
             .map(|(_, child)| child)?;
         Some(self.local_transform() * child.local_transform())
+    }
+
+    /// Selects one baked cube from a named direct child and returns its posed attachment frame.
+    /// This is the narrow immutable counterpart of vanilla `PlayerModel.getRandomBodyPart` followed
+    /// by `ModelPart.getRandomCube` and `translateAndRotate`; the random index generation stays with
+    /// the renderer layer so consuming even a one-element cube list preserves Java RNG parity.
+    pub(in crate::entity_models) fn try_child_cube_attachment(
+        &self,
+        name: &str,
+        cube_index: usize,
+    ) -> Option<ModelCubeAttachment> {
+        let child = self
+            .children
+            .iter()
+            .find(|(child_name, _)| *child_name == name)
+            .map(|(_, child)| child)?;
+        let cube = child.cubes.get(cube_index)?;
+        Some(ModelCubeAttachment {
+            transform: self.local_transform() * child.local_transform(),
+            min: cube.min,
+            max: std::array::from_fn(|axis| cube.min[axis] + cube.size[axis]),
+        })
+    }
+
+    /// Number of baked cubes on a named direct child. `StuckInBodyLayer` feeds this exact count to
+    /// Java `nextInt` before requesting the matching attachment, preserving the random-call stream.
+    pub(in crate::entity_models) fn try_child_cube_count(&self, name: &str) -> Option<usize> {
+        self.children
+            .iter()
+            .find(|(child_name, _)| *child_name == name)
+            .map(|(_, child)| child.cubes.len())
     }
 
     /// The posed transform that reaches a descendant path from this part's parent frame. This is the

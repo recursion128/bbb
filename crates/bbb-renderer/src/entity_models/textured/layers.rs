@@ -2563,7 +2563,7 @@ pub(in crate::entity_models) fn player_extra_ears_layer_pass_with_texture(
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
-        submit_sequence: 1,
+        submit_sequence: 2,
     }
 }
 
@@ -2576,7 +2576,7 @@ pub(in crate::entity_models) fn player_cape_layer_pass() -> EntityModelLayerPass
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
-        submit_sequence: 2,
+        submit_sequence: 3,
     }
 }
 
@@ -2617,7 +2617,7 @@ pub(in crate::entity_models) fn player_parrot_on_shoulder_layer_pass(
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
-        submit_sequence: if is_left { 5 } else { 6 },
+        submit_sequence: if is_left { 6 } else { 7 },
     }
 }
 
@@ -2630,7 +2630,7 @@ pub(in crate::entity_models) fn player_spin_attack_effect_layer_pass() -> Entity
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
-        submit_sequence: 7,
+        submit_sequence: 8,
     }
 }
 

@@ -20,7 +20,6 @@ pub(super) use runtime::{
     humanoid_arm_swing_parts, humanoid_limb_swing_parts, quadruped_leg_x_rotations,
     quadruped_limb_swing_parts, HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
 };
-pub(in crate::entity_models) use transforms::SIGN_RENDER_SCALE;
 pub(super) use transforms::{
     arrow_model_root_transform, banner_model_root_transform, bed_model_root_transform,
     bell_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
@@ -51,3 +50,4 @@ pub(super) use transforms::{
     minecart_render_jitter_offset,
 };
 pub(crate) use transforms::{entity_dispatch_render_offset, sign_base_transformation};
+pub(in crate::entity_models) use transforms::{LegacyRandom, SIGN_RENDER_SCALE};
