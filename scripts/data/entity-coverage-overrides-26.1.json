@@ -1,11 +1,10 @@
 {
   "schema_version": 1,
   "catalog_sha256": "ad28724b3599c721b1db1767a5d6446d92cdada9838981b316f96cb809151900",
-  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, source-derived transform/interpolation, renderer-presentation ownership, and the reverse-audited animation path apply to every catalog row. Generic equipment/passenger/leash and event implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
+  "baseline_policy": "Conservative audited coverage: generated metadata/schema, spawn/default, source-derived transform/interpolation, renderer-presentation ownership, the reverse-audited animation path, and the generated event/client-tick audiovisual closure apply to every catalog row. Generic equipment/passenger/leash implementations do not prove their remaining composite cells, so those stay partial until a family slice proves the whole cell. Vanilla NoopRenderer registrations are narrow model not-applicable exceptions.",
   "uncertainties": [
     "Generic passenger state is present, but family-specific attachment, controlling-passenger, equipment applicability, and leash presentation have not been reverse-audited together.",
     "Generated dimensions and broad pick tests exist, but each pose/scale/collision exception has not been proven for every family.",
-    "Entity-event coverage has many focused mappings, but the complete vanilla subclass override inventory is still open.",
     "Shift-local save projection covers many families, but server-private versus client-observable fields still need a family-by-family audit."
   ],
   "evidence_sets": {
@@ -350,13 +349,51 @@
     },
     "entity_event_audit": {
       "implementation": [
-        "crates/bbb-world/src/entities/updates.rs#pub fn apply_entity_event"
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1",
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#pub const VANILLA_ENTITY_TYPE_METADATA_26_1",
+        "crates/bbb-world/src/entities/events.rs#pub(crate) fn vanilla_entity_event_kind",
+        "crates/bbb-world/src/entities/updates.rs#pub fn apply_entity_event",
+        "crates/bbb-world/src/play_apply.rs#PlayClientbound::EntityEvent(update) =>",
+        "crates/bbb-world/src/entities.rs#pub enum EntityClientMovementParticleState",
+        "crates/bbb-world/src/entities.rs#pub enum EntityClientMovementSoundKind",
+        "crates/bbb-world/src/entities/store.rs#fn append_client_tick_particle_triggers",
+        "crates/bbb-world/src/client/audio.rs#pub(crate) fn entity_event_voice_sound_for_entity",
+        "crates/bbb-world/src/client/audio.rs#pub(crate) fn record_entity_client_movement_sound",
+        "crates/bbb-native/src/runtime/events/dispatcher.rs#fn rabbit_sprint_particles",
+        "crates/bbb-native/src/runtime.rs#fn submit_entity_client_tick_effects",
+        "crates/bbb-native/src/particle_runtime/resolver_entity_events.rs#pub(super) fn entity_client_movement_particle_batch"
       ],
       "tests": [
-        "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_events_update_world_and_world_counters"
+        "crates/bbb-world/src/entities/events.rs#fn every_generated_entity_event_declaration_has_one_semantic_consumer",
+        "crates/bbb-world/src/entities/events.rs#fn listener_specials_are_owned_before_class_dispatch",
+        "crates/bbb-world/src/entities/events.rs#fn firework_event_and_tick_ownership_stays_in_the_fixed_type_reverse_closure",
+        "crates/bbb-world/src/entities/schema.rs#fn generated_runtime_tick_owners_remain_in_the_closed_entity_client_tick_inventory",
+        "crates/bbb-world/src/play_apply.rs#fn voice_pitch_attack_and_creaking_hurt_events_forward_positioned_sounds",
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#fn firework_rocket_trail_particles_queue_once_per_client_tick",
+        "crates/bbb-world/src/entities/tests/item_entity_and_pickup_projection.rs#fn firework_rocket_explosion_particle_state_projects_event_context",
+        "crates/bbb-world/src/entities/tests/small_mob_and_walk_animation.rs#fn slime_entity_client_tick_emits_landing_particles_before_scaled_squish_sound",
+        "crates/bbb-world/src/entities/tests/small_mob_and_walk_animation.rs#fn silent_slime_entity_client_tick_consumes_pitch_rng_without_emitting_sound",
+        "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#fn rabbit_jump_event_emits_sprint_block_particle_state",
+        "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#fn firework_entity_event_with_empty_explosions_emits_poof_particles",
+        "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#fn firework_entity_event_with_explosions_emits_firework_particles",
+        "crates/bbb-native/src/runtime/events/tests/client_tick_effects.rs#fn slime_client_tick_effects_reach_native_particle_and_audio_sinks_in_order",
+        "crates/bbb-native/src/particle_runtime/tests.rs#fn rabbit_sprint_batch_preserves_block_option_position_and_velocity",
+        "crates/bbb-native/src/particle_runtime/tests.rs#fn slime_landing_particle_runtime_resolves_item_slime_and_flame_batches",
+        "crates/bbb-native/src/particle_runtime/tests.rs#fn firework_rocket_trail_batch_matches_vanilla_client_tick_particle",
+        "crates/bbb-native/src/particle_runtime/tests.rs#fn level_event_particles_map_vanilla_simple_side_effects"
       ],
       "vanilla": [
-        "vanilla:net/minecraft/world/entity/Entity.java#handleEntityEvent"
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#public void handleEntityEvent(final ClientboundEntityEventPacket packet)",
+        "vanilla:net/minecraft/world/entity/Entity.java#public void handleEntityEvent(final byte id)",
+        "vanilla:net/minecraft/world/entity/animal/rabbit/Rabbit.java#public void handleEntityEvent(final byte id)",
+        "vanilla:net/minecraft/world/entity/monster/hoglin/Hoglin.java#public void handleEntityEvent(final byte id)",
+        "vanilla:net/minecraft/world/entity/monster/Zoglin.java#public void handleEntityEvent(final byte id)",
+        "vanilla:net/minecraft/world/entity/monster/creaking/Creaking.java#public void handleEntityEvent(final byte id)",
+        "vanilla:net/minecraft/world/entity/monster/Slime.java#public void tick()",
+        "vanilla:net/minecraft/world/entity/monster/MagmaCube.java#protected ParticleOptions getParticleType()",
+        "vanilla:net/minecraft/world/entity/projectile/FireworkRocketEntity.java#public void tick()",
+        "vanilla:net/minecraft/world/entity/projectile/FireworkRocketEntity.java#public void handleEntityEvent(final byte id)",
+        "vanilla:net/minecraft/client/particle/FireworkParticles.java#public static class Starter"
       ]
     },
     "save_debug_audit": {
@@ -415,9 +452,8 @@
       "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash"
     },
     "event/particle/audio": {
-      "status": "partial",
-      "evidence_ref": "entity_event_audit",
-      "gap": "docs/unsupported-features.md#entity-coverage-matrix-events-particles-and-audio"
+      "status": "complete",
+      "evidence_ref": "entity_event_audit"
     },
     "save/debug": {
       "status": "complete",

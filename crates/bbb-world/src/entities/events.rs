@@ -304,6 +304,12 @@ fn event_consumer_disposition(kind: VanillaEntityEventKind) -> EventConsumerDisp
 mod tests {
     use std::collections::HashSet;
 
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID;
+
+    use super::super::schema::{
+        VanillaEntityBlockEffectTickPolicy, VanillaEntityClientMovementPolicy,
+        VANILLA_ENTITY_TYPE_METADATA_26_1,
+    };
     use super::*;
 
     #[test]
@@ -359,5 +365,38 @@ mod tests {
                     || disposition.sound
             );
         }
+    }
+
+    #[test]
+    fn firework_event_and_tick_ownership_stays_in_the_fixed_type_reverse_closure() {
+        let event_kind = vanilla_entity_event_kind(VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, 17)
+            .expect("firework explosion event kind");
+        assert_eq!(event_kind, VanillaEntityEventKind::FireworkExplosion);
+        assert_eq!(
+            event_consumer_disposition(event_kind),
+            EventConsumerDisposition {
+                canonical: false,
+                animation: false,
+                particle: true,
+                sound: true,
+            }
+        );
+
+        let entry = &VANILLA_ENTITY_TYPE_METADATA_26_1
+            [usize::try_from(VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID).unwrap()];
+        assert_eq!(entry.resource_id, "minecraft:firework_rocket");
+        assert_eq!(
+            entry.runtime_class,
+            Some("net.minecraft.world.entity.projectile.FireworkRocketEntity")
+        );
+        assert_eq!(entry.tick_owner, entry.runtime_class);
+        assert_eq!(
+            entry.client_movement_policy,
+            VanillaEntityClientMovementPolicy::FireworkRocket
+        );
+        assert_eq!(
+            entry.block_effect_tick_policy,
+            VanillaEntityBlockEffectTickPolicy::DetachedFirework
+        );
     }
 }

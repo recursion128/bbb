@@ -85,6 +85,24 @@ class EntityCoverageLedgerTests(unittest.TestCase):
             {"entity_spawn_defaults"},
         )
 
+    def test_entity_audiovisual_cells_are_complete_for_the_fixed_catalog(self) -> None:
+        self.assertEqual(
+            {
+                entry["resource_id"]
+                for entry in self.ledger["entries"]
+                if entry["coverage"]["event/particle/audio"]["status"]
+                != "complete"
+            },
+            set(),
+        )
+        self.assertEqual(
+            {
+                entry["coverage"]["event/particle/audio"]["evidence_ref"]
+                for entry in self.ledger["entries"]
+            },
+            {"entity_event_audit", "turtle_event_particle_audio"},
+        )
+
     def test_catalog_addition_requires_a_new_explicit_audit(self) -> None:
         new_catalog = list(self.catalog)
         new_catalog.append(

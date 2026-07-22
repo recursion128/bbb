@@ -1430,18 +1430,6 @@ back into a todo. Do not delete these.
   block-entity client-effect presentation, and audio-device/runtime parity. The
   `LevelEventHandler` switch cases themselves are covered.
 
-### Entity coverage matrix events particles and audio
-
-- Reverse-close all 35 generated `handleEntityEvent` declarations and the three
-  `ClientPacketListener` special ids. Confirmed missing consumers are Rabbit
-  event `1`'s sprint block particle and Hoglin/Zoglin/Creaking event sounds.
-- Complete Slime/Magma Cube landing coupling: exact item-slime/flame particle
-  ring, size-scaled squish sound, and client-local RNG order alongside the
-  existing squish animation state.
-- Prove the existing Firework event `17` explosion shapes, colors, trail,
-  twinkle, near/far audio, empty fallback, and client-tick launch/trail path in
-  the fixed-type reverse closure.
-
 ---
 
 # Not needed
