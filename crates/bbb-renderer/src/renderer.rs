@@ -70,14 +70,15 @@ use crate::{
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
-        create_item_model_glint_pipeline, create_item_model_pipeline,
-        create_item_model_translucent_pipeline, create_item_model_z_offset_forward_pipeline,
-        create_resident_item_model_glint_pipeline, create_resident_item_model_pipeline,
-        create_resident_item_model_translucent_pipeline,
-        create_resident_item_model_z_offset_forward_pipeline, FirstPersonMapBackgroundAtlasGpu,
-        ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu, ItemFrameMapTextFontAtlasGpu,
-        ItemGlintTextureGpu, ItemModelMesh, ItemModelResidency, MapSurfaceResidency,
-        SignTextSurface,
+        create_display_text_background_pipeline, create_display_text_pipeline,
+        create_display_text_see_through_pipeline, create_item_model_glint_pipeline,
+        create_item_model_pipeline, create_item_model_translucent_pipeline,
+        create_item_model_z_offset_forward_pipeline, create_resident_item_model_glint_pipeline,
+        create_resident_item_model_pipeline, create_resident_item_model_translucent_pipeline,
+        create_resident_item_model_z_offset_forward_pipeline, DisplayTextSurface,
+        FirstPersonMapBackgroundAtlasGpu, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,
+        ItemFrameMapTextFontAtlasGpu, ItemGlintTextureGpu, ItemModelMesh, ItemModelResidency,
+        MapSurfaceResidency, SignTextSurface,
     },
     lightmap::{
         create_lightmap_bind_group_layout, create_lightmap_gpu, create_lightmap_pipeline,
@@ -307,6 +308,9 @@ pub struct Renderer {
     pub(super) item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_glint_pipeline: wgpu::RenderPipeline,
+    pub(super) display_text_background_pipeline: wgpu::RenderPipeline,
+    pub(super) display_text_pipeline: wgpu::RenderPipeline,
+    pub(super) display_text_see_through_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_translucent_pipeline: wgpu::RenderPipeline,
@@ -498,6 +502,7 @@ pub struct Renderer {
         Vec<crate::item_models::ItemFrameMapDecorationSurface>,
     pub(super) item_frame_map_decoration_atlas: Option<ItemFrameMapDecorationAtlasGpu>,
     pub(super) sign_text_surfaces: Vec<SignTextSurface>,
+    pub(super) display_text_surfaces: Vec<DisplayTextSurface>,
     pub(super) item_frame_map_text_font_atlas: Option<ItemFrameMapTextFontAtlasGpu>,
     pub(super) map_surface_residency: MapSurfaceResidency,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
@@ -1271,6 +1276,24 @@ impl Renderer {
         );
         let item_model_glint_pipeline =
             create_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
+        let display_text_background_pipeline = create_display_text_background_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let display_text_pipeline = create_display_text_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let display_text_see_through_pipeline = create_display_text_see_through_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let resident_item_model_pipeline = create_resident_item_model_pipeline(
             &device,
             format,
@@ -1567,6 +1590,9 @@ impl Renderer {
             item_model_z_offset_forward_pipeline,
             item_model_translucent_pipeline,
             item_model_glint_pipeline,
+            display_text_background_pipeline,
+            display_text_pipeline,
+            display_text_see_through_pipeline,
             resident_item_model_pipeline,
             resident_item_model_z_offset_forward_pipeline,
             resident_item_model_translucent_pipeline,
@@ -1741,6 +1767,7 @@ impl Renderer {
             first_person_map_decoration_surfaces: Vec::new(),
             item_frame_map_decoration_atlas: None,
             sign_text_surfaces: Vec::new(),
+            display_text_surfaces: Vec::new(),
             item_frame_map_text_font_atlas: None,
             map_surface_residency,
             selection_outline: None,

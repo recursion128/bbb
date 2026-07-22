@@ -2873,6 +2873,7 @@ pub(crate) fn update_renderer_from_publication(
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
+    let display_text_surfaces = display_entity_item_models.text_surfaces;
     let item_mid_started_at = Instant::now();
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
@@ -3248,6 +3249,7 @@ pub(crate) fn update_renderer_from_publication(
             item_frame_map_decoration_surfaces,
             item_frame_map_text_surfaces,
             sign_text_surfaces,
+            display_text_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
             camera_hurt_effect,

@@ -49,7 +49,7 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   resident-release tails. Any change must preserve exact phase/translucent
   order and the explicit bounded-owner fallback rather than dropping visible
   instances.
-- Narrow Guardian/EndCrystal/Shulker/display specialized culling to their exact
+- Narrow Guardian/EndCrystal/Shulker specialized culling to their exact
   vanilla beam/interpolation/metadata boxes, and add section-granular compiled
   visibility; follow `LevelRenderer.extractVisibleEntities` and the registered
   renderer overrides without a parallel entity-type table.
@@ -793,11 +793,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 Submission surfaces:
 
-- Add renderer submission surfaces for generic name-tag text, sign/display text,
-  and block-feature submissions, then wire their draw ordering into vanilla's
-  `order(1).submitText` phase. Texture-backed special geometry added by these
-  surfaces must record complete submission metadata before atlas lookup rather
-  than reuse the no-texture custom-geometry path.
+- Add renderer submission surfaces for generic name-tag text and remaining
+  block-feature submissions, then wire their draw ordering into vanilla's
+  ordered text phase. Texture-backed special geometry added by these surfaces
+  must record complete submission metadata before atlas lookup rather than
+  reuse the no-texture custom-geometry path.
 
 Living-entity render state:
 

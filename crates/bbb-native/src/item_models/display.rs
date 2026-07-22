@@ -3,9 +3,10 @@ use std::sync::Arc;
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
-    CameraPose, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind,
-    ItemModelDrawTarget, ItemModelFoil, ItemModelGeometryClass, ItemModelMesh,
-    ItemModelResidencyFrame, ITEM_MODEL_NO_OVERLAY,
+    bake_display_text_surface, CameraPose, DisplayTextSurface, HudStyledTextRun, HudTextStyle,
+    ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawTarget,
+    ItemModelFoil, ItemModelGeometryClass, ItemModelMesh, ItemModelResidencyFrame,
+    ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{
     DisplayBillboardConstraints, DisplayEntityRenderContent, DisplayEntityRenderSourceState,
@@ -24,6 +25,7 @@ const ITEM_DISPLAY_ENTITY_TYPE: &str = "minecraft:item_display";
 #[derive(Default)]
 pub(crate) struct DisplayEntityItemModels {
     pub(crate) residency: ItemModelResidencyFrame,
+    pub(crate) text_surfaces: Vec<DisplayTextSurface>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -38,7 +40,7 @@ pub(crate) fn display_entity_item_models(
     attribute_keys: Option<&[String]>,
 ) -> DisplayEntityItemModels {
     let mut models = DisplayEntityItemModels::default();
-    for source in sources {
+    for (submit_sequence, source) in sources.iter().enumerate() {
         let transform = display_entity_transform(source, camera_pose);
         let light = display_shader_light(source.light_coords());
         match &source.content {
@@ -70,10 +72,63 @@ pub(crate) fn display_entity_item_models(
                     &mut models.residency,
                 );
             }
-            DisplayEntityRenderContent::Text { .. } => {}
+            DisplayEntityRenderContent::Text {
+                text,
+                line_width,
+                background_color,
+                text_opacity,
+                flags,
+            } => {
+                let Some((text, glyphs)) = text
+                    .as_ref()
+                    .zip(item_runtime.and_then(NativeItemRuntime::map_text_glyphs))
+                else {
+                    continue;
+                };
+                let runs = display_text_runs(text.styled());
+                models.text_surfaces.extend(bake_display_text_surface(
+                    source.entity_id,
+                    submit_sequence as u64,
+                    display_outline_color(source),
+                    transform,
+                    &runs,
+                    *line_width,
+                    *background_color,
+                    *text_opacity,
+                    *flags,
+                    light,
+                    glyphs,
+                ));
+            }
         }
     }
     models
+}
+
+fn display_text_runs(runs: &[bbb_protocol::StyledTextRun]) -> Vec<HudStyledTextRun> {
+    runs.iter()
+        .map(|run| HudStyledTextRun {
+            text: run.text.clone(),
+            style: HudTextStyle {
+                bold: run.style.bold == Some(true),
+                italic: run.style.italic == Some(true),
+                underlined: run.style.underlined == Some(true),
+                strikethrough: run.style.strikethrough == Some(true),
+                obfuscated: run.style.obfuscated == Some(true),
+            },
+            color: run.style.color,
+        })
+        .collect()
+}
+
+fn display_outline_color(source: &DisplayEntityRenderSourceState) -> Option<u32> {
+    source.appears_glowing.then(|| {
+        if source.glow_color_override == -1 {
+            bbb_renderer::ENTITY_DEFAULT_OUTLINE_COLOR
+        } else {
+            0xFF00_0000 | source.glow_color_override as u32 & 0x00FF_FFFF
+        }
+    })
 }
 
 fn bake_block_display(
@@ -350,6 +405,14 @@ mod tests {
         assert_eq!(display_shader_light(center.light_coords()), [0.4, 0.8]);
         center.brightness_override = (3 << 4) | (15 << 20);
         assert_eq!(display_shader_light(center.light_coords()), [0.2, 1.0]);
+        assert_eq!(display_outline_color(&center), None);
+        center.appears_glowing = true;
+        assert_eq!(
+            display_outline_color(&center),
+            Some(bbb_renderer::ENTITY_DEFAULT_OUTLINE_COLOR)
+        );
+        center.glow_color_override = 0x12_34_56;
+        assert_eq!(display_outline_color(&center), Some(0xFF12_3456));
     }
 
     #[test]
@@ -384,5 +447,40 @@ mod tests {
         for (source, expected) in contexts {
             assert_eq!(item_display_context(source), expected);
         }
+    }
+
+    #[test]
+    fn text_display_source_bakes_dedicated_surface_from_shared_visible_source() {
+        let mut source = source(DisplayBillboardConstraints::Fixed);
+        source.entity_id = 77;
+        source.entity_type_id = bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID;
+        source.transformation = DisplayTransformation::default();
+        source.content = DisplayEntityRenderContent::Text {
+            text: Some(bbb_protocol::RichTextComponent::plain("native text")),
+            line_width: 200,
+            background_color: 0x4000_0000,
+            text_opacity: -1,
+            flags: 0,
+        };
+        let runtime = NativeItemRuntime::empty_for_test();
+        let models = display_entity_item_models(
+            &[source],
+            &WorldStore::new(),
+            Some(&runtime),
+            &TerrainTextureState::default(),
+            None,
+            None,
+            None,
+            None,
+        );
+        assert!(models.residency.assets.is_empty());
+        assert!(models.residency.instances.is_empty());
+        assert_eq!(models.text_surfaces.len(), 1);
+        let surface = &models.text_surfaces[0];
+        assert_eq!(surface.submission.entity_id, 77);
+        assert_eq!(surface.submission.lines.len(), 1);
+        assert_eq!(surface.submission.lines[0].runs[0].text, "native text");
+        assert_eq!(surface.submission.background_argb, 0x4000_0000);
+        assert_eq!(surface.submission.light, [0.4, 0.8]);
     }
 }

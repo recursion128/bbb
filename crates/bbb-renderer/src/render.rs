@@ -891,6 +891,38 @@ impl Renderer {
             );
         }
 
+        // TextDisplay background custom geometry is order 0. Draw both normal
+        // and see-through backgrounds before any submitted text; the latter
+        // uses the same no-depth pipeline as see-through glyphs.
+        let display_text = self.collect_display_text_geometry();
+        if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+            for (vertices, indices, pipeline) in [
+                (
+                    &display_text.normal_background.0,
+                    &display_text.normal_background.1,
+                    &self.display_text_background_pipeline,
+                ),
+                (
+                    &display_text.see_through_background.0,
+                    &display_text.see_through_background.1,
+                    &self.display_text_see_through_pipeline,
+                ),
+            ] {
+                if !indices.is_empty() {
+                    self.draw_item_model_geometry_with_pipeline(
+                        &mut *encoder,
+                        main_view,
+                        vertices,
+                        indices,
+                        &atlas.bind_group,
+                        pipeline,
+                    );
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
+                }
+            }
+        }
+
         // Vanilla AbstractSignRenderer.submitSignText also goes through
         // submitText (drawn by TextFeatureRenderer in the same translucent
         // feature phase), so sign face text draws here with the same
@@ -907,6 +939,39 @@ impl Renderer {
                 );
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
+            }
+        }
+
+        // TextDisplay glyphs are submitted through collector order 1 when a
+        // background exists (and order 0 otherwise). Drawing the merged text
+        // buckets after every background preserves the required dependency;
+        // normal text uses polygon offset while see-through text disables
+        // depth and fog entirely.
+        if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+            for (vertices, indices, pipeline) in [
+                (
+                    &display_text.normal_text.0,
+                    &display_text.normal_text.1,
+                    &self.display_text_pipeline,
+                ),
+                (
+                    &display_text.see_through_text.0,
+                    &display_text.see_through_text.1,
+                    &self.display_text_see_through_pipeline,
+                ),
+            ] {
+                if !indices.is_empty() {
+                    self.draw_item_model_geometry_with_pipeline(
+                        &mut *encoder,
+                        main_view,
+                        vertices,
+                        indices,
+                        &atlas.bind_group,
+                        pipeline,
+                    );
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
+                }
             }
         }
     }

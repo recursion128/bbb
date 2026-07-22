@@ -24,9 +24,20 @@ use crate::{
     Renderer,
 };
 
+mod display_text;
 mod map;
 mod residency;
 mod sign_text;
+pub use display_text::{
+    bake_display_text_surface, split_display_text_lines, DisplayTextAlignment,
+    DisplayTextLayerSubmission, DisplayTextLine, DisplayTextRenderType, DisplayTextSubmission,
+    DisplayTextSurface, DISPLAY_TEXT_DEFAULT_BACKGROUND_OPACITY, DISPLAY_TEXT_FONT_TEXTURE,
+    DISPLAY_TEXT_LINE_HEIGHT,
+};
+pub(crate) use display_text::{
+    create_display_text_background_pipeline, create_display_text_pipeline,
+    create_display_text_see_through_pipeline,
+};
 pub use map::{
     bake_first_person_map_background_surface, bake_first_person_map_decoration_surface,
     bake_first_person_map_text_surface, bake_item_frame_map_decoration_surface,
@@ -63,7 +74,6 @@ pub use sign_text::{
     HANGING_SIGN_MAX_TEXT_LINE_WIDTH, HANGING_SIGN_TEXT_LINE_HEIGHT, SIGN_MAX_TEXT_LINE_WIDTH,
     SIGN_TEXT_LINE_HEIGHT,
 };
-
 /// Vanilla model space is `0..=16`; the unit cube is that divided by 16.
 const MODEL_SPACE_SCALE: f32 = 1.0 / 16.0;
 
@@ -933,7 +943,7 @@ const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_at
     5 => Float32x4
 ];
 
-fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+pub(crate) fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<ItemModelVertex>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Vertex,
