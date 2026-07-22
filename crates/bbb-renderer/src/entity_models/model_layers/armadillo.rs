@@ -7,6 +7,12 @@ use super::{PartPose, ARMADILLO_SHELL, ARMADILLO_SKIN, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+mod baby_one_shots;
+
+pub(in crate::entity_models) use baby_one_shots::{
+    ARMADILLO_BABY_PEEK, ARMADILLO_BABY_ROLL_OUT, ARMADILLO_BABY_ROLL_UP,
+};
+
 pub(in crate::entity_models) const MODEL_LAYER_ARMADILLO: &str = "minecraft:armadillo#main";
 pub(in crate::entity_models) const MODEL_LAYER_ARMADILLO_BABY: &str =
     "minecraft:armadillo_baby#main";
@@ -25,9 +31,10 @@ pub(in crate::entity_models) const MODEL_LAYER_ARMADILLO_BABY: &str =
 // reproduced on the body-nested head pivot, and the `applyWalk` leg sway rocks the body, tail, four
 // legs, and head as the armadillo moves (the head walk roll ADDS onto the look). Both the adult
 // ([`ARMADILLO_WALK`]) and the baby ([`ARMADILLO_BABY_WALK`], the same bones at slightly different
-// timestamps) walks are reproduced. The roll-up ([`ARMADILLO_ROLL_UP`]) and roll-out
-// ([`ARMADILLO_ROLL_OUT`]) keyframe transitions then ADD onto the walk pose, and the SCARED
-// [`ARMADILLO_PEEK`] applies to the visible head/front-leg/shell-ball parts even while hiding. The
+// timestamps) walks are reproduced. Each age selects its exact roll-up, roll-out, and peek
+// definitions; those keyframes then ADD onto the walk pose and continue to affect the visible
+// head/front-leg/shell-ball parts even while hiding. The baby definitions also animate its
+// head-cube-nested ear pivots during roll-out and peek. The
 // texture-backed path is covered by the shared textured entity submission path.
 
 // ----- Adult -----
@@ -556,14 +563,14 @@ fn baby_armadillo_head() -> ModelPart {
         BABY_ARMADILLO_HEAD_CUBES.to_vec(),
         vec![
             (
-                "0",
+                "right_ear",
                 ModelPart::leaf(
                     BABY_ARMADILLO_RIGHT_EAR_POSE,
                     BABY_ARMADILLO_RIGHT_EAR_CUBES.to_vec(),
                 ),
             ),
             (
-                "1",
+                "left_ear",
                 ModelPart::leaf(
                     BABY_ARMADILLO_LEFT_EAR_POSE,
                     BABY_ARMADILLO_LEFT_EAR_CUBES.to_vec(),
@@ -877,9 +884,9 @@ pub(in crate::entity_models) const ARMADILLO_WALK_SCALE_FACTOR: f32 = 2.5;
 // Vanilla `Armadillo.setupAnimationStates` `.startIfStopped`s `rollUpAnimationState` on entry to
 // ROLLING, and `ArmadilloModel.setupAnim` `apply`s it regardless of hiding. The world-projected
 // `armadillo_roll_up_seconds` carries the elapsed seconds. The body/tail/head/four legs scrunch in
-// during the first ~5 ticks while still drawn (`isHidingInShell` flips at tick 5); the `cube`
-// channel only matters once the shell ball shows, which bbb renders statically, so it is omitted
-// from the applied set (the rest tree carries no `cube`). Transcribed for the rest-tree bones.
+// during the first ~5 ticks while still drawn (`isHidingInShell` flips at tick 5). Once the shell
+// ball shows, its `cube` receives the remaining bounce/rotation keyframes. The rest tree carries no
+// visible `cube`, so those channels are sampled only by the rolled tree.
 
 const ARMADILLO_ROLL_UP_BODY_ROT: [Keyframe; 2] = [
     keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
@@ -967,6 +974,23 @@ const ARMADILLO_ROLL_UP_LEFT_FRONT_LEG_POS: [Keyframe; 6] = [
     keyframe(0.25, pos_vec(1.0, 9.0, -1.0), LINEAR),
     keyframe(0.375, pos_vec(1.0, 2.0, 3.0), LINEAR),
 ];
+const ARMADILLO_ROLL_UP_CUBE_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, degree_vec(-2.5, 0.0, 0.0), LINEAR),
+    keyframe(0.4583, degree_vec(5.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_ROLL_UP_CUBE_POS: [Keyframe; 8] = [
+    keyframe(0.0, pos_vec(0.0, 3.0, 0.0), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, 8.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 7.0, 0.0), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 7.0, 0.0), LINEAR),
+    keyframe(0.375, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 1.0, 0.0), LINEAR),
+    keyframe(0.4583, pos_vec(0.0, 0.6, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
 
 const ARMADILLO_ROLL_UP_BODY_CHANNELS: [AnimationChannel; 2] = [
     rot(&ARMADILLO_ROLL_UP_BODY_ROT),
@@ -996,8 +1020,12 @@ const ARMADILLO_ROLL_UP_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
     rot(&ARMADILLO_ROLL_UP_LEFT_FRONT_LEG_ROT),
     pos(&ARMADILLO_ROLL_UP_LEFT_FRONT_LEG_POS),
 ];
+const ARMADILLO_ROLL_UP_CUBE_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_ROLL_UP_CUBE_ROT),
+    pos(&ARMADILLO_ROLL_UP_CUBE_POS),
+];
 
-const ARMADILLO_ROLL_UP_BONES: [BoneAnimation; 7] = [
+const ARMADILLO_ROLL_UP_BONES: [BoneAnimation; 8] = [
     BoneAnimation {
         bone: "body",
         channels: &ARMADILLO_ROLL_UP_BODY_CHANNELS,
@@ -1026,12 +1054,15 @@ const ARMADILLO_ROLL_UP_BONES: [BoneAnimation; 7] = [
         bone: "left_front_leg",
         channels: &ARMADILLO_ROLL_UP_LEFT_FRONT_LEG_CHANNELS,
     },
+    BoneAnimation {
+        bone: "cube",
+        channels: &ARMADILLO_ROLL_UP_CUBE_CHANNELS,
+    },
 ];
 
 /// Vanilla `ArmadilloAnimation.ARMADILLO_ROLL_UP`: the 0.5s non-looping curl-in transition, started
 /// on entry to ROLLING and sampled by `ArmadilloModel.setupAnim` at `armadillo_roll_up_seconds`. The
-/// body/tail/head/four legs scrunch into the ball. The `cube` channel (which only shows once the
-/// shell ball is drawn, rendered statically by bbb) is omitted from the applied bone set.
+/// body/tail/head/four legs scrunch into the ball, then the visible shell `cube` bounces into place.
 pub(in crate::entity_models) const ARMADILLO_ROLL_UP: AnimationDefinition = AnimationDefinition {
     length_seconds: 0.5,
     looping: false,
@@ -1043,8 +1074,8 @@ pub(in crate::entity_models) const ARMADILLO_ROLL_UP: AnimationDefinition = Anim
 // Vanilla `Armadillo.setupAnimationStates` `.startIfStopped`s `rollOutAnimationState` on entry to
 // UNROLLING; `ArmadilloModel.setupAnim` `apply`s it regardless of hiding. The world-projected
 // `armadillo_roll_out_seconds` carries the elapsed seconds. The body un-curls and the legs/head
-// spring back out once the shell ball un-hides at tick 26 (`isHidingInShell` window). The `cube`
-// channel is omitted (the rest tree carries no `cube`). The `body` channel is POSITION-only.
+// spring back out once the shell ball un-hides at tick 26 (`isHidingInShell` window). The visible
+// shell `cube` rocks and bobs before that swap; the `body` channel is POSITION-only.
 
 const ARMADILLO_ROLL_OUT_HEAD_ROT: [Keyframe; 11] = [
     keyframe(0.1, degree_vec(-50.0, 0.0, 0.0), LINEAR),
@@ -1171,6 +1202,34 @@ const ARMADILLO_ROLL_OUT_BODY_POS: [Keyframe; 6] = [
     keyframe(1.4, pos_vec(0.0, -1.0, 0.0), LINEAR),
     keyframe(1.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
 ];
+const ARMADILLO_ROLL_OUT_CUBE_ROT: [Keyframe; 11] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.05, degree_vec(15.0, 0.0, 0.0), LINEAR),
+    keyframe(0.15, degree_vec(-7.5, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(-17.5, 0.0, 0.0), LINEAR),
+    keyframe(0.85, degree_vec(-25.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.95, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(1.05, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_ROLL_OUT_CUBE_POS: [Keyframe; 13] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.05, pos_vec(0.0, 1.6, 0.0), LINEAR),
+    keyframe(0.15, pos_vec(0.0, 0.5, 0.0), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, pos_vec(0.0, 1.2, 0.0), LINEAR),
+    keyframe(0.85, pos_vec(0.0, 1.7, 0.0), LINEAR),
+    keyframe(0.9, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.95, pos_vec(0.0, 1.3, 0.0), LINEAR),
+    keyframe(1.05, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2, pos_vec(0.0, 5.0, 0.0), LINEAR),
+    keyframe(1.25, pos_vec(0.0, 8.0, 0.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, 1.0, 0.0), LINEAR),
+];
 
 const ARMADILLO_ROLL_OUT_HEAD_CHANNELS: [AnimationChannel; 2] = [
     rot(&ARMADILLO_ROLL_OUT_HEAD_ROT),
@@ -1193,8 +1252,12 @@ const ARMADILLO_ROLL_OUT_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
     pos(&ARMADILLO_ROLL_OUT_LEFT_FRONT_LEG_POS),
 ];
 const ARMADILLO_ROLL_OUT_BODY_CHANNELS: [AnimationChannel; 1] = [pos(&ARMADILLO_ROLL_OUT_BODY_POS)];
+const ARMADILLO_ROLL_OUT_CUBE_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_ROLL_OUT_CUBE_ROT),
+    pos(&ARMADILLO_ROLL_OUT_CUBE_POS),
+];
 
-const ARMADILLO_ROLL_OUT_BONES: [BoneAnimation; 6] = [
+const ARMADILLO_ROLL_OUT_BONES: [BoneAnimation; 7] = [
     BoneAnimation {
         bone: "head",
         channels: &ARMADILLO_ROLL_OUT_HEAD_CHANNELS,
@@ -1219,12 +1282,16 @@ const ARMADILLO_ROLL_OUT_BONES: [BoneAnimation; 6] = [
         bone: "body",
         channels: &ARMADILLO_ROLL_OUT_BODY_CHANNELS,
     },
+    BoneAnimation {
+        bone: "cube",
+        channels: &ARMADILLO_ROLL_OUT_CUBE_CHANNELS,
+    },
 ];
 
 /// Vanilla `ArmadilloAnimation.ARMADILLO_ROLL_OUT`: the 1.5s non-looping un-curl transition, started
 /// on entry to UNROLLING and sampled by `ArmadilloModel.setupAnim` at `armadillo_roll_out_seconds`.
-/// The body springs up and the legs/head reach back out as the armadillo un-balls. The `body`
-/// channel is POSITION-only; the `cube` channel is omitted from the applied set.
+/// The shell `cube` rocks and bobs before the body springs up and the legs/head reach back out as
+/// the armadillo un-balls. The `body` channel is POSITION-only.
 pub(in crate::entity_models) const ARMADILLO_ROLL_OUT: AnimationDefinition = AnimationDefinition {
     length_seconds: 1.5,
     looping: false,
@@ -1610,21 +1677,30 @@ impl EntityModel for ArmadilloModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let (roll_out_definition, roll_up_definition, peek_definition) = if self.baby {
+            (
+                &ARMADILLO_BABY_ROLL_OUT,
+                &ARMADILLO_BABY_ROLL_UP,
+                &ARMADILLO_BABY_PEEK,
+            )
+        } else {
+            (&ARMADILLO_ROLL_OUT, &ARMADILLO_ROLL_UP, &ARMADILLO_PEEK)
+        };
         let roll_out = (instance.render_state.armadillo_roll_out_seconds >= 0.0).then(|| {
             keyframe_elapsed_seconds(
-                &ARMADILLO_ROLL_OUT,
+                roll_out_definition,
                 instance.render_state.armadillo_roll_out_seconds,
             )
         });
         let roll_up = (instance.render_state.armadillo_roll_up_seconds >= 0.0).then(|| {
             keyframe_elapsed_seconds(
-                &ARMADILLO_ROLL_UP,
+                roll_up_definition,
                 instance.render_state.armadillo_roll_up_seconds,
             )
         });
         let peek = (instance.render_state.armadillo_peek_seconds >= 0.0).then(|| {
             keyframe_elapsed_seconds(
-                &ARMADILLO_PEEK,
+                peek_definition,
                 instance.render_state.armadillo_peek_seconds,
             )
         });
@@ -1636,13 +1712,13 @@ impl EntityModel for ArmadilloModel {
             };
         let apply_one_shots = |part: &mut ModelPart, bone: &str| {
             if let Some(elapsed) = roll_out {
-                apply_definition(part, &ARMADILLO_ROLL_OUT, bone, elapsed);
+                apply_definition(part, roll_out_definition, bone, elapsed);
             }
             if let Some(elapsed) = roll_up {
-                apply_definition(part, &ARMADILLO_ROLL_UP, bone, elapsed);
+                apply_definition(part, roll_up_definition, bone, elapsed);
             }
             if let Some(elapsed) = peek {
-                apply_definition(part, &ARMADILLO_PEEK, bone, elapsed);
+                apply_definition(part, peek_definition, bone, elapsed);
             }
         };
 
@@ -1654,6 +1730,12 @@ impl EntityModel for ArmadilloModel {
                 {
                     let head = self.root.child_mut("body").child_mut("head");
                     apply_one_shots(head, "head");
+                    if self.baby {
+                        let head_cube = head.child_mut("head_cube");
+                        for bone in ["right_ear", "left_ear"] {
+                            apply_one_shots(head_cube.child_mut(bone), bone);
+                        }
+                    }
                 }
                 for bone in ["right_front_leg", "left_front_leg"] {
                     let part = self.root.child_mut(bone);
@@ -1691,12 +1773,11 @@ impl EntityModel for ArmadilloModel {
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 
-        // Vanilla `ArmadilloModel.setupAnim` then `apply`s rollOut, rollUp, and peek AFTER the walk,
-        // ADDING their offsets onto the already-walk-posed parts. All three definitions are
-        // non-looping, so sampling clamps at the final keyframe once their elapsed seconds exceed the
-        // definition length. The babies share the adult bone names, so the shared adult defs apply to
-        // both (the baby curl-in/peek pose is a close approximation; baby-specific roll defs stay
-        // deferred).
+        // Vanilla `ArmadilloModel.setupAnim` then `apply`s the age-selected rollOut, rollUp, and peek
+        // definitions AFTER the walk, ADDING their offsets onto the already-walk-posed parts. All
+        // three definitions are non-looping, so sampling clamps at the final keyframe once elapsed
+        // seconds exceed the definition length. Baby roll-out and peek additionally target its ear
+        // pivots nested below `head_cube`.
 
         {
             let body = self.root.child_mut("body");
@@ -1716,6 +1797,12 @@ impl EntityModel for ArmadilloModel {
                 head.pose.rotation[2] + head_walk_rot[2],
             ];
             apply_one_shots(head, "head");
+            if self.baby {
+                let head_cube = head.child_mut("head_cube");
+                for bone in ["right_ear", "left_ear"] {
+                    apply_one_shots(head_cube.child_mut(bone), bone);
+                }
+            }
         }
         for bone in [
             "right_hind_leg",

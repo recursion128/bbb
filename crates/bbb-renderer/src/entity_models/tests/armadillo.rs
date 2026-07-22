@@ -1,4 +1,5 @@
 use super::*;
+use crate::entity_models::model::EntityModel;
 
 #[test]
 fn adult_armadillo_geometry_matches_vanilla_26_1_body_layer() {
@@ -408,39 +409,44 @@ fn baby_armadillo_walk_animation_matches_vanilla_definition() {
 
 #[test]
 fn armadillo_roll_up_and_out_animations_match_vanilla_definitions() {
-    // Vanilla `ArmadilloAnimation.ARMADILLO_ROLL_UP`: 0.5 s non-looping. The applied bone set is the
-    // seven rest-tree bones (body, tail, head, four legs); the `cube` channel is omitted (the ball is
-    // rendered statically). 58 keyframes across those bones.
+    // Vanilla `ArmadilloAnimation.ARMADILLO_ROLL_UP`: 0.5 s non-looping. Eight bones include the
+    // seven expanded-tree bones plus the visible shell `cube`; 71 keyframes in total.
     assert_eq!(ARMADILLO_ROLL_UP.length_seconds, 0.5);
     assert!(!ARMADILLO_ROLL_UP.looping);
-    assert_eq!(ARMADILLO_ROLL_UP.bones.len(), 7);
+    assert_eq!(ARMADILLO_ROLL_UP.bones.len(), 8);
     let roll_up_keyframes: usize = ARMADILLO_ROLL_UP
         .bones
         .iter()
         .flat_map(|bone| bone.channels.iter())
         .map(|channel| channel.keyframes.len())
         .sum();
-    assert_eq!(roll_up_keyframes, 58);
+    assert_eq!(roll_up_keyframes, 71);
     // The head whips down to `degreeVec(-72.5, 0, 0)` at its t=0.25 keyframe as the armadillo balls up.
     let (_, head_rot) = sample_bone_offsets(&ARMADILLO_ROLL_UP, "head", 0.25, 1.0);
     assert!((head_rot[0] - (-72.5_f32).to_radians()).abs() < 1.0e-4);
+    let (cube_pos, cube_rot) = sample_bone_offsets(&ARMADILLO_ROLL_UP, "cube", 0.4583, 1.0);
+    assert!((cube_pos[1] - -0.6).abs() < 1.0e-4);
+    assert!((cube_rot[0] - 5.0_f32.to_radians()).abs() < 1.0e-4);
 
-    // Vanilla `ARMADILLO_ROLL_OUT`: 1.5 s non-looping, six applied bones (head, four legs, body — the
-    // body channel is POSITION-only; the `cube` channel is omitted). 103 keyframes.
+    // Vanilla `ARMADILLO_ROLL_OUT`: 1.5 s non-looping, seven bones (head, four legs, body, `cube`)
+    // and 127 keyframes. The body channel is POSITION-only.
     assert_eq!(ARMADILLO_ROLL_OUT.length_seconds, 1.5);
     assert!(!ARMADILLO_ROLL_OUT.looping);
-    assert_eq!(ARMADILLO_ROLL_OUT.bones.len(), 6);
+    assert_eq!(ARMADILLO_ROLL_OUT.bones.len(), 7);
     let roll_out_keyframes: usize = ARMADILLO_ROLL_OUT
         .bones
         .iter()
         .flat_map(|bone| bone.channels.iter())
         .map(|channel| channel.keyframes.len())
         .sum();
-    assert_eq!(roll_out_keyframes, 103);
+    assert_eq!(roll_out_keyframes, 127);
     // The body springs up to `posVec(0, 5, 0)` at its t=1.25 keyframe as it un-balls (`pos_vec`
     // negates Y to the model's coordinate convention, so the offset is `-5`).
     let (body_pos, _) = sample_bone_offsets(&ARMADILLO_ROLL_OUT, "body", 1.25, 1.0);
     assert!((body_pos[1] - -5.0).abs() < 1.0e-4);
+    let (cube_pos, cube_rot) = sample_bone_offsets(&ARMADILLO_ROLL_OUT, "cube", 0.85, 1.0);
+    assert!((cube_pos[1] - -1.7).abs() < 1.0e-4);
+    assert!((cube_rot[0] - (-25.0_f32).to_radians()).abs() < 1.0e-4);
 
     // Vanilla `ARMADILLO_PEEK`: 2.5 s non-looping, six bones (head, four legs, shell `cube`) and
     // 82 keyframes. The shell `cube` is included because vanilla still applies peek while the
@@ -460,6 +466,78 @@ fn armadillo_roll_up_and_out_animations_match_vanilla_definitions() {
     let (cube_pos, cube_rot) = sample_bone_offsets(&ARMADILLO_PEEK, "cube", 2.15, 1.0);
     assert!((cube_pos[1] - -1.7).abs() < 1.0e-4);
     assert!((cube_rot[0] - (-25.0_f32).to_radians()).abs() < 1.0e-4);
+}
+
+#[test]
+fn baby_armadillo_one_shots_match_vanilla_definitions() {
+    let total_keyframes = |definition: &AnimationDefinition| -> usize {
+        definition
+            .bones
+            .iter()
+            .flat_map(|bone| bone.channels.iter())
+            .map(|channel| channel.keyframes.len())
+            .sum()
+    };
+
+    // `BabyArmadilloAnimation` owns distinct tables, not scaled adult approximations.
+    assert_eq!(ARMADILLO_BABY_ROLL_UP.length_seconds, 0.5);
+    assert!(!ARMADILLO_BABY_ROLL_UP.looping);
+    assert_eq!(ARMADILLO_BABY_ROLL_UP.bones.len(), 8);
+    assert_eq!(total_keyframes(&ARMADILLO_BABY_ROLL_UP), 68);
+    let (baby_body_pos, _) = sample_bone_offsets(&ARMADILLO_BABY_ROLL_UP, "body", 0.15, 1.0);
+    let (adult_body_pos, _) = sample_bone_offsets(&ARMADILLO_ROLL_UP, "body", 0.15, 1.0);
+    assert!((baby_body_pos[1] - -5.0).abs() < 1.0e-4);
+    assert_ne!(baby_body_pos, adult_body_pos);
+
+    assert_eq!(ARMADILLO_BABY_ROLL_OUT.length_seconds, 1.5);
+    assert!(!ARMADILLO_BABY_ROLL_OUT.looping);
+    assert_eq!(ARMADILLO_BABY_ROLL_OUT.bones.len(), 9);
+    assert_eq!(total_keyframes(&ARMADILLO_BABY_ROLL_OUT), 137);
+    let (left_ear_pos, _) = sample_bone_offsets(&ARMADILLO_BABY_ROLL_OUT, "left_ear", 0.15, 1.0);
+    assert!((left_ear_pos[1] - 1.4129).abs() < 1.0e-4);
+    assert!((left_ear_pos[2] - 0.0617).abs() < 1.0e-4);
+
+    assert_eq!(ARMADILLO_BABY_PEEK.length_seconds, 2.5);
+    assert!(!ARMADILLO_BABY_PEEK.looping);
+    assert_eq!(ARMADILLO_BABY_PEEK.bones.len(), 8);
+    assert_eq!(total_keyframes(&ARMADILLO_BABY_PEEK), 106);
+    let (_, left_ear_rot) = sample_bone_offsets(&ARMADILLO_BABY_PEEK, "left_ear", 0.5, 1.0);
+    assert!((left_ear_rot[0] - (-15.0_f32).to_radians()).abs() < 1.0e-4);
+}
+
+#[test]
+fn armadillo_setup_selects_age_specific_shell_and_ear_channels() {
+    let mut adult = ArmadilloModel::new(false, true);
+    adult.setup_anim(
+        &EntityModelInstance::armadillo(812, [0.0, 64.0, 0.0], 0.0, false, true)
+            .with_armadillo_roll_up_seconds(0.4583),
+    );
+    let adult_cube = adult.root().try_child("cube").expect("adult shell cube");
+    assert!(
+        (adult_cube.pose.offset[1] - (ADULT_ARMADILLO_BALL_POSE.offset[1] - 0.6)).abs() < 1.0e-4
+    );
+    assert!((adult_cube.pose.rotation[0] - 5.0_f32.to_radians()).abs() < 1.0e-4);
+
+    let mut baby = ArmadilloModel::new(true, true);
+    baby.setup_anim(
+        &EntityModelInstance::armadillo(813, [0.0, 64.0, 0.0], 0.0, true, true)
+            .with_armadillo_roll_out_seconds(0.15),
+    );
+    let baby_left_ear = baby
+        .root()
+        .try_child("body")
+        .and_then(|body| body.try_child("head"))
+        .and_then(|head| head.try_child("head_cube"))
+        .and_then(|head_cube| head_cube.try_child("left_ear"))
+        .expect("baby left ear");
+    assert!(
+        (baby_left_ear.pose.offset[1] - (BABY_ARMADILLO_LEFT_EAR_POSE.offset[1] + 1.4129)).abs()
+            < 1.0e-4
+    );
+    assert!(
+        (baby_left_ear.pose.offset[2] - (BABY_ARMADILLO_LEFT_EAR_POSE.offset[2] + 0.0617)).abs()
+            < 1.0e-4
+    );
 }
 
 #[test]
@@ -536,8 +614,8 @@ fn armadillo_unrolling_re_poses_off_the_bind_pose() {
 #[test]
 fn armadillo_hidden_applies_visible_roll_keyframes() {
     // While `isHidingInShell` (the `rolled_up` tree), vanilla still applies roll-up / roll-out
-    // keyframes after the visibility swap. bbb's rolled tree omits the hidden body/tail/hind legs
-    // and the roll `cube` channels, but it still re-poses the visible head and front legs.
+    // keyframes after the visibility swap. bbb's rolled tree omits the hidden body/tail/hind legs,
+    // while the visible head, front legs, and shell `cube` receive their exact channels.
     let hidden = entity_model_mesh(&[EntityModelInstance::armadillo(
         87,
         [0.0, 64.0, 0.0],

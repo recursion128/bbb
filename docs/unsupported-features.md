@@ -1388,9 +1388,6 @@ back into a todo. Do not delete these.
   animation.
 - **Creaking tearing-down death-flicker** (`hasGlowingEyes`, a client-tick
   toggle).
-- **Armadillo roll-up / roll-out shell `cube` channels**, and the baby-specific
-  roll keyframes. The shell `cube` stays static while hiding; baby rolls share
-  the adult roll defs.
 - **Baby axolotl swim/walk/idle keyframe animations.** Vanilla `BabyAxolotlModel`
   is a separate keyframe model.
 - **Ender-dragon egg-distance heightmap stand-in.** The landing/takeoff head
