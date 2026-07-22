@@ -1649,6 +1649,12 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
         )
         .expect("generated Creaking tearing-down accessor");
     assert!(!tearing_down_default);
+    let living_accessors =
+        super::schema::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+        )
+        .expect("generated inherited Creaking living accessors");
+    assert_eq!(living_accessors.health_default, 1.0);
 
     let creaking_bool = |data_id: u8, value: bool| ProtocolEntityDataValue {
         data_id,
@@ -1679,6 +1685,7 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     assert_eq!(rest.creaking_attack_seconds, -1.0);
     assert_eq!(rest.creaking_invulnerable_seconds, -1.0);
     assert_eq!(rest.creaking_death_seconds, -1.0);
+    assert!(!rest.creaking_eyes_glowing);
 
     // The synced `CAN_MOVE = false` freezes the walk (a creaking observed mid-step turns to a statue).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
@@ -1737,16 +1744,49 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     );
 
     // Vanilla `deathAnimationState.animateWhen(isTearingDown(), tickCount)`: the synced
-    // `IS_TEARING_DOWN` boolean drives the collapse directly (no counter). Setting it spins up the
-    // death one-shot on the next tick; clearing it stops the timer.
+    // `IS_TEARING_DOWN` boolean drives the collapse directly (no counter). The server sets health
+    // to zero with teardown; on the first client tick `tickDeath` advances `deathTime` to 1 before
+    // `checkEyeBlink`, so the false-eye 0..=0 delay toggles the emissive eyes on immediately. Tick 2
+    // schedules from the glowing 2..=8 range and toggles them back off.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![creaking_bool(tearing_down_data_id, true)],
+        values: vec![
+            creaking_bool(tearing_down_data_id, true),
+            ProtocolEntityDataValue {
+                data_id: living_accessors.health_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(0.0),
+            },
+        ],
     }));
     store.advance_entity_client_animations(1);
-    assert!((source(&store, 70, 0.0).creaking_death_seconds - 0.0).abs() < 1.0e-6);
-    store.advance_entity_client_animations(5);
+    let first_teardown_tick = source(&store, 70, 0.0);
+    assert!((first_teardown_tick.creaking_death_seconds - 0.0).abs() < 1.0e-6);
+    assert!(first_teardown_tick.creaking_eyes_glowing);
+    store.advance_entity_client_animations(1);
+    assert!(!source(&store, 70, 0.0).creaking_eyes_glowing);
+    store.advance_entity_client_animations(4);
     assert!((source(&store, 70, 0.0).creaking_death_seconds - 0.25).abs() < 1.0e-6);
+
+    // The shared living death-tip counter stops at 20 because ordinary entities are removed then,
+    // but heart-bound Creaking teardown lasts 45 ticks. Its private deathTime/flicker cursor must
+    // therefore keep advancing and produce at least one eye transition after the shared cap.
+    store.advance_entity_client_animations(14);
+    let twentieth_teardown_tick = source(&store, 70, 0.0);
+    assert_eq!(twentieth_teardown_tick.death_time, 20.0);
+    let mut previous_eyes = twentieth_teardown_tick.creaking_eyes_glowing;
+    let mut transitioned_after_shared_death_cap = false;
+    for _ in 0..25 {
+        store.advance_entity_client_animations(1);
+        let eyes = source(&store, 70, 0.0).creaking_eyes_glowing;
+        transitioned_after_shared_death_cap |= eyes != previous_eyes;
+        previous_eyes = eyes;
+    }
+    assert!(
+        transitioned_after_shared_death_cap,
+        "teardown eye flicker must continue through the 45-tick Creaking death window"
+    );
+
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
         values: vec![creaking_bool(tearing_down_data_id, false)],
@@ -1757,6 +1797,7 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
         -1.0,
         "clearing isTearingDown stops the collapse"
     );
+    assert!(!source(&store, 70, 0.0).creaking_eyes_glowing);
 
     // A non-creaking never gets a creaking state: its combat seconds stay stopped, and `canMove`
     // projects the gated `true` regardless of the event/metadata.
@@ -1767,6 +1808,7 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     store.advance_entity_client_animations(2);
     let chicken = source(&store, 71, 0.0);
     assert!(chicken.creaking_can_move);
+    assert!(!chicken.creaking_eyes_glowing);
     assert_eq!(chicken.creaking_attack_seconds, -1.0);
     assert_eq!(chicken.creaking_death_seconds, -1.0);
 }

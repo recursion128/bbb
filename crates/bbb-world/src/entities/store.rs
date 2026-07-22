@@ -3991,6 +3991,7 @@ impl EntityStore {
             // The generated accessor gates the `canMove` read on Creaking membership and defaults
             // every other entity to `true`, because this field only controls the Creaking model.
             creaking_can_move: creaking_can_move(identity.entity_type_id, &metadata.data_values),
+            creaking_eyes_glowing: client_animations.animations.creaking_eyes_glowing(),
             creaking_attack_seconds: client_animations
                 .animations
                 .creaking_attack_seconds(partial_ticks),

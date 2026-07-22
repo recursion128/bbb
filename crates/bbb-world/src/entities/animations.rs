@@ -240,6 +240,10 @@ const RAVAGER_ATTACK_TICKS: i32 = 10;
 const RAVAGER_STUN_TICKS: i32 = 40;
 const RAVAGER_ROAR_TICKS: i32 = 20;
 const RAVAGER_STUN_PARTICLE_RANDOM_SALT: i64 = 0x5A17;
+/// Client-local RNG salt for `Creaking.checkEyeBlink`. Vanilla seeds each entity's
+/// `RandomSource` from process-local entropy, so the exact cursor is not present on the wire; bbb
+/// keeps the same Java LCG and interval rules behind a stable per-entity seed.
+const CREAKING_EYE_FLICKER_RANDOM_SALT: i64 = 0x4352_4541_4B;
 /// Client-local RNG salt for `Blaze.aiStep`. Vanilla does not synchronize the
 /// entity `RandomSource`; the cursor still belongs to the canonical entity and
 /// is cloned into immutable publications so retained generations cannot advance.
@@ -2216,14 +2220,13 @@ impl RabbitHopAnimationState {
     }
 }
 
-/// Canonical client-side creaking combat/death keyframe state, mirroring vanilla `Creaking`'s
-/// `attackAnimationState`/`invulnerabilityAnimationState`/`deathAnimationState` and the two
-/// remaining-tick counters that drive them. Entity event `4` seeds `attackAnimationRemainingTicks =
-/// 15`, event `66` seeds `invulnerabilityAnimationRemainingTicks = 8`; `aiStep` decrements both each
-/// client tick, then `Creaking.tick`'s `setupAnimationStates` `animateWhen`s each one-shot on its
-/// `ticks > 0`. The death one-shot has no counter — it `animateWhen`s on the synced `isTearingDown()`
-/// (`IS_TEARING_DOWN`) directly, so the per-tick advance is fed that flag. (Vanilla decrements in
-/// `aiStep` BEFORE `setupAnimationStates`, unlike `Rabbit`, whose `setupAnimationStates` runs first.)
+/// Canonical client-side creaking combat/death state, mirroring vanilla `Creaking`'s three
+/// `AnimationState`s, their two event-seeded counters, and the tearing-down eye flicker owned by
+/// `checkEyeBlink`. Entity event `4` seeds `attackAnimationRemainingTicks = 15`, event `66` seeds
+/// `invulnerabilityAnimationRemainingTicks = 8`; `aiStep` decrements both before
+/// `setupAnimationStates`. The death one-shot follows synced `isTearingDown()` directly. While that
+/// flag holds, the client-local `deathTime`, `nextFlickerTime`, and `eyesGlowing` fields reproduce
+/// the exact toggle order and inclusive random-delay ranges consumed by `CreakingRenderer`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct CreakingAnimationState {
     /// Vanilla `Creaking.attackAnimationRemainingTicks`.
@@ -2236,9 +2239,33 @@ pub struct CreakingAnimationState {
     pub invuln: KeyframeAnimationState,
     /// Vanilla `Creaking.deathAnimationState` (the 2.25s `CREAKING_DEATH` collapse).
     pub death: KeyframeAnimationState,
+    /// Vanilla `LivingEntity.deathTime` as advanced by `Creaking.tickDeath` during the heart-bound
+    /// tearing-down path. Kept separately because the shared death-tip timer is capped at 20 ticks,
+    /// while Creaking flicker continues through its 45-tick teardown.
+    #[serde(default)]
+    death_time: i32,
+    /// Vanilla client-local `Creaking.nextFlickerTime`.
+    #[serde(default)]
+    next_flicker_time: i32,
+    /// Vanilla client-local `Creaking.eyesGlowing`, consumed only while tearing down.
+    #[serde(default)]
+    eyes_glowing: bool,
+    /// Deterministic local substitute for the process-random Vanilla entity RNG seed. `None` keeps
+    /// older serialized snapshots compatible and is initialized from the entity id on first tick.
+    #[serde(default)]
+    eye_flicker_random_seed: Option<u64>,
 }
 
 impl CreakingAnimationState {
+    fn new(entity_id: i32) -> Self {
+        Self {
+            eye_flicker_random_seed: Some(java_random_seed(
+                i64::from(entity_id).wrapping_add(CREAKING_EYE_FLICKER_RANDOM_SALT),
+            )),
+            ..Self::default()
+        }
+    }
+
     /// Vanilla `Creaking.handleEntityEvent(4)`: `attackAnimationRemainingTicks = 15`. The one-shot
     /// itself starts on the next tick's `setupAnimationStates` once the (post-decrement) counter is
     /// still positive.
@@ -2255,7 +2282,7 @@ impl CreakingAnimationState {
     /// (toward `0`) FIRST, then `Creaking.tick`'s `setupAnimationStates` `animateWhen`s the attack on
     /// `attackTicks > 0`, the invulnerable on `invulnTicks > 0`, and the death on the synced
     /// `isTearingDown()`.
-    fn advance_client_tick(&mut self, age_ticks: u32, is_tearing_down: bool) {
+    fn advance_client_tick(&mut self, entity_id: i32, age_ticks: u32, is_tearing_down: bool) {
         if self.attack_ticks > 0 {
             self.attack_ticks -= 1;
         }
@@ -2265,6 +2292,41 @@ impl CreakingAnimationState {
         self.attack.animate_when(self.attack_ticks > 0, age_ticks);
         self.invuln.animate_when(self.invuln_ticks > 0, age_ticks);
         self.death.animate_when(is_tearing_down, age_ticks);
+
+        if is_tearing_down {
+            // Vanilla `Creaking.tick`: `super.tick()` runs the specialized `tickDeath` first, then
+            // `setupAnimationStates`, then `checkEyeBlink`. Thus the first teardown tick observes
+            // `deathTime == 1`, schedules from the false-eye `0..=0` interval, and toggles on.
+            self.death_time = self.death_time.saturating_add(1);
+            if self.death_time > self.next_flicker_time {
+                let min_delay = if self.eyes_glowing {
+                    2
+                } else {
+                    self.death_time / 4
+                };
+                let max_delay = if self.eyes_glowing {
+                    8
+                } else {
+                    self.death_time / 2
+                };
+                let random_seed = self.eye_flicker_random_seed.get_or_insert_with(|| {
+                    java_random_seed(
+                        i64::from(entity_id).wrapping_add(CREAKING_EYE_FLICKER_RANDOM_SALT),
+                    )
+                });
+                let delay =
+                    min_delay + java_random_next_int_bound(random_seed, max_delay - min_delay + 1);
+                self.next_flicker_time = self.death_time.saturating_add(delay);
+                self.eyes_glowing = !self.eyes_glowing;
+            }
+        } else {
+            // `IS_TEARING_DOWN` is monotonic for a real Vanilla teardown. Resetting the otherwise
+            // invisible local state lets malformed/replayed clear→set sequences start fresh and
+            // lets an event-only Creaking state settle.
+            self.death_time = 0;
+            self.next_flicker_time = 0;
+            self.eyes_glowing = false;
+        }
     }
 
     /// Both counters have wound down and all three one-shots have stopped, so the state can be dropped
@@ -2277,6 +2339,10 @@ impl CreakingAnimationState {
             && self.attack.start_age.is_none()
             && self.invuln.start_age.is_none()
             && self.death.start_age.is_none()
+    }
+
+    fn eyes_glowing(self) -> bool {
+        self.eyes_glowing
     }
 }
 
@@ -4954,7 +5020,7 @@ impl EntityClientAnimationState {
                 // there; the next tick's `setupAnimationStates` starts the matching keyframe one-shot.
                 let creaking = self
                     .creaking
-                    .get_or_insert_with(CreakingAnimationState::default);
+                    .get_or_insert_with(|| CreakingAnimationState::new(entity_id));
                 if event_kind == VanillaEntityEventKind::CreakingAttack {
                     creaking.start_attack();
                 } else {
@@ -5104,6 +5170,15 @@ impl EntityClientAnimationState {
         self.creaking
             .and_then(|state| state.death.elapsed_seconds(self.age_ticks, partial_tick))
             .unwrap_or(-1.0)
+    }
+
+    /// Vanilla `Creaking.hasGlowingEyes()`, the client-ticked teardown flicker bit consumed by
+    /// `CreakingRenderer` instead of synced `isActive()` while `isTearingDown()` holds. The exact
+    /// process-local RNG seed is not on the wire; the state preserves Vanilla's Java RNG shape,
+    /// inclusive delay ranges, death-time schedule, and toggle ordering with a stable local seed.
+    pub fn creaking_eyes_glowing(&self) -> bool {
+        self.creaking
+            .is_some_and(CreakingAnimationState::eyes_glowing)
     }
 
     /// Vanilla `Warden.getTendrilAnimation(partialTick)`, exposed for the renderer
@@ -6610,8 +6685,12 @@ impl EntityClientAnimationState {
                 if self.creaking.is_some() || creaking_is_tearing_down {
                     let creaking = self
                         .creaking
-                        .get_or_insert_with(CreakingAnimationState::default);
-                    creaking.advance_client_tick(self.age_ticks, creaking_is_tearing_down);
+                        .get_or_insert_with(|| CreakingAnimationState::new(entity_id));
+                    creaking.advance_client_tick(
+                        entity_id,
+                        self.age_ticks,
+                        creaking_is_tearing_down,
+                    );
                     if creaking.is_settled() {
                         self.creaking = None;
                     }

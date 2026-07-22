@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn entity_model_instance(
-    source: EntityModelSourceState,
+    mut source: EntityModelSourceState,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     game_time: i64,
@@ -59,6 +59,22 @@ pub(super) fn entity_model_instance(
     // `isHidingInShell`, which also covers the ROLLING/UNROLLING transition windows.
     if let EntityModelKind::Armadillo { rolled_up, .. } = &mut kind {
         *rolled_up = source.armadillo_is_hiding_in_shell;
+    }
+    // Vanilla `CreakingRenderer.extractRenderState`: outside teardown the emissive eyes follow the
+    // synced `isActive()` bit selected by `entity_model_kind`; during teardown they instead follow
+    // the client-ticked `hasGlowingEyes()` flicker. That renderer also suppresses the generic death
+    // tip-over and red damage overlay so the dedicated `CREAKING_DEATH` keyframe owns the collapse.
+    let creaking_is_tearing_down =
+        bbb_world::vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
+            source.entity_type_id,
+        )
+        .is_some_and(|(data_id, default)| entity_data_bool(&source.data_values, data_id, default));
+    if creaking_is_tearing_down {
+        if let EntityModelKind::Creaking { eyes_glowing } = &mut kind {
+            *eyes_glowing = source.creaking_eyes_glowing;
+        }
+        source.death_time = 0.0;
+        source.has_red_overlay = false;
     }
     apply_player_profile_skin(&mut kind, &source, world, item_runtime);
     let player_cape_texture = player_profile_texture(

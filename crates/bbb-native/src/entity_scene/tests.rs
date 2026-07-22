@@ -1740,6 +1740,60 @@ fn entity_model_instances_project_death_animation_time() {
 }
 
 #[test]
+fn entity_model_instances_project_creaking_teardown_flicker_without_death_overlay() {
+    let (tearing_down_data_id, tearing_down_default) =
+        bbb_world::vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+        )
+        .expect("generated Creaking tearing-down accessor");
+    assert!(!tearing_down_default);
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        822,
+        VANILLA_ENTITY_TYPE_CREAKING_ID,
+        [1.0, 64.0, -2.0],
+    ));
+    // Keep synced `isActive()` true to prove teardown ignores it in favor of the local flicker.
+    // Health zero starts the shared death/red-overlay source state exactly as the server's
+    // `CreakingHeartBlockEntity.removeProtector` does alongside `setTearingDown()`.
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 822,
+        values: vec![
+            protocol_bool_data(creaking_active_data_id(), true),
+            protocol_bool_data(tearing_down_data_id, true),
+            living_entity_health_data(VANILLA_ENTITY_TYPE_CREAKING_ID, 0.0),
+        ],
+    }));
+
+    // First teardown tick: deathTime 1 schedules the false-eye 0..=0 interval and toggles on.
+    world.advance_entity_client_animations(1);
+    let first = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 822)
+        .unwrap();
+    assert_eq!(first.kind, EntityModelKind::Creaking { eyes_glowing: true });
+    assert_eq!(first.render_state.death_time, 0.0);
+    assert!(!first.render_state.has_red_overlay);
+
+    // Second tick schedules from the glowing 2..=8 interval and toggles off. Synced active remains
+    // true, so a false kind here proves native projection selected `hasGlowingEyes()`.
+    world.advance_entity_client_animations(1);
+    let second = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 822)
+        .unwrap();
+    assert_eq!(
+        second.kind,
+        EntityModelKind::Creaking {
+            eyes_glowing: false
+        }
+    );
+    assert_eq!(second.render_state.death_time, 0.0);
+    assert!(!second.render_state.has_red_overlay);
+}
+
+#[test]
 fn entity_model_instances_project_ender_dragon_death_time() {
     // Vanilla `EnderDragonRenderer.extractRenderState` reads the dragon-specific
     // `dragonDeathTime`, not the generic 20-tick `LivingEntity.deathTime`, before selecting the
@@ -9369,10 +9423,9 @@ fn entity_model_kind_maps_guardian_and_elder_guardian_to_real_model() {
 
 #[test]
 fn entity_model_kind_maps_creaking_to_real_model() {
-    // The creaking was a placeholder render box; it now resolves to the real `CreakingModel`
-    // at its rest pose. The head look, walk, attack, invulnerable, and death keyframe animations
-    // are deferred entity-side state. The emissive eyes layer IS projected: `eyes_glowing` tracks
-    // the synced `IS_ACTIVE` flag (17), defaulting to dormant with no data.
+    // The data-only selector resolves the real `CreakingModel` and uses synced `IS_ACTIVE` for the
+    // ordinary emissive-eye state. `entity_model_instance` overrides this with the world-projected
+    // client flicker during teardown, when the exact walk/combat/death states are already projected.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_CREAKING_ID, &[]),
         EntityModelKind::Creaking {

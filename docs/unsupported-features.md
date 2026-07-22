@@ -1386,8 +1386,6 @@ back into a todo. Do not delete these.
   attachment metadata is recorded and ordinary block-quad baking is suppressed.
 - **Frog tongue prey-targeting** (`DATA_TONGUE_TARGET_ID`). Not part of the model
   animation.
-- **Creaking tearing-down death-flicker** (`hasGlowingEyes`, a client-tick
-  toggle).
 - **Ender-dragon egg-distance heightmap stand-in.** The landing/takeoff head
   droop divides by the podium heightmap distance; the synced `MOTION_BLOCKING`
   column stands in for the client-primed `MOTION_BLOCKING_NO_LEAVES` probe. The

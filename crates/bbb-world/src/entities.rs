@@ -2199,6 +2199,11 @@ entity_model_source_state! {
     /// without the flag (the field only feeds the creaking model).
     #[serde(default = "entity_model_source_default_true")]
     pub creaking_can_move: bool,
+    /// Vanilla `Creaking.hasGlowingEyes()`: the client-local tearing-down eye-flicker bit. It is
+    /// consumed only while synced `isTearingDown()` is true; otherwise `CreakingRenderer` uses the
+    /// synced `isActive()` flag. `false` for every other entity and before teardown begins.
+    #[serde(default)]
+    pub creaking_eyes_glowing: bool,
     /// Vanilla `Creaking.attackAnimationState` elapsed seconds (entity event `4`-seeded, the 0.7083s
     /// looping `CREAKING_ATTACK` lunge), sampled by `CreakingModel.setupAnim`'s `attackAnimation.apply`.
     /// `-1.0` (stopped) for a non-attacking creaking and every other entity.
