@@ -13,13 +13,13 @@ use bbb_renderer::{
     EntityShadowSurface, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
     HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatInteraction,
-    HudChatMessage, HudCommandSuggestions, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect,
-    HudInventoryScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
-    HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen, HudStyledTextRun, HudSystemToast,
-    HudTextStyle, HudTitleText, HudVehicleHealth, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
-    SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions, HudDebugOptionsScreen,
+    HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar, HudPauseScreen,
+    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen,
+    HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
+    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{visit_localized_template, LocalizedTemplatePart};
@@ -1438,6 +1438,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
     pub(crate) hud_screen_blur: bool,
     pub(crate) hud_sign_editor_screen: Option<HudSignEditorScreen>,
+    pub(crate) hud_command_block_editor_screen: Option<HudCommandBlockEditorScreen>,
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_system_toast: Option<HudSystemToast>,
@@ -1689,6 +1690,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
     renderer.set_hud_screen_blur(frame.hud_screen_blur);
     renderer.set_hud_sign_editor_screen(frame.hud_sign_editor_screen);
+    renderer.set_hud_command_block_editor_screen(frame.hud_command_block_editor_screen);
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_system_toast(frame.hud_system_toast);

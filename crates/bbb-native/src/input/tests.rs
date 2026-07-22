@@ -3,7 +3,8 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_net::OutboundChatCommand;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::block_entity_types::{
-    VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+    VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
 };
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_CYAN_ID,
@@ -144,8 +145,9 @@ use bbb_world::{
 };
 use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
-    ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
-    PaletteKind, PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState, WorldStore,
+    ChunkSection, ChunkState, CommandBlockEntityDataState, ItemEquipmentSlot, LightData,
+    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
+    SignBlockEntityTextState, WorldStore,
 };
 use std::{
     collections::BTreeMap,
@@ -1029,6 +1031,23 @@ impl CommandSuggestionTextMeasurer for FixedCommandSuggestionTextMeasurer {
             .unwrap_or(u32::MAX)
             .saturating_mul(6)
     }
+
+    fn command_suggestion_display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
+        scroll_to
+            .min(text.chars().count())
+            .saturating_sub(usize::try_from(width / 6).unwrap_or(usize::MAX))
+    }
+
+    fn command_suggestion_cursor_for_width(
+        &self,
+        text: &str,
+        display_start: usize,
+        width: u32,
+    ) -> usize {
+        display_start
+            .saturating_add(usize::try_from(width / 6).unwrap_or(usize::MAX))
+            .min(text.chars().count())
+    }
 }
 
 fn variable_debug_options_search_cursor_for_text_offset(search_text: &str, offset: i32) -> usize {
@@ -1151,6 +1170,7 @@ fn insert_sign_text(world: &mut WorldStore, pos: BlockPos, front: [&str; 4], bac
                 back: sign_text_side(back),
                 is_waxed: false,
             }),
+            command_block: None,
             vault_shared_data: None,
             decorated_pot_sherds: None,
             banner_patterns: None,
@@ -1174,6 +1194,67 @@ fn insert_empty_chunk_for_block(world: &mut WorldStore, pos: BlockPos) {
         block_entities: Vec::new(),
         light: LightData::default(),
     });
+}
+
+fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let block_state_id = bbb_world::vanilla_block_state_id(
+        "minecraft:command_block",
+        &BTreeMap::from([
+            ("conditional".to_string(), "false".to_string()),
+            ("facing".to_string(), "north".to_string()),
+        ]),
+    )
+    .expect("vanilla command block state");
+    let section_index = usize::try_from((pos.y + 64).div_euclid(16))
+        .expect("test command block lies in the overworld build height");
+    let record = BlockEntityRecord {
+        local_x: pos.x.rem_euclid(16) as u8,
+        y: i16::try_from(pos.y).unwrap(),
+        local_z: pos.z.rem_euclid(16) as u8,
+        type_id: VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
+        raw_nbt: vec![0],
+        nbt: None,
+        sign_text: None,
+        vault_shared_data: None,
+        decorated_pot_sherds: None,
+        banner_patterns: None,
+        end_gateway: None,
+        spawner: None,
+        command_block: Some(CommandBlockEntityDataState {
+            command: command.to_string(),
+            ..CommandBlockEntityDataState::default()
+        }),
+        note_block_sound: None,
+    };
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..24)
+            .map(|index| ChunkSection {
+                non_empty_block_count: if index == section_index { 4096 } else { 0 },
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    if index == section_index {
+                        block_state_id
+                    } else {
+                        0
+                    },
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            })
+            .collect(),
+        block_entities: vec![record],
+        light: LightData::default(),
+    });
+    world
 }
 
 fn empty_chunk_section() -> ChunkSection {
@@ -17846,6 +17927,250 @@ fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
     assert_eq!(input.chat_entry.as_ref().unwrap().text, "/seed");
     assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 5);
     assert!(input.chat_entry.as_ref().unwrap().suggestion_list.is_none());
+}
+
+#[test]
+fn command_block_editor_waits_for_authoritative_data_and_done_sends_exact_state_once() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_command_block(pos, "say initial");
+    assert!(world.try_open_command_block_editor(pos));
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(input.command_block_editor_is_active());
+    assert!(
+        !input
+            .command_block_editor_hud_state()
+            .unwrap()
+            .controls_enabled
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+    assert!(rx.try_recv().is_err());
+    assert!(input.command_block_editor_is_active());
+
+    assert!(world
+        .apply_block_entity_data(BlockEntityData {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_entity_type_id: VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
+            raw_nbt: nbt_compound(vec![
+                nbt_string("Command", "say authoritative"),
+                nbt_byte("TrackOutput", 1),
+                nbt_string("LastOutput", "previous"),
+                nbt_byte("auto", 0),
+            ]),
+        })
+        .unwrap());
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    let state = input.command_block_editor_hud_state().unwrap();
+    assert!(state.controls_enabled);
+    assert!(state.track_output);
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("say authoritative")
+    );
+    assert!(input.replace_chat_entry_text("say saved".to_string()));
+
+    let surface = PhysicalSize::new(320, 240);
+    let layout = hud_command_block_editor_layout(surface);
+    assert!(input.handle_command_block_editor_mouse_input(
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(layout.command_input.x + 4 + 18),
+            f64::from(layout.command_input.y + 6),
+        )),
+        surface,
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 3);
+    for rect in [
+        layout.mode,
+        layout.conditional,
+        layout.automatic,
+        layout.track_output,
+    ] {
+        assert!(input.handle_command_block_editor_mouse_input(
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(
+                f64::from(rect.x + 1),
+                f64::from(rect.y + 1),
+            )),
+            surface,
+            &FixedCommandSuggestionTextMeasurer,
+        ));
+    }
+    assert!(input.handle_command_block_editor_mouse_input(
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(layout.done.x + 1),
+            f64::from(layout.done.y + 1),
+        )),
+        surface,
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+
+    assert_eq!(counters.set_command_block_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SetCommandBlock(SetCommandBlock {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            command: "say saved".to_string(),
+            mode: CommandBlockMode::Sequence,
+            track_output: false,
+            conditional: true,
+            automatic: true,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+    assert!(!input.command_block_editor_is_active());
+    assert!(world.command_block_editor().is_none());
+    let data = world.command_block_data_at(pos).unwrap();
+    assert!(!data.track_output);
+    assert_eq!(data.last_output, None);
+}
+
+#[test]
+fn command_block_editor_cancel_and_escape_close_without_sending() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_command_block(pos, "say initial");
+
+    assert!(world.try_open_command_block_editor(pos));
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(!input.command_block_editor_is_active());
+    assert!(world.command_block_editor().is_none());
+
+    assert!(world.try_open_command_block_editor(pos));
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    let surface = PhysicalSize::new(320, 240);
+    let cancel = hud_command_block_editor_layout(surface).cancel;
+    assert!(input.handle_command_block_editor_mouse_input(
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(cancel.x + 1),
+            f64::from(cancel.y + 1),
+        )),
+        surface,
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    assert!(!input.command_block_editor_is_active());
+    assert!(world.command_block_editor().is_none());
+    assert_eq!(counters.set_command_block_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    assert!(world.try_open_command_block_editor(pos));
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(!input.command_entry_is_active());
+    assert!(world.command_block_editor().is_some());
+    world.apply_clear_dialog();
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(input.command_block_editor_is_active());
+
+    assert!(world.open_local_inventory());
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(!input.command_block_editor_is_active());
+    assert!(world.command_block_editor().is_none());
+}
+
+#[test]
+fn command_block_editor_uses_commands_only_seven_row_suggestions_and_utf16_limit() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_command_block(pos, "c");
+    let literals = (0..12)
+        .map(|index| format!("cmd{index:02}"))
+        .collect::<Vec<_>>();
+    world.apply_commands(local_literal_command_tree(
+        &literals.iter().map(String::as_str).collect::<Vec<_>>(),
+    ));
+    assert!(world.try_open_command_block_editor(pos));
+    input.sync_command_block_editor(&mut world, &mut counters, &commands);
+
+    let hud = input
+        .command_suggestion_hud_state(
+            &world,
+            &FixedCommandSuggestionTextMeasurer,
+            PhysicalSize::new(320, 240),
+        )
+        .unwrap();
+    assert!(hud.command_block_layout);
+    assert_eq!(hud.input_text, "c");
+    assert_eq!(hud.rect.y, 71);
+    assert_eq!(hud.rect.height, 84);
+    assert_eq!(hud.entries.len(), 7);
+    assert!(!hud.has_previous);
+    assert!(hud.has_next);
+
+    assert!(input.replace_chat_entry_text("😀".repeat(16_250)));
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "a");
+    assert_eq!(
+        input
+            .chat_entry
+            .as_ref()
+            .unwrap()
+            .text
+            .encode_utf16()
+            .count(),
+        MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS
+    );
+    assert!(!input.chat_entry.as_ref().unwrap().text.ends_with('a'));
+    assert!(input.replace_chat_entry_text("😀".repeat(16_249)));
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "ab");
+    assert_eq!(
+        input
+            .chat_entry
+            .as_ref()
+            .unwrap()
+            .text
+            .encode_utf16()
+            .count(),
+        MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS
+    );
+    assert!(input.chat_entry.as_ref().unwrap().text.ends_with("ab"));
 }
 
 #[test]

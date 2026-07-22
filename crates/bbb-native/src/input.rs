@@ -66,14 +66,15 @@ use bbb_protocol::{
     },
     mob_effect_types::vanilla_mob_effect_type,
     packets::{
-        BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
+        BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand, CommandBlockMode,
         ConsumeEffectSummary, Direction as ProtocolDirection, EntityDataEnumSerializer,
         EntityDataRegistryHolder, EntityDataValueKind, EntityTagQuery,
         FireworkExplosionShapeSummary, FireworkExplosionSummary, GameType, InteractionHand,
         ItemStackSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryValue,
         PlayerActionKind, PlayerCommandAction, PlayerInput, PlayerModelTypeSummary, RecipeBookType,
         ResolvableProfileData, ResolvableProfileKind, ResolvableProfileKindSummary,
-        ResolvableProfileSummary, SeenAdvancements, SignUpdate,
+        ResolvableProfileSummary, SeenAdvancements, SetCommandBlock, SignUpdate,
+        MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -182,9 +183,10 @@ use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::potion_types::vanilla_potion;
 use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_renderer::{
-    AxolotlModelVariant, BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant,
-    FoxModelVariant, FrogModelVariant, MooshroomVariant, ParrotModelVariant, PigModelVariant,
-    VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
+    hud_command_block_editor_layout, AxolotlModelVariant, BannerPatternKind, CatModelVariant,
+    ChickenModelVariant, CowModelVariant, FoxModelVariant, FrogModelVariant, MooshroomVariant,
+    ParrotModelVariant, PigModelVariant, VillagerModelType, WolfModelVariant,
+    ZombieNautilusModelVariant,
 };
 use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
 use bbb_world::{
@@ -205,8 +207,9 @@ pub(crate) use commands::{
     queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
     queue_rename_item_command, queue_request_game_rule_values_command, queue_request_stats_command,
     queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
-    queue_set_creative_mode_slot_command, queue_sign_update_command, queue_spectate_entity_command,
-    queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
+    queue_set_command_block_command, queue_set_creative_mode_slot_command,
+    queue_sign_update_command, queue_spectate_entity_command, queue_teleport_to_entity_command,
+    queue_vehicle_move_command, select_hotbar_slot,
 };
 use component_patch::{encode_added_component_value_snbt_with_context, PersistentSnbtContext};
 #[cfg(test)]
@@ -729,6 +732,27 @@ struct ChatEntryState {
     suggestion_narration: Option<CommandSuggestionNarrationState>,
     mouse_position: Option<(i32, i32)>,
     suppress_open_key_commit: bool,
+    owner: ChatEntryOwner,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+enum ChatEntryOwner {
+    #[default]
+    Chat,
+    CommandBlock(CommandBlockEditorInputState),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CommandBlockEditorInputState {
+    open_count: usize,
+    authoritative_revision: usize,
+    pos: BlockPos,
+    mode: CommandBlockMode,
+    conditional: bool,
+    automatic: bool,
+    track_output: bool,
+    previous_output: String,
+    controls_enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -744,6 +768,7 @@ enum NativeDialogPreviousScreenState {
 
 const COMMAND_SUGGESTION_LINE_HEIGHT: i32 = 12;
 const COMMAND_SUGGESTION_LINE_LIMIT: usize = 10;
+const COMMAND_BLOCK_SUGGESTION_LINE_LIMIT: usize = 7;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ChatSuggestionListState {
@@ -828,15 +853,71 @@ pub(crate) struct CommandSuggestionHudState {
     pub(crate) has_next: bool,
     pub(crate) tooltip: Option<CommandSuggestionHudTooltip>,
     pub(crate) narration: Option<CommandSuggestionNarrationState>,
+    pub(crate) command_block_layout: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CommandBlockEditorHudState {
+    pub(crate) mode: CommandBlockMode,
+    pub(crate) conditional: bool,
+    pub(crate) automatic: bool,
+    pub(crate) track_output: bool,
+    pub(crate) previous_output: String,
+    pub(crate) controls_enabled: bool,
+    pub(crate) mouse_position: Option<(i32, i32)>,
 }
 
 pub(crate) trait CommandSuggestionTextMeasurer {
     fn command_suggestion_text_width(&self, text: &str) -> u32;
+    fn command_suggestion_display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize;
+    fn command_suggestion_cursor_for_width(
+        &self,
+        text: &str,
+        display_start: usize,
+        width: u32,
+    ) -> usize;
 }
 
 impl CommandSuggestionTextMeasurer for bbb_renderer::Renderer {
     fn command_suggestion_text_width(&self, text: &str) -> u32 {
         self.hud_plain_text_width(text)
+    }
+
+    fn command_suggestion_display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
+        self.hud_plain_text_display_start_for_width(text, scroll_to, width)
+            .unwrap_or(0)
+    }
+
+    fn command_suggestion_cursor_for_width(
+        &self,
+        text: &str,
+        display_start: usize,
+        width: u32,
+    ) -> usize {
+        self.hud_plain_text_cursor_for_width_from(text, display_start, width)
+            .unwrap_or(display_start)
+    }
+}
+
+impl ChatEntryState {
+    fn commands_only(&self) -> bool {
+        matches!(self.owner, ChatEntryOwner::CommandBlock(_))
+    }
+
+    fn suggestion_line_limit(&self) -> usize {
+        if self.commands_only() {
+            COMMAND_BLOCK_SUGGESTION_LINE_LIMIT
+        } else {
+            COMMAND_SUGGESTION_LINE_LIMIT
+        }
+    }
+
+    fn max_utf16_units(&self) -> usize {
+        if self.commands_only() {
+            MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS
+        } else {
+            CHAT_ENTRY_MAX_LENGTH
+        }
     }
 }
 
@@ -1205,7 +1286,13 @@ impl ClientInputState {
         self.advancement_mouse_left_down = false;
         self.advancement_is_scrolling = false;
         self.reset_debug_crash_hold();
-        self.chat_entry = None;
+        if self
+            .chat_entry
+            .as_ref()
+            .is_none_or(|entry| !entry.commands_only())
+        {
+            self.chat_entry = None;
+        }
         #[cfg(test)]
         {
             self.local_player_movement_tick_accumulator_seconds = 0.0;
@@ -1336,7 +1423,7 @@ impl ClientInputState {
     }
 
     pub(crate) fn command_entry_is_active(&self) -> bool {
-        self.chat_entry_is_active()
+        self.chat_entry.is_some()
     }
 
     pub(crate) fn command_suggestion_hud_state(
@@ -1353,6 +1440,98 @@ impl ClientInputState {
 
     pub(crate) fn command_suggestions_active(&self) -> bool {
         self.chat_entry.is_some()
+    }
+
+    pub(crate) fn command_block_editor_is_active(&self) -> bool {
+        self.chat_entry
+            .as_ref()
+            .is_some_and(|entry| entry.commands_only())
+    }
+
+    pub(crate) fn command_block_editor_hud_state(&self) -> Option<CommandBlockEditorHudState> {
+        let entry = self.chat_entry.as_ref()?;
+        let ChatEntryOwner::CommandBlock(editor) = &entry.owner else {
+            return None;
+        };
+        Some(CommandBlockEditorHudState {
+            mode: editor.mode,
+            conditional: editor.conditional,
+            automatic: editor.automatic,
+            track_output: editor.track_output,
+            previous_output: editor.previous_output.clone(),
+            controls_enabled: editor.controls_enabled,
+            mouse_position: entry.mouse_position,
+        })
+    }
+
+    pub(crate) fn sync_command_block_editor(
+        &mut self,
+        world: &mut WorldStore,
+        counters: &mut NetCounters,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+    ) {
+        if world.dialog_screen_is_open() {
+            return;
+        }
+        let replaced_by_another_screen = world.open_container_id().is_some()
+            || world.current_book().is_some()
+            || world.advancements_screen_is_open()
+            || world.stats_screen_is_open()
+            || self.sign_editor_is_active_or_pending(world)
+            || self.debug_options_screen_is_open()
+            || self.debug_pause_screen_is_open();
+        if replaced_by_another_screen {
+            world.close_command_block_editor();
+        }
+        let Some(authoritative) = world.command_block_editor().cloned() else {
+            if self.command_block_editor_is_active() {
+                self.chat_entry = None;
+            }
+            return;
+        };
+        let open_count = world.command_block_editor_open_count();
+        let current_signature = self
+            .chat_entry
+            .as_ref()
+            .and_then(|entry| match &entry.owner {
+                ChatEntryOwner::CommandBlock(editor) => {
+                    Some((editor.open_count, editor.authoritative_revision))
+                }
+                ChatEntryOwner::Chat => None,
+            });
+        if current_signature == Some((open_count, authoritative.authoritative_revision)) {
+            return;
+        }
+
+        if current_signature.is_none_or(|(current_open_count, _)| current_open_count != open_count)
+        {
+            release_active_input(self, world, counters, net_commands);
+        }
+        let cursor = text_edit::char_len(&authoritative.data.command);
+        self.chat_entry = Some(ChatEntryState {
+            text: authoritative.data.command,
+            cursor,
+            selection: cursor,
+            owner: ChatEntryOwner::CommandBlock(CommandBlockEditorInputState {
+                open_count,
+                authoritative_revision: authoritative.authoritative_revision,
+                pos: authoritative.pos,
+                mode: authoritative.mode,
+                conditional: authoritative.conditional,
+                automatic: authoritative.data.automatic,
+                track_output: authoritative.data.track_output,
+                previous_output: authoritative
+                    .data
+                    .last_output
+                    .as_ref()
+                    .map(|output| output.text().to_string())
+                    .unwrap_or_default(),
+                controls_enabled: authoritative.controls_enabled,
+            }),
+            ..ChatEntryState::default()
+        });
+        self.chat_scroll_lines = 0;
+        maybe_queue_command_suggestion_request(self, counters, world, net_commands);
     }
 
     pub(crate) fn chat_scroll_lines(&self) -> usize {
@@ -1452,6 +1631,104 @@ impl ClientInputState {
         true
     }
 
+    pub(crate) fn handle_command_block_editor_mouse_input(
+        &mut self,
+        world: &mut WorldStore,
+        counters: &mut NetCounters,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        button: MouseButton,
+        state: ElementState,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+        measurer: &impl CommandSuggestionTextMeasurer,
+    ) -> bool {
+        if !self.command_block_editor_is_active() {
+            return false;
+        }
+        if let Some(entry) = self.chat_entry.as_mut() {
+            entry.mouse_position = cursor_position.and_then(physical_position_floor_i32);
+        }
+        if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+            return true;
+        }
+        let Some((mouse_x, mouse_y)) = self
+            .chat_entry
+            .as_ref()
+            .and_then(|entry| entry.mouse_position)
+        else {
+            return true;
+        };
+        let layout = hud_command_block_editor_layout(surface_size);
+        if layout.command_input.contains(mouse_x, mouse_y) {
+            let Some(entry) = self.chat_entry.as_mut() else {
+                return true;
+            };
+            let display_start = measurer.command_suggestion_display_start(
+                &entry.text,
+                entry.cursor,
+                layout.command_input.width.saturating_sub(8),
+            );
+            let text_offset = u32::try_from(
+                mouse_x
+                    .saturating_sub(layout.command_input.x)
+                    .saturating_sub(4)
+                    .max(0),
+            )
+            .unwrap_or_default();
+            let cursor = measurer.command_suggestion_cursor_for_width(
+                &entry.text,
+                display_start,
+                text_offset,
+            );
+            set_chat_entry_cursor(entry, cursor);
+            return true;
+        }
+        if layout.cancel.contains(mouse_x, mouse_y) {
+            self.chat_entry = None;
+            self.chat_scroll_lines = 0;
+            world.close_command_block_editor();
+            return true;
+        }
+        let controls_enabled = self.chat_entry.as_ref().is_some_and(|entry| {
+            matches!(
+                &entry.owner,
+                ChatEntryOwner::CommandBlock(editor) if editor.controls_enabled
+            )
+        });
+        if !controls_enabled {
+            return true;
+        }
+        if layout.done.contains(mouse_x, mouse_y) {
+            submit_chat_entry(self, counters, world, net_commands);
+            return true;
+        }
+        let Some(editor) = self
+            .chat_entry
+            .as_mut()
+            .and_then(|entry| match &mut entry.owner {
+                ChatEntryOwner::CommandBlock(editor) => Some(editor),
+                ChatEntryOwner::Chat => None,
+            })
+        else {
+            return true;
+        };
+        if layout.mode.contains(mouse_x, mouse_y) {
+            editor.mode = match editor.mode {
+                CommandBlockMode::Sequence => CommandBlockMode::Auto,
+                CommandBlockMode::Auto => CommandBlockMode::Redstone,
+                CommandBlockMode::Redstone => CommandBlockMode::Sequence,
+            };
+        } else if layout.conditional.contains(mouse_x, mouse_y) {
+            editor.conditional = !editor.conditional;
+        } else if layout.automatic.contains(mouse_x, mouse_y) {
+            editor.automatic = !editor.automatic;
+        } else if layout.track_output.contains(mouse_x, mouse_y) {
+            editor.track_output = !editor.track_output;
+            world.set_command_block_editor_track_output(editor.track_output);
+        }
+        true
+    }
+
     pub(crate) fn handle_command_suggestion_mouse_wheel(
         &mut self,
         delta: MouseScrollDelta,
@@ -1459,6 +1736,7 @@ impl ClientInputState {
         let Some(entry) = self.chat_entry.as_mut() else {
             return false;
         };
+        let line_limit = entry.suggestion_line_limit();
         let Some((mouse_x, mouse_y)) = entry.mouse_position else {
             return false;
         };
@@ -1473,10 +1751,7 @@ impl ClientInputState {
             MouseScrollDelta::PixelDelta(position) => position.y,
         }
         .clamp(-1.0, 1.0);
-        let max_offset = list
-            .sorted_indices
-            .len()
-            .saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT);
+        let max_offset = list.sorted_indices.len().saturating_sub(line_limit);
         list.offset =
             ((list.offset as f64 - scroll) as isize).clamp(0, max_offset as isize) as usize;
         true
@@ -1529,7 +1804,9 @@ impl ClientInputState {
     }
 
     pub(crate) fn chat_entry_is_active(&self) -> bool {
-        self.chat_entry.is_some()
+        self.chat_entry
+            .as_ref()
+            .is_some_and(|entry| matches!(entry.owner, ChatEntryOwner::Chat))
     }
 
     /// Moves native-owned screen state below the world-owned Dialog stack and
@@ -10437,6 +10714,7 @@ fn open_chat_entry(
         suggestion_narration: None,
         mouse_position: None,
         suppress_open_key_commit,
+        owner: ChatEntryOwner::Chat,
     });
     input.chat_scroll_lines = 0;
 }
@@ -10469,15 +10747,26 @@ fn handle_chat_entry_key(
                 Some(())
             });
             if hidden.is_none() {
+                let closes_command_block = input
+                    .chat_entry
+                    .as_ref()
+                    .is_some_and(|entry| entry.commands_only());
                 input.chat_entry = None;
                 input.chat_scroll_lines = 0;
+                if closes_command_block {
+                    world.close_command_block_editor();
+                }
             }
         }
         KeyCode::PageUp => {
-            input.chat_scroll_lines = input.chat_scroll_lines.saturating_add(19).min(100);
+            if !input.command_block_editor_is_active() {
+                input.chat_scroll_lines = input.chat_scroll_lines.saturating_add(19).min(100);
+            }
         }
         KeyCode::PageDown => {
-            input.chat_scroll_lines = input.chat_scroll_lines.saturating_sub(19);
+            if !input.command_block_editor_is_active() {
+                input.chat_scroll_lines = input.chat_scroll_lines.saturating_sub(19);
+            }
         }
         KeyCode::Tab => {
             let shift_down = input.shift_down();
@@ -10563,7 +10852,7 @@ fn handle_chat_entry_key(
         KeyCode::Backspace => {
             let control_down = input.control_down();
             if let Some(entry) = &mut input.chat_entry {
-                if entry.text.is_empty() {
+                if entry.text.is_empty() && !entry.commands_only() {
                     input.chat_entry = None;
                     return;
                 }
@@ -10615,11 +10904,11 @@ fn apply_latest_chat_suggestion(input: &mut ClientInputState, world: &WorldStore
         return;
     };
     let Some((updated_text, updated_cursor)) =
-        latest_chat_suggestion_text(world, &entry.text, entry.cursor)
+        latest_chat_suggestion_text(world, &entry.text, entry.cursor, entry.commands_only())
     else {
         return;
     };
-    let is_command = entry.text.starts_with('/');
+    let is_command = entry.commands_only() || entry.text.starts_with('/');
     if let Some(entry) = &mut input.chat_entry {
         entry.text = updated_text;
         set_chat_entry_cursor(entry, updated_cursor);
@@ -10630,7 +10919,7 @@ fn apply_latest_chat_suggestion(input: &mut ClientInputState, world: &WorldStore
 }
 
 fn sync_chat_suggestion_list(entry: &mut ChatEntryState, world: &WorldStore) {
-    if !entry.text.starts_with('/') {
+    if !entry.commands_only() && !entry.text.starts_with('/') {
         return;
     }
     if entry
@@ -10755,6 +11044,7 @@ fn cycle_chat_suggestion(entry: &mut ChatEntryState, direction: i32) {
 }
 
 fn select_chat_suggestion(entry: &mut ChatEntryState, index: usize, narrate: bool) {
+    let line_limit = entry.suggestion_line_limit();
     let Some(list) = entry.suggestion_list.as_mut() else {
         return;
     };
@@ -10765,16 +11055,14 @@ fn select_chat_suggestion(entry: &mut ChatEntryState, index: usize, narrate: boo
     let current = index % len;
     let changed = list.current != current;
     list.current = current;
-    let last_visible = list
-        .offset
-        .saturating_add(COMMAND_SUGGESTION_LINE_LIMIT.saturating_sub(1));
+    let last_visible = list.offset.saturating_add(line_limit.saturating_sub(1));
     if current < list.offset {
-        list.offset = current.min(len.saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT));
+        list.offset = current.min(len.saturating_sub(line_limit));
     } else if current > last_visible {
         list.offset = current
             .saturating_add(1)
-            .saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT)
-            .min(len.saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT));
+            .saturating_sub(line_limit)
+            .min(len.saturating_sub(line_limit));
     }
     if !narrate || !changed {
         return;
@@ -10844,6 +11132,7 @@ fn update_chat_suggestion_list_rect(
     measurer: &impl CommandSuggestionTextMeasurer,
     surface_size: PhysicalSize<u32>,
 ) {
+    let command_block_layout = entry.commands_only();
     let Some(list) = entry.suggestion_list.as_mut() else {
         return;
     };
@@ -10860,21 +11149,43 @@ fn update_chat_suggestion_list_rect(
         .get(..start)
         .map(|prefix| measurer.command_suggestion_text_width(prefix))
         .unwrap_or_default();
-    let max_x = i32::try_from(surface_size.width.saturating_sub(max_width)).unwrap_or(i32::MAX);
-    // ChatScreen's unbordered edit box starts at x=4. Vanilla first clamps
-    // getScreenX(start), then SuggestionsList shifts that anchor one pixel
-    // left (including at the right edge).
-    let x = (4i32.saturating_add_unsigned(prefix_width))
-        .clamp(0, max_x)
-        .saturating_sub(1);
-    let visible = list.sorted_indices.len().min(COMMAND_SUGGESTION_LINE_LIMIT);
+    let x = if command_block_layout {
+        let input_x = i32::try_from(surface_size.width / 2)
+            .unwrap_or(i32::MAX)
+            .saturating_sub(150);
+        let max_x = input_x
+            .saturating_add(296)
+            .saturating_sub_unsigned(max_width);
+        input_x
+            .saturating_add(4)
+            .saturating_add_unsigned(prefix_width)
+            .clamp(0, max_x)
+    } else {
+        let max_x = i32::try_from(surface_size.width.saturating_sub(max_width)).unwrap_or(i32::MAX);
+        // ChatScreen's unbordered edit box starts at x=4. Vanilla first clamps
+        // getScreenX(start), then SuggestionsList shifts that anchor one pixel
+        // left (including at the right edge).
+        (4i32.saturating_add_unsigned(prefix_width))
+            .clamp(0, max_x)
+            .saturating_sub(1)
+    };
+    let line_limit = if command_block_layout {
+        COMMAND_BLOCK_SUGGESTION_LINE_LIMIT
+    } else {
+        COMMAND_SUGGESTION_LINE_LIMIT
+    };
+    let visible = list.sorted_indices.len().min(line_limit);
     let height = u32::try_from(visible)
         .unwrap_or_default()
         .saturating_mul(COMMAND_SUGGESTION_LINE_HEIGHT as u32);
-    let y = i32::try_from(surface_size.height)
-        .unwrap_or(i32::MAX)
-        .saturating_sub(15)
-        .saturating_sub_unsigned(height);
+    let y = if command_block_layout {
+        71
+    } else {
+        i32::try_from(surface_size.height)
+            .unwrap_or(i32::MAX)
+            .saturating_sub(15)
+            .saturating_sub_unsigned(height)
+    };
     list.rect = Some(CommandSuggestionRect {
         x,
         y,
@@ -10902,12 +11213,13 @@ fn chat_suggestion_hud_state(entry: &ChatEntryState) -> CommandSuggestionHudStat
             has_next: false,
             tooltip: None,
             narration: entry.suggestion_narration.clone(),
+            command_block_layout: entry.commands_only(),
         };
     };
     let result = &list.result;
     let visible_end = list
         .offset
-        .saturating_add(COMMAND_SUGGESTION_LINE_LIMIT)
+        .saturating_add(entry.suggestion_line_limit())
         .min(list.sorted_indices.len());
     let entries = list.sorted_indices[list.offset..visible_end]
         .iter()
@@ -10979,6 +11291,7 @@ fn chat_suggestion_hud_state(entry: &ChatEntryState) -> CommandSuggestionHudStat
         has_next: visible_end < list.sorted_indices.len(),
         tooltip,
         narration: entry.suggestion_narration.clone(),
+        command_block_layout: entry.commands_only(),
     }
 }
 
@@ -10986,8 +11299,9 @@ fn latest_chat_suggestion_text(
     world: &WorldStore,
     current_text: &str,
     cursor: usize,
+    commands_only: bool,
 ) -> Option<(String, usize)> {
-    if current_text.starts_with('/') {
+    if commands_only || current_text.starts_with('/') {
         let updated = latest_command_suggestion_text(world, current_text)?;
         let cursor = text_edit::char_len(&updated);
         return Some((updated, cursor));
@@ -11105,7 +11419,7 @@ fn update_chat_entry_after_text_change(
     let Some(entry) = &mut input.chat_entry else {
         return;
     };
-    if entry.text.is_empty() {
+    if entry.text.is_empty() && !entry.commands_only() {
         input.chat_entry = None;
         return;
     }
@@ -11115,24 +11429,26 @@ fn update_chat_entry_after_text_change(
     entry.suggestion_list = None;
     entry.hidden_suggestion_id = None;
     entry.suggestion_narration = None;
-    if entry.text.starts_with('/') {
+    if entry.commands_only() || entry.text.starts_with('/') {
         maybe_queue_command_suggestion_request(input, counters, world, net_commands);
     }
 }
 
 fn insert_chat_entry_text(entry: &mut ChatEntryState, text: &str) {
     delete_chat_entry_selection(entry);
+    let max_utf16_units = entry.max_utf16_units();
     let current = &mut entry.text;
     entry.cursor = entry.cursor.min(text_edit::char_len(current));
-    let mut remaining = CHAT_ENTRY_MAX_LENGTH.saturating_sub(text_edit::char_len(current));
+    let mut remaining = max_utf16_units.saturating_sub(current.encode_utf16().count());
     for ch in text.chars().filter(|ch| is_chat_text_char(*ch)) {
-        if remaining == 0 {
+        let units = ch.len_utf16();
+        if units > remaining {
             break;
         }
         let insert_at = text_edit::byte_index(current, entry.cursor);
         current.insert(insert_at, ch);
         entry.cursor += 1;
-        remaining -= 1;
+        remaining -= units;
     }
     entry.selection = entry.cursor;
 }
@@ -11189,6 +11505,34 @@ fn submit_chat_entry(
     let Some(entry) = input.chat_entry.take() else {
         return;
     };
+    if let ChatEntryOwner::CommandBlock(editor) = &entry.owner {
+        if !editor.controls_enabled {
+            input.chat_entry = Some(entry);
+            return;
+        }
+        let pos = editor.pos;
+        let mode = editor.mode;
+        let track_output = editor.track_output;
+        let conditional = editor.conditional;
+        let automatic = editor.automatic;
+        queue_set_command_block_command(
+            counters,
+            net_commands,
+            SetCommandBlock {
+                pos: protocol_block_pos_from_world(pos),
+                command: entry.text,
+                mode,
+                track_output,
+                conditional,
+                automatic,
+            },
+        );
+        if !track_output {
+            world.clear_command_block_editor_last_output();
+        }
+        world.close_command_block_editor();
+        return;
+    }
     let Some(command) = normalize_command_entry(&entry.text) else {
         let Some(message) = normalize_chat_entry(&entry.text) else {
             return;

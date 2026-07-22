@@ -272,6 +272,9 @@ fn start_use_item(
             );
         }
         Some(CrosshairTarget::Block(hit)) => {
+            if world.try_open_command_block_editor(hit.pos) {
+                input.sync_command_block_editor(world, counters, net_commands);
+            }
             let sequence = world.next_local_prediction_sequence();
             let hand = block_use_hand(world);
             queue_use_item_on_command(counters, net_commands, hand, hit, sequence);
@@ -650,11 +653,12 @@ mod tests {
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::packets::{
-        AddEntity, AttackEntity, AttackRangeSummary, BlockHitResult as ProtocolBlockHitResult,
-        BlockPos as ProtocolBlockPos, BlockUpdate, GameEvent as ProtocolGameEvent,
+        AddEntity, AttackEntity, AttackRangeSummary, BlockEntityData,
+        BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos, BlockUpdate,
+        CommonPlayerSpawnInfo, EntityEvent as ProtocolEntityEvent, GameEvent as ProtocolGameEvent,
         InitializeBorder, InteractEntity, ItemStackSummary as ProtocolItemStackSummary,
-        OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayerAbilities, PlayerAction,
-        SetPlayerInventory as ProtocolSetPlayerInventory, UseItem, UseItemOn,
+        OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
+        PlayerAction, SetPlayerInventory as ProtocolSetPlayerInventory, UseItem, UseItemOn,
         Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
@@ -2166,6 +2170,50 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_on_permitted_command_block_opens_editor_and_still_uses_block() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_command_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(input.command_block_editor_is_active());
+        assert!(
+            !input
+                .command_block_editor_hud_state()
+                .unwrap()
+                .controls_enabled
+        );
+        assert!(world.command_block_editor().is_some());
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                    direction: ProtocolDirection::North,
+                    cursor_x: 0.0,
+                    cursor_y: 0.62,
+                    cursor_z: 0.0,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 1,
+            })
+        );
+    }
+
+    #[test]
     fn right_mouse_press_on_block_outside_world_border_does_not_queue_use_item_on() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -2789,6 +2837,7 @@ mod tests {
                 raw_nbt: vec![0],
                 nbt: None,
                 sign_text: Some(SignBlockEntityTextState::default()),
+                command_block: None,
                 vault_shared_data: None,
                 decorated_pot_sherds: None,
                 banner_patterns: None,
@@ -2888,6 +2937,82 @@ mod tests {
             pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
             block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
         }));
+        world
+    }
+
+    fn world_with_crosshair_command_block() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 1,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        assert!(world.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 42,
+            event_id: 26,
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: (0..24)
+                .map(|_| ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: single_value_container(
+                        PaletteDomain::BlockStates,
+                        4096,
+                        bbb_world::vanilla_air_block_state_id(),
+                    ),
+                    biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+                })
+                .collect(),
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+        let command_block_state = bbb_world::vanilla_block_state_id(
+            "minecraft:command_block",
+            &BTreeMap::from([
+                ("conditional".to_string(), "false".to_string()),
+                ("facing".to_string(), "north".to_string()),
+            ]),
+        )
+        .unwrap();
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: command_block_state,
+        }));
+        assert!(world
+            .apply_block_entity_data(BlockEntityData {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
+                raw_nbt: vec![0],
+            })
+            .unwrap());
         world
     }
 

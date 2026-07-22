@@ -820,6 +820,18 @@ impl SimulationInputRuntime {
             ) {
                 return;
             }
+            if context.input.handle_command_block_editor_mouse_input(
+                context.world,
+                context.net_counters,
+                context.net_commands,
+                button,
+                state,
+                self.cursor_position,
+                self.surface_size,
+                &self.text_measurements,
+            ) {
+                return;
+            }
             if matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
                 self.apply_chat_hit_target(chat_target, context);
             }
@@ -975,6 +987,9 @@ impl SimulationInputRuntime {
         if context.input.command_entry_is_active() {
             self.request_cursor_capture(false, context.platform);
             if context.input.handle_command_suggestion_mouse_wheel(delta) {
+                return;
+            }
+            if context.input.command_block_editor_is_active() {
                 return;
             }
             let scroll = match delta {
@@ -1205,6 +1220,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.command_block_editor().is_some()
 }
 
 fn simulation_wants_cursor(input: &crate::input::ClientInputState, world: &WorldStore) -> bool {
@@ -1374,6 +1390,21 @@ impl DebugOptionsSearchTextMeasurer for HudFontGlyphMap {
 impl CommandSuggestionTextMeasurer for HudFontGlyphMap {
     fn command_suggestion_text_width(&self, text: &str) -> u32 {
         self.plain_text_width(text)
+    }
+
+    fn command_suggestion_display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
+        self.plain_text_display_start_for_width(text, scroll_to, width)
+            .unwrap_or(0)
+    }
+
+    fn command_suggestion_cursor_for_width(
+        &self,
+        text: &str,
+        display_start: usize,
+        width: u32,
+    ) -> usize {
+        self.plain_text_cursor_for_width_from(text, display_start, width)
+            .unwrap_or(display_start)
     }
 }
 

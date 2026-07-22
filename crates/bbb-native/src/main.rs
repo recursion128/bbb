@@ -1161,6 +1161,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.command_block_editor().is_some()
 }
 
 pub(crate) fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
@@ -1274,6 +1275,7 @@ mod tests {
                 raw_nbt: vec![0],
                 nbt: None,
                 sign_text: Some(SignBlockEntityTextState::default()),
+                command_block: None,
                 vault_shared_data: None,
                 decorated_pot_sherds: None,
                 banner_patterns: None,

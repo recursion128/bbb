@@ -15,8 +15,8 @@ use bbb_protocol::packets::{
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
     PlayerCommand, PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
     RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
-    SelectTradeCommand, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
-    TeleportToEntity, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    SelectTradeCommand, SetBeacon, SetCommandBlock, SetCreativeModeSlot, SignUpdate,
+    SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -261,6 +261,18 @@ pub(crate) fn queue_set_beacon_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SetBeacon(command)).is_ok() {
             counters.set_beacon_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_command_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetCommandBlock,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetCommandBlock(command)).is_ok() {
+            counters.set_command_block_commands_queued += 1;
         }
     }
 }

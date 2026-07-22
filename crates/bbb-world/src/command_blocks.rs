@@ -44,6 +44,8 @@ pub struct CommandBlockEditorState {
     pub mode: CommandBlockMode,
     pub conditional: bool,
     pub controls_enabled: bool,
+    #[serde(default)]
+    pub authoritative_revision: usize,
 }
 
 pub(crate) fn decode_command_block_entity_data(
@@ -116,12 +118,41 @@ impl WorldStore {
             mode,
             conditional,
             controls_enabled: false,
+            authoritative_revision: 0,
         });
         true
     }
 
     pub fn close_command_block_editor(&mut self) -> bool {
         self.client_ui.current_command_block_editor.take().is_some()
+    }
+
+    pub fn set_command_block_editor_track_output(&mut self, track_output: bool) -> bool {
+        let Some(pos) = self.command_block_editor().map(|editor| editor.pos) else {
+            return false;
+        };
+        let Some(data) = self.command_block_data_at_mut(pos) else {
+            return false;
+        };
+        data.track_output = track_output;
+        if let Some(editor) = &mut self.client_ui.current_command_block_editor {
+            editor.data.track_output = track_output;
+        }
+        true
+    }
+
+    pub fn clear_command_block_editor_last_output(&mut self) -> bool {
+        let Some(pos) = self.command_block_editor().map(|editor| editor.pos) else {
+            return false;
+        };
+        let Some(data) = self.command_block_data_at_mut(pos) else {
+            return false;
+        };
+        data.last_output = None;
+        if let Some(editor) = &mut self.client_ui.current_command_block_editor {
+            editor.data.last_output = None;
+        }
+        true
     }
 
     pub(crate) fn refresh_command_block_editor_from_authoritative_data(&mut self, pos: BlockPos) {
@@ -146,6 +177,7 @@ impl WorldStore {
             editor.mode = mode;
             editor.conditional = conditional;
             editor.controls_enabled = true;
+            editor.authoritative_revision = editor.authoritative_revision.saturating_add(1);
         }
     }
 
@@ -163,8 +195,11 @@ impl WorldStore {
             return;
         };
         if let Some(editor) = &mut self.client_ui.current_command_block_editor {
-            editor.mode = mode;
-            editor.conditional = conditional;
+            if editor.mode != mode || editor.conditional != conditional {
+                editor.mode = mode;
+                editor.conditional = conditional;
+                editor.authoritative_revision = editor.authoritative_revision.saturating_add(1);
+            }
         }
     }
 
@@ -194,6 +229,24 @@ impl WorldStore {
             .get("conditional")
             .is_some_and(|value| value == "true");
         Some((mode, conditional))
+    }
+
+    fn command_block_data_at_mut(
+        &mut self,
+        pos: BlockPos,
+    ) -> Option<&mut CommandBlockEntityDataState> {
+        let chunk = self.chunks.iter_mut().find(|chunk| {
+            chunk.pos.x == pos.x.div_euclid(16) && chunk.pos.z == pos.z.div_euclid(16)
+        })?;
+        let local_x = pos.x.rem_euclid(16) as u8;
+        let local_z = pos.z.rem_euclid(16) as u8;
+        let y = i16::try_from(pos.y).ok()?;
+        let record = chunk.block_entities.iter_mut().find(|record| {
+            record.local_x == local_x && record.y == y && record.local_z == local_z
+        })?;
+        (record.type_id == VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID)
+            .then_some(record.command_block.as_mut())
+            .flatten()
     }
 }
 
@@ -307,11 +360,21 @@ mod tests {
             .unwrap());
         let editor = store.command_block_editor().unwrap();
         assert!(editor.controls_enabled);
+        assert_eq!(editor.authoritative_revision, 1);
         assert_eq!(editor.data.command, "say authoritative");
         assert_eq!(
             store.command_block_data_at(pos).unwrap().last_execution,
             Some(42)
         );
+        assert!(store.set_command_block_editor_track_output(false));
+        assert!(!store.command_block_data_at(pos).unwrap().track_output);
+        assert!(store
+            .command_block_data_at(pos)
+            .unwrap()
+            .last_output
+            .is_some());
+        assert!(store.clear_command_block_editor_last_output());
+        assert_eq!(store.command_block_data_at(pos).unwrap().last_output, None);
 
         let repeating = command_block_state_id("minecraft:repeating_command_block", "north", true);
         assert!(store.apply_block_update(BlockUpdate {
@@ -321,6 +384,7 @@ mod tests {
         let editor = store.command_block_editor().unwrap();
         assert_eq!(editor.mode, CommandBlockMode::Auto);
         assert!(editor.conditional);
+        assert_eq!(editor.authoritative_revision, 2);
         assert_eq!(editor.data.command, "say authoritative");
 
         let stone = crate::vanilla_block_state_id("minecraft:stone", &BTreeMap::new()).unwrap();
