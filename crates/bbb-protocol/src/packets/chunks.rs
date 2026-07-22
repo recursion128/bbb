@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     block_entity_types::vanilla_block_entity_type,
+    block_types::vanilla_block_type,
     codec::{Decoder, Encoder, ProtocolError, Result},
     heightmap_types::{vanilla_heightmap_type, VANILLA_HEIGHTMAP_TYPES},
 };
@@ -194,11 +195,20 @@ pub(crate) fn decode_block_entity_data(decoder: &mut Decoder<'_>) -> Result<Bloc
 }
 
 pub(crate) fn decode_block_event(decoder: &mut Decoder<'_>) -> Result<BlockEvent> {
+    let pos = decode_block_pos(decoder.read_i64()?);
+    let b0 = decoder.read_u8()?;
+    let b1 = decoder.read_u8()?;
+    let block_id = decoder.read_var_i32()?;
+    if vanilla_block_type(block_id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "unknown block registry id {block_id} in block event packet"
+        )));
+    }
     let packet = BlockEvent {
-        pos: decode_block_pos(decoder.read_i64()?),
-        b0: decoder.read_u8()?,
-        b1: decoder.read_u8()?,
-        block_id: decoder.read_var_i32()?,
+        pos,
+        b0,
+        b1,
+        block_id,
     };
     if !decoder.is_empty() {
         return Err(ProtocolError::InvalidData(

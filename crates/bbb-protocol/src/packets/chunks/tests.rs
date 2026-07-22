@@ -368,6 +368,24 @@ fn decodes_block_ack_and_block_updates() {
             .to_string()
             .contains("trailing bytes after block event packet")
     );
+    for invalid_block_id in [
+        -1,
+        i32::try_from(crate::block_types::VANILLA_BLOCK_TYPES.len()).unwrap(),
+    ] {
+        let mut payload = Encoder::new();
+        payload.write_i64(pack_block_pos(35, 64, -46));
+        payload.write_u8(1);
+        payload.write_u8(5);
+        payload.write_var_i32(invalid_block_id);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_EVENT, &payload.into_inner())
+                .unwrap_err()
+                .to_string()
+                .contains(&format!(
+                    "unknown block registry id {invalid_block_id} in block event packet"
+                ))
+        );
+    }
 
     let mut payload = Encoder::new();
     payload.write_i64(pack_block_pos(34, -12, -45));

@@ -49,8 +49,9 @@ passes all four values to `Level.blockEvent`, but Vanilla 26.1's
 calls `getBlockState(pos).triggerEvent(...)`. The packet holder therefore must
 resolve successfully, but it must **not** be compared with the current block
 before dispatch. The generated protocol catalog, the pack declaration catalog,
-and the world block-state registry must prove the same contiguous 1,144-entry
-order.
+and the world block-state registry must prove the same contiguous 1,168-entry
+order, including the 24 registrations expanded by the three
+`WeatheringCopperBlocks.create` declarations.
 
 The complete overriding family inventory is `BaseEntityBlock`, `ComparatorBlock`,
 `NoteBlock`, and `PistonBaseBlock`. `BaseEntityBlock` delegates to the block

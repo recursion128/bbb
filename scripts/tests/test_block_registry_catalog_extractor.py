@@ -41,6 +41,9 @@ class Blocks {
       BlockBehaviour.Properties.of().strength(0.5F));
   static final Block OAK_STAIRS = registerLegacyStair(
       "oak_stairs", DIRT);
+  static final WeatheringCopperBlocks COPPER_CHAIN = WeatheringCopperBlocks.create(
+      "copper_chain", Blocks::register, ChainBlock::new,
+      WeatheringCopperChainBlock::new, weather -> BlockBehaviour.Properties.of());
 }
 """
 
@@ -58,6 +61,23 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
                 ("AIR", "minecraft:air"),
                 ("DIRT", "minecraft:dirt"),
                 ("OAK_STAIRS", "minecraft:oak_stairs"),
+                ("COPPER_CHAIN", "minecraft:copper_chain"),
+                ("EXPOSED_COPPER_CHAIN", "minecraft:exposed_copper_chain"),
+                ("WEATHERED_COPPER_CHAIN", "minecraft:weathered_copper_chain"),
+                ("OXIDIZED_COPPER_CHAIN", "minecraft:oxidized_copper_chain"),
+                ("WAXED_COPPER_CHAIN", "minecraft:waxed_copper_chain"),
+                (
+                    "WAXED_EXPOSED_COPPER_CHAIN",
+                    "minecraft:waxed_exposed_copper_chain",
+                ),
+                (
+                    "WAXED_WEATHERED_COPPER_CHAIN",
+                    "minecraft:waxed_weathered_copper_chain",
+                ),
+                (
+                    "WAXED_OXIDIZED_COPPER_CHAIN",
+                    "minecraft:waxed_oxidized_copper_chain",
+                ),
             ],
         )
         dirt = extracted.declarations[1]["initializer"]
@@ -130,9 +150,9 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
                 "net/minecraft/references/BlockIds.java", ids_path.read_bytes()
             ),
         )
-        self.assertEqual(len(extracted.declarations), 1144)
+        self.assertEqual(len(extracted.declarations), 1168)
         self.assertEqual(
-            len({item["resource_id"] for item in extracted.declarations}), 1144
+            len({item["resource_id"] for item in extracted.declarations}), 1168
         )
 
 

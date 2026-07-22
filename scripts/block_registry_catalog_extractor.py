@@ -27,6 +27,17 @@ REGISTER_HELPERS = {
     "registerStair",
     "registerStainedGlass",
 }
+WEATHERING_COPPER_BLOCKS_TYPE = "WeatheringCopperBlocks"
+WEATHERING_COPPER_VARIANTS = (
+    ("unaffected", "", ""),
+    ("exposed", "exposed_", "EXPOSED_"),
+    ("weathered", "weathered_", "WEATHERED_"),
+    ("oxidized", "oxidized_", "OXIDIZED_"),
+    ("waxed", "waxed_", "WAXED_"),
+    ("waxed_exposed", "waxed_exposed_", "WAXED_EXPOSED_"),
+    ("waxed_weathered", "waxed_weathered_", "WAXED_WEATHERED_"),
+    ("waxed_oxidized", "waxed_oxidized_", "WAXED_OXIDIZED_"),
+)
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -141,10 +152,10 @@ def extract_block_registry_catalog(
     fields = [
         field
         for field in blocks_source.fields_for(BLOCKS_OWNER)
-        if field.type_spelling == "Block"
+        if field.type_spelling in {"Block", WEATHERING_COPPER_BLOCKS_TYPE}
     ]
     declarations: list[dict[str, Any]] = []
-    for declaration_order, field in enumerate(fields):
+    for field in fields:
         initializer = field.initializer
         if initializer is None or initializer.node.type != "method_invocation":
             expression = initializer or blocks_source.expression(field.node)
@@ -153,6 +164,41 @@ def extract_block_registry_catalog(
         if name_node is None:
             _fail(blocks_source, initializer, "block registration lacks helper name")
         helper = blocks_source.text(name_node)
+        if field.type_spelling == WEATHERING_COPPER_BLOCKS_TYPE:
+            arguments = _arguments(blocks_source, initializer)
+            object_node = initializer.node.child_by_field_name("object")
+            object_name = (
+                blocks_source.expression(object_node).canonical.replace(" ", "")
+                if object_node is not None
+                else ""
+            )
+            if helper != "create" or object_name != WEATHERING_COPPER_BLOCKS_TYPE:
+                _fail(
+                    blocks_source,
+                    initializer,
+                    "WeatheringCopperBlocks field is not initialized by WeatheringCopperBlocks.create",
+                )
+            if len(arguments) != 5:
+                _fail(
+                    blocks_source,
+                    initializer,
+                    "WeatheringCopperBlocks.create does not have five arguments",
+                )
+            base_resource_path = _string(blocks_source, arguments[0])
+            for variant, resource_prefix, field_prefix in WEATHERING_COPPER_VARIANTS:
+                declarations.append(
+                    {
+                        "field": f"{field_prefix}{field.name}",
+                        "declaration_order": len(declarations),
+                        "resource_id": f"minecraft:{resource_prefix}{base_resource_path}",
+                        "source_path": blocks_source.relative_path,
+                        "start_byte": initializer.span.start_byte,
+                        "end_byte": initializer.span.end_byte,
+                        "initializer": expression_fact(blocks_source, initializer),
+                        "group_variant": variant,
+                    }
+                )
+            continue
         if helper not in REGISTER_HELPERS:
             _fail(blocks_source, initializer, f"unsupported block register helper {helper}")
         arguments = _arguments(blocks_source, initializer)
@@ -164,7 +210,7 @@ def extract_block_registry_catalog(
         declarations.append(
             {
                 "field": field.name,
-                "declaration_order": declaration_order,
+                "declaration_order": len(declarations),
                 "resource_id": f"minecraft:{resource_path}",
                 "source_path": blocks_source.relative_path,
                 "start_byte": initializer.span.start_byte,
@@ -172,7 +218,13 @@ def extract_block_registry_catalog(
                 "initializer": expression_fact(blocks_source, initializer),
             }
         )
-    if not declarations or len(declarations) != len(fields):
+    expected_declarations = sum(
+        len(WEATHERING_COPPER_VARIANTS)
+        if field.type_spelling == WEATHERING_COPPER_BLOCKS_TYPE
+        else 1
+        for field in fields
+    )
+    if not declarations or len(declarations) != expected_declarations:
         raise BlockRegistryCatalogExtractionError(
             f"{blocks_source.relative_path}: failed to close all block declarations"
         )

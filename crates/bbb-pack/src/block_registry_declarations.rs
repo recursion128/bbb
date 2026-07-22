@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use bbb_protocol::block_types::VANILLA_BLOCK_TYPES;
 use serde::Deserialize;
 
 use crate::{generated_java_expression::GeneratedJavaExpression, resources::ResourceLocation};
@@ -37,8 +38,25 @@ pub(crate) fn load_generated_block_declarations() -> Result<BlockSourceCatalog> 
         bail!("unsupported generated block source catalog manifest");
     }
     let mut resources = std::collections::BTreeSet::new();
+    if source.declarations.len() != VANILLA_BLOCK_TYPES.len() {
+        bail!(
+            "generated block declaration count {} does not match protocol block registry count {}",
+            source.declarations.len(),
+            VANILLA_BLOCK_TYPES.len()
+        );
+    }
     for (order, declaration) in source.declarations.iter().enumerate() {
         validate_declaration(declaration, order)?;
+        let protocol = &VANILLA_BLOCK_TYPES[order];
+        if declaration.field != protocol.constant_name
+            || declaration.resource_id != protocol.resource_id
+        {
+            bail!(
+                "generated Blocks.{} registration does not match protocol block registry entry {}",
+                declaration.field,
+                order
+            );
+        }
         if !resources.insert(declaration.resource_id.as_str()) {
             bail!(
                 "duplicate generated block resource id {}",

@@ -271,7 +271,7 @@ mod tests {
     fn generated_block_sound_profiles_cover_sound_types_copy_and_helpers() {
         let catalog = BlockSoundProfileCatalog::from_generated_source_catalog().unwrap();
 
-        assert_eq!(catalog.len(), 1144);
+        assert_eq!(catalog.len(), 1168);
         assert_eq!(
             catalog.profile("minecraft:stone").unwrap().hit_sound,
             "minecraft:block.stone.hit"
@@ -308,6 +308,13 @@ mod tests {
             catalog.profile("minecraft:candle").unwrap().hit_sound,
             "minecraft:block.candle.hit"
         );
+        assert_eq!(
+            catalog
+                .profile("minecraft:waxed_weathered_copper_chain")
+                .unwrap()
+                .hit_sound,
+            "minecraft:block.chain.hit"
+        );
     }
 
     #[test]
@@ -330,7 +337,7 @@ mod tests {
 
         let catalog = BlockSoundProfileCatalog::load(&roots).unwrap();
 
-        assert_eq!(catalog.len(), 1144);
+        assert_eq!(catalog.len(), 1168);
         std::fs::remove_dir_all(root).unwrap();
     }
 }

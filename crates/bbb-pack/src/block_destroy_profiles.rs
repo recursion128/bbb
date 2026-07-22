@@ -293,12 +293,21 @@ mod tests {
                 .destroy_time_tenths,
             Some(3)
         );
+        assert_eq!(
+            catalog
+                .profile("minecraft:waxed_oxidized_copper_bars")
+                .unwrap(),
+            &BlockDestroyProfile {
+                destroy_time_tenths: Some(50),
+                requires_correct_tool: true,
+            }
+        );
     }
 
     #[test]
     fn generated_block_declarations_are_complete_contiguous_and_unique() {
         let source = load_generated_block_declarations().unwrap();
-        assert_eq!(source.declarations.len(), 1144);
+        assert_eq!(source.declarations.len(), 1168);
     }
 
     #[test]

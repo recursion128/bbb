@@ -3,17 +3,18 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
+use bbb_protocol::block_types::{
+    vanilla_block_type, vanilla_block_type_for_resource_id, VANILLA_BLOCK_TYPES,
+};
 use serde::{Deserialize, Serialize};
 
 const VANILLA_BLOCK_STATES_JSON: &str = include_str!("../../data/block_states_26_1.json");
 static VANILLA_BLOCK_STATES: OnceLock<Arc<Vec<Option<BlockStateInfo>>>> = OnceLock::new();
-static VANILLA_BLOCK_REGISTRY_NAMES: OnceLock<Arc<Vec<String>>> = OnceLock::new();
 static VANILLA_AIR_BLOCK_STATE_ID: OnceLock<i32> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct BlockStateRegistry {
     states: Arc<Vec<Option<BlockStateInfo>>>,
-    block_registry_names: Arc<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -35,13 +36,7 @@ impl BlockStateRegistry {
         let states = VANILLA_BLOCK_STATES
             .get_or_init(|| Arc::new(load_vanilla_block_states()))
             .clone();
-        let block_registry_names = VANILLA_BLOCK_REGISTRY_NAMES
-            .get_or_init(|| Arc::new(load_vanilla_block_registry_names(&states)))
-            .clone();
-        Self {
-            states,
-            block_registry_names,
-        }
+        Self { states }
     }
 
     pub fn by_id(&self, id: i32) -> Option<&BlockStateInfo> {
@@ -65,16 +60,11 @@ impl BlockStateRegistry {
     }
 
     pub fn block_name_by_registry_id(&self, id: i32) -> Option<&str> {
-        let id = usize::try_from(id).ok()?;
-        self.block_registry_names.get(id).map(String::as_str)
+        Some(vanilla_block_type(id)?.resource_id)
     }
 
     pub fn block_registry_id_by_name(&self, name: &str) -> Option<i32> {
-        let index = self
-            .block_registry_names
-            .iter()
-            .position(|candidate| candidate == name)?;
-        i32::try_from(index).ok()
+        Some(vanilla_block_type_for_resource_id(name)?.id)
     }
 
     pub fn block_has_property(&self, name: &str, property: &str) -> bool {
@@ -101,7 +91,7 @@ impl BlockStateRegistry {
     }
 
     pub fn block_registry_len(&self) -> usize {
-        self.block_registry_names.len()
+        VANILLA_BLOCK_TYPES.len()
     }
 
     pub fn len(&self) -> usize {
@@ -156,6 +146,15 @@ fn load_vanilla_block_states() -> Vec<Option<BlockStateInfo>> {
         );
         states[index] = Some(state);
     }
+    let state_registry_names = load_vanilla_block_registry_names(&states);
+    let protocol_registry_names = VANILLA_BLOCK_TYPES
+        .iter()
+        .map(|entry| entry.resource_id)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        state_registry_names, protocol_registry_names,
+        "embedded block-state registry order must match generated protocol block registry"
+    );
     states
 }
 
