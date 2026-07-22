@@ -6874,10 +6874,14 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/runtime/tests.rs#block_destroy_overlays_include_server_progress_and_keep_highest_per_position",
-            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#destroyBlockProgress"
+            "crates/bbb-native/src/runtime/tests.rs#block_entity_crumbling_uses_shared_highest_stage_and_clears_ineligible_models",
+            "crates/bbb-renderer/src/block_destroy.rs#block_destroy_overlay_mesh_preserves_arbitrary_baked_quad_geometry",
+            "crates/bbb-renderer/src/entity_models/tests/chest.rs#chest_textured_mesh_bakes_three_boxes_into_the_cutout_bucket",
+            "vanilla:net/minecraft/client/renderer/LevelRenderer.java#submitBlockDestroyAnimation",
+            "vanilla:net/minecraft/client/renderer/feature/ModelFeatureRenderer.java#renderModel"
           ],
-          "gap": "docs/unsupported-features.md#block-destroy",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -6885,7 +6889,9 @@
             "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_block_destruction_to_world",
             "crates/bbb-world/src/block_events.rs#tracks_block_destruction_progress_by_id",
-            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#block_destruction_event_updates_world_and_counter"
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#block_destruction_event_updates_world_and_counter",
+            "crates/bbb-native/src/runtime/tests.rs#block_entity_crumbling_acceptance_matches_vanilla_model_renderers",
+            "crates/bbb-renderer/src/block_destroy.rs#block_destroy_overlay_mesh_emits_empty_quad_model_as_empty"
           ],
           "gap": null,
           "status": "complete"

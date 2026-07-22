@@ -2247,7 +2247,7 @@ mod tests {
     }
 
     #[test]
-    fn play_block_destruction_keeps_full_crack_mesh_presentation_open() {
+    fn play_block_destruction_is_complete_with_model_and_block_entity_crumbling() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2256,14 +2256,18 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_BLOCK_DESTRUCTION"
             })
             .expect("play block destruction coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .any(|evidence| evidence.contains("preserves_arbitrary_baked_quad_geometry")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("block_entity_crumbling_uses_shared_highest_stage")));
     }
 
     #[test]

@@ -230,3 +230,7 @@
   生成的 block→block-entity 映射驱动严格解码、预测协调和 Vanilla 移除/创建/铜族保留；
   原生地形仅替换脏 section 并复用稳定 mesh。双包 coverage 全单元 complete，合同见
   `docs/block-update-packet-family-closure-design.md`。
+- **2026-07-22（BlockDestruction 包闭环）**：同一 server/local 最高 stage 投影驱动
+  任意 baked block quad 与 Vanilla 允许的 block-entity model submission；精确
+  `SheetedDecalTextureGenerator` UV、render-type 筛选及共享 crumbling pass 均有语义
+  回归，合同见 `docs/block-destruction-packet-closure-design.md`。

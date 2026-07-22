@@ -687,7 +687,6 @@ Block destroy:
 - Validate exact pose/fluid nuance for player destroy speed (standing-eye water
   probe).
 - Implement block-specific `state.attack` callbacks and hit particles.
-- Implement full model-shaped crack decals over `destroy_stage_0..9`.
 - Close the remaining `STOP_DESTROY_BLOCK` sequencing gaps.
 
 Commands:
@@ -1278,9 +1277,8 @@ back into a todo. Do not delete these.
   Direct custom climate and color effects project through the active holder
   order; malformed synchronized data is omitted instead of falling back to a
   same-name pack default.
-- **Block-entity `breakProgress` crumbling** and per-block-entity distance/frustum
-  culling. A cross-cutting boundary shared by every block-entity renderer slice:
-  block entities currently submit like entities, unculled.
+- **Per-block-entity distance/frustum culling.** Block entities currently submit
+  like entities, unculled.
 - **Banner pattern no-depth-write pipeline.** Vanilla's `bannerPattern` pipeline
   disables depth writes; bbb's shared translucent pipeline keeps them on.
   Equal-depth `LessEqual` layering is unaffected. Restart only if a dedicated
