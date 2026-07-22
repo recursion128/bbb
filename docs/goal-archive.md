@@ -196,3 +196,6 @@
 - **2026-07-22（157 entity family 矩阵全量闭环）**：equipment packet Living gate、8 个 wire slot、生成 `canUseSlot`、canonical query 与资源包装备 layer；passenger attachment/controller owner、当前 render-pose 投影与 first-mount side effect；leash 全 offset/rope-holder owner 与两条 rope strip 均有反向门禁。
   第十类目 157 行翻为 complete，矩阵只余 3 个 Vanilla NoopRenderer 的窄 not-applicable cell；工程合同见
   `docs/entity-equipment-passenger-leash-closure-design.md`。
+- **2026-07-22（network HolderSet identity 全量闭环）**：十个 `ByteBufCodecs.holderSet`
+  调用点完成固定/同步 registry 校验、Ingredient 原子应用、UpdateTags revision 与反向自定义顺序证明；账本 family 全部翻为 complete，合同见
+  `docs/registry-network-holder-set-closure-design.md`。
