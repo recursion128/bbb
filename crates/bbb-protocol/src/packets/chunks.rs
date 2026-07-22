@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     block_entity_types::vanilla_block_entity_type,
+    block_state_types::vanilla_block_state_id,
     block_types::vanilla_block_type,
     codec::{Decoder, Encoder, ProtocolError, Result},
     heightmap_types::{vanilla_heightmap_type, VANILLA_HEIGHTMAP_TYPES},
@@ -221,7 +222,7 @@ pub(crate) fn decode_block_event(decoder: &mut Decoder<'_>) -> Result<BlockEvent
 pub(crate) fn decode_block_update(decoder: &mut Decoder<'_>) -> Result<BlockUpdate> {
     let packet = BlockUpdate {
         pos: decode_block_pos(decoder.read_i64()?),
-        block_state_id: decoder.read_var_i32()?,
+        block_state_id: decode_block_state_id(decoder.read_var_i32()?)?,
     };
     if !decoder.is_empty() {
         return Err(ProtocolError::InvalidData(
@@ -610,7 +611,7 @@ pub(crate) fn decode_section_blocks_update(
     for _ in 0..count {
         let packed_change = decoder.read_var_i64()? as u64;
         let packed_pos = (packed_change & 0x0fff) as u16;
-        let block_state_id = (packed_change >> 12) as i32;
+        let block_state_id = decode_block_state_id((packed_change >> 12) as i32)?;
         updates.push(BlockUpdate {
             pos: BlockPos {
                 x: section_x * 16 + i32::from((packed_pos >> 8) & 0x0f),
@@ -632,6 +633,14 @@ pub(crate) fn decode_section_blocks_update(
         ));
     }
     Ok(update)
+}
+
+fn decode_block_state_id(block_state_id: i32) -> Result<i32> {
+    vanilla_block_state_id(block_state_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!(
+            "unknown vanilla 26.1 block state id {block_state_id}"
+        ))
+    })
 }
 
 pub(crate) fn decode_set_chunk_cache_center(

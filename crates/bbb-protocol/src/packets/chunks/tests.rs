@@ -411,6 +411,19 @@ fn decodes_block_ack_and_block_updates() {
             .contains("trailing bytes after block update packet")
     );
 
+    for invalid_state_id in [-1, crate::block_state_types::VANILLA_BLOCK_STATE_COUNT] {
+        let mut invalid = Encoder::new();
+        invalid.write_i64(pack_block_pos(34, -12, -45));
+        invalid.write_var_i32(invalid_state_id);
+        assert!(decode_play_clientbound(
+            ids::play::CLIENTBOUND_BLOCK_UPDATE,
+            &invalid.into_inner(),
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("unknown vanilla 26.1 block state id"));
+    }
+
     let mut payload = Encoder::new();
     payload.write_i64(pack_section_pos(2, -1, -3));
     payload.write_var_i32(2);
@@ -465,6 +478,23 @@ fn decodes_block_ack_and_block_updates() {
         Err(ProtocolError::PacketTooLarge(actual, max))
             if actual == MAX_SECTION_BLOCK_UPDATES + 1 && max == MAX_SECTION_BLOCK_UPDATES
     ));
+
+    for invalid_state_id in [
+        -1_i64,
+        i64::from(crate::block_state_types::VANILLA_BLOCK_STATE_COUNT),
+    ] {
+        let mut invalid = Encoder::new();
+        invalid.write_i64(pack_section_pos(2, -1, -3));
+        invalid.write_var_i32(1);
+        invalid.write_var_i64((invalid_state_id << 12) | i64::from(section_relative_pos(2, 1, 3)));
+        assert!(decode_play_clientbound(
+            ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE,
+            &invalid.into_inner(),
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("unknown vanilla 26.1 block state id"));
+    }
 }
 
 #[test]

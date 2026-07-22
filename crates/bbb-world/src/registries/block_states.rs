@@ -3,12 +3,12 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use bbb_protocol::block_types::{
-    vanilla_block_type, vanilla_block_type_for_resource_id, VANILLA_BLOCK_TYPES,
+use bbb_protocol::{
+    block_state_types::VANILLA_BLOCK_STATES_26_1_JSON,
+    block_types::{vanilla_block_type, vanilla_block_type_for_resource_id, VANILLA_BLOCK_TYPES},
 };
 use serde::{Deserialize, Serialize};
 
-const VANILLA_BLOCK_STATES_JSON: &str = include_str!("../../data/block_states_26_1.json");
 static VANILLA_BLOCK_STATES: OnceLock<Arc<Vec<Option<BlockStateInfo>>>> = OnceLock::new();
 static VANILLA_AIR_BLOCK_STATE_ID: OnceLock<i32> = OnceLock::new();
 
@@ -123,7 +123,7 @@ pub fn vanilla_air_block_state_id() -> i32 {
 }
 
 fn load_vanilla_block_states() -> Vec<Option<BlockStateInfo>> {
-    let report: BlockStateReport = serde_json::from_str(VANILLA_BLOCK_STATES_JSON)
+    let report: BlockStateReport = serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON)
         .expect("embedded vanilla 26.1 block state registry is valid JSON");
     assert_eq!(
         report.version, "26.1",

@@ -104,6 +104,8 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
         dirt = extracted.declarations[1]["initializer"]
         self.assertFalse(extracted.declarations[0]["has_block_entity"])
         self.assertTrue(extracted.declarations[1]["has_block_entity"])
+        self.assertIsNone(extracted.declarations[0]["block_entity_type"])
+        self.assertEqual(extracted.declarations[1]["block_entity_type"], "DIRT")
         self.assertEqual(dirt["kind"], "method_invocation")
         self.assertEqual(dirt["name"], "register")
         self.assertTrue(
@@ -192,6 +194,18 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
         )
         self.assertEqual(
             sum(item["has_block_entity"] for item in extracted.declarations), 201
+        )
+        self.assertEqual(
+            sum(item["block_entity_type"] is not None for item in extracted.declarations),
+            201,
+        )
+        by_name = {item["resource_id"]: item for item in extracted.declarations}
+        self.assertEqual(by_name["minecraft:chest"]["block_entity_type"], "CHEST")
+        self.assertEqual(
+            by_name["minecraft:waxed_oxidized_copper_golem_statue"][
+                "block_entity_type"
+            ],
+            "COPPER_GOLEM_STATUE",
         )
 
 

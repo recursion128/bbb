@@ -122,8 +122,8 @@ def extract_block_id_constants(source: JavaSource) -> dict[str, str]:
     return constants
 
 
-def extract_block_entity_block_constants(source: JavaSource) -> frozenset[str]:
-    constants: set[str] = set()
+def extract_block_entity_block_constants(source: JavaSource) -> dict[str, str]:
+    constants: dict[str, str] = {}
     for field in source.fields_for(BLOCK_ENTITY_TYPES_OWNER):
         if not field.type_spelling.replace(" ", "").startswith("BlockEntityType<"):
             continue
@@ -145,12 +145,12 @@ def extract_block_entity_block_constants(source: JavaSource) -> frozenset[str]:
                 _fail(source, block, "block entity valid block is not a Blocks constant")
             if constant in constants:
                 _fail(source, block, f"duplicate block entity valid block Blocks.{constant}")
-            constants.add(constant)
+            constants[constant] = field.name
     if not constants:
         raise BlockRegistryCatalogExtractionError(
             f"{source.relative_path}: no block entity valid blocks found"
         )
-    return frozenset(constants)
+    return constants
 
 
 @dataclass(frozen=True)
@@ -234,6 +234,9 @@ def extract_block_registry_catalog(
                         "group_variant": variant,
                         "has_block_entity": f"{field_prefix}{field.name}"
                         in block_entity_fields,
+                        "block_entity_type": block_entity_fields.get(
+                            f"{field_prefix}{field.name}"
+                        ),
                     }
                 )
             continue
@@ -255,6 +258,7 @@ def extract_block_registry_catalog(
                 "end_byte": initializer.span.end_byte,
                 "initializer": expression_fact(blocks_source, initializer),
                 "has_block_entity": field.name in block_entity_fields,
+                "block_entity_type": block_entity_fields.get(field.name),
             }
         )
     expected_declarations = sum(

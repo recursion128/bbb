@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bbb_protocol::block_state_types::VANILLA_BLOCK_STATES_26_1_JSON;
 use serde::Deserialize;
 
 use super::{
@@ -11,9 +12,6 @@ use super::{
     MAX_CUBOID_MODEL_TEXTURE_SLOTS,
 };
 use crate::{PackResourceStack, PackRoots, MC_VERSION};
-
-const VANILLA_BLOCK_STATES_JSON: &str =
-    include_str!("../../../bbb-world/data/block_states_26_1.json");
 
 #[test]
 fn model_semantic_counts_accept_exact_limits_and_reject_overflow() {
@@ -2156,7 +2154,7 @@ fn loads_local_vanilla_block_model_catalog() {
 fn resolves_all_local_vanilla_block_state_models() {
     let roots = PackRoots::discover().unwrap();
     let catalog = roots.load_block_model_catalog().unwrap();
-    let report: BlockStateReport = serde_json::from_str(VANILLA_BLOCK_STATES_JSON).unwrap();
+    let report: BlockStateReport = serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
     assert_eq!(report.version, "26.1");
 
     let mut failures = Vec::new();
