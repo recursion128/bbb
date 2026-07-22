@@ -323,6 +323,36 @@ fn validate_enchantment_effect_holder_sets(
                     None => {}
                 }
             }
+            let holder_reference = match effect_type {
+                Some("minecraft:damage_entity" | "damage_entity") => {
+                    Some(("damage_type", "minecraft:damage_type", true))
+                }
+                Some("minecraft:explode" | "explode") => {
+                    Some(("damage_type", "minecraft:damage_type", false))
+                }
+                Some(
+                    "minecraft:replace_block"
+                    | "replace_block"
+                    | "minecraft:replace_disk"
+                    | "replace_disk"
+                    | "minecraft:set_block_properties"
+                    | "set_block_properties",
+                ) => Some(("trigger_game_event", "minecraft:game_event", false)),
+                _ => None,
+            };
+            if let Some((field, registry, required)) = holder_reference {
+                match nbt_field(fields, field) {
+                    Some(value) => {
+                        registry_access
+                            .persistent_holder_from_nbt(registry, value)
+                            .map_err(|error| format!("{path}.{field}: {error}"))?;
+                    }
+                    None if required => {
+                        return Err(format!("{path}.{field}: missing holder reference"))
+                    }
+                    None => {}
+                }
+            }
             for entry in fields {
                 validate_enchantment_effect_holder_sets(
                     &entry.value,

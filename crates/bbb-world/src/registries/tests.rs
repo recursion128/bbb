@@ -1148,6 +1148,24 @@ fn persistent_holder_decoder_uses_resource_identity_and_typed_failures() {
         )
         .unwrap();
     assert_eq!((entry.holder_id, entry.resource_id), (1, "example:first"));
+    let game_event = access
+        .persistent_holder_from_nbt(
+            "minecraft:game_event",
+            &NbtSummaryValue::String("minecraft:block_change".to_string()),
+        )
+        .unwrap();
+    assert_eq!(
+        (
+            game_event.holder_id,
+            game_event.resource_id,
+            game_event.source
+        ),
+        (
+            2,
+            "minecraft:block_change",
+            crate::RegistryEntrySource::VanillaFallback
+        )
+    );
 
     for (value, expected) in [
         (
@@ -2278,6 +2296,14 @@ fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_a
     store.begin_registry_configuration();
     record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "minecraft:generic",
+            br#"{"message_id":"generic","scaling":"never","exhaustion":0.0}"#.to_vec(),
+        )],
+    );
+    store.record_registry_entries(
         "minecraft:enchantment",
         0,
         vec![
@@ -2289,8 +2315,12 @@ fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_a
                     "exclusive_set":"#example:exclusive",
                     "effects":{"example:test":[
                         {"type":"minecraft:apply_mob_effect","to_apply":"#example:curable"},
-                        {"type":"minecraft:explode","immune_blocks":["minecraft:stone"]},
-                        {"type":"minecraft:summon_entity","entity":"minecraft:pig"}
+                        {"type":"minecraft:damage_entity","damage_type":"minecraft:generic"},
+                        {"type":"minecraft:explode","damage_type":"minecraft:generic","immune_blocks":["minecraft:stone"]},
+                        {"type":"minecraft:summon_entity","entity":"minecraft:pig"},
+                        {"type":"minecraft:replace_block","trigger_game_event":"minecraft:block_change"},
+                        {"type":"minecraft:replace_disk","trigger_game_event":"minecraft:block_change"},
+                        {"type":"minecraft:set_block_properties","trigger_game_event":"minecraft:block_change"}
                     ]}
                 }"##
                 .to_vec(),
@@ -2382,6 +2412,28 @@ fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_a
         store.synchronized_enchantment_holder_sets(0),
         Some(expected)
     );
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:enchantment",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_reference",
+            br#"{
+                "supported_items":"minecraft:stone",
+                "effects":{"example:test":{
+                    "type":"minecraft:replace_block",
+                    "trigger_game_event":"example:missing_event"
+                }}
+            }"#
+            .to_vec(),
+        )],
+    );
+    let error = store.finish_registry_configuration().unwrap_err();
+    assert_eq!(error.validator, "Enchantment.DIRECT_CODEC");
+    assert!(error.message.contains("trigger_game_event"), "{error:?}");
+    assert_eq!(store.registry_access_revision(), committed_revision);
 
     store.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {

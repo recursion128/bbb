@@ -8,6 +8,9 @@ use bbb_protocol::data_component_types::{
     vanilla_data_component_predicate_type, vanilla_data_component_type,
     vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_PREDICATE_TYPES,
 };
+use bbb_protocol::debug_subscription_types::{
+    vanilla_debug_game_event_type_by_id, VANILLA_DEBUG_GAME_EVENT_TYPES,
+};
 use bbb_protocol::mob_effect_types::{
     vanilla_mob_effect_type, vanilla_mob_effect_type_for_resource_id,
 };
@@ -513,6 +516,9 @@ impl RegistrySet {
             "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
             "minecraft:damage_type" => Some(vanilla_damage_type(holder_id)?.resource_id),
+            "minecraft:game_event" => {
+                Some(vanilla_debug_game_event_type_by_id(holder_id)?.resource_id)
+            }
             "minecraft:mob_effect" => Some(vanilla_mob_effect_type(holder_id)?.resource_id),
             "minecraft:potion" => Some(vanilla_potion(holder_id)?.resource_id),
             "minecraft:sound_event" => vanilla_sound_event_resource_id(holder_id),
@@ -588,6 +594,10 @@ impl RegistrySet {
                 bbb_protocol::entity_types::vanilla_entity_type_for_resource_id(resource_id)?.id,
             ),
             "minecraft:damage_type" => Some(vanilla_damage_type_for_resource_id(resource_id)?.id),
+            "minecraft:game_event" => VANILLA_DEBUG_GAME_EVENT_TYPES
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .map(|entry| entry.holder_id),
             "minecraft:mob_effect" => {
                 Some(vanilla_mob_effect_type_for_resource_id(resource_id)?.id)
             }
@@ -1046,6 +1056,7 @@ fn registry_has_exact_vanilla_fallback(registry: &str) -> bool {
             | "minecraft:block"
             | "minecraft:entity_type"
             | "minecraft:damage_type"
+            | "minecraft:game_event"
             | "minecraft:mob_effect"
             | "minecraft:potion"
             | "minecraft:sound_event"
