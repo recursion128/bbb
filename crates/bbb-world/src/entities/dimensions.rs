@@ -468,6 +468,52 @@ pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
     ))
 }
 
+/// Vanilla `Camel.getLeashOffset(partialTicks)`.
+///
+/// The current dimensions include both age and `SCALE` attribute scaling, while
+/// the animation curve and the final `0.2` subtraction intentionally receive
+/// `getAgeScale()` only. This differs from the Camel passenger-attachment path,
+/// whose explicit scale argument is `getScale() * getAgeScale()`.
+pub(crate) fn vanilla_camel_leash_offset_for_entity_data(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+    attributes: &[AttributeSnapshot],
+    game_time: i64,
+    partial_ticks: f32,
+) -> Option<[f64; 3]> {
+    if !vanilla_entity_metadata_type_is_camel(entity_type_id) {
+        return None;
+    }
+
+    let dimensions = vanilla_pick_bounds_for_entity_data(
+        entity_type_id,
+        0,
+        data_values,
+        attributes,
+        None,
+        None,
+    )?;
+    let age_scale = camel_age_scale(entity_type_id, data_values);
+    let (data_id, default) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            entity_type_id,
+        )?;
+    let last_pose_change_tick = entity_data_long(data_values, data_id, default);
+    let y = camel_body_anchor_animation_y_offset(
+        dimensions,
+        age_scale,
+        last_pose_change_tick,
+        game_time,
+        true,
+        partial_ticks,
+    ) - 0.2 * age_scale;
+    Some([
+        0.0,
+        f64::from(y),
+        f64::from(bounds_width(dimensions) * 0.56),
+    ])
+}
+
 pub(crate) fn vanilla_passenger_vehicle_debug_target_for_entity_data(
     vehicle_entity_type_id: i32,
     vehicle_position: EntityVec3,

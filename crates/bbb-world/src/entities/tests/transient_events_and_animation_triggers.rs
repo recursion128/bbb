@@ -2027,6 +2027,10 @@ fn tracks_entity_link_updates() {
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
     store.apply_add_entity(protocol_add_entity(20));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        11,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TURTLE_ID,
+    ));
 
     assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
         source_id: 10,
@@ -2034,6 +2038,14 @@ fn tracks_entity_link_updates() {
     }));
     assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, Some(20));
     assert_eq!(store.entities.leash(10).unwrap().holder_id, Some(20));
+
+    // Turtle implements `Leashable` even though it does not override the
+    // default attachment formula; generated interface membership must retain it.
+    assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 11,
+        dest_id: 20,
+    }));
+    assert_eq!(store.entities.leash(11).unwrap().holder_id, Some(20));
 
     assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
         source_id: 10,
@@ -2077,8 +2089,8 @@ fn tracks_entity_link_updates() {
     }));
     assert_eq!(store.probe_entity(30).unwrap().leash_holder_id, None);
 
-    assert_eq!(store.counters().entity_link_updates_received, 6);
-    assert_eq!(store.counters().entity_link_updates_applied, 4);
+    assert_eq!(store.counters().entity_link_updates_received, 7);
+    assert_eq!(store.counters().entity_link_updates_applied, 5);
     assert_eq!(store.counters().entity_link_updates_ignored, 2);
 }
 

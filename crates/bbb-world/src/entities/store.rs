@@ -136,9 +136,10 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_age_scale, vanilla_body_anchor_y_offset_for_entity_data,
-    vanilla_bounds_for_entity_data, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat,
-    vanilla_living_entity_type, vanilla_local_player_passenger_position_for_entity_data,
+    vanilla_bounds_for_entity_data, vanilla_camel_leash_offset_for_entity_data,
+    vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data, vanilla_is_baby,
+    vanilla_is_cat, vanilla_living_entity_type,
+    vanilla_local_player_passenger_position_for_entity_data,
     vanilla_model_source_bounds_for_entity_data, vanilla_passenger_position_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale, vanilla_shulker_attached_position,
@@ -161,8 +162,10 @@ use crate::entities::renderer_catalog::{
 use crate::entities::schema::{
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
+    vanilla_entity_metadata_leash_offset_owner,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
+    vanilla_entity_metadata_rope_hold_position_owner,
     vanilla_entity_metadata_type_interpolation_steps,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
@@ -4769,6 +4772,8 @@ impl EntityStore {
         &self,
         id: i32,
         partial_ticks: f32,
+        game_time: i64,
+        minecart_improvements_enabled: bool,
     ) -> Option<super::leash::LeashEndpointInputs> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
@@ -4785,18 +4790,17 @@ impl EntityStore {
                 entity_accessors.shared_flags_default,
             )
             .unwrap_or(entity_accessors.shared_flags_default);
-        let pose = {
-            let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
-            metadata
-                .data_values
-                .iter()
-                .find(|value| value.data_id == entity_accessors.pose_data_id)
-                .and_then(|value| match &value.value {
-                    EntityDataValueKind::Pose(pose) => Some(*pose),
-                    _ => None,
-                })
-                .unwrap_or(entity_accessors.pose_default)
-        };
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let pose = metadata
+            .data_values
+            .iter()
+            .find(|value| value.data_id == entity_accessors.pose_data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::Pose(pose) => Some(*pose),
+                _ => None,
+            })
+            .unwrap_or(entity_accessors.pose_default);
         let is_auto_spin_attack =
             vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
                 .is_some_and(|accessors| {
@@ -4812,15 +4816,33 @@ impl EntityStore {
             != 0;
         Some(super::leash::LeashEndpointInputs {
             entity_type_id,
-            position: transform.render_position(partial_ticks),
+            leash_offset_owner: vanilla_entity_metadata_leash_offset_owner(entity_type_id),
+            rope_hold_position_owner: vanilla_entity_metadata_rope_hold_position_owner(
+                entity_type_id,
+            )?,
+            position: self.render_position_at_partial_tick(
+                id,
+                partial_ticks,
+                game_time,
+                minecart_improvements_enabled,
+            )?,
             body_y_rot: transform.render_body_y_rot(partial_ticks),
             // Vanilla `Player.getRopeHoldPosition` pitch is
             // `Mth.lerp(partialTicks * 0.5, getXRot(), xRotO)` — the reversed
             // half lerp equals the ordinary render lerp at `1 - 0.5 * t`.
             rope_hold_x_rot: transform.render_x_rot(1.0 - 0.5 * partial_ticks.clamp(0.0, 1.0)),
+            view_x_rot: transform.render_x_rot(partial_ticks),
+            view_y_rot: transform.render_y_rot(partial_ticks),
             bounds_width: bounds.max[0] - bounds.min[0],
             bounds_height: bounds.max[1] - bounds.min[1],
             eye_height,
+            camel_leash_offset: vanilla_camel_leash_offset_for_entity_data(
+                entity_type_id,
+                &metadata.data_values,
+                &attributes.attributes,
+                game_time,
+                partial_ticks,
+            ),
             on_fire: shared_flags & entity_accessors.on_fire_mask != 0,
             fall_flying_or_spin: shared_flags & entity_accessors.fall_flying_mask != 0
                 || is_auto_spin_attack,

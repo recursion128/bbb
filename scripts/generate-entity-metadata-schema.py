@@ -3647,6 +3647,7 @@ def render(result: ExtractionResult) -> str:
     passenger_attachment_owner_cache: dict[str, str] = {}
     vehicle_attachment_owner_cache: dict[str, str] = {}
     controlling_passenger_owner_cache: dict[str, str] = {}
+    rope_hold_position_owner_cache: dict[str, str] = {}
     tick_owner_cache: dict[str, str] = {}
     base_tick_owner_cache: dict[str, str] = {}
     ai_step_owner_cache: dict[str, str] = {}
@@ -3994,6 +3995,53 @@ def render(result: ExtractionResult) -> str:
             current = item.superclass
         return False
 
+    def nearest_optional_class_method_owner(
+        runtime_class: str | None,
+        method_name: str,
+        parameter_count: int,
+    ) -> str | None:
+        current = runtime_class
+        while current is not None:
+            source = source_for_owner(result, current)
+            methods = [
+                method
+                for method in source.methods_for(current)
+                if method.name == method_name
+                and len(method.parameters) == parameter_count
+            ]
+            if len(methods) > 1:
+                raise ExtractionError(
+                    f"{current}.{method_name}/{parameter_count}: expected at most one method"
+                )
+            if methods:
+                return current
+            item = class_map.get(current)
+            current = item.superclass if item is not None else None
+        return None
+
+    def effective_leash_offset_owner(runtime_class: str | None) -> str | None:
+        if not implements_interface(runtime_class, "net.minecraft.world.entity.Leashable"):
+            return None
+        partial_tick_owner = nearest_optional_class_method_owner(
+            runtime_class, "getLeashOffset", 1
+        )
+        if partial_tick_owner is not None:
+            return partial_tick_owner
+        return nearest_optional_class_method_owner(
+            runtime_class, "getLeashOffset", 0
+        ) or "net.minecraft.world.entity.Leashable"
+
+    leashable_partial_offset_expression = method_single_return_expression(
+        result,
+        "net.minecraft.world.entity.Leashable",
+        "getLeashOffset",
+        1,
+    ).replace(" ", "")
+    if leashable_partial_offset_expression != "this.getLeashOffset()":
+        raise ExtractionError(
+            "Leashable.getLeashOffset/1 no longer forwards to the zero-argument virtual hook"
+        )
+
     def camera_post_effect_id(runtime_class: str | None) -> str | None:
         matches = [
             item.resource_id
@@ -4295,6 +4343,8 @@ def render(result: ExtractionResult) -> str:
                 f"        passenger_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getPassengerAttachmentPoint', 3, passenger_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        vehicle_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getVehicleAttachmentPoint', 1, vehicle_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        controlling_passenger_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getControllingPassenger', 0, controlling_passenger_owner_cache) if item.runtime_class is not None else None)},",
+                f"        leash_offset_owner: {option_string(effective_leash_offset_owner(item.runtime_class))},",
+                f"        rope_hold_position_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getRopeHoldPosition', 1, rope_hold_position_owner_cache) if item.runtime_class is not None else None)},",
                 f"        tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'tick', 0, tick_owner_cache) if item.runtime_class is not None else None)},",
                 f"        base_tick_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'baseTick', 0, base_tick_owner_cache) if item.runtime_class is not None else None)},",
                 f"        ai_step_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'aiStep', 0, ai_step_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
@@ -4534,6 +4584,44 @@ def render(result: ExtractionResult) -> str:
             "            \"net.minecraft.world.entity.animal.pig.Pig\",",
             "            \"net.minecraft.world.entity.monster.Strider\",",
             "            \"net.minecraft.world.entity.vehicle.boat.AbstractBoat\",",
+            "        ]));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn leash_offset_and_rope_holder_owners_cover_every_entity_type() {",
+            "        let mut leash_offset_owners = std::collections::BTreeSet::new();",
+            "        let mut rope_hold_position_owners = std::collections::BTreeSet::new();",
+            "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
+            "            assert_eq!(entry.leash_offset_owner.is_some(), super::super::vanilla_entity_metadata_type_is_leashable(entry.entity_type_id), \"{}\", entry.resource_id);",
+            "            if let Some(owner) = entry.leash_offset_owner {",
+            "                leash_offset_owners.insert(owner);",
+            "            }",
+            "            rope_hold_position_owners.insert(entry.rope_hold_position_owner.expect(\"rope holder owner\"));",
+            "        }",
+            "        assert_eq!(leash_offset_owners, std::collections::BTreeSet::from([",
+            "            \"net.minecraft.world.entity.Leashable\",",
+            "            \"net.minecraft.world.entity.animal.allay.Allay\",",
+            "            \"net.minecraft.world.entity.animal.bee.Bee\",",
+            "            \"net.minecraft.world.entity.animal.camel.Camel\",",
+            "            \"net.minecraft.world.entity.animal.equine.Llama\",",
+            "            \"net.minecraft.world.entity.animal.feline.Ocelot\",",
+            "            \"net.minecraft.world.entity.animal.fox.Fox\",",
+            "            \"net.minecraft.world.entity.animal.golem.CopperGolem\",",
+            "            \"net.minecraft.world.entity.animal.golem.IronGolem\",",
+            "            \"net.minecraft.world.entity.animal.golem.SnowGolem\",",
+            "            \"net.minecraft.world.entity.animal.happyghast.HappyGhast\",",
+            "            \"net.minecraft.world.entity.animal.parrot.Parrot\",",
+            "            \"net.minecraft.world.entity.animal.pig.Pig\",",
+            "            \"net.minecraft.world.entity.animal.rabbit.Rabbit\",",
+            "            \"net.minecraft.world.entity.animal.wolf.Wolf\",",
+            "            \"net.minecraft.world.entity.monster.Strider\",",
+            "            \"net.minecraft.world.entity.vehicle.boat.AbstractBoat\",",
+            "        ]));",
+            "        assert_eq!(rope_hold_position_owners, std::collections::BTreeSet::from([",
+            "            \"net.minecraft.world.entity.Entity\",",
+            "            \"net.minecraft.world.entity.decoration.LeashFenceKnotEntity\",",
+            "            \"net.minecraft.world.entity.npc.villager.AbstractVillager\",",
+            "            \"net.minecraft.world.entity.player.Player\",",
             "        ]));",
             "    }",
             "",

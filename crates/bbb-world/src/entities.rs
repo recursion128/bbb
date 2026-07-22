@@ -3186,13 +3186,22 @@ impl WorldStore {
         partial_ticks: f32,
     ) -> Option<Vec<EntityLeashRenderState>> {
         let partial_ticks = partial_ticks.clamp(0.0, 1.0);
+        let game_time = self.world_time().map_or(0, |time| time.game_time);
+        let minecart_improvements_enabled =
+            self.is_feature_enabled("minecraft:minecart_improvements");
         let holder_id = self.entities.leash_holder_id(entity_id)?;
-        let leashed = self
-            .entities
-            .leash_endpoint_inputs(entity_id, partial_ticks)?;
-        let holder = self
-            .entities
-            .leash_endpoint_inputs(holder_id, partial_ticks)?;
+        let leashed = self.entities.leash_endpoint_inputs(
+            entity_id,
+            partial_ticks,
+            game_time,
+            minecart_improvements_enabled,
+        )?;
+        let holder = self.entities.leash_endpoint_inputs(
+            holder_id,
+            partial_ticks,
+            game_time,
+            minecart_improvements_enabled,
+        )?;
         let mut states = leash::leash_render_states(&leashed, &holder);
         let eye_light = |inputs: &leash::LeashEndpointInputs| {
             let light = self

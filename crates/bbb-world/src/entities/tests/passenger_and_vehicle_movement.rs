@@ -5361,6 +5361,114 @@ fn pig_leash_render_state_projects_offset_rope_hold_and_slack() {
 }
 
 #[test]
+fn leash_endpoints_follow_the_generated_passenger_render_pose() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 40.0,
+            y: 70.0,
+            z: -12.0,
+        },
+        ..protocol_add_entity_with_type(66, VANILLA_ENTITY_TYPE_COW_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 2.0,
+            y: 3.0,
+            z: 4.0,
+        },
+        ..protocol_add_entity_with_type(67, VANILLA_ENTITY_TYPE_PIG_ID)
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 66,
+        passenger_ids: vec![67],
+    }));
+    assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 67,
+        dest_id: 68,
+    }));
+
+    let rendered = store
+        .entity_render_candidates_at_partial_tick(1.0)
+        .into_iter()
+        .find(|candidate| candidate.entity_id == 67)
+        .expect("passenger render candidate")
+        .position;
+    let state = store
+        .entity_leash_render_states_at_partial_tick(67, 1.0)
+        .expect("leashed passenger rope")[0];
+    assert!((state.start[0] - state.offset[0] - rendered.x).abs() < 1.0e-6);
+    assert!((state.start[1] - state.offset[1] - rendered.y).abs() < 1.0e-6);
+    assert!((state.start[2] - state.offset[2] - rendered.z).abs() < 1.0e-6);
+    assert!(
+        (rendered.x - 2.0).abs() > 1.0,
+        "test must distinguish projected pose from packet transform: {rendered:?}"
+    );
+}
+
+#[test]
+fn camel_leash_offset_keeps_attribute_scale_out_of_the_animation_scale() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        69,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+    ));
+    let (baby_data_id, _) = super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    )
+    .expect("generated Camel baby accessor");
+    let (pose_tick_data_id, _) =
+        super::schema::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+        )
+        .expect("generated Camel pose tick accessor");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 69,
+        values: vec![
+            protocol_bool_data(baby_data_id, true),
+            protocol_long_data(pose_tick_data_id, 0),
+        ],
+    }));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 69,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 200,
+        clock_updates: Vec::new(),
+    });
+    assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 69,
+        dest_id: 70,
+    }));
+
+    let state = store
+        .entity_leash_render_states_at_partial_tick(69, 0.0)
+        .expect("baby Camel rope")[0];
+    // Dimensions are 1.7 x 2.375 scaled by age 0.6 and attribute 2.0.
+    // The standing animation base subtracts `0.375 * ageScale`, then the
+    // leash offset subtracts another `0.2 * ageScale`.
+    assert!((state.offset[1] - 2.505).abs() < 1.0e-6, "state {state:?}");
+    let horizontal_offset = state.offset[0].hypot(state.offset[2]);
+    assert!(
+        (horizontal_offset - 1.1424).abs() < 1.0e-6,
+        "state {state:?}"
+    );
+}
+
+#[test]
 fn leashed_pig_model_source_carries_the_projected_rope() {
     let mut store = WorldStore::new();
     store.apply_add_entity(ProtocolAddEntity {

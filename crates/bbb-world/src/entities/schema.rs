@@ -722,6 +722,12 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub passenger_attachment_owner: Option<&'static str>,
     pub vehicle_attachment_owner: Option<&'static str>,
     pub controlling_passenger_owner: Option<&'static str>,
+    /// Effective vanilla declaration owners for leash attachment and rope-holder
+    /// positioning. `leash_offset_owner` is absent for non-`Leashable` types;
+    /// its generated value follows the interface default's zero-argument
+    /// virtual dispatch when no class overrides the partial-tick overload.
+    pub leash_offset_owner: Option<&'static str>,
+    pub rope_hold_position_owner: Option<&'static str>,
     /// Nearest runtime-class declarations for the methods driven by
     /// `ClientLevel.tickNonPassenger` / `tickPassenger`. These are generated
     /// audit facts, not a claim that each whole method body executes client side.
@@ -4284,6 +4290,22 @@ pub(crate) fn vanilla_entity_metadata_controlling_passenger_owner(
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)
         .and_then(|entry| entry.controlling_passenger_owner)
+}
+
+pub(crate) fn vanilla_entity_metadata_leash_offset_owner(
+    entity_type_id: i32,
+) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.leash_offset_owner)
+}
+
+pub(crate) fn vanilla_entity_metadata_rope_hold_position_owner(
+    entity_type_id: i32,
+) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.rope_hold_position_owner)
 }
 
 /// Resolves the vanilla declaration that consumes one entity event after following the
