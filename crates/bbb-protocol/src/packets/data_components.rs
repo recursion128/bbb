@@ -293,6 +293,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub instrument_description_styled: Option<Vec<StyledTextRun>>,
     #[serde(default)]
+    pub instrument_direct: Option<Box<InstrumentSummary>>,
+    #[serde(default)]
     pub jukebox_song_id: Option<i32>,
     #[serde(default)]
     pub jukebox_direct_song: Option<Box<JukeboxSongSummary>>,
@@ -386,6 +388,18 @@ pub struct JukeboxSongSummary {
     pub description_nbt: Option<Box<NbtSummaryValue>>,
     pub length_in_seconds_bits: u32,
     pub comparator_output: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InstrumentSummary {
+    pub sound_event: SoundEventSummary,
+    pub use_duration_bits: u32,
+    pub range_bits: u32,
+    pub description: String,
+    #[serde(default)]
+    pub description_styled: Option<Box<[StyledTextRun]>>,
+    #[serde(default)]
+    pub description_nbt: Option<Box<NbtSummaryValue>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1741,8 +1755,7 @@ fn nbt_string(value: &NbtSummaryValue) -> Option<&str> {
 
 struct InstrumentComponentSummary {
     registry_id: Option<i32>,
-    description: Option<String>,
-    description_styled: Option<Vec<StyledTextRun>>,
+    direct: Option<InstrumentSummary>,
 }
 
 fn decode_instrument_component_summary(
@@ -1753,26 +1766,33 @@ fn decode_instrument_component_summary(
         return Err(ProtocolError::NegativeLength(id));
     }
     if id == 0 {
-        let description_styled = decode_direct_instrument_description(decoder)?;
         Ok(InstrumentComponentSummary {
             registry_id: None,
-            description: Some(styled_runs_summary_text(&description_styled)),
-            description_styled: Some(description_styled),
+            direct: Some(decode_direct_instrument_summary(decoder)?),
         })
     } else {
         Ok(InstrumentComponentSummary {
             registry_id: Some(id - 1),
-            description: None,
-            description_styled: None,
+            direct: None,
         })
     }
 }
 
-fn decode_direct_instrument_description(decoder: &mut Decoder<'_>) -> Result<Vec<StyledTextRun>> {
-    decode_sound_event_holder(decoder)?;
-    decoder.read_f32()?;
-    decoder.read_f32()?;
-    decode_styled_component_summary_from_decoder(decoder)
+fn decode_direct_instrument_summary(decoder: &mut Decoder<'_>) -> Result<InstrumentSummary> {
+    let sound_event = decode_sound_event_holder_summary(decoder)?;
+    let use_duration_bits = decoder.read_f32()?.to_bits();
+    let range_bits = decoder.read_f32()?.to_bits();
+    let (description_styled, description_nbt) =
+        decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+    let description = styled_runs_summary_text(&description_styled);
+    Ok(InstrumentSummary {
+        sound_event,
+        use_duration_bits,
+        range_bits,
+        description,
+        description_styled: Some(description_styled.into_boxed_slice()),
+        description_nbt: description_nbt.map(Box::new),
+    })
 }
 
 fn decode_direct_trim_material_summary(decoder: &mut Decoder<'_>) -> Result<TrimMaterialSummary> {
@@ -2014,11 +2034,6 @@ fn decode_direct_jukebox_song_summary(decoder: &mut Decoder<'_>) -> Result<Jukeb
         length_in_seconds_bits,
         comparator_output,
     })
-}
-
-fn decode_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_sound_event_holder_summary(decoder)?;
-    Ok(())
 }
 
 fn decode_sound_event_holder_summary(decoder: &mut Decoder<'_>) -> Result<SoundEventSummary> {
@@ -2861,8 +2876,70 @@ mod tests {
                 added_type_ids: vec![61],
                 instrument_description: Some("Custom horn".to_string()),
                 instrument_description_styled: Some(plain_runs("Custom horn")),
+                instrument_direct: Some(Box::new(InstrumentSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: Some(0),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                    use_duration_bits: 7.0f32.to_bits(),
+                    range_bits: 256.0f32.to_bits(),
+                    description: "Custom horn".to_string(),
+                    description_styled: Some(plain_runs("Custom horn").into_boxed_slice()),
+                    description_nbt: Some(Box::new(NbtSummaryValue::String(
+                        "Custom horn".to_string(),
+                    ))),
+                })),
                 ..DataComponentPatchSummary::default()
             }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_inline_instrument_direct_sound_and_exact_component() {
+        let mut styled_description = vec![10u8];
+        write_named_nbt_string(&mut styled_description, "text", "Signal horn");
+        write_named_nbt_byte(&mut styled_description, "italic", 1);
+        styled_description.push(0);
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(61);
+        payload.write_var_i32(0);
+        write_direct_sound_event(&mut payload, "example:signal", Some(24.0));
+        payload.write_f32(3.25);
+        payload.write_f32(96.0);
+        payload.write_bytes(&styled_description);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        let direct = patch.instrument_direct.as_deref().unwrap();
+        assert_eq!(
+            direct.sound_event,
+            SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:signal".to_string()),
+                fixed_range_bits: Some(24.0f32.to_bits()),
+            }
+        );
+        assert_eq!(direct.use_duration_bits, 3.25f32.to_bits());
+        assert_eq!(direct.range_bits, 96.0f32.to_bits());
+        assert_eq!(direct.description, "Signal horn");
+        assert_eq!(
+            direct.description_nbt.as_deref(),
+            Some(&NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: NbtSummaryValue::String("Signal horn".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "italic".to_string(),
+                    value: NbtSummaryValue::Byte(1),
+                },
+            ]))
         );
         assert!(decoder.is_empty());
     }

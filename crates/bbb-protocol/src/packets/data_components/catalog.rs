@@ -701,8 +701,14 @@ fn decode_instrument(
 ) -> Result<()> {
     let instrument = decode_instrument_component_summary(decoder)?;
     summary.instrument_id = instrument.registry_id;
-    summary.instrument_description = instrument.description;
-    summary.instrument_description_styled = instrument.description_styled;
+    if let Some(direct) = instrument.direct {
+        summary.instrument_description = Some(direct.description.clone());
+        summary.instrument_description_styled = direct
+            .description_styled
+            .as_deref()
+            .map(<[StyledTextRun]>::to_vec);
+        summary.instrument_direct = Some(Box::new(direct));
+    }
     Ok(())
 }
 

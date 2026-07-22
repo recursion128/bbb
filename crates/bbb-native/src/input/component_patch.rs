@@ -1393,14 +1393,64 @@ fn encode_instrument(
     if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
         return Some(debug_nbt_summary_snbt(persistent));
     }
-    let holder_id = patch.instrument_id?;
-    let resource_id =
-        context.registry_resource_id("minecraft:instrument", holder_id, |holder_id| {
-            VanillaInstrumentIdentity::for_vanilla_registry_id(holder_id)
-                .map(VanillaInstrumentIdentity::resource_id)
-                .map(str::to_string)
-        })?;
-    Some(debug_snbt_string(&resource_id))
+    if let Some(holder_id) = patch.instrument_id {
+        if patch.instrument_direct.is_some() {
+            return None;
+        }
+        let resource_id =
+            context.registry_resource_id("minecraft:instrument", holder_id, |holder_id| {
+                VanillaInstrumentIdentity::for_vanilla_registry_id(holder_id)
+                    .map(VanillaInstrumentIdentity::resource_id)
+                    .map(str::to_string)
+            })?;
+        return Some(debug_snbt_string(&resource_id));
+    }
+    encode_direct_instrument(patch.instrument_direct.as_deref()?, context)
+}
+
+fn encode_direct_instrument(
+    instrument: &bbb_protocol::packets::InstrumentSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    let use_duration = f32::from_bits(instrument.use_duration_bits);
+    let range = f32::from_bits(instrument.range_bits);
+    if !(use_duration > 0.0 && use_duration <= f32::MAX) || !(range > 0.0 && range <= f32::MAX) {
+        return None;
+    }
+    Some(format!(
+        "{{sound_event: {}, use_duration: {}, range: {}, description: {}}}",
+        encode_persistent_sound_event(&instrument.sound_event, context)?,
+        debug_snbt_float(use_duration)?,
+        debug_snbt_float(range)?,
+        debug_nbt_summary_snbt(instrument.description_nbt.as_deref()?),
+    ))
+}
+
+fn encode_persistent_sound_event(
+    sound: &bbb_protocol::packets::SoundEventSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    match (sound.registry_id, sound.sound_id.as_deref()) {
+        (Some(holder_id), None) if sound.fixed_range_bits.is_none() => {
+            let resource_id =
+                context.registry_resource_id("minecraft:sound_event", holder_id, |holder_id| {
+                    vanilla_sound_event_resource_id(holder_id).map(str::to_string)
+                })?;
+            Some(debug_snbt_string(&resource_id))
+        }
+        (None, Some(sound_id)) => {
+            let sound_id = bbb_protocol::normalize_resource_location(sound_id.to_string()).ok()?;
+            let mut fields = vec![format!("sound_id: {}", debug_snbt_string(&sound_id))];
+            if let Some(bits) = sound.fixed_range_bits {
+                fields.push(format!(
+                    "range: {}",
+                    debug_snbt_float(f32::from_bits(bits))?
+                ));
+            }
+            Some(format!("{{{}}}", fields.join(", ")))
+        }
+        _ => None,
+    }
 }
 
 fn encode_provides_trim_material(
@@ -3050,6 +3100,37 @@ mod tests {
         patch.instrument_id = None;
         patch.instrument_description = Some("Custom horn".to_string());
         assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+
+        patch.instrument_direct = Some(Box::new(bbb_protocol::packets::InstrumentSummary {
+            sound_event: bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:signal".to_string()),
+                fixed_range_bits: Some(24.0f32.to_bits()),
+            },
+            use_duration_bits: 3.25f32.to_bits(),
+            range_bits: 96.0f32.to_bits(),
+            description: "Custom horn".to_string(),
+            description_styled: None,
+            description_nbt: Some(Box::new(bbb_protocol::packets::NbtSummaryValue::String(
+                "Custom horn".to_string(),
+            ))),
+        }));
+        assert_eq!(
+            encode_added_component_value_snbt(61, &patch, None),
+            Some(
+                "{sound_event: {sound_id: \"example:signal\", range: 24.0f}, \
+                 use_duration: 3.25f, range: 96.0f, description: \"Custom horn\"}"
+                    .to_string()
+            )
+        );
+        patch.instrument_direct.as_mut().unwrap().description_nbt = None;
+        assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+        patch.instrument_direct.as_mut().unwrap().description_nbt = Some(Box::new(
+            bbb_protocol::packets::NbtSummaryValue::String("Custom horn".to_string()),
+        ));
+        patch.instrument_direct.as_mut().unwrap().range_bits = 0.0f32.to_bits();
+        assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+        patch.instrument_direct.as_mut().unwrap().range_bits = 96.0f32.to_bits();
 
         patch.codec_backed_nbt.insert(
             component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
