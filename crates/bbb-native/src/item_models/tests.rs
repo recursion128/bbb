@@ -50,9 +50,12 @@ fn instrument_tooltip_context_uses_typed_session_order_and_safe_stub_fallback() 
         out.extend_from_slice(value.as_bytes());
     }
     fn instrument_nbt(description: &str, use_duration: f32) -> Vec<u8> {
-        let mut out = vec![10, 8];
+        let mut out = vec![10, 10];
         write_nbt_string(&mut out, "sound_event");
+        out.push(8);
+        write_nbt_string(&mut out, "sound_id");
         write_nbt_string(&mut out, "example:horn");
+        out.push(0);
         out.push(5);
         write_nbt_string(&mut out, "use_duration");
         out.extend_from_slice(&use_duration.to_bits().to_be_bytes());
