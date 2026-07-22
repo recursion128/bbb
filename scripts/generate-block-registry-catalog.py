@@ -19,6 +19,9 @@ DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-pack/data/block_registry_declarations_2
 DEFAULT_PROTOCOL_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/block_types.rs"
 BLOCKS_PATH = Path("net/minecraft/world/level/block/Blocks.java")
 BLOCK_IDS_PATH = Path("net/minecraft/references/BlockIds.java")
+BLOCK_ENTITY_TYPES_PATH = Path(
+    "net/minecraft/world/level/block/entity/BlockEntityType.java"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,7 +42,11 @@ def extract(source_root: Path):
     block_ids = parse_source(
         BLOCK_IDS_PATH.as_posix(), (source_root / BLOCK_IDS_PATH).read_bytes()
     )
-    return extract_block_registry_catalog(blocks, block_ids)
+    block_entity_types = parse_source(
+        BLOCK_ENTITY_TYPES_PATH.as_posix(),
+        (source_root / BLOCK_ENTITY_TYPES_PATH).read_bytes(),
+    )
+    return extract_block_registry_catalog(blocks, block_ids, block_entity_types)
 
 
 def render_json(catalog) -> str:

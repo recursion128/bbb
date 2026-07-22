@@ -25,6 +25,7 @@ mod level;
 mod maps;
 mod note_blocks;
 mod painting_variants;
+mod piston_blocks;
 mod play_apply;
 mod position;
 mod publication_snapshot;

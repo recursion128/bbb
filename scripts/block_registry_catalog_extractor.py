@@ -20,6 +20,7 @@ class BlockRegistryCatalogExtractionError(ValueError):
 
 BLOCKS_OWNER = "net.minecraft.world.level.block.Blocks"
 BLOCK_IDS_OWNER = "net.minecraft.references.BlockIds"
+BLOCK_ENTITY_TYPES_OWNER = "net.minecraft.world.level.block.entity.BlockEntityType"
 REGISTER_HELPERS = {
     "register",
     "registerBed",
@@ -121,6 +122,37 @@ def extract_block_id_constants(source: JavaSource) -> dict[str, str]:
     return constants
 
 
+def extract_block_entity_block_constants(source: JavaSource) -> frozenset[str]:
+    constants: set[str] = set()
+    for field in source.fields_for(BLOCK_ENTITY_TYPES_OWNER):
+        if not field.type_spelling.replace(" ", "").startswith("BlockEntityType<"):
+            continue
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or source.expression(field.node)
+            _fail(source, expression, f"BlockEntityType.{field.name} lacks register call")
+        name = initializer.node.child_by_field_name("name")
+        arguments = _arguments(source, initializer)
+        if name is None or source.text(name) != "register" or len(arguments) < 3:
+            _fail(
+                source,
+                initializer,
+                f"BlockEntityType.{field.name} is not register(name, factory, blocks...)",
+            )
+        for block in arguments[2:]:
+            constant = field_constant(source, block, "Blocks")
+            if constant is None:
+                _fail(source, block, "block entity valid block is not a Blocks constant")
+            if constant in constants:
+                _fail(source, block, f"duplicate block entity valid block Blocks.{constant}")
+            constants.add(constant)
+    if not constants:
+        raise BlockRegistryCatalogExtractionError(
+            f"{source.relative_path}: no block entity valid blocks found"
+        )
+    return frozenset(constants)
+
+
 @dataclass(frozen=True)
 class ExtractedBlockRegistryCatalog:
     declarations: tuple[dict[str, Any], ...]
@@ -140,15 +172,19 @@ class ExtractedBlockRegistryCatalog:
             "sources": [
                 "net/minecraft/references/BlockIds.java",
                 "net/minecraft/world/level/block/Blocks.java",
+                "net/minecraft/world/level/block/entity/BlockEntityType.java",
             ],
             "declarations": list(self.declarations),
         }
 
 
 def extract_block_registry_catalog(
-    blocks_source: JavaSource, block_ids_source: JavaSource
+    blocks_source: JavaSource,
+    block_ids_source: JavaSource,
+    block_entity_types_source: JavaSource,
 ) -> ExtractedBlockRegistryCatalog:
     constants = extract_block_id_constants(block_ids_source)
+    block_entity_fields = extract_block_entity_block_constants(block_entity_types_source)
     fields = [
         field
         for field in blocks_source.fields_for(BLOCKS_OWNER)
@@ -196,6 +232,8 @@ def extract_block_registry_catalog(
                         "end_byte": initializer.span.end_byte,
                         "initializer": expression_fact(blocks_source, initializer),
                         "group_variant": variant,
+                        "has_block_entity": f"{field_prefix}{field.name}"
+                        in block_entity_fields,
                     }
                 )
             continue
@@ -216,6 +254,7 @@ def extract_block_registry_catalog(
                 "start_byte": initializer.span.start_byte,
                 "end_byte": initializer.span.end_byte,
                 "initializer": expression_fact(blocks_source, initializer),
+                "has_block_entity": field.name in block_entity_fields,
             }
         )
     expected_declarations = sum(

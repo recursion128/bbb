@@ -29,7 +29,7 @@ impl BlockDestroyProfileCatalog {
         Self::from_generated_source_catalog()
     }
 
-    fn from_generated_source_catalog() -> Result<Self> {
+    pub(crate) fn from_generated_source_catalog() -> Result<Self> {
         let source = load_generated_block_declarations()?;
 
         let mut fields = BTreeMap::new();
@@ -221,11 +221,7 @@ mod tests {
     fn generated_block_destroy_profiles_cover_direct_copy_helper_and_infested_blocks() {
         let catalog = BlockDestroyProfileCatalog::from_generated_source_catalog().unwrap();
 
-        assert!(
-            catalog.len() >= 600,
-            "expected broad vanilla coverage, got {} profiles",
-            catalog.len()
-        );
+        assert_eq!(catalog.len(), 1168);
         assert_eq!(
             catalog.profile("minecraft:diamond_ore").unwrap(),
             &BlockDestroyProfile {

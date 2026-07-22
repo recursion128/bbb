@@ -48,12 +48,33 @@ class Blocks {
 """
 
 
+BLOCK_ENTITY_TYPES = """
+package net.minecraft.world.level.block.entity;
+class BlockEntityType {
+  static final BlockEntityType<?> DIRT = register(
+      "dirt", DirtBlockEntity::new, Blocks.DIRT);
+}
+"""
+
+
+def extract(
+    blocks: str = BLOCKS,
+    block_ids: str = BLOCK_IDS,
+    block_entity_types: str = BLOCK_ENTITY_TYPES,
+):
+    return extract_block_registry_catalog(
+        parse("net/minecraft/world/level/block/Blocks.java", blocks),
+        parse("net/minecraft/references/BlockIds.java", block_ids),
+        parse(
+            "net/minecraft/world/level/block/entity/BlockEntityType.java",
+            block_entity_types,
+        ),
+    )
+
+
 class BlockRegistryCatalogExtractorTests(unittest.TestCase):
     def test_extracts_ordered_registry_declarations_and_expression_facts(self) -> None:
-        extracted = extract_block_registry_catalog(
-            parse("net/minecraft/world/level/block/Blocks.java", BLOCKS),
-            parse("net/minecraft/references/BlockIds.java", BLOCK_IDS),
-        )
+        extracted = extract()
 
         self.assertEqual(
             [(item["field"], item["resource_id"]) for item in extracted.declarations],
@@ -81,6 +102,8 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
             ],
         )
         dirt = extracted.declarations[1]["initializer"]
+        self.assertFalse(extracted.declarations[0]["has_block_entity"])
+        self.assertTrue(extracted.declarations[1]["has_block_entity"])
         self.assertEqual(dirt["kind"], "method_invocation")
         self.assertEqual(dirt["name"], "register")
         self.assertTrue(
@@ -95,14 +118,8 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
         compact = BLOCKS.replace(
             "// register(\"fake\", BlockBehaviour.Properties.of())", ""
         ).replace("\n", " ")
-        normal = extract_block_registry_catalog(
-            parse("net/minecraft/world/level/block/Blocks.java", BLOCKS),
-            parse("net/minecraft/references/BlockIds.java", BLOCK_IDS),
-        )
-        spaced = extract_block_registry_catalog(
-            parse("net/minecraft/world/level/block/Blocks.java", compact),
-            parse("net/minecraft/references/BlockIds.java", BLOCK_IDS),
-        )
+        normal = extract()
+        spaced = extract(compact)
         project = lambda item: (
             item["field"],
             item["declaration_order"],
@@ -118,29 +135,44 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
         with self.assertRaisesRegex(
             BlockRegistryCatalogExtractionError, "unsupported block register helper custom"
         ):
-            extract_block_registry_catalog(
-                parse(
-                    "net/minecraft/world/level/block/Blocks.java",
-                    BLOCKS.replace("register(\n      \"air\"", "custom(\n      \"air\""),
-                ),
-                parse("net/minecraft/references/BlockIds.java", BLOCK_IDS),
-            )
+            extract(BLOCKS.replace("register(\n      \"air\"", "custom(\n      \"air\""))
         with self.assertRaisesRegex(
             BlockRegistryCatalogExtractionError, "unresolved BlockIds.MISSING"
         ):
-            extract_block_registry_catalog(
-                parse(
-                    "net/minecraft/world/level/block/Blocks.java",
-                    BLOCKS.replace("BlockIds.DIRT", "BlockIds.MISSING"),
-                ),
-                parse("net/minecraft/references/BlockIds.java", BLOCK_IDS),
+            extract(BLOCKS.replace("BlockIds.DIRT", "BlockIds.MISSING"))
+
+    def test_rejects_non_block_constants_and_duplicate_block_entity_membership(self) -> None:
+        with self.assertRaisesRegex(
+            BlockRegistryCatalogExtractionError,
+            "block entity valid block is not a Blocks constant",
+        ):
+            extract(
+                block_entity_types=BLOCK_ENTITY_TYPES.replace(
+                    "Blocks.DIRT", "OtherBlocks.DIRT"
+                )
+            )
+        with self.assertRaisesRegex(
+            BlockRegistryCatalogExtractionError,
+            "duplicate block entity valid block Blocks.DIRT",
+        ):
+            extract(
+                block_entity_types=BLOCK_ENTITY_TYPES.replace(
+                    "Blocks.DIRT);", "Blocks.DIRT, Blocks.DIRT);"
+                )
             )
 
     def test_local_vanilla_closes_all_block_fields_when_available(self) -> None:
         root = Path.home() / "Work/mc-code/sources/26.1"
         blocks_path = root / "net/minecraft/world/level/block/Blocks.java"
         ids_path = root / "net/minecraft/references/BlockIds.java"
-        if not blocks_path.is_file() or not ids_path.is_file():
+        block_entity_types_path = (
+            root / "net/minecraft/world/level/block/entity/BlockEntityType.java"
+        )
+        if (
+            not blocks_path.is_file()
+            or not ids_path.is_file()
+            or not block_entity_types_path.is_file()
+        ):
             self.skipTest("local vanilla 26.1 sources are unavailable")
         extracted = extract_block_registry_catalog(
             parse_source(
@@ -149,10 +181,17 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
             parse_source(
                 "net/minecraft/references/BlockIds.java", ids_path.read_bytes()
             ),
+            parse_source(
+                "net/minecraft/world/level/block/entity/BlockEntityType.java",
+                block_entity_types_path.read_bytes(),
+            ),
         )
         self.assertEqual(len(extracted.declarations), 1168)
         self.assertEqual(
             len({item["resource_id"] for item in extracted.declarations}), 1168
+        )
+        self.assertEqual(
+            sum(item["has_block_entity"] for item in extracted.declarations), 201
         )
 
 
