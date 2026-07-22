@@ -1231,15 +1231,11 @@ back into a todo. Do not delete these.
   `warningBlocks`, `warningTime`, lerp speed and lerp target/size delta, matching
   `Gui.extractVignette`. Canonical border fields, tick lerp and forcefield render
   extraction are covered; storing warning fields alone is not their HUD consumer.
-- **UpdateAdvancements rich display/toast parity.** Reset/remove/add/known-progress
-  tree semantics are covered, but title/description and icon stacks remain summary
-  projections, and completion telemetry/toast presentation is not complete.
 - **SystemChat overlay rich Component presentation.** Overlay=false now retains
   and renders inherited style/click/hover runs through canonical server-system
   chat. Overlay=true retains the exact packet Component in `SystemChatLineState`
   and uses the correct system narration gate, but its action-bar draw state is
   still a plain-text projection; rich action-bar styles remain open.
-- **Advancement hover title/description boxes** and full scroll/scissor behavior.
 - **Heart damage/heal blink flash.** Needs the untracked
   `player.invulnerableTime` (no client-side sync) and the wall-clock
   `displayHealth` / `lastHealthTime` hold, neither reproducible

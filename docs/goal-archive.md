@@ -238,3 +238,6 @@
   进入 canonical world，native HUD 复现 100ms `LerpingBossEvent`，三类环境 flag 覆盖
   lightmap/fog/sky 与 backend-telemetry 驱动的 End boss music；合同见
   `docs/boss-event-packet-closure-design.md`。
+- **2026-07-22（UpdateAdvancements 包闭环）**：trusted rich display、按包顺序的
+  canonical tree/progress 与有界 completion handoff 驱动 native 五槽 toast、Vanilla
+  滑动/淡入/音效及组件感知图标；合同见 `docs/update-advancements-packet-closure-design.md`。

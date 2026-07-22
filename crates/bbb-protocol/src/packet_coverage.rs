@@ -2074,7 +2074,7 @@ mod tests {
     }
 
     #[test]
-    fn play_update_advancements_keeps_rich_display_and_toasts_open() {
+    fn play_update_advancements_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2083,17 +2083,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_UPDATE_ADVANCEMENTS"
             })
             .expect("play update advancements coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
