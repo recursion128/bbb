@@ -271,7 +271,7 @@ impl WorldStore {
         pos: BlockPos,
         server_block_state_id: i32,
     ) -> bool {
-        if server_block_state_id < 0 {
+        if self.registries.block_state(server_block_state_id).is_none() {
             return false;
         }
         let Some(prediction) = self

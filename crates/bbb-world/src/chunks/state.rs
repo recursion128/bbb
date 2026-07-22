@@ -101,6 +101,26 @@ pub struct BlockEntityRecord {
     pub note_block_sound: Option<String>,
 }
 
+impl BlockEntityRecord {
+    pub(crate) fn empty(local_x: u8, y: i16, local_z: u8, type_id: i32) -> Self {
+        Self {
+            local_x,
+            y,
+            local_z,
+            type_id,
+            raw_nbt: Vec::new(),
+            nbt: None,
+            sign_text: None,
+            vault_shared_data: None,
+            decorated_pot_sherds: None,
+            banner_patterns: None,
+            end_gateway: None,
+            spawner: None,
+            note_block_sound: None,
+        }
+    }
+}
+
 /// The end gateway block entity fields read by `TheEndGatewayRenderer`:
 /// vanilla saves `Age` in BE NBT and receives cooldown through block event
 /// `1`. Decoded from chunk block-entity data and `BlockEntityData` updates.

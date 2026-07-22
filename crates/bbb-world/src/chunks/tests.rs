@@ -1840,6 +1840,318 @@ fn applies_section_blocks_update() {
 }
 
 #[test]
+fn block_updates_follow_vanilla_block_entity_lifecycle() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let stone = test_block_state_id("minecraft:stone", &[]);
+    let sign = test_block_state_id(
+        "minecraft:oak_sign",
+        &[("rotation", "0"), ("waterlogged", "false")],
+    );
+    let chest_north = test_block_state_id(
+        "minecraft:chest",
+        &[
+            ("facing", "north"),
+            ("type", "single"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let chest_south = test_block_state_id(
+        "minecraft:chest",
+        &[
+            ("facing", "south"),
+            ("type", "single"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let copper_chest = test_block_state_id(
+        "minecraft:copper_chest",
+        &[
+            ("facing", "north"),
+            ("type", "single"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let waxed_oxidized_copper_chest = test_block_state_id(
+        "minecraft:waxed_oxidized_copper_chest",
+        &[
+            ("facing", "north"),
+            ("type", "single"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let copper_statue = test_block_state_id(
+        "minecraft:copper_golem_statue",
+        &[
+            ("copper_golem_pose", "standing"),
+            ("facing", "north"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let waxed_oxidized_copper_statue = test_block_state_id(
+        "minecraft:waxed_oxidized_copper_golem_statue",
+        &[
+            ("copper_golem_pose", "standing"),
+            ("facing", "north"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let update = |store: &mut WorldStore, pos: BlockPos, block_state_id| {
+        assert!(store.apply_block_update(ProtocolBlockUpdate {
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_state_id,
+        }));
+    };
+    let apply_data =
+        |store: &mut WorldStore, pos: BlockPos, block_entity_type_id, raw_nbt: Vec<u8>| {
+            assert!(store
+                .apply_block_entity_data(ProtocolBlockEntityData {
+                    pos: ProtocolBlockPos {
+                        x: pos.x,
+                        y: pos.y,
+                        z: pos.z,
+                    },
+                    block_entity_type_id,
+                    raw_nbt,
+                })
+                .unwrap());
+        };
+
+    let removed = BlockPos {
+        x: 33,
+        y: 2,
+        z: -46,
+    };
+    update(&mut store, removed, sign);
+    let sign_nbt = nbt_compound_with_string("id", "minecraft:sign");
+    apply_data(
+        &mut store,
+        removed,
+        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+        sign_nbt,
+    );
+    update(&mut store, removed, stone);
+    assert_eq!(store.block_entity_type_id_at(removed), None);
+
+    let same_block = BlockPos {
+        x: 34,
+        y: 2,
+        z: -46,
+    };
+    update(&mut store, same_block, chest_north);
+    assert_eq!(
+        store.block_entity_type_id_at(same_block),
+        Some(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID)
+    );
+    assert_eq!(store.block_entity_raw_nbt_at(same_block), Some(&[][..]));
+    let chest_nbt = nbt_compound_with_string("id", "minecraft:chest");
+    apply_data(
+        &mut store,
+        same_block,
+        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+        chest_nbt.clone(),
+    );
+    update(&mut store, same_block, chest_south);
+    assert_eq!(
+        store.block_entity_raw_nbt_at(same_block),
+        Some(chest_nbt.as_slice())
+    );
+    update(&mut store, same_block, sign);
+    assert_eq!(
+        store.block_entity_type_id_at(same_block),
+        Some(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID)
+    );
+    assert_eq!(store.block_entity_raw_nbt_at(same_block), Some(&[][..]));
+
+    let mismatched = BlockPos {
+        x: 35,
+        y: 2,
+        z: -46,
+    };
+    apply_data(
+        &mut store,
+        mismatched,
+        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_PISTON_ID,
+        nbt_compound_with_string("id", "minecraft:piston"),
+    );
+    update(&mut store, mismatched, chest_north);
+    assert_eq!(
+        store.block_entity_type_id_at(mismatched),
+        Some(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID)
+    );
+    assert_eq!(store.block_entity_raw_nbt_at(mismatched), Some(&[][..]));
+
+    let preserved_chest = BlockPos {
+        x: 36,
+        y: 2,
+        z: -46,
+    };
+    update(&mut store, preserved_chest, copper_chest);
+    apply_data(
+        &mut store,
+        preserved_chest,
+        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+        chest_nbt.clone(),
+    );
+    update(&mut store, preserved_chest, waxed_oxidized_copper_chest);
+    assert_eq!(
+        store.block_entity_raw_nbt_at(preserved_chest),
+        Some(chest_nbt.as_slice())
+    );
+    update(&mut store, preserved_chest, chest_north);
+    assert_eq!(
+        store.block_entity_type_id_at(preserved_chest),
+        Some(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID)
+    );
+    assert_eq!(
+        store.block_entity_raw_nbt_at(preserved_chest),
+        Some(&[][..])
+    );
+
+    let preserved_statue = BlockPos {
+        x: 37,
+        y: 2,
+        z: -46,
+    };
+    update(&mut store, preserved_statue, copper_statue);
+    let statue_nbt = nbt_compound_with_string("id", "minecraft:copper_golem_statue");
+    apply_data(
+        &mut store,
+        preserved_statue,
+        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
+        statue_nbt.clone(),
+    );
+    update(&mut store, preserved_statue, waxed_oxidized_copper_statue);
+    assert_eq!(
+        store.block_entity_raw_nbt_at(preserved_statue),
+        Some(statue_nbt.as_slice())
+    );
+}
+
+#[test]
+fn section_block_updates_apply_in_order_and_reject_impossible_positions() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = ProtocolBlockPos {
+        x: 38,
+        y: 3,
+        z: -46,
+    };
+    let chest = test_block_state_id(
+        "minecraft:chest",
+        &[
+            ("facing", "north"),
+            ("type", "single"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let stone = test_block_state_id("minecraft:stone", &[]);
+    let revision = store.terrain_revision();
+
+    assert_eq!(
+        store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+            section_x: 2,
+            section_y: 0,
+            section_z: -3,
+            updates: vec![
+                ProtocolBlockUpdate {
+                    pos,
+                    block_state_id: chest,
+                },
+                ProtocolBlockUpdate {
+                    pos,
+                    block_state_id: stone,
+                },
+            ],
+        }),
+        2
+    );
+    let pos = BlockPos {
+        x: 38,
+        y: 3,
+        z: -46,
+    };
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, stone);
+    assert_eq!(store.block_entity_type_id_at(pos), None);
+    assert_eq!(store.terrain_revision(), revision + 2);
+
+    let revision = store.terrain_revision();
+    assert_eq!(
+        store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+            section_x: 2,
+            section_y: 0,
+            section_z: -3,
+            updates: vec![ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 48,
+                    y: 3,
+                    z: -46
+                },
+                block_state_id: chest,
+            }],
+        }),
+        0
+    );
+    assert_eq!(store.terrain_revision(), revision);
+    assert_eq!(store.counters().block_updates_received, 3);
+    assert_eq!(store.counters().block_updates_applied, 2);
+    assert_eq!(store.counters().block_updates_ignored, 1);
+}
+
+#[test]
+fn invalid_block_state_update_cannot_rewrite_pending_prediction() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    assert!(store.predict_local_destroy_block(pos, 7));
+    let known_server_state = store.local_block_predictions()[0].server_block_state_id;
+
+    assert!(!store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z
+        },
+        block_state_id: bbb_protocol::block_state_types::VANILLA_BLOCK_STATE_COUNT,
+    }));
+    assert_eq!(
+        store.local_block_predictions()[0].server_block_state_id,
+        known_server_state
+    );
+    assert_eq!(
+        store
+            .counters()
+            .local_block_predictions_reconciled_by_update,
+        0
+    );
+    assert_eq!(store.counters().block_updates_ignored, 1);
+}
+
+#[test]
 fn block_updates_for_missing_targets_are_counted_but_not_applied() {
     let mut store = WorldStore::new();
 
@@ -2417,6 +2729,17 @@ fn vault_block_state_id(facing: &str) -> i32 {
     crate::registries::BlockStateRegistry::vanilla_26_1()
         .find_by_name_and_properties("minecraft:vault", &properties)
         .unwrap()
+        .id
+}
+
+fn test_block_state_id(name: &str, properties: &[(&str, &str)]) -> i32 {
+    let properties = properties
+        .iter()
+        .map(|(name, value)| (name.to_string(), value.to_string()))
+        .collect();
+    crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties(name, &properties)
+        .unwrap_or_else(|| panic!("missing vanilla block state {name} {properties:?}"))
         .id
 }
 

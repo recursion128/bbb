@@ -667,10 +667,13 @@ mod tests {
         );
 
         let mut unknown = world_with_air_chunk();
-        assert!(unknown.apply_block_update(BlockUpdate {
+        assert!(!unknown.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos { x: 2, y: 5, z: 5 },
             block_state_id: i32::MAX,
         }));
+        assert!(unknown.chunks[0].sections[0]
+            .block_states
+            .set_value_at(crate::section_block_index(2, 5, 5), i32::MAX));
         assert_eq!(
             unknown.resolve_piston_structure(pos(1, 5, 5), PistonDirection::East, true),
             None

@@ -193,7 +193,7 @@ fn terrain_chunk_events_update_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::SectionBlocksUpdate(
         SectionBlocksUpdate {
             section_x: 1,
-            section_y: 0,
+            section_y: -4,
             section_z: -2,
             updates: vec![BlockUpdate {
                 pos: ProtocolBlockPos {
@@ -392,7 +392,7 @@ fn terrain_chunk_ignored_counters_stay_in_world_store() {
     tx.try_send(NetEvent::Play(PlayClientbound::SectionBlocksUpdate(
         SectionBlocksUpdate {
             section_x: 1,
-            section_y: 0,
+            section_y: -4,
             section_z: -2,
             updates: vec![BlockUpdate {
                 pos: ProtocolBlockPos {

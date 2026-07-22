@@ -67,6 +67,11 @@ impl BlockStateRegistry {
         Some(vanilla_block_type_for_resource_id(name)?.id)
     }
 
+    pub fn block_entity_type_id_by_state_id(&self, state_id: i32) -> Option<i32> {
+        let state = self.by_id(state_id)?;
+        vanilla_block_type_for_resource_id(&state.name)?.block_entity_type_id
+    }
+
     pub fn block_has_property(&self, name: &str, property: &str) -> bool {
         self.states
             .iter()

@@ -1,5 +1,10 @@
 use bbb_protocol::{
     block_entity_types::{VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID},
+    block_types::{
+        vanilla_block_type_for_resource_id, VANILLA_BLOCK_COPPER_CHEST_ID,
+        VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID, VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID,
+        VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_GOLEM_STATUE_ID,
+    },
     codec::ProtocolError,
     packets::{
         BlockEntityData as ProtocolBlockEntityData, BlockUpdate as ProtocolBlockUpdate,
@@ -96,13 +101,7 @@ impl WorldStore {
     pub fn apply_block_update(&mut self, update: ProtocolBlockUpdate) -> bool {
         self.counters.block_updates_received += 1;
         let pos = protocol_block_pos(update.pos);
-        let applied = if self.update_local_block_prediction_server_state(pos, update.block_state_id)
-        {
-            self.counters.local_block_predictions_reconciled_by_update += 1;
-            true
-        } else {
-            self.set_block_state_id(pos, update.block_state_id)
-        };
+        let applied = self.apply_server_verified_block_state(pos, update.block_state_id);
         if applied {
             self.counters.block_updates_applied += 1;
         } else {
@@ -117,10 +116,9 @@ impl WorldStore {
         let mut applied = 0;
         for block_update in update.updates {
             let pos = protocol_block_pos(block_update.pos);
-            if self.update_local_block_prediction_server_state(pos, block_update.block_state_id) {
-                self.counters.local_block_predictions_reconciled_by_update += 1;
-                applied += 1;
-            } else if self.set_block_state_id(pos, block_update.block_state_id) {
+            if block_pos_is_in_section(pos, update.section_x, update.section_y, update.section_z)
+                && self.apply_server_verified_block_state(pos, block_update.block_state_id)
+            {
                 applied += 1;
             }
         }
@@ -1002,7 +1000,9 @@ impl WorldStore {
     }
 
     pub(crate) fn set_block_state_id(&mut self, pos: BlockPos, block_state_id: i32) -> bool {
-        if block_state_id < 0 || !self.dimension.contains_y(pos.y) {
+        if self.registries.block_state(block_state_id).is_none()
+            || !self.dimension.contains_y(pos.y)
+        {
             return false;
         }
 
@@ -1034,18 +1034,23 @@ impl WorldStore {
         let new_fluid = is_fluid_block_state_id(&self.registries, block_state_id);
 
         let registries = &self.registries;
-        // Vanilla `Level.setBlock`: when the block itself changes (not just a
-        // state property), the old block entity is removed
-        // (`Level.removeBlockEntity`), so a destroyed/replaced sign drops its
-        // text. Restricted to decoded presentation payloads here because the
-        // client can receive block-entity data before its matching block
-        // update; piston-local mutation removes the whole record explicitly.
-        let block_kind_changed = registries
+        let old_block_name = registries
             .block_state(old_block_state_id)
-            .map(|state| state.name.as_str())
-            != registries
-                .block_state(block_state_id)
-                .map(|state| state.name.as_str());
+            .map(|state| state.name.as_str());
+        let new_block_name = registries
+            .block_state(block_state_id)
+            .map(|state| state.name.as_str());
+        let block_kind_changed = old_block_name != new_block_name;
+        let old_block_entity_type_id =
+            registries.block_entity_type_id_for_block_state(old_block_state_id);
+        let new_block_entity_type_id =
+            registries.block_entity_type_id_for_block_state(block_state_id);
+        let keep_changed_block_entity = match (old_block_name, new_block_name) {
+            (Some(old), Some(new)) if block_kind_changed => {
+                changed_state_keeps_block_entity(old, new)
+            }
+            _ => false,
+        };
         let dimension = self.dimension;
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             return false;
@@ -1075,20 +1080,30 @@ impl WorldStore {
             local_z,
             block_state_id,
         );
-        if block_kind_changed {
-            if let Ok(y) = i16::try_from(pos.y) {
-                if let Some(record) = chunk.block_entities.iter_mut().find(|entity| {
-                    entity.local_x == local_x && entity.y == y && entity.local_z == local_z
-                }) {
-                    record.sign_text = None;
-                    record.decorated_pot_sherds = None;
-                    record.banner_patterns = None;
-                }
-            }
+        if let Ok(y) = i16::try_from(pos.y) {
+            reconcile_block_entity_record(
+                chunk,
+                local_x,
+                y,
+                local_z,
+                block_kind_changed
+                    && old_block_entity_type_id.is_some()
+                    && !keep_changed_block_entity,
+                new_block_entity_type_id,
+            );
         }
         self.moving_pistons.retain(|moving| moving.pos != pos);
         self.mark_terrain_block_changed(pos);
         true
+    }
+
+    fn apply_server_verified_block_state(&mut self, pos: BlockPos, block_state_id: i32) -> bool {
+        if self.update_local_block_prediction_server_state(pos, block_state_id) {
+            self.counters.local_block_predictions_reconciled_by_update += 1;
+            true
+        } else {
+            self.set_block_state_id(pos, block_state_id)
+        }
     }
 
     pub(crate) fn remove_block_entity_record_at(&mut self, pos: BlockPos) {
@@ -1260,6 +1275,70 @@ fn chunk_neighborhood(pos: ChunkPos) -> impl Iterator<Item = ChunkPos> {
             z: pos.z + dz,
         })
     })
+}
+
+fn block_pos_is_in_section(pos: BlockPos, section_x: i32, section_y: i32, section_z: i32) -> bool {
+    pos.x.div_euclid(16) == section_x
+        && pos.y.div_euclid(16) == section_y
+        && pos.z.div_euclid(16) == section_z
+}
+
+fn changed_state_keeps_block_entity(old_block_name: &str, new_block_name: &str) -> bool {
+    let Some(old_block_id) =
+        vanilla_block_type_for_resource_id(old_block_name).map(|block| block.id)
+    else {
+        return false;
+    };
+    let Some(new_block_id) =
+        vanilla_block_type_for_resource_id(new_block_name).map(|block| block.id)
+    else {
+        return false;
+    };
+    let is_copper_chest = |block_id| {
+        (VANILLA_BLOCK_COPPER_CHEST_ID..=VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID)
+            .contains(&block_id)
+    };
+    let is_copper_golem_statue = |block_id| {
+        (VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID..=VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_GOLEM_STATUE_ID)
+            .contains(&block_id)
+    };
+    (is_copper_chest(old_block_id) && is_copper_chest(new_block_id))
+        || (is_copper_golem_statue(old_block_id) && is_copper_golem_statue(new_block_id))
+}
+
+fn reconcile_block_entity_record(
+    chunk: &mut ChunkColumn,
+    local_x: u8,
+    y: i16,
+    local_z: u8,
+    remove_existing: bool,
+    expected_type_id: Option<i32>,
+) {
+    let matches_pos = |entity: &BlockEntityRecord| {
+        entity.local_x == local_x && entity.y == y && entity.local_z == local_z
+    };
+    if remove_existing || expected_type_id.is_none() {
+        chunk.block_entities.retain(|entity| !matches_pos(entity));
+    }
+    let Some(expected_type_id) = expected_type_id else {
+        return;
+    };
+    if let Some(record) = chunk
+        .block_entities
+        .iter_mut()
+        .find(|entity| matches_pos(entity))
+    {
+        if record.type_id != expected_type_id {
+            *record = BlockEntityRecord::empty(local_x, y, local_z, expected_type_id);
+        }
+    } else {
+        chunk.block_entities.push(BlockEntityRecord::empty(
+            local_x,
+            y,
+            local_z,
+            expected_type_id,
+        ));
+    }
 }
 
 fn chunk_is_in_view(view: ChunkViewState, pos: ChunkPos) -> bool {

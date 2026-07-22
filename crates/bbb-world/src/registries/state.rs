@@ -335,6 +335,10 @@ impl RegistrySet {
         self.block_states.by_id(id)
     }
 
+    pub fn block_entity_type_id_for_block_state(&self, id: i32) -> Option<i32> {
+        self.block_states.block_entity_type_id_by_state_id(id)
+    }
+
     pub fn frozen_access(&self) -> FrozenRegistryAccess<'_> {
         FrozenRegistryAccess { registries: self }
     }

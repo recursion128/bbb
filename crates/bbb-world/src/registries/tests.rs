@@ -220,6 +220,22 @@ fn loads_vanilla_block_state_registry() {
         registries.block_name_by_registry_id(193),
         Some("minecraft:obsidian")
     );
+
+    let chest_state_id = registries
+        .block_state_id_by_name_and_properties(
+            "minecraft:chest",
+            &BTreeMap::from([
+                ("facing".to_string(), "north".to_string()),
+                ("type".to_string(), "single".to_string()),
+                ("waterlogged".to_string(), "false".to_string()),
+            ]),
+        )
+        .unwrap();
+    assert_eq!(
+        registries.block_entity_type_id_for_block_state(chest_state_id),
+        Some(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID)
+    );
+    assert_eq!(registries.block_entity_type_id_for_block_state(1), None);
 }
 
 #[test]
