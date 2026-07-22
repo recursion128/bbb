@@ -8542,20 +8542,21 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/effects.rs#apply_explosion",
-            "crates/bbb-world/src/client/effects.rs#explosion_knockback_adds_to_local_player_delta_movement",
+            "crates/bbb-world/src/play_apply.rs#apply_play_packet_orders_typed_explosion_effects_before_knockback",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleExplosion"
           ],
-          "gap": "docs/unsupported-features.md#particles-and-level-events",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_explosion_packet_prefix_and_raw_effect_payload",
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_typed_explosion_packet_wire_order",
             "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_explosion_without_knockback",
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#rejects_invalid_explosion_weighted_list_domains",
             "vanilla:net/minecraft/network/protocol/game/ClientboundExplodePacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#particles-and-level-events",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -8566,20 +8567,25 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/effects.rs#explosion_knockback_adds_to_local_player_delta_movement",
+            "crates/bbb-world/src/play_apply.rs#apply_play_packet_orders_typed_explosion_effects_before_knockback",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#typed_explosion_reaches_positioned_audio_and_primary_particle_sinks",
+            "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_is_deterministic_caps_at_512_and_clears_after_tick",
+            "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_only_spawns_secondary_particles_in_air",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleExplosion",
-            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#trackExplosionEffects"
+            "vanilla:net/minecraft/client/multiplayer/ClientExplosionTracker.java#tick"
           ],
-          "gap": "docs/unsupported-features.md#particles-and-level-events",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_explosion_packet_prefix_and_raw_effect_payload",
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_typed_explosion_packet_wire_order",
             "crates/bbb-net/src/event_stream.rs#play_map_particle_and_audio_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_visual_effect_packets_to_world",
-            "crates/bbb-world/src/client/effects.rs#explosion_knockback_adds_to_local_player_delta_movement",
-            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#world_effect_events_update_world_counters"
+            "crates/bbb-world/src/play_apply.rs#apply_play_packet_orders_typed_explosion_effects_before_knockback",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#typed_explosion_reaches_positioned_audio_and_primary_particle_sinks",
+            "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_selects_secondary_particles_by_weight",
+            "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_drops_pending_work_across_level_generations"
           ],
           "gap": null,
           "status": "complete"

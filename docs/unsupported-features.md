@@ -1363,12 +1363,6 @@ back into a todo. Do not delete these.
 
 ## Particles and level events
 
-- **Explosion packet typed effects.** Decode the registry-dispatched explosion
-  particle, sound holder and weighted block-particle list; play the local sound
-  and primary particle; and implement `ClientLevel.explosionTracker` presentation.
-  Center/radius/blockCount plus local-player knockback are covered, while the
-  bounded raw tail is diagnostic only. Do not add client-authoritative damage or
-  block mutation.
 - **Broader collision-clipping parity** for special contexts beyond the covered
   `WakeParticle` case.
 - **Player-coupled particle emitters** beyond the currently covered scoped cases.

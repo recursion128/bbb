@@ -217,3 +217,8 @@
   world-owned FIFO 与 Vanilla 有界 frame poll，ForgetLevelChunk 原子清除 canonical
   与 pending light；三行 packet coverage 全单元 complete，合同见
   `docs/queued-light-packet-family-closure-design.md`。
+- **2026-07-22（Explosion 包闭环）**：registry-dispatched 主粒子、sound holder 与
+  weighted block-particle list 完整解码；世界层按 Vanilla 顺序记录定位音频、主粒子
+  与击退，原生 `ClientExplosionTracker` 实现 512 上限、空气筛选、权重采样和 level
+  generation 清理。packet coverage 全单元 complete，合同见
+  `docs/explosion-packet-closure-design.md`。
