@@ -4,9 +4,26 @@ use super::super::schema::{
     VANILLA_ENDER_DRAGON_PHASES_26_1,
 };
 use super::*;
+use crate::WorldDimension;
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_LONG_JUMPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
 };
+use bbb_protocol::heightmap_types::{
+    VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID, VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+};
+
+fn origin_column_heightmap(
+    kind_id: i32,
+    dimension: WorldDimension,
+    first_available: i32,
+) -> crate::HeightmapData {
+    let height_values = u64::try_from(dimension.height).unwrap() + 1;
+    let bits = (u64::BITS - (height_values - 1).leading_zeros()).max(1) as usize;
+    let values_per_long = 64 / bits;
+    let mut data = vec![0_i64; (16_usize * 16).div_ceil(values_per_long)];
+    data[0] = i64::from(first_available - dimension.min_y);
+    crate::HeightmapData { kind_id, data }
+}
 
 fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     let accessors = vanilla_entity_metadata_entity_accessors()
@@ -914,6 +931,41 @@ fn entity_model_sources_project_ender_dragon_procedural_animation_inputs() {
         "{} vs {expected}",
         dragon.distance_to_egg
     );
+
+    // A loaded packet carries both client heightmaps. Make their origin columns deliberately
+    // disagree as they do when leaves sit above the podium: the renderer source must use id 5.
+    let dimension = store.dimension();
+    let motion_blocking_height = 96;
+    let no_leaves_height = 65;
+    let mut chunk = empty_test_chunk();
+    chunk.heightmaps = vec![
+        origin_column_heightmap(
+            VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+            dimension,
+            motion_blocking_height,
+        ),
+        origin_column_heightmap(
+            VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+            dimension,
+            no_leaves_height,
+        ),
+    ];
+    store.insert_decoded_chunk(chunk);
+    let loaded = store
+        .entity_model_source_at_partial_tick(200, 0.5)
+        .unwrap()
+        .ender_dragon_animation
+        .unwrap();
+    let dy = f64::from(no_leaves_height) + 0.5 - 70.0;
+    let expected_no_leaves = dx * dx + dy * dy + dz * dz;
+    assert!(
+        (loaded.distance_to_egg - expected_no_leaves).abs() < 1.0e-9,
+        "{} vs {expected_no_leaves}",
+        loaded.distance_to_egg
+    );
+    let motion_dy = f64::from(motion_blocking_height) + 0.5 - 70.0;
+    let motion_standin = dx * dx + motion_dy * motion_dy + dz * dz;
+    assert_ne!(loaded.distance_to_egg, motion_standin);
 
     // Non-dragons project no dragon animation inputs.
     store.apply_add_entity(ProtocolAddEntity {

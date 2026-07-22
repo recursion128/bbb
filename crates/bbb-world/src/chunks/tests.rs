@@ -914,13 +914,20 @@ fn motion_blocking_height_ignores_missing_or_malformed_heightmap() {
 }
 
 #[test]
-fn block_update_maintains_motion_blocking_heightmap() {
+fn block_update_maintains_distinct_motion_blocking_heightmaps() {
     let dimension = WorldDimension {
         min_y: 0,
         height: 16,
     };
     let mut packet = synthetic_local_palette_chunk_packet();
-    packet.chunk_data.heightmaps = vec![motion_blocking_heightmap(dimension, &[(2, 3, 2)])];
+    packet.chunk_data.heightmaps = vec![
+        motion_blocking_heightmap(dimension, &[(2, 3, 2)]),
+        heightmap_data(
+            VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+            dimension,
+            &[(2, 3, 2)],
+        ),
+    ];
     let mut store = WorldStore::with_dimension(dimension);
     store.insert_level_chunk_with_light(packet).unwrap();
     let pos = ProtocolBlockPos {
@@ -929,17 +936,82 @@ fn block_update_maintains_motion_blocking_heightmap() {
         z: -45,
     };
 
+    // Leaves block movement, so the ordinary map rises; `MOTION_BLOCKING_NO_LEAVES` keeps the
+    // stone at y=1 as its highest qualifying block.
     assert!(store.apply_block_update(ProtocolBlockUpdate {
-        pos,
-        block_state_id: 0,
+        pos: ProtocolBlockPos { y: 3, ..pos },
+        block_state_id: 255, // minecraft:oak_leaves
     }));
-    assert_eq!(store.sample_motion_blocking_height(34, -45), Some(1));
+    assert_eq!(store.sample_motion_blocking_height(34, -45), Some(4));
+    assert_eq!(
+        store.sample_heightmap_first_available(
+            VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+            34,
+            -45,
+        ),
+        Some(2)
+    );
 
+    // Replacing the leaf with stone raises both maps. Replacing that stone with a leaf makes only
+    // the no-leaves map scan back to the next qualifying block at y=2, matching the two
+    // `LevelChunk.setBlockState` updates.
     assert!(store.apply_block_update(ProtocolBlockUpdate {
         pos: ProtocolBlockPos { y: 3, ..pos },
         block_state_id: 9,
     }));
+    assert_eq!(
+        store.sample_heightmap_first_available(
+            VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+            34,
+            -45,
+        ),
+        Some(4)
+    );
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { y: 3, ..pos },
+        block_state_id: 255,
+    }));
     assert_eq!(store.sample_motion_blocking_height(34, -45), Some(4));
+    assert_eq!(
+        store.sample_heightmap_first_available(
+            VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+            34,
+            -45,
+        ),
+        Some(3)
+    );
+}
+
+#[test]
+fn block_update_materializes_omitted_motion_blocking_heightmaps() {
+    let dimension = WorldDimension {
+        min_y: 0,
+        height: 16,
+    };
+    let mut store = WorldStore::with_dimension(dimension);
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 34,
+            y: 3,
+            z: -45,
+        },
+        block_state_id: 255, // minecraft:oak_leaves
+    }));
+    let sampler = store
+        .chunk_heightmap_sampler(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    assert_eq!(
+        sampler.first_available(VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID, 2, 3),
+        Some(4)
+    );
+    assert_eq!(
+        sampler.first_available(VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID, 2, 3),
+        Some(0)
+    );
 }
 
 #[test]

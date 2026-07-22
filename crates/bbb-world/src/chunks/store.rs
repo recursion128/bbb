@@ -28,7 +28,7 @@ use super::{
     decode_biome_sections, decode_level_chunk_with_light, decode_nbt_payload_summary,
     heightmap::{
         chunk_heightmap_first_available, heightmap_index,
-        update_motion_blocking_heightmap_for_block, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+        update_motion_blocking_heightmaps_for_block, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
     },
     merge_light_data, sample_terrain_light,
     sign_text::decode_sign_block_entity_text,
@@ -934,7 +934,7 @@ impl WorldStore {
             new_non_empty,
         );
         apply_counted_delta(&mut section.fluid_count, old_fluid, new_fluid);
-        update_motion_blocking_heightmap_for_block(
+        update_motion_blocking_heightmaps_for_block(
             chunk,
             dimension,
             registries,

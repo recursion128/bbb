@@ -1,6 +1,6 @@
 use crate::{
     section_block_index,
-    terrain::{classify_terrain_material, terrain_fluid_state},
+    terrain::{block_name_is_leaves, classify_terrain_material, terrain_fluid_state},
     ChunkColumn, ChunkPos, HeightmapData, RegistrySet, TerrainMaterialClass, WorldDimension,
     WorldStore,
 };
@@ -103,7 +103,7 @@ pub(super) fn chunk_heightmap_first_available(
     heightmap_first_available(heightmap, dimension, index)
 }
 
-pub(super) fn update_motion_blocking_heightmap_for_block(
+pub(super) fn update_motion_blocking_heightmaps_for_block(
     chunk: &mut ChunkColumn,
     dimension: WorldDimension,
     registries: &RegistrySet,
@@ -112,34 +112,68 @@ pub(super) fn update_motion_blocking_heightmap_for_block(
     local_z: u8,
     block_state_id: i32,
 ) {
+    update_motion_blocking_heightmap_for_kind(
+        chunk,
+        dimension,
+        registries,
+        (local_x, y, local_z),
+        block_state_id,
+        VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+        false,
+    );
+    update_motion_blocking_heightmap_for_kind(
+        chunk,
+        dimension,
+        registries,
+        (local_x, y, local_z),
+        block_state_id,
+        bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+        true,
+    );
+}
+
+fn update_motion_blocking_heightmap_for_kind(
+    chunk: &mut ChunkColumn,
+    dimension: WorldDimension,
+    registries: &RegistrySet,
+    column: (u8, i32, u8),
+    block_state_id: i32,
+    kind_id: i32,
+    exclude_leaves: bool,
+) {
+    let (local_x, y, local_z) = column;
     let index = heightmap_index(local_x, local_z);
     let Some(bits) = heightmap_bits(dimension) else {
         return;
     };
-    let Some(heightmap_index) = chunk
+    let heightmap_index = chunk
         .heightmaps
         .iter()
-        .rposition(|map| map.kind_id == VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID)
-    else {
-        return;
-    };
+        .rposition(|map| map.kind_id == kind_id)
+        .unwrap_or_else(|| {
+            // `LevelChunk` constructs every FULL-stage heightmap before packet data is applied.
+            // Materialize the same zero-filled final map on the first local block update when a
+            // noncanonical packet omitted it; malformed maps above remain present and are rejected.
+            let packed_len = packed_long_len(VANILLA_HEIGHTMAP_ENTRY_COUNT, usize::from(bits));
+            chunk.heightmaps.push(HeightmapData {
+                kind_id,
+                data: vec![0; packed_len],
+            });
+            chunk.heightmaps.len() - 1
+        });
     if !valid_heightmap_data_len(&chunk.heightmaps[heightmap_index], bits) {
         return;
     }
 
-    let Some(first_available) = chunk_heightmap_first_available(
-        chunk,
-        VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
-        dimension,
-        index,
-    ) else {
+    let Some(first_available) = chunk_heightmap_first_available(chunk, kind_id, dimension, index)
+    else {
         return;
     };
     if y <= first_available - 2 {
         return;
     }
 
-    if block_state_id_blocks_motion_or_fluid(registries, block_state_id) {
+    if block_state_id_blocks_motion_or_fluid(registries, block_state_id, exclude_leaves) {
         if y >= first_available {
             set_heightmap_first_available(
                 &mut chunk.heightmaps[heightmap_index],
@@ -160,6 +194,7 @@ pub(super) fn update_motion_blocking_heightmap_for_block(
                     local_x,
                     *candidate_y,
                     local_z,
+                    exclude_leaves,
                 )
             })
             .map(|candidate_y| candidate_y + 1)
@@ -195,6 +230,7 @@ fn chunk_block_at_blocks_motion_or_fluid(
     local_x: u8,
     y: i32,
     local_z: u8,
+    exclude_leaves: bool,
 ) -> bool {
     if !dimension.contains_y(y) {
         return false;
@@ -211,13 +247,20 @@ fn chunk_block_at_blocks_motion_or_fluid(
     let Some(block_value) = section.block_states.value_at(block_index) else {
         return false;
     };
-    block_state_id_blocks_motion_or_fluid(registries, block_value.global_id)
+    block_state_id_blocks_motion_or_fluid(registries, block_value.global_id, exclude_leaves)
 }
 
-fn block_state_id_blocks_motion_or_fluid(registries: &RegistrySet, block_state_id: i32) -> bool {
+fn block_state_id_blocks_motion_or_fluid(
+    registries: &RegistrySet,
+    block_state_id: i32,
+    exclude_leaves: bool,
+) -> bool {
     let Some(block_state) = registries.block_state(block_state_id) else {
         return true;
     };
+    if exclude_leaves && block_name_is_leaves(&block_state.name) {
+        return false;
+    }
     let material = classify_terrain_material(Some(block_state.name.as_str()));
     let fluid = terrain_fluid_state(Some(block_state.name.as_str()), &block_state.properties);
     !matches!(

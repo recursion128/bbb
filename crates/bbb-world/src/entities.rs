@@ -3126,15 +3126,16 @@ impl WorldStore {
     /// to `getHeightmapPos(MOTION_BLOCKING_NO_LEAVES, EndPodiumFeature.getLocation(fightOrigin))`.
     /// A remote client's `fightOrigin` is never synced and keeps its `BlockPos.ZERO` default
     /// (`EnderDragon.setFightOrigin` only runs server-side), so the probe column is always `(0, 0)`.
-    /// Vanilla primes `MOTION_BLOCKING_NO_LEAVES` on demand from loaded client blocks; the End has
-    /// no leaf blocks, so the synced `MOTION_BLOCKING` map is column-identical and stands in
-    /// exactly. Outside loaded chunks vanilla `Level.getHeight` degrades to the dimension floor.
+    /// `ClientboundLevelChunkWithLightPacket` sends the client-owned
+    /// `MOTION_BLOCKING_NO_LEAVES` map, and `LevelChunk.setBlockState` keeps it current while
+    /// excluding `LeavesBlock`. Outside loaded chunks vanilla `Level.getHeight` degrades to the
+    /// dimension floor.
     fn ender_dragon_distance_to_egg_sqr(&self, position: EntityVec3) -> f64 {
         let egg_y = self
             .chunk_heightmap_sampler(ChunkPos { x: 0, z: 0 })
             .and_then(|sampler| {
                 sampler.first_available(
-                    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+                    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
                     0,
                     0,
                 )

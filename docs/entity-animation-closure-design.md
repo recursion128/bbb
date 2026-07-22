@@ -78,6 +78,10 @@ Initial confirmed gaps are:
   trailing arm bob. Skeleton, piglin, and zombie-family paths must preserve
   pose/attack dispatch before that bob, including explicit `EMPTY` off-arm
   `yRot` reset and the subclass bob passes that intentionally run afterwards.
+- `EnderDragonRenderer` derives landing/takeoff head droop from the exact
+  `MOTION_BLOCKING_NO_LEAVES` podium column. The packet-owned heightmap and
+  client block-update path must remain distinct from `MOTION_BLOCKING` when
+  player-placed leaves make their columns diverge.
 - `RabbitModel`'s random idle-head animation starts from client-local entity RNG;
   wire state cannot recover a particular official-client phase, so closure
   requires a source-backed `not-applicable` edge rather than a fabricated seed.
