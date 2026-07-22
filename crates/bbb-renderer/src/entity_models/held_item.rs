@@ -18,7 +18,10 @@ use super::model_layers::{
     PiglinModel, PlayerModel, SkeletonModel, VillagerModel, WanderingTraderModel, WitchModel,
     ZombieModel, ZombieVariantModel,
 };
-use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily, SpearKineticWeapon};
+use super::{
+    EntityModelInstance, EntityModelKind, SkeletonModelFamily, SpearKineticWeapon,
+    ZombieVariantModelFamily,
+};
 
 const CUSTOM_HEAD_ITEM_SCALE: f32 = 0.625;
 const CUSTOM_HEAD_SKULL_SCALE: f32 = 1.1875;
@@ -427,7 +430,11 @@ fn custom_head_item_base_transform(
             Some((
                 zombie_variant_root_transform(*instance, family, baby),
                 model.root().try_child_attach_transform("head")?,
-                CustomHeadTransforms::DEFAULT,
+                if family == ZombieVariantModelFamily::ZombieVillager {
+                    CustomHeadTransforms::VILLAGER
+                } else {
+                    CustomHeadTransforms::DEFAULT
+                },
             ))
         }
         EntityModelKind::Piglin { family, baby } => {
@@ -1049,6 +1056,79 @@ mod tests {
         .length();
         assert!(
             (piglin_x - CUSTOM_HEAD_ITEM_SCALE * PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE).abs() < 1e-6
+        );
+    }
+
+    #[test]
+    fn zombie_villager_custom_head_uses_villager_renderer_offsets() {
+        // Vanilla `ZombieVillagerRenderer` passes `VillagerRenderer.CUSTOM_HEAD_TRANSFORMS` to
+        // `HumanoidMobRenderer`; the other zombie-family renderers use the default transforms.
+        let zombie_villager = EntityModelInstance::new(
+            23,
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: false,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let husk = EntityModelInstance::new(
+            24,
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: false,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+
+        let (zombie_villager_root, zombie_villager_head, zombie_villager_transforms) =
+            custom_head_item_base_transform(&zombie_villager).unwrap();
+        let (_, _, husk_transforms) = custom_head_item_base_transform(&husk).unwrap();
+        assert_eq!(
+            zombie_villager_transforms.y_offset,
+            VILLAGER_CUSTOM_HEAD_Y_OFFSET
+        );
+        assert_eq!(
+            zombie_villager_transforms.skull_y_offset,
+            VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET
+        );
+        assert_eq!(husk_transforms.y_offset, 0.0);
+        assert_eq!(husk_transforms.skull_y_offset, 0.0);
+
+        let villager_item = custom_head_item_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            zombie_villager_transforms,
+        );
+        assert_close_transform(
+            custom_head_item_transform(&zombie_villager).unwrap(),
+            villager_item,
+        );
+        let default_item = custom_head_item_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            CustomHeadTransforms::DEFAULT,
+        );
+        assert_ne!(villager_item.to_cols_array(), default_item.to_cols_array());
+
+        let villager_skull = custom_head_skull_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            zombie_villager_transforms,
+        );
+        assert_close_transform(
+            custom_head_skull_transform(&zombie_villager).unwrap(),
+            villager_skull,
+        );
+        let default_skull = custom_head_skull_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            CustomHeadTransforms::DEFAULT,
+        );
+        assert_ne!(
+            villager_skull.to_cols_array(),
+            default_skull.to_cols_array()
         );
     }
 
