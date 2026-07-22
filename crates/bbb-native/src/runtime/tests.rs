@@ -12263,6 +12263,51 @@ fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
 }
 
 #[test]
+fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: vec![slot_display_tag("minecraft:planks")],
+                    result: stonecutter_item_display(0),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+                        raw_payload: Vec::new(),
+                        item_stack: None,
+                        tag: None,
+                    },
+                },
+            ),
+            furnace: None,
+        },
+    });
+
+    let ghost_icon = |world: &WorldStore| {
+        hud_inventory_screen(world, Some(&item_runtime), None, 0.0)
+            .unwrap()
+            .ghost_items
+            .into_iter()
+            .find(|item| (item.x, item.y, item.draw_decorations) == (179, 17, false))
+            .map(|item| item.icon)
+    };
+
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![1, 2])]);
+    let first = ghost_icon(&world).expect("first ordered tag member");
+
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![2, 1])]);
+    let reordered = ghost_icon(&world).expect("replacement tag member");
+    assert_ne!(reordered, first);
+
+    apply_item_tags(&mut world, Vec::new());
+    assert_eq!(ghost_icon(&world), None);
+}
+
+#[test]
 fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = open_recipe_book_crafting_table_world();
