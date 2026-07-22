@@ -3875,7 +3875,7 @@ mod tests {
         ));
 
         let test_instance_status = packets::TestInstanceBlockStatus {
-            status: "Ready".to_string(),
+            status: bbb_protocol::RichTextComponent::plain("Ready"),
             size: Some(packets::Vec3i { x: 3, y: 4, z: 5 }),
         };
         stream

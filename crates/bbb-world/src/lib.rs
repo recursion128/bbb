@@ -40,6 +40,7 @@ mod spawner_blocks;
 mod store;
 mod terrain;
 mod terrain_state;
+mod test_instance_blocks;
 mod world_state;
 
 pub use exports::*;

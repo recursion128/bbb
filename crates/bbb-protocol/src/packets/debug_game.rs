@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 pub use crate::remote_debug_sample_types::RemoteDebugSampleType;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
+    component::decode_rich_text_component_from_decoder,
     debug_subscription_types::{
         vanilla_debug_game_event_type_by_id, vanilla_debug_poi_type_by_id,
         vanilla_debug_subscription_type_by_id, VANILLA_DEBUG_SUBSCRIPTION_BEES_ID,
@@ -275,7 +275,7 @@ pub struct GameTestHighlightPos {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TestInstanceBlockStatus {
-    pub status: String,
+    pub status: crate::RichTextComponent,
     pub size: Option<Vec3i>,
 }
 
@@ -792,7 +792,7 @@ pub(crate) fn decode_game_test_highlight_pos(
 pub(crate) fn decode_test_instance_block_status(
     decoder: &mut Decoder<'_>,
 ) -> Result<TestInstanceBlockStatus> {
-    let status = decode_component_summary_from_decoder(decoder)?;
+    let status = decode_rich_text_component_from_decoder(decoder)?;
     let size = if decoder.read_bool()? {
         Some(decode_vec3i(decoder)?)
     } else {

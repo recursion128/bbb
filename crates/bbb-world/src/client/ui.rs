@@ -30,6 +30,10 @@ pub struct ClientUiState {
     pub current_command_block_editor: Option<crate::CommandBlockEditorState>,
     #[serde(default)]
     pub command_block_editor_open_count: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_test_instance_block_editor: Option<crate::TestInstanceBlockEditorState>,
+    #[serde(default)]
+    pub test_instance_block_editor_open_count: usize,
     #[serde(default)]
     pub current_dialog: Option<DialogState>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -2894,6 +2898,7 @@ mod tests {
                 end_gateway: None,
                 spawner: None,
                 command_block: None,
+                test_instance_block: None,
                 note_block_sound: None,
             }],
             light: crate::LightData::default(),

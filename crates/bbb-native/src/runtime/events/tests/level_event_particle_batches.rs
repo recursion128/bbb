@@ -1459,7 +1459,7 @@ fn debug_game_events_update_world_counters() {
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::TestInstanceBlockStatus(
         TestInstanceBlockStatus {
-            status: "Ready".to_string(),
+            status: bbb_protocol::RichTextComponent::plain("Ready"),
             size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
         },
     )))
@@ -1548,7 +1548,7 @@ fn debug_game_events_update_world_counters() {
     assert_eq!(
         world.last_test_instance_block_status(),
         Some(&bbb_world::TestInstanceBlockStatusState {
-            status: "Ready".to_string(),
+            status: bbb_protocol::RichTextComponent::plain("Ready"),
             size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
         })
     );

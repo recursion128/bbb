@@ -27,7 +27,7 @@ pub(crate) use commands::{
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
     send_set_beacon, send_set_command_block, send_set_creative_mode_slot,
     send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
-    send_teleport_to_entity, send_use_item, send_use_item_on,
+    send_teleport_to_entity, send_test_instance_block_action, send_use_item, send_use_item_on,
 };
 use commands::{
     send_client_tick_end, send_player_loaded, send_player_move_command,
@@ -253,6 +253,9 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::SetCommandBlock(packet)) => {
                         send_set_command_block(conn, packet).await?;
                     }
+                    Some(NetCommand::TestInstanceBlockAction(packet)) => {
+                        send_test_instance_block_action(conn, packet).await?;
+                    }
                     Some(NetCommand::SetCreativeModeSlot(packet)) => {
                         send_set_creative_mode_slot(conn, packet).await?;
                     }
@@ -367,6 +370,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::SelectTrade(_)) => {}
                     Some(NetCommand::SetBeacon(_)) => {}
                     Some(NetCommand::SetCommandBlock(_)) => {}
+                    Some(NetCommand::TestInstanceBlockAction(_)) => {}
                     Some(NetCommand::SetCreativeModeSlot(_)) => {}
                     Some(NetCommand::SignUpdate(_)) => {}
                     Some(NetCommand::SpectateEntity(_)) => {}
@@ -417,7 +421,8 @@ mod tests {
             RecipeDisplayId, RenameItem, ResourcePackResponseAction, SeenAdvancements,
             SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
             SetCommandBlock, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity,
-            UseItem, UseItemOn, Vec3d,
+            TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
+            UseItem, UseItemOn, Vec3d, Vec3i,
         },
     };
     use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
@@ -1357,6 +1362,44 @@ mod tests {
         assert_eq!(decoder.read_string(32_500).unwrap(), "say routed");
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert_eq!(decoder.read_u8().unwrap(), 0b010);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_test_instance_block_action_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::TestInstanceBlockAction(
+            TestInstanceBlockAction {
+                pos: BlockPos { x: 1, y: 2, z: 3 },
+                action: TestInstanceBlockActionKind::Query,
+                test: None,
+                size: Vec3i { x: 1, y: 2, z: 3 },
+                rotation: TestInstanceBlockRotation::Clockwise90,
+                ignore_entities: true,
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) =
+            read_server_packet(&mut server, "test-instance block action").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(!decoder.read_bool().unwrap());
         assert!(decoder.is_empty());
     }
 

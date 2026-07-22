@@ -25,6 +25,7 @@ pub mod scoreboard;
 pub mod server_presentation;
 pub mod serverbound;
 pub mod tags;
+pub mod test_instance_blocks;
 pub mod waypoints;
 mod wire;
 pub mod world_border;

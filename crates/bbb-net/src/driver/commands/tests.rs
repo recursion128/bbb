@@ -12,7 +12,7 @@ use super::{
     send_seen_advancements, send_select_bundle_item, send_select_trade, send_set_beacon,
     send_set_command_block, send_set_creative_mode_slot, send_set_held_slot_command,
     send_sign_update, send_spectate_entity, send_swing_command, send_teleport_to_entity,
-    send_use_item, send_use_item_on, send_vehicle_move_command,
+    send_test_instance_block_action, send_use_item, send_use_item_on, send_vehicle_move_command,
 };
 use crate::{
     connection::RawConnection,
@@ -33,7 +33,8 @@ use bbb_protocol::{
         PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
         RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
         SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-        SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
+        SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction,
+        TestInstanceBlockActionKind, TestInstanceBlockRotation, Vec3d, Vec3i,
     },
 };
 use std::{
@@ -1710,6 +1711,53 @@ async fn send_set_command_block_encodes_command_block_packet() {
             track_output: true,
             conditional: true,
             automatic: true,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_test_instance_block_action_encodes_editor_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection::from_stream(stream, None);
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("test-instance action should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -274_877_898_688);
+        assert_eq!(decoder.read_var_i32().unwrap(), 6);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_string(128).unwrap(), "example:test");
+        assert_eq!(decoder.read_var_i32().unwrap(), 48);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_test_instance_block_action(
+        &mut conn,
+        TestInstanceBlockAction {
+            pos: BlockPos { x: -1, y: 64, z: 2 },
+            action: TestInstanceBlockActionKind::Run,
+            test: Some("example:test".to_string()),
+            size: Vec3i { x: 48, y: 1, z: 2 },
+            rotation: TestInstanceBlockRotation::Counterclockwise90,
+            ignore_entities: false,
         },
     )
     .await

@@ -183,6 +183,13 @@ fn decode_block_entities(
         } else {
             None
         };
+        let test_instance_block = if block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
+        {
+            Some(crate::test_instance_blocks::decode_test_instance_block_entity_data(&raw_nbt)?)
+        } else {
+            None
+        };
         let note_block_sound = if block_entity_type_id
             == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
         {
@@ -204,6 +211,7 @@ fn decode_block_entities(
             end_gateway,
             spawner,
             command_block,
+            test_instance_block,
             note_block_sound,
         });
     }

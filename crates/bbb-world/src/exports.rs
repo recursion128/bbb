@@ -519,4 +519,5 @@ pub use crate::registries::{
     TRIM_PATTERN_REGISTRY, VANILLA_ENCHANTMENT_TOOLTIP_ORDER, WORLD_CLOCK_REGISTRY,
 };
 pub use crate::terrain_state::*;
+pub use crate::test_instance_blocks::*;
 pub use crate::world_state::*;

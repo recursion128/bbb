@@ -250,9 +250,9 @@ pub struct GameTestHighlightPosState {
     pub relative_pos: BlockPos,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TestInstanceBlockStatusState {
-    pub status: String,
+    pub status: bbb_protocol::RichTextComponent,
     pub size: Option<DebugVec3iState>,
 }
 
@@ -454,6 +454,7 @@ impl WorldStore {
 
     pub fn apply_test_instance_block_status(&mut self, packet: ProtocolTestInstanceBlockStatus) {
         self.counters.test_instance_block_status_packets += 1;
+        self.apply_test_instance_block_status_to_editor(&packet);
         self.client_debug_game.last_test_instance_block_status =
             Some(TestInstanceBlockStatusState {
                 status: packet.status,
@@ -834,7 +835,7 @@ mod tests {
             relative_pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
         });
         store.apply_test_instance_block_status(TestInstanceBlockStatus {
-            status: "Ready".to_string(),
+            status: bbb_protocol::RichTextComponent::plain("Ready"),
             size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
         });
 
@@ -905,7 +906,7 @@ mod tests {
         assert_eq!(
             store.last_test_instance_block_status(),
             Some(&TestInstanceBlockStatusState {
-                status: "Ready".to_string(),
+                status: bbb_protocol::RichTextComponent::plain("Ready"),
                 size: Some(DebugVec3iState { x: 3, y: 4, z: 5 }),
             })
         );
@@ -934,7 +935,7 @@ mod tests {
             }],
         });
         store.apply_test_instance_block_status(TestInstanceBlockStatus {
-            status: "Ready".to_string(),
+            status: bbb_protocol::RichTextComponent::plain("Ready"),
             size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
         });
 
@@ -964,7 +965,7 @@ mod tests {
         assert_eq!(
             restored.last_test_instance_block_status(),
             Some(&TestInstanceBlockStatusState {
-                status: "Ready".to_string(),
+                status: bbb_protocol::RichTextComponent::plain("Ready"),
                 size: Some(DebugVec3iState { x: 3, y: 4, z: 5 }),
             })
         );

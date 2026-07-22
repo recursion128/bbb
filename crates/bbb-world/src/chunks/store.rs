@@ -205,6 +205,21 @@ impl WorldStore {
         } else {
             None
         };
+        let test_instance_block = if packet.block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
+        {
+            match crate::test_instance_blocks::decode_test_instance_block_entity_data(
+                &packet.raw_nbt,
+            ) {
+                Ok(data) => Some(data),
+                Err(err) => {
+                    self.record_apply_error("block_entity_data", &err);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
         let note_block_sound = if packet.block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
         {
             match crate::chunks::decode_skull_note_block_sound(&packet.raw_nbt) {
@@ -236,6 +251,7 @@ impl WorldStore {
             end_gateway,
             spawner,
             command_block,
+            test_instance_block,
             note_block_sound,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
@@ -253,6 +269,7 @@ impl WorldStore {
         }
         self.counters.block_entity_updates_applied += 1;
         self.refresh_command_block_editor_from_authoritative_data(pos);
+        self.refresh_test_instance_block_editor_from_authoritative_data(pos);
         Ok(true)
     }
 
@@ -453,6 +470,7 @@ impl WorldStore {
             .retain(|chunk| chunk_is_in_view(view, chunk.pos));
         for pos in removed {
             self.close_command_block_editor_in_chunk(pos);
+            self.close_test_instance_block_editor_in_chunk(pos);
             self.prune_moving_pistons_in_chunk(pos);
             self.discard_queued_light_updates_for_chunk(pos);
             self.mark_terrain_chunk_removed(pos);
@@ -470,6 +488,7 @@ impl WorldStore {
         };
         self.chunks.remove(index);
         self.close_command_block_editor_in_chunk(pos);
+        self.close_test_instance_block_editor_in_chunk(pos);
         self.prune_moving_pistons_in_chunk(pos);
         self.counters.chunks_forgotten += 1;
         self.mark_terrain_chunk_removed(pos);
@@ -1112,6 +1131,7 @@ impl WorldStore {
         self.moving_pistons.retain(|moving| moving.pos != pos);
         self.mark_terrain_block_changed(pos);
         self.reconcile_command_block_editor_after_block_change(pos);
+        self.reconcile_test_instance_block_editor_after_block_change(pos);
         true
     }
 
@@ -1139,6 +1159,7 @@ impl WorldStore {
                 entity.local_x != local_x || entity.y != y || entity.local_z != local_z
             });
         }
+        self.reconcile_test_instance_block_editor_after_block_change(pos);
     }
 
     fn local_destroy_legacy_block_state_id(&self, block: &BlockProbe) -> i32 {

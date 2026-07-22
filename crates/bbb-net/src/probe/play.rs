@@ -358,7 +358,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::TestInstanceBlockStatus(
                 TestInstanceBlockStatus {
-                    status: "Ready".to_string(),
+                    status: bbb_protocol::RichTextComponent::plain("Ready"),
                     size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
                 },
             ))
@@ -393,7 +393,7 @@ mod tests {
         assert_eq!(
             report.world.last_test_instance_block_status(),
             Some(&bbb_world::TestInstanceBlockStatusState {
-                status: "Ready".to_string(),
+                status: bbb_protocol::RichTextComponent::plain("Ready"),
                 size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
             })
         );

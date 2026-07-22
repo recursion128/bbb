@@ -621,7 +621,7 @@ fn decodes_test_instance_block_status_with_optional_size() {
         decode_play_clientbound(ids::play::CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS, &payload)
             .unwrap(),
         PlayClientbound::TestInstanceBlockStatus(TestInstanceBlockStatus {
-            status: "Ready".to_string(),
+            status: crate::RichTextComponent::plain("Ready"),
             size: Some(Vec3i { x: 3, y: 4, z: 5 }),
         })
     );
@@ -639,7 +639,7 @@ fn decodes_test_instance_block_status_with_optional_size() {
         )
         .unwrap(),
         PlayClientbound::TestInstanceBlockStatus(TestInstanceBlockStatus {
-            status: "Idle".to_string(),
+            status: crate::RichTextComponent::plain("Idle"),
             size: None,
         })
     );
@@ -657,4 +657,30 @@ fn decodes_test_instance_block_status_with_optional_size() {
     .unwrap_err()
     .to_string()
     .contains("trailing bytes after test instance block status packet"));
+}
+
+#[test]
+fn decodes_test_instance_block_status_preserves_rich_component() {
+    let mut payload = Encoder::new();
+    payload.write_u8(10);
+    for (name, value) in [("text", "Ready"), ("color", "green")] {
+        payload.write_u8(8);
+        payload.write_u16(name.len() as u16);
+        payload.write_bytes(name.as_bytes());
+        payload.write_u16(value.len() as u16);
+        payload.write_bytes(value.as_bytes());
+    }
+    payload.write_u8(0);
+    payload.write_bool(false);
+
+    let PlayClientbound::TestInstanceBlockStatus(status) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected test-instance block status");
+    };
+    assert_eq!(status.status.text(), "Ready");
+    assert_eq!(status.status.styled().len(), 1);
+    assert_eq!(status.status.styled()[0].style.color, Some(0x55ff55));
 }

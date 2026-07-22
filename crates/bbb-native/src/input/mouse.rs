@@ -2838,6 +2838,7 @@ mod tests {
                 nbt: None,
                 sign_text: Some(SignBlockEntityTextState::default()),
                 command_block: None,
+                test_instance_block: None,
                 vault_shared_data: None,
                 decorated_pot_sherds: None,
                 banner_patterns: None,

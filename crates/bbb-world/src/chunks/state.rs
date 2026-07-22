@@ -100,6 +100,8 @@ pub struct BlockEntityRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command_block: Option<crate::CommandBlockEntityDataState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_instance_block: Option<crate::TestInstanceBlockEntityDataState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note_block_sound: Option<String>,
 }
 
@@ -119,6 +121,7 @@ impl BlockEntityRecord {
             end_gateway: None,
             spawner: None,
             command_block: None,
+            test_instance_block: None,
             note_block_sound: None,
         }
     }
