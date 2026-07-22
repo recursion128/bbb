@@ -402,6 +402,7 @@ fn render_candidate(
         is_spectator: false,
         is_sleeping: false,
         wears_dragon_head: false,
+        display_culling: None,
     }
 }
 
@@ -536,6 +537,79 @@ fn visibility_first_culling_keeps_catalog_exceptions_and_custom_bounds() {
     let (dragon_head_min, dragon_head_max) = entity_renderer_culling_bounds(zombie, true);
     assert_eq!(dragon_head_min, [-1.5, 3.0, 8.5]);
     assert_eq!(dragon_head_max, [1.5, 7.0, 11.5]);
+}
+
+#[test]
+fn display_visibility_uses_view_range_and_metadata_owned_culling_box() {
+    let camera = CameraPose {
+        position: [0.0; 3],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: 0.0,
+    };
+    let frustum = CameraFrustum::from_pose(camera, 16.0 / 9.0, 70.0);
+    let mut display = render_candidate(10, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID, [0.0, 0.0, -10.0]);
+    display.display_culling = Some(DisplayEntityCullingState {
+        view_range: 1.0,
+        width: 0.0,
+        height: 0.0,
+    });
+    assert!(entity_renderer_should_render(
+        display,
+        &[display],
+        &HashMap::from([(display.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+
+    display.display_culling = Some(DisplayEntityCullingState {
+        view_range: 1.0,
+        width: 4.0,
+        height: 6.0,
+    });
+    assert!(!entity_renderer_should_render(
+        display,
+        &[display],
+        &HashMap::from([(display.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+
+    display.position = EntityVec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 100.0,
+    };
+    display.display_culling = Some(DisplayEntityCullingState {
+        view_range: 1.0,
+        width: 0.0,
+        height: 0.0,
+    });
+    assert!(!entity_renderer_should_render(
+        display,
+        &[display],
+        &HashMap::from([(display.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+
+    display.position = EntityVec3 {
+        x: 1.0,
+        y: 2.0,
+        z: 3.0,
+    };
+    display.display_culling = Some(DisplayEntityCullingState {
+        view_range: 2.0,
+        width: 4.0,
+        height: 6.0,
+    });
+    assert_eq!(
+        entity_renderer_culling_bounds(display, true),
+        ([-1.5, 1.5, 0.5], [3.5, 8.5, 5.5])
+    );
 }
 
 fn tamable_animal_flags_data(entity_type_id: i32, tame: bool, sitting: bool) -> EntityDataValue {

@@ -133,6 +133,7 @@ pub enum VanillaEntityRendererCullingKind {
     NoFrustum,
     Inflate([f32; 3]),
     ExtendMinYByHalfHeight,
+    Display,
     ConservativeSpecial,
 }
 
@@ -183,9 +184,7 @@ pub fn vanilla_entity_renderer_culling_kind(
         "GuardianRenderer" | "ElderGuardianRenderer" | "EndCrystalRenderer" | "ShulkerRenderer" => {
             VanillaEntityRendererCullingKind::ConservativeSpecial
         }
-        class if class.starts_with("DisplayRenderer.") => {
-            VanillaEntityRendererCullingKind::ConservativeSpecial
-        }
+        class if class.starts_with("DisplayRenderer.") => VanillaEntityRendererCullingKind::Display,
         _ => VanillaEntityRendererCullingKind::Standard,
     }
 }
@@ -448,13 +447,18 @@ mod tests {
             bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_GUARDIAN_ID,
             bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
             bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SHULKER_ID,
-            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
         ] {
             assert_eq!(
                 vanilla_entity_renderer_culling_kind(entity_type_id),
                 VanillaEntityRendererCullingKind::ConservativeSpecial
             );
         }
+        assert_eq!(
+            vanilla_entity_renderer_culling_kind(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID
+            ),
+            VanillaEntityRendererCullingKind::Display
+        );
         assert_eq!(
             vanilla_entity_renderer_culling_kind(
                 bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID

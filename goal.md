@@ -312,6 +312,9 @@ save/debug、dimensions/collision/pick 已全量 complete（tick/movement 工程
 为：model/texture/layers、animation、equipment/passenger/leash、
 event/particle/audio。
 
+当前 `model/texture/layers` family closure 的工程合同、阶段边界与门禁位置见
+`docs/entity-model-layers-closure-design.md`。
+
 规则：
 
 - 共同父类行为按 family/schema 实现一次，具体 entity 只登记差异；禁止为

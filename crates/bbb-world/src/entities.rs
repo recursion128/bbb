@@ -24,6 +24,7 @@ mod client_movement;
 mod components;
 pub(crate) use components::EntityBoatStatus;
 mod dimensions;
+mod display;
 mod dragon;
 mod events;
 mod leash;
@@ -62,6 +63,10 @@ pub(crate) use components::{
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,
+};
+pub use display::{
+    DisplayBillboardConstraints, DisplayEntityCullingState, DisplayEntityRenderContent,
+    DisplayEntityRenderSourceState, DisplayItemContext, DisplayTransformation,
 };
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 pub(crate) use events::{vanilla_entity_event_kind, VanillaEntityEventKind};
@@ -1274,6 +1279,7 @@ pub struct EntityRenderCandidateState {
     pub is_spectator: bool,
     pub is_sleeping: bool,
     pub wears_dragon_head: bool,
+    pub display_culling: Option<DisplayEntityCullingState>,
 }
 
 /// Per-frame world state consumed by vanilla `FishingHookRenderer.extractRenderState`.
@@ -3628,6 +3634,28 @@ impl WorldStore {
                     .player_info_entry(candidate.uuid)
                     .is_some_and(|info| info.is_spectator());
         }
+    }
+
+    /// Projects current synchronized Display state only for already-visible
+    /// candidates. Camera-dependent billboard transforms remain native-owned;
+    /// display transformation interpolation remains in the animation cell.
+    pub fn fill_display_entity_render_sources_for_candidates_at_partial_tick(
+        &self,
+        survivors: &[EntityRenderCandidateState],
+        partial_ticks: f32,
+        sources: &mut Vec<DisplayEntityRenderSourceState>,
+    ) {
+        sources.clear();
+        sources.reserve(survivors.len());
+        sources.extend(survivors.iter().filter_map(|candidate| {
+            let mut source = self
+                .entities
+                .display_render_source_at_partial_tick(candidate.entity_id, partial_ticks)?;
+            source.light = self
+                .sample_block_light(entity_light_block_pos(source.position))
+                .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+            Some(source)
+        }));
     }
 
     /// Full-projects only `survivors`, while retaining the complete narrow

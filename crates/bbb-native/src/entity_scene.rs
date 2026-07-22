@@ -99,7 +99,7 @@ use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_renderer_culling_kind, vanilla_entity_type_illager_arm_pose_uses_celebrating,
     vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
-    ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation,
+    ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation, DisplayEntityCullingState,
     EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonAnimationSource as WorldEnderDragonAnimationSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
@@ -732,6 +732,13 @@ fn entity_renderer_should_render(
     if !entity_passes_vanilla_render_distance(candidate, camera_pose, render_distance_chunks) {
         return false;
     }
+    if culling_kind == VanillaEntityRendererCullingKind::Display
+        && candidate
+            .display_culling
+            .is_some_and(|display| !display.affected_by_culling())
+    {
+        return true;
+    }
     if culling_kind == VanillaEntityRendererCullingKind::NoFrustum {
         return true;
     }
@@ -798,6 +805,20 @@ fn entity_passes_vanilla_render_distance(
     camera_pose: CameraPose,
     render_distance_chunks: u32,
 ) -> bool {
+    let view_scale = (f64::from(render_distance_chunks) / 8.0).clamp(1.0, 2.5);
+    let camera = [
+        f64::from(camera_pose.position[0]),
+        f64::from(camera_pose.position[1] + camera_pose.eye_height),
+        f64::from(camera_pose.position[2]),
+    ];
+    let dx = candidate.position.x - camera[0];
+    let dy = candidate.position.y - camera[1];
+    let dz = candidate.position.z - camera[2];
+    let distance_sqr = dx * dx + dy * dy + dz * dz;
+    if let Some(display) = candidate.display_culling {
+        let max_distance = f64::from(display.view_range) * 64.0 * view_scale;
+        return distance_sqr < max_distance * max_distance;
+    }
     let x_size = f64::from(candidate.bounds.max[0] - candidate.bounds.min[0]);
     let y_size = f64::from(candidate.bounds.max[1] - candidate.bounds.min[1]);
     let z_size = f64::from(candidate.bounds.max[2] - candidate.bounds.min[2]);
@@ -810,25 +831,26 @@ fn entity_passes_vanilla_render_distance(
         // size before applying the shared static view scale.
         size *= 10.0;
     }
-    let view_scale = (f64::from(render_distance_chunks) / 8.0).clamp(1.0, 2.5);
     let max_distance = size * 64.0 * view_scale;
-    let camera = [
-        f64::from(camera_pose.position[0]),
-        f64::from(camera_pose.position[1] + camera_pose.eye_height),
-        f64::from(camera_pose.position[2]),
-    ];
-    let dx = candidate.position.x - camera[0];
-    let dy = candidate.position.y - camera[1];
-    let dz = candidate.position.z - camera[2];
-    dx * dx + dy * dy + dz * dz < max_distance * max_distance
+    distance_sqr < max_distance * max_distance
 }
 
 fn entity_renderer_culling_bounds(
     candidate: EntityRenderCandidateState,
     inflate_for_dispatcher: bool,
 ) -> ([f64; 3], [f64; 3]) {
-    let mut min = candidate.bounds.min.map(f64::from);
-    let mut max = candidate.bounds.max.map(f64::from);
+    let (mut min, mut max) = if let Some(display) = candidate.display_culling {
+        let half_width = f64::from(display.width) / 2.0;
+        (
+            [-half_width, 0.0, -half_width],
+            [half_width, f64::from(display.height), half_width],
+        )
+    } else {
+        (
+            candidate.bounds.min.map(f64::from),
+            candidate.bounds.max.map(f64::from),
+        )
+    };
     if candidate.wears_dragon_head && vanilla_entity_type_is_living(candidate.entity_type_id) {
         inflate_aabb(&mut min, &mut max, [0.5; 3]);
     }
@@ -841,6 +863,7 @@ fn entity_renderer_culling_bounds(
         }
         VanillaEntityRendererCullingKind::Standard
         | VanillaEntityRendererCullingKind::NoFrustum
+        | VanillaEntityRendererCullingKind::Display
         | VanillaEntityRendererCullingKind::ConservativeSpecial => {}
     }
     if inflate_for_dispatcher {

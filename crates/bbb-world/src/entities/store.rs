@@ -48,6 +48,7 @@ use super::components::{
     EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityFishingHookMovement,
     EntityIncarnation,
 };
+use super::display::{display_entity_culling_state, display_entity_render_source};
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
@@ -88,9 +89,10 @@ use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_can_wear_horse_armor_type,
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_event_kind, vanilla_entity_type_is_squid, ArmorMaterialKind,
-    BlazeAmbientParticleState, EnderAmbientParticleState, EntityAttachmentFace, EntityAttributes,
-    EntityBlockEffectBaseTickReset, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
-    EntityBlockEffectQuery, EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    BlazeAmbientParticleState, DisplayEntityRenderSourceState, EnderAmbientParticleState,
+    EntityAttachmentFace, EntityAttributes, EntityBlockEffectBaseTickReset,
+    EntityBlockEffectMovement, EntityBlockEffectMovementIter, EntityBlockEffectQuery,
+    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
     EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
@@ -2320,8 +2322,24 @@ impl EntityStore {
                     update.slot == ProtocolEquipmentSlot::Head
                         && update.item.item_id == Some(VANILLA_ITEM_DRAGON_HEAD_ID)
                 }),
+                display_culling: display_entity_culling_state(
+                    identity.entity_type_id,
+                    &metadata.data_values,
+                ),
             });
         }
+    }
+
+    pub(crate) fn display_render_source_at_partial_tick(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<DisplayEntityRenderSourceState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let transform = *self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        display_entity_render_source(&identity, transform, &metadata, partial_ticks)
     }
 
     pub(crate) fn fishing_hook_render_source_at_partial_tick(
