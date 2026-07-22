@@ -5447,6 +5447,20 @@ mod tests {
                 armor_trim_pattern_id: Some(2),
                 instrument_description: Some("Instrument".to_string()),
                 instrument_description_styled: Some(plain_runs("Instrument")),
+                instrument_direct: Some(Box::new(InstrumentSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: Some(0),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                    use_duration_bits: 1.0f32.to_bits(),
+                    range_bits: 16.0f32.to_bits(),
+                    description: "Instrument".to_string(),
+                    description_styled: Some(plain_runs("Instrument").into_boxed_slice()),
+                    description_nbt: Some(Box::new(NbtSummaryValue::String(
+                        "Instrument".to_string(),
+                    ))),
+                })),
                 jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
                     sound_event: SoundEventSummary {
                         registry_id: Some(0),
