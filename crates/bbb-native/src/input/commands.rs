@@ -11,13 +11,13 @@ use bbb_protocol::packets::{
     AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
     CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
     ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
-    PlayerCommand, PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
-    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
-    SelectTradeCommand, SetBeacon, SetCommandBlock, SetCreativeModeSlot, SetStructureBlock,
-    SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
-    Vec3d as ProtocolVec3d,
+    InteractEntity, InteractionHand, JigsawGenerate, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
+    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
+    SelectBundleItem, SelectTradeCommand, SetBeacon, SetCommandBlock, SetCreativeModeSlot,
+    SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity, TeleportToEntity,
+    TestInstanceBlockAction, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -286,6 +286,30 @@ pub(crate) fn queue_set_structure_block_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SetStructureBlock(command)).is_ok() {
             counters.set_structure_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_jigsaw_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetJigsawBlock,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetJigsawBlock(command)).is_ok() {
+            counters.set_jigsaw_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_jigsaw_generate_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: JigsawGenerate,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::JigsawGenerate(command)).is_ok() {
+            counters.jigsaw_generate_commands_queued += 1;
         }
     }
 }

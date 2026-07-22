@@ -195,6 +195,9 @@ impl SimulationInputRuntime {
                     .handle_structure_block_editor_cursor_moved(None);
                 context
                     .input
+                    .handle_jigsaw_block_editor_cursor_moved(None, self.surface_size);
+                context
+                    .input
                     .handle_test_instance_block_editor_cursor_moved(None);
                 context
                     .input
@@ -294,6 +297,12 @@ impl SimulationInputRuntime {
         if context
             .input
             .handle_structure_block_editor_cursor_moved(self.cursor_position)
+        {
+            return;
+        }
+        if context
+            .input
+            .handle_jigsaw_block_editor_cursor_moved(self.cursor_position, self.surface_size)
         {
             return;
         }
@@ -416,6 +425,7 @@ impl SimulationInputRuntime {
         let pause_open = context.input.debug_pause_screen_is_open();
         let command_entry_open = context.input.command_entry_is_active();
         let structure_block_editor_open = context.input.structure_block_editor_is_active();
+        let jigsaw_block_editor_open = context.input.jigsaw_block_editor_is_active();
         let test_instance_block_editor_open = context.input.test_instance_block_editor_is_active();
         if dialog_open {
             context
@@ -469,6 +479,7 @@ impl SimulationInputRuntime {
             || pause_open
             || command_entry_open
             || structure_block_editor_open
+            || jigsaw_block_editor_open
             || test_instance_block_editor_open
         {
             self.request_cursor_capture(false, context.platform);
@@ -488,6 +499,7 @@ impl SimulationInputRuntime {
             && !pause_open
             && !command_entry_open
             && !structure_block_editor_open
+            && !jigsaw_block_editor_open
             && !test_instance_block_editor_open
             && !ordinary_pause_escape
         {
@@ -503,9 +515,13 @@ impl SimulationInputRuntime {
             state,
             self.surface_size,
         );
-        if (command_entry_open || structure_block_editor_open || test_instance_block_editor_open)
+        if (command_entry_open
+            || structure_block_editor_open
+            || jigsaw_block_editor_open
+            || test_instance_block_editor_open)
             && !context.input.command_entry_is_active()
             && !context.input.structure_block_editor_is_active()
+            && !context.input.jigsaw_block_editor_is_active()
             && !context.input.test_instance_block_editor_is_active()
             && !simulation_wants_cursor(context.input, context.world)
         {
@@ -686,6 +702,7 @@ impl SimulationInputRuntime {
         let stats_open = context.world.stats_screen_is_open();
         let command_entry_open = context.input.command_entry_is_active();
         let structure_block_editor_open = context.input.structure_block_editor_is_active();
+        let jigsaw_block_editor_open = context.input.jigsaw_block_editor_is_active();
         let test_instance_block_editor_open = context.input.test_instance_block_editor_is_active();
         if context.input.debug_options_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
@@ -705,6 +722,7 @@ impl SimulationInputRuntime {
             || container_open
             || command_entry_open
             || structure_block_editor_open
+            || jigsaw_block_editor_open
             || test_instance_block_editor_open
         {
             self.request_cursor_capture(false, context.platform);
@@ -714,6 +732,7 @@ impl SimulationInputRuntime {
             && !container_open
             && !command_entry_open
             && !structure_block_editor_open
+            && !jigsaw_block_editor_open
             && !test_instance_block_editor_open
         {
             return;
@@ -852,6 +871,23 @@ impl SimulationInputRuntime {
         if context.input.structure_block_editor_is_active() {
             self.request_cursor_capture(false, context.platform);
             context.input.handle_structure_block_editor_mouse_input(
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                button,
+                state,
+                self.cursor_position,
+                self.surface_size,
+                &self.text_measurements,
+            );
+            if !simulation_wants_cursor(context.input, context.world) {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+        if context.input.jigsaw_block_editor_is_active() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_jigsaw_block_editor_mouse_input(
                 context.net_counters,
                 context.world,
                 context.net_commands,
@@ -1295,6 +1331,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
         || world.structure_block_editor().is_some()
+        || world.jigsaw_block_editor().is_some()
         || world.test_instance_block_editor().is_some()
 }
 

@@ -200,6 +200,7 @@ impl ClientInputState {
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open()
             || self.structure_block_editor_is_active()
+            || self.jigsaw_block_editor_is_active()
             || self.command_block_editor_is_active();
         if replaced_by_another_screen {
             world.close_test_instance_block_editor();
@@ -217,7 +218,9 @@ impl ClientInputState {
             release_active_input(self, world, counters, net_commands);
             self.chat_entry = None;
             self.chat_scroll_lines = 0;
+            self.jigsaw_block_editor = None;
             world.close_command_block_editor();
+            world.close_jigsaw_block_editor();
             let test = authoritative.data.test.clone().unwrap_or_default();
             let mut editor = TestInstanceBlockEditorInputState {
                 open_count,

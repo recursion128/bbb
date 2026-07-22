@@ -4,8 +4,8 @@ use bbb_net::OutboundChatCommand;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
-    VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID,
-    VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
 };
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_CYAN_ID,
@@ -110,15 +110,15 @@ use bbb_protocol::packets::{
     EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot, EquipmentSlotUpdate,
     FilterMask, FilterMaskKind, FireworkExplosionShapeSummary, FireworkExplosionSummary,
     GameEvent as ProtocolGameEvent, GameProfile, HashedComponentPatch, HashedItemStack,
-    HashedStack, ItemRaritySummary, ItemStackSummary as ProtocolItemStackSummary,
-    LastSeenMessagesUpdate, MessageSignature, NbtSummaryEntry, OpenBook,
+    HashedStack, ItemRaritySummary, ItemStackSummary as ProtocolItemStackSummary, JigsawGenerate,
+    JigsawJoint, LastSeenMessagesUpdate, MessageSignature, NbtSummaryEntry, OpenBook,
     OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
     PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
     PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerSkinPatchData,
     ProjectilePower as ProtocolProjectilePower, RemoveEntities as ProtocolRemoveEntities,
     RenameItem, ResolvableProfileData, ResolvableProfileKind, SeenAdvancements, SelectBundleItem,
     SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
-    SetEquipment, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    SetEquipment, SetJigsawBlock, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
     SetStructureBlock, ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate,
     StructureBlockMirror, StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind,
     TagQuery, TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
@@ -149,11 +149,11 @@ use bbb_world::{
 };
 use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
-    ChunkSection, ChunkState, CommandBlockEntityDataState, ItemEquipmentSlot, LightData,
-    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
-    SignBlockEntityTextState, StructureBlockEntityDataState, StructureBlockSizeState,
-    TestInstanceBlockEntityDataState, TestInstanceBlockRunStatus, TestInstanceBlockSizeState,
-    WorldStore,
+    ChunkSection, ChunkState, CommandBlockEntityDataState, ItemEquipmentSlot,
+    JigsawBlockEntityDataState, LightData, LocalPlayerPoseState, PaletteDomain, PaletteKind,
+    PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState,
+    StructureBlockEntityDataState, StructureBlockSizeState, TestInstanceBlockEntityDataState,
+    TestInstanceBlockRunStatus, TestInstanceBlockSizeState, WorldStore,
 };
 use std::{
     collections::BTreeMap,
@@ -1406,6 +1406,72 @@ fn world_with_structure_block(pos: BlockPos) -> WorldStore {
     world
 }
 
+fn world_with_jigsaw_block(pos: BlockPos, orientation: &str) -> WorldStore {
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let block_state_id = bbb_world::vanilla_block_state_id(
+        "minecraft:jigsaw",
+        &BTreeMap::from([("orientation".to_string(), orientation.to_string())]),
+    )
+    .expect("vanilla jigsaw block state");
+    let section_index = usize::try_from((pos.y + 64).div_euclid(16))
+        .expect("jigsaw block lies in the overworld build height");
+    let record = BlockEntityRecord {
+        local_x: pos.x.rem_euclid(16) as u8,
+        y: i16::try_from(pos.y).unwrap(),
+        local_z: pos.z.rem_euclid(16) as u8,
+        type_id: VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID,
+        raw_nbt: vec![0],
+        nbt: None,
+        sign_text: None,
+        vault_shared_data: None,
+        decorated_pot_sherds: None,
+        banner_patterns: None,
+        end_gateway: None,
+        spawner: None,
+        command_block: None,
+        structure_block: None,
+        jigsaw_block: Some(JigsawBlockEntityDataState {
+            name: "example:entry".to_string(),
+            target: "example:target".to_string(),
+            pool: "example:village/houses".to_string(),
+            final_state: "minecraft:oak_planks[axis=y]".to_string(),
+            joint: JigsawJoint::Rollable,
+            selection_priority: -2,
+            placement_priority: 3,
+        }),
+        test_instance_block: None,
+        note_block_sound: None,
+    };
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..24)
+            .map(|index| ChunkSection {
+                non_empty_block_count: if index == section_index { 4096 } else { 0 },
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    if index == section_index {
+                        block_state_id
+                    } else {
+                        0
+                    },
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            })
+            .collect(),
+        block_entities: vec![record],
+        light: LightData::default(),
+    });
+    world
+}
+
 fn click_structure_block_editor(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -1414,6 +1480,28 @@ fn click_structure_block_editor(
     rect: bbb_renderer::HudCommandBlockEditorRect,
 ) -> bool {
     input.handle_structure_block_editor_mouse_input(
+        counters,
+        world,
+        commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(rect.x + 1),
+            f64::from(rect.y + 1),
+        )),
+        PhysicalSize::new(320, 240),
+        &FixedCommandSuggestionTextMeasurer,
+    )
+}
+
+fn click_jigsaw_block_editor(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    commands: &Option<mpsc::Sender<NetCommand>>,
+    rect: bbb_renderer::HudCommandBlockEditorRect,
+) -> bool {
+    input.handle_jigsaw_block_editor_mouse_input(
         counters,
         world,
         commands,
@@ -18489,6 +18577,346 @@ fn test_instance_block_editor_cancel_escape_and_right_click_use_are_exact() {
     assert!(world.test_instance_block_editor().is_none());
     assert_eq!(counters.test_instance_block_action_commands_queued, 3);
     assert_eq!(counters.use_item_on_commands_queued, 1);
+}
+
+#[test]
+fn jigsaw_block_editor_preloads_and_done_sends_exact_set_once() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_jigsaw_block(pos, "up_north");
+    assert!(world.try_open_jigsaw_block_editor(pos));
+    input.sync_jigsaw_block_editor(&mut world, &mut counters, &commands);
+
+    let hud = input.jigsaw_block_editor_hud_state().unwrap();
+    assert_eq!(hud.fields[0].text, "example:village/houses");
+    assert_eq!(hud.fields[1].text, "example:entry");
+    assert_eq!(hud.fields[2].text, "example:target");
+    assert_eq!(hud.fields[3].text, "minecraft:oak_planks[axis=y]");
+    assert_eq!(hud.fields[4].text, "-2");
+    assert_eq!(hud.fields[5].text, "3");
+    assert_eq!(hud.focus_index, 0);
+    assert_eq!(hud.joint, JigsawJoint::Rollable);
+    assert!(hud.joint_editable);
+    assert_eq!(hud.levels, 0);
+    assert!(hud.keep_jigsaws);
+    assert!(hud.controls_enabled);
+
+    let editor = input.jigsaw_block_editor.as_mut().unwrap();
+    for (field, value) in editor.fields.iter_mut().zip([
+        "example:new_pool",
+        "new_entry",
+        "example:new_target",
+        "minecraft:stone",
+        "-7",
+        "bad",
+    ]) {
+        field.text = value.to_string();
+    }
+    editor.joint = JigsawJoint::Aligned;
+    let done = bbb_renderer::hud_jigsaw_block_editor_layout(PhysicalSize::new(320, 240)).done;
+    assert!(click_jigsaw_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        done,
+    ));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SetJigsawBlock(SetJigsawBlock {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            name: "minecraft:new_entry".to_string(),
+            target: "example:new_target".to_string(),
+            pool: "example:new_pool".to_string(),
+            final_state: "minecraft:stone".to_string(),
+            joint: JigsawJoint::Aligned,
+            selection_priority: -7,
+            placement_priority: 0,
+        })
+    );
+    assert_eq!(counters.set_jigsaw_block_commands_queued, 1);
+    assert_eq!(counters.jigsaw_generate_commands_queued, 0);
+    assert!(!input.jigsaw_block_editor_is_active());
+    assert!(world.jigsaw_block_editor().is_none());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn jigsaw_generate_uses_exact_slider_toggle_joint_and_set_first_order() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_jigsaw_block(pos, "down_south");
+    assert!(world.try_open_jigsaw_block_editor(pos));
+    input.sync_jigsaw_block_editor(&mut world, &mut counters, &commands);
+    let layout = bbb_renderer::hud_jigsaw_block_editor_layout(PhysicalSize::new(320, 240));
+
+    assert!(input.handle_jigsaw_block_editor_mouse_input(
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(layout.levels.x + 50),
+            f64::from(layout.levels.y + 1),
+        )),
+        PhysicalSize::new(320, 240),
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    assert_eq!(input.jigsaw_block_editor_hud_state().unwrap().levels, 10);
+    assert!(input.handle_jigsaw_block_editor_cursor_moved(
+        Some(PhysicalPosition::new(
+            f64::from(layout.levels.x + 96),
+            f64::from(layout.levels.y + 1),
+        )),
+        PhysicalSize::new(320, 240),
+    ));
+    assert_eq!(input.jigsaw_block_editor_hud_state().unwrap().levels, 20);
+    assert!(input.handle_jigsaw_block_editor_mouse_input(
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Released,
+        None,
+        PhysicalSize::new(320, 240),
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    assert!(click_jigsaw_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.keep_jigsaws,
+    ));
+    assert!(click_jigsaw_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.joint,
+    ));
+    let hud = input.jigsaw_block_editor_hud_state().unwrap();
+    assert!(!hud.keep_jigsaws);
+    assert_eq!(hud.joint, JigsawJoint::Aligned);
+
+    assert!(click_jigsaw_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.generate,
+    ));
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::SetJigsawBlock(_))));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::JigsawGenerate(JigsawGenerate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            levels: 20,
+            keep_jigsaws: false,
+        })
+    );
+    assert_eq!(counters.set_jigsaw_block_commands_queued, 1);
+    assert_eq!(counters.jigsaw_generate_commands_queued, 1);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn jigsaw_editor_validation_limits_cancel_escape_and_screen_replacement_are_local() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_jigsaw_block(pos, "up_north");
+    assert!(world.try_open_jigsaw_block_editor(pos));
+    input.sync_jigsaw_block_editor(&mut world, &mut counters, &commands);
+    let layout = bbb_renderer::hud_jigsaw_block_editor_layout(PhysicalSize::new(320, 240));
+    assert!(input.handle_jigsaw_block_editor_key(
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::Tab,
+        true,
+    ));
+    assert_eq!(
+        input.jigsaw_block_editor_hud_state().unwrap().focus_index,
+        1
+    );
+    input.set_shift_key(KeyCode::ShiftLeft, true);
+    assert!(input.handle_jigsaw_block_editor_key(
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::Tab,
+        true,
+    ));
+    input.set_shift_key(KeyCode::ShiftLeft, false);
+    assert_eq!(
+        input.jigsaw_block_editor_hud_state().unwrap().focus_index,
+        0
+    );
+    input.jigsaw_block_editor.as_mut().unwrap().fields[0].text = "Bad Pool".to_string();
+    assert!(
+        !input
+            .jigsaw_block_editor_hud_state()
+            .unwrap()
+            .controls_enabled
+    );
+    assert!(click_jigsaw_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.done,
+    ));
+    assert!(click_jigsaw_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.generate,
+    ));
+    assert!(input.handle_jigsaw_block_editor_key(
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::Enter,
+        true,
+    ));
+    assert!(input.jigsaw_block_editor_is_active());
+    assert!(rx.try_recv().is_err());
+
+    {
+        let editor = input.jigsaw_block_editor.as_mut().unwrap();
+        editor.focus = jigsaw_block::JigsawBlockEditorFocus::Pool;
+        editor.fields[0].cursor = editor.fields[0].text.chars().count();
+        editor.fields[0].selection = 0;
+    }
+    assert!(input.handle_jigsaw_block_editor_text(&world, &"a".repeat(200)));
+    assert_eq!(
+        input.jigsaw_block_editor_hud_state().unwrap().fields[0]
+            .text
+            .encode_utf16()
+            .count(),
+        128
+    );
+    {
+        let editor = input.jigsaw_block_editor.as_mut().unwrap();
+        editor.focus = jigsaw_block::JigsawBlockEditorFocus::FinalState;
+        editor.fields[3].cursor = editor.fields[3].text.chars().count();
+        editor.fields[3].selection = 0;
+    }
+    assert!(input.handle_jigsaw_block_editor_text(&world, &"😀".repeat(200)));
+    assert_eq!(
+        input.jigsaw_block_editor_hud_state().unwrap().fields[3]
+            .text
+            .encode_utf16()
+            .count(),
+        256
+    );
+    assert!(click_jigsaw_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.cancel,
+    ));
+    assert!(rx.try_recv().is_err());
+
+    assert!(mouse::start_use_item(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        Some(CrosshairTarget::Block(
+            crate::crosshair::CrosshairBlockHit {
+                pos,
+                face: ProtocolDirection::Up,
+                cursor: [0.25, 0.5, 0.75],
+                inside: false,
+            }
+        )),
+        None,
+    ));
+    assert!(input.jigsaw_block_editor_is_active());
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+    assert!(input.handle_jigsaw_block_editor_key(
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::Escape,
+        true,
+    ));
+    assert!(rx.try_recv().is_err());
+
+    assert!(world.try_open_jigsaw_block_editor(pos));
+    input.sync_jigsaw_block_editor(&mut world, &mut counters, &commands);
+    assert!(world.open_local_inventory());
+    input.sync_jigsaw_block_editor(&mut world, &mut counters, &commands);
+    assert!(!input.jigsaw_block_editor_is_active());
+    assert!(world.jigsaw_block_editor().is_none());
+    assert_eq!(counters.set_jigsaw_block_commands_queued, 0);
+    assert_eq!(counters.jigsaw_generate_commands_queued, 0);
+
+    let mut horizontal_world = world_with_jigsaw_block(pos, "north_up");
+    let mut horizontal_input = ClientInputState::new(true);
+    assert!(horizontal_world.try_open_jigsaw_block_editor(pos));
+    horizontal_input.sync_jigsaw_block_editor(&mut horizontal_world, &mut counters, &None);
+    assert!(
+        !horizontal_input
+            .jigsaw_block_editor_hud_state()
+            .unwrap()
+            .joint_editable
+    );
+    assert!(click_jigsaw_block_editor(
+        &mut horizontal_input,
+        &mut counters,
+        &mut horizontal_world,
+        &None,
+        layout.joint,
+    ));
+    assert_eq!(
+        horizontal_input
+            .jigsaw_block_editor_hud_state()
+            .unwrap()
+            .joint,
+        JigsawJoint::Rollable
+    );
+}
+
+#[test]
+fn jigsaw_authoritative_refresh_preserves_unsent_native_fields_in_same_open() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_jigsaw_block(pos, "up_north");
+    assert!(world.try_open_jigsaw_block_editor(pos));
+    input.sync_jigsaw_block_editor(&mut world, &mut counters, &None);
+    input.jigsaw_block_editor.as_mut().unwrap().fields[1].text = "example:unsent".to_string();
+
+    assert!(world
+        .apply_block_entity_data(BlockEntityData {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_entity_type_id: VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID,
+            raw_nbt: vec![0],
+        })
+        .unwrap());
+    input.sync_jigsaw_block_editor(&mut world, &mut counters, &None);
+    assert_eq!(
+        input.jigsaw_block_editor_hud_state().unwrap().fields[1].text,
+        "example:unsent"
+    );
+    assert_eq!(
+        world.jigsaw_block_editor().unwrap().data.name,
+        "minecraft:empty"
+    );
 }
 
 #[test]

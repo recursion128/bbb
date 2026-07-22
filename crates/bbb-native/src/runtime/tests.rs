@@ -6,6 +6,20 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+#[test]
+fn jigsaw_priority_tooltip_hit_testing_matches_priority_fields() {
+    let layout = hud_jigsaw_block_editor_layout(winit::dpi::PhysicalSize::new(320, 240));
+    assert_eq!(
+        jigsaw_priority_tooltip_key(layout, (layout.fields[4].x + 1, 161)).map(|(key, _)| key),
+        Some("jigsaw_block.selection_priority.tooltip")
+    );
+    assert_eq!(
+        jigsaw_priority_tooltip_key(layout, (layout.fields[5].x + 1, 161)).map(|(key, _)| key),
+        Some("jigsaw_block.placement_priority.tooltip")
+    );
+    assert!(jigsaw_priority_tooltip_key(layout, (layout.fields[0].x + 1, 21)).is_none());
+}
+
 use bbb_pack::{
     BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, EquipmentAssetCatalog,
     FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,

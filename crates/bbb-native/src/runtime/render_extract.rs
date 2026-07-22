@@ -14,9 +14,9 @@ use bbb_renderer::{
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
     HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatInteraction,
     HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions, HudDebugOptionsScreen,
-    HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar, HudPauseScreen,
-    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast,
+    HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJigsawBlockEditorScreen, HudJumpBar,
+    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen,
+    HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast,
     HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
@@ -1441,6 +1441,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_sign_editor_screen: Option<HudSignEditorScreen>,
     pub(crate) hud_command_block_editor_screen: Option<HudCommandBlockEditorScreen>,
     pub(crate) hud_structure_block_editor_screen: Option<HudStructureBlockEditorScreen>,
+    pub(crate) hud_jigsaw_block_editor_screen: Option<HudJigsawBlockEditorScreen>,
     pub(crate) hud_test_instance_block_editor_screen: Option<HudTestInstanceBlockEditorScreen>,
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
@@ -1695,6 +1696,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_sign_editor_screen(frame.hud_sign_editor_screen);
     renderer.set_hud_command_block_editor_screen(frame.hud_command_block_editor_screen);
     renderer.set_hud_structure_block_editor_screen(frame.hud_structure_block_editor_screen);
+    renderer.set_hud_jigsaw_block_editor_screen(frame.hud_jigsaw_block_editor_screen);
     renderer.set_hud_test_instance_block_editor_screen(frame.hud_test_instance_block_editor_screen);
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);

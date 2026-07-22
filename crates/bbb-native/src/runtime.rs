@@ -21,8 +21,9 @@ use bbb_protocol::{
     },
     packets::{
         AdvancementFrameType, CommandBlockMode, GameType, ItemCostSummary, ItemStackSummary,
-        MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, StructureBlockMirror,
-        StructureBlockMode, StructureBlockRotation, TestInstanceBlockRotation, Vec3d,
+        JigsawJoint, MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary,
+        StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+        TestInstanceBlockRotation, Vec3d,
     },
     particle_types::{
         VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
@@ -34,11 +35,11 @@ use bbb_protocol::{
     RichTextComponent, MC_VERSION,
 };
 use bbb_renderer::{
-    hud_command_block_editor_layout, hud_structure_block_editor_layout,
-    hud_test_instance_block_editor_layout, sign_text_base_color, BlockDestroyOverlay,
-    BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment, CloudFrame, ConduitModelPart,
-    DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
-    EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
+    hud_command_block_editor_layout, hud_jigsaw_block_editor_layout,
+    hud_structure_block_editor_layout, hud_test_instance_block_editor_layout, sign_text_base_color,
+    BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment,
+    CloudFrame, ConduitModelPart, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine,
+    DebugTextBillboard, EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorScreen,
@@ -54,16 +55,17 @@ use bbb_renderer::{
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
-    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
-    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
-    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
-    HudVehicleHealth, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudPauseScreen,
+    HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudStatsItemRow, HudStatsRow,
+    HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
+    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestInstanceBlockEditorScreen,
+    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth,
+    ItemModelAssetIdentity, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
+    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -2361,6 +2363,7 @@ pub(crate) fn advance_simulation(
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_command_block_editor(world, net_counters, net_commands);
     input.sync_structure_block_editor(world, net_counters, net_commands);
+    input.sync_jigsaw_block_editor(world, net_counters, net_commands);
     input.sync_test_instance_block_editor(world, net_counters, net_commands);
     let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed {
@@ -2954,6 +2957,15 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_structure_block_editor_screen(input, item_runtime, surface_size)
     };
+    let hud_jigsaw_block_editor_screen = if world.dialog_screen_is_open()
+        || hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || hud_stats_screen.is_some()
+    {
+        None
+    } else {
+        hud_jigsaw_block_editor_screen(input, item_runtime, surface_size)
+    };
     let hud_test_instance_block_editor_screen = if world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -2969,6 +2981,7 @@ pub(crate) fn update_renderer_from_publication(
         || hud_sign_editor_screen.is_some()
         || hud_command_block_editor_screen.is_some()
         || hud_structure_block_editor_screen.is_some()
+        || hud_jigsaw_block_editor_screen.is_some()
         || hud_test_instance_block_editor_screen.is_some()
     {
         None
@@ -3485,6 +3498,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_sign_editor_screen,
             hud_command_block_editor_screen,
             hud_structure_block_editor_screen,
+            hud_jigsaw_block_editor_screen,
             hud_test_instance_block_editor_screen,
             hud_pause_screen,
             hud_stats_screen,
@@ -4112,6 +4126,8 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
+        || world.structure_block_editor().is_some()
+        || world.jigsaw_block_editor().is_some()
         || world.test_instance_block_editor().is_some()
         || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
@@ -5611,6 +5627,125 @@ fn hud_structure_block_editor_screen(
         cancel_hovered: hovered(layout.cancel),
         cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
     })
+}
+
+fn hud_jigsaw_block_editor_screen(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudJigsawBlockEditorScreen> {
+    let state = input.jigsaw_block_editor_hud_state()?;
+    let layout = hud_jigsaw_block_editor_layout(surface_size);
+    let hovered = |rect: bbb_renderer::HudCommandBlockEditorRect| {
+        state
+            .mouse_position
+            .is_some_and(|(x, y)| rect.contains(x, y))
+    };
+    let fields = std::array::from_fn(|index| {
+        let field = &state.fields[index];
+        HudJigsawBlockEditorTextField {
+            text: field.text.clone(),
+            cursor: field.cursor,
+            selection: field.selection,
+            focused: state.focus_index == index,
+            hovered: hovered(layout.fields[index]),
+            max_length: field.max_utf16_units,
+        }
+    });
+    let joint = match state.joint {
+        JigsawJoint::Rollable => {
+            localized_gui_text(item_runtime, "jigsaw_block.joint.rollable", "Rollable")
+        }
+        JigsawJoint::Aligned => {
+            localized_gui_text(item_runtime, "jigsaw_block.joint.aligned", "Aligned")
+        }
+    };
+    let keep_label = localized_gui_text(item_runtime, "jigsaw_block.keep_jigsaws", "Keep Jigsaws");
+    let keep_value = localized_gui_text(
+        item_runtime,
+        if state.keep_jigsaws {
+            "options.on"
+        } else {
+            "options.off"
+        },
+        if state.keep_jigsaws { "ON" } else { "OFF" },
+    );
+    let tooltip = state.mouse_position.and_then(|(x, y)| {
+        let (key, fallback) = jigsaw_priority_tooltip_key(layout, (x, y))?;
+        Some(HudDebugOptionsTooltip {
+            text: localized_gui_text(item_runtime, key, fallback),
+            x,
+            y,
+        })
+    });
+
+    Some(HudJigsawBlockEditorScreen {
+        labels: [
+            localized_gui_text(item_runtime, "jigsaw_block.pool", "Target Pool:"),
+            localized_gui_text(item_runtime, "jigsaw_block.name", "Name:"),
+            localized_gui_text(item_runtime, "jigsaw_block.target", "Target Name:"),
+            localized_gui_text(item_runtime, "jigsaw_block.final_state", "Turns into:"),
+            localized_gui_text(
+                item_runtime,
+                "jigsaw_block.selection_priority",
+                "Selection Priority:",
+            ),
+            localized_gui_text(
+                item_runtime,
+                "jigsaw_block.placement_priority",
+                "Placement Priority:",
+            ),
+        ],
+        joint_label: localized_gui_text(item_runtime, "jigsaw_block.joint_label", "Joint Type:"),
+        fields,
+        joint_visible: state.joint_editable,
+        joint,
+        levels: localized_gui_text_with_args(
+            item_runtime,
+            "jigsaw_block.levels",
+            "Levels: %s",
+            &[&state.levels.to_string()],
+        ),
+        slider_value_bits: state.slider_value_bits,
+        keep_jigsaws: localized_gui_text_with_args(
+            item_runtime,
+            "options.generic_value",
+            "%s: %s",
+            &[&keep_label, &keep_value],
+        ),
+        generate: localized_gui_text(item_runtime, "jigsaw_block.generate", "Generate"),
+        done: localized_gui_text(item_runtime, "gui.done", "Done"),
+        cancel: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+        controls_enabled: state.controls_enabled,
+        joint_hovered: state.joint_editable && hovered(layout.joint),
+        levels_hovered: state.dragging_levels || hovered(layout.levels),
+        keep_jigsaws_hovered: hovered(layout.keep_jigsaws),
+        generate_hovered: hovered(layout.generate),
+        done_hovered: hovered(layout.done),
+        cancel_hovered: hovered(layout.cancel),
+        cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
+        tooltip,
+    })
+}
+
+fn jigsaw_priority_tooltip_key(
+    layout: bbb_renderer::HudJigsawBlockEditorLayout,
+    mouse_position: (i32, i32),
+) -> Option<(&'static str, &'static str)> {
+    let (x, y) = mouse_position;
+    if layout.fields[4].contains(x, y) {
+        Some((
+            "jigsaw_block.selection_priority.tooltip",
+            "Controls the order in which this Jigsaw attempts to connect.",
+        ))
+    } else if layout.fields[5].contains(x, y) {
+        Some((
+            "jigsaw_block.placement_priority.tooltip",
+            "Controls the order in which the connected piece is processed.",
+        ))
+    } else {
+        None
+    }
 }
 
 fn hud_test_instance_block_editor_screen(

@@ -667,6 +667,14 @@ struct HudDebugOptionsButtonSprites<'a> {
     highlighted: Option<&'a HudSpriteGpu>,
 }
 
+#[derive(Clone, Copy)]
+struct HudJigsawSliderSprites<'a> {
+    normal: Option<&'a HudSpriteGpu>,
+    highlighted: Option<&'a HudSpriteGpu>,
+    handle: Option<&'a HudSpriteGpu>,
+    handle_highlighted: Option<&'a HudSpriteGpu>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum HudDebugOptionsButtonSpriteSlot {
     Normal,
@@ -2078,6 +2086,79 @@ pub fn hud_structure_block_editor_layout(
         action: field(104, 185, 50),
         done: field(-154, 210, 150),
         cancel: field(4, 210, 150),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudJigsawBlockEditorTextField {
+    pub text: String,
+    pub cursor: usize,
+    pub selection: usize,
+    pub focused: bool,
+    pub hovered: bool,
+    pub max_length: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudJigsawBlockEditorScreen {
+    pub labels: [String; 6],
+    pub joint_label: String,
+    pub fields: [HudJigsawBlockEditorTextField; 6],
+    pub joint_visible: bool,
+    pub joint: String,
+    pub levels: String,
+    pub slider_value_bits: u64,
+    pub keep_jigsaws: String,
+    pub generate: String,
+    pub done: String,
+    pub cancel: String,
+    pub controls_enabled: bool,
+    pub joint_hovered: bool,
+    pub levels_hovered: bool,
+    pub keep_jigsaws_hovered: bool,
+    pub generate_hovered: bool,
+    pub done_hovered: bool,
+    pub cancel_hovered: bool,
+    pub cursor_visible: bool,
+    pub tooltip: Option<HudDebugOptionsTooltip>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudJigsawBlockEditorLayout {
+    pub fields: [HudCommandBlockEditorRect; 6],
+    pub joint: HudCommandBlockEditorRect,
+    pub levels: HudCommandBlockEditorRect,
+    pub keep_jigsaws: HudCommandBlockEditorRect,
+    pub generate: HudCommandBlockEditorRect,
+    pub done: HudCommandBlockEditorRect,
+    pub cancel: HudCommandBlockEditorRect,
+}
+
+pub fn hud_jigsaw_block_editor_layout(
+    surface_size: PhysicalSize<u32>,
+) -> HudJigsawBlockEditorLayout {
+    let center = i32::try_from(surface_size.width / 2).unwrap_or(i32::MAX);
+    let widget = |x: i32, y: i32, width: u32| HudCommandBlockEditorRect {
+        x: center.saturating_add(x),
+        y,
+        width,
+        height: 20,
+    };
+    HudJigsawBlockEditorLayout {
+        fields: [
+            widget(-153, 20, 300),
+            widget(-153, 55, 300),
+            widget(-153, 90, 300),
+            widget(-153, 125, 300),
+            widget(-153, 160, 98),
+            widget(-50, 160, 98),
+        ],
+        joint: widget(54, 160, 100),
+        levels: widget(-154, 185, 100),
+        keep_jigsaws: widget(-50, 185, 100),
+        generate: widget(54, 185, 100),
+        done: widget(-154, 210, 150),
+        cancel: widget(4, 210, 150),
     }
 }
 
@@ -4527,6 +4608,14 @@ impl Renderer {
             screen.and_then(sanitize_hud_structure_block_editor_screen);
     }
 
+    pub fn set_hud_jigsaw_block_editor_screen(
+        &mut self,
+        screen: Option<HudJigsawBlockEditorScreen>,
+    ) {
+        self.hud_jigsaw_block_editor_screen =
+            screen.and_then(sanitize_hud_jigsaw_block_editor_screen);
+    }
+
     pub fn set_hud_test_instance_block_editor_screen(
         &mut self,
         screen: Option<HudTestInstanceBlockEditorScreen>,
@@ -5407,6 +5496,35 @@ impl Renderer {
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
+        if let Some(screen) = &self.hud_jigsaw_block_editor_screen {
+            push_hud_jigsaw_block_editor_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_widget_text_field.as_ref(),
+                self.hud_widget_text_field_highlighted.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                HudJigsawSliderSprites {
+                    normal: self.hud_widget_slider.as_ref(),
+                    highlighted: self.hud_widget_slider_highlighted.as_ref(),
+                    handle: self.hud_widget_slider_handle.as_ref(),
+                    handle_highlighted: self.hud_widget_slider_handle_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
                 self.counters.frame_index,
                 surface_size,
                 screen,
@@ -9691,6 +9809,334 @@ fn push_hud_structure_block_editor_screen<'a>(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn push_hud_jigsaw_block_editor_screen<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    text_field: Option<&'a HudSpriteGpu>,
+    text_field_highlighted: Option<&'a HudSpriteGpu>,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
+    slider_sprites: HudJigsawSliderSprites<'a>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudJigsawBlockEditorScreen,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let layout = hud_jigsaw_block_editor_layout(surface_size);
+    let label_tint = hud_argb_to_tint(0xFFA0A0A0);
+    for (label, rect) in screen.labels.iter().zip(layout.fields) {
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            label,
+            (rect.x as f32, rect.y.saturating_sub(10) as f32),
+            label_tint,
+            1.0,
+            true,
+        );
+    }
+    if screen.joint_visible {
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &screen.joint_label,
+            (
+                layout.joint.x.saturating_sub(1) as f32,
+                layout.joint.y.saturating_sub(10) as f32,
+            ),
+            label_tint,
+            1.0,
+            true,
+        );
+    }
+
+    for (field, rect) in screen.fields.iter().zip(layout.fields) {
+        let sprite = field
+            .focused
+            .then_some(text_field_highlighted)
+            .flatten()
+            .or(text_field);
+        if let Some(sprite) = sprite {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                sprite,
+                surface_size,
+                absolute_hud_rect(rect.x as f32, rect.y as f32, rect.width, rect.height),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TINT_WHITE,
+            );
+        } else {
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                rect.x,
+                rect.y,
+                rect.width,
+                rect.height,
+                if field.focused || field.hovered {
+                    [0.12, 0.12, 0.12, 0.96]
+                } else {
+                    [0.0, 0.0, 0.0, 0.72]
+                },
+            );
+        }
+        let label = HudInventoryTextLabel {
+            x: 0,
+            y: 0,
+            width: rect.width.saturating_sub(8),
+            text: field.text.clone(),
+            tint: HUD_COMMAND_INPUT_TINT,
+            background: None,
+            input: Some(HudInventoryTextInputDecoration {
+                cursor: field.cursor,
+                selection: field.selection,
+                scroll_to: field.cursor,
+                max_length: field.max_length,
+                cursor_visible: screen.cursor_visible && field.focused,
+                cursor_tint: HUD_COMMAND_INPUT_TINT,
+                selection_tint: HUD_COMMAND_SELECTION_TINT,
+            }),
+            scrolling: None,
+            shadow: true,
+            runs: Vec::new(),
+        };
+        push_hud_inventory_text_input_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &label,
+            label.input.expect("jigsaw input decoration"),
+            (
+                rect.x.saturating_add(4) as f32,
+                rect.y.saturating_add(6) as f32,
+            ),
+        );
+    }
+
+    let slider_highlighted = screen.levels_hovered;
+    let slider = if slider_highlighted {
+        slider_sprites.highlighted.or(slider_sprites.normal)
+    } else {
+        slider_sprites.normal
+    };
+    if let Some(slider) = slider {
+        push_hud_jigsaw_slider_track(vertices, commands, slider, surface_size, layout.levels);
+    } else {
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            layout.levels.x,
+            layout.levels.y,
+            layout.levels.width,
+            layout.levels.height,
+            [0.2, 0.2, 0.2, 0.96],
+        );
+    }
+    let slider_value = f64::from_bits(screen.slider_value_bits).clamp(0.0, 1.0);
+    let handle_x = layout.levels.x.saturating_add(
+        (slider_value * f64::from(layout.levels.width.saturating_sub(8))).floor() as i32,
+    );
+    let handle = if slider_highlighted {
+        slider_sprites.handle_highlighted.or(slider_sprites.handle)
+    } else {
+        slider_sprites.handle
+    };
+    if let Some(handle) = handle {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            handle,
+            surface_size,
+            absolute_hud_rect(handle_x as f32, layout.levels.y as f32, 8, 20),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_TINT_WHITE,
+        );
+    }
+    push_hud_debug_options_centered_text_in_width(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &screen.levels,
+        layout.levels.x,
+        i32::try_from(layout.levels.width).unwrap_or(i32::MAX),
+        layout.levels.y.saturating_add(6),
+        HUD_TINT_WHITE,
+    );
+
+    let mut buttons = vec![
+        (
+            layout.keep_jigsaws,
+            screen.keep_jigsaws.as_str(),
+            screen.keep_jigsaws_hovered,
+            true,
+        ),
+        (
+            layout.generate,
+            screen.generate.as_str(),
+            screen.generate_hovered,
+            screen.controls_enabled,
+        ),
+        (
+            layout.done,
+            screen.done.as_str(),
+            screen.done_hovered,
+            screen.controls_enabled,
+        ),
+        (
+            layout.cancel,
+            screen.cancel.as_str(),
+            screen.cancel_hovered,
+            true,
+        ),
+    ];
+    if screen.joint_visible {
+        buttons.push((
+            layout.joint,
+            screen.joint.as_str(),
+            screen.joint_hovered,
+            true,
+        ));
+    }
+    for (rect, label, hovered, enabled) in buttons {
+        push_hud_debug_options_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            rect.x,
+            rect.y,
+            i32::try_from(rect.width).unwrap_or(i32::MAX),
+            i32::try_from(rect.height).unwrap_or(i32::MAX),
+            label,
+            enabled,
+            hovered,
+            if enabled {
+                HUD_TINT_WHITE
+            } else {
+                hud_argb_to_tint(0xFFA0A0A0)
+            },
+            button_sprites,
+        );
+    }
+    if let Some(tooltip) = &screen.tooltip {
+        push_hud_rich_tooltip(
+            vertices,
+            commands,
+            white_pixel,
+            tooltip_background,
+            tooltip_frame,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &[HudStyledTextRun::plain(&tooltip.text)],
+            tooltip.x,
+            tooltip.y,
+        );
+    }
+}
+
+fn push_hud_jigsaw_slider_track<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    slider: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    rect: HudCommandBlockEditorRect,
+) {
+    if rect.width < 2 || slider.width < 2 {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            slider,
+            surface_size,
+            absolute_hud_rect(rect.x as f32, rect.y as f32, rect.width, rect.height),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_TINT_WHITE,
+        );
+        return;
+    }
+    let source_border = 1.0 / slider.width as f32;
+    for (x, width, min_u, max_u) in [
+        (rect.x, 1, 0.0, source_border),
+        (
+            rect.x.saturating_add(1),
+            rect.width.saturating_sub(2),
+            source_border,
+            1.0 - source_border,
+        ),
+        (
+            rect.x.saturating_add_unsigned(rect.width.saturating_sub(1)),
+            1,
+            1.0 - source_border,
+            1.0,
+        ),
+    ] {
+        if width == 0 {
+            continue;
+        }
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            slider,
+            surface_size,
+            absolute_hud_rect(x as f32, rect.y as f32, width, rect.height),
+            HudUvRect {
+                min: [min_u, 0.0],
+                max: [max_u, 1.0],
+            },
+            HUD_TINT_WHITE,
+        );
+    }
+}
+
 fn push_hud_test_instance_block_editor_screen<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -15736,6 +16182,63 @@ fn sanitize_hud_structure_block_text_field(
     field
 }
 
+fn sanitize_hud_jigsaw_block_editor_screen(
+    mut screen: HudJigsawBlockEditorScreen,
+) -> Option<HudJigsawBlockEditorScreen> {
+    screen.labels = screen
+        .labels
+        .map(|label| sanitize_hud_text_preserving_empty(label, 256));
+    screen.joint_label = sanitize_hud_text_preserving_empty(screen.joint_label, 256);
+    let fields = screen.fields.clone();
+    screen.fields = std::array::from_fn(|index| {
+        let max = match index {
+            0..=2 => 128,
+            3 => 256,
+            _ => 3,
+        };
+        sanitize_hud_jigsaw_block_text_field(fields[index].clone(), max)
+    });
+    screen.joint = sanitize_hud_text_preserving_empty(screen.joint, 64);
+    screen.levels = sanitize_hud_text_preserving_empty(screen.levels, 64);
+    let slider_value = f64::from_bits(screen.slider_value_bits);
+    screen.slider_value_bits = if slider_value.is_finite() {
+        slider_value.clamp(0.0, 1.0).to_bits()
+    } else {
+        0.0_f64.to_bits()
+    };
+    screen.keep_jigsaws = sanitize_hud_text_preserving_empty(screen.keep_jigsaws, 128);
+    screen.generate = sanitize_hud_text_preserving_empty(screen.generate, 256);
+    screen.done = sanitize_hud_text_preserving_empty(screen.done, 256);
+    screen.cancel = sanitize_hud_text_preserving_empty(screen.cancel, 256);
+    screen.tooltip = screen.tooltip.and_then(|mut tooltip| {
+        tooltip.text = tooltip
+            .text
+            .chars()
+            .filter(|ch| *ch == '\n' || !ch.is_control())
+            .take(4096)
+            .collect();
+        (!tooltip.text.is_empty()).then_some(tooltip)
+    });
+    (screen.labels.iter().all(|label| !label.is_empty())
+        && !screen.levels.is_empty()
+        && !screen.generate.is_empty()
+        && !screen.done.is_empty()
+        && !screen.cancel.is_empty())
+    .then_some(screen)
+}
+
+fn sanitize_hud_jigsaw_block_text_field(
+    mut field: HudJigsawBlockEditorTextField,
+    max_length: usize,
+) -> HudJigsawBlockEditorTextField {
+    field.max_length = field.max_length.min(max_length);
+    field.text = sanitize_hud_text_preserving_empty_utf16(field.text, field.max_length);
+    let length = field.text.chars().count();
+    field.cursor = field.cursor.min(length);
+    field.selection = field.selection.min(length);
+    field
+}
+
 fn sanitize_hud_test_instance_block_editor_screen(
     mut screen: HudTestInstanceBlockEditorScreen,
 ) -> Option<HudTestInstanceBlockEditorScreen> {
@@ -18275,6 +18778,84 @@ mod tests {
         assert_eq!(wide.mode.x, 273);
         assert_eq!(wide.action.x, 531);
         assert_eq!(wide.cancel.x, 431);
+    }
+
+    #[test]
+    fn jigsaw_block_editor_layout_matches_vanilla_absolute_geometry() {
+        let compact = hud_jigsaw_block_editor_layout(PhysicalSize::new(320, 240));
+        assert_eq!(
+            compact.fields[0],
+            HudCommandBlockEditorRect {
+                x: 7,
+                y: 20,
+                width: 300,
+                height: 20,
+            }
+        );
+        assert_eq!(
+            compact.fields.map(|rect| rect.y),
+            [20, 55, 90, 125, 160, 160]
+        );
+        assert_eq!(compact.fields[4].x, 7);
+        assert_eq!(compact.fields[5].x, 110);
+        assert_eq!(compact.joint.x, 214);
+        assert_eq!(compact.levels.x, 6);
+        assert_eq!(compact.keep_jigsaws.x, 110);
+        assert_eq!(compact.generate.x, 214);
+        assert_eq!(compact.done.x, 6);
+        assert_eq!(compact.cancel.x, 164);
+
+        let wide = hud_jigsaw_block_editor_layout(PhysicalSize::new(854, 480));
+        assert_eq!(wide.fields[0].x, 274);
+        assert_eq!(wide.fields[5].x, 377);
+        assert_eq!(wide.joint.x, 481);
+        assert_eq!(wide.levels.x, 273);
+        assert_eq!(wide.done.x, 273);
+        assert_eq!(wide.cancel.x, 431);
+    }
+
+    #[test]
+    fn jigsaw_block_editor_sanitizes_field_slider_and_tooltip_bounds() {
+        let field = || HudJigsawBlockEditorTextField {
+            text: "😀".repeat(200),
+            cursor: usize::MAX,
+            selection: usize::MAX,
+            focused: false,
+            hovered: false,
+            max_length: usize::MAX,
+        };
+        let screen = sanitize_hud_jigsaw_block_editor_screen(HudJigsawBlockEditorScreen {
+            labels: std::array::from_fn(|_| "label".to_string()),
+            joint_label: "joint".to_string(),
+            fields: std::array::from_fn(|_| field()),
+            joint_visible: true,
+            joint: "rollable".to_string(),
+            levels: "Levels: 0".to_string(),
+            slider_value_bits: f64::NAN.to_bits(),
+            keep_jigsaws: "Keep Jigsaws: ON".to_string(),
+            generate: "Generate".to_string(),
+            done: "Done".to_string(),
+            cancel: "Cancel".to_string(),
+            controls_enabled: true,
+            joint_hovered: false,
+            levels_hovered: false,
+            keep_jigsaws_hovered: false,
+            generate_hovered: false,
+            done_hovered: false,
+            cancel_hovered: false,
+            cursor_visible: true,
+            tooltip: Some(HudDebugOptionsTooltip {
+                text: "first\nsecond\u{7}".to_string(),
+                x: 1,
+                y: 2,
+            }),
+        })
+        .unwrap();
+        assert_eq!(screen.fields[0].text.encode_utf16().count(), 128);
+        assert_eq!(screen.fields[3].text.encode_utf16().count(), 256);
+        assert_eq!(screen.fields[4].text.encode_utf16().count(), 2);
+        assert_eq!(screen.slider_value_bits, 0.0_f64.to_bits());
+        assert_eq!(screen.tooltip.unwrap().text, "first\nsecond");
     }
 
     #[test]

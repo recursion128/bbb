@@ -278,6 +278,9 @@ pub(super) fn start_use_item(
             if world.try_open_structure_block_editor(hit.pos) {
                 input.sync_structure_block_editor(world, counters, net_commands);
             }
+            if world.try_open_jigsaw_block_editor(hit.pos) {
+                input.sync_jigsaw_block_editor(world, counters, net_commands);
+            }
             if world.try_open_test_instance_block_editor(hit.pos) {
                 input.sync_test_instance_block_editor(world, counters, net_commands);
             }
@@ -2845,6 +2848,7 @@ mod tests {
                 sign_text: Some(SignBlockEntityTextState::default()),
                 command_block: None,
                 structure_block: None,
+                jigsaw_block: None,
                 test_instance_block: None,
                 vault_shared_data: None,
                 decorated_pot_sherds: None,
