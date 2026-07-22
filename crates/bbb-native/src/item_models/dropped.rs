@@ -367,6 +367,30 @@ pub(super) fn entity_block_attachments(
             attachments.push(attachment);
         }
     }
+    // Vanilla `PistonHeadRenderer` submits the moving block entity's model at
+    // its interpolated translation using the movement-origin position for
+    // deterministic model offsets. Reuse the shared moving-block terrain bake
+    // that already serves falling blocks, but keep piston state owned by world.
+    for moving in world.moving_piston_render_blocks(entity_partial_tick) {
+        let Some(block_state) = world.registries().block_state(moving.block_state_id) else {
+            continue;
+        };
+        let moving_block =
+            moving_block_render_context(world, moving.random_seed_pos, moving.block_pos);
+        let light = world
+            .sample_block_light(moving.block_pos)
+            .map(terrain_light_shader)
+            .unwrap_or([1.0, 1.0]);
+        attachments.push(EntityBlockAttachment {
+            block_id: Cow::Owned(block_state.name.clone()),
+            properties: block_state.properties.clone(),
+            transform: Mat4::from_translation(Vec3::from_array(moving.translation)),
+            light,
+            overlay: ITEM_MODEL_NO_OVERLAY,
+            outline_only: false,
+            moving_block: Some(moving_block),
+        });
+    }
     attachments
 }
 

@@ -2393,6 +2393,10 @@ pub(crate) fn advance_simulation(
     // Vanilla `BaseSpawner.clientTick` advances the ordinary spawner's display
     // entity spin only while a nearby player exists.
     world.advance_spawner_block_ticks(running_ticks);
+    // `PistonMovingBlockEntity.tick` is a client block-entity ticker too: it
+    // advances only with running level ticks, before scene extraction samples
+    // the previous/current progress pair at the frame partial tick.
+    world.advance_moving_piston_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input_for_client_ticks(
         input,

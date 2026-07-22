@@ -1027,6 +1027,9 @@ fn test_sound_catalog() -> SoundCatalog {
             "block.note_block.harp": {
                 "sounds": ["note/harp"]
             },
+            "block.piston.extend": {
+                "sounds": ["block/piston/extend"]
+            },
             "item.bone_meal.use": {
                 "sounds": ["item/bone_meal/use"]
             },

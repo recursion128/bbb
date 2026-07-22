@@ -6,7 +6,7 @@ use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
 };
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
+    AddEntity, BlockEvent, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
     DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent,
     EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, RegistryData, RegistryDataEntry,
     RegistryTags, SetEntityData, SetEquipment, SetPlayerInventory, SwingAnimationSummary,
@@ -852,6 +852,97 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
         loaded[0].moving_block.unwrap().biome_id,
         Some(0),
         "MovingBlockRenderState samples the biome at blockPos"
+    );
+}
+
+#[test]
+fn entity_block_attachments_submit_interpolated_moving_piston_blocks() {
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    insert_entity_block_test_chunk(&mut world);
+    let base = BlockPos { x: 1, y: 5, z: 5 };
+    let arm = BlockPos { x: 2, y: 5, z: 5 };
+    let piston = bbb_world::vanilla_block_state_id(
+        "minecraft:piston",
+        &BTreeMap::from([
+            ("extended".to_string(), "false".to_string()),
+            ("facing".to_string(), "east".to_string()),
+        ]),
+    )
+    .expect("east retracted piston state");
+    let stone = bbb_world::vanilla_block_state_id("minecraft:stone", &BTreeMap::new())
+        .expect("stone state");
+    set_entity_block_test_block(&mut world, base, piston);
+    set_entity_block_test_block(&mut world, arm, stone);
+
+    assert!(world.apply_block_event(BlockEvent {
+        pos: ProtocolBlockPos {
+            x: base.x,
+            y: base.y,
+            z: base.z,
+        },
+        b0: 0,
+        b1: 0,
+        block_id: bbb_protocol::block_types::VANILLA_BLOCK_PISTON_ID,
+    }));
+
+    let initial = entity_block_attachments(&[], &world, None, 0.0);
+    assert_eq!(initial.len(), 2);
+    let initial_head = initial
+        .iter()
+        .find(|attachment| attachment.block_id == "minecraft:piston_head")
+        .expect("moving piston head attachment");
+    let initial_stone = initial
+        .iter()
+        .find(|attachment| attachment.block_id == "minecraft:stone")
+        .expect("moved stone attachment");
+    assert_eq!(
+        initial_head.transform.transform_point3(Vec3::ZERO),
+        Vec3::new(1.0, 5.0, 5.0)
+    );
+    assert_eq!(
+        initial_stone.transform.transform_point3(Vec3::ZERO),
+        Vec3::new(2.0, 5.0, 5.0)
+    );
+    assert_eq!(
+        initial_head.moving_block,
+        Some(MovingBlockRenderContext {
+            random_seed_pos: base,
+            block_pos: base,
+            biome_id: Some(0),
+            cardinal_lighting: TerrainCardinalLighting::Default,
+        })
+    );
+    assert_eq!(
+        initial_stone.moving_block,
+        Some(MovingBlockRenderContext {
+            random_seed_pos: arm,
+            block_pos: arm,
+            biome_id: Some(0),
+            cardinal_lighting: TerrainCardinalLighting::Default,
+        })
+    );
+
+    world.advance_moving_piston_ticks(1);
+    let interpolated = entity_block_attachments(&[], &world, None, 0.5);
+    assert_eq!(interpolated.len(), 2);
+    let interpolated_head = interpolated
+        .iter()
+        .find(|attachment| attachment.block_id == "minecraft:piston_head")
+        .expect("interpolated piston head attachment");
+    let interpolated_stone = interpolated
+        .iter()
+        .find(|attachment| attachment.block_id == "minecraft:stone")
+        .expect("interpolated moved stone attachment");
+    assert_eq!(
+        interpolated_head.transform.transform_point3(Vec3::ZERO),
+        Vec3::new(1.25, 5.0, 5.0)
+    );
+    assert_eq!(
+        interpolated_stone.transform.transform_point3(Vec3::ZERO),
+        Vec3::new(2.25, 5.0, 5.0)
     );
 }
 

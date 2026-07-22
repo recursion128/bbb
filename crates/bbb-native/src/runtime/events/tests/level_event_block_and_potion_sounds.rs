@@ -200,6 +200,75 @@ fn note_block_event_emits_current_state_sound_and_particle() {
 }
 
 #[test]
+fn piston_block_event_emits_native_sound_and_destroy_particles() {
+    let base = block_pos(20, -63, -32);
+    let arm = block_pos(21, -63, -32);
+    let destroy = block_pos(22, -63, -32);
+    let piston = vanilla_block_state_id(
+        "minecraft:piston",
+        [("extended", "false"), ("facing", "east")],
+    );
+    let stone = vanilla_block_state_id("minecraft:stone", []);
+    let torch = vanilla_block_state_id("minecraft:torch", []);
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEvent(
+        bbb_protocol::packets::BlockEvent {
+            pos: base,
+            b0: 0,
+            b1: 0,
+            block_id: bbb_protocol::block_types::VANILLA_BLOCK_PISTON_ID,
+        },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut world, base, piston);
+    set_test_block(&mut world, arm, stone);
+    set_test_block(&mut world, destroy, torch);
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut random = LevelEventSoundRandomState::with_seed(4);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            None,
+            &mut random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.piston.extend");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [20.5, -62.5, -31.5]);
+    assert_close(command.packet_volume, 0.5);
+    assert!((0.6..0.85).contains(&command.packet_pitch));
+
+    assert_eq!(particles.level_events.len(), 1);
+    assert_eq!(particles.level_events[0].event_type, 2001);
+    assert_eq!(particles.level_events[0].pos, destroy);
+    assert_eq!(particles.level_events[0].data, torch);
+    assert_eq!(world.counters().block_events_received, 1);
+    assert_eq!(world.counters().block_events_applied, 1);
+    assert_eq!(world.counters().block_events_ignored, 0);
+}
+
+#[test]
 fn level_event_2001_emits_vanilla_block_break_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {

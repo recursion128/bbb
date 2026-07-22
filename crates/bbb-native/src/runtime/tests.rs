@@ -5061,6 +5061,14 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(spawner_tick < spawner_instances);
     assert!(skull_instances < spawner_instances);
     assert!(held_models < spawner_instances);
+    let moving_piston_tick = source
+        .find("world.advance_moving_piston_ticks(running_ticks);")
+        .expect("pump should advance moving piston block-entity ticks");
+    let entity_block_meshes = source
+        .find("let entity_block_models = entity_block_models(")
+        .expect("pump should extract entity block item models");
+    assert!(spawner_tick < moving_piston_tick);
+    assert!(moving_piston_tick < entity_block_meshes);
     let shader_time_frame = source
         .find("shader_game_time_ticks,")
         .expect("pump should pass shader GameTime through RendererFrame");
@@ -5068,10 +5076,6 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models_with_map_cache(")
         .expect("pump should extract item frame models");
-    let entity_block_meshes = source
-        .find("let entity_block_models = entity_block_models(")
-        .expect("pump should extract entity block item models");
-
     for advance in [
         entity_tick,
         partial_tick,
