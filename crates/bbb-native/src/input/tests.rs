@@ -12275,7 +12275,8 @@ fn minecart_and_item_frame_dispatch_use_generated_catalogs() {
         .contains("_ if bbb_world::vanilla_entity_type_is_item_frame(entity.entity_type_id)"));
     let kind_source = include_str!("../entity_scene/kind.rs");
     assert!(kind_source.contains("_ if bbb_world::vanilla_entity_type_is_minecart(entity_type_id)"));
-    assert!(kind_source.contains("vanilla_entity_renderer_uses_native_non_model_pass"));
+    assert!(kind_source.contains("vanilla_entity_renderer_presentation_owner"));
+    assert!(!kind_source.contains("vanilla_entity_renderer_uses_native_non_model_pass"));
 }
 
 #[test]
