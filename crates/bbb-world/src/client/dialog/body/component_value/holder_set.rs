@@ -407,10 +407,20 @@ pub(super) fn decode_registry_holder_reference(
 ) -> Result<DialogRegistryHolderReferenceState, String> {
     let registries = registries
         .ok_or_else(|| format!("{what} holder cannot be decoded without registry context"))?;
-    let NbtSummaryValue::String(raw) = value else {
-        return Err(format!("{what} holder is not a resource id"));
-    };
-    decode_holder_reference(raw, registry, registries, what)
+    let entry = registries
+        .persistent_holder_from_nbt(registry, value)
+        .map_err(|error| match error {
+            crate::PersistentHolderDecodeError::InvalidShape { .. } => {
+                format!("{what} holder is not a resource id")
+            }
+            crate::PersistentHolderDecodeError::InvalidResourceId { value, .. } => {
+                format!("invalid {what} holder resource id {value}")
+            }
+            crate::PersistentHolderDecodeError::Resolution(error) => {
+                format!("{error} for {what}")
+            }
+        })?;
+    Ok(dialog_registry_holder_reference(entry))
 }
 
 pub(super) fn decode_registry_holder_set_field(
@@ -466,20 +476,6 @@ pub(super) fn decode_registry_holder_set(
             .map(dialog_registry_holder_reference)
             .collect(),
     })
-}
-
-fn decode_holder_reference(
-    raw: &str,
-    registry: &str,
-    registries: FrozenRegistryAccess<'_>,
-    what: &str,
-) -> Result<DialogRegistryHolderReferenceState, String> {
-    let resource_id = normalize_codec_identifier(raw)
-        .ok_or_else(|| format!("invalid {what} holder resource id {raw}"))?;
-    let entry = registries
-        .require_entry_by_resource_id(registry, &resource_id)
-        .map_err(|error| format!("{error} for {what}"))?;
-    Ok(dialog_registry_holder_reference(entry))
 }
 
 fn dialog_registry_holder_reference(

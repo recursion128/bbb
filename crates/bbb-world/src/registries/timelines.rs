@@ -621,11 +621,10 @@ pub(super) fn decode_timeline_definition(
     let NbtSummaryValue::Compound(fields) = value else {
         return Err(error(resource_id, "<root>", "expected compound"));
     };
-    let clock_resource_id = required_string(resource_id, fields, "clock")?;
-    let clock_resource_id = normalize_codec_identifier(clock_resource_id)
-        .ok_or_else(|| error(resource_id, "clock", "invalid world clock identifier"))?;
+    let clock = field(fields, "clock")
+        .ok_or_else(|| error(resource_id, "clock", "missing required field"))?;
     let clock_entry = registry_access
-        .require_entry_by_resource_id(WORLD_CLOCK_REGISTRY, &clock_resource_id)
+        .persistent_holder_from_nbt(WORLD_CLOCK_REGISTRY, clock)
         .map_err(|resolution| error(resource_id, "clock", resolution.to_string()))?;
     let period_ticks = optional_positive_int(resource_id, fields, "period_ticks")?;
     let tracks = decode_tracks(resource_id, fields, period_ticks)?;
@@ -1038,18 +1037,6 @@ fn required_non_negative_int(
             format!("{parent}.{name}"),
             "missing or invalid non-negative integer",
         )),
-    }
-}
-
-fn required_string<'a>(
-    resource_id: &str,
-    fields: &'a [NbtSummaryEntry],
-    name: &str,
-) -> Result<&'a str, TimelineProjectionError> {
-    match field(fields, name) {
-        Some(NbtSummaryValue::String(value)) => Ok(value),
-        Some(_) => Err(error(resource_id, name, "expected string")),
-        None => Err(error(resource_id, name, "missing required field")),
     }
 }
 

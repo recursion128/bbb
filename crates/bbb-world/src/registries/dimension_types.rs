@@ -57,10 +57,11 @@ pub(super) fn decode_dimension_type_client_projection(
     }
     validate_client_environment_references(&projection.environment_attributes, registry_access)
         .map_err(|error| format!("{resource_id} attributes: {error}"))?;
-    if let Some(clock) = &projection.default_clock_resource_id {
-        registry_access
-            .require_entry_by_resource_id(super::WORLD_CLOCK_REGISTRY, clock)
+    if let Some(clock) = field(fields, "default_clock") {
+        let clock = registry_access
+            .persistent_holder_from_nbt(super::WORLD_CLOCK_REGISTRY, clock)
             .map_err(|error| format!("{resource_id} default_clock: {error}"))?;
+        projection.default_clock_resource_id = Some(clock.resource_id.to_string());
     }
     Ok(projection)
 }

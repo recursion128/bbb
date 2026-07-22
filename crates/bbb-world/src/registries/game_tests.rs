@@ -5,7 +5,7 @@ use bbb_protocol::{
 
 use crate::{
     FrozenRegistryAccess, FrozenRegistryEntry, RegistryElementSource, RegistryEntryPayload,
-    RegistryEntrySource, WorldStore,
+    RegistryEntrySource, RegistryResolutionError, WorldStore,
 };
 
 use super::normalize_codec_identifier;
@@ -576,19 +576,26 @@ fn decode_named_reference(
     access: FrozenRegistryAccess<'_>,
     path: &str,
 ) -> Result<TestRegistryReference, GameTestRegistryProjectionError> {
-    let NbtSummaryValue::String(reference) = value else {
-        return Err(error(resource_id, path, "expected resource identifier"));
-    };
-    let reference = normalize_codec_identifier(reference)
-        .ok_or_else(|| error(resource_id, path, "invalid resource identifier"))?;
     let entry = access
-        .entry_by_resource_id(registry, &reference)
-        .ok_or_else(|| {
-            error(
+        .persistent_holder_from_nbt(registry, value)
+        .map_err(|resolution| match resolution {
+            crate::PersistentHolderDecodeError::InvalidShape { .. } => {
+                error(resource_id, path, "expected resource identifier")
+            }
+            crate::PersistentHolderDecodeError::InvalidResourceId { .. } => {
+                error(resource_id, path, "invalid resource identifier")
+            }
+            crate::PersistentHolderDecodeError::Resolution(
+                RegistryResolutionError::MissingResourceId {
+                    resource_id: reference,
+                    ..
+                },
+            ) => error(
                 resource_id,
                 path,
                 format!("{reference} is absent from current session {registry}"),
-            )
+            ),
+            resolution => error(resource_id, path, resolution.to_string()),
         })?;
     Ok(TestRegistryReference {
         holder_id: entry.holder_id,

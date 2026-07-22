@@ -286,6 +286,13 @@ pub enum RegistryResolutionError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PersistentHolderDecodeError {
+    InvalidShape { registry: String },
+    InvalidResourceId { registry: String, value: String },
+    Resolution(RegistryResolutionError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PersistentHolderSetDecodeError {
     InvalidShape { registry: String },
     InvalidTag { registry: String, value: String },
@@ -918,6 +925,26 @@ impl<'a> FrozenRegistryAccess<'a> {
         })
     }
 
+    pub fn persistent_holder_from_nbt(
+        self,
+        registry: &str,
+        value: &NbtSummaryValue,
+    ) -> Result<FrozenRegistryEntry<'a>, PersistentHolderDecodeError> {
+        let NbtSummaryValue::String(raw) = value else {
+            return Err(PersistentHolderDecodeError::InvalidShape {
+                registry: registry.to_string(),
+            });
+        };
+        let resource_id = super::normalize_codec_identifier(raw).ok_or_else(|| {
+            PersistentHolderDecodeError::InvalidResourceId {
+                registry: registry.to_string(),
+                value: raw.clone(),
+            }
+        })?;
+        self.require_entry_by_resource_id(registry, &resource_id)
+            .map_err(PersistentHolderDecodeError::Resolution)
+    }
+
     pub fn persistent_holder_set_from_nbt(
         self,
         registry: &str,
@@ -934,15 +961,14 @@ impl<'a> FrozenRegistryAccess<'a> {
                 self.holder_set_by_tag(registry, &tag)
                     .map_err(PersistentHolderSetDecodeError::Resolution)
             }
-            NbtSummaryValue::String(raw) => {
-                let resource_id = super::normalize_codec_identifier(raw).ok_or_else(|| {
-                    PersistentHolderSetDecodeError::InvalidResourceId {
-                        registry: registry.to_string(),
-                        value: raw.clone(),
-                    }
-                })?;
-                self.holder_set_by_resource_ids(registry, &[resource_id])
-                    .map_err(PersistentHolderSetDecodeError::Resolution)
+            NbtSummaryValue::String(_) => {
+                let entry = self
+                    .persistent_holder_from_nbt(registry, value)
+                    .map_err(PersistentHolderSetDecodeError::from)?;
+                Ok(FrozenRegistryHolderSet {
+                    kind: FrozenRegistryHolderSetKind::Direct,
+                    entries: vec![entry],
+                })
             }
             NbtSummaryValue::List(values) => {
                 let resource_ids = values
@@ -1066,6 +1092,45 @@ impl fmt::Display for RegistryResolutionError {
 }
 
 impl std::error::Error for RegistryResolutionError {}
+
+impl fmt::Display for PersistentHolderDecodeError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidShape { registry } => write!(
+                formatter,
+                "{registry} persistent holder is not a resource id"
+            ),
+            Self::InvalidResourceId { registry, value } => write!(
+                formatter,
+                "invalid {registry} persistent holder resource id {value}"
+            ),
+            Self::Resolution(error) => error.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for PersistentHolderDecodeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Resolution(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+impl From<PersistentHolderDecodeError> for PersistentHolderSetDecodeError {
+    fn from(error: PersistentHolderDecodeError) -> Self {
+        match error {
+            PersistentHolderDecodeError::InvalidShape { registry } => {
+                Self::InvalidShape { registry }
+            }
+            PersistentHolderDecodeError::InvalidResourceId { registry, value } => {
+                Self::InvalidResourceId { registry, value }
+            }
+            PersistentHolderDecodeError::Resolution(error) => Self::Resolution(error),
+        }
+    }
+}
 
 impl fmt::Display for PersistentHolderSetDecodeError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

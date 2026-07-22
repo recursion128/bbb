@@ -1129,6 +1129,51 @@ fn frozen_registry_access_resolves_reference_and_holder_set_forms() {
 }
 
 #[test]
+fn persistent_holder_decoder_uses_resource_identity_and_typed_failures() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![
+            RegistryPacketEntry::stub("example:second"),
+            RegistryPacketEntry::stub("example:first"),
+        ],
+    );
+    let access = store.frozen_registry_access();
+
+    let entry = access
+        .persistent_holder_from_nbt(
+            "minecraft:test",
+            &NbtSummaryValue::String("example:first".to_string()),
+        )
+        .unwrap();
+    assert_eq!((entry.holder_id, entry.resource_id), (1, "example:first"));
+
+    for (value, expected) in [
+        (
+            NbtSummaryValue::String("example:missing".to_string()),
+            "missing minecraft:test resource example:missing",
+        ),
+        (
+            NbtSummaryValue::String("not a resource".to_string()),
+            "invalid minecraft:test persistent holder resource id not a resource",
+        ),
+        (
+            NbtSummaryValue::List(vec![NbtSummaryValue::String("example:first".to_string())]),
+            "minecraft:test persistent holder is not a resource id",
+        ),
+    ] {
+        assert_eq!(
+            access
+                .persistent_holder_from_nbt("minecraft:test", &value)
+                .unwrap_err()
+                .to_string(),
+            expected
+        );
+    }
+}
+
+#[test]
 fn persistent_holder_set_decoder_uses_resource_order_tags_and_typed_failures() {
     let mut store = WorldStore::new();
     store.record_registry_entries(
