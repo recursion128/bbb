@@ -585,8 +585,9 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
-    @location(2) spherical_distance: f32,
-    @location(3) cylindrical_distance: f32,
+    @location(2) light: vec2<f32>,
+    @location(3) spherical_distance: f32,
+    @location(4) cylindrical_distance: f32,
 };
 
 fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
@@ -617,7 +618,8 @@ fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
     out.uv = input.uv;
-    out.color = input.color * vec4<f32>(sample_lightmap(input.light), 1.0);
+    out.color = input.color;
+    out.light = input.light;
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -628,7 +630,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let textured = input.uv.x >= 0.0;
     let sampled = select(vec4<f32>(1.0), textureSample(font_atlas, font_sampler, input.uv), textured);
-    let color = sampled * input.color;
+    let color = sampled * input.color * vec4<f32>(sample_lightmap(input.light), 1.0);
     if color.a < 0.1 { discard; }
     return apply_fog(color, input.spherical_distance, input.cylindrical_distance);
 }
@@ -938,6 +940,7 @@ mod tests {
     #[test]
     fn display_text_pipelines_encode_vanilla_light_fog_and_depth_modes() {
         assert!(DISPLAY_TEXT_SHADER.contains("sample_lightmap(input.light)"));
+        assert!(DISPLAY_TEXT_SHADER.contains("textureSample(lightmap_texture"));
         assert!(DISPLAY_TEXT_SHADER.contains("return apply_fog(color"));
         assert!(!DISPLAY_TEXT_SEE_THROUGH_SHADER.contains("sample_lightmap"));
         assert!(!DISPLAY_TEXT_SEE_THROUGH_SHADER.contains("apply_fog"));
