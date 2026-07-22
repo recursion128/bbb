@@ -1096,7 +1096,7 @@ fn non_synchronized_sound_event_registry_data_keeps_static_audio_reference_resol
 }
 
 #[test]
-fn configuration_audio_registry_projections_commit_at_play_transition() {
+fn configuration_registry_and_tag_projections_commit_at_play_transition() {
     let mut world = WorldStore::new();
     world.record_registry_entries(
         "minecraft:sound_event",
@@ -1110,6 +1110,15 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
         0,
         vec![bbb_world::RegistryPacketEntry::stub("minecraft:cat")],
     );
+    world.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: crate::entity_scene::PIGLIN_LOVED_ITEM_TAG.to_string(),
+                entries: vec![bbb_protocol::item_types::VANILLA_ITEM_IRON_INGOT_ID],
+            }],
+        }],
+    });
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(
         test_sound_catalog(),
@@ -1118,7 +1127,7 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
     audio.jukebox_registry = JukeboxSongRegistry::from_registry_entry_ids(["minecraft:cat"]);
 
     let required_registries = minimal_non_empty_synchronized_registry_data();
-    let expected_event_count = 3 + required_registries.len();
+    let expected_event_count = 4 + required_registries.len();
     let (tx, mut rx) = mpsc::channel(expected_event_count);
     tx.try_send(NetEvent::StateChanged {
         state: bbb_net::ConnectionState::Configuration,
@@ -1142,6 +1151,16 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
         }],
     }))
     .unwrap();
+    tx.try_send(NetEvent::UpdateTags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: crate::entity_scene::PIGLIN_LOVED_ITEM_TAG.to_string(),
+                entries: vec![bbb_protocol::item_types::VANILLA_ITEM_GOLD_INGOT_ID],
+            }],
+        }],
+    }))
+    .unwrap();
     for update in required_registries {
         tx.try_send(NetEvent::RegistryData(update)).unwrap();
     }
@@ -1160,6 +1179,31 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
         Some("minecraft:entity.cat.ambient")
     );
     assert_eq!(audio.jukebox_registry.song_id(0), Some("minecraft:cat"));
+
+    world.apply_add_entity(protocol_add_entity_with_type(
+        224,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID,
+    ));
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: 224,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::OffHand,
+            item: ItemStackSummary {
+                item_id: Some(bbb_protocol::item_types::VANILLA_ITEM_GOLD_INGOT_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        }],
+    }));
+    let piglin_admiring = |world: &WorldStore| {
+        crate::entity_scene::entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 224)
+            .unwrap()
+            .render_state
+            .piglin_admiring
+    };
+    assert!(!piglin_admiring(&world));
 
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::StateChanged {
@@ -1181,6 +1225,7 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
     );
     assert_eq!(audio.registry.event_id(7), Some("minecraft:ambient.cave"));
     assert_eq!(audio.jukebox_registry.song_id(0), Some("minecraft:tears"));
+    assert!(piglin_admiring(&world));
 }
 
 #[test]

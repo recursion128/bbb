@@ -1189,6 +1189,8 @@ mod variants;
 
 pub(crate) use entity_data::armor_material;
 use entity_data::*;
+#[cfg(test)]
+pub(crate) use hands::PIGLIN_LOVED_ITEM_TAG;
 use hands::*;
 use instance::*;
 use kind::*;

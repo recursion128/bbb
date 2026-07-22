@@ -397,7 +397,7 @@ pub(super) fn entity_custom_head_skull(
 }
 
 /// Vanilla `ItemTags.PIGLIN_LOVED` tag id — the items a piglin admires.
-pub(super) const PIGLIN_LOVED_ITEM_TAG: &str = "minecraft:piglin_loved";
+pub(crate) const PIGLIN_LOVED_ITEM_TAG: &str = "minecraft:piglin_loved";
 
 /// Whether the entity's OFFHAND item is a piglin-loved item (vanilla
 /// `PiglinAi.isLovedItem(getOffhandItem())` = `getOffhandItem().is(ItemTags.PIGLIN_LOVED)`), driving the
