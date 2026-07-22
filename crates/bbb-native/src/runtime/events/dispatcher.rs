@@ -17,9 +17,10 @@ use bbb_world::{
     FireworkRocketExplosionParticleState, FoxEatParticleState, HoneyBlockParticleState,
     LevelEventGrowthRandomMode, LevelEventSoundRandomState, LivingEntityDrownParticleState,
     LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LlamaSpitRecreationParticleState, PlayApplyEffects, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
-    ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
+    LlamaSpitRecreationParticleState, PlayApplyEffects, RabbitSprintParticleState,
+    RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    TerrainFluidKind, ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState,
+    WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -614,6 +615,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         emit_honey_block_particles(self.particle_events, self.particle_target, state);
     }
 
+    fn rabbit_sprint_particles(&mut self, _world: &WorldStore, state: RabbitSprintParticleState) {
+        emit_rabbit_sprint_particles(self.particle_events, self.particle_target, state);
+    }
+
     fn level_event_particles(
         &mut self,
         world: &WorldStore,
@@ -1175,6 +1180,20 @@ fn emit_honey_block_particles(
         return;
     };
     let batch = particle_events.spawn_honey_block_particles(state);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
+    }
+}
+
+fn emit_rabbit_sprint_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
+    state: RabbitSprintParticleState,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_rabbit_sprint_particles(state);
     if let Some(renderer) = particle_target.as_deref_mut() {
         renderer.submit_particle_batch(batch);
     }

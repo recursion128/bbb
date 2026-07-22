@@ -34,11 +34,11 @@ use bbb_world::{
     GuardianAttackParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
     LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LlamaSpitRecreationParticleState,
-    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
-    ShulkerBulletTrailParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
-    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState,
+    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RabbitSprintParticleState,
+    RavagerRoarParticleState, ShulkerBulletTrailParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TakeItemEntityPickupProjectileModel, TerrainLight,
+    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState,
 };
 
 use crate::terrain_runtime::{
@@ -163,6 +163,10 @@ pub(crate) trait ParticleEventSink {
     ) -> ParticleSpawnBatch;
     fn spawn_honey_block_particles(&mut self, state: HoneyBlockParticleState)
         -> ParticleSpawnBatch;
+    fn spawn_rabbit_sprint_particles(
+        &mut self,
+        state: RabbitSprintParticleState,
+    ) -> ParticleSpawnBatch;
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -547,6 +551,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: HoneyBlockParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.honey_block_particle_batch(state)
+    }
+
+    fn spawn_rabbit_sprint_particles(
+        &mut self,
+        state: RabbitSprintParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.rabbit_sprint_particle_batch(state)
     }
 }
 

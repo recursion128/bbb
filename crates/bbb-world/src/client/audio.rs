@@ -25,7 +25,7 @@ use crate::entities::{
     vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, EntityClientMovementSoundKind,
     EntityClientMovementSoundState, LivingEntityItemBreakState, PigSoundVariantIdentity,
-    VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
+    VanillaEntityEventKind, VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
 };
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, RegistrySoundKind, CAT_SOUND_VARIANT_REGISTRY,
@@ -53,6 +53,11 @@ const BEE_LOOP_SOUND_EVENT: &str = "minecraft:entity.bee.loop";
 const BEE_AGGRESSIVE_LOOP_SOUND_EVENT: &str = "minecraft:entity.bee.loop_aggressive";
 const RAVAGER_ATTACK_SOUND_EVENT: &str = "minecraft:entity.ravager.attack";
 const IRON_GOLEM_ATTACK_SOUND_EVENT: &str = "minecraft:entity.iron_golem.attack";
+const HOGLIN_ATTACK_SOUND_EVENT: &str = "minecraft:entity.hoglin.attack";
+const ZOGLIN_ATTACK_SOUND_EVENT: &str = "minecraft:entity.zoglin.attack";
+const CREAKING_ATTACK_SOUND_EVENT: &str = "minecraft:entity.creaking.attack";
+const CREAKING_SWAY_SOUND_EVENT: &str = "minecraft:entity.creaking.sway";
+const HOSTILE_HURT_SOUND_EVENT: &str = "minecraft:entity.hostile.hurt";
 const EVOKER_FANGS_ATTACK_SOUND_EVENT: &str = "minecraft:entity.evoker_fangs.attack";
 const ZOMBIE_VILLAGER_CURE_SOUND_EVENT: &str = "minecraft:entity.zombie_villager.cure";
 const ARMADILLO_PEEK_SOUND_EVENT: &str = "minecraft:entity.armadillo.peek";
@@ -970,6 +975,58 @@ impl WorldStore {
             },
             volume: 1.0,
             pitch: 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
+    }
+
+    pub(crate) fn entity_event_voice_sound_for_entity(
+        &mut self,
+        entity_id: i32,
+        event_kind: VanillaEntityEventKind,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        let transform = self.entities.transform_state(entity_id)?;
+        if self.entities.is_silent(entity_id)? {
+            return None;
+        }
+        let sound = match (transform.entity_type_id, event_kind) {
+            (VANILLA_ENTITY_TYPE_HOGLIN_ID, VanillaEntityEventKind::HoglinAttack) => {
+                HOGLIN_ATTACK_SOUND_EVENT
+            }
+            (VANILLA_ENTITY_TYPE_ZOGLIN_ID, VanillaEntityEventKind::ZoglinAttack) => {
+                ZOGLIN_ATTACK_SOUND_EVENT
+            }
+            (VANILLA_ENTITY_TYPE_CREAKING_ID, VanillaEntityEventKind::CreakingAttack) => {
+                CREAKING_ATTACK_SOUND_EVENT
+            }
+            (VANILLA_ENTITY_TYPE_CREAKING_ID, VanillaEntityEventKind::CreakingInvulnerable) => {
+                if self.entities.creaking_is_heart_bound(entity_id)? {
+                    CREAKING_SWAY_SOUND_EVENT
+                } else {
+                    HOSTILE_HURT_SOUND_EVENT
+                }
+            }
+            _ => return None,
+        };
+        let pitch_base = if self.entities.is_baby(entity_id)? {
+            1.5
+        } else {
+            1.0
+        };
+        let state = SoundEventState {
+            sound: direct_sound_holder(sound),
+            source: vanilla_entity_sound_source(transform.entity_type_id)
+                .as_str()
+                .to_string(),
+            position: ProtocolVec3d {
+                x: transform.position.x,
+                y: transform.position.y,
+                z: transform.position.z,
+            },
+            volume: 1.0,
+            pitch: (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * 0.2 + pitch_base,
             seed: 0,
             distance_delay: false,
         };

@@ -183,6 +183,124 @@ fn declaration_event_kind(owner: &str, event_id: u8) -> Option<VanillaEntityEven
 }
 
 #[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct EventConsumerDisposition {
+    canonical: bool,
+    animation: bool,
+    particle: bool,
+    sound: bool,
+}
+
+#[cfg(test)]
+fn event_consumer_disposition(kind: VanillaEntityEventKind) -> EventConsumerDisposition {
+    use VanillaEntityEventKind::*;
+
+    const NONE: EventConsumerDisposition = EventConsumerDisposition {
+        canonical: false,
+        animation: false,
+        particle: false,
+        sound: false,
+    };
+    const C: EventConsumerDisposition = EventConsumerDisposition {
+        canonical: true,
+        ..NONE
+    };
+    const A: EventConsumerDisposition = EventConsumerDisposition {
+        canonical: false,
+        animation: true,
+        particle: false,
+        sound: false,
+    };
+    const P: EventConsumerDisposition = EventConsumerDisposition {
+        canonical: false,
+        animation: false,
+        particle: true,
+        sound: false,
+    };
+    const S: EventConsumerDisposition = EventConsumerDisposition {
+        canonical: false,
+        animation: false,
+        particle: false,
+        sound: true,
+    };
+    const AS: EventConsumerDisposition = EventConsumerDisposition {
+        animation: true,
+        sound: true,
+        ..NONE
+    };
+    const AP: EventConsumerDisposition = EventConsumerDisposition {
+        animation: true,
+        particle: true,
+        ..NONE
+    };
+    const PS: EventConsumerDisposition = EventConsumerDisposition {
+        particle: true,
+        sound: true,
+        ..NONE
+    };
+    const CS: EventConsumerDisposition = EventConsumerDisposition { sound: true, ..C };
+    const CP: EventConsumerDisposition = EventConsumerDisposition {
+        particle: true,
+        ..C
+    };
+    const CPS: EventConsumerDisposition = EventConsumerDisposition {
+        particle: true,
+        sound: true,
+        ..C
+    };
+
+    match kind {
+        HoneySlide
+        | LivingPortal
+        | HoneyJump
+        | LivingPoof
+        | LivingDrown
+        | MobSpawn
+        | Taming { .. }
+        | AnimalLove
+        | AllayDuplication
+        | DolphinHappy
+        | OcelotTrusting { .. }
+        | FoxEat
+        | WitchMagic
+        | VillagerHeart
+        | VillagerAngry
+        | VillagerHappy
+        | VillagerSplash
+        | SnowballHit
+        | ThrownEggHit => P,
+        LivingItemBreak(_) | FireworkExplosion => PS,
+        LivingDeath | ZombieVillagerCure => CS,
+        LivingKineticHit
+        | GoatLowerHead
+        | GoatRaiseHead
+        | IronGolemOfferFlower
+        | IronGolemStopOfferFlower
+        | SheepEatGrass
+        | WolfStartShaking
+        | WolfCancelShaking
+        | RavagerStun
+        | WardenAttack
+        | WardenTendril
+        | WardenSonicBoom => A,
+        ArmadilloPeek | IronGolemAttack | ArmorStandHit | RavagerAttack | ZoglinAttack
+        | CreakingInvulnerable | CreakingAttack | HoglinAttack | EvokerFangsAttack => AS,
+        RabbitJump | RavagerRoar => AP,
+        ArrowEffectClear => CP,
+        TotemUse => CPS,
+        GuardianAttackSound | SnifferDiggingSound => S,
+        LivingSwapHandItems
+        | SquidResetMovement
+        | PlayerFinishUsingItem
+        | PlayerDisableReducedDebug
+        | PlayerEnableReducedDebug
+        | FishingHookPull
+        | MinecartSpawnerDelayReset
+        | MinecartTntPrime => C,
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use std::collections::HashSet;
 
@@ -198,11 +316,19 @@ mod tests {
                 .chain(handler.delegated_event_ids)
             {
                 assert!(declarations.insert((handler.owner, *event_id)));
+                let kind = declaration_event_kind(handler.owner, *event_id).unwrap_or_else(|| {
+                    panic!(
+                        "missing bbb consumer for {} event {}",
+                        handler.owner, event_id
+                    )
+                });
+                let disposition = event_consumer_disposition(kind);
                 assert!(
-                    declaration_event_kind(handler.owner, *event_id).is_some(),
-                    "missing bbb consumer for {} event {}",
-                    handler.owner,
-                    event_id
+                    disposition.canonical
+                        || disposition.animation
+                        || disposition.particle
+                        || disposition.sound,
+                    "semantic consumer {kind:?} has no disposition"
                 );
             }
         }
@@ -223,5 +349,15 @@ mod tests {
             Some(VanillaEntityEventKind::SnifferDiggingSound)
         );
         assert_eq!(listener_special_event_kind(3), None);
+        for event_id in [21, 35, 63] {
+            let kind = listener_special_event_kind(event_id).expect("listener special kind");
+            let disposition = event_consumer_disposition(kind);
+            assert!(
+                disposition.canonical
+                    || disposition.animation
+                    || disposition.particle
+                    || disposition.sound
+            );
+        }
     }
 }

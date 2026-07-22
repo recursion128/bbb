@@ -1746,6 +1746,90 @@ fn honey_block_entity_events_emit_particle_state() {
 }
 
 #[test]
+fn rabbit_jump_event_emits_sprint_block_particle_state() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let mut rabbit = protocol_add_entity_with_type(78, VANILLA_ENTITY_TYPE_RABBIT_ID);
+    rabbit.position = ProtocolVec3d {
+        x: 1.25,
+        y: 1.2,
+        z: 2.75,
+    };
+    rabbit.delta_movement = ProtocolVec3d {
+        x: 0.125,
+        y: -0.25,
+        z: -0.375,
+    };
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(rabbit)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 78,
+        event_id: 1,
+    })))
+    .unwrap();
+
+    let stone_state_id = vanilla_block_state_id("minecraft:stone", []);
+    let single_value = |domain, entry_count, global_id| bbb_world::PalettedContainerData {
+        domain,
+        bits_per_entry: 0,
+        palette_kind: bbb_world::PaletteKind::SingleValue,
+        palette_global_ids: vec![global_id],
+        packed_data: Vec::new(),
+        entry_count,
+    };
+    let mut world = WorldStore::with_dimension(bbb_world::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.insert_decoded_chunk(bbb_world::ChunkColumn {
+        pos: ChunkPos { x: 0, z: 0 },
+        state: bbb_world::ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: vec![bbb_world::ChunkSection {
+            non_empty_block_count: 4096,
+            fluid_count: 0,
+            block_states: single_value(bbb_world::PaletteDomain::BlockStates, 4096, stone_state_id),
+            biomes: single_value(bbb_world::PaletteDomain::Biomes, 64, 0),
+        }],
+        block_entities: Vec::new(),
+        light: bbb_world::LightData::default(),
+    });
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut random,
+        ),
+        2
+    );
+
+    assert_eq!(particles.rabbit_sprint_states.len(), 1);
+    let state = particles.rabbit_sprint_states[0];
+    assert_eq!(state.entity_id, 78);
+    assert_eq!(state.block_state_id, stone_state_id);
+    assert_eq!(state.position.y, 1.3);
+    assert_eq!(
+        state.velocity,
+        bbb_world::EntityVec3 {
+            x: -0.5,
+            y: 1.5,
+            z: 1.5,
+        }
+    );
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 1);
+}
+
+#[test]
 fn entity_animation_emits_crit_tracking_emitter_particles() {
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(

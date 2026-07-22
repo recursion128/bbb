@@ -1557,6 +1557,36 @@ fn honey_block_batch_matches_vanilla_show_particles() {
 }
 
 #[test]
+fn rabbit_sprint_batch_preserves_block_option_position_and_velocity() {
+    let resolver = test_resolver(0);
+    let stone_state_id = test_block_state_id("minecraft:stone", []);
+    let state = RabbitSprintParticleState {
+        entity_id: 77,
+        block_state_id: stone_state_id,
+        position: bbb_world::EntityVec3 {
+            x: 10.25,
+            y: 64.1,
+            z: -3.75,
+        },
+        velocity: bbb_world::EntityVec3 {
+            x: -0.5,
+            y: 1.5,
+            z: 0.75,
+        },
+    };
+
+    let batch = resolver.rabbit_sprint_particle_batch(state);
+
+    assert_eq!(batch.len(), 1);
+    assert_block_destroy_particle_command(
+        &batch.commands[0],
+        stone_state_id,
+        [10.25, 64.1, -3.75],
+        [-0.5, 1.5, 0.75],
+    );
+}
+
+#[test]
 fn count_zero_emits_single_spawn_with_offset_velocity() {
     let mut resolver = test_resolver(0);
     let batch = resolver

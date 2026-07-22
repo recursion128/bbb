@@ -472,7 +472,14 @@ impl WorldStore {
         let supporting_pos = self.entity_main_supporting_block_pos(entity_id)?;
         let entity_y = self.entities.transform(entity_id)?.position.y;
         let supporting = self.debug_supporting_block_highlight(supporting_pos);
-        let legacy_pos = self.debug_legacy_on_pos(supporting_pos, entity_y);
+        let legacy_pos = self.legacy_on_pos(
+            Some(supporting_pos),
+            crate::EntityVec3 {
+                x: f64::from(supporting_pos.x),
+                y: entity_y,
+                z: f64::from(supporting_pos.z),
+            },
+        );
         let legacy_effect = (legacy_pos != supporting_pos)
             .then(|| self.debug_supporting_block_highlight(legacy_pos));
         Some(DebugEntitySupportingBlocks {
@@ -594,7 +601,14 @@ impl WorldStore {
             LocalPlayerCollisionContext::for_pose(self, pose, false),
         )?;
         let supporting = self.debug_supporting_block_highlight(supporting_pos);
-        let legacy_pos = self.debug_legacy_on_pos(supporting_pos, pose.position.y);
+        let legacy_pos = self.legacy_on_pos(
+            Some(supporting_pos),
+            crate::EntityVec3 {
+                x: pose.position.x,
+                y: pose.position.y,
+                z: pose.position.z,
+            },
+        );
         let legacy_effect = (legacy_pos != supporting_pos)
             .then(|| self.debug_supporting_block_highlight(legacy_pos));
         Some(DebugLocalSupportingBlocks {
@@ -603,7 +617,20 @@ impl WorldStore {
         })
     }
 
-    fn debug_legacy_on_pos(&self, supporting_pos: BlockPos, entity_y: f64) -> BlockPos {
+    /// Mirrors `Entity.getOnPos(0.2F)`, including the main-supporting-block
+    /// override and the fence/wall/gate Y exception used by entity effects.
+    pub(crate) fn legacy_on_pos(
+        &self,
+        supporting_pos: Option<BlockPos>,
+        position: crate::EntityVec3,
+    ) -> BlockPos {
+        let Some(supporting_pos) = supporting_pos else {
+            return BlockPos {
+                x: block_floor(position.x),
+                y: block_floor(position.y - 0.2),
+                z: block_floor(position.z),
+            };
+        };
         let keeps_support_y = self
             .probe_block(supporting_pos)
             .and_then(|block| block.block_name)
@@ -616,7 +643,7 @@ impl WorldStore {
             supporting_pos
         } else {
             BlockPos {
-                y: block_floor(entity_y - 0.2),
+                y: block_floor(position.y - 0.2),
                 ..supporting_pos
             }
         }

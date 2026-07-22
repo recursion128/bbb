@@ -59,6 +59,7 @@ use super::schema::{
     vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
+    vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type,
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type,
@@ -1442,6 +1443,19 @@ impl EntityStore {
     pub(crate) fn is_silent(&self, id: i32) -> Option<bool> {
         let accessors = vanilla_entity_metadata_entity_accessors()?;
         self.metadata_bool(id, accessors.silent_data_id, accessors.silent_default)
+    }
+
+    pub(crate) fn creaking_is_heart_bound(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let data_id = vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+            identity.entity_type_id,
+        )?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(metadata.data_values.iter().any(|value| {
+            value.data_id == data_id
+                && matches!(&value.value, EntityDataValueKind::OptionalBlockPos(Some(_)))
+        }))
     }
 
     pub(crate) fn guardian_attack_sound_state(&self, id: i32) -> Option<(super::EntityVec3, f32)> {

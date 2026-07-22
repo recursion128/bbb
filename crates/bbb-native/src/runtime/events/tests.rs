@@ -62,9 +62,10 @@ use bbb_world::{
     HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState,
     LlamaSpitRecreationParticleState, LocalPlayerPoseState, OminousItemSpawnerParticleState,
-    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
-    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    RabbitSprintParticleState, RavagerRoarParticleState, RegistryPacketEntry,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
+    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile,
+    WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -664,6 +665,7 @@ struct RecordingParticleSink {
     snowball_hit_states: Vec<SnowballHitParticleState>,
     thrown_egg_hit_states: Vec<ThrownEggHitParticleState>,
     honey_block_states: Vec<HoneyBlockParticleState>,
+    rabbit_sprint_states: Vec<RabbitSprintParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -967,6 +969,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: HoneyBlockParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.honey_block_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_rabbit_sprint_particles(
+        &mut self,
+        state: RabbitSprintParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.rabbit_sprint_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

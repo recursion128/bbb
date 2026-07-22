@@ -1002,4 +1002,46 @@ impl ParticleCommandResolver {
         }
         batch
     }
+
+    pub(super) fn rabbit_sprint_particle_batch(
+        &self,
+        state: RabbitSprintParticleState,
+    ) -> ParticleSpawnBatch {
+        let Some(particle_type) = vanilla_particle_type(VANILLA_PARTICLE_TYPE_BLOCK_ID) else {
+            return ParticleSpawnBatch {
+                unknown_particle_type_count: 1,
+                ..ParticleSpawnBatch::default()
+            };
+        };
+        let option_state = ParticleOptionRenderState {
+            block: Some(ParticleBlockOptionState {
+                block_state_id: state.block_state_id,
+            }),
+            ..ParticleOptionRenderState::default()
+        };
+        ParticleSpawnBatch {
+            commands: vec![self.command_for_type(
+                particle_type,
+                &[],
+                Vec3d {
+                    x: state.position.x,
+                    y: state.position.y,
+                    z: state.position.z,
+                },
+                Vec3d {
+                    x: state.velocity.x,
+                    y: state.velocity.y,
+                    z: state.velocity.z,
+                },
+                particle_type.override_limiter,
+                false,
+                positive_var_i32_len(state.block_state_id),
+                0,
+                option_state,
+                None,
+                None,
+            )],
+            ..ParticleSpawnBatch::default()
+        }
+    }
 }

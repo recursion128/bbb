@@ -24,9 +24,9 @@ use crate::{
     FoxEatParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LlamaSpitRecreationParticleState, LocalSoundEventState, RavagerRoarParticleState,
-    RemovedPlayerVehicleTeleportRecovery, SnowballHitParticleState, SoundEntityEventState,
-    SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
+    LlamaSpitRecreationParticleState, LocalSoundEventState, RabbitSprintParticleState,
+    RavagerRoarParticleState, RemovedPlayerVehicleTeleportRecovery, SnowballHitParticleState,
+    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
     ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
     WitchMagicParticleState, WorldStore,
 };
@@ -183,6 +183,7 @@ pub trait PlayApplyEffects {
     fn thrown_egg_hit_particles(&mut self, _world: &WorldStore, _state: ThrownEggHitParticleState) {
     }
     fn honey_block_particles(&mut self, _world: &WorldStore, _state: HoneyBlockParticleState) {}
+    fn rabbit_sprint_particles(&mut self, _world: &WorldStore, _state: RabbitSprintParticleState) {}
     /// Spawn level-event particles through a sink. Return `true` when the sink
     /// consumed the particle randoms; `false` lets the world advance the
     /// deterministic random stream in the sink's place.
@@ -569,6 +570,15 @@ impl WorldStore {
                     ),
                     _ => None,
                 };
+                let rabbit_sprint_particles =
+                    if event_kind == Some(VanillaEntityEventKind::RabbitJump) {
+                        self.rabbit_sprint_particle_state(update.entity_id, || random.next_double())
+                    } else {
+                        None
+                    };
+                if let Some(state) = rabbit_sprint_particles {
+                    effects.rabbit_sprint_particles(self, state);
+                }
                 let applied = self.apply_entity_event(update);
                 if applied && event_kind == Some(VanillaEntityEventKind::FishingHookPull) {
                     let _ = self.apply_fishing_hook_pull(update.entity_id);
@@ -695,6 +705,17 @@ impl WorldStore {
                             random.next_float()
                         })
                     {
+                        effects.positioned_sound(&state);
+                    }
+                }
+                if applied {
+                    if let Some(state) = event_kind.and_then(|event_kind| {
+                        self.entity_event_voice_sound_for_entity(
+                            update.entity_id,
+                            event_kind,
+                            || random.next_float(),
+                        )
+                    }) {
                         effects.positioned_sound(&state);
                     }
                 }
@@ -1651,38 +1672,44 @@ fn advance_particle_utils_spawn_particles_randoms(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
+
     use crate::{
         DamageTypeEffects, LocalPlayerPoseState, RegistryPacketEntry, DAMAGE_TYPE_REGISTRY,
     };
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID;
     use bbb_protocol::entity_data_serializers::{
         VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
     };
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
         VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
         VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
         VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
     use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
 
     // Wire-event fixture ids. Production dispatch consumes the source-generated handler catalog
     // through `VanillaEntityEventKind` and does not own a parallel numeric table.
     const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
+    const RABBIT_JUMP_EVENT_ID: i8 = 1;
     const ATTACK_SOUND_EVENT_ID: i8 = 4;
     const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
     const LIVING_ENTITY_DEATH_EVENT_ID: i8 = 3;
@@ -1716,17 +1743,18 @@ mod tests {
     const SNIFFER_DIGGING_SOUND_EVENT_ID: i8 = 63;
     const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
     const LIVING_ENTITY_BODY_BREAK_EVENT_ID: i8 = 65;
+    const CREAKING_INVULNERABLE_EVENT_ID: i8 = 66;
     const LIVING_ENTITY_DROWN_EVENT_ID: i8 = 67;
     const LIVING_ENTITY_SADDLE_BREAK_EVENT_ID: i8 = 68;
     const RAVAGER_ROAR_EVENT_ID: i8 = 69;
 
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, DamageEvent, DeleteChat, EntityAnimation,
-        EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind, EntityEvent,
-        EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, GameEvent, ItemStackSummary,
-        LevelEvent, PackedMessageSignature, PlayTime, PlayerHealth, RemoveEntities, SetEntityData,
-        SetEquipment, SetPassengers, SoundEvent, SoundEventHolder, SoundEventSummary, SoundSource,
-        TakeItemEntity, TeleportEntity, Vec3d,
+        AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, DamageEvent, DeleteChat,
+        EntityAnimation, EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind,
+        EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, GameEvent,
+        ItemStackSummary, LevelEvent, PackedMessageSignature, PlayTime, PlayerHealth,
+        RemoveEntities, SetEntityData, SetEquipment, SetPassengers, SoundEvent, SoundEventHolder,
+        SoundEventSummary, SoundSource, TakeItemEntity, TeleportEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1767,6 +1795,8 @@ mod tests {
         snowball_hit_particles: Vec<SnowballHitParticleState>,
         thrown_egg_hit_particles: Vec<ThrownEggHitParticleState>,
         honey_block_particles: Vec<HoneyBlockParticleState>,
+        rabbit_sprint_particles: Vec<RabbitSprintParticleState>,
+        rabbit_sprint_world_hop_active: Vec<bool>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
         vehicle_move_reports: Vec<VehicleMoveReport>,
         removed_vehicle_teleports: Vec<RemovedPlayerVehicleTeleportRecovery>,
@@ -1908,6 +1938,19 @@ mod tests {
             self.honey_block_particles.push(state);
         }
 
+        fn rabbit_sprint_particles(
+            &mut self,
+            world: &WorldStore,
+            state: RabbitSprintParticleState,
+        ) {
+            self.rabbit_sprint_particles.push(state);
+            self.rabbit_sprint_world_hop_active.push(
+                world
+                    .probe_entity(state.entity_id)
+                    .is_some_and(|entity| entity.client_animations.rabbit_hop.is_some()),
+            );
+        }
+
         fn tracking_emitter_particles(
             &mut self,
             _world: &WorldStore,
@@ -1940,6 +1983,30 @@ mod tests {
             y_rot: 0.0,
             y_head_rot: 0.0,
             data: 0,
+        }
+    }
+
+    fn single_block_state_chunk(block_state_id: i32) -> crate::ChunkColumn {
+        let single_value = |domain, entry_count, global_id| crate::PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: crate::PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        };
+        crate::ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: crate::ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![crate::ChunkSection {
+                non_empty_block_count: 4096,
+                fluid_count: 0,
+                block_states: single_value(crate::PaletteDomain::BlockStates, 4096, block_state_id),
+                biomes: single_value(crate::PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: Vec::new(),
+            light: crate::LightData::default(),
         }
     }
 
@@ -3218,6 +3285,115 @@ mod tests {
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
         assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn voice_pitch_attack_and_creaking_hurt_events_forward_positioned_sounds() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                170,
+                VANILLA_ENTITY_TYPE_HOGLIN_ID,
+                Vec3d {
+                    x: 1.0,
+                    y: 64.0,
+                    z: 2.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                171,
+                VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 65.0,
+                    z: 4.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 171,
+                values: vec![bool_entity_data(
+                    crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+                    )
+                    .expect("generated Zoglin baby accessor")
+                    .0,
+                    true,
+                )],
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                172,
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+                Vec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: 6.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 170,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 171,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 172,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 172,
+                event_id: CREAKING_INVULNERABLE_EVENT_ID,
+            }),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 172,
+                values: vec![EntityDataValue {
+                    data_id:
+                        crate::entities::vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+                            VANILLA_ENTITY_TYPE_CREAKING_ID,
+                        )
+                        .expect("generated Creaking home-position accessor"),
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                    value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
+                        x: 5,
+                        y: 64,
+                        z: 6,
+                    })),
+                }],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 172,
+                event_id: CREAKING_INVULNERABLE_EVENT_ID,
+            }),
+        ] {
+            assert!(store
+                .apply_play_packet(packet, &mut random, &mut effects)
+                .is_none());
+        }
+
+        let expected_pitch = |random: &mut LevelEventSoundRandomState, base| {
+            (random.next_float() - random.next_float()) * 0.2 + base
+        };
+        let expected = [
+            ("minecraft:entity.hoglin.attack", 1.0),
+            ("minecraft:entity.zoglin.attack", 1.5),
+            ("minecraft:entity.creaking.attack", 1.0),
+            ("minecraft:entity.hostile.hurt", 1.0),
+            ("minecraft:entity.creaking.sway", 1.0),
+        ];
+        assert_eq!(effects.positioned_sounds.len(), expected.len());
+        for (sound, (event, base)) in effects.positioned_sounds.iter().zip(expected) {
+            assert_eq!(sound.sound.location.as_deref(), Some(event));
+            assert_eq!(sound.source, "hostile");
+            assert_eq!(sound.volume, 1.0);
+            assert!((sound.pitch - expected_pitch(&mut expected_random, base)).abs() < 1.0e-6);
+            assert_eq!(sound.seed, 0);
+            assert!(!sound.distance_delay);
+        }
     }
 
     #[test]
@@ -5571,6 +5747,104 @@ mod tests {
         );
         assert_eq!(store.counters().entity_events_applied, 5);
         assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn rabbit_jump_event_forwards_sprint_block_particle_before_animation() {
+        let stone_state_id = crate::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+            .expect("vanilla stone state")
+            .id;
+        let air_state_id = crate::vanilla_air_block_state_id();
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        store.insert_decoded_chunk(single_block_state_chunk(stone_state_id));
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let mut rabbit = add_entity(
+            173,
+            VANILLA_ENTITY_TYPE_RABBIT_ID,
+            Vec3d {
+                x: 3.25,
+                y: 1.2,
+                z: 4.75,
+            },
+        );
+        rabbit.delta_movement = Vec3d {
+            x: 0.125,
+            y: -0.25,
+            z: -0.375,
+        };
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::AddEntity(rabbit),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        let bounds = store.probe_entity_pick_bounds(173).expect("rabbit bounds");
+        let width = f64::from(bounds.max[0] - bounds.min[0]);
+        let expected_x = 3.25 + (expected_random.next_double() - 0.5) * width;
+        let expected_z = 4.75 + (expected_random.next_double() - 0.5) * width;
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::EntityEvent(EntityEvent {
+                    entity_id: 173,
+                    event_id: RABBIT_JUMP_EVENT_ID,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert_eq!(effects.rabbit_sprint_particles.len(), 1);
+        assert_eq!(effects.rabbit_sprint_world_hop_active, vec![false]);
+        let state = effects.rabbit_sprint_particles[0];
+        assert_eq!(state.entity_id, 173);
+        assert_eq!(state.block_state_id, stone_state_id);
+        assert!((state.position.x - expected_x).abs() < 1.0e-12);
+        assert!((state.position.y - 1.3).abs() < 1.0e-12);
+        assert!((state.position.z - expected_z).abs() < 1.0e-12);
+        assert_eq!(
+            state.velocity,
+            crate::EntityVec3 {
+                x: -0.5,
+                y: 1.5,
+                z: 1.5,
+            }
+        );
+        assert!(store
+            .probe_entity(173)
+            .expect("rabbit state")
+            .client_animations
+            .rabbit_hop
+            .is_some());
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::BlockUpdate(BlockUpdate {
+                    pos: ProtocolBlockPos { x: 3, y: 1, z: 4 },
+                    block_state_id: air_state_id,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::EntityEvent(EntityEvent {
+                    entity_id: 173,
+                    event_id: RABBIT_JUMP_EVENT_ID,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert_eq!(effects.rabbit_sprint_particles.len(), 1);
+        assert_eq!(random.next_double(), expected_random.next_double());
     }
 
     #[test]
