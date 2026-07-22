@@ -93,13 +93,15 @@ use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_enti
 #[cfg(test)]
 use bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type;
 #[cfg(test)]
+use bbb_world::DisplayEntityCullingState;
+#[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
 use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_renderer_culling_kind, vanilla_entity_type_illager_arm_pose_uses_celebrating,
     vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
-    ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation, DisplayEntityCullingState,
+    ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation,
     DisplayEntityRenderSourceState, EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonAnimationSource as WorldEnderDragonAnimationSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
