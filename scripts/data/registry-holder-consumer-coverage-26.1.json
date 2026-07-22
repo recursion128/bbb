@@ -954,24 +954,99 @@
       "decision": "DimensionType timelines preserve an explicit named holder, ordered named list, or tag-backed set through the frozen timeline registry. Tags retain session order, every referenced identity is checked, layer order reaches timeline sampling, and missing members remain diagnostic instead of falling back by bootstrap ordinal."
     },
     {
-      "id": "persistent-holder-set-or-tag",
+      "id": "persistent-holder-set-or-tag-client-components",
       "selector": {
         "kind": "persistent_holder_set_or_tag",
-        "exclude_resource_ids": [
-          "minecraft:banner_pattern"
-        ],
-        "exclude_source_paths": [
-          "net/minecraft/world/level/dimension/DimensionType.java"
+        "source_paths": [
+          "net/minecraft/advancements/criterion/BlockPredicate.java",
+          "net/minecraft/core/component/predicates/AttributeModifiersPredicate.java",
+          "net/minecraft/core/component/predicates/JukeboxPlayablePredicate.java",
+          "net/minecraft/core/component/predicates/PotionsPredicate.java",
+          "net/minecraft/core/component/predicates/TrimPredicate.java",
+          "net/minecraft/core/component/predicates/VillagerTypePredicate.java",
+          "net/minecraft/world/item/component/BlocksAttacks.java",
+          "net/minecraft/world/item/component/DamageResistant.java",
+          "net/minecraft/world/item/component/Tool.java",
+          "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java",
+          "net/minecraft/world/item/enchantment/Repairable.java",
+          "net/minecraft/world/item/equipment/Equippable.java"
         ]
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals."
+    },
+    {
+      "id": "persistent-holder-set-or-tag-enchantment-synchronized",
+      "selector": {
+        "kind": "persistent_holder_set_or_tag",
+        "source_paths": [
+          "net/minecraft/world/item/enchantment/Enchantment.java",
+          "net/minecraft/world/item/enchantment/effects/ApplyMobEffect.java",
+          "net/minecraft/world/item/enchantment/effects/ExplodeEffect.java",
+          "net/minecraft/world/item/enchantment/effects/SummonEntityEffect.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#public static final Codec<Enchantment> DIRECT_CODEC",
+        "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/registries/tests.rs#fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically"
+      ],
+      "decision": "All six HolderSets inside synchronized Enchantment.DIRECT_CODEC data are checked against the candidate registry revision. Top-level supported, primary, and exclusive identities retain direct-versus-tag form and resolve live tags on query; apply_mob_effect, explode, and summon_entity nested identities are recursively validated before the candidate commits, so failure is atomic."
+    },
+    {
+      "id": "persistent-holder-set-or-tag-server-only",
+      "selector": {
+        "kind": "persistent_holder_set_or_tag",
+        "source_paths": [
+          "net/minecraft/advancements/criterion/EnchantmentPredicate.java",
+          "net/minecraft/advancements/criterion/EntityTypePredicate.java",
+          "net/minecraft/advancements/criterion/FluidPredicate.java",
+          "net/minecraft/advancements/criterion/ItemPredicate.java",
+          "net/minecraft/advancements/criterion/LocationPredicate.java",
+          "net/minecraft/world/entity/variant/BiomeCheck.java",
+          "net/minecraft/world/entity/variant/StructureCheck.java",
+          "net/minecraft/world/item/enchantment/providers/EnchantmentsByCost.java",
+          "net/minecraft/world/item/enchantment/providers/EnchantmentsByCostWithDifficulty.java",
+          "net/minecraft/world/item/trading/TradeSet.java",
+          "net/minecraft/world/item/trading/VillagerTrade.java",
+          "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlocksPredicate.java",
+          "net/minecraft/world/level/levelgen/blockpredicates/MatchingFluidsPredicate.java",
+          "net/minecraft/world/level/levelgen/carver/CarverConfiguration.java",
+          "net/minecraft/world/level/levelgen/feature/configurations/MultifaceGrowthConfiguration.java",
+          "net/minecraft/world/level/levelgen/feature/configurations/SpringConfiguration.java",
+          "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java",
+          "net/minecraft/world/level/levelgen/feature/trunkplacers/UpwardsBranchingTrunkPlacer.java",
+          "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorSettings.java",
+          "net/minecraft/world/level/levelgen/structure/Structure.java",
+          "net/minecraft/world/level/levelgen/structure/placement/ConcentricRingsStructurePlacement.java",
+          "net/minecraft/world/level/levelgen/structure/templatesystem/BlockRotProcessor.java",
+          "net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java",
+          "net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction.java",
+          "net/minecraft/world/level/storage/loot/functions/SetInstrumentFunction.java",
+          "net/minecraft/world/level/storage/loot/functions/SetRandomPotionFunction.java"
+        ]
+      },
+      "status": "not-applicable",
+      "consumer": null,
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
+      ],
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet."
     },
     {
       "id": "persistent-tag",

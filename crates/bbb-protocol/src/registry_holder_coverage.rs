@@ -204,7 +204,12 @@ mod tests {
             1
         );
         assert_eq!(counts["persistent-holder-set-or-inline"], 5);
-        assert_eq!(counts["persistent-holder-set-or-tag"], 48);
+        assert_eq!(counts["persistent-holder-set-or-tag-client-components"], 14);
+        assert_eq!(
+            counts["persistent-holder-set-or-tag-enchantment-synchronized"],
+            6
+        );
+        assert_eq!(counts["persistent-holder-set-or-tag-server-only"], 28);
         assert_eq!(counts["persistent-holder-set-or-tag-banner-pattern"], 1);
         assert_eq!(
             counts["persistent-holder-set-or-tag-timeline-synchronized"],
@@ -217,7 +222,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            137
+            89
         );
         assert_eq!(
             ledger
@@ -233,14 +238,14 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::NotApplicable)
                 .count(),
-            1
+            29
         );
         let complete = ledger
             .entries
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 56);
+        assert_eq!(complete.len(), 76);
         assert_eq!(
             complete
                 .iter()
@@ -367,6 +372,86 @@ mod tests {
                 "network holder-set persistence lost structural guard {required}"
             );
         }
+    }
+
+    #[test]
+    fn persistent_holder_set_families_keep_client_sync_and_server_boundaries() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        let expected = [
+            (
+                "persistent-holder-set-or-tag-client-components",
+                14,
+                RegistryHolderCoverageStatus::Complete,
+            ),
+            (
+                "persistent-holder-set-or-tag-enchantment-synchronized",
+                6,
+                RegistryHolderCoverageStatus::Complete,
+            ),
+            (
+                "persistent-holder-set-or-tag-server-only",
+                28,
+                RegistryHolderCoverageStatus::NotApplicable,
+            ),
+        ];
+        let mut total = 0;
+        for (family, count, status) in expected {
+            let entries = ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.family == family)
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), count, "persistent family {family}");
+            assert!(
+                entries.iter().all(|entry| entry.status == status),
+                "persistent family {family} status"
+            );
+            total += entries.len();
+        }
+        assert_eq!(total, 48);
+
+        let state = include_str!("../../bbb-world/src/registries/state.rs");
+        for required in [
+            "pub enum RegistryHolderSetIdentity {",
+            "pub fn persistent_holder_set_from_nbt(",
+            "pub fn holder_set_by_identity(",
+            "pub fn identity(&self) -> RegistryHolderSetIdentity",
+        ] {
+            assert!(
+                state.contains(required),
+                "persistent registry resolver lost structural guard {required}"
+            );
+        }
+
+        let dialog =
+            include_str!("../../bbb-world/src/client/dialog/body/component_value/holder_set.rs");
+        assert!(dialog.contains(".persistent_holder_set_from_nbt(registry, value)"));
+        let persistent = include_str!("../../bbb-native/src/input/component_patch.rs");
+        assert!(persistent.contains("pub(super) fn registry_holder_set_snbt("));
+
+        let enchantments = include_str!("../../bbb-world/src/registries/enchantments.rs");
+        for required in [
+            "pub fn synchronized_enchantment_holder_sets(",
+            "fn validate_enchantment_effect_holder_sets(",
+            ".persistent_holder_set_from_nbt(\"minecraft:item\", supported_items)",
+            ".holder_set_by_identity(\"minecraft:item\"",
+        ] {
+            assert!(
+                enchantments.contains(required),
+                "synchronized enchantment HolderSet lost structural guard {required}"
+            );
+        }
+
+        let server_only = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.family == "persistent-holder-set-or-tag-server-only")
+            .collect::<Vec<_>>();
+        assert!(server_only.iter().all(|entry| entry.consumer.is_none()));
+        assert!(server_only.iter().all(|entry| entry
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("RegistrySynchronization.java"))));
     }
 
     #[test]

@@ -31,22 +31,24 @@
     {
       "call_site": "net/minecraft/advancements/criterion/BlockPredicate.java:31:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 31,
       "owner": "net.minecraft.advancements.criterion.BlockPredicate",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/advancements/criterion/BlockPredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/BlockPredicate.java:39:30:ByteBufCodecs.holderSet",
@@ -83,22 +85,23 @@
     {
       "call_site": "net/minecraft/advancements/criterion/EnchantmentPredicate.java:17:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 17,
       "owner": "net.minecraft.advancements.criterion.EnchantmentPredicate",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/advancements/criterion/EnchantmentPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/EnterBlockTrigger.java:30:19:Registry.holderByNameCodec",
@@ -123,102 +126,107 @@
     {
       "call_site": "net/minecraft/advancements/criterion/EntityTypePredicate.java:13:59:RegistryCodecs.homogeneousList",
       "column": 59,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 13,
       "owner": "net.minecraft.advancements.criterion.EntityTypePredicate",
       "registry_expression": "Registries.ENTITY_TYPE",
       "resource_id": "minecraft:entity_type",
       "source_path": "net/minecraft/advancements/criterion/EntityTypePredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/FluidPredicate.java:17:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 17,
       "owner": "net.minecraft.advancements.criterion.FluidPredicate",
       "registry_expression": "Registries.FLUID",
       "resource_id": "minecraft:fluid",
       "source_path": "net/minecraft/advancements/criterion/FluidPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/ItemPredicate.java:19:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 19,
       "owner": "net.minecraft.advancements.criterion.ItemPredicate",
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/advancements/criterion/ItemPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/LocationPredicate.java:32:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 32,
       "owner": "net.minecraft.advancements.criterion.LocationPredicate",
       "registry_expression": "Registries.BIOME",
       "resource_id": "minecraft:worldgen/biome",
       "source_path": "net/minecraft/advancements/criterion/LocationPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/LocationPredicate.java:33:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 33,
       "owner": "net.minecraft.advancements.criterion.LocationPredicate",
       "registry_expression": "Registries.STRUCTURE",
       "resource_id": "minecraft:worldgen/structure",
       "source_path": "net/minecraft/advancements/criterion/LocationPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/PlayerPredicate.java:260:81:Registry.holderByNameCodec",
@@ -406,122 +414,134 @@
     {
       "call_site": "net/minecraft/core/component/predicates/AttributeModifiersPredicate.java:52:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 52,
       "owner": "net.minecraft.core.component.predicates.AttributeModifiersPredicate.EntryPredicate",
       "registry_expression": "Registries.ATTRIBUTE",
       "resource_id": "minecraft:attribute",
       "source_path": "net/minecraft/core/component/predicates/AttributeModifiersPredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/core/component/predicates/JukeboxPlayablePredicate.java:19:20:RegistryCodecs.homogeneousList",
       "column": 20,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 19,
       "owner": "net.minecraft.core.component.predicates.JukeboxPlayablePredicate",
       "registry_expression": "Registries.JUKEBOX_SONG",
       "resource_id": "minecraft:jukebox_song",
       "source_path": "net/minecraft/core/component/predicates/JukeboxPlayablePredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/core/component/predicates/PotionsPredicate.java:16:56:RegistryCodecs.homogeneousList",
       "column": 56,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 16,
       "owner": "net.minecraft.core.component.predicates.PotionsPredicate",
       "registry_expression": "Registries.POTION",
       "resource_id": "minecraft:potion",
       "source_path": "net/minecraft/core/component/predicates/PotionsPredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/core/component/predicates/TrimPredicate.java:20:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 20,
       "owner": "net.minecraft.core.component.predicates.TrimPredicate",
       "registry_expression": "Registries.TRIM_MATERIAL",
       "resource_id": "minecraft:trim_material",
       "source_path": "net/minecraft/core/component/predicates/TrimPredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/core/component/predicates/TrimPredicate.java:21:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 21,
       "owner": "net.minecraft.core.component.predicates.TrimPredicate",
       "registry_expression": "Registries.TRIM_PATTERN",
       "resource_id": "minecraft:trim_pattern",
       "source_path": "net/minecraft/core/component/predicates/TrimPredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/core/component/predicates/VillagerTypePredicate.java:14:61:RegistryCodecs.homogeneousList",
       "column": 61,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 14,
       "owner": "net.minecraft.core.component.predicates.VillagerTypePredicate",
       "registry_expression": "Registries.VILLAGER_TYPE",
       "resource_id": "minecraft:villager_type",
       "source_path": "net/minecraft/core/component/predicates/VillagerTypePredicate.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/gametest/framework/TestEnvironmentDefinition.java:37:56:RegistryFileCodec.create",
@@ -1821,42 +1841,44 @@
     {
       "call_site": "net/minecraft/world/entity/variant/BiomeCheck.java:12:20:RegistryCodecs.homogeneousList",
       "column": 20,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 12,
       "owner": "net.minecraft.world.entity.variant.BiomeCheck",
       "registry_expression": "Registries.BIOME",
       "resource_id": "minecraft:worldgen/biome",
       "source_path": "net/minecraft/world/entity/variant/BiomeCheck.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/entity/variant/StructureCheck.java:12:20:RegistryCodecs.homogeneousList",
       "column": 20,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 12,
       "owner": "net.minecraft.world.entity.variant.StructureCheck",
       "registry_expression": "Registries.STRUCTURE",
       "resource_id": "minecraft:worldgen/structure",
       "source_path": "net/minecraft/world/entity/variant/StructureCheck.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/item/Instrument.java:37:58:RegistryFileCodec.create",
@@ -2043,22 +2065,24 @@
     {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:48:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 48,
       "owner": "net.minecraft.world.item.component.BlocksAttacks",
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/item/component/BlocksAttacks.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:63:7:ByteBufCodecs.holderSet",
@@ -2095,22 +2119,24 @@
     {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:141:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 141,
       "owner": "net.minecraft.world.item.component.BlocksAttacks.DamageReduction",
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/item/component/BlocksAttacks.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:150:10:ByteBufCodecs.holderSet",
@@ -2147,22 +2173,24 @@
     {
       "call_site": "net/minecraft/world/item/component/DamageResistant.java:16:20:RegistryCodecs.homogeneousList",
       "column": 20,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 16,
       "owner": "net.minecraft.world.item.component.DamageResistant",
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/item/component/DamageResistant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/DamageResistant.java:19:7:ByteBufCodecs.holderSet",
@@ -2219,22 +2247,24 @@
     {
       "call_site": "net/minecraft/world/item/component/Tool.java:62:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 62,
       "owner": "net.minecraft.world.item.component.Tool.Rule",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/item/component/Tool.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/Tool.java:69:10:ByteBufCodecs.holderSet",
@@ -2271,22 +2301,24 @@
     {
       "call_site": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java:19:20:RegistryCodecs.homogeneousList",
       "column": 20,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 19,
       "owner": "net.minecraft.world.item.consume_effects.RemoveStatusEffectsConsumeEffect",
       "registry_expression": "Registries.MOB_EFFECT",
       "resource_id": "minecraft:mob_effect",
       "source_path": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java:23:7:ByteBufCodecs.holderSet",
@@ -2446,22 +2478,24 @@
     {
       "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:66:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+      "decision": "All six HolderSets inside synchronized Enchantment.DIRECT_CODEC data are checked against the candidate registry revision. Top-level supported, primary, and exclusive identities retain direct-versus-tag form and resolve live tags on query; apply_mob_effect, explode, and summon_entity nested identities are recursively validated before the candidate commits, so failure is atomic.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#public static final Codec<Enchantment> DIRECT_CODEC",
+        "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/registries/tests.rs#fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-enchantment-synchronized",
       "kind": "persistent_holder_set_or_tag",
       "line": 66,
       "owner": "net.minecraft.world.item.enchantment.Enchantment",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:71:59:RegistryFixedCodec.create",
@@ -2516,62 +2550,68 @@
     {
       "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:683:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+      "decision": "All six HolderSets inside synchronized Enchantment.DIRECT_CODEC data are checked against the candidate registry revision. Top-level supported, primary, and exclusive identities retain direct-versus-tag form and resolve live tags on query; apply_mob_effect, explode, and summon_entity nested identities are recursively validated before the candidate commits, so failure is atomic.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#public static final Codec<Enchantment> DIRECT_CODEC",
+        "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/registries/tests.rs#fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-enchantment-synchronized",
       "kind": "persistent_holder_set_or_tag",
       "line": 683,
       "owner": "net.minecraft.world.item.enchantment.Enchantment.EnchantmentDefinition",
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:684:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+      "decision": "All six HolderSets inside synchronized Enchantment.DIRECT_CODEC data are checked against the candidate registry revision. Top-level supported, primary, and exclusive identities retain direct-versus-tag form and resolve live tags on query; apply_mob_effect, explode, and summon_entity nested identities are recursively validated before the candidate commits, so failure is atomic.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#public static final Codec<Enchantment> DIRECT_CODEC",
+        "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/registries/tests.rs#fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-enchantment-synchronized",
       "kind": "persistent_holder_set_or_tag",
       "line": 684,
       "owner": "net.minecraft.world.item.enchantment.Enchantment.EnchantmentDefinition",
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/Repairable.java:16:20:RegistryCodecs.homogeneousList",
       "column": 20,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 16,
       "owner": "net.minecraft.world.item.enchantment.Repairable",
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/enchantment/Repairable.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/Repairable.java:19:7:ByteBufCodecs.holderSet",
@@ -2608,122 +2648,132 @@
     {
       "call_site": "net/minecraft/world/item/enchantment/effects/ApplyMobEffect.java:26:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+      "decision": "All six HolderSets inside synchronized Enchantment.DIRECT_CODEC data are checked against the candidate registry revision. Top-level supported, primary, and exclusive identities retain direct-versus-tag form and resolve live tags on query; apply_mob_effect, explode, and summon_entity nested identities are recursively validated before the candidate commits, so failure is atomic.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#public static final Codec<Enchantment> DIRECT_CODEC",
+        "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/registries/tests.rs#fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-enchantment-synchronized",
       "kind": "persistent_holder_set_or_tag",
       "line": 26,
       "owner": "net.minecraft.world.item.enchantment.effects.ApplyMobEffect",
       "registry_expression": "Registries.MOB_EFFECT",
       "resource_id": "minecraft:mob_effect",
       "source_path": "net/minecraft/world/item/enchantment/effects/ApplyMobEffect.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/effects/ExplodeEffect.java:47:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+      "decision": "All six HolderSets inside synchronized Enchantment.DIRECT_CODEC data are checked against the candidate registry revision. Top-level supported, primary, and exclusive identities retain direct-versus-tag form and resolve live tags on query; apply_mob_effect, explode, and summon_entity nested identities are recursively validated before the candidate commits, so failure is atomic.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#public static final Codec<Enchantment> DIRECT_CODEC",
+        "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/registries/tests.rs#fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-enchantment-synchronized",
       "kind": "persistent_holder_set_or_tag",
       "line": 47,
       "owner": "net.minecraft.world.item.enchantment.effects.ExplodeEffect",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/item/enchantment/effects/ExplodeEffect.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/effects/SummonEntityEffect.java:25:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+      "decision": "All six HolderSets inside synchronized Enchantment.DIRECT_CODEC data are checked against the candidate registry revision. Top-level supported, primary, and exclusive identities retain direct-versus-tag form and resolve live tags on query; apply_mob_effect, explode, and summon_entity nested identities are recursively validated before the candidate commits, so failure is atomic.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#public static final Codec<Enchantment> DIRECT_CODEC",
+        "crates/bbb-world/src/registries/enchantments.rs#pub fn synchronized_enchantment_holder_sets",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/registries/tests.rs#fn synchronized_enchantment_holder_sets_follow_tags_and_reject_invalid_effects_atomically"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-enchantment-synchronized",
       "kind": "persistent_holder_set_or_tag",
       "line": 25,
       "owner": "net.minecraft.world.item.enchantment.effects.SummonEntityEffect",
       "registry_expression": "Registries.ENTITY_TYPE",
       "resource_id": "minecraft:entity_type",
       "source_path": "net/minecraft/world/item/enchantment/effects/SummonEntityEffect.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCost.java:21:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 21,
       "owner": "net.minecraft.world.item.enchantment.providers.EnchantmentsByCost",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCost.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCostWithDifficulty.java:22:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 22,
       "owner": "net.minecraft.world.item.enchantment.providers.EnchantmentsByCostWithDifficulty",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCostWithDifficulty.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/item/equipment/Equippable.java:51:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-client-components",
       "kind": "persistent_holder_set_or_tag",
       "line": 51,
       "owner": "net.minecraft.world.item.equipment.Equippable",
       "registry_expression": "Registries.ENTITY_TYPE",
       "resource_id": "minecraft:entity_type",
       "source_path": "net/minecraft/world/item/equipment/Equippable.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/equipment/Equippable.java:72:7:ByteBufCodecs.holderSet",
@@ -2858,42 +2908,44 @@
     {
       "call_site": "net/minecraft/world/item/trading/TradeSet.java:17:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 17,
       "owner": "net.minecraft.world.item.trading.TradeSet",
       "registry_expression": "Registries.VILLAGER_TRADE",
       "resource_id": "minecraft:villager_trade",
       "source_path": "net/minecraft/world/item/trading/TradeSet.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/item/trading/VillagerTrade.java:43:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 43,
       "owner": "net.minecraft.world.item.trading.VillagerTrade",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/world/item/trading/VillagerTrade.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/biome/Biome.java:59:53:RegistryFileCodec.create",
@@ -3360,62 +3412,65 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlocksPredicate.java:16:15:RegistryCodecs.homogeneousList",
       "column": 15,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 16,
       "owner": "net.minecraft.world.level.levelgen.blockpredicates.MatchingBlocksPredicate",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlocksPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/blockpredicates/MatchingFluidsPredicate.java:16:15:RegistryCodecs.homogeneousList",
       "column": 15,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 16,
       "owner": "net.minecraft.world.level.levelgen.blockpredicates.MatchingFluidsPredicate",
       "registry_expression": "Registries.FLUID",
       "resource_id": "minecraft:fluid",
       "source_path": "net/minecraft/world/level/levelgen/blockpredicates/MatchingFluidsPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/carver/CarverConfiguration.java:24:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 24,
       "owner": "net.minecraft.world.level.levelgen.carver.CarverConfiguration",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/carver/CarverConfiguration.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java:24:72:RegistryFileCodec.create",
@@ -3496,22 +3551,23 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/configurations/MultifaceGrowthConfiguration.java:33:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 33,
       "owner": "net.minecraft.world.level.levelgen.feature.configurations.MultifaceGrowthConfiguration",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/feature/configurations/MultifaceGrowthConfiguration.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/configurations/RootSystemConfiguration.java:19:13:TagKey.hashedCodec",
@@ -3536,22 +3592,23 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/configurations/SpringConfiguration.java:18:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 18,
       "owner": "net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/feature/configurations/SpringConfiguration.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/configurations/VegetationPatchConfiguration.java:18:13:TagKey.hashedCodec",
@@ -3576,62 +3633,65 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java:21:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 21,
       "owner": "net.minecraft.world.level.levelgen.feature.rootplacers.MangroveRootPlacement",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java:22:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 22,
       "owner": "net.minecraft.world.level.levelgen.feature.rootplacers.MangroveRootPlacement",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/feature/trunkplacers/UpwardsBranchingTrunkPlacer.java:31:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 31,
       "owner": "net.minecraft.world.level.levelgen.feature.trunkplacers.UpwardsBranchingTrunkPlacer",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/feature/trunkplacers/UpwardsBranchingTrunkPlacer.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorPreset.java:15:72:RegistryFileCodec.create",
@@ -3655,22 +3715,23 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorSettings.java:38:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 38,
       "owner": "net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings",
       "registry_expression": "Registries.STRUCTURE_SET",
       "resource_id": "minecraft:worldgen/structure_set",
       "source_path": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorSettings.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java:30:61:RegistryFileCodec.create",
@@ -3770,22 +3831,23 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/Structure.java:276:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 276,
       "owner": "net.minecraft.world.level.levelgen.structure.Structure.StructureSettings",
       "registry_expression": "Registries.BIOME",
       "resource_id": "minecraft:worldgen/biome",
       "source_path": "net/minecraft/world/level/levelgen/structure/Structure.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/StructureSet.java:20:60:RegistryFileCodec.create",
@@ -3809,22 +3871,23 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/placement/ConcentricRingsStructurePlacement.java:40:10:RegistryCodecs.homogeneousList",
       "column": 10,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 40,
       "owner": "net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement",
       "registry_expression": "Registries.BIOME",
       "resource_id": "minecraft:worldgen/biome",
       "source_path": "net/minecraft/world/level/levelgen/structure/placement/ConcentricRingsStructurePlacement.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java:135:16:RegistryFileCodec.create",
@@ -3868,22 +3931,23 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/BlockRotProcessor.java:19:13:RegistryCodecs.homogeneousList",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 19,
       "owner": "net.minecraft.world.level.levelgen.structure.templatesystem.BlockRotProcessor",
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/levelgen/structure/templatesystem/BlockRotProcessor.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/ProtectedBlockProcessor.java:14:66:TagKey.hashedCodec",
@@ -4069,42 +4133,44 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java:37:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 37,
       "owner": "net.minecraft.world.level.storage.loot.functions.EnchantRandomlyFunction",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction.java:35:16:RegistryCodecs.homogeneousList",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 35,
       "owner": "net.minecraft.world.level.storage.loot.functions.EnchantWithLevelsFunction",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/ExplorationMapFunction.java:37:16:TagKey.codec",
@@ -4167,42 +4233,44 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/SetInstrumentFunction.java:20:15:RegistryCodecs.homogeneousList",
       "column": 15,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 20,
       "owner": "net.minecraft.world.level.storage.loot.functions.SetInstrumentFunction",
       "registry_expression": "Registries.INSTRUMENT",
       "resource_id": "minecraft:instrument",
       "source_path": "net/minecraft/world/level/storage/loot/functions/SetInstrumentFunction.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/SetRandomPotionFunction.java:21:15:RegistryCodecs.homogeneousList",
       "column": 15,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 28 factories are server datapack and runtime inputs for advancement predicates, variant selection, enchantment providers, villager trades, world generation, and loot. RegistrySynchronization sends only RegistryDataLoader.SYNCHRONIZED_REGISTRIES; none of these enclosing codecs is a synchronized client registry value, and variant presentation codecs send the selected result rather than the server spawn-condition HolderSet.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#public static final List<RegistryDataLoader.RegistryData<?>> SYNCHRONIZED_REGISTRIES",
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/variant/BiomeCheck.java#public record BiomeCheck",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#public class EnchantRandomlyFunction"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-server-only",
       "kind": "persistent_holder_set_or_tag",
       "line": 21,
       "owner": "net.minecraft.world.level.storage.loot.functions.SetRandomPotionFunction",
       "registry_expression": "Registries.POTION",
       "resource_id": "minecraft:potion",
       "source_path": "net/minecraft/world/level/storage/loot/functions/SetRandomPotionFunction.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java:20:16:Registry.holderByNameCodec",
