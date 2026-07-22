@@ -71,6 +71,9 @@ Initial confirmed gaps are:
   states; the current baby path stays at bind pose.
 - `Creaking` has a client-tick tearing-down eye-flicker state that is consumed by
   presentation and must be classified with the exact model/layer owner.
+- The reverse production inventory additionally found `GuardianModel` eye tracking: the current
+  camera entity is the ordinary target, a live synchronized attack target takes priority, and the
+  model converts the three world-space `GuardianRenderState` vectors into eye-part offsets.
 - `RabbitModel`'s random idle-head animation starts from client-local entity RNG;
   wire state cannot recover a particular official-client phase, so closure
   requires a source-backed `not-applicable` edge rather than a fabricated seed.

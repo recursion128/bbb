@@ -1,4 +1,5 @@
 use super::*;
+use crate::entity_models::model::EntityModel;
 
 use glam::Vec3;
 use std::f32::consts::PI;
@@ -236,6 +237,43 @@ fn guardian_whole_body_turns_with_the_look() {
     assert_ne!(
         entity_model_mesh(&[elder]).vertices,
         entity_model_mesh(&[elder.with_head_look(35.0, -20.0)]).vertices,
+    );
+}
+
+#[test]
+fn guardian_eye_tracks_target_with_vanilla_horizontal_and_vertical_formula() {
+    let base = EntityModelInstance::guardian(995, [0.0, 64.0, 0.0], 0.0, false);
+    let eye_offset = |tracking: GuardianEyeTrackingRenderState| {
+        let mut model = GuardianModel::new();
+        model.setup_anim(&base.with_guardian_eye_tracking(Some(tracking)));
+        model
+            .root()
+            .try_child(GUARDIAN_EYE_CHILD_NAME)
+            .expect("guardian eye child")
+            .pose
+            .offset
+    };
+
+    // Facing +Z and tracking a target east (+X) makes the rotated delta dot positive: Vanilla
+    // applies `sqrt(abs(dot)) * 2 * signum(dot) = +2`. A target above keeps bind y = 0.
+    assert_eq!(
+        eye_offset(GuardianEyeTrackingRenderState {
+            eye_position: [0.0, 65.0, 0.0],
+            look_direction: [0.0, 0.0, 1.0],
+            look_at_position: [1.0, 66.0, 0.0],
+        }),
+        [2.0, 0.0, -8.25]
+    );
+
+    // The mirrored west target flips the signed offset; a target at or below eye height moves the
+    // eye down exactly one model unit.
+    assert_eq!(
+        eye_offset(GuardianEyeTrackingRenderState {
+            eye_position: [0.0, 65.0, 0.0],
+            look_direction: [0.0, 0.0, 1.0],
+            look_at_position: [-1.0, 64.0, 0.0],
+        }),
+        [-2.0, 1.0, -8.25]
     );
 }
 

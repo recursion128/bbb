@@ -4212,6 +4212,9 @@ impl EntityStore {
                 position,
                 partial_ticks,
             ),
+            // Filled by `WorldStore::project_entity_model_source`; eye tracking selects either the
+            // current camera entity or an active cross-entity attack target.
+            guardian_eye_tracking: None,
             end_crystal_beam: self.end_crystal_beam_source(
                 identity.entity_type_id,
                 &metadata.data_values,

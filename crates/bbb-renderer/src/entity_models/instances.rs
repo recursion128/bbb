@@ -1465,6 +1465,11 @@ entity_render_state! {
     /// `clientSideAttackTime`, and attack scale. `None` (no beam) for a guardian with no active attack
     /// target and every other entity.
     (with_guardian_beam) guardian_beam: Option<GuardianBeamRenderState> = None;
+    /// Vanilla `GuardianRenderState.{eyePosition,lookDirection,lookAtPosition}`: the world-space
+    /// inputs `GuardianModel.setupAnim` converts into the eye child's x/y offsets. `None` when the
+    /// selected camera/attack-target entity is unavailable and for every non-guardian.
+    (with_guardian_eye_tracking) guardian_eye_tracking: Option<GuardianEyeTrackingRenderState> =
+        None;
     /// Vanilla `EnderDragonRenderState`'s procedural-animation inputs (`flapTime`, phase flags, egg
     /// distance, interpolated flight history), consumed by `EnderDragonModel.setupAnim` and the
     /// renderer's flight-history root yaw/pitch. `None` for every non-dragon.
@@ -3325,6 +3330,7 @@ mod tests {
                 breeze_inhale_seconds: -1.0,
                 breeze_long_jump_seconds: -1.0,
                 guardian_beam: None,
+                guardian_eye_tracking: None,
                 ender_dragon_animation: None,
                 leash_ropes: None,
                 chicken_flap: 0.0,

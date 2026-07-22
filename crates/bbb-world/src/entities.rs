@@ -43,7 +43,7 @@ mod status;
 mod store;
 mod updates;
 
-use animations::cat_is_lying;
+use animations::{cat_is_lying, guardian_attack_target_id};
 pub(crate) use animations::{spawn_random_unit_float, ATTACK_SWING_DURATION};
 pub use animations::{EntityClientAnimationState, PolarBearStandingAnimationState};
 pub(crate) use bbb_protocol::entity_types::*;
@@ -2592,6 +2592,11 @@ entity_model_source_state! {
     /// other entity.
     #[serde(default)]
     pub guardian_beam: Option<GuardianBeamSource>,
+    /// Vanilla `GuardianRenderer.extractRenderState` eye-tracking inputs. The active attack target
+    /// takes priority over the current camera entity; `None` when either selected entity is absent
+    /// and for every non-guardian.
+    #[serde(default)]
+    pub guardian_eye_tracking: Option<GuardianEyeTrackingSource>,
     /// Vanilla `EndCrystalRenderState.beamOffset`: present when an end crystal has a synced
     /// `DATA_BEAM_TARGET` block position. This is the target block center minus the crystal's
     /// interpolated position; `None` for a crystal without a target and every non-crystal.
@@ -2650,6 +2655,16 @@ pub struct GuardianBeamSource {
     pub eye_height: f32,
     pub attack_time: f32,
     pub attack_scale: f32,
+}
+
+/// Vanilla `GuardianRenderState` eye-tracking projection consumed by `GuardianModel.setupAnim`.
+/// Positions and the guardian view vector remain world-space doubles, matching Vanilla `Vec3` until
+/// the renderer derives the eye part's two model-space offsets.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct GuardianEyeTrackingSource {
+    pub eye_position: [f64; 3],
+    pub look_direction: [f64; 3],
+    pub look_at_position: [f64; 3],
 }
 
 /// Vanilla `EndCrystalRenderer.extractRenderState` beam projection. `beam_offset` is
@@ -3887,6 +3902,8 @@ impl WorldStore {
         if let Some(dragon) = source.ender_dragon_animation.as_mut() {
             dragon.distance_to_egg = self.ender_dragon_distance_to_egg_sqr(target.position);
         }
+        source.guardian_eye_tracking =
+            self.guardian_eye_tracking_source(&source, partial_ticks, targets);
         // The rope states need world light samples at both endpoints, so the leash
         // projection lives here on the store-and-light layer rather than in `model_source`.
         source.leash_ropes = self
@@ -3969,6 +3986,50 @@ impl WorldStore {
         source.outline_color = self.entity_outline_color(&source);
         source.show_extra_ears = self.resolve_player_extra_ears(target.entity_id);
         Some(source)
+    }
+
+    /// Mirrors `GuardianRenderer.getEntityToLookAt` and its render-state extraction. An active
+    /// attack-target id deliberately does not fall back to the camera when the referenced entity is
+    /// missing or is not living: Vanilla's `getActiveAttackTarget()` returns `null` in that case.
+    fn guardian_eye_tracking_source(
+        &self,
+        source: &EntityModelSourceState,
+        partial_ticks: f32,
+        targets: &[EntityRenderCandidateState],
+    ) -> Option<GuardianEyeTrackingSource> {
+        if !vanilla_entity_metadata_type_is_guardian(source.entity_type_id) {
+            return None;
+        }
+        let guardian =
+            self.probe_entity_camera_pose_at_partial_tick(source.entity_id, partial_ticks)?;
+        let attack_target_id =
+            guardian_attack_target_id(source.entity_type_id, &source.data_values);
+        let look_at_id = if attack_target_id != 0 {
+            let target = targets
+                .iter()
+                .find(|target| target.entity_id == attack_target_id)?;
+            if !vanilla_living_entity_type(target.entity_type_id) {
+                return None;
+            }
+            attack_target_id
+        } else {
+            self.local_player.camera.entity_id?
+        };
+        let look_at = self.probe_entity_camera_pose_at_partial_tick(look_at_id, partial_ticks)?;
+        let look_direction = calculate_view_vector(guardian.x_rot, guardian.y_rot);
+        Some(GuardianEyeTrackingSource {
+            eye_position: [
+                guardian.position.x,
+                guardian.position.y + f64::from(guardian.eye_height),
+                guardian.position.z,
+            ],
+            look_direction: [look_direction.x, look_direction.y, look_direction.z],
+            look_at_position: [
+                look_at.position.x,
+                look_at.position.y + f64::from(look_at.eye_height),
+                look_at.position.z,
+            ],
+        })
     }
 
     fn old_minecart_rail_render_state(

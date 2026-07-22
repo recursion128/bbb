@@ -9409,8 +9409,8 @@ fn entity_model_kind_projects_dolphin_baby_from_data() {
 fn entity_model_kind_maps_guardian_and_elder_guardian_to_real_model() {
     // Both guardians were placeholder render boxes; they now resolve to the real
     // `GuardianModel`. The variant follows the registered renderer class (the elder is the same
-    // mesh scaled 2.35×), with no synced data. The procedural spike pulse / withdrawal,
-    // eye tracking, tail sway, and attack beam are deferred entity-side state.
+    // mesh scaled 2.35×), with no synced data. Procedural spike withdrawal, eye tracking, tail sway,
+    // and the attack beam are carried by the separate world-to-render-state projection.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_GUARDIAN_ID, &[]),
         EntityModelKind::Guardian { elder: false }
@@ -9418,6 +9418,60 @@ fn entity_model_kind_maps_guardian_and_elder_guardian_to_real_model() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, &[]),
         EntityModelKind::Guardian { elder: true }
+    );
+}
+
+#[test]
+fn guardian_eye_tracking_projection_preserves_world_space_render_inputs() {
+    let source = WorldGuardianEyeTrackingSource {
+        eye_position: [1.0, 2.0, 3.0],
+        look_direction: [-0.25, 0.5, 0.75],
+        look_at_position: [4.0, 5.0, 6.0],
+    };
+    assert_eq!(
+        guardian_eye_tracking(Some(source)),
+        Some(GuardianEyeTrackingRenderState {
+            eye_position: source.eye_position,
+            look_direction: source.look_direction,
+            look_at_position: source.look_at_position,
+        })
+    );
+    assert_eq!(guardian_eye_tracking(None), None);
+}
+
+#[test]
+fn guardian_instance_carries_world_projected_camera_eye_target() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_rotation(
+        330,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        [0.0, 64.0, 0.0],
+        0.0,
+        0.0,
+        0.0,
+    ));
+    world.apply_add_entity(protocol_add_entity(
+        331,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [5.0, 66.0, 0.0],
+    ));
+    assert!(world.apply_set_camera(SetCamera { camera_id: 331 }));
+
+    let projected = world
+        .entity_model_sources_at_partial_tick(1.0)
+        .into_iter()
+        .find(|source| source.entity_id == 330)
+        .unwrap()
+        .guardian_eye_tracking;
+    let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 330)
+        .unwrap();
+
+    assert!(projected.is_some());
+    assert_eq!(
+        instance.render_state.guardian_eye_tracking,
+        guardian_eye_tracking(projected)
     );
 }
 

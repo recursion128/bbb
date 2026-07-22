@@ -578,6 +578,97 @@ fn entity_model_sources_project_guardian_attack_beam() {
 }
 
 #[test]
+fn entity_model_sources_project_guardian_eye_target_with_attack_priority() {
+    let accessors = guardian_metadata_accessors();
+    let add_at =
+        |id: i32, type_id: i32, position: [f64; 3], y_rot: f32, x_rot: f32| ProtocolAddEntity {
+            id,
+            uuid: default_entity_uuid(),
+            entity_type_id: type_id,
+            position: ProtocolVec3d {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot,
+            y_rot,
+            y_head_rot: y_rot,
+            data: 0,
+        };
+    let tracking = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 80)
+            .unwrap()
+            .guardian_eye_tracking
+    };
+    let eye_position = |store: &WorldStore, id: i32| {
+        let pose = store
+            .probe_entity_camera_pose_at_partial_tick(id, 0.0)
+            .unwrap();
+        [
+            pose.position.x,
+            pose.position.y + f64::from(pose.eye_height),
+            pose.position.z,
+        ]
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_at(
+        80,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        [0.0, 64.0, 0.0],
+        0.0,
+        0.0,
+    ));
+    store.apply_add_entity(add_at(
+        81,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        [-10.0, 63.0, 0.0],
+        0.0,
+        0.0,
+    ));
+    store.apply_add_entity(add_at(
+        82,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [10.0, 66.0, 0.0],
+        0.0,
+        0.0,
+    ));
+    assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 82 }));
+
+    // With no attack target, `GuardianRenderer.getEntityToLookAt` selects the current camera.
+    let camera_tracking = tracking(&store).expect("guardian tracks the camera entity");
+    assert_eq!(camera_tracking.eye_position, eye_position(&store, 80));
+    assert_eq!(camera_tracking.look_at_position, eye_position(&store, 82));
+    assert!((camera_tracking.look_direction[0]).abs() < 1.0e-6);
+    assert!((camera_tracking.look_direction[1]).abs() < 1.0e-6);
+    assert!((camera_tracking.look_direction[2] - 1.0).abs() < 1.0e-6);
+
+    // A live synchronized attack target takes priority over the camera.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![protocol_int_data(accessors.attack_target_data_id, 81)],
+    }));
+    assert_eq!(
+        tracking(&store).unwrap().look_at_position,
+        eye_position(&store, 81)
+    );
+
+    // Vanilla does not fall back to the camera while a nonzero attack id resolves to no living
+    // entity (`Guardian.getActiveAttackTarget()` is null).
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![81],
+        }),
+        1
+    );
+    assert!(tracking(&store).is_none());
+}
+
+#[test]
 fn entity_model_sources_project_end_crystal_beam_target() {
     // Vanilla `EndCrystal.DATA_BEAM_TARGET` is Optional<BlockPos> id 8. `EndCrystalRenderer`
     // projects `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)` into

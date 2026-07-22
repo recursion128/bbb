@@ -173,7 +173,7 @@ pub enum EntityModelKind {
     },
     /// `GuardianModel` (`elder = false`) or the same mesh scaled 2.35× by
     /// `GuardianModel.ELDER_GUARDIAN_SCALE` (`elder = true`). The procedural spike pulse /
-    /// withdrawal, tail sway, and attack beam are projected; eye tracking stays deferred.
+    /// withdrawal, eye tracking, tail sway, and attack beam are projected.
     Guardian {
         elder: bool,
     },
@@ -1024,6 +1024,15 @@ pub struct GuardianBeamRenderState {
     pub eye_height: f32,
     pub attack_time: f32,
     pub attack_scale: f32,
+}
+
+/// Vanilla `GuardianRenderState` eye-tracking inputs. `GuardianModel.setupAnim` keeps these in
+/// world-space doubles while deriving the eye part's horizontal and vertical model-space offsets.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GuardianEyeTrackingRenderState {
+    pub eye_position: [f64; 3],
+    pub look_direction: [f64; 3],
+    pub look_at_position: [f64; 3],
 }
 
 /// Vanilla `EndCrystalRenderState.beamOffset`: target block center relative to the crystal position.

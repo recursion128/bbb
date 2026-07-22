@@ -1,4 +1,5 @@
 use super::{head_look_pose, PartPose, GUARDIAN_BODY, GUARDIAN_EYE, PART_POSE_ZERO};
+use crate::entity_models::catalog::GuardianEyeTrackingRenderState;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -189,7 +190,7 @@ const GUARDIAN_SPIKE_CHILD_NAMES: [&str; 12] =
     ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
 
 /// The eye is the head's thirteenth child (after the twelve spikes `"0"`..=`"11"`), index `"12"`.
-const GUARDIAN_EYE_CHILD_NAME: &str = "12";
+pub(in crate::entity_models) const GUARDIAN_EYE_CHILD_NAME: &str = "12";
 
 /// `tail0` is the head's fourteenth child (twelve spikes `"0"`..=`"11"`, then the eye `"12"`, then
 /// `tail0` `"13"`), and `tail1`/`tail2` are each the single (index-`"0"`) child of the segment above.
@@ -237,8 +238,8 @@ fn guardian_head_part() -> ModelPart {
 /// the model root. The elder variant is the same tree at the 2.35× scaled root transform (applied at
 /// the call site). Colored-only: `setup_anim` turns the head — and with it the whole guardian — to
 /// the look angles, pulses the twelve spikes in and out with the entity age, and sways the
-/// three-segment tail with the in-water swim accumulator (eye tracking and the attack beam stay
-/// deferred).
+/// eye toward the selected camera/attack target, and sways the three-segment tail with the in-water
+/// swim accumulator. The renderer-owned attack beam is submitted separately.
 pub(in crate::entity_models) struct GuardianModel {
     root: ModelPart,
 }
@@ -280,6 +281,16 @@ impl EntityModel for GuardianModel {
             self.root.child_mut(GUARDIAN_SPIKE_CHILD_NAMES[i]).pose =
                 guardian_spike_pose(i, age_pulse, withdrawal);
         }
+        // Vanilla `GuardianModel.setupAnim` keeps the extracted Vec3 values in world space until
+        // this model-owned formula. Targets above the guardian use the eye's bind y; targets at or
+        // below it move the eye one model unit down. Horizontal motion follows the signed square
+        // root of the guardian view vector dotted with the eye-to-target direction rotated +π/2.
+        if let Some(tracking) = instance.render_state.guardian_eye_tracking {
+            let [eye_x, eye_y] = guardian_eye_offset(tracking);
+            let eye = self.root.child_mut(GUARDIAN_EYE_CHILD_NAME);
+            eye.pose.offset[0] = eye_x;
+            eye.pose.offset[1] = eye_y;
+        }
         // Vanilla `GuardianModel.setupAnim`: `float swim = state.tailAnimation; tailParts[i].yRot =
         // sin(swim) * π * {0.05, 0.1, 0.15}`. The three tail segments are a `tail0 → tail1 → tail2`
         // chain; each bind pose is ZERO-rotation, so the sway is the segment's whole `yRot`. The
@@ -294,4 +305,35 @@ impl EntityModel for GuardianModel {
         let tail2 = tail1.child_mut(GUARDIAN_TAIL_NESTED_CHILD_NAME);
         tail2.pose.rotation[1] = sway * GUARDIAN_TAIL_YROT_SCALE[2];
     }
+}
+
+fn guardian_eye_offset(tracking: GuardianEyeTrackingRenderState) -> [f32; 2] {
+    let eye_y = if tracking.look_at_position[1] > tracking.eye_position[1] {
+        0.0
+    } else {
+        1.0
+    };
+    let delta_x = tracking.eye_position[0] - tracking.look_at_position[0];
+    let delta_z = tracking.eye_position[2] - tracking.look_at_position[2];
+    let length = (delta_x * delta_x + delta_z * delta_z).sqrt();
+    let (delta_x, delta_z) = if length < f64::from(1.0e-5_f32) {
+        (0.0, 0.0)
+    } else {
+        (delta_x / length, delta_z / length)
+    };
+    // `Vec3.yRot(π/2)` uses Vanilla's float trig before the double-vector multiply.
+    let cos = f64::from(std::f32::consts::FRAC_PI_2.cos());
+    let sin = f64::from(std::f32::consts::FRAC_PI_2.sin());
+    let rotated_x = delta_x * cos + delta_z * sin;
+    let rotated_z = delta_z * cos - delta_x * sin;
+    let dot = tracking.look_direction[0] * rotated_x + tracking.look_direction[2] * rotated_z;
+    let sign = if dot > 0.0 {
+        1.0
+    } else if dot < 0.0 {
+        -1.0
+    } else {
+        0.0
+    };
+    let eye_x = (dot.abs() as f32).sqrt() * 2.0 * sign;
+    [eye_x, eye_y]
 }

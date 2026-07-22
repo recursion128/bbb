@@ -160,6 +160,18 @@ pub(super) fn guardian_beam(
     })
 }
 
+/// Maps the world-owned `GuardianRenderer.extractRenderState` eye inputs onto the renderer-owned
+/// model state without deriving the eye pose in native.
+pub(super) fn guardian_eye_tracking(
+    tracking: Option<WorldGuardianEyeTrackingSource>,
+) -> Option<GuardianEyeTrackingRenderState> {
+    tracking.map(|tracking| GuardianEyeTrackingRenderState {
+        eye_position: tracking.eye_position,
+        look_direction: tracking.look_direction,
+        look_at_position: tracking.look_at_position,
+    })
+}
+
 /// Maps the projected leash ropes onto the renderer's fixed-size `EntityLeashRopesRenderState`
 /// (1:1 per rope; vanilla connections carry one rope, or four for a ghast-to-boat quad leash).
 /// `None` for an unleashed entity's empty projection.
