@@ -9555,7 +9555,7 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offers_wire_order",
             "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offer_with_supported_component_predicate",
-            "crates/bbb-protocol/src/packets/data_components.rs#decode_data_component_exact_predicate_type_ids",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_data_component_exact_predicate_summary",
             "vanilla:net/minecraft/network/protocol/game/ClientboundMerchantOffersPacket.java#STREAM_CODEC"
           ],
           "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
