@@ -16743,8 +16743,8 @@ fn hud_inventory_screen_projects_advancement_hover_tooltip() {
     let mut root = runtime_displayed_advancement("minecraft:story/root", None);
     root.requirements = vec![vec!["has_log".to_string()], vec!["has_planks".to_string()]];
     let display = root.display.as_mut().unwrap();
-    display.title = "Getting Wood".to_string();
-    display.description = "Punch a tree".to_string();
+    display.title = bbb_protocol::RichTextComponent::plain("Getting Wood");
+    display.description = bbb_protocol::RichTextComponent::plain("Punch a tree");
     display.frame_type = AdvancementFrameType::Challenge;
     world.apply_update_advancements(UpdateAdvancements {
         reset: true,
@@ -16877,8 +16877,8 @@ fn runtime_displayed_advancement(id: &str, parent: Option<&str>) -> AdvancementS
         id: id.to_string(),
         parent: parent.map(str::to_string),
         display: Some(AdvancementDisplaySummary {
-            title: id.to_string(),
-            description: String::new(),
+            title: bbb_protocol::RichTextComponent::plain(id),
+            description: bbb_protocol::RichTextComponent::plain(""),
             icon: AdvancementIconSummary {
                 item_id: 1,
                 count: 1,
@@ -16905,8 +16905,8 @@ fn advancement_widget_summary_for_test(
     bbb_world::AdvancementWidgetSummary {
         id: id.to_string(),
         parent_id: parent_id.map(str::to_string),
-        title: id.to_string(),
-        description: String::new(),
+        title: bbb_protocol::RichTextComponent::plain(id),
+        description: bbb_protocol::RichTextComponent::plain(""),
         icon: AdvancementIconSummary {
             item_id: 1,
             count: 1,

@@ -11,6 +11,7 @@ use crate::{
         VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
         VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
     },
+    RichTextComponent,
 };
 
 #[test]
@@ -870,8 +871,8 @@ fn decodes_update_advancements_packet_wire_order() {
                 id: "minecraft:story/root".to_string(),
                 parent: None,
                 display: Some(AdvancementDisplaySummary {
-                    title: "Root".to_string(),
-                    description: "Description".to_string(),
+                    title: RichTextComponent::plain("Root"),
+                    description: RichTextComponent::plain("Description"),
                     icon: AdvancementIconSummary {
                         item_id: 42,
                         count: 1,
@@ -914,6 +915,56 @@ fn decodes_update_advancements_packet_wire_order() {
             .to_string()
             .contains("trailing bytes after update advancements packet")
     );
+}
+
+#[test]
+fn decodes_update_advancements_rich_display_components() {
+    let title = styled_component_root("Root", "gold", true, " child");
+    let description = styled_component_root("Description", "green", false, " detail");
+    let mut payload = Encoder::new();
+    payload.write_bool(false);
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:story/root");
+    payload.write_bool(false);
+    payload.write_bool(true);
+    payload.write_bytes(&title);
+    payload.write_bytes(&description);
+    payload.write_var_i32(42);
+    payload.write_var_i32(1);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(1);
+    payload.write_i32(2);
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(1);
+    payload.write_string("done");
+    payload.write_bool(false);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_bool(true);
+
+    let PlayClientbound::UpdateAdvancements(packet) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected update advancements packet");
+    };
+    let display = packet.added[0].display.as_ref().unwrap();
+    assert_eq!(display.title.text(), "Root child");
+    assert_eq!(
+        display.title.component(),
+        &crate::decode_nbt_summary(&title).unwrap().unwrap()
+    );
+    assert_eq!(display.title.styled().len(), 1);
+    assert_eq!(display.title.styled()[0].style.color, Some(0xFF_AA00));
+    assert_eq!(display.title.styled()[0].style.bold, Some(true));
+    assert_eq!(display.description.text(), "Description detail");
+    assert_eq!(display.description.styled()[0].style.color, Some(0x55_FF55));
+    assert_eq!(display.frame_type, AdvancementFrameType::Challenge);
+    assert!(display.show_toast);
 }
 
 #[test]
@@ -965,8 +1016,8 @@ fn normalizes_update_advancements_identifiers() {
                 id: "minecraft:story/root".to_string(),
                 parent: Some("minecraft:story/parent".to_string()),
                 display: Some(AdvancementDisplaySummary {
-                    title: "Root".to_string(),
-                    description: "Description".to_string(),
+                    title: RichTextComponent::plain("Root"),
+                    description: RichTextComponent::plain("Description"),
                     icon: AdvancementIconSummary {
                         item_id: 42,
                         count: 1,
@@ -1169,6 +1220,25 @@ fn compound_with_string(name: &str, value: &str) -> Vec<u8> {
 fn nbt_string_root(value: &str) -> Vec<u8> {
     let mut payload = vec![8];
     write_mutf8(&mut payload, value);
+    payload
+}
+
+fn styled_component_root(text: &str, color: &str, bold: bool, extra: &str) -> Vec<u8> {
+    let mut payload = vec![10, 8];
+    write_mutf8(&mut payload, "text");
+    write_mutf8(&mut payload, text);
+    payload.push(8);
+    write_mutf8(&mut payload, "color");
+    write_mutf8(&mut payload, color);
+    payload.push(1);
+    write_mutf8(&mut payload, "bold");
+    payload.push(u8::from(bold));
+    payload.push(9);
+    write_mutf8(&mut payload, "extra");
+    payload.push(8);
+    payload.extend_from_slice(&1i32.to_be_bytes());
+    write_mutf8(&mut payload, extra);
+    payload.push(0);
     payload
 }
 

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::advancement_frame_types::AdvancementFrameType;
 use crate::codec::{Decoder, ProtocolError, Result};
+use crate::component::decode_rich_text_component_from_decoder;
+use crate::RichTextComponent;
 
 use super::super::{
     inventory::{self, DataComponentPatchSummary},
@@ -34,8 +36,8 @@ pub struct AdvancementSummary {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AdvancementDisplaySummary {
-    pub title: String,
-    pub description: String,
+    pub title: RichTextComponent,
+    pub description: RichTextComponent,
     pub icon: AdvancementIconSummary,
     pub frame_type: AdvancementFrameType,
     pub show_toast: bool,
@@ -127,8 +129,8 @@ fn decode_advancement_summary(decoder: &mut Decoder<'_>) -> Result<AdvancementSu
 fn decode_advancement_display_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<AdvancementDisplaySummary> {
-    let title = super::super::decode_component_summary_from_decoder(decoder)?;
-    let description = super::super::decode_component_summary_from_decoder(decoder)?;
+    let title = decode_rich_text_component_from_decoder(decoder)?;
+    let description = decode_rich_text_component_from_decoder(decoder)?;
     let icon = decode_advancement_icon_summary(decoder)?;
     let ordinal = decoder.read_var_i32()?;
     let frame_type = AdvancementFrameType::from_ordinal(ordinal).ok_or_else(|| {

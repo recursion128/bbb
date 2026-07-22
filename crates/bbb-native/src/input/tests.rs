@@ -21455,8 +21455,8 @@ fn input_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
 fn input_displayed_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
     let mut advancement = input_advancement(id, parent);
     advancement.display = Some(AdvancementDisplaySummary {
-        title: id.to_string(),
-        description: String::new(),
+        title: bbb_protocol::RichTextComponent::plain(id),
+        description: bbb_protocol::RichTextComponent::plain(""),
         icon: AdvancementIconSummary {
             item_id: 1,
             count: 1,

@@ -9320,7 +9320,7 @@ fn hud_advancements_screen(
     };
     fill_layers.extend(hover.fill_layers);
     let mut text_labels = advancements_screen_text_labels(
-        selected_tab.as_ref().map(|tab| tab.title.as_str()),
+        selected_tab.as_ref().map(|tab| tab.title.text()),
         window_x,
         window_y,
         done_button_x,
@@ -10124,7 +10124,7 @@ fn push_advancement_hover_boxes_and_text(
     inside_y: i32,
     screen_width: u32,
 ) {
-    let title_lines = advancement_title_lines(&widget.title);
+    let title_lines = advancement_title_lines(widget.title.text());
     let progress_text = advancement_progress_text(widget);
     let progress_width = progress_text
         .as_deref()
@@ -10141,7 +10141,7 @@ fn push_advancement_hover_boxes_and_text(
         .saturating_add(title_width)
         .saturating_add(max_progress_width);
     let description_lines =
-        advancement_wrap_text_lines(&widget.description, preferred_description_width);
+        advancement_wrap_text_lines(widget.description.text(), preferred_description_width);
     let tooltip_width = description_lines
         .iter()
         .filter_map(|line| hud_ascii_approx_text_width(line))

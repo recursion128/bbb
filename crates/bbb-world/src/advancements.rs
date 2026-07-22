@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary as ProtocolAdvancementCriterionProgressSummary,
@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::WorldStore;
 
 pub const MAX_ADVANCEMENT_ROOT_TABS: usize = 26;
+pub const MAX_ADVANCEMENT_TOAST_EVENTS: usize = 4096;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientAdvancementsState {
@@ -22,12 +23,25 @@ pub struct ClientAdvancementsState {
     pub selected_tab: Option<String>,
     #[serde(default)]
     pub root_order: Vec<String>,
+    #[serde(default)]
+    pub node_order: Vec<String>,
+    #[serde(default)]
+    pub toast_events: VecDeque<AdvancementToastEvent>,
+    #[serde(default)]
+    pub next_toast_sequence: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AdvancementToastEvent {
+    pub sequence: u64,
+    pub advancement_id: String,
+    pub display: bbb_protocol::packets::AdvancementDisplaySummary,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdvancementRootTabSummary {
     pub id: String,
-    pub title: String,
+    pub title: bbb_protocol::RichTextComponent,
     pub icon: ProtocolAdvancementIconSummary,
     pub background: Option<String>,
     pub display_index: usize,
@@ -37,8 +51,8 @@ pub struct AdvancementRootTabSummary {
 pub struct AdvancementWidgetSummary {
     pub id: String,
     pub parent_id: Option<String>,
-    pub title: String,
-    pub description: String,
+    pub title: bbb_protocol::RichTextComponent,
+    pub description: bbb_protocol::RichTextComponent,
     pub icon: ProtocolAdvancementIconSummary,
     pub frame_type: bbb_protocol::packets::AdvancementFrameType,
     pub x: i32,
@@ -58,12 +72,15 @@ impl WorldStore {
     }
 
     pub fn apply_update_advancements(&mut self, packet: ProtocolUpdateAdvancements) {
+        let reset = packet.reset;
+        let show_advancements = packet.show_advancements;
         self.counters.update_advancements_packets += 1;
-        if packet.reset {
+        if reset {
             self.counters.update_advancements_reset_packets += 1;
             self.advancements.advancements.clear();
             self.advancements.progress.clear();
             self.advancements.root_order.clear();
+            self.advancements.node_order.clear();
         }
         if packet.show_advancements {
             self.counters.update_advancements_show_packets += 1;
@@ -88,9 +105,31 @@ impl WorldStore {
                         .expect("checked above"),
                     progress,
                 );
+                let toast_display = (!reset
+                    && show_advancements
+                    && advancement_progress_is_done(
+                        self.advancements
+                            .advancements
+                            .get(&progress.id)
+                            .expect("checked above"),
+                        &progress,
+                    ))
+                .then(|| {
+                    self.advancements
+                        .advancements
+                        .get(&progress.id)
+                        .and_then(|advancement| advancement.display.as_ref())
+                        .filter(|display| display.show_toast)
+                        .cloned()
+                })
+                .flatten();
+                let advancement_id = progress.id.clone();
                 self.advancements
                     .progress
                     .insert(progress.id.clone(), progress);
+                if let Some(display) = toast_display {
+                    self.push_advancement_toast_event(advancement_id, display);
+                }
             } else {
                 self.counters.advancement_progress_updates_ignored += 1;
             }
@@ -149,6 +188,10 @@ impl WorldStore {
         widgets
     }
 
+    pub fn advancement_toast_events(&self) -> &VecDeque<AdvancementToastEvent> {
+        &self.advancements.toast_events
+    }
+
     pub fn ensure_advancements_screen_selected_tab(&mut self) -> Option<String> {
         if self
             .advancements
@@ -185,6 +228,7 @@ impl WorldStore {
         }
 
         if let Some(removed_advancement) = self.advancements.advancements.remove(id) {
+            self.advancements.node_order.retain(|node| node != id);
             if removed_advancement.parent.is_none() {
                 self.advancements.root_order.retain(|root| root != id);
             }
@@ -228,6 +272,9 @@ impl WorldStore {
             .advancements
             .advancements
             .insert(id.clone(), advancement);
+        if previous.is_none() {
+            self.advancements.node_order.push(id.clone());
+        }
         if previous
             .as_ref()
             .is_some_and(|advancement| advancement.parent.is_none() && !is_root)
@@ -275,11 +322,15 @@ impl WorldStore {
 
         let children: Vec<String> = self
             .advancements
-            .advancements
+            .node_order
             .iter()
-            .filter_map(|(child_id, advancement)| {
-                (advancement.parent.as_deref() == Some(id)).then(|| child_id.clone())
+            .filter(|child_id| {
+                self.advancements
+                    .advancements
+                    .get(*child_id)
+                    .is_some_and(|advancement| advancement.parent.as_deref() == Some(id))
             })
+            .cloned()
             .collect();
         for child in children {
             self.collect_advancement_widgets(&child, widgets);
@@ -345,6 +396,35 @@ impl WorldStore {
             .values()
             .map(|progress| progress.criteria.len())
             .sum();
+    }
+
+    fn push_advancement_toast_event(
+        &mut self,
+        advancement_id: String,
+        display: bbb_protocol::packets::AdvancementDisplaySummary,
+    ) {
+        let sequence = self.advancements.next_toast_sequence;
+        self.advancements.next_toast_sequence = self
+            .advancements
+            .next_toast_sequence
+            .checked_add(1)
+            .expect("advancement toast sequence overflow");
+        if self.advancements.toast_events.len() == MAX_ADVANCEMENT_TOAST_EVENTS {
+            self.advancements.toast_events.pop_front();
+            self.counters.advancement_toast_events_dropped = self
+                .counters
+                .advancement_toast_events_dropped
+                .saturating_add(1);
+        }
+        self.advancements
+            .toast_events
+            .push_back(AdvancementToastEvent {
+                sequence,
+                advancement_id,
+                display,
+            });
+        self.counters.advancement_toast_events =
+            self.counters.advancement_toast_events.saturating_add(1);
     }
 }
 
@@ -418,6 +498,7 @@ mod tests {
         AdvancementIconSummary, AdvancementProgressSummary, AdvancementSummary,
         DataComponentPatchSummary, SelectAdvancementsTab, UpdateAdvancements,
     };
+    use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue, RichTextComponent};
 
     #[test]
     fn select_advancements_tab_tracks_nullable_tab_and_counter() {
@@ -556,7 +637,7 @@ mod tests {
         let tabs = store.advancement_root_tabs();
         assert_eq!(tabs.len(), MAX_ADVANCEMENT_ROOT_TABS);
         assert_eq!(tabs[0].id, "minecraft:displayed/root_00");
-        assert_eq!(tabs[0].title, "minecraft:displayed/root_00");
+        assert_eq!(tabs[0].title.text(), "minecraft:displayed/root_00");
         assert_eq!(
             tabs[0].background.as_deref(),
             Some("minecraft:gui/advancements/backgrounds/stone")
@@ -670,26 +751,26 @@ mod tests {
         assert_eq!(widgets[0].x, 0);
         assert_eq!(widgets[0].y, 0);
         assert!(!widgets[0].done);
-        assert_eq!(widgets[1].id, "minecraft:story/hidden");
+        assert_eq!(widgets[1].id, "minecraft:story/mine_stone");
         assert_eq!(
             widgets[1].parent_id.as_deref(),
             Some("minecraft:story/root")
         );
-        assert!(widgets[1].hidden);
-        assert!(!widgets[1].done);
-        assert_eq!(widgets[2].id, "minecraft:story/mine_stone");
+        assert_eq!(widgets[1].title.text(), "minecraft:story/mine_stone");
+        assert_eq!(widgets[1].description.text(), "Break stone");
+        assert_eq!(widgets[1].frame_type, AdvancementFrameType::Goal);
+        assert_eq!(widgets[1].x, 56);
+        assert_eq!(widgets[1].y, 27);
+        assert!(widgets[1].done);
+        assert_eq!(widgets[1].progress_done, 2);
+        assert_eq!(widgets[1].progress_total, 2);
+        assert_eq!(widgets[2].id, "minecraft:story/hidden");
         assert_eq!(
             widgets[2].parent_id.as_deref(),
             Some("minecraft:story/root")
         );
-        assert_eq!(widgets[2].title, "minecraft:story/mine_stone");
-        assert_eq!(widgets[2].description, "Break stone");
-        assert_eq!(widgets[2].frame_type, AdvancementFrameType::Goal);
-        assert_eq!(widgets[2].x, 56);
-        assert_eq!(widgets[2].y, 27);
-        assert!(widgets[2].done);
-        assert_eq!(widgets[2].progress_done, 2);
-        assert_eq!(widgets[2].progress_total, 2);
+        assert!(widgets[2].hidden);
+        assert!(!widgets[2].done);
         assert_eq!(widgets[3].id, "minecraft:story/through_no_display");
         assert_eq!(
             widgets[3].parent_id.as_deref(),
@@ -797,6 +878,132 @@ mod tests {
         assert_eq!(counters.advancement_progress_criteria_tracked, 0);
     }
 
+    #[test]
+    fn update_advancements_retains_rich_display_and_packet_node_order() {
+        let mut child_a = displayed_advancement("minecraft:story/a", Some("minecraft:story/root"));
+        child_a.display.as_mut().unwrap().title = styled_component("Alpha", "gold", true);
+        let child_b = displayed_advancement("minecraft:story/b", Some("minecraft:story/root"));
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added: vec![
+                child_a,
+                child_b,
+                displayed_advancement("minecraft:story/root", None),
+            ],
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        });
+        store.ensure_advancements_screen_selected_tab();
+
+        assert_eq!(
+            store.advancements().node_order,
+            vec![
+                "minecraft:story/root",
+                "minecraft:story/a",
+                "minecraft:story/b"
+            ]
+        );
+        let widgets = store.selected_advancement_widgets();
+        assert_eq!(
+            widgets
+                .iter()
+                .map(|widget| widget.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "minecraft:story/root",
+                "minecraft:story/a",
+                "minecraft:story/b"
+            ]
+        );
+        assert_eq!(widgets[1].title.text(), "Alpha");
+        assert_eq!(widgets[1].title.styled()[0].style.color, Some(0xFF_AA00));
+        assert_eq!(widgets[1].title.styled()[0].style.bold, Some(true));
+    }
+
+    #[test]
+    fn completed_progress_queues_each_vanilla_eligible_toast_once() {
+        let mut toast = displayed_advancement("minecraft:story/toast", None);
+        toast.requirements = vec![vec!["done".to_string()]];
+        toast.display.as_mut().unwrap().show_toast = true;
+        toast.display.as_mut().unwrap().title = styled_component("Toast", "green", false);
+        let mut silent = displayed_advancement("minecraft:story/silent", None);
+        silent.requirements = vec![vec!["done".to_string()]];
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added: vec![toast, silent],
+            removed: Vec::new(),
+            progress: vec![progress("minecraft:story/toast", vec![("done", Some(1))])],
+            show_advancements: true,
+        });
+        assert!(store.advancement_toast_events().is_empty());
+
+        for obtained in [2, 3] {
+            store.apply_update_advancements(UpdateAdvancements {
+                reset: false,
+                added: Vec::new(),
+                removed: Vec::new(),
+                progress: vec![progress(
+                    "minecraft:story/toast",
+                    vec![("done", Some(obtained))],
+                )],
+                show_advancements: true,
+            });
+        }
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: false,
+            added: Vec::new(),
+            removed: Vec::new(),
+            progress: vec![
+                progress("minecraft:story/toast", vec![("done", Some(4))]),
+                progress("minecraft:story/silent", vec![("done", Some(4))]),
+                progress("minecraft:story/unknown", vec![("done", Some(4))]),
+            ],
+            show_advancements: false,
+        });
+
+        let events = store.advancement_toast_events();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].sequence, 0);
+        assert_eq!(events[1].sequence, 1);
+        assert_eq!(events[0].advancement_id, "minecraft:story/toast");
+        assert_eq!(events[0].display.title.text(), "Toast");
+        assert_eq!(
+            events[0].display.title.styled()[0].style.color,
+            Some(0x55_FF55)
+        );
+        assert_eq!(store.counters().advancement_toast_events, 2);
+        assert_eq!(store.counters().advancement_toast_events_dropped, 0);
+    }
+
+    #[test]
+    fn advancement_toast_handoff_is_bounded_and_level_scoped() {
+        let display = displayed_advancement("minecraft:story/toast", None)
+            .display
+            .unwrap();
+        let mut store = WorldStore::new();
+        for index in 0..=MAX_ADVANCEMENT_TOAST_EVENTS {
+            store.push_advancement_toast_event(format!("minecraft:test/{index}"), display.clone());
+        }
+        assert_eq!(
+            store.advancement_toast_events().len(),
+            MAX_ADVANCEMENT_TOAST_EVENTS
+        );
+        assert_eq!(store.advancement_toast_events()[0].sequence, 1);
+        assert_eq!(store.counters().advancement_toast_events_dropped, 1);
+
+        store.clear_client_level();
+        assert!(store.advancement_toast_events().is_empty());
+        assert_eq!(store.client_advancements().next_toast_sequence, 0);
+        assert_eq!(
+            store.counters().advancement_toast_events,
+            MAX_ADVANCEMENT_TOAST_EVENTS + 1
+        );
+        assert_eq!(store.counters().advancement_toast_events_dropped, 1);
+    }
+
     fn advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
         advancement_with_requirements(id, parent, Vec::new())
     }
@@ -804,8 +1011,8 @@ mod tests {
     fn displayed_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
         let mut advancement = advancement(id, parent);
         advancement.display = Some(AdvancementDisplaySummary {
-            title: id.to_string(),
-            description: "Break stone".to_string(),
+            title: bbb_protocol::RichTextComponent::plain(id),
+            description: bbb_protocol::RichTextComponent::plain("Break stone"),
             icon: AdvancementIconSummary {
                 item_id: 1,
                 count: 1,
@@ -819,6 +1026,24 @@ mod tests {
             y: 0.0,
         });
         advancement
+    }
+
+    fn styled_component(text: &str, color: &str, bold: bool) -> RichTextComponent {
+        RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String(text.to_string()),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String(color.to_string()),
+            },
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(i8::from(bold)),
+            },
+        ]))
+        .unwrap()
     }
 
     fn advancement_with_requirements(
