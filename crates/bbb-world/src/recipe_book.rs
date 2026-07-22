@@ -10,7 +10,7 @@ use bbb_protocol::packets::{
 use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::{recipes::ingredient_holder_set_is_resolved, WorldStore};
 
 const RECIPE_BOOK_TAB_ANIMATION_TICKS: u32 = 15;
 
@@ -28,6 +28,19 @@ impl WorldStore {
     pub fn apply_recipe_book_add(&mut self, packet: ProtocolRecipeBookAdd) {
         self.counters.recipe_book_add_packets += 1;
         self.counters.recipe_book_entries_received += packet.entries.len();
+        if !packet.entries.iter().all(|entry| {
+            entry
+                .contents
+                .crafting_requirements
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .all(|ingredient| {
+                    ingredient_holder_set_is_resolved(self.frozen_registry_access(), ingredient)
+                })
+        }) {
+            return;
+        }
         if packet.replace {
             self.counters.recipe_book_replace_packets += 1;
             self.recipe_book.known.clear();
@@ -200,6 +213,55 @@ mod tests {
         assert!(store.recipe_book().settings.crafting.open);
         assert!(store.recipe_book().settings.crafting.filtering);
         assert_eq!(store.counters().recipe_book_settings_packets, 0);
+    }
+
+    #[test]
+    fn recipe_book_add_resolves_all_ingredient_holder_sets_before_replacing_state() {
+        let mut store = WorldStore::new();
+        store.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![bbb_protocol::packets::RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                    tag: "example:crafting_inputs".to_string(),
+                    entries: vec![42, 43],
+                }],
+            }],
+        });
+
+        let mut tagged = recipe_entry(7, false, false);
+        tagged.contents.crafting_requirements = Some(vec![IngredientSummary {
+            tag: Some("example:crafting_inputs".to_string()),
+            item_ids: Vec::new(),
+        }]);
+        store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+            replace: true,
+            entries: vec![tagged],
+        });
+        let accepted = store.recipe_book().clone();
+
+        let mut missing_tag = recipe_entry(8, true, true);
+        missing_tag.contents.crafting_requirements = Some(vec![IngredientSummary {
+            tag: Some("example:missing".to_string()),
+            item_ids: Vec::new(),
+        }]);
+        store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+            replace: true,
+            entries: vec![missing_tag],
+        });
+        assert_eq!(store.recipe_book(), &accepted);
+
+        let mut invalid_direct = recipe_entry(9, true, true);
+        invalid_direct.contents.crafting_requirements = Some(vec![IngredientSummary {
+            tag: None,
+            item_ids: vec![i32::MAX],
+        }]);
+        store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+            replace: false,
+            entries: vec![invalid_direct],
+        });
+        assert_eq!(store.recipe_book(), &accepted);
+        assert_eq!(store.counters().recipe_book_add_packets, 3);
+        assert_eq!(store.counters().recipe_book_replace_packets, 1);
     }
 
     fn recipe_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {

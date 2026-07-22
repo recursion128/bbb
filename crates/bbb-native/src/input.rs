@@ -5795,13 +5795,21 @@ fn debug_food_component_snbt(
     Some(format!("{{{}}}", fields.join(", ")))
 }
 
+#[cfg(test)]
 fn debug_consumable_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    debug_consumable_component_snbt_with_context(patch, PersistentSnbtContext::default())
+}
+
+fn debug_consumable_component_snbt_with_context(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if patch.consumable_effect_count? != patch.consumable_effects.len() {
         return None;
     }
-    let on_consume_effects = debug_consume_effects_snbt(&patch.consumable_effects)?;
+    let on_consume_effects = debug_consume_effects_snbt(&patch.consumable_effects, context)?;
     let consumable = patch.consumable?;
     let consume_seconds = debug_range_checked_float_component_snbt(
         consumable.consume_seconds.to_bits(),
@@ -5838,10 +5846,18 @@ fn debug_consumable_component_snbt(
     Some(format!("{{{}}}", fields.join(", ")))
 }
 
+#[cfg(test)]
 fn debug_death_protection_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
 ) -> Option<String> {
-    let death_effects = debug_consume_effects_snbt(&patch.death_protection_effects)?;
+    debug_death_protection_component_snbt_with_context(patch, PersistentSnbtContext::default())
+}
+
+fn debug_death_protection_component_snbt_with_context(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    let death_effects = debug_consume_effects_snbt(&patch.death_protection_effects, context)?;
     if patch.death_protection_effects.is_empty() {
         Some("{}".to_string())
     } else {
@@ -5849,15 +5865,21 @@ fn debug_death_protection_component_snbt(
     }
 }
 
-fn debug_consume_effects_snbt(effects: &[ConsumeEffectSummary]) -> Option<String> {
+fn debug_consume_effects_snbt(
+    effects: &[ConsumeEffectSummary],
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
     let effects = effects
         .iter()
-        .map(debug_consume_effect_snbt)
+        .map(|effect| debug_consume_effect_snbt(effect, context))
         .collect::<Option<Vec<_>>>()?;
     Some(format!("[{}]", effects.join(", ")))
 }
 
-fn debug_consume_effect_snbt(effect: &ConsumeEffectSummary) -> Option<String> {
+fn debug_consume_effect_snbt(
+    effect: &ConsumeEffectSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
     match effect {
         ConsumeEffectSummary::ApplyEffects {
             effects,
@@ -5884,7 +5906,7 @@ fn debug_consume_effect_snbt(effect: &ConsumeEffectSummary) -> Option<String> {
         } => Some(format!(
             "{{type: {}, effects: {}}}",
             debug_snbt_string("minecraft:remove_effects"),
-            debug_mob_effect_holder_set_snbt(effect_registry_ids, effect_tag.as_deref())?
+            debug_mob_effect_holder_set_snbt(effect_registry_ids, effect_tag.as_deref(), context)?
         )),
         ConsumeEffectSummary::ClearAllEffects => Some(format!(
             "{{type: {}}}",
@@ -5918,25 +5940,14 @@ fn debug_consume_effect_snbt(effect: &ConsumeEffectSummary) -> Option<String> {
 fn debug_mob_effect_holder_set_snbt(
     effect_registry_ids: &[i32],
     effect_tag: Option<&str>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    if let Some(effect_tag) = effect_tag {
-        if !effect_registry_ids.is_empty() {
-            return None;
-        }
-        return Some(debug_snbt_string(&format!("#{effect_tag}")));
-    }
-
-    let effects = effect_registry_ids
-        .iter()
-        .map(|effect_id| {
-            vanilla_mob_effect_type(*effect_id).map(|effect| debug_snbt_string(effect.resource_id))
-        })
-        .collect::<Option<Vec<_>>>()?;
-    match effects.as_slice() {
-        [] => Some("[]".to_string()),
-        [effect] => Some(effect.clone()),
-        _ => Some(format!("[{}]", effects.join(", "))),
-    }
+    context.registry_holder_set_snbt(
+        "minecraft:mob_effect",
+        effect_registry_ids,
+        effect_tag,
+        |holder_id| vanilla_mob_effect_type(holder_id).map(|effect| effect.resource_id.to_string()),
+    )
 }
 
 fn debug_mob_effect_instance_snbt(effect: &MobEffectInstanceSummary) -> Option<String> {
@@ -6247,31 +6258,35 @@ fn debug_item_stack_template_list_snbt(
     Some(format!("[{items}]"))
 }
 
+#[cfg(test)]
 fn debug_repairable_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    let items = if let Some(tag) = patch.repairable_item_tag.as_deref() {
-        debug_snbt_string(&format!("#{tag}"))
-    } else {
-        let resource_ids = patch
-            .repairable_item_registry_ids
-            .iter()
-            .map(|item_id| item_runtime?.item_resource_id(*item_id))
-            .collect::<Option<Vec<_>>>()?;
-        match resource_ids.as_slice() {
-            [] => "[]".to_string(),
-            [resource_id] => debug_snbt_string(resource_id),
-            resource_ids => format!(
-                "[{}]",
-                resource_ids
-                    .iter()
-                    .map(|resource_id| debug_snbt_string(resource_id))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-        }
-    };
+    debug_repairable_component_snbt_with_context(
+        patch,
+        PersistentSnbtContext {
+            item_runtime,
+            ..Default::default()
+        },
+    )
+}
+
+fn debug_repairable_component_snbt_with_context(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    let items = context.registry_holder_set_snbt(
+        "minecraft:item",
+        &patch.repairable_item_registry_ids,
+        patch.repairable_item_tag.as_deref(),
+        |holder_id| {
+            context
+                .item_runtime
+                .and_then(|runtime| runtime.item_resource_id(holder_id))
+                .map(str::to_string)
+        },
+    )?;
     Some(format!("{{items: {items}}}"))
 }
 

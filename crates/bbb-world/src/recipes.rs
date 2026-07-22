@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::packets::{
+    IngredientSummary as ProtocolIngredientSummary,
     StonecutterSelectableRecipeSummary as ProtocolStonecutterSelectableRecipeSummary,
     UpdateRecipes as ProtocolUpdateRecipes,
 };
@@ -17,6 +18,11 @@ pub struct ClientRecipesState {
 impl WorldStore {
     pub fn apply_update_recipes(&mut self, packet: ProtocolUpdateRecipes) {
         self.counters.update_recipes_packets += 1;
+        if !packet.stonecutter_recipes.iter().all(|recipe| {
+            ingredient_holder_set_is_resolved(self.frozen_registry_access(), &recipe.input)
+        }) {
+            return;
+        }
 
         self.recipes.property_sets.clear();
         for property_set in packet.property_sets {
@@ -43,6 +49,24 @@ impl WorldStore {
         self.counters.recipe_property_set_items_tracked =
             self.recipes.property_sets.values().map(Vec::len).sum();
         self.counters.stonecutter_recipes_tracked = self.recipes.stonecutter_recipes.len();
+    }
+}
+
+pub(crate) fn ingredient_holder_set_is_resolved(
+    access: crate::FrozenRegistryAccess<'_>,
+    ingredient: &ProtocolIngredientSummary,
+) -> bool {
+    match (ingredient.tag.as_deref(), ingredient.item_ids.as_slice()) {
+        (Some(tag), []) => access.holder_set_by_tag("minecraft:item", tag).is_ok(),
+        (None, holder_ids) if !holder_ids.is_empty() => access
+            .holder_set_by_holder_ids("minecraft:item", holder_ids)
+            .is_ok_and(|holder_set| {
+                holder_set
+                    .entries
+                    .iter()
+                    .all(|entry| entry.resource_id != "minecraft:air")
+            }),
+        _ => false,
     }
 }
 
@@ -93,6 +117,43 @@ mod tests {
         assert_eq!(counters.recipe_property_sets_tracked, 1);
         assert_eq!(counters.recipe_property_set_items_tracked, 1);
         assert_eq!(counters.stonecutter_recipes_tracked, 0);
+    }
+
+    #[test]
+    fn update_recipes_resolves_named_item_holder_sets_and_rejects_invalid_packets_atomically() {
+        let mut store = WorldStore::new();
+        store.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![bbb_protocol::packets::RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                    tag: "example:cuttable".to_string(),
+                    entries: vec![42],
+                }],
+            }],
+        });
+
+        let mut tagged = stonecutter_entry(Vec::new(), vec![4, 77]);
+        tagged.input.tag = Some("example:cuttable".to_string());
+        store.apply_update_recipes(update_recipes(
+            vec![("minecraft:furnace_input", vec![42])],
+            vec![tagged],
+        ));
+        let accepted = store.recipes().clone();
+
+        let mut missing_tag = stonecutter_entry(Vec::new(), vec![4, 78]);
+        missing_tag.input.tag = Some("example:missing".to_string());
+        store.apply_update_recipes(update_recipes(
+            vec![("minecraft:smoker_input", vec![43])],
+            vec![missing_tag],
+        ));
+        assert_eq!(store.recipes(), &accepted);
+
+        store.apply_update_recipes(update_recipes(
+            Vec::new(),
+            vec![stonecutter_entry(vec![i32::MAX], vec![4, 79])],
+        ));
+        assert_eq!(store.recipes(), &accepted);
+        assert_eq!(store.counters().update_recipes_packets, 3);
     }
 
     #[test]

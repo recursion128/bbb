@@ -760,7 +760,12 @@ fn block_predicate_snbt(
     if let Some(holder_set) = &predicate.blocks {
         fields.push(format!(
             "blocks: {}",
-            block_holder_set_snbt(&blocks, &holder_set.registry_ids, holder_set.tag.as_deref())?
+            block_holder_set_snbt(
+                &blocks,
+                &holder_set.registry_ids,
+                holder_set.tag.as_deref(),
+                context,
+            )?
         ));
     }
     if let Some(state) = &predicate.state {
@@ -946,9 +951,9 @@ fn encode_food(
 fn encode_consumable(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_consumable_component_snbt(patch)
+    debug_consumable_component_snbt_with_context(patch, context)
 }
 
 fn encode_use_remainder(
@@ -978,7 +983,7 @@ fn encode_damage_resistant(
 fn encode_tool(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let tool = patch.tool.as_ref()?;
     if tool.damage_per_block < 0 {
@@ -994,7 +999,8 @@ fn encode_tool(
                 block_holder_set_snbt(
                     &blocks,
                     &rule.block_registry_ids,
-                    rule.block_tag.as_deref()
+                    rule.block_tag.as_deref(),
+                    context,
                 )?
             )];
             if let Some(bits) = rule.speed_bits {
@@ -1034,34 +1040,19 @@ fn block_holder_set_snbt(
     blocks: &BlockStateRegistry,
     registry_ids: &[i32],
     tag: Option<&str>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    if let Some(tag) = tag {
-        return registry_ids
-            .is_empty()
-            .then(|| debug_snbt_string(&format!("#{tag}")));
-    }
-    let resource_ids = registry_ids
-        .iter()
-        .map(|id| blocks.block_name_by_registry_id(*id))
-        .collect::<Option<Vec<_>>>()?;
-    Some(match resource_ids.as_slice() {
-        [] => "[]".to_string(),
-        [resource_id] => debug_snbt_string(resource_id),
-        resource_ids => format!(
-            "[{}]",
-            resource_ids
-                .iter()
-                .map(|resource_id| debug_snbt_string(resource_id))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+    context.registry_holder_set_snbt("minecraft:block", registry_ids, tag, |holder_id| {
+        blocks
+            .block_name_by_registry_id(holder_id)
+            .map(str::to_string)
     })
 }
 
 fn encode_equippable(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let equippable = patch.equippable.as_ref()?;
     let slot = vanilla_equipment_slot_by_id(equippable.slot_id)?.serialized_name;
@@ -1093,7 +1084,8 @@ fn encode_equippable(
             "allowed_entities: {}",
             entity_type_holder_set_snbt(
                 &allowed_entities.registry_ids,
-                allowed_entities.tag.as_deref()
+                allowed_entities.tag.as_deref(),
+                context,
             )?
         ));
     }
@@ -1128,27 +1120,13 @@ fn encode_equippable(
     Some(format!("{{{}}}", fields.join(", ")))
 }
 
-fn entity_type_holder_set_snbt(registry_ids: &[i32], tag: Option<&str>) -> Option<String> {
-    if let Some(tag) = tag {
-        return registry_ids
-            .is_empty()
-            .then(|| debug_snbt_string(&format!("#{tag}")));
-    }
-    let resource_ids = registry_ids
-        .iter()
-        .map(|id| vanilla_entity_resource_id_for_type_id(*id))
-        .collect::<Option<Vec<_>>>()?;
-    Some(match resource_ids.as_slice() {
-        [] => "[]".to_string(),
-        [resource_id] => debug_snbt_string(resource_id),
-        resource_ids => format!(
-            "[{}]",
-            resource_ids
-                .iter()
-                .map(|resource_id| debug_snbt_string(resource_id))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+fn entity_type_holder_set_snbt(
+    registry_ids: &[i32],
+    tag: Option<&str>,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    context.registry_holder_set_snbt("minecraft:entity_type", registry_ids, tag, |holder_id| {
+        vanilla_entity_resource_id_for_type_id(holder_id)
     })
 }
 
@@ -1182,7 +1160,7 @@ fn encode_repairable(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_repairable_component_snbt(patch, context.item_runtime)
+    debug_repairable_component_snbt_with_context(patch, context)
 }
 
 fn encode_tooltip_style(
@@ -1196,9 +1174,9 @@ fn encode_tooltip_style(
 fn encode_death_protection(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_death_protection_component_snbt(patch)
+    debug_death_protection_component_snbt_with_context(patch, context)
 }
 
 fn encode_blocks_attacks(
@@ -2266,6 +2244,31 @@ mod tests {
             )
         );
 
+        let mut world = WorldStore::new();
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+                &patch,
+                registry_context(&world),
+            ),
+            None
+        );
+        world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![bbb_protocol::packets::RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                    tag: "minecraft:mineable/pickaxe".to_string(),
+                    entries: vec![1],
+                }],
+            }],
+        });
+        assert!(encode_added_component_value_snbt_with_context(
+            component_id::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+            &patch,
+            registry_context(&world),
+        )
+        .is_some());
+
         patch.tool.as_mut().unwrap().rules[1].block_registry_ids[1] = 1168;
         assert_eq!(encode_added_component_value_snbt(28, &patch, None), None);
         patch.tool.as_mut().unwrap().rules[1].block_registry_ids[1] = 193;
@@ -2355,6 +2358,31 @@ mod tests {
                     .to_string()
             )
         );
+
+        let mut world = WorldStore::new();
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                &patch,
+                registry_context(&world),
+            ),
+            None
+        );
+        world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![bbb_protocol::packets::RegistryTags {
+                registry: "minecraft:entity_type".to_string(),
+                tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                    tag: "minecraft:skeletons".to_string(),
+                    entries: vec![0],
+                }],
+            }],
+        });
+        assert!(encode_added_component_value_snbt_with_context(
+            component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+            &patch,
+            registry_context(&world),
+        )
+        .is_some());
 
         patch.equippable.as_mut().unwrap().slot_id = 8;
         assert_eq!(encode_added_component_value_snbt(32, &patch, None), None);
@@ -2500,26 +2528,29 @@ mod tests {
             Some("\"minecraft:mace_smash\"".to_string())
         );
 
-        let world = world_with_registries(&[("minecraft:damage_type", &["example:custom"])]);
-        patch.damage_type_id = Some(0);
+        let world = world_with_registries(&[(
+            "minecraft:damage_type",
+            &["example:second", "example:first"],
+        )]);
+        patch.damage_type_id = Some(1);
         assert_eq!(
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
                 &patch,
                 registry_context(&world),
             ),
-            Some("\"example:custom\"".to_string())
+            Some("\"example:first\"".to_string())
         );
 
         patch.damage_type_id = None;
-        patch.damage_resistant_type_registry_ids = vec![0];
+        patch.damage_resistant_type_registry_ids = vec![0, 1];
         assert_eq!(
             encode_added_component_value_snbt_with_context(
                 component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
                 &patch,
                 registry_context(&world),
             ),
-            Some("{types: \"example:custom\"}".to_string())
+            Some("{types: [\"example:second\", \"example:first\"]}".to_string())
         );
 
         patch.damage_resistant_type_registry_ids.clear();
@@ -2527,6 +2558,93 @@ mod tests {
         assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
         patch.damage_type_id = Some(-1);
         assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
+    }
+
+    #[test]
+    fn fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags() {
+        use bbb_protocol::packets::{ConsumeEffectSummary, DataComponentPatchSummary};
+
+        let repairable = DataComponentPatchSummary {
+            repairable_item_tag: Some("example:repairs".to_string()),
+            ..Default::default()
+        };
+        let death_protection = DataComponentPatchSummary {
+            death_protection_effects: vec![ConsumeEffectSummary::RemoveEffects {
+                effect_registry_ids: Vec::new(),
+                effect_tag: Some("example:curable".to_string()),
+            }],
+            ..Default::default()
+        };
+        let mut world = WorldStore::new();
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+                &repairable,
+                registry_context(&world),
+            ),
+            None
+        );
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+                &death_protection,
+                registry_context(&world),
+            ),
+            None
+        );
+
+        world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![
+                bbb_protocol::packets::RegistryTags {
+                    registry: "minecraft:item".to_string(),
+                    tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                        tag: "example:repairs".to_string(),
+                        entries: vec![42],
+                    }],
+                },
+                bbb_protocol::packets::RegistryTags {
+                    registry: "minecraft:mob_effect".to_string(),
+                    tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                        tag: "example:curable".to_string(),
+                        entries: vec![0],
+                    }],
+                },
+            ],
+        });
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+                &repairable,
+                registry_context(&world),
+            ),
+            Some("{items: \"#example:repairs\"}".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+                &death_protection,
+                registry_context(&world),
+            ),
+            Some(
+                "{death_effects: [{type: \"minecraft:remove_effects\", effects: \"#example:curable\"}]}"
+                    .to_string()
+            )
+        );
+
+        world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![bbb_protocol::packets::RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: Vec::new(),
+            }],
+        });
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+                &repairable,
+                registry_context(&world),
+            ),
+            None
+        );
     }
 
     #[test]
