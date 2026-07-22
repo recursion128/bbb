@@ -827,8 +827,6 @@ Models and layers:
   part-list model.
 - Implement the remaining zombie-family and piglin-family armor nuances and
   held-item refinements.
-- Implement villager/illager live profiled-player skin presentation and the
-  illager arm pose.
 - Implement equine boost presentation and the remaining non-base-equine
   presentation.
 - Implement slime and magma-cube particle/audio coupling and crumbling.
