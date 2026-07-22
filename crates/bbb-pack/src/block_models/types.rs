@@ -16,6 +16,10 @@ impl BlockModelGuiLight {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlockModelDisplayContext {
+    /// Vanilla `ItemDisplayContext.NONE`. Block-model JSON has no display
+    /// transform entry for this context, so resolution falls back to identity.
+    #[serde(rename = "none")]
+    None,
     #[serde(rename = "thirdperson_lefthand")]
     ThirdPersonLeftHand,
     #[serde(rename = "thirdperson_righthand")]
@@ -51,6 +55,7 @@ impl BlockModelDisplayContext {
 
     pub(crate) fn index(self) -> usize {
         match self {
+            Self::None => panic!("NONE has no block-model display-transform slot"),
             Self::ThirdPersonLeftHand => 0,
             Self::ThirdPersonRightHand => 1,
             Self::FirstPersonLeftHand => 2,
@@ -97,6 +102,7 @@ pub struct BlockModelDisplayTransforms {
 impl BlockModelDisplayTransforms {
     pub fn get(&self, context: BlockModelDisplayContext) -> BlockModelDisplayTransform {
         match context {
+            BlockModelDisplayContext::None => BlockModelDisplayTransform::default(),
             BlockModelDisplayContext::ThirdPersonLeftHand => self.third_person_left_hand,
             BlockModelDisplayContext::ThirdPersonRightHand => self.third_person_right_hand,
             BlockModelDisplayContext::FirstPersonLeftHand => self.first_person_left_hand,

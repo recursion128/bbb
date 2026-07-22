@@ -64,6 +64,7 @@ impl RawBlockModelDisplayTransforms {
         context: BlockModelDisplayContext,
     ) -> Option<BlockModelDisplayTransform> {
         match context {
+            BlockModelDisplayContext::None => None,
             BlockModelDisplayContext::ThirdPersonLeftHand => self
                 .third_person_left_hand
                 .as_ref()

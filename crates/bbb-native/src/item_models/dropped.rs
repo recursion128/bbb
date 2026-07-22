@@ -167,7 +167,7 @@ pub(crate) fn entity_block_models(
     residency
 }
 
-fn block_item_variant_identity(properties: &BTreeMap<String, String>) -> Arc<str> {
+pub(super) fn block_item_variant_identity(properties: &BTreeMap<String, String>) -> Arc<str> {
     if properties.is_empty() {
         return Arc::from("default");
     }
@@ -849,6 +849,7 @@ fn special_foil_decal_pose_scale(context: BlockModelDisplayContext) -> f32 {
         | BlockModelDisplayContext::FirstPersonRightHand => 0.75,
         BlockModelDisplayContext::ThirdPersonLeftHand
         | BlockModelDisplayContext::ThirdPersonRightHand
+        | BlockModelDisplayContext::None
         | BlockModelDisplayContext::Head
         | BlockModelDisplayContext::Ground
         | BlockModelDisplayContext::Fixed
@@ -1911,6 +1912,72 @@ pub(super) fn bake_item_stack_at_transform(
     _flat_glint_translucent_meshes: &mut Vec<ItemModelMesh>,
     residency: &mut ItemModelResidencyFrame,
 ) {
+    bake_item_stack_at_transform_with_light_and_overlay(
+        stack,
+        world,
+        attach,
+        context,
+        left_hand,
+        owner_main_hand_left,
+        context_entity_type,
+        using_item,
+        using_item_ticks,
+        enchantment_keys,
+        trim_material_keys,
+        attribute_keys,
+        context_dimension,
+        block_fallback,
+        generated_fallback,
+        item_runtime,
+        terrain_textures,
+        _block_meshes,
+        _block_translucent_meshes,
+        _block_glint_meshes,
+        _block_glint_translucent_meshes,
+        _flat_meshes,
+        _flat_translucent_meshes,
+        _flat_glint_meshes,
+        _flat_glint_translucent_meshes,
+        residency,
+        ITEM_MODEL_FULL_BRIGHT_LIGHT,
+        ITEM_MODEL_NO_OVERLAY,
+    );
+}
+
+/// Display entities reuse the complete item-model resolution path but carry
+/// `EntityRenderer.getPackedLightCoords` instead of the historical full-bright
+/// attachment default.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
+    stack: &ItemStackSummary,
+    world: &WorldStore,
+    attach: Mat4,
+    context: BlockModelDisplayContext,
+    left_hand: bool,
+    owner_main_hand_left: Option<bool>,
+    context_entity_type: Option<&str>,
+    using_item: bool,
+    using_item_ticks: f32,
+    enchantment_keys: Option<&[String]>,
+    trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
+    block_fallback: BlockModelDisplayTransform,
+    generated_fallback: BlockModelDisplayTransform,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    _block_meshes: &mut Vec<ItemModelMesh>,
+    _block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    _block_glint_meshes: &mut Vec<ItemModelMesh>,
+    _block_glint_translucent_meshes: &mut Vec<ItemModelMesh>,
+    _flat_meshes: &mut Vec<ItemModelMesh>,
+    _flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    _flat_glint_meshes: &mut Vec<ItemModelMesh>,
+    _flat_glint_translucent_meshes: &mut Vec<ItemModelMesh>,
+    residency: &mut ItemModelResidencyFrame,
+    light: [f32; 2],
+    overlay: [f32; 2],
+) {
     let Some(item_id) = stack.item_id else {
         return;
     };
@@ -1947,8 +2014,8 @@ pub(super) fn bake_item_stack_at_transform(
                         source.clone(),
                         &[transform],
                         [1.0; 4],
-                        ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                        ITEM_MODEL_NO_OVERLAY,
+                        light,
+                        overlay,
                         foil,
                         target,
                     );
@@ -1962,8 +2029,8 @@ pub(super) fn bake_item_stack_at_transform(
                         source,
                         &[transform],
                         [1.0; 4],
-                        ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                        ITEM_MODEL_NO_OVERLAY,
+                        light,
+                        overlay,
                         foil,
                         target,
                     );
@@ -2019,8 +2086,8 @@ pub(super) fn bake_item_stack_at_transform(
             },
             &[transform],
             layer.tint,
-            ITEM_MODEL_FULL_BRIGHT_LIGHT,
-            ITEM_MODEL_NO_OVERLAY,
+            light,
+            overlay,
             foil,
             target,
         );

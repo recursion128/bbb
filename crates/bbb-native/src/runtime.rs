@@ -102,6 +102,7 @@ use crate::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
+        visible_display_entity_render_sources_at_partial_tick,
         visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick,
         EntityRenderVisibilityContext,
     },
@@ -146,12 +147,13 @@ use crate::{
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models_with_map_cache,
     item_models::{
-        dropped_item_models, entity_block_models, first_person_item_models_with_map_cache,
-        first_person_player_arms, held_item_models, item_pickup_particle_item_models,
-        ominous_item_spawner_models, world_attribute_keys, world_banner_pattern_tooltip_context,
-        world_enchantment_keys, world_instrument_tooltip_context,
-        world_jukebox_song_tooltip_context, world_painting_variant_tooltip_context,
-        world_trim_material_keys, world_trim_material_tooltip_context, world_trim_pattern_keys,
+        display_entity_item_models, dropped_item_models, entity_block_models,
+        first_person_item_models_with_map_cache, first_person_player_arms, held_item_models,
+        item_pickup_particle_item_models, ominous_item_spawner_models, world_attribute_keys,
+        world_banner_pattern_tooltip_context, world_enchantment_keys,
+        world_instrument_tooltip_context, world_jukebox_song_tooltip_context,
+        world_painting_variant_tooltip_context, world_trim_material_keys,
+        world_trim_material_tooltip_context, world_trim_pattern_keys,
         world_trim_pattern_tooltip_context,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
@@ -2857,6 +2859,20 @@ pub(crate) fn update_renderer_from_publication(
             },
             entity_render_extraction,
         );
+    let display_entity_item_models = display_entity_item_models(
+        visible_display_entity_render_sources_at_partial_tick(
+            world,
+            entity_partial_tick,
+            entity_render_extraction,
+        ),
+        world,
+        item_runtime,
+        terrain_textures,
+        camera_pose,
+        trim_material_keys.as_deref(),
+        enchantment_keys.as_deref(),
+        attribute_keys.as_deref(),
+    );
     let item_mid_started_at = Instant::now();
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
@@ -2970,6 +2986,12 @@ pub(crate) fn update_renderer_from_publication(
         entity_partial_tick,
     );
     let mut item_model_residency = dropped_item_models.residency;
+    item_model_residency
+        .assets
+        .extend(display_entity_item_models.residency.assets);
+    item_model_residency
+        .instances
+        .extend(display_entity_item_models.residency.instances);
     item_model_residency
         .assets
         .extend(ominous_item_spawner_models.residency.assets);

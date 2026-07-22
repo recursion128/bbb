@@ -43,6 +43,11 @@ pub(crate) struct TerrainTextureState {
     block_item_property_quads: RefCell<
         HashMap<(String, BTreeMap<String, String>), Option<Arc<[bbb_renderer::ItemModelQuad]>>>,
     >,
+    block_display_default_quads:
+        RefCell<HashMap<String, Option<Arc<[bbb_renderer::ItemModelQuad]>>>>,
+    block_display_property_quads: RefCell<
+        HashMap<(String, BTreeMap<String, String>), Option<Arc<[bbb_renderer::ItemModelQuad]>>>,
+    >,
     item_frame_border_quads: RefCell<HashMap<(bool, bool), Arc<[bbb_renderer::ItemModelQuad]>>>,
 }
 
@@ -74,6 +79,8 @@ impl Default for TerrainTextureState {
             animation: None,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
+            block_display_default_quads: RefCell::new(HashMap::new()),
+            block_display_property_quads: RefCell::new(HashMap::new()),
             item_frame_border_quads: RefCell::new(HashMap::new()),
         }
     }
@@ -239,6 +246,8 @@ impl TerrainTextureState {
             animation: None,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
+            block_display_default_quads: RefCell::new(HashMap::new()),
+            block_display_property_quads: RefCell::new(HashMap::new()),
             item_frame_border_quads: RefCell::new(HashMap::new()),
         }
     }
@@ -648,6 +657,79 @@ impl TerrainTextureState {
             .borrow_mut()
             .insert(key, quads.clone());
         quads
+    }
+
+    /// Bakes the block-state model used by `BlockDisplayRenderer`. Unlike an
+    /// inventory block item, Vanilla resolves weighted variants with the fixed
+    /// `BlockModelResolver.MODEL_SEED` (`42`) and applies no item display
+    /// transform.
+    pub(crate) fn block_display_quads(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<Arc<[bbb_renderer::ItemModelQuad]>> {
+        if properties.is_empty() {
+            if let Some(cached) = self.block_display_default_quads.borrow().get(block_name) {
+                return cached.clone();
+            }
+            let quads = self.build_block_display_quads(block_name, properties);
+            self.block_display_default_quads
+                .borrow_mut()
+                .insert(block_name.to_string(), quads.clone());
+            return quads;
+        }
+
+        let key = (block_name.to_string(), properties.clone());
+        if let Some(cached) = self.block_display_property_quads.borrow().get(&key) {
+            return cached.clone();
+        }
+        let quads = self.build_block_display_quads(block_name, properties);
+        self.block_display_property_quads
+            .borrow_mut()
+            .insert(key, quads.clone());
+        quads
+    }
+
+    fn build_block_display_quads(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<Arc<[bbb_renderer::ItemModelQuad]>> {
+        let model = self.block_models.as_ref()?.block_render_model_with_seed(
+            block_name,
+            properties,
+            Some(42),
+        )?;
+        let texture_indices = self
+            .fluid_texture_indices(block_name)
+            .unwrap_or_else(|| self.face_texture_indices(&model.face_textures));
+        let tint = self.face_tints(
+            block_name,
+            bbb_world::TerrainMaterialClass::Opaque,
+            &model.face_textures,
+            None,
+            None,
+            None,
+        );
+        let face_transparency = self.face_texture_transparencies(&model.face_textures);
+        let shape = self.terrain_render_shape_for_block(
+            block_name,
+            properties,
+            bbb_world::TerrainMaterialClass::Opaque,
+            model.shape,
+            texture_indices,
+            tint,
+            face_transparency,
+            None,
+            None,
+            None,
+        );
+        Some(Arc::from(bbb_renderer::terrain::bake_block_item_quads(
+            &shape,
+            texture_indices,
+            tint,
+            &self.atlas,
+        )))
     }
 
     fn build_block_item_quads(

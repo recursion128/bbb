@@ -100,7 +100,7 @@ use bbb_world::{
     vanilla_entity_renderer_culling_kind, vanilla_entity_type_illager_arm_pose_uses_celebrating,
     vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
     ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation, DisplayEntityCullingState,
-    EndCrystalBeamSource as WorldEndCrystalBeamSource,
+    DisplayEntityRenderSourceState, EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonAnimationSource as WorldEnderDragonAnimationSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
@@ -381,6 +381,7 @@ pub(crate) struct EntityRenderExtractionScratch {
     survivors: Vec<EntityRenderCandidateState>,
     candidate_index: HashMap<i32, usize>,
     sources: Vec<EntityModelSourceState>,
+    display_sources: Vec<DisplayEntityRenderSourceState>,
     instances: Vec<EntityModelInstance>,
     observation: EntityRenderExtractionObservation,
 }
@@ -561,6 +562,21 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
             .saturating_add(capacity_growths),
     };
     std::mem::take(&mut scratch.instances)
+}
+
+/// Projects the dedicated Display render sources for the exact survivor set
+/// produced by the immediately preceding visibility-first entity extraction.
+pub(crate) fn visible_display_entity_render_sources_at_partial_tick<'a>(
+    world: &WorldStore,
+    entity_partial_tick: f32,
+    scratch: &'a mut EntityRenderExtractionScratch,
+) -> &'a [DisplayEntityRenderSourceState] {
+    world.fill_display_entity_render_sources_for_candidates_at_partial_tick(
+        &scratch.survivors,
+        entity_partial_tick.clamp(0.0, 1.0),
+        &mut scratch.display_sources,
+    );
+    &scratch.display_sources
 }
 
 #[cfg(test)]

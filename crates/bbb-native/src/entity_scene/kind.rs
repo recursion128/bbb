@@ -288,9 +288,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                 ArrowModelTexture::Normal
             },
         },
-        VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID => {
-            placeholder("todo_block_display_bounds", 1.0, 1.0, 1.0)
-        }
+        VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => EntityModelKind::DragonFireball,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => EntityModelKind::EnderDragon,
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
@@ -358,9 +356,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
-        VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
-            placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
-        }
+        VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => EntityModelKind::LeashKnot,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => EntityModelKind::LlamaSpit,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {

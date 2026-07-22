@@ -4067,6 +4067,18 @@ impl WorldStore {
             })
     }
 
+    /// Resolves one synchronized block-state id into the model identity and
+    /// properties consumed by entity-owned block submissions such as
+    /// `BlockDisplayRenderer`.
+    pub fn entity_block_model_state(&self, state_id: i32) -> Option<EntityBlockModelState> {
+        self.registries
+            .block_state(state_id)
+            .map(|state| EntityBlockModelState {
+                name: state.name.clone(),
+                properties: state.properties.clone(),
+            })
+    }
+
     pub fn minecart_display_block_state(
         &self,
         entity_id: i32,

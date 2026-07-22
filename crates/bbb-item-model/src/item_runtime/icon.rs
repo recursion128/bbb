@@ -128,6 +128,7 @@ pub(super) fn item_model_id_for_stack<'a>(
 
 pub(super) fn item_display_context_name(context: BlockModelDisplayContext) -> &'static str {
     match context {
+        BlockModelDisplayContext::None => "none",
         BlockModelDisplayContext::ThirdPersonLeftHand => "thirdperson_lefthand",
         BlockModelDisplayContext::ThirdPersonRightHand => "thirdperson_righthand",
         BlockModelDisplayContext::FirstPersonLeftHand => "firstperson_lefthand",
