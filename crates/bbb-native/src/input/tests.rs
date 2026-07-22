@@ -4,7 +4,8 @@ use bbb_net::OutboundChatCommand;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
-    VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
 };
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_CYAN_ID,
@@ -118,8 +119,9 @@ use bbb_protocol::packets::{
     RenameItem, ResolvableProfileData, ResolvableProfileKind, SeenAdvancements, SelectBundleItem,
     SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
     SetEquipment, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate, TagQuery,
-    TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
+    SetStructureBlock, ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate,
+    StructureBlockMirror, StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind,
+    TagQuery, TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
     TestInstanceBlockStatus, UpdateAdvancements, Vec3d as ProtocolVec3d, Vec3i,
     WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
     VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
@@ -149,8 +151,9 @@ use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
     ChunkSection, ChunkState, CommandBlockEntityDataState, ItemEquipmentSlot, LightData,
     LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
-    SignBlockEntityTextState, TestInstanceBlockEntityDataState, TestInstanceBlockRunStatus,
-    TestInstanceBlockSizeState, WorldStore,
+    SignBlockEntityTextState, StructureBlockEntityDataState, StructureBlockSizeState,
+    TestInstanceBlockEntityDataState, TestInstanceBlockRunStatus, TestInstanceBlockSizeState,
+    WorldStore,
 };
 use std::{
     collections::BTreeMap,
@@ -1324,6 +1327,101 @@ fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
         light: LightData::default(),
     });
     world
+}
+
+fn world_with_structure_block(pos: BlockPos) -> WorldStore {
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let block_state_id = bbb_world::vanilla_block_state_id(
+        "minecraft:structure_block",
+        &BTreeMap::from([("mode".to_string(), "load".to_string())]),
+    )
+    .expect("vanilla structure block state");
+    let section_index = usize::try_from((pos.y + 64).div_euclid(16))
+        .expect("structure block lies in the overworld build height");
+    let record = BlockEntityRecord {
+        local_x: pos.x.rem_euclid(16) as u8,
+        y: i16::try_from(pos.y).unwrap(),
+        local_z: pos.z.rem_euclid(16) as u8,
+        type_id: VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID,
+        raw_nbt: vec![0],
+        nbt: None,
+        sign_text: None,
+        vault_shared_data: None,
+        decorated_pot_sherds: None,
+        banner_patterns: None,
+        end_gateway: None,
+        spawner: None,
+        command_block: None,
+        structure_block: Some(StructureBlockEntityDataState {
+            name: "example:initial".to_string(),
+            author: "builder".to_string(),
+            metadata: "initial data".to_string(),
+            offset: BlockPos { x: 1, y: -2, z: 3 },
+            size: StructureBlockSizeState { x: 4, y: 5, z: 6 },
+            mirror: StructureBlockMirror::FrontBack,
+            rotation: StructureBlockRotation::Clockwise90,
+            mode: StructureBlockMode::Load,
+            ignore_entities: false,
+            strict: true,
+            powered: false,
+            show_air: true,
+            show_bounding_box: false,
+            integrity_bits: 0.75_f32.to_bits(),
+            seed: 9,
+        }),
+        test_instance_block: None,
+        note_block_sound: None,
+    };
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..24)
+            .map(|index| ChunkSection {
+                non_empty_block_count: if index == section_index { 4096 } else { 0 },
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    if index == section_index {
+                        block_state_id
+                    } else {
+                        0
+                    },
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            })
+            .collect(),
+        block_entities: vec![record],
+        light: LightData::default(),
+    });
+    world
+}
+
+fn click_structure_block_editor(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    commands: &Option<mpsc::Sender<NetCommand>>,
+    rect: bbb_renderer::HudCommandBlockEditorRect,
+) -> bool {
+    input.handle_structure_block_editor_mouse_input(
+        counters,
+        world,
+        commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(rect.x + 1),
+            f64::from(rect.y + 1),
+        )),
+        PhysicalSize::new(320, 240),
+        &FixedCommandSuggestionTextMeasurer,
+    )
 }
 
 fn click_test_instance_editor(
@@ -18387,6 +18485,337 @@ fn test_instance_block_editor_cancel_escape_and_right_click_use_are_exact() {
     assert!(world.test_instance_block_editor().is_none());
     assert_eq!(counters.test_instance_block_action_commands_queued, 3);
     assert_eq!(counters.use_item_on_commands_queued, 1);
+}
+
+#[test]
+fn structure_block_editor_preloads_and_done_sends_clamped_exact_packet() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_structure_block(pos);
+    assert!(world.try_open_structure_block_editor(pos));
+    input.sync_structure_block_editor(&mut world, &mut counters, &commands);
+
+    let hud = input.structure_block_editor_hud_state().unwrap();
+    assert_eq!(hud.fields[0].text, "example:initial");
+    assert_eq!(hud.fields[1].text, "1");
+    assert_eq!(hud.fields[2].text, "-2");
+    assert_eq!(hud.fields[3].text, "3");
+    assert_eq!(hud.fields[4].text, "4");
+    assert_eq!(hud.fields[5].text, "5");
+    assert_eq!(hud.fields[6].text, "6");
+    assert_eq!(hud.fields[7].text, "0.75");
+    assert_eq!(hud.fields[8].text, "9");
+    assert_eq!(hud.fields[9].text, "initial data");
+    assert_eq!(hud.mode, StructureBlockMode::Load);
+    assert_eq!(hud.mirror, StructureBlockMirror::FrontBack);
+    assert_eq!(hud.rotation, StructureBlockRotation::Clockwise90);
+    assert!(hud.include_entities);
+    assert!(hud.strict);
+    assert!(!hud.show_bounding_box);
+
+    let editor = input.structure_block_editor.as_mut().unwrap();
+    for (field, value) in editor.fields.iter_mut().zip([
+        "example:saved",
+        "99",
+        "-99",
+        "invalid",
+        "99",
+        "-1",
+        "invalid",
+        "2.5",
+        "invalid",
+        "payload",
+    ]) {
+        field.text = value.to_string();
+    }
+    editor.mode = StructureBlockMode::Load;
+    editor.mirror = StructureBlockMirror::LeftRight;
+    editor.rotation = StructureBlockRotation::Counterclockwise90;
+    editor.include_entities = false;
+    editor.strict = false;
+    editor.show_air = true;
+    editor.show_bounding_box = true;
+
+    let done = bbb_renderer::hud_structure_block_editor_layout(PhysicalSize::new(320, 240)).done;
+    assert!(click_structure_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        done,
+    ));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SetStructureBlock(SetStructureBlock {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            update: StructureBlockUpdateKind::UpdateData,
+            mode: StructureBlockMode::Load,
+            name: "example:saved".to_string(),
+            offset: ProtocolBlockPos {
+                x: 48,
+                y: -48,
+                z: 0
+            },
+            size: Vec3i { x: 48, y: 0, z: 0 },
+            mirror: StructureBlockMirror::LeftRight,
+            rotation: StructureBlockRotation::Counterclockwise90,
+            data: "payload".to_string(),
+            ignore_entities: true,
+            strict: false,
+            show_air: true,
+            show_bounding_box: true,
+            integrity: 1.0,
+            seed: 0,
+        })
+    );
+    assert_eq!(counters.set_structure_block_commands_queued, 1);
+    assert!(!input.structure_block_editor_is_active());
+    assert!(world.structure_block_editor().is_none());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn structure_block_editor_save_load_and_detect_buttons_map_to_exact_updates() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let layout = bbb_renderer::hud_structure_block_editor_layout(PhysicalSize::new(320, 240));
+    for (mode, expected_update, rect) in [
+        (
+            StructureBlockMode::Save,
+            StructureBlockUpdateKind::SaveArea,
+            layout.action,
+        ),
+        (
+            StructureBlockMode::Load,
+            StructureBlockUpdateKind::LoadArea,
+            layout.action,
+        ),
+        (
+            StructureBlockMode::Save,
+            StructureBlockUpdateKind::ScanArea,
+            layout.detect,
+        ),
+    ] {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = world_with_structure_block(pos);
+        assert!(world.try_open_structure_block_editor(pos));
+        input.sync_structure_block_editor(&mut world, &mut counters, &commands);
+        input.structure_block_editor.as_mut().unwrap().mode = mode;
+        assert!(click_structure_block_editor(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            rect,
+        ));
+        let NetCommand::SetStructureBlock(packet) = rx.try_recv().unwrap() else {
+            panic!("structure block action must queue its typed packet");
+        };
+        assert_eq!(packet.update, expected_update);
+        assert_eq!(packet.mode, mode);
+        assert_eq!(counters.set_structure_block_commands_queued, 1);
+        assert!(!input.structure_block_editor_is_active());
+        assert!(rx.try_recv().is_err());
+    }
+}
+
+#[test]
+fn structure_block_editor_mode_visibility_and_controls_are_exact() {
+    use structure_block::StructureBlockEditorFocus as Focus;
+
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_structure_block(pos);
+    assert!(world.try_open_structure_block_editor(pos));
+    input.sync_structure_block_editor(&mut world, &mut counters, &commands);
+
+    for (mode, focuses) in [
+        (
+            StructureBlockMode::Save,
+            vec![
+                Focus::Name,
+                Focus::OffsetX,
+                Focus::OffsetY,
+                Focus::OffsetZ,
+                Focus::SizeX,
+                Focus::SizeY,
+                Focus::SizeZ,
+            ],
+        ),
+        (
+            StructureBlockMode::Load,
+            vec![
+                Focus::Name,
+                Focus::OffsetX,
+                Focus::OffsetY,
+                Focus::OffsetZ,
+                Focus::Integrity,
+                Focus::Seed,
+            ],
+        ),
+        (StructureBlockMode::Corner, vec![Focus::Name]),
+        (StructureBlockMode::Data, vec![Focus::Data]),
+    ] {
+        input.structure_block_editor.as_mut().unwrap().mode = mode;
+        input.structure_block_editor.as_mut().unwrap().focus = focuses[0];
+        for expected in &focuses {
+            assert_eq!(
+                input.structure_block_editor.as_ref().unwrap().focus,
+                *expected
+            );
+            input.handle_structure_block_editor_key(
+                &mut counters,
+                &mut world,
+                &commands,
+                KeyCode::Tab,
+                true,
+            );
+        }
+        assert_eq!(
+            input.structure_block_editor.as_ref().unwrap().focus,
+            focuses[0]
+        );
+    }
+
+    let layout = bbb_renderer::hud_structure_block_editor_layout(PhysicalSize::new(320, 240));
+    let editor = input.structure_block_editor.as_mut().unwrap();
+    editor.mode = StructureBlockMode::Load;
+    editor.focus = Focus::Name;
+    for rect in [
+        layout.mirror,
+        layout.rotations[2],
+        layout.include_entities,
+        layout.strict,
+        layout.option,
+    ] {
+        assert!(click_structure_block_editor(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            rect,
+        ));
+    }
+    let hud = input.structure_block_editor_hud_state().unwrap();
+    assert_eq!(hud.mirror, StructureBlockMirror::None);
+    assert_eq!(hud.rotation, StructureBlockRotation::Clockwise180);
+    assert!(!hud.include_entities);
+    assert!(!hud.strict);
+    assert!(hud.show_bounding_box);
+
+    input.structure_block_editor.as_mut().unwrap().mode = StructureBlockMode::Save;
+    assert!(click_structure_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.option,
+    ));
+    assert!(!input.structure_block_editor_hud_state().unwrap().show_air);
+}
+
+#[test]
+fn structure_block_editor_filters_names_cycles_modes_and_cancels_without_packet() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_structure_block(pos);
+    assert!(world.try_open_structure_block_editor(pos));
+    input.sync_structure_block_editor(&mut world, &mut counters, &commands);
+    {
+        let editor = input.structure_block_editor.as_mut().unwrap();
+        editor.focus = structure_block::StructureBlockEditorFocus::Name;
+        editor.fields[0].cursor = editor.fields[0].text.chars().count();
+        editor.fields[0].selection = 0;
+    }
+    assert!(input.handle_structure_block_editor_text(&world, "Bad Name"));
+    assert!(input.handle_structure_block_editor_text(&world, ":path/sub-1"));
+    assert_eq!(
+        input.structure_block_editor_hud_state().unwrap().fields[0].text,
+        "adame:path/sub-1"
+    );
+
+    let layout = bbb_renderer::hud_structure_block_editor_layout(PhysicalSize::new(320, 240));
+    assert!(click_structure_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.mode,
+    ));
+    assert_eq!(
+        input.structure_block_editor_hud_state().unwrap().mode,
+        StructureBlockMode::Corner
+    );
+    input.structure_block_editor.as_mut().unwrap().mode = StructureBlockMode::Corner;
+    input.pressed_keys.insert(KeyCode::AltLeft);
+    assert!(click_structure_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.mode,
+    ));
+    let hud = input.structure_block_editor_hud_state().unwrap();
+    assert_eq!(hud.mode, StructureBlockMode::Data);
+    assert_eq!(hud.focus_index, 9);
+
+    assert!(click_structure_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.cancel,
+    ));
+    assert!(!input.structure_block_editor_is_active());
+    assert_eq!(counters.set_structure_block_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    assert!(mouse::start_use_item(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        Some(CrosshairTarget::Block(
+            crate::crosshair::CrosshairBlockHit {
+                pos,
+                face: ProtocolDirection::Up,
+                cursor: [0.25, 0.5, 0.75],
+                inside: false,
+            }
+        )),
+        None,
+    ));
+    assert!(input.structure_block_editor_is_active());
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(!input.structure_block_editor_is_active());
+    assert!(rx.try_recv().is_err());
+
+    assert!(world.try_open_structure_block_editor(pos));
+    input.sync_structure_block_editor(&mut world, &mut counters, &commands);
+    assert!(world.open_local_inventory());
+    input.sync_structure_block_editor(&mut world, &mut counters, &commands);
+    assert!(!input.structure_block_editor_is_active());
+    assert!(world.structure_block_editor().is_none());
+    assert_eq!(counters.set_structure_block_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

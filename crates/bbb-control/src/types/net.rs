@@ -122,6 +122,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub set_command_block_commands_queued: usize,
     #[serde(default)]
+    pub set_structure_block_commands_queued: usize,
+    #[serde(default)]
     pub test_instance_block_action_commands_queued: usize,
     #[serde(default)]
     pub set_creative_mode_slot_commands_queued: usize,
@@ -464,10 +466,12 @@ mod tests {
         let mut value = serde_json::to_value(NetCounters::default()).unwrap();
         let object = value.as_object_mut().unwrap();
         object.remove("set_command_block_commands_queued");
+        object.remove("set_structure_block_commands_queued");
         object.remove("test_instance_block_action_commands_queued");
 
         let counters: NetCounters = serde_json::from_value(value).unwrap();
         assert_eq!(counters.set_command_block_commands_queued, 0);
+        assert_eq!(counters.set_structure_block_commands_queued, 0);
         assert_eq!(counters.test_instance_block_action_commands_queued, 0);
     }
 }

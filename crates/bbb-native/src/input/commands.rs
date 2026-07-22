@@ -15,8 +15,8 @@ use bbb_protocol::packets::{
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
     PlayerCommand, PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
     RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
-    SelectTradeCommand, SetBeacon, SetCommandBlock, SetCreativeModeSlot, SignUpdate,
-    SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
+    SelectTradeCommand, SetBeacon, SetCommandBlock, SetCreativeModeSlot, SetStructureBlock,
+    SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
     Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
@@ -274,6 +274,18 @@ pub(crate) fn queue_set_command_block_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SetCommandBlock(command)).is_ok() {
             counters.set_command_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_structure_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetStructureBlock,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetStructureBlock(command)).is_ok() {
+            counters.set_structure_block_commands_queued += 1;
         }
     }
 }

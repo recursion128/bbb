@@ -199,6 +199,7 @@ impl ClientInputState {
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open()
+            || self.structure_block_editor_is_active()
             || self.command_block_editor_is_active();
         if replaced_by_another_screen {
             world.close_test_instance_block_editor();

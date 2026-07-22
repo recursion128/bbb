@@ -21,8 +21,8 @@ use bbb_protocol::{
     },
     packets::{
         AdvancementFrameType, CommandBlockMode, GameType, ItemCostSummary, ItemStackSummary,
-        MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary,
-        TestInstanceBlockRotation, Vec3d,
+        MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, StructureBlockMirror,
+        StructureBlockMode, StructureBlockRotation, TestInstanceBlockRotation, Vec3d,
     },
     particle_types::{
         VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
@@ -34,10 +34,11 @@ use bbb_protocol::{
     RichTextComponent, MC_VERSION,
 };
 use bbb_renderer::{
-    hud_command_block_editor_layout, hud_test_instance_block_editor_layout, sign_text_base_color,
-    BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, ConduitModelPart, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine,
-    DebugTextBillboard, EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
+    hud_command_block_editor_layout, hud_structure_block_editor_layout,
+    hud_test_instance_block_editor_layout, sign_text_base_color, BlockDestroyOverlay,
+    BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment, CloudFrame, ConduitModelPart,
+    DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
+    EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorScreen,
@@ -54,7 +55,8 @@ use bbb_renderer::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
-    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStyledTextRun, HudSystemToast,
+    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
     HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
     HudVehicleHealth, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
@@ -2358,6 +2360,7 @@ pub(crate) fn advance_simulation(
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_command_block_editor(world, net_counters, net_commands);
+    input.sync_structure_block_editor(world, net_counters, net_commands);
     input.sync_test_instance_block_editor(world, net_counters, net_commands);
     let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed {
@@ -2942,6 +2945,15 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_command_block_editor_screen(input, item_runtime, surface_size)
     };
+    let hud_structure_block_editor_screen = if world.dialog_screen_is_open()
+        || hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || hud_stats_screen.is_some()
+    {
+        None
+    } else {
+        hud_structure_block_editor_screen(input, item_runtime, surface_size)
+    };
     let hud_test_instance_block_editor_screen = if world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -2956,6 +2968,7 @@ pub(crate) fn update_renderer_from_publication(
         || hud_stats_screen.is_some()
         || hud_sign_editor_screen.is_some()
         || hud_command_block_editor_screen.is_some()
+        || hud_structure_block_editor_screen.is_some()
         || hud_test_instance_block_editor_screen.is_some()
     {
         None
@@ -3471,6 +3484,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_screen_blur,
             hud_sign_editor_screen,
             hud_command_block_editor_screen,
+            hud_structure_block_editor_screen,
             hud_test_instance_block_editor_screen,
             hud_pause_screen,
             hud_stats_screen,
@@ -5453,6 +5467,149 @@ fn hud_command_block_editor_screen(
         track_output_hovered: hovered(layout.track_output),
         done_hovered: hovered(layout.done),
         cancel_hovered: hovered(layout.cancel),
+    })
+}
+
+fn hud_structure_block_editor_screen(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudStructureBlockEditorScreen> {
+    let state = input.structure_block_editor_hud_state()?;
+    let layout = hud_structure_block_editor_layout(surface_size);
+    let hovered = |rect: bbb_renderer::HudCommandBlockEditorRect| {
+        state
+            .mouse_position
+            .is_some_and(|(x, y)| rect.contains(x, y))
+    };
+    let fields = std::array::from_fn(|index| {
+        let field = &state.fields[index];
+        HudStructureBlockEditorTextField {
+            text: field.text.clone(),
+            cursor: field.cursor,
+            selection: field.selection,
+            focused: state.focus_index == index,
+            hovered: hovered(layout.fields[index]),
+            max_length: field.max_utf16_units,
+        }
+    });
+    let (mode, mode_key, mode_fallback) = match state.mode {
+        StructureBlockMode::Save => (HudStructureBlockMode::Save, "save", "Save"),
+        StructureBlockMode::Load => (HudStructureBlockMode::Load, "load", "Load"),
+        StructureBlockMode::Corner => (HudStructureBlockMode::Corner, "corner", "Corner"),
+        StructureBlockMode::Data => (HudStructureBlockMode::Data, "data", "Data"),
+    };
+    let (mirror_key, mirror_fallback) = match state.mirror {
+        StructureBlockMirror::None => ("mirror.none", "|"),
+        StructureBlockMirror::LeftRight => ("mirror.left_right", "< >"),
+        StructureBlockMirror::FrontBack => ("mirror.front_back", "^ v"),
+    };
+    let rotation = match state.rotation {
+        StructureBlockRotation::None => "0",
+        StructureBlockRotation::Clockwise90 => "90",
+        StructureBlockRotation::Clockwise180 => "180",
+        StructureBlockRotation::Counterclockwise90 => "270",
+    };
+    let on_off = |value: bool| {
+        localized_gui_text(
+            item_runtime,
+            if value { "options.on" } else { "options.off" },
+            if value { "On" } else { "Off" },
+        )
+    };
+    let (option_key, option_fallback) = if state.mode == StructureBlockMode::Load {
+        ("structure_block.show_boundingbox", "Show Bounding Box")
+    } else {
+        ("structure_block.show_air", "Show Air")
+    };
+
+    Some(HudStructureBlockEditorScreen {
+        title: localized_gui_text(
+            item_runtime,
+            "block.minecraft.structure_block",
+            "Structure Block",
+        ),
+        name_label: localized_gui_text(
+            item_runtime,
+            "structure_block.structure_name",
+            "Structure Name",
+        ),
+        position_label: localized_gui_text(
+            item_runtime,
+            "structure_block.position",
+            "Relative Position",
+        ),
+        size_label: localized_gui_text(item_runtime, "structure_block.size", "Structure Size"),
+        integrity_label: localized_gui_text(
+            item_runtime,
+            "structure_block.integrity",
+            "Structure Integrity and Seed",
+        ),
+        data_label: localized_gui_text(
+            item_runtime,
+            "structure_block.custom_data",
+            "Custom Data Tag Name",
+        ),
+        include_entities_label: localized_gui_text(
+            item_runtime,
+            "structure_block.include_entities",
+            "Include Entities",
+        ),
+        strict_label: localized_gui_text(item_runtime, "structure_block.strict", "Strict"),
+        detect_label: localized_gui_text(
+            item_runtime,
+            "structure_block.detect_size",
+            "Detect Structure Size and Position",
+        ),
+        option_label: localized_gui_text(item_runtime, option_key, option_fallback),
+        mode_description: localized_gui_text(
+            item_runtime,
+            &format!("structure_block.mode_info.{mode_key}"),
+            mode_fallback,
+        ),
+        fields,
+        mode,
+        mode_value: localized_gui_text(
+            item_runtime,
+            &format!("structure_block.mode.{mode_key}"),
+            mode_fallback,
+        ),
+        mirror_value: localized_gui_text(item_runtime, mirror_key, mirror_fallback),
+        rotation: rotation.to_string(),
+        include_entities: on_off(state.include_entities),
+        strict: on_off(state.strict),
+        option: on_off(if state.mode == StructureBlockMode::Load {
+            state.show_bounding_box
+        } else {
+            state.show_air
+        }),
+        action: localized_gui_text(
+            item_runtime,
+            if state.mode == StructureBlockMode::Load {
+                "structure_block.button.load"
+            } else {
+                "structure_block.button.save"
+            },
+            if state.mode == StructureBlockMode::Load {
+                "Load"
+            } else {
+                "Save"
+            },
+        ),
+        detect: localized_gui_text(item_runtime, "structure_block.button.detect_size", "Detect"),
+        done: localized_gui_text(item_runtime, "gui.done", "Done"),
+        cancel: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+        mode_hovered: hovered(layout.mode),
+        mirror_hovered: hovered(layout.mirror),
+        rotation_hovered: layout.rotations.map(hovered),
+        include_entities_hovered: hovered(layout.include_entities),
+        strict_hovered: hovered(layout.strict),
+        option_hovered: hovered(layout.option),
+        action_hovered: hovered(layout.action),
+        detect_hovered: hovered(layout.detect),
+        done_hovered: hovered(layout.done),
+        cancel_hovered: hovered(layout.cancel),
+        cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
     })
 }
 

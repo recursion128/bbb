@@ -192,6 +192,9 @@ impl SimulationInputRuntime {
                 self.cursor_position = None;
                 context
                     .input
+                    .handle_structure_block_editor_cursor_moved(None);
+                context
+                    .input
                     .handle_test_instance_block_editor_cursor_moved(None);
                 context
                     .input
@@ -286,6 +289,12 @@ impl SimulationInputRuntime {
                 self.surface_size,
                 &self.text_measurements,
             );
+            return;
+        }
+        if context
+            .input
+            .handle_structure_block_editor_cursor_moved(self.cursor_position)
+        {
             return;
         }
         if context
@@ -406,6 +415,7 @@ impl SimulationInputRuntime {
         let debug_options_open = context.input.debug_options_screen_is_open();
         let pause_open = context.input.debug_pause_screen_is_open();
         let command_entry_open = context.input.command_entry_is_active();
+        let structure_block_editor_open = context.input.structure_block_editor_is_active();
         let test_instance_block_editor_open = context.input.test_instance_block_editor_is_active();
         if dialog_open {
             context
@@ -458,6 +468,7 @@ impl SimulationInputRuntime {
             || debug_options_open
             || pause_open
             || command_entry_open
+            || structure_block_editor_open
             || test_instance_block_editor_open
         {
             self.request_cursor_capture(false, context.platform);
@@ -476,6 +487,7 @@ impl SimulationInputRuntime {
             && !debug_options_open
             && !pause_open
             && !command_entry_open
+            && !structure_block_editor_open
             && !test_instance_block_editor_open
             && !ordinary_pause_escape
         {
@@ -491,8 +503,9 @@ impl SimulationInputRuntime {
             state,
             self.surface_size,
         );
-        if (command_entry_open || test_instance_block_editor_open)
+        if (command_entry_open || structure_block_editor_open || test_instance_block_editor_open)
             && !context.input.command_entry_is_active()
+            && !context.input.structure_block_editor_is_active()
             && !context.input.test_instance_block_editor_is_active()
             && !simulation_wants_cursor(context.input, context.world)
         {
@@ -672,6 +685,7 @@ impl SimulationInputRuntime {
         let advancements_open = context.world.advancements_screen_is_open();
         let stats_open = context.world.stats_screen_is_open();
         let command_entry_open = context.input.command_entry_is_active();
+        let structure_block_editor_open = context.input.structure_block_editor_is_active();
         let test_instance_block_editor_open = context.input.test_instance_block_editor_is_active();
         if context.input.debug_options_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
@@ -690,6 +704,7 @@ impl SimulationInputRuntime {
         if sign_editor_open
             || container_open
             || command_entry_open
+            || structure_block_editor_open
             || test_instance_block_editor_open
         {
             self.request_cursor_capture(false, context.platform);
@@ -698,6 +713,7 @@ impl SimulationInputRuntime {
             && !sign_editor_open
             && !container_open
             && !command_entry_open
+            && !structure_block_editor_open
             && !test_instance_block_editor_open
         {
             return;
@@ -828,6 +844,23 @@ impl SimulationInputRuntime {
             );
             collect_dialog_open_uri_effects(context.world, &queued_effects);
             flush_platform_effects(&queued_effects, context.platform);
+            if !simulation_wants_cursor(context.input, context.world) {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+        if context.input.structure_block_editor_is_active() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_structure_block_editor_mouse_input(
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                button,
+                state,
+                self.cursor_position,
+                self.surface_size,
+                &self.text_measurements,
+            );
             if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
             }
@@ -1261,6 +1294,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
+        || world.structure_block_editor().is_some()
         || world.test_instance_block_editor().is_some()
 }
 

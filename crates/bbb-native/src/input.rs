@@ -173,6 +173,7 @@ mod component_patch;
 mod inventory;
 mod mouse;
 mod movement;
+mod structure_block;
 mod test_instance_block;
 pub(crate) mod text_edit;
 
@@ -209,8 +210,8 @@ pub(crate) use commands::{
     queue_rename_item_command, queue_request_game_rule_values_command, queue_request_stats_command,
     queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
     queue_set_command_block_command, queue_set_creative_mode_slot_command,
-    queue_sign_update_command, queue_spectate_entity_command, queue_teleport_to_entity_command,
-    queue_vehicle_move_command, select_hotbar_slot,
+    queue_set_structure_block_command, queue_sign_update_command, queue_spectate_entity_command,
+    queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
 use component_patch::{encode_added_component_value_snbt_with_context, PersistentSnbtContext};
 #[cfg(test)]
@@ -667,6 +668,7 @@ pub(crate) struct ClientInputState {
     merchant_focused_trade_row: Option<i32>,
     chat_entry: Option<ChatEntryState>,
     chat_scroll_lines: usize,
+    structure_block_editor: Option<structure_block::StructureBlockEditorInputState>,
     test_instance_block_editor: Option<test_instance_block::TestInstanceBlockEditorInputState>,
     #[cfg(test)]
     last_step: Option<Instant>,
@@ -1124,6 +1126,7 @@ impl ClientInputState {
             merchant_focused_trade_row: self.merchant_focused_trade_row,
             chat_entry: self.chat_entry.clone(),
             chat_scroll_lines: self.chat_scroll_lines,
+            structure_block_editor: self.structure_block_editor.clone(),
             test_instance_block_editor: self.test_instance_block_editor.clone(),
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
             ..Self::default()
@@ -1333,6 +1336,11 @@ impl ClientInputState {
         self.shift_left_down || self.shift_right_down
     }
 
+    pub(crate) fn alt_down(&self) -> bool {
+        self.pressed_keys.contains(&KeyCode::AltLeft)
+            || self.pressed_keys.contains(&KeyCode::AltRight)
+    }
+
     pub(crate) fn update_screen_modifier_keys(
         &mut self,
         physical_key: PhysicalKey,
@@ -1480,6 +1488,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.structure_block_editor().is_some()
             || world.test_instance_block_editor().is_some()
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()
@@ -10350,6 +10359,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if input.handle_structure_block_editor_key(counters, world, net_commands, code, pressed) {
+        return;
+    }
+
     if input.handle_test_instance_block_editor_key(counters, world, net_commands, code, pressed) {
         return;
     }
@@ -10664,6 +10677,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
     text: &str,
 ) {
     if !input.focused {
+        return;
+    }
+
+    if input.handle_structure_block_editor_text(world, text) {
         return;
     }
 
