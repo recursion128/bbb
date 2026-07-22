@@ -192,6 +192,19 @@ impl WorldStore {
                 return Err(err);
             }
         };
+        let command_block = if packet.block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID
+        {
+            match crate::command_blocks::decode_command_block_entity_data(&packet.raw_nbt) {
+                Ok(command_block) => Some(command_block),
+                Err(err) => {
+                    self.record_apply_error("block_entity_data", &err);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
         let note_block_sound = if packet.block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
         {
             match crate::chunks::decode_skull_note_block_sound(&packet.raw_nbt) {
@@ -222,6 +235,7 @@ impl WorldStore {
             banner_patterns,
             end_gateway,
             spawner,
+            command_block,
             note_block_sound,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
@@ -238,6 +252,7 @@ impl WorldStore {
             chunk.block_entities.push(record);
         }
         self.counters.block_entity_updates_applied += 1;
+        self.refresh_command_block_editor_from_authoritative_data(pos);
         Ok(true)
     }
 
@@ -437,6 +452,7 @@ impl WorldStore {
         self.chunks
             .retain(|chunk| chunk_is_in_view(view, chunk.pos));
         for pos in removed {
+            self.close_command_block_editor_in_chunk(pos);
             self.prune_moving_pistons_in_chunk(pos);
             self.discard_queued_light_updates_for_chunk(pos);
             self.mark_terrain_chunk_removed(pos);
@@ -453,6 +469,7 @@ impl WorldStore {
             return false;
         };
         self.chunks.remove(index);
+        self.close_command_block_editor_in_chunk(pos);
         self.prune_moving_pistons_in_chunk(pos);
         self.counters.chunks_forgotten += 1;
         self.mark_terrain_chunk_removed(pos);
@@ -580,7 +597,7 @@ impl WorldStore {
         Some(VaultConnectionParticleState { origin, targets })
     }
 
-    fn block_entity_record_at(&self, pos: BlockPos) -> Option<&BlockEntityRecord> {
+    pub(crate) fn block_entity_record_at(&self, pos: BlockPos) -> Option<&BlockEntityRecord> {
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
             z: pos.z.div_euclid(16),
@@ -1094,6 +1111,7 @@ impl WorldStore {
         }
         self.moving_pistons.retain(|moving| moving.pos != pos);
         self.mark_terrain_block_changed(pos);
+        self.reconcile_command_block_editor_after_block_change(pos);
         true
     }
 
@@ -1302,8 +1320,17 @@ fn changed_state_keeps_block_entity(old_block_name: &str, new_block_name: &str) 
         (VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID..=VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_GOLEM_STATUE_ID)
             .contains(&block_id)
     };
+    let is_command_block = |block_name: &str| {
+        matches!(
+            block_name,
+            "minecraft:command_block"
+                | "minecraft:chain_command_block"
+                | "minecraft:repeating_command_block"
+        )
+    };
     (is_copper_chest(old_block_id) && is_copper_chest(new_block_id))
         || (is_copper_golem_statue(old_block_id) && is_copper_golem_statue(new_block_id))
+        || (is_command_block(old_block_name) && is_command_block(new_block_name))
 }
 
 fn reconcile_block_entity_record(

@@ -5,6 +5,7 @@ pub use super::client_common::*;
 pub use super::client_features::*;
 pub use super::client_state::*;
 pub use super::client_ui::*;
+pub use super::command_blocks::*;
 pub use super::command_suggestions::*;
 pub use super::commands::*;
 pub use super::connection::*;

@@ -7,6 +7,7 @@ mod chest_lids;
 mod chunks;
 mod client;
 mod climate;
+mod command_blocks;
 mod commands;
 mod conduit_blocks;
 mod counters;

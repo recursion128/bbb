@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
     PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
     PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
     RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot,
-    SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
+    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
+    SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
 };
 use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
 use serde::{Deserialize, Serialize};
@@ -241,6 +241,7 @@ pub enum NetCommand {
     SeenAdvancements(SeenAdvancements),
     SelectTrade(SelectTradeCommand),
     SetBeacon(SetBeacon),
+    SetCommandBlock(SetCommandBlock),
     SetCreativeModeSlot(SetCreativeModeSlot),
     SignUpdate(SignUpdate),
     SpectateEntity(SpectateEntity),

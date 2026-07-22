@@ -10,9 +10,9 @@ use super::{
     send_player_command, send_player_input_command, send_player_move_command,
     send_recipe_book_change_settings, send_recipe_book_seen_recipe, send_rename_item,
     send_seen_advancements, send_select_bundle_item, send_select_trade, send_set_beacon,
-    send_set_creative_mode_slot, send_set_held_slot_command, send_sign_update,
-    send_spectate_entity, send_swing_command, send_teleport_to_entity, send_use_item,
-    send_use_item_on, send_vehicle_move_command,
+    send_set_command_block, send_set_creative_mode_slot, send_set_held_slot_command,
+    send_sign_update, send_spectate_entity, send_swing_command, send_teleport_to_entity,
+    send_use_item, send_use_item_on, send_vehicle_move_command,
 };
 use crate::{
     connection::RawConnection,
@@ -24,16 +24,16 @@ use bbb_protocol::{
     packets::{
         AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
         ChangeGameModeCommand, ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage,
-        ChatSessionUpdate, ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick,
-        ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
-        DataComponentPatchSummary, Difficulty, EditBook, EntityTagQuery, GameType,
-        HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
-        ItemStackSummary, LockDifficultyCommand, PaddleBoat, PickItemFromEntity,
+        ChatSessionUpdate, ClientCommandAction, CommandBlockMode, CommandSuggestionRequest,
+        ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
+        ContainerSlotStateChanged, DataComponentPatchSummary, Difficulty, EditBook, EntityTagQuery,
+        GameType, HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity,
+        InteractionHand, ItemStackSummary, LockDifficultyCommand, PaddleBoat, PickItemFromEntity,
         PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
         PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
         RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
-        SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate,
-        SpectateEntity, TeleportToEntity, Vec3d,
+        SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
+        SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
     },
 };
 use std::{
@@ -1670,6 +1670,46 @@ async fn send_set_beacon_encodes_set_beacon_packet() {
         SetBeacon {
             primary_effect: Some(1),
             secondary_effect: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_set_command_block_encodes_command_block_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection::from_stream(stream, None);
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("set command block command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_COMMAND_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -274_877_898_688);
+        assert_eq!(decoder.read_string(32_500).unwrap(), "say hello");
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_u8().unwrap(), 0b111);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_set_command_block(
+        &mut conn,
+        SetCommandBlock {
+            pos: BlockPos { x: -1, y: 64, z: 2 },
+            command: "say hello".to_string(),
+            mode: CommandBlockMode::Auto,
+            track_output: true,
+            conditional: true,
+            automatic: true,
         },
     )
     .await

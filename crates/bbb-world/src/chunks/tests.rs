@@ -2243,6 +2243,7 @@ fn applies_block_entity_data_update() {
             banner_patterns: None,
             end_gateway: None,
             spawner: None,
+            command_block: None,
             note_block_sound: None,
         }
     );

@@ -8,8 +8,8 @@ use bbb_protocol::packets::{
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
     PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
     RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-    ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
-    TeleportToEntity, UseItem, UseItemOn,
+    ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCreativeModeSlot, SignUpdate,
+    SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
 };
 use uuid::Uuid;
 
@@ -311,6 +311,14 @@ pub(crate) async fn send_select_trade(
 
 pub(crate) async fn send_set_beacon(conn: &mut RawConnection, packet: SetBeacon) -> Result<()> {
     let (id, payload) = packets::encode_play_set_beacon(packet)?;
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_set_command_block(
+    conn: &mut RawConnection,
+    packet: SetCommandBlock,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_set_command_block(&packet)?;
     conn.send_packet(id, &payload).await
 }
 

@@ -174,6 +174,15 @@ fn decode_block_entities(
         let banner_patterns = crate::chunks::decode_banner_patterns(&raw_nbt)?;
         let end_gateway = crate::chunks::decode_end_gateway_block_entity_data(&raw_nbt)?;
         let spawner = crate::chunks::decode_spawner_block_entity_data(&raw_nbt)?;
+        let command_block = if block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID
+        {
+            Some(crate::command_blocks::decode_command_block_entity_data(
+                &raw_nbt,
+            )?)
+        } else {
+            None
+        };
         let note_block_sound = if block_entity_type_id
             == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
         {
@@ -194,6 +203,7 @@ fn decode_block_entities(
             banner_patterns,
             end_gateway,
             spawner,
+            command_block,
             note_block_sound,
         });
     }
