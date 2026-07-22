@@ -1276,17 +1276,6 @@ back into a todo. Do not delete these.
   between adjacent leaves and `ModelBlockRenderer.forceOpaque` from the effective graphics
   option; add the same resource-remesh boundary without reintroducing block-name render-layer
   guesses. The exact 11-block leaves membership is generated and shared already.
-- **Light-update queue and section-neighbor rebuild parity.** Packet decode and
-  canonical mask/empty-mask merging and exact 3x3x3 section invalidation are
-  covered, but bbb still applies updates during net-event drain. Vanilla queues
-  them through `ClientLevel.queueLightUpdate` and consumes a bounded amount per
-  frame; retain the completed section revision/worker counters when that queue
-  boundary lands.
-- **ForgetLevelChunk queued-light runtime cache cleanup.** When the queued-light
-  owner lands, remove its values for every unloaded chunk section. Canonical
-  chunk/light data, typed debug-subscription chunk/block values, and last-chunk
-  GPU terrain are already removed; add the reverse test for the future queued
-  light owner so stale light presentation cannot survive the packet.
 - Complete the remaining synchronized biome positional visual fields beyond
   current fog/sky/water-fog colors and water-fog end distance. Biome replacement
   already invalidates the complete level-height 3x3 chunk neighborhood. All

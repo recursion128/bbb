@@ -2538,7 +2538,7 @@ mod tests {
     }
 
     #[test]
-    fn play_forget_level_chunk_keeps_runtime_cache_cleanup_open() {
+    fn play_forget_level_chunk_closes_queued_light_cleanup() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2547,14 +2547,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_FORGET_LEVEL_CHUNK"
             })
             .expect("play forget level chunk coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect", "tests"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -2646,7 +2642,7 @@ mod tests {
     }
 
     #[test]
-    fn play_level_chunk_with_light_keeps_typed_terrain_parity_open() {
+    fn play_level_chunk_with_light_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2655,17 +2651,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT"
             })
             .expect("play level chunk with light coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect", "tests"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -2699,7 +2688,7 @@ mod tests {
     }
 
     #[test]
-    fn play_light_update_keeps_vanilla_queue_and_neighbor_rebuild_open() {
+    fn play_light_update_closes_vanilla_queue_and_neighbor_rebuild() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2708,14 +2697,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_LIGHT_UPDATE"
             })
             .expect("play light update coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect", "tests"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

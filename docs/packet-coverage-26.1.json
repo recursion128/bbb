@@ -8597,7 +8597,8 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#forget_chunk",
-            "crates/bbb-world/src/chunks/tests.rs#forgets_loaded_chunk",
+            "crates/bbb-world/src/chunks/store.rs#discard_queued_light_updates_for_chunk",
+            "crates/bbb-world/src/chunks/tests.rs#forget_and_level_clear_discard_pending_light_without_stale_application",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleForgetLevelChunk"
           ],
           "gap": null,
@@ -8620,25 +8621,25 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#discard_queued_light_updates_for_chunk",
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
             "crates/bbb-native/src/terrain_runtime.rs#synchronize_empty_terrain_upload",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleForgetLevelChunk"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_forget_level_chunk",
             "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
-            "crates/bbb-world/src/chunks/tests.rs#forgets_loaded_chunk",
-            "crates/bbb-world/src/chunks/tests.rs#forget_missing_chunk_is_counted_but_not_applied",
+            "crates/bbb-world/src/chunks/tests.rs#forget_and_level_clear_discard_pending_light_without_stale_application",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters",
             "crates/bbb-native/src/terrain_runtime.rs#empty_world_transition_clears_incremental_caches_once"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -9031,21 +9032,24 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#insert_level_chunk_with_light",
+            "crates/bbb-world/src/chunks/store.rs#poll_queued_light_updates",
             "crates/bbb-world/src/chunks/decode.rs#decode_level_chunk_with_light",
+            "crates/bbb-world/src/chunks/tests.rs#decodes_level_chunk_with_light_structure",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLevelChunkWithLight"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_level_chunk_envelope",
-            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_oversized_level_chunk_section_buffer",
-            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_light_update_arrays_that_are_not_data_layers",
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_impossible_level_chunk_catalog_and_collection_domains",
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_impossible_light_mask_and_data_layer_cardinality",
+            "crates/bbb-world/src/chunks/tests.rs#light_validation_rejects_wrong_dimension_domains_before_mutation",
             "vanilla:net/minecraft/network/protocol/game/ClientboundLevelChunkWithLightPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -9056,24 +9060,28 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#poll_queued_light_updates",
+            "crates/bbb-native/src/runtime.rs#poll_queued_light_updates",
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLevelChunkWithLight"
+            "crates/bbb-native/src/simulation.rs#queued_light_poll_follows_the_single_network_drain_before_presentation_sync",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLevelChunkWithLight",
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#pollLightUpdates"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_level_chunk_envelope",
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_impossible_level_chunk_catalog_and_collection_domains",
             "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
             "crates/bbb-world/src/chunks/tests.rs#decodes_level_chunk_with_light_structure",
-            "crates/bbb-world/src/chunks/tests.rs#applies_light_update_to_existing_chunk_sections",
-            "crates/bbb-world/src/chunks/tests.rs#applies_biome_update_to_existing_chunk_sections",
-            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
+            "crates/bbb-world/src/chunks/tests.rs#light_validation_rejects_wrong_dimension_domains_before_mutation",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#network_drain_queues_light_until_the_runtime_poll_boundary"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -9205,9 +9213,10 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/chunks/store.rs#apply_light_update",
+            "crates/bbb-world/src/chunks/store.rs#queue_light_update",
+            "crates/bbb-world/src/chunks/store.rs#poll_queued_light_updates",
             "crates/bbb-world/src/chunks/light.rs#merge_light_data",
-            "crates/bbb-world/src/chunks/tests.rs#applies_light_update_to_existing_chunk_sections",
+            "crates/bbb-world/src/chunks/tests.rs#queued_light_updates_preserve_fifo_order_and_vanilla_poll_budget",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#applyLightData"
           ],
           "gap": null,
@@ -9216,7 +9225,7 @@
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_light_update_envelope",
-            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_light_update_arrays_that_are_not_data_layers",
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_impossible_light_mask_and_data_layer_cardinality",
             "vanilla:net/minecraft/network/protocol/game/ClientboundLightUpdatePacket.java#STREAM_CODEC",
             "vanilla:net/minecraft/network/protocol/game/ClientboundLightUpdatePacketData.java#DATA_LAYER_STREAM_CODEC"
           ],
@@ -9232,24 +9241,29 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#poll_queued_light_updates",
+            "crates/bbb-native/src/runtime.rs#poll_queued_light_updates",
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
+            "crates/bbb-native/src/simulation.rs#queued_light_poll_follows_the_single_network_drain_before_presentation_sync",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLightUpdatePacket",
-            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#queueLightUpdate"
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#queueLightUpdate",
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#pollLightUpdates"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_light_update_envelope",
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_impossible_light_mask_and_data_layer_cardinality",
             "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_light_and_biome_updates_to_world",
-            "crates/bbb-world/src/chunks/tests.rs#applies_light_update_to_existing_chunk_sections",
-            "crates/bbb-world/src/chunks/tests.rs#light_update_for_missing_chunk_is_counted_but_not_applied",
-            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
+            "crates/bbb-world/src/chunks/tests.rs#queued_light_updates_preserve_fifo_order_and_vanilla_poll_budget",
+            "crates/bbb-world/src/chunks/tests.rs#forget_and_level_clear_discard_pending_light_without_stale_application",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#network_drain_queues_light_until_the_runtime_poll_boundary"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
