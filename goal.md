@@ -316,6 +316,8 @@ event/particle/audio 已全量 complete
 `docs/entity-model-layers-closure-design.md`。
 已闭环的 `event/particle/audio` family 工程合同、owner 边界与门禁位置见
 `docs/entity-event-particle-audio-closure-design.md`。
+当前 `equipment/passenger/leash` family closure 的工程合同、owner 边界与门禁位置见
+`docs/entity-equipment-passenger-leash-closure-design.md`。
 
 规则：
 
