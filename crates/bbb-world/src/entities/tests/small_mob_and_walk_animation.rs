@@ -211,6 +211,287 @@ fn entity_model_sources_project_slime_squish_from_ground_transitions() {
     );
 }
 
+fn set_slime_on_ground(store: &mut WorldStore, id: i32, on_ground: bool) {
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id,
+        has_position: false,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground,
+    }));
+}
+
+fn set_slime_size(store: &mut WorldStore, id: i32, entity_type_id: i32, size: i32) {
+    let (data_id, _) =
+        vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id).unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id,
+        values: vec![protocol_int_data(data_id, size)],
+    }));
+}
+
+fn slime_landing_effect(
+    effects: &[EntityClientMovementEffectState],
+    entity_id: i32,
+) -> SlimeLandingParticleState {
+    effects
+        .iter()
+        .find_map(|effect| match effect {
+            EntityClientMovementEffectState::Particle(
+                EntityClientMovementParticleState::SlimeLanding(state),
+            ) if state.entity_id == entity_id => Some(state.clone()),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("missing slime landing effect for {entity_id}: {effects:?}"))
+}
+
+#[test]
+fn slime_entity_client_tick_emits_landing_particles_before_scaled_squish_sound() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_SLIME_ID,
+    ));
+    set_slime_size(&mut store, 82, VANILLA_ENTITY_TYPE_SLIME_ID, 2);
+    store.advance_entity_client_animations(1);
+    assert!(
+        store
+            .drain_entity_client_movement_effect_states()
+            .next()
+            .is_none(),
+        "the Vanilla default airborne flag is not a synthetic landing"
+    );
+    set_slime_on_ground(&mut store, 82, true);
+    let mut retained = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(effects.len(), 2);
+    assert!(matches!(
+        effects[0],
+        EntityClientMovementEffectState::Particle(EntityClientMovementParticleState::SlimeLanding(
+            _
+        ))
+    ));
+    let landing = slime_landing_effect(&effects, 82);
+    assert_eq!(landing.kind, SlimeLandingParticleKind::ItemSlime);
+    assert_eq!(landing.positions.len(), 34);
+    assert!(landing.positions.iter().all(|position| {
+        let x = position.x - 1.0;
+        let z = position.z + 2.0;
+        position.y == 64.0 && (x * x + z * z).sqrt() <= f64::from(1.04_f32)
+    }));
+    let EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+        entity_id: 82,
+        kind:
+            EntityClientMovementSoundKind::SlimeSquish {
+                magma_cube,
+                tiny,
+                volume,
+                pitch,
+            },
+        position,
+    }) = effects[1]
+    else {
+        panic!("landing sound must follow the complete particle batch: {effects:?}");
+    };
+    assert!(!magma_cube);
+    assert!(!tiny);
+    assert_eq!(volume, 0.8);
+    assert!((1.0..1.5).contains(&pitch));
+    assert_eq!(
+        position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0
+        }
+    );
+    assert!(
+        (store
+            .probe_entity(82)
+            .unwrap()
+            .client_animations
+            .slime
+            .unwrap()
+            .target_squish
+            + 0.3)
+            .abs()
+            < 1.0e-6
+    );
+
+    retained.advance_entity_client_animations(1);
+    assert_eq!(
+        retained
+            .drain_entity_client_movement_effect_states()
+            .collect::<Vec<_>>(),
+        effects,
+        "an immutable generation owns an independent copy of the slime RNG cursor"
+    );
+}
+
+#[test]
+fn slime_entity_client_tick_landing_radius_uses_current_scaled_dimensions() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        86,
+        VANILLA_ENTITY_TYPE_SLIME_ID,
+    ));
+    set_slime_size(&mut store, 86, VANILLA_ENTITY_TYPE_SLIME_ID, 2);
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 86,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    set_slime_on_ground(&mut store, 86, true);
+
+    store.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let landing = slime_landing_effect(&effects, 86);
+    assert_eq!(landing.positions.len(), 67);
+    assert!(landing.positions.iter().all(|position| {
+        let x = position.x - 1.0;
+        let z = position.z + 2.0;
+        (x * x + z * z).sqrt() <= f64::from(2.08_f32)
+    }));
+    assert!(landing.positions.iter().any(|position| {
+        let x = position.x - 1.0;
+        let z = position.z + 2.0;
+        (x * x + z * z).sqrt() > 1.04
+    }));
+}
+
+#[test]
+fn magma_cube_entity_client_tick_uses_flame_and_type_specific_target_decay() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+    ));
+    set_slime_size(&mut store, 83, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, 3);
+    set_slime_on_ground(&mut store, 83, true);
+
+    store.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let landing = slime_landing_effect(&effects, 83);
+    assert_eq!(landing.kind, SlimeLandingParticleKind::Flame);
+    assert_eq!(landing.positions.len(), 50);
+    assert!(effects.iter().any(|effect| matches!(
+        effect,
+        EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+            kind: EntityClientMovementSoundKind::SlimeSquish {
+                magma_cube: true,
+                tiny: false,
+                volume,
+                ..
+            },
+            ..
+        }) if *volume == 1.2
+    )));
+    assert!(
+        (store
+            .probe_entity(83)
+            .unwrap()
+            .client_animations
+            .slime
+            .unwrap()
+            .target_squish
+            + 0.45)
+            .abs()
+            < 1.0e-6
+    );
+
+    set_slime_on_ground(&mut store, 83, false);
+    store.advance_entity_client_animations(1);
+    assert!(store
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+    assert!(
+        (store
+            .probe_entity(83)
+            .unwrap()
+            .client_animations
+            .slime
+            .unwrap()
+            .target_squish
+            - 0.9)
+            .abs()
+            < 1.0e-6
+    );
+}
+
+#[test]
+fn silent_slime_entity_client_tick_consumes_pitch_rng_without_emitting_sound() {
+    let mut store = WorldStore::new();
+    for id in [84, 85] {
+        store.apply_add_entity(protocol_add_entity_with_type(
+            id,
+            VANILLA_ENTITY_TYPE_SLIME_ID,
+        ));
+        set_slime_on_ground(&mut store, id, true);
+    }
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 85,
+        values: vec![protocol_bool_data(accessors.silent_data_id, true)],
+    }));
+
+    for landing_number in 0..2 {
+        store.advance_entity_client_animations(1);
+        let effects = store
+            .drain_entity_client_movement_effect_states()
+            .collect::<Vec<_>>();
+        assert_eq!(slime_landing_effect(&effects, 84).positions.len(), 17);
+        assert_eq!(
+            slime_landing_effect(&effects, 84).positions,
+            slime_landing_effect(&effects, 85).positions,
+            "silent and audible cursors stay aligned through landing {landing_number}"
+        );
+        assert!(effects.iter().any(|effect| matches!(
+            effect,
+            EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+                entity_id: 84,
+                kind: EntityClientMovementSoundKind::SlimeSquish { tiny: true, .. },
+                ..
+            })
+        )));
+        assert!(effects.iter().all(|effect| !matches!(
+            effect,
+            EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+                entity_id: 85,
+                ..
+            })
+        )));
+
+        if landing_number == 0 {
+            for id in [84, 85] {
+                set_slime_on_ground(&mut store, id, false);
+            }
+            store.advance_entity_client_animations(1);
+            assert!(store
+                .drain_entity_client_movement_effect_states()
+                .next()
+                .is_none());
+            for id in [84, 85] {
+                set_slime_on_ground(&mut store, id, true);
+            }
+        }
+    }
+}
+
 #[test]
 fn entity_model_sources_project_parrot_wing_flap() {
     let flap_angle = |store: &WorldStore, partial: f32| {

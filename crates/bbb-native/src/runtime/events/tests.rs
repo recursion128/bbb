@@ -90,6 +90,7 @@ fn advance_growth_randoms_for_context(
 }
 
 mod audio_and_death_sounds;
+mod client_tick_effects;
 mod entity_and_inventory_counters;
 mod entity_particle_events;
 mod level_event_block_and_potion_sounds;
@@ -1032,6 +1033,18 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.evoker_fangs.attack": {
                 "sounds": ["mob/evocation/fangs"]
+            },
+            "entity.slime.squish": {
+                "sounds": ["mob/slime/big1"]
+            },
+            "entity.slime.squish_small": {
+                "sounds": ["mob/slime/small1"]
+            },
+            "entity.magma_cube.squish": {
+                "sounds": ["mob/slime/big2"]
+            },
+            "entity.magma_cube.squish_small": {
+                "sounds": ["mob/slime/small2"]
             },
             "entity.zombie_villager.cure": {
                 "sounds": ["mob/zombie_villager/cure"]

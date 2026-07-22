@@ -74,12 +74,14 @@ use super::schema::{
     vanilla_entity_metadata_player_absorption_accessor_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
+    vanilla_entity_metadata_slime_size_accessor_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_is_camel,
-    vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_pushability_kind,
+    vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_slime,
+    vanilla_entity_metadata_type_pushability_kind,
     vanilla_entity_metadata_type_uses_player_entity_event_handler,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
@@ -109,7 +111,7 @@ use super::{
     ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     PowderSnowFlakeParticleState, RavagerRoarParticleState, RavagerStunParticleState,
-    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
+    SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
     VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
@@ -6858,15 +6860,42 @@ impl EntityStore {
                     .is_some_and(|(data_id, default)| {
                         entity_data_bool(&metadata.data_values, data_id, default)
                     });
-                let is_silent =
-                    (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID || is_guardian || is_nautilus)
-                        && vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
-                            entity_data_bool(
-                                &metadata.data_values,
-                                accessors.silent_data_id,
-                                accessors.silent_default,
-                            )
-                        });
+                let is_slime = vanilla_entity_metadata_type_is_slime(entity_type_id);
+                let slime_size = if is_slime {
+                    vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)
+                        .map_or(1, |(data_id, default)| {
+                            entity_data_int(&metadata.data_values, data_id, default)
+                        })
+                        .clamp(1, 127)
+                } else {
+                    1
+                };
+                let slime_width = if is_slime {
+                    vanilla_bounds_for_entity_data(
+                        entity_type_id,
+                        identity.data,
+                        &metadata.data_values,
+                        &attributes.attributes,
+                        Some(animations.animations),
+                        metadata.painting_variant_projection.as_ref(),
+                    )
+                    .map_or(0.52 * slime_size as f32, |bounds| {
+                        bounds.max[0] - bounds.min[0]
+                    })
+                } else {
+                    0.52
+                };
+                let is_silent = (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID
+                    || is_guardian
+                    || is_nautilus
+                    || is_slime)
+                    && vanilla_entity_metadata_entity_accessors().is_some_and(|accessors| {
+                        entity_data_bool(
+                            &metadata.data_values,
+                            accessors.silent_data_id,
+                            accessors.silent_default,
+                        )
+                    });
                 if deferred_local_item_based_steering_vehicle_id != Some(identity.id) {
                     if let Some((controller_x_rot, controller_y_rot)) =
                         item_based_steering_controller_rotation
@@ -6935,6 +6964,8 @@ impl EntityStore {
                     boat_paddles[1],
                     boat_bubble_time_value,
                     furnace_minecart_has_fuel,
+                    slime_size,
+                    slime_width,
                     is_silent,
                     is_swimming,
                 );
@@ -7994,6 +8025,37 @@ fn append_client_tick_particle_triggers(
     client_animations: Option<EntityClientAnimationState>,
     triggers: &mut EntityClientTickParticleTriggers,
 ) {
+    if let Some(landing) = triggers.slime_landing_particles.take() {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Particle(
+            EntityClientMovementParticleState::SlimeLanding(SlimeLandingParticleState {
+                entity_id: identity.id,
+                kind: landing.kind,
+                positions: landing
+                    .offsets
+                    .into_iter()
+                    .map(|offset| super::EntityVec3 {
+                        x: transform.position.x + offset.x,
+                        y: transform.position.y,
+                        z: transform.position.z + offset.z,
+                    })
+                    .collect(),
+            }),
+        ));
+    }
+    if let Some(sound) = triggers.slime_squish_sound {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::SlimeSquish {
+                    magma_cube: sound.magma_cube,
+                    tiny: sound.tiny,
+                    volume: sound.volume,
+                    pitch: sound.pitch,
+                },
+                position: transform.position,
+            },
+        ));
+    }
     if triggers.camel_dash_ready_sound {
         pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
             super::EntityClientMovementSoundState {

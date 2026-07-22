@@ -275,6 +275,9 @@ const NAUTILUS_BUBBLE_PROBABILITY_MAX: f64 = 1.0;
 const NAUTILUS_BUBBLE_PROBABILITY_MULTIPLIER: f64 = 2.0;
 const NAUTILUS_BUBBLE_SPREAD_FACTOR: f64 = 0.8;
 const NAUTILUS_CLIENT_RANDOM_SALT: u64 = 0x6e61_7574_696c_7573;
+/// Client-local `Slime.random` cursor for the landing particle ring followed by
+/// the two-float squish pitch roll.
+const SLIME_CLIENT_RANDOM_SALT: u64 = 0x736c_696d_655f_726e;
 /// Vanilla `Camel.setupAnimationStates`: `idleAnimationTimeout = random.nextInt(40) + 80`, then
 /// `idleAnimationState.start(tickCount)`. `CAMEL_IDLE` itself is the 4.0 s non-looping keyframe.
 const CAMEL_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
@@ -319,6 +322,9 @@ pub(crate) struct EntityClientTickParticleTriggers {
     pub(crate) guardian_look_update: Option<GuardianLookUpdate>,
     /// Vanilla active-target beam bubbles in exact entity RNG order.
     pub(crate) guardian_attack_bubbles: Option<Vec<EntityVec3>>,
+    /// Vanilla `Slime.tick` landing particles precede its squish sound.
+    pub(crate) slime_landing_particles: Option<SlimeLandingParticleTrigger>,
+    pub(crate) slime_squish_sound: Option<SlimeSquishSoundParameters>,
     pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
     pub(crate) evoker_fangs_crit:
         Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
@@ -387,6 +393,20 @@ pub(crate) struct GuardianAttackTargetTickInput {
     pub(crate) position: EntityVec3,
     pub(crate) eye_height: f32,
     pub(crate) half_height: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SlimeLandingParticleTrigger {
+    pub(crate) kind: super::SlimeLandingParticleKind,
+    pub(crate) offsets: Vec<EntityVec3>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct SlimeSquishSoundParameters {
+    pub(crate) magma_cube: bool,
+    pub(crate) tiny: bool,
+    pub(crate) volume: f32,
+    pub(crate) pitch: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -601,6 +621,10 @@ pub struct EntityClientAnimationState {
     /// exact subclass order. The server does not synchronize its initial seed.
     #[serde(skip)]
     pub(crate) nautilus_client_random_seed: Option<u64>,
+    /// Shared client-local Slime/MagmaCube RNG cursor for landing particles and
+    /// squish pitch in exact `Slime.tick` order.
+    #[serde(skip)]
+    pub(crate) slime_client_random_seed: Option<u64>,
     /// Client-local `PlayerRideableJumping` input retained between the local
     /// player's release edge and the controlled vehicle's ridden tick. It is
     /// cloned into immutable publications for old-generation isolation but is
@@ -2542,11 +2566,11 @@ pub struct ChickenFlapAnimationState {
 /// Canonical client-side slime/magma-cube squish accumulator, mirroring vanilla
 /// `Slime` (`squish`/`oSquish`/`targetSquish`/`wasOnGround`). `Slime.tick` saves the
 /// lerp endpoint (`oSquish`), eases `squish` halfway toward `targetSquish` each
-/// client tick, re-seeds the target to `-0.5` on landing / `1.0` on takeoff (the
-/// `onGround()` transitions), then decays the target by `0.6` (`decreaseSquish`).
+/// client tick, emits the landing audiovisual branch before re-seeding the target
+/// to `-0.5` on landing / `1.0` on takeoff (the `onGround()` transitions), then
+/// decays the target by `0.6` (`Slime`) or `0.9` (`MagmaCube`).
 /// `SlimeRenderer.extractRenderState` lerps `squish` by the partial tick, and
-/// `SlimeRenderer.scale` turns it into the non-uniform body stretch. The vanilla
-/// landing squish particles/sound are server/audio effects and are not modelled.
+/// `SlimeRenderer.scale` turns it into the non-uniform body stretch.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct SlimeAnimationState {
     /// Vanilla `Slime.squish`.
@@ -3912,23 +3936,74 @@ impl ChickenFlapAnimationState {
 }
 
 impl SlimeAnimationState {
-    /// Advances one client tick of `Slime.tick`'s squish accumulator.
+    /// Advances one client tick of `Slime.tick`, including the ordered landing
+    /// particle and sound random stream.
     ///
     /// Vanilla saves the lerp endpoint (`oSquish`), eases `squish` halfway toward
     /// `targetSquish`, then — after `super.tick()` — re-seeds the target on the
     /// `onGround()` landing (`-0.5`) / takeoff (`1.0`) transitions, records the
-    /// ground flag, and decays the target by `0.6` (`decreaseSquish`). The landing
-    /// squish particles and sound in the same method are effects, not pose state.
-    fn advance_client_tick(&mut self, on_ground: bool) {
+    /// ground flag, and calls the type-specific `decreaseSquish` implementation.
+    fn advance_client_tick(
+        &mut self,
+        on_ground: bool,
+        magma_cube: bool,
+        size: i32,
+        width: f32,
+        is_silent: bool,
+        random_seed: &mut u64,
+        triggers: &mut EntityClientTickParticleTriggers,
+    ) {
         self.o_squish = self.squish;
         self.squish += (self.target_squish - self.squish) * 0.5;
         if on_ground && !self.was_on_ground {
+            let radius = width;
+            let particle_count = (radius * 2.0 * 16.0).ceil() as usize;
+            let mut offsets = Vec::with_capacity(particle_count);
+            for _ in 0..particle_count {
+                let direction = java_random_next_float(random_seed) * std::f32::consts::TAU;
+                let distance = java_random_next_float(random_seed) * 0.5 + 0.5;
+                offsets.push(EntityVec3 {
+                    x: f64::from(
+                        super::client_movement::vanilla_mth_sin(f64::from(direction))
+                            * radius
+                            * distance,
+                    ),
+                    y: 0.0,
+                    z: f64::from(
+                        super::client_movement::vanilla_mth_cos(f64::from(direction))
+                            * radius
+                            * distance,
+                    ),
+                });
+            }
+            triggers.slime_landing_particles = Some(SlimeLandingParticleTrigger {
+                kind: if magma_cube {
+                    super::SlimeLandingParticleKind::Flame
+                } else {
+                    super::SlimeLandingParticleKind::ItemSlime
+                },
+                offsets,
+            });
+            // Java evaluates both random pitch operands before `Entity.playSound`
+            // applies the silent gate.
+            let pitch =
+                ((java_random_next_float(random_seed) - java_random_next_float(random_seed)) * 0.2
+                    + 1.0)
+                    / 0.8;
+            if !is_silent {
+                triggers.slime_squish_sound = Some(SlimeSquishSoundParameters {
+                    magma_cube,
+                    tiny: size <= 1,
+                    volume: 0.4 * size as f32,
+                    pitch,
+                });
+            }
             self.target_squish = -0.5;
         } else if !on_ground && self.was_on_ground {
             self.target_squish = 1.0;
         }
         self.was_on_ground = on_ground;
-        self.target_squish *= 0.6;
+        self.target_squish *= if magma_cube { 0.9 } else { 0.6 };
     }
 
     /// Vanilla `SlimeRenderer.extractRenderState`: `lerp(partialTicks, oSquish,
@@ -4447,6 +4522,13 @@ impl EntityClientAnimationState {
                 java_random_seed(spawn_random_bits(
                     uuid,
                     NAUTILUS_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
+                ) as i64)
+            });
+        self.slime_client_random_seed =
+            vanilla_entity_metadata_type_is_slime(entity_type_id).then(|| {
+                java_random_seed(spawn_random_bits(
+                    uuid,
+                    SLIME_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
                 ) as i64)
             });
         self.nautilus_dash_cooldown = None;
@@ -6362,6 +6444,11 @@ impl EntityClientAnimationState {
         // Vanilla `MinecartFurnace.DATA_ID_FUEL`. The server owns fuel/push;
         // the client reads only this synced bit for its presentation smoke.
         furnace_minecart_has_fuel: bool,
+        // Vanilla `Slime.getSize()`, clamped by `setSize` to `1..=127`.
+        slime_size: i32,
+        // Current `getDimensions(getPose()).width()`, including size, pose,
+        // and the LivingEntity SCALE attribute.
+        slime_width: f32,
         // Vanilla `Entity.isSilent()`, used by Blaze and Guardian client-local
         // sound branches. The Blaze gate must precede its two sound floats.
         is_silent: bool,
@@ -6947,13 +7034,26 @@ impl EntityClientAnimationState {
                 // synced ground flag defaults to on-ground (wings still), the safe
                 // common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true)),
-            _ if vanilla_entity_metadata_type_is_slime(entity_type_id) => self
-                .slime
-                .get_or_insert_with(SlimeAnimationState::default)
-                // Vanilla `Slime.tick` reads `onGround()` for the squish target. A
-                // slime with no synced ground flag defaults to on-ground (resting
-                // squish), the safe common case.
-                .advance_client_tick(transform.on_ground.unwrap_or(true)),
+            _ if vanilla_entity_metadata_type_is_slime(entity_type_id) => {
+                let random_seed = self.slime_client_random_seed.get_or_insert_with(|| {
+                    java_random_seed(
+                        i64::from(entity_id).wrapping_add(SLIME_CLIENT_RANDOM_SALT as i64),
+                    )
+                });
+                self.slime
+                    .get_or_insert_with(SlimeAnimationState::default)
+                    // Vanilla's entity field initializes `onGround` to false; the
+                    // first movement packet replaces this fallback.
+                    .advance_client_tick(
+                        transform.on_ground.unwrap_or(false),
+                        entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+                        slime_size,
+                        slime_width,
+                        is_silent,
+                        random_seed,
+                        &mut particle_triggers,
+                    );
+            }
             VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => {
                 // Vanilla `EvokerFangs.tick` counts down `lifeTicks` once the attack
                 // has started (the event arm seeds the state); an un-attacked fang

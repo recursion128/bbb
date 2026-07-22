@@ -84,6 +84,10 @@ const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb
 const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
 const GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.guardian.flop";
 const ELDER_GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.flop";
+const SLIME_SQUISH_SOUND_EVENT: &str = "minecraft:entity.slime.squish";
+const SLIME_SQUISH_SMALL_SOUND_EVENT: &str = "minecraft:entity.slime.squish_small";
+const MAGMA_CUBE_SQUISH_SOUND_EVENT: &str = "minecraft:entity.magma_cube.squish";
+const MAGMA_CUBE_SQUISH_SMALL_SOUND_EVENT: &str = "minecraft:entity.magma_cube.squish_small";
 const CAMEL_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.camel.dash_ready";
 const CAMEL_HUSK_DASH_READY_SOUND_EVENT: &str = "minecraft:entity.camel_husk.dash_ready";
 const CAMEL_STAND_SOUND_EVENT: &str = "minecraft:entity.camel.stand";
@@ -1467,6 +1471,22 @@ impl WorldStore {
                 "hostile",
                 1.0,
                 1.0,
+            ),
+            EntityClientMovementSoundKind::SlimeSquish {
+                magma_cube,
+                tiny,
+                volume,
+                pitch,
+            } => (
+                match (magma_cube, tiny) {
+                    (false, false) => SLIME_SQUISH_SOUND_EVENT,
+                    (false, true) => SLIME_SQUISH_SMALL_SOUND_EVENT,
+                    (true, false) => MAGMA_CUBE_SQUISH_SOUND_EVENT,
+                    (true, true) => MAGMA_CUBE_SQUISH_SMALL_SOUND_EVENT,
+                },
+                "hostile",
+                volume,
+                pitch,
             ),
             EntityClientMovementSoundKind::CamelDashReady { husk } => (
                 if husk {
@@ -3960,6 +3980,32 @@ mod tests {
         assert_ne!(breeze.seed, trident.seed);
         assert_eq!(store.last_sound(), Some(&trident));
         assert_eq!(store.counters().sound_packets, 0);
+    }
+
+    #[test]
+    fn slime_entity_client_tick_sound_variants_use_vanilla_events() {
+        let mut store = WorldStore::new();
+        for (magma_cube, tiny, expected_event) in [
+            (false, false, "minecraft:entity.slime.squish"),
+            (false, true, "minecraft:entity.slime.squish_small"),
+            (true, false, "minecraft:entity.magma_cube.squish"),
+            (true, true, "minecraft:entity.magma_cube.squish_small"),
+        ] {
+            let sound = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+                entity_id: 17,
+                kind: EntityClientMovementSoundKind::SlimeSquish {
+                    magma_cube,
+                    tiny,
+                    volume: 1.6,
+                    pitch: 1.25,
+                },
+                position: crate::EntityVec3::default(),
+            });
+            assert_eq!(sound.sound.location.as_deref(), Some(expected_event));
+            assert_eq!(sound.source, "hostile");
+            assert_eq!(sound.volume, 1.6);
+            assert_eq!(sound.pitch, 1.25);
+        }
     }
 
     #[test]

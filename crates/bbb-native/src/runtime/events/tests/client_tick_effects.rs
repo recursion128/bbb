@@ -1,0 +1,87 @@
+use super::*;
+use crate::simulation::effects::ParticleBatchSink;
+use bbb_world::{
+    vanilla_entity_metadata_slime_size_accessor_for_entity_type, EntityClientMovementParticleState,
+    SlimeLandingParticleKind,
+};
+
+#[derive(Default)]
+struct RecordingParticleBatches {
+    batches: Vec<bbb_renderer::ParticleSpawnBatch>,
+}
+
+impl ParticleBatchSink for RecordingParticleBatches {
+    fn submit_particle_batch(&mut self, batch: bbb_renderer::ParticleSpawnBatch) {
+        self.batches.push(batch);
+    }
+}
+
+#[test]
+fn slime_client_tick_effects_reach_native_particle_and_audio_sinks_in_order() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_type(
+        160,
+        VANILLA_ENTITY_TYPE_SLIME_ID,
+    ));
+    let (size_data_id, _) =
+        vanilla_entity_metadata_slime_size_accessor_for_entity_type(VANILLA_ENTITY_TYPE_SLIME_ID)
+            .unwrap();
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 160,
+        values: vec![EntityDataValue {
+            data_id: size_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: EntityDataValueKind::Int(1),
+        }],
+    }));
+    assert!(world.apply_entity_move(EntityMove {
+        id: 160,
+        has_position: false,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground: true,
+    }));
+    world.advance_entity_client_animations(1);
+
+    let mut batches = RecordingParticleBatches::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particle_events: Option<&mut dyn ParticleEventSink> = Some(&mut particles);
+    let mut audio_events: Option<&mut dyn crate::audio_runtime::AudioEventSink> = Some(&mut audio);
+    crate::runtime::submit_entity_client_tick_effects(
+        &mut batches,
+        &mut world,
+        &mut particle_events,
+        &mut audio_events,
+    );
+
+    let [EntityClientMovementParticleState::SlimeLanding(landing)] =
+        particles.entity_client_movement_states.as_slice()
+    else {
+        panic!(
+            "expected one native slime landing particle state, got {:?}",
+            particles.entity_client_movement_states
+        );
+    };
+    assert_eq!(landing.entity_id, 160);
+    assert_eq!(landing.kind, SlimeLandingParticleKind::ItemSlime);
+    assert_eq!(landing.positions.len(), 17);
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    let [AudioCommand::PlayPositionedSound(sound)] = audio.commands.as_slice() else {
+        panic!("expected one positioned squish sound: {:?}", audio.commands);
+    };
+    assert_eq!(sound.sound.event_id, "minecraft:entity.slime.squish_small");
+    assert_eq!(sound.category, AudioCategory::Hostile);
+    assert_eq!(sound.position, [1.0, 64.0, -2.0]);
+    assert_eq!(sound.packet_volume, 0.4);
+    assert!((1.0..1.5).contains(&sound.packet_pitch));
+    assert_eq!(batches.batches.len(), 2);
+    assert!(world
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+}

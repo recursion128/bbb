@@ -239,6 +239,56 @@ fn guardian_attack_batch_reuses_one_bubble_template_for_variable_commands() {
 }
 
 #[test]
+fn slime_landing_particle_runtime_resolves_item_slime_and_flame_batches() {
+    let positions = vec![
+        bbb_world::EntityVec3 {
+            x: 1.25,
+            y: 64.0,
+            z: -2.5,
+        },
+        bbb_world::EntityVec3 {
+            x: 0.75,
+            y: 64.0,
+            z: -1.5,
+        },
+    ];
+    let mut resolver = test_resolver(0);
+    for (kind, particle_type_id, particle_id) in [
+        (
+            SlimeLandingParticleKind::ItemSlime,
+            VANILLA_PARTICLE_TYPE_ITEM_SLIME_ID,
+            "minecraft:item_slime",
+        ),
+        (
+            SlimeLandingParticleKind::Flame,
+            VANILLA_PARTICLE_TYPE_FLAME_ID,
+            "minecraft:flame",
+        ),
+    ] {
+        let batch = resolver.entity_client_movement_particle_batch(
+            EntityClientMovementParticleState::SlimeLanding(SlimeLandingParticleState {
+                entity_id: 44,
+                kind,
+                positions: positions.clone(),
+            }),
+        );
+        assert_eq!(batch.missing_definition_count, 0);
+        assert_eq!(batch.missing_sprite_count, 0);
+        assert_eq!(batch.commands.len(), positions.len());
+        for (command, position) in batch.commands.iter().zip(&positions) {
+            assert_particle_command(
+                command,
+                particle_type_id,
+                particle_id,
+                [position.x, position.y, position.z],
+                [0.0, 0.0, 0.0],
+                false,
+            );
+        }
+    }
+}
+
+#[test]
 fn eye_of_ender_trail_batch_matches_vanilla_water_and_portal_paths() {
     let state = EyeOfEnderTrailParticleState {
         entity_id: 8,

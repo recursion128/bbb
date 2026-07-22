@@ -35,10 +35,11 @@ use bbb_world::{
     LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LlamaSpitRecreationParticleState,
     OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RabbitSprintParticleState,
-    RavagerRoarParticleState, ShulkerBulletTrailParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TakeItemEntityPickupProjectileModel, TerrainLight,
-    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
-    VillagerParticleState, WitchMagicParticleState,
+    RavagerRoarParticleState, ShulkerBulletTrailParticleState, SlimeLandingParticleKind,
+    SlimeLandingParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
+    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState,
 };
 
 use crate::terrain_runtime::{

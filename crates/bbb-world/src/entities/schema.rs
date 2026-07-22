@@ -5385,6 +5385,33 @@ mod tests {
     }
 
     #[test]
+    fn generated_runtime_tick_owners_remain_in_the_closed_entity_client_tick_inventory() {
+        assert_eq!(VANILLA_ENTITY_TYPE_METADATA_26_1.len(), 157);
+        for entry in VANILLA_ENTITY_TYPE_METADATA_26_1 {
+            assert!(
+                entry.runtime_class.is_some()
+                    && entry.tick_owner.is_some()
+                    && entry.base_tick_owner.is_some()
+                    && entry.ride_tick_owner.is_some(),
+                "generated runtime tick ownership is incomplete for {}",
+                entry.resource_id
+            );
+            assert_eq!(
+                vanilla_entity_metadata_type_client_movement_policy(entry.entity_type_id),
+                Some(entry.client_movement_policy),
+                "client movement disposition drifted for {}",
+                entry.resource_id
+            );
+            assert_eq!(
+                vanilla_entity_metadata_type_block_effect_tick_policy(entry.entity_type_id),
+                Some(entry.block_effect_tick_policy),
+                "block-effect tick disposition drifted for {}",
+                entry.resource_id
+            );
+        }
+    }
+
+    #[test]
     fn generated_class_graph_exposes_hoglin_base_and_rejects_unknown_types() {
         assert!(VANILLA_ENTITY_TYPE_METADATA_26_1
             .iter()

@@ -27,12 +27,49 @@ impl ParticleCommandResolver {
             EntityClientMovementParticleState::ShulkerBullet(state) => {
                 self.shulker_bullet_trail_particle_batch(state)
             }
+            EntityClientMovementParticleState::SlimeLanding(state) => {
+                self.slime_landing_particle_batch(state)
+            }
             EntityClientMovementParticleState::Simple(state) => {
                 self.entity_client_movement_simple_particle_batch(state)
             }
             EntityClientMovementParticleState::PowderSnowFlake(state) => {
                 self.powder_snow_flake_particle_batch(state)
             }
+        }
+    }
+
+    fn slime_landing_particle_batch(
+        &mut self,
+        state: SlimeLandingParticleState,
+    ) -> ParticleSpawnBatch {
+        let particle_type_id = match state.kind {
+            SlimeLandingParticleKind::ItemSlime => VANILLA_PARTICLE_TYPE_ITEM_SLIME_ID,
+            SlimeLandingParticleKind::Flame => VANILLA_PARTICLE_TYPE_FLAME_ID,
+        };
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            commands: state
+                .positions
+                .into_iter()
+                .map(|position| {
+                    self.command_from_template(
+                        &template,
+                        Vec3d {
+                            x: position.x,
+                            y: position.y,
+                            z: position.z,
+                        },
+                        Vec3d::default(),
+                        false,
+                    )
+                })
+                .collect(),
+            ..ParticleSpawnBatch::default()
         }
     }
 

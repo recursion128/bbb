@@ -778,6 +778,21 @@ pub struct GuardianAttackParticleState {
     pub positions: Vec<EntityVec3>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SlimeLandingParticleKind {
+    ItemSlime,
+    Flame,
+}
+
+/// The complete ordered particle submission from one `Slime.tick` landing.
+/// Vanilla rolls every radial position before evaluating the squish sound.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SlimeLandingParticleState {
+    pub entity_id: i32,
+    pub kind: SlimeLandingParticleKind,
+    pub positions: Vec<EntityVec3>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EntityClientMovementParticleState {
     BlazeAmbient(BlazeAmbientParticleState),
@@ -787,6 +802,7 @@ pub enum EntityClientMovementParticleState {
     FireworkRocket(FireworkRocketTrailParticleState),
     EyeOfEnder(EyeOfEnderTrailParticleState),
     ShulkerBullet(ShulkerBulletTrailParticleState),
+    SlimeLanding(SlimeLandingParticleState),
     Simple(EntityClientMovementSimpleParticleState),
     PowderSnowFlake(PowderSnowFlakeParticleState),
 }
@@ -801,6 +817,12 @@ pub enum EntityClientMovementSoundKind {
     },
     GuardianFlop {
         elder: bool,
+    },
+    SlimeSquish {
+        magma_cube: bool,
+        tiny: bool,
+        volume: f32,
+        pitch: f32,
     },
     CamelDashReady {
         husk: bool,
