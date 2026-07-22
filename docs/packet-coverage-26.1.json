@@ -7006,7 +7006,8 @@
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#apply_block_update",
             "crates/bbb-world/src/chunks/tests.rs#applies_single_block_update_and_reuploads_palette",
-            "crates/bbb-world/src/chunks/tests.rs#block_update_maintains_motion_blocking_heightmap",
+            "crates/bbb-world/src/chunks/tests.rs#block_update_maintains_distinct_motion_blocking_heightmaps",
+            "crates/bbb-world/src/chunks/tests.rs#block_update_materializes_omitted_motion_blocking_heightmaps",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockUpdate"
           ],
           "gap": "docs/unsupported-features.md#block-entities-and-terrain",
