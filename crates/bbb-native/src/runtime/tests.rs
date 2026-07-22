@@ -9227,6 +9227,254 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
 }
 
 #[test]
+fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing() {
+    let mut world = WorldStore::new();
+    enqueue_runtime_advancement_toasts(&mut world, 6, AdvancementFrameType::Challenge);
+    let start = Instant::now();
+    let mut state = AdvancementToastRuntime::default();
+
+    let admission_sounds = state.update(&world, start);
+    assert_eq!(state.visible.len(), 5);
+    assert_eq!(state.queued.len(), 1);
+    assert_eq!(
+        state
+            .visible
+            .iter()
+            .map(|toast| toast.slot)
+            .collect::<Vec<_>>(),
+        vec![0, 1, 2, 3, 4]
+    );
+    assert_eq!(state.visible[0].event.advancement_id, "test:toast_0");
+    assert_eq!(state.queued[0].advancement_id, "test:toast_5");
+    assert_eq!(
+        sound_locations(&admission_sounds),
+        vec!["minecraft:ui.toast.challenge_complete"]
+    );
+
+    let transition_sounds = state.update(&world, start);
+    assert_eq!(
+        sound_locations(&transition_sounds),
+        vec!["minecraft:ui.toast.in"]
+    );
+    assert!(state
+        .visible
+        .iter()
+        .all(|toast| toast.visible_portion == 0.0));
+
+    assert!(state
+        .update(&world, start + Duration::from_millis(300))
+        .is_empty());
+    assert!(state
+        .visible
+        .iter()
+        .all(|toast| (toast.visible_portion - 0.25).abs() < 1.0e-6));
+    state.update(&world, start + Duration::from_millis(600));
+    assert!(state
+        .visible
+        .iter()
+        .all(|toast| toast.visible_portion == 1.0 && toast.fully_visible_ms == 0));
+
+    assert!(state
+        .update(&world, start + Duration::from_millis(5_599))
+        .is_empty());
+    assert_eq!(state.visible[0].fully_visible_ms, 4_999);
+    assert_eq!(
+        sound_locations(&state.update(&world, start + Duration::from_millis(5_600))),
+        vec!["minecraft:ui.toast.out"]
+    );
+    state.update(&world, start + Duration::from_millis(5_900));
+    assert!((state.visible[0].visible_portion - 0.75).abs() < 1.0e-6);
+
+    let next_admission = state.update(&world, start + Duration::from_millis(6_201));
+    assert_eq!(state.visible.len(), 1);
+    assert_eq!(state.visible[0].event.advancement_id, "test:toast_5");
+    assert_eq!(state.visible[0].slot, 0);
+    assert_eq!(
+        sound_locations(&next_admission),
+        vec!["minecraft:ui.toast.challenge_complete"]
+    );
+}
+
+#[test]
+fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
+    let mut world = WorldStore::new();
+    enqueue_runtime_advancement_toasts(
+        &mut world,
+        bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS + 1,
+        AdvancementFrameType::Task,
+    );
+    let start = Instant::now();
+    let mut state = AdvancementToastRuntime::default();
+    state.update(&world, start);
+    assert_eq!(state.dropped_events, 1);
+    assert_eq!(
+        state.next_sequence,
+        u64::try_from(bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS + 1).unwrap()
+    );
+    assert_eq!(state.visible.len(), 5);
+    assert_eq!(
+        state.queued.len(),
+        bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
+    );
+
+    state.update(&world, start);
+    assert_eq!(state.dropped_events, 1);
+    assert_eq!(state.visible.len(), 5);
+    assert_eq!(
+        state.queued.len(),
+        bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
+    );
+}
+
+#[test]
+fn advancement_toast_runtime_clears_visible_and_queued_state_for_new_level() {
+    let mut world = WorldStore::new();
+    enqueue_runtime_advancement_toasts(&mut world, 6, AdvancementFrameType::Goal);
+    let mut state = AdvancementToastRuntime::default();
+    state.update(&world, Instant::now());
+    assert_eq!(state.visible.len(), 5);
+    assert_eq!(state.queued.len(), 1);
+
+    world.clear_client_level();
+    assert!(state.update(&world, Instant::now()).is_empty());
+    assert!(state.visible.is_empty());
+    assert!(state.queued.is_empty());
+    assert_eq!(state.next_sequence, 0);
+}
+
+#[test]
+fn advancement_toast_and_screen_preserve_rich_title_runs() {
+    let rich_title =
+        bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Styled toast".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String("red".to_string()),
+            },
+        ]))
+        .unwrap();
+    let mut world = WorldStore::new();
+    let mut advancement = runtime_displayed_advancement("test:styled", None);
+    let display = advancement.display.as_mut().unwrap();
+    display.title = rich_title.clone();
+    display.show_toast = true;
+    advancement.requirements = vec![vec!["done".to_string()]];
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![advancement],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: false,
+        added: Vec::new(),
+        removed: Vec::new(),
+        progress: vec![AdvancementProgressSummary {
+            id: "test:styled".to_string(),
+            criteria: vec![AdvancementCriterionProgressSummary {
+                name: "done".to_string(),
+                obtained_epoch_millis: Some(1),
+            }],
+        }],
+        show_advancements: true,
+    });
+
+    let mut runtime = AdvancementToastRuntime::default();
+    runtime.update(&world, Instant::now());
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let projected = runtime.project(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        ItemModelKeybindContext::default(),
+        0.0,
+    );
+    assert_eq!(projected.len(), 1);
+    assert_eq!(projected[0].title_runs[0].text, "Styled toast");
+    assert!(projected[0].title_runs[0].style.bold);
+    assert_eq!(projected[0].title_runs[0].color, Some(0xFF_55_55));
+
+    assert!(world.open_advancements_screen());
+    assert_eq!(
+        world.ensure_advancements_screen_selected_tab(),
+        Some("test:styled".to_string())
+    );
+    let screen = hud_advancements_screen(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        0.0,
+        winit::dpi::PhysicalSize::new(800, 600),
+        None,
+        ItemModelKeybindContext::default(),
+        0.0,
+    );
+    let title = screen
+        .text_labels
+        .iter()
+        .find(|label| label.text == "Styled toast")
+        .unwrap();
+    assert!(title.runs[0].style.bold);
+    assert_eq!(title.runs[0].color, Some(0xFF_55_55));
+}
+
+fn enqueue_runtime_advancement_toasts(
+    world: &mut WorldStore,
+    count: usize,
+    frame_type: AdvancementFrameType,
+) {
+    let mut added = Vec::with_capacity(count);
+    let mut progress = Vec::with_capacity(count);
+    for index in 0..count {
+        let id = format!("test:toast_{index}");
+        let mut advancement = runtime_displayed_advancement(&id, None);
+        let display = advancement.display.as_mut().unwrap();
+        display.title = bbb_protocol::RichTextComponent::plain(format!("Toast {index}"));
+        display.show_toast = true;
+        display.frame_type = frame_type;
+        advancement.requirements = vec![vec!["done".to_string()]];
+        added.push(advancement);
+        progress.push(AdvancementProgressSummary {
+            id,
+            criteria: vec![AdvancementCriterionProgressSummary {
+                name: "done".to_string(),
+                obtained_epoch_millis: Some(1),
+            }],
+        });
+    }
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added,
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: false,
+        added: Vec::new(),
+        removed: Vec::new(),
+        progress,
+        show_advancements: true,
+    });
+}
+
+fn sound_locations(sounds: &[LocalSoundEventState]) -> Vec<&str> {
+    sounds
+        .iter()
+        .filter_map(|sound| sound.sound.location.as_deref())
+        .collect()
+}
+
+#[test]
 fn insecure_chat_warning_projects_multiline_toast_before_low_disk_queue() {
     let start = std::time::Instant::now();
     let mut world = world_with_custom_dimension_environment();
@@ -16478,7 +16726,7 @@ fn hud_inventory_screen_projects_advancement_root_tabs() {
                 input: None,
                 scrolling: None,
                 shadow: false,
-                runs: Vec::new(),
+                runs: vec![HudStyledTextRun::plain("minecraft:y/root")],
             },
             advancements_centered_text_label(
                 ADVANCEMENTS_DONE_TEXT,
@@ -16743,8 +16991,8 @@ fn hud_inventory_screen_projects_advancement_hover_tooltip() {
     let mut root = runtime_displayed_advancement("minecraft:story/root", None);
     root.requirements = vec![vec!["has_log".to_string()], vec!["has_planks".to_string()]];
     let display = root.display.as_mut().unwrap();
-    display.title = bbb_protocol::RichTextComponent::plain("Getting Wood");
-    display.description = bbb_protocol::RichTextComponent::plain("Punch a tree");
+    display.title = *styled_boss_component("Getting Wood");
+    display.description = *styled_boss_component("Punch a tree");
     display.frame_type = AdvancementFrameType::Challenge;
     world.apply_update_advancements(UpdateAdvancements {
         reset: true,
@@ -16830,10 +17078,13 @@ fn hud_inventory_screen_projects_advancement_hover_tooltip() {
             )
         )
     }));
-    assert!(screen
+    let title = screen
         .text_labels
         .iter()
-        .any(|label| label.text == "Getting Wood"));
+        .find(|label| label.text == "Getting Wood")
+        .unwrap();
+    assert!(title.runs[0].style.bold);
+    assert_eq!(title.runs[0].color, Some(0xFF_55_55));
     assert!(screen.text_labels.iter().any(|label| label.text == "1/2"));
     let description = screen
         .text_labels
@@ -16844,6 +17095,8 @@ fn hud_inventory_screen_projects_advancement_hover_tooltip() {
         description.tint,
         ADVANCEMENTS_HOVER_CHALLENGE_DESCRIPTION_TEXT_COLOR
     );
+    assert!(description.runs[0].style.bold);
+    assert_eq!(description.runs[0].color, Some(0xFF_55_55));
     assert_eq!(screen.foreground_items.len(), 1);
     assert_eq!(screen.foreground_items[0].x, inside_x + 111);
     assert_eq!(screen.foreground_items[0].y, inside_y + 48);

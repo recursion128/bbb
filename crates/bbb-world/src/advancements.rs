@@ -212,6 +212,11 @@ impl WorldStore {
         self.refresh_advancement_counters();
     }
 
+    pub(crate) fn reset_advancement_toasts_for_new_level(&mut self) {
+        self.advancements.toast_events.clear();
+        self.advancements.next_toast_sequence = 0;
+    }
+
     fn remove_advancement_and_children(&mut self, id: &str) -> usize {
         let children: Vec<String> = self
             .advancements

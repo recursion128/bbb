@@ -76,6 +76,12 @@ pub(crate) fn try_load_hud_textures(
         &system_toast.rgba,
         system_toast_scaling,
     )?;
+    let advancement_toast = hud_sprite(&sprites, "toast/advancement")?;
+    renderer.upload_hud_advancement_toast_background(
+        advancement_toast.width,
+        advancement_toast.height,
+        &advancement_toast.rgba,
+    )?;
     let generic_container = gui_texture(
         roots,
         "textures/gui/container/generic_54.png",

@@ -11,9 +11,9 @@ use bbb_renderer::{
     BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     DisplayTextSurface, EntityFlameSurface, EntityModelInstance, EntityNameTagSurface,
     EntityShadowSurface, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
-    FirstPersonPlayerArm, HudActionBarText, HudAirSupply, HudBlockItemModel, HudBossBar,
-    HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatInteraction, HudChatMessage,
-    HudCommandSuggestions, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect,
+    FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
+    HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatInteraction,
+    HudChatMessage, HudCommandSuggestions, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect,
     HudInventoryScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
     HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen, HudStyledTextRun, HudSystemToast,
     HudTextStyle, HudTitleText, HudVehicleHealth, ItemEntityBillboard,
@@ -1441,6 +1441,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_system_toast: Option<HudSystemToast>,
+    pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
@@ -1691,6 +1692,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_system_toast(frame.hud_system_toast);
+    renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);

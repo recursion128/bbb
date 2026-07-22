@@ -382,6 +382,7 @@ impl WorldStore {
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> RespawnApplyResult {
         self.counters.respawns_received += 1;
         self.advance_client_level_generation();
+        self.reset_advancement_toasts_for_new_level();
         let dimension_changed = self
             .level
             .as_ref()
@@ -1144,7 +1145,10 @@ mod tests {
     use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X3_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
+        AddEntity as ProtocolAddEntity, AdvancementCriterionProgressSummary,
+        AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
+        AdvancementProgressSummary, AdvancementSummary,
+        AttributeModifier as ProtocolAttributeModifier,
         AttributeSnapshot as ProtocolAttributeSnapshot,
         BlockDestruction as ProtocolBlockDestruction, BlockEvent as ProtocolBlockEvent,
         BlockPos as ProtocolBlockPos, EntityDataValue as ProtocolEntityDataValue,
@@ -1155,8 +1159,8 @@ mod tests {
         PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
         RegistryData, RegistryDataEntry, RegistryTags, SetCamera as ProtocolSetCamera,
         SetEntityData as ProtocolSetEntityData, TagNetworkPayload, Transfer as ProtocolTransfer,
-        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
-        UpdateTags, Vec3d as ProtocolVec3d,
+        UpdateAdvancements, UpdateAttributes as ProtocolUpdateAttributes,
+        UpdateMobEffect as ProtocolUpdateMobEffect, UpdateTags, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -1271,6 +1275,61 @@ mod tests {
         assert!(store.local_player_has_reduced_debug_info());
         store.advance_client_time(3);
         assert_eq!(store.local_player().portal_cooldown, 4);
+    }
+
+    #[test]
+    fn respawn_clears_advancement_toast_handoff_without_dropping_tree() {
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added: vec![AdvancementSummary {
+                id: "test:root".to_string(),
+                parent: None,
+                display: Some(AdvancementDisplaySummary {
+                    title: bbb_protocol::RichTextComponent::plain("Root"),
+                    description: bbb_protocol::RichTextComponent::plain(""),
+                    icon: AdvancementIconSummary {
+                        item_id: 1,
+                        count: 1,
+                        component_patch: Default::default(),
+                    },
+                    frame_type: AdvancementFrameType::Task,
+                    show_toast: true,
+                    hidden: false,
+                    background: None,
+                    x: 0.0,
+                    y: 0.0,
+                }),
+                requirements: vec![vec!["done".to_string()]],
+                sends_telemetry_event: false,
+            }],
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        });
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: false,
+            added: Vec::new(),
+            removed: Vec::new(),
+            progress: vec![AdvancementProgressSummary {
+                id: "test:root".to_string(),
+                criteria: vec![AdvancementCriterionProgressSummary {
+                    name: "done".to_string(),
+                    obtained_epoch_millis: Some(1),
+                }],
+            }],
+            show_advancements: true,
+        });
+        assert_eq!(store.advancement_toast_events().len(), 1);
+
+        store.apply_respawn(&respawn_packet(0));
+
+        assert!(store.advancement_toast_events().is_empty());
+        assert_eq!(store.client_advancements().next_toast_sequence, 0);
+        assert!(store
+            .client_advancements()
+            .advancements
+            .contains_key("test:root"));
     }
 
     #[test]

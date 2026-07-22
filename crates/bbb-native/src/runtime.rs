@@ -30,7 +30,7 @@ use bbb_protocol::{
     recipe_wire_types::{
         VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
     },
-    MC_VERSION,
+    RichTextComponent, MC_VERSION,
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor,
@@ -209,6 +209,7 @@ use bbb_protocol::mob_effect_types::{
 #[cfg(test)]
 use crate::terrain_runtime::TerrainUploadState;
 
+mod advancement_toast;
 mod control_requests;
 mod debug_light_sections;
 mod dialog_screen;
@@ -617,6 +618,7 @@ struct InventoryHudLocalState {
     advanced_item_tooltips: bool,
 }
 
+use advancement_toast::AdvancementToastRuntime;
 pub(crate) use control_requests::{pump_control_input_requests, pump_control_net_requests};
 pub(crate) use events::LevelEventSoundRandomState;
 
@@ -657,6 +659,7 @@ pub(crate) struct ClientAnimationTickState {
 pub(crate) struct HudRenderRuntime {
     insecure_chat_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
+    advancement_toasts: AdvancementToastRuntime,
     stats_screen_narration: Option<ScreenNarrationFrame>,
     chat_cache_key: Option<HudChatCacheKey>,
     boss_connection_generation: Option<u64>,
@@ -2881,6 +2884,23 @@ pub(crate) fn update_renderer_from_publication(
     {
         audio_events.play_local_sound(sound);
     }
+    let advancement_toast_sounds = hud_render_runtime.advancement_toasts.update(world, now);
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        for sound in &advancement_toast_sounds {
+            audio_events.play_local_sound(sound);
+        }
+    }
+    let hud_advancement_toasts = if input.hide_gui() {
+        Vec::new()
+    } else {
+        hud_render_runtime.advancement_toasts.project(
+            world,
+            item_runtime,
+            terrain_textures,
+            item_model_keybind_context,
+            entity_partial_tick,
+        )
+    };
     let hud_sign_editor_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_stats_screen.is_some()
@@ -3408,6 +3428,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_pause_screen,
             hud_stats_screen,
             hud_system_toast,
+            hud_advancement_toasts,
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,
@@ -4710,6 +4731,25 @@ fn localized_gui_text(
         .filter(|text| *text != translation_key)
         .unwrap_or(fallback)
         .to_string()
+}
+
+fn hud_styled_runs_from_rich_text(component: &RichTextComponent) -> Vec<HudStyledTextRun> {
+    component
+        .styled()
+        .iter()
+        .filter(|run| !run.text.is_empty())
+        .map(|run| HudStyledTextRun {
+            text: run.text.clone(),
+            style: HudTextStyle {
+                bold: run.style.bold == Some(true),
+                italic: run.style.italic == Some(true),
+                underlined: run.style.underlined == Some(true),
+                strikethrough: run.style.strikethrough == Some(true),
+                obfuscated: run.style.obfuscated == Some(true),
+            },
+            color: run.style.color,
+        })
+        .collect()
 }
 
 fn hud_system_toast(
@@ -9320,7 +9360,7 @@ fn hud_advancements_screen(
     };
     fill_layers.extend(hover.fill_layers);
     let mut text_labels = advancements_screen_text_labels(
-        selected_tab.as_ref().map(|tab| tab.title.text()),
+        selected_tab.as_ref().map(|tab| &tab.title),
         window_x,
         window_y,
         done_button_x,
@@ -10124,7 +10164,7 @@ fn push_advancement_hover_boxes_and_text(
     inside_y: i32,
     screen_width: u32,
 ) {
-    let title_lines = advancement_title_lines(widget.title.text());
+    let title_lines = advancement_title_lines(&widget.title);
     let progress_text = advancement_progress_text(widget);
     let progress_width = progress_text
         .as_deref()
@@ -10132,7 +10172,7 @@ fn push_advancement_hover_boxes_and_text(
         .unwrap_or_default();
     let title_width = title_lines
         .iter()
-        .filter_map(|line| hud_ascii_approx_text_width(line))
+        .filter_map(|line| hud_ascii_approx_text_width(&line.text))
         .max()
         .unwrap_or_default()
         .max(ADVANCEMENTS_HOVER_TITLE_MIN_WIDTH);
@@ -10141,10 +10181,10 @@ fn push_advancement_hover_boxes_and_text(
         .saturating_add(title_width)
         .saturating_add(max_progress_width);
     let description_lines =
-        advancement_wrap_text_lines(widget.description.text(), preferred_description_width);
+        advancement_wrap_text_lines(&widget.description, preferred_description_width);
     let tooltip_width = description_lines
         .iter()
-        .filter_map(|line| hud_ascii_approx_text_width(line))
+        .filter_map(|line| hud_ascii_approx_text_width(&line.text))
         .fold(preferred_description_width, u32::max)
         .saturating_add(
             ADVANCEMENTS_HOVER_TITLE_PADDING_LEFT + ADVANCEMENTS_HOVER_TITLE_PADDING_RIGHT,
@@ -10272,6 +10312,7 @@ fn push_advancement_hover_boxes_and_text(
             title_y,
             progress_width,
             ADVANCEMENTS_HOVER_TITLE_TEXT_COLOR,
+            Vec::new(),
         );
     }
 
@@ -10388,53 +10429,141 @@ fn advancement_max_progress_width(widget: &bbb_world::AdvancementWidgetSummary) 
         .saturating_add(ADVANCEMENTS_HOVER_PROGRESS_PADDING)
 }
 
-fn advancement_title_lines(title: &str) -> Vec<String> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AdvancementTextLine {
+    text: String,
+    runs: Vec<HudStyledTextRun>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AdvancementStyledChar {
+    ch: char,
+    style: HudTextStyle,
+    color: Option<u32>,
+}
+
+fn advancement_title_lines(title: &RichTextComponent) -> Vec<AdvancementTextLine> {
     let mut lines = advancement_wrap_text_lines(title, ADVANCEMENTS_HOVER_TITLE_MAX_WIDTH);
     if lines.is_empty() {
-        lines.push(String::new());
+        lines.push(AdvancementTextLine {
+            text: String::new(),
+            runs: Vec::new(),
+        });
     }
     lines
 }
 
-fn advancement_wrap_text_lines(text: &str, max_width: u32) -> Vec<String> {
+fn advancement_wrap_text_lines(
+    text: &RichTextComponent,
+    max_width: u32,
+) -> Vec<AdvancementTextLine> {
     let max_width = max_width.max(1);
-    let mut lines = Vec::new();
-    for paragraph in text.split('\n') {
-        let mut current = String::new();
-        for word in paragraph.split_whitespace() {
-            let candidate = if current.is_empty() {
-                word.to_string()
-            } else {
-                format!("{current} {word}")
-            };
-            if !current.is_empty()
-                && hud_ascii_approx_text_width_allow_empty(&candidate).unwrap_or(u32::MAX)
-                    > max_width
-            {
-                lines.push(current);
-                current = word.to_string();
-            } else {
-                current = candidate;
+    let chars = hud_styled_runs_from_rich_text(text)
+        .into_iter()
+        .flat_map(|run| {
+            run.text
+                .chars()
+                .map(move |ch| AdvancementStyledChar {
+                    ch,
+                    style: run.style,
+                    color: run.color,
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let mut result = Vec::new();
+    let mut line = Vec::new();
+    let mut width = 0u32;
+    let mut last_break = None;
+    for styled in chars {
+        if styled.ch == '\n' {
+            trim_advancement_line_end(&mut line);
+            if !line.is_empty() {
+                result.push(advancement_chars_to_line(&line));
             }
+            line.clear();
+            width = 0;
+            last_break = None;
+            continue;
         }
-        if !current.is_empty() {
-            lines.push(current);
+        let advance = hud_ascii_approx_char_width(styled.ch);
+        if !line.is_empty() && width.saturating_add(advance) > max_width {
+            if let Some(break_index) = last_break {
+                let mut carry = line.split_off(break_index);
+                trim_advancement_line_end(&mut line);
+                if !line.is_empty() {
+                    result.push(advancement_chars_to_line(&line));
+                }
+                trim_advancement_line_start(&mut carry);
+                line = carry;
+            } else {
+                result.push(advancement_chars_to_line(&line));
+                line.clear();
+            }
+            width = line
+                .iter()
+                .fold(0u32, |width, value: &AdvancementStyledChar| {
+                    width.saturating_add(hud_ascii_approx_char_width(value.ch))
+                });
+            last_break = line
+                .iter()
+                .rposition(|value| value.ch.is_whitespace())
+                .map(|index| index + 1);
+        }
+        if line.is_empty() && styled.ch.is_whitespace() {
+            continue;
+        }
+        line.push(styled);
+        width = width.saturating_add(advance);
+        if styled.ch.is_whitespace() {
+            last_break = Some(line.len());
         }
     }
-    lines
+    trim_advancement_line_end(&mut line);
+    if !line.is_empty() {
+        result.push(advancement_chars_to_line(&line));
+    }
+    result
 }
 
-fn hud_ascii_approx_text_width_allow_empty(text: &str) -> Option<u32> {
-    let mut width = 0u32;
-    for ch in text.chars() {
-        width = width.checked_add(hud_ascii_approx_char_width(ch))?;
+fn trim_advancement_line_start(line: &mut Vec<AdvancementStyledChar>) {
+    let first = line
+        .iter()
+        .position(|value| !value.ch.is_whitespace())
+        .unwrap_or(line.len());
+    line.drain(..first);
+}
+
+fn trim_advancement_line_end(line: &mut Vec<AdvancementStyledChar>) {
+    while line.last().is_some_and(|value| value.ch.is_whitespace()) {
+        line.pop();
     }
-    Some(width)
+}
+
+fn advancement_chars_to_line(chars: &[AdvancementStyledChar]) -> AdvancementTextLine {
+    let mut runs = Vec::<HudStyledTextRun>::new();
+    let mut text = String::new();
+    for value in chars {
+        text.push(value.ch);
+        if let Some(run) = runs
+            .last_mut()
+            .filter(|run| run.style == value.style && run.color == value.color)
+        {
+            run.text.push(value.ch);
+        } else {
+            runs.push(HudStyledTextRun {
+                text: value.ch.to_string(),
+                style: value.style,
+                color: value.color,
+            });
+        }
+    }
+    AdvancementTextLine { text, runs }
 }
 
 fn push_advancement_hover_text_lines(
     labels: &mut Vec<HudInventoryTextLabel>,
-    lines: &[String],
+    lines: &[AdvancementTextLine],
     x: i32,
     y: i32,
     tint: [f32; 4],
@@ -10442,11 +10571,12 @@ fn push_advancement_hover_text_lines(
     for (line_index, line) in lines.iter().enumerate() {
         push_advancement_hover_text_label(
             labels,
-            line.clone(),
+            line.text.clone(),
             x,
             y + i32::try_from(line_index).unwrap_or_default() * ADVANCEMENTS_HOVER_LINE_HEIGHT,
-            hud_ascii_approx_text_width(line).unwrap_or(1),
+            hud_ascii_approx_text_width(&line.text).unwrap_or(1),
             tint,
+            line.runs.clone(),
         );
     }
 }
@@ -10458,6 +10588,7 @@ fn push_advancement_hover_text_label(
     y: i32,
     width: u32,
     tint: [f32; 4],
+    runs: Vec<HudStyledTextRun>,
 ) {
     labels.push(HudInventoryTextLabel {
         x,
@@ -10469,7 +10600,7 @@ fn push_advancement_hover_text_label(
         input: None,
         scrolling: None,
         shadow: false,
-        runs: Vec::new(),
+        runs,
     });
 }
 
@@ -10612,13 +10743,15 @@ fn advancements_done_button_origin_for_surface(
 }
 
 fn advancements_screen_text_labels(
-    selected_title: Option<&str>,
+    selected_title: Option<&RichTextComponent>,
     window_x: i32,
     window_y: i32,
     done_button_x: i32,
     done_button_y: i32,
 ) -> Vec<HudInventoryTextLabel> {
-    let title = selected_title.unwrap_or(ADVANCEMENTS_TITLE_TEXT);
+    let title = selected_title
+        .map(RichTextComponent::text)
+        .unwrap_or(ADVANCEMENTS_TITLE_TEXT);
     let mut labels = vec![HudInventoryTextLabel {
         x: window_x + ADVANCEMENTS_WINDOW_TITLE_X,
         y: window_y + ADVANCEMENTS_WINDOW_TITLE_Y,
@@ -10629,7 +10762,9 @@ fn advancements_screen_text_labels(
         input: None,
         scrolling: None,
         shadow: false,
-        runs: Vec::new(),
+        runs: selected_title
+            .map(hud_styled_runs_from_rich_text)
+            .unwrap_or_default(),
     }];
     if selected_title.is_none() {
         push_centered_advancements_label(

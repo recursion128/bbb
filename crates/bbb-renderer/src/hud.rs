@@ -605,6 +605,22 @@ pub struct HudSystemToast {
     pub visible_portion: f32,
 }
 
+/// One visible Vanilla advancement toast. Native owns queue/slot/timing and
+/// item resolution; the renderer owns exact font wrapping and draw order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudAdvancementToast {
+    pub frame_label: String,
+    pub frame_label_color: u32,
+    pub title_runs: Vec<HudStyledTextRun>,
+    pub icon: HudItemIcon,
+    pub block_model: Option<HudBlockItemModel>,
+    pub slot: u8,
+    pub visible_portion: f32,
+    pub fully_visible_ms: u64,
+}
+
+pub const HUD_ADVANCEMENT_TOAST_SLOTS: usize = 5;
+
 /// Vanilla `DebugOptionsScreen` render-state shell: the searchable option list
 /// in vanilla category/path order, three status buttons per entry, and the
 /// default/performance/done footer buttons. The renderer derives layout from
@@ -2637,6 +2653,16 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_advancement_toast_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_advancement_toast_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_debug_game_mode_switcher_background(
         &mut self,
         width: u32,
@@ -4177,6 +4203,14 @@ impl Renderer {
         self.hud_system_toast = toast.and_then(sanitize_hud_system_toast);
     }
 
+    pub fn set_hud_advancement_toasts(&mut self, toasts: Vec<HudAdvancementToast>) {
+        self.hud_advancement_toasts = toasts
+            .into_iter()
+            .filter_map(sanitize_hud_advancement_toast)
+            .take(HUD_ADVANCEMENT_TOAST_SLOTS)
+            .collect();
+    }
+
     pub fn set_hud_debug_options_screen(&mut self, screen: Option<HudDebugOptionsScreen>) {
         self.hud_debug_options_screen = screen.and_then(sanitize_hud_debug_options_screen);
     }
@@ -4398,6 +4432,20 @@ impl Renderer {
                     let placement =
                         gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
                     append_model(model, placement, None);
+                }
+            }
+        }
+        if stratum != HudScreenStratum::BeforeBlur {
+            for toast in &self.hud_advancement_toasts {
+                if let Some(model) = &toast.block_model {
+                    append_model(
+                        model,
+                        gui_item_slot_placement(hud_advancement_toast_icon_rect(
+                            surface_size,
+                            toast,
+                        )),
+                        None,
+                    );
                 }
             }
         }
@@ -5611,6 +5659,23 @@ impl Renderer {
                 toast,
             );
         }
+
+        push_hud_advancement_toasts(
+            &mut vertices,
+            &mut commands,
+            &mut post_gui_item_commands,
+            &self.hud_white_pixel,
+            self.hud_item_atlas.as_ref(),
+            self.hud_digit_atlas.as_ref(),
+            &self.hud_digit_glyphs,
+            self.hud_advancement_toast_background.as_ref(),
+            self.hud_font_atlas.as_ref(),
+            &self.hud_font_glyphs,
+            &self.hud_obfuscated_glyph_pool,
+            self.counters.frame_index,
+            surface_size,
+            &self.hud_advancement_toasts,
+        );
 
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
             push_hud_draw(
@@ -8101,6 +8166,201 @@ fn hud_system_toast_message_lines(toast: &HudSystemToast, glyphs: &HudFontGlyphM
         .into_iter()
         .map(|line| chars[line.begin..line.end].iter().collect())
         .collect()
+}
+
+const HUD_ADVANCEMENT_TOAST_WIDTH: u32 = 160;
+const HUD_ADVANCEMENT_TOAST_HEIGHT: u32 = 32;
+const HUD_ADVANCEMENT_TOAST_TITLE_WIDTH: u32 = 125;
+
+fn hud_advancement_toast_rect(
+    surface_size: PhysicalSize<u32>,
+    toast: &HudAdvancementToast,
+) -> HudRect {
+    let x = surface_size.width as f32 - HUD_ADVANCEMENT_TOAST_WIDTH as f32 * toast.visible_portion;
+    absolute_hud_rect(
+        x,
+        f32::from(toast.slot) * HUD_ADVANCEMENT_TOAST_HEIGHT as f32,
+        HUD_ADVANCEMENT_TOAST_WIDTH,
+        HUD_ADVANCEMENT_TOAST_HEIGHT,
+    )
+}
+
+fn hud_advancement_toast_icon_rect(
+    surface_size: PhysicalSize<u32>,
+    toast: &HudAdvancementToast,
+) -> HudRect {
+    let toast_rect = hud_advancement_toast_rect(surface_size, toast);
+    absolute_hud_rect(toast_rect.x + 8.0, toast_rect.y + 8.0, 16, 16)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_advancement_toasts<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    item_atlas: Option<&'a HudSpriteGpu>,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    digit_glyphs: &[HudDigitGlyph; 10],
+    background: Option<&'a HudSpriteGpu>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    toasts: &[HudAdvancementToast],
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    for toast in toasts {
+        let rect = hud_advancement_toast_rect(surface_size, toast);
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            background.unwrap_or(white_pixel),
+            surface_size,
+            rect,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            if background.is_some() {
+                HUD_TINT_WHITE
+            } else {
+                [0.15, 0.15, 0.15, 0.95]
+            },
+        );
+
+        if let Some(item_atlas) = item_atlas {
+            let renders_as_3d_block = toast.block_model.is_some();
+            push_hud_item_icon(
+                vertices,
+                commands,
+                item_atlas,
+                white_pixel,
+                digit_atlas,
+                digit_glyphs,
+                surface_size,
+                hud_advancement_toast_icon_rect(surface_size, toast),
+                &toast.icon,
+                !renders_as_3d_block,
+                false,
+            );
+        }
+
+        let wrapped = hud_wrap_chat_runs_with_interactions(
+            &toast.title_runs,
+            &[],
+            HUD_ADVANCEMENT_TOAST_TITLE_WIDTH,
+            glyphs,
+        );
+        if wrapped.len() <= 1 {
+            push_hud_advancement_toast_text(
+                vertices,
+                post_gui_item_commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                &[HudStyledTextRun::plain(&toast.frame_label)],
+                (rect.x + 30.0, rect.y + 7.0),
+                hud_argb_to_tint(0xFF00_0000 | toast.frame_label_color),
+            );
+            push_hud_advancement_toast_text(
+                vertices,
+                post_gui_item_commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                &toast.title_runs,
+                (rect.x + 30.0, rect.y + 18.0),
+                HUD_TINT_WHITE,
+            );
+            continue;
+        }
+
+        if toast.fully_visible_ms < 1_500 {
+            let alpha = ((1_500 - toast.fully_visible_ms) as f32 / 300.0).clamp(0.0, 1.0);
+            let mut tint = hud_argb_to_tint(0xFF00_0000 | toast.frame_label_color);
+            tint[3] = alpha;
+            push_hud_advancement_toast_text(
+                vertices,
+                post_gui_item_commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                &[HudStyledTextRun::plain(&toast.frame_label)],
+                (rect.x + 30.0, rect.y + 11.0),
+                tint,
+            );
+        } else {
+            let alpha =
+                ((toast.fully_visible_ms - 1_500) as f32 / 300.0).clamp(0.0, 1.0) * (252.0 / 255.0);
+            let title_y =
+                16i32.saturating_sub(i32::try_from(wrapped.len()).unwrap_or(i32::MAX) * 9 / 2);
+            let y = rect.y + title_y as f32;
+            for (index, line) in wrapped.iter().enumerate() {
+                push_hud_advancement_toast_text(
+                    vertices,
+                    post_gui_item_commands,
+                    white_pixel,
+                    font_atlas,
+                    glyphs,
+                    obfuscated_pool,
+                    frame_index,
+                    surface_size,
+                    &line.runs,
+                    (rect.x + 30.0, y + index as f32 * 9.0),
+                    [1.0, 1.0, 1.0, alpha],
+                );
+            }
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_advancement_toast_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    runs: &[HudStyledTextRun],
+    origin: (f32, f32),
+    tint: [f32; 4],
+) {
+    let geometry = hud_styled_text_pass_geometry(
+        runs,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        origin,
+        0.0,
+        false,
+        tint,
+        Some(HUD_ADVANCEMENT_TOAST_TITLE_WIDTH),
+        1.0,
+    );
+    push_hud_styled_text_pass(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        surface_size,
+        &geometry,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -14700,6 +14960,32 @@ fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
     })
 }
 
+fn sanitize_hud_advancement_toast(toast: HudAdvancementToast) -> Option<HudAdvancementToast> {
+    if !toast.visible_portion.is_finite() || usize::from(toast.slot) >= HUD_ADVANCEMENT_TOAST_SLOTS
+    {
+        return None;
+    }
+    let frame_label = sanitize_hud_text_line(toast.frame_label)?;
+    let title = toast
+        .title_runs
+        .iter()
+        .map(|run| run.text.as_str())
+        .collect::<String>();
+    let title = sanitize_hud_multiline_text(title, 256);
+    let title_runs = sanitize_hud_multiline_styled_runs(toast.title_runs, &title);
+    let icon = sanitize_hud_item_icon(toast.icon)?;
+    (!frame_label.is_empty()).then_some(HudAdvancementToast {
+        frame_label,
+        frame_label_color: toast.frame_label_color & 0xFF_FF_FF,
+        title_runs,
+        icon,
+        block_model: toast.block_model,
+        slot: toast.slot,
+        visible_portion: toast.visible_portion.clamp(0.0, 1.0),
+        fully_visible_ms: toast.fully_visible_ms,
+    })
+}
+
 fn sanitize_hud_debug_options_screen(
     screen: HudDebugOptionsScreen,
 ) -> Option<HudDebugOptionsScreen> {
@@ -15058,6 +15344,43 @@ fn sanitize_hud_styled_runs(
     }
 }
 
+fn sanitize_hud_multiline_styled_runs(
+    runs: Vec<HudStyledTextRun>,
+    fallback_text: &str,
+) -> Vec<HudStyledTextRun> {
+    let mut budget = 256usize;
+    let mut sanitized = Vec::new();
+    for run in runs {
+        if budget == 0 {
+            break;
+        }
+        let mut text = String::new();
+        for ch in run
+            .text
+            .chars()
+            .filter(|ch| *ch == '\n' || !ch.is_control())
+        {
+            if budget == 0 {
+                break;
+            }
+            text.push(ch);
+            budget -= 1;
+        }
+        if !text.is_empty() {
+            sanitized.push(HudStyledTextRun {
+                text,
+                style: run.style,
+                color: run.color.map(|color| color & 0xFF_FF_FF),
+            });
+        }
+    }
+    if sanitized.is_empty() {
+        vec![HudStyledTextRun::plain(fallback_text)]
+    } else {
+        sanitized
+    }
+}
+
 fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
     if icon.lighting != GuiItemLightingEntry::ItemsFlat {
         return None;
@@ -15329,6 +15652,110 @@ mod tests {
         assert_eq!(width, 230);
         assert_eq!(height, 44);
         assert_eq!(x, 90.0);
+    }
+
+    #[test]
+    fn advancement_toast_sanitizes_slot_text_icon_and_slide() {
+        let toast = sanitize_hud_advancement_toast(HudAdvancementToast {
+            frame_label: "Challenge\u{0} Complete!".to_string(),
+            frame_label_color: 0x12FF_88FF,
+            title_runs: vec![HudStyledTextRun {
+                text: "Styled title".to_string(),
+                style: HudTextStyle {
+                    bold: true,
+                    ..HudTextStyle::default()
+                },
+                color: Some(0xAB12_3456),
+            }],
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+            block_model: None,
+            slot: 4,
+            visible_portion: 1.5,
+            fully_visible_ms: 1_600,
+        })
+        .unwrap();
+        assert_eq!(toast.frame_label, "Challenge Complete!");
+        assert_eq!(toast.frame_label_color, 0xFF_88_FF);
+        assert_eq!(toast.title_runs[0].color, Some(0x12_34_56));
+        assert_eq!(toast.visible_portion, 1.0);
+        assert!(sanitize_hud_advancement_toast(HudAdvancementToast { slot: 5, ..toast }).is_none());
+    }
+
+    #[test]
+    fn advancement_toast_uses_vanilla_slot_and_right_edge_slide() {
+        let toast = HudAdvancementToast {
+            frame_label: "Goal Reached!".to_string(),
+            frame_label_color: 0xFF_FF_00,
+            title_runs: vec![HudStyledTextRun::plain("A goal")],
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+            block_model: None,
+            slot: 3,
+            visible_portion: 0.25,
+            fully_visible_ms: 0,
+        };
+        assert_eq!(
+            hud_advancement_toast_rect(PhysicalSize::new(320, 240), &toast),
+            absolute_hud_rect(280.0, 96.0, 160, 32)
+        );
+        assert_eq!(
+            hud_advancement_toast_icon_rect(PhysicalSize::new(320, 240), &toast),
+            absolute_hud_rect(288.0, 104.0, 16, 16)
+        );
+    }
+
+    #[test]
+    fn advancement_toast_block_icon_uses_after_blur_gui_residency() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let model = HudBlockItemModel {
+            identity: test_hud_block_item_identity(),
+            quads: vec![crate::item_models::ItemModelQuad {
+                corners: [
+                    [0.0, 0.0, 8.0],
+                    [16.0, 0.0, 8.0],
+                    [16.0, 16.0, 8.0],
+                    [0.0, 16.0, 8.0],
+                ],
+                uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+                tint: [1.0, 1.0, 1.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
+                shade: 1.0,
+                translucent: false,
+            }]
+            .into(),
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
+        };
+        renderer.set_hud_advancement_toasts(vec![HudAdvancementToast {
+            frame_label: "Advancement Made!".to_string(),
+            frame_label_color: 0xFF_FF_00,
+            title_runs: vec![HudStyledTextRun::plain("Stone Age")],
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+            block_model: Some(model),
+            slot: 2,
+            visible_portion: 1.0,
+            fully_visible_ms: 0,
+        }]);
+        renderer.set_hud_screen_blur(true);
+
+        let mut residency = ItemModelResidencyFrame::default();
+        renderer.append_hud_block_item_residency(&mut residency);
+        assert_eq!(residency.instances.len(), 1);
+        assert_eq!(
+            residency.instances[0].target,
+            ItemModelDrawTarget::GuiAfterBlur
+        );
     }
 
     #[test]
