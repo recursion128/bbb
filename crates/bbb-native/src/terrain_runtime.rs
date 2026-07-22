@@ -910,9 +910,14 @@ fn block_uses_fluid_water_overlay(block_name: Option<&str>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{SetChunkCacheCenter, Vec3d};
+    use bbb_protocol::packets::{
+        BlockPos as ProtocolBlockPos, BlockUpdate, SectionBlocksUpdate, SetChunkCacheCenter, Vec3d,
+    };
     use bbb_renderer::terrain::{TerrainMesh, TerrainSectionMesh};
-    use bbb_world::{ChunkColumn, ChunkState, LightData, LocalPlayerPoseState, WorldDimension};
+    use bbb_world::{
+        ChunkColumn, ChunkSection, ChunkState, LightData, LocalPlayerPoseState, PaletteDomain,
+        PaletteKind, PalettedContainerData, WorldDimension,
+    };
 
     #[test]
     fn renderer_fluid_preserves_world_fluid_state() {
@@ -1205,6 +1210,166 @@ mod tests {
     }
 
     #[test]
+    fn block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers() {
+        let pos = ChunkPos { x: 0, z: 0 };
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 48,
+        });
+        world.insert_decoded_chunk(test_chunk_with_sections(pos, 3));
+        let stone = propertyless_block_state_id("minecraft:stone");
+        let dirt = propertyless_block_state_id("minecraft:dirt");
+        let initial_sections = terrain_section_mesh_revisions(&world, pos);
+        assert_eq!(
+            initial_sections
+                .iter()
+                .map(|&(section_y, _)| section_y)
+                .collect::<Vec<_>>(),
+            vec![0, 1, 2]
+        );
+
+        let initial_layers = TerrainSectionMeshLayers {
+            opaque: initial_sections
+                .iter()
+                .enumerate()
+                .map(|(index, &(section_y, _))| TerrainSectionMesh {
+                    section_y,
+                    mesh: TerrainMesh {
+                        source_sections: (index + 1) * 10,
+                        ..TerrainMesh::default()
+                    },
+                })
+                .collect(),
+            source_sections: initial_sections.len(),
+            ..TerrainSectionMeshLayers::default()
+        };
+        let mut initial_mesh = cached_mesh(&world, pos, 100);
+        initial_mesh.layers = initial_layers;
+        let mut upload = TerrainUploadState {
+            observed_level_generation: world.client_level_generation(),
+            selected_chunks: vec![pos],
+            snapshots: HashMap::from([(pos, cached_snapshot(&world, pos))]),
+            meshes: HashMap::from([(pos, initial_mesh)]),
+            next_resident_revision: 100,
+            ..Default::default()
+        };
+
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 5, y: 5, z: 7 },
+            block_state_id: stone,
+        }));
+        upload.snapshots.insert(pos, cached_snapshot(&world, pos));
+        let single_dirty = dirty_terrain_sections(&world, &upload, pos);
+        assert_eq!(
+            single_dirty
+                .iter()
+                .map(|&(section_y, _)| section_y)
+                .collect::<Vec<_>>(),
+            vec![0]
+        );
+        let single_key = terrain_mesh_job_key(&world, &upload, pos);
+        assert_eq!(single_key.section_count, 1);
+        upload.pending_mesh_jobs.insert(pos, single_key);
+        assert!(accept_terrain_mesh_result(
+            &world,
+            &mut upload,
+            TerrainMeshResult {
+                key: single_key,
+                camera_position: [0.0; 3],
+                build_nanos: 1,
+                sections: single_dirty,
+                layers: TerrainSectionMeshLayers {
+                    opaque: vec![TerrainSectionMesh {
+                        section_y: 0,
+                        mesh: TerrainMesh {
+                            source_sections: 11,
+                            ..TerrainMesh::default()
+                        },
+                    }],
+                    source_sections: 1,
+                    ..TerrainSectionMeshLayers::default()
+                },
+            },
+        ));
+
+        let cached = upload.meshes.get(&pos).expect("single update installed");
+        assert_eq!(
+            cached
+                .layers
+                .opaque
+                .iter()
+                .map(|section| section.mesh.source_sections)
+                .collect::<Vec<_>>(),
+            vec![11, 20, 30]
+        );
+        assert_eq!(
+            cached.resident_revisions,
+            vec![(0, 101), (1, 100), (2, 100)]
+        );
+
+        assert_eq!(
+            world.apply_section_blocks_update(SectionBlocksUpdate {
+                section_x: 0,
+                section_y: 2,
+                section_z: 0,
+                updates: vec![BlockUpdate {
+                    pos: ProtocolBlockPos { x: 6, y: 37, z: 8 },
+                    block_state_id: dirt,
+                }],
+            }),
+            1
+        );
+        upload.snapshots.insert(pos, cached_snapshot(&world, pos));
+        let section_dirty = dirty_terrain_sections(&world, &upload, pos);
+        assert_eq!(
+            section_dirty
+                .iter()
+                .map(|&(section_y, _)| section_y)
+                .collect::<Vec<_>>(),
+            vec![2]
+        );
+        let section_key = terrain_mesh_job_key(&world, &upload, pos);
+        assert_eq!(section_key.section_count, 1);
+        upload.pending_mesh_jobs.insert(pos, section_key);
+        assert!(accept_terrain_mesh_result(
+            &world,
+            &mut upload,
+            TerrainMeshResult {
+                key: section_key,
+                camera_position: [0.0; 3],
+                build_nanos: 1,
+                sections: section_dirty,
+                layers: TerrainSectionMeshLayers {
+                    opaque: vec![TerrainSectionMesh {
+                        section_y: 2,
+                        mesh: TerrainMesh {
+                            source_sections: 31,
+                            ..TerrainMesh::default()
+                        },
+                    }],
+                    source_sections: 1,
+                    ..TerrainSectionMeshLayers::default()
+                },
+            },
+        ));
+
+        let cached = upload.meshes.get(&pos).expect("section update installed");
+        assert_eq!(
+            cached
+                .layers
+                .opaque
+                .iter()
+                .map(|section| section.mesh.source_sections)
+                .collect::<Vec<_>>(),
+            vec![11, 20, 31]
+        );
+        assert_eq!(
+            cached.resident_revisions,
+            vec![(0, 101), (1, 100), (2, 102)]
+        );
+    }
+
+    #[test]
     fn stale_worker_result_cannot_replace_current_chunk_revision() {
         let pos = ChunkPos { x: 0, z: 0 };
         let mut world = WorldStore::new();
@@ -1370,6 +1535,44 @@ mod tests {
             block_entities: Vec::new(),
             light: LightData::default(),
         }
+    }
+
+    fn test_chunk_with_sections(pos: ChunkPos, section_count: usize) -> ChunkColumn {
+        ChunkColumn {
+            sections: (0..section_count)
+                .map(|_| ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: single_value_container(
+                        PaletteDomain::BlockStates,
+                        4096,
+                        bbb_world::vanilla_air_block_state_id(),
+                    ),
+                    biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+                })
+                .collect(),
+            ..test_chunk(pos)
+        }
+    }
+
+    fn single_value_container(
+        domain: PaletteDomain,
+        entry_count: usize,
+        global_id: i32,
+    ) -> PalettedContainerData {
+        PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        }
+    }
+
+    fn propertyless_block_state_id(name: &str) -> i32 {
+        bbb_world::vanilla_block_state_id(name, &std::collections::BTreeMap::new())
+            .unwrap_or_else(|| panic!("missing propertyless vanilla block state {name}"))
     }
 
     fn cached_snapshot(world: &WorldStore, pos: ChunkPos) -> CachedTerrainSnapshot {
