@@ -693,6 +693,7 @@ impl ParticleEventSink for RecordingParticleSink {
     fn spawn_explosion_particles(
         &mut self,
         state: &bbb_world::ExplosionEventState,
+        _level_generation: u64,
         context: LevelParticleSpawnContext,
         _biome_sampler: Option<&dyn crate::particle_runtime::ParticleBiomeSampler>,
         _item_runtime: Option<&bbb_item_model::NativeItemRuntime>,

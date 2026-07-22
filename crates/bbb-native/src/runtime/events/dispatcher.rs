@@ -465,6 +465,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         };
         let batch = particle_events.spawn_explosion_particles(
             state,
+            world.client_level_generation(),
             level_particle_spawn_context(world, &packet),
             Some(&biome_sampler),
             self.item_runtime,

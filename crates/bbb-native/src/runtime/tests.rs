@@ -5366,6 +5366,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let particle_entity_target_contexts = source
         .find("let particle_entity_target_contexts =")
         .expect("pump should sample entity target state before particle tick");
+    let explosion_tracker = source
+        .find("particle_runtime.tick_explosion_particles(")
+        .expect("pump should tick queued explosion effects before particle tick");
     let primed_tnt_smoke = source
         .find("submit_primed_tnt_smoke_particles(particle_batches, world, advanced_ticks);")
         .expect("pump should emit PrimedTnt client smoke before particle tick");
@@ -5425,6 +5428,10 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     assert!(
         particle_entity_target_contexts < particle_tick,
         "entity-target particles sample world entity positions during particle tick"
+    );
+    assert!(
+        particle_sound_camera_position < explosion_tracker && explosion_tracker < particle_tick,
+        "ClientExplosionTracker should use the tick camera and submit before ParticleEngine.tick"
     );
     assert!(
         primed_tnt_smoke < particle_tick,

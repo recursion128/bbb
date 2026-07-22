@@ -1668,36 +1668,24 @@ fn count_zero_emits_single_spawn_with_offset_velocity() {
 
 #[test]
 fn explosion_primary_particle_uses_packet_options_and_unit_x_velocity() {
-    let mut runtime = NativeParticleRuntime {
-        resolver: test_resolver(0),
-    };
-    let state = ExplosionEventState {
-        center: Vec3d {
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+    let state = test_explosion_event_state(
+        Vec3d {
             x: 10.0,
             y: 64.5,
             z: -3.25,
         },
-        radius: 4.0,
-        block_count: 2,
-        player_knockback: None,
-        explosion_particle: ParticlePayload {
-            particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
-            raw_options: Vec::new(),
-        },
-        explosion_sound: bbb_protocol::packets::SoundEventHolder::Reference { registry_id: 41 },
-        block_particles: vec![bbb_protocol::packets::WeightedExplosionParticle {
-            particle: ParticlePayload {
-                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
-                raw_options: Vec::new(),
-            },
-            scaling: 0.5,
-            speed: 1.25,
-            weight: 3,
-        }],
-    };
+        4.0,
+        2,
+    );
 
-    let batch =
-        runtime.spawn_explosion_particles(&state, LevelParticleSpawnContext::default(), None, None);
+    let batch = runtime.spawn_explosion_particles(
+        &state,
+        0,
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
 
     assert_eq!(batch.commands.len(), 1);
     let command = &batch.commands[0];
@@ -1705,6 +1693,213 @@ fn explosion_primary_particle_uses_packet_options_and_unit_x_velocity() {
     assert_eq!(command.position, [10.0, 64.5, -3.25]);
     assert_eq!(command.velocity, [1.0, 0.0, 0.0]);
     assert!(!command.always_show);
+}
+
+#[test]
+fn explosion_tracker_is_deterministic_caps_at_512_and_clears_after_tick() {
+    let state = test_explosion_event_state(
+        Vec3d {
+            x: 10.0,
+            y: 64.5,
+            z: -3.25,
+        },
+        4.0,
+        600,
+    );
+    let world = bbb_world::WorldStore::new();
+    let mut first = test_native_particle_runtime(0, ClientParticleStatus::All);
+    let mut second = test_native_particle_runtime(0, ClientParticleStatus::All);
+    let level_generation = world.client_level_generation();
+    first.spawn_explosion_particles(
+        &state,
+        level_generation,
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+    second.spawn_explosion_particles(
+        &state,
+        level_generation,
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+    let mut first_random = LevelEventSoundRandomState::with_seed(0);
+    let mut second_random = LevelEventSoundRandomState::with_seed(0);
+
+    let first_batch = first.tick_explosion_particles(&world, &mut first_random, None, None);
+    let second_batch = second.tick_explosion_particles(&world, &mut second_random, None, None);
+
+    assert_eq!(first_batch, second_batch);
+    assert_eq!(first_batch.commands.len(), 512);
+    for command in &first_batch.commands {
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_EXPLOSION_ID);
+        let local = [
+            command.position[0] - state.center.x,
+            command.position[1] - state.center.y,
+            command.position[2] - state.center.z,
+        ];
+        let distance = (local[0] * local[0] + local[1] * local[1] + local[2] * local[2]).sqrt();
+        assert!(distance <= f64::from(state.radius) * 0.5 + 1.0e-12);
+        let velocity = command.velocity;
+        let speed =
+            (velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2])
+                .sqrt();
+        assert!((0.375..=6.625).contains(&speed));
+    }
+    assert!(first
+        .tick_explosion_particles(&world, &mut first_random, None, None)
+        .commands
+        .is_empty());
+}
+
+#[test]
+fn explosion_tracker_clears_pending_work_when_particle_status_is_not_all() {
+    let state = test_explosion_event_state(Vec3d::default(), 1.0, 8);
+    let world = bbb_world::WorldStore::new();
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::Minimal);
+    runtime.spawn_explosion_particles(
+        &state,
+        world.client_level_generation(),
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    assert!(runtime
+        .tick_explosion_particles(&world, &mut random, None, None)
+        .commands
+        .is_empty());
+    runtime.resolver.particle_status = ClientParticleStatus::All;
+    assert!(runtime
+        .tick_explosion_particles(&world, &mut random, None, None)
+        .commands
+        .is_empty());
+}
+
+#[test]
+fn explosion_tracker_selects_secondary_particles_by_weight() {
+    let mut state = test_explosion_event_state(Vec3d::default(), 2.0, 400);
+    state.block_particles = vec![
+        bbb_protocol::packets::WeightedExplosionParticle {
+            particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+                raw_options: Vec::new(),
+            },
+            scaling: 1.0,
+            speed: 1.0,
+            weight: 1,
+        },
+        bbb_protocol::packets::WeightedExplosionParticle {
+            particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            scaling: 1.0,
+            speed: 1.0,
+            weight: 3,
+        },
+    ];
+    let world = bbb_world::WorldStore::new();
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+    runtime.spawn_explosion_particles(
+        &state,
+        world.client_level_generation(),
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    let batch = runtime.tick_explosion_particles(&world, &mut random, None, None);
+    let cloud_count = batch
+        .commands
+        .iter()
+        .filter(|command| command.particle_type_id == VANILLA_PARTICLE_TYPE_CLOUD_ID)
+        .count();
+    let explosion_count = batch
+        .commands
+        .iter()
+        .filter(|command| command.particle_type_id == VANILLA_PARTICLE_TYPE_EXPLOSION_ID)
+        .count();
+    assert_eq!(cloud_count + explosion_count, 400);
+    assert!(cloud_count > 0);
+    assert!(explosion_count > cloud_count);
+}
+
+#[test]
+fn explosion_tracker_only_spawns_secondary_particles_in_air() {
+    let stone_state_id = test_block_state_id("minecraft:stone", []);
+    let mut world = bbb_world::WorldStore::new();
+    let single_value = |domain, entry_count, global_id| bbb_world::PalettedContainerData {
+        domain,
+        bits_per_entry: 0,
+        palette_kind: bbb_world::PaletteKind::SingleValue,
+        palette_global_ids: vec![global_id],
+        packed_data: Vec::new(),
+        entry_count,
+    };
+    let section = bbb_world::ChunkSection {
+        non_empty_block_count: 4096,
+        fluid_count: 0,
+        block_states: single_value(bbb_world::PaletteDomain::BlockStates, 4096, stone_state_id),
+        biomes: single_value(bbb_world::PaletteDomain::Biomes, 64, 0),
+    };
+    world.insert_decoded_chunk(bbb_world::ChunkColumn {
+        pos: bbb_world::ChunkPos { x: 0, z: 0 },
+        state: bbb_world::ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: vec![section; 5],
+        block_entities: Vec::new(),
+        light: bbb_world::LightData::default(),
+    });
+    let state = test_explosion_event_state(
+        Vec3d {
+            x: 8.5,
+            y: 8.5,
+            z: 8.5,
+        },
+        0.1,
+        8,
+    );
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+    runtime.spawn_explosion_particles(
+        &state,
+        world.client_level_generation(),
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    assert!(runtime
+        .tick_explosion_particles(&world, &mut random, None, None)
+        .commands
+        .is_empty());
+}
+
+#[test]
+fn explosion_tracker_drops_pending_work_across_level_generations() {
+    let state = test_explosion_event_state(Vec3d::default(), 1.0, 8);
+    let mut world = bbb_world::WorldStore::new();
+    let old_generation = world.client_level_generation();
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+    runtime.spawn_explosion_particles(
+        &state,
+        old_generation,
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+    world.clear_client_level();
+    assert_ne!(world.client_level_generation(), old_generation);
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    assert!(runtime
+        .tick_explosion_particles(&world, &mut random, None, None)
+        .commands
+        .is_empty());
 }
 
 #[test]
@@ -8831,6 +9026,39 @@ fn atlas_pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
 
 fn test_resolver(seed: i64) -> ParticleCommandResolver {
     test_resolver_with_particle_status(seed, ClientParticleStatus::All)
+}
+
+fn test_native_particle_runtime(
+    seed: i64,
+    particle_status: ClientParticleStatus,
+) -> NativeParticleRuntime {
+    NativeParticleRuntime {
+        resolver: test_resolver_with_particle_status(seed, particle_status),
+        explosion_tracker: ClientExplosionTracker::default(),
+    }
+}
+
+fn test_explosion_event_state(center: Vec3d, radius: f32, block_count: i32) -> ExplosionEventState {
+    ExplosionEventState {
+        center,
+        radius,
+        block_count,
+        player_knockback: None,
+        explosion_particle: ParticlePayload {
+            particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
+            raw_options: Vec::new(),
+        },
+        explosion_sound: bbb_protocol::packets::SoundEventHolder::Reference { registry_id: 41 },
+        block_particles: vec![bbb_protocol::packets::WeightedExplosionParticle {
+            particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+                raw_options: Vec::new(),
+            },
+            scaling: 0.5,
+            speed: 1.25,
+            weight: 3,
+        }],
+    }
 }
 
 fn representative_level_event_particle_context(

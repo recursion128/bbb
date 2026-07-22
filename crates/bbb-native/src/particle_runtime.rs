@@ -40,7 +40,7 @@ use bbb_world::{
     SnowballHitParticleState, TakeItemEntityPickupParticleState,
     TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
     VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState,
+    WitchMagicParticleState, WorldStore,
 };
 
 use crate::terrain_runtime::{
@@ -73,11 +73,18 @@ pub(crate) trait ParticleEventSink {
     fn spawn_explosion_particles(
         &mut self,
         state: &ExplosionEventState,
+        level_generation: u64,
         context: LevelParticleSpawnContext,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
         item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
-        let _ = (state, context, biome_sampler, item_runtime);
+        let _ = (
+            state,
+            level_generation,
+            context,
+            biome_sampler,
+            item_runtime,
+        );
         ParticleSpawnBatch::default()
     }
     fn spawn_level_event_particles(
@@ -282,6 +289,7 @@ pub(crate) struct NativeParticleRenderRuntime {
 
 pub(crate) struct NativeParticleRuntime {
     resolver: ParticleCommandResolver,
+    explosion_tracker: ClientExplosionTracker,
 }
 
 pub(crate) struct NativeParticleResources {
@@ -302,6 +310,7 @@ impl NativeParticleResources {
         Ok(Self {
             simulation: NativeParticleRuntime {
                 resolver: ParticleCommandResolver::new(definitions, sprites, particle_status),
+                explosion_tracker: ClientExplosionTracker::default(),
             },
             render: NativeParticleRenderRuntime {
                 atlas,
@@ -364,6 +373,45 @@ impl NativeParticleRuntime {
     pub(crate) fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
         self.resolver.set_default_item_particle_sprite_ids(items);
     }
+
+    pub(crate) fn tick_explosion_particles(
+        &mut self,
+        world: &WorldStore,
+        random: &mut LevelEventSoundRandomState,
+        camera_position: Option<[f64; 3]>,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        let spawns = self.explosion_tracker.tick(
+            world,
+            world.client_level_generation(),
+            self.resolver.particle_status,
+            random,
+        );
+        let biome_sampler = ExplosionWorldParticleSampler { world };
+        let mut batch = ParticleSpawnBatch::default();
+        for spawn in spawns {
+            let packet = LevelParticles {
+                override_limiter: false,
+                always_show: false,
+                position: spawn.position,
+                offset: spawn.velocity,
+                max_speed: 1.0,
+                count: 0,
+                particle: spawn.particle,
+            };
+            let context = explosion_level_particle_context(world, &packet, camera_position);
+            append_particle_batch(
+                &mut batch,
+                self.resolver.resolve_level_particles_with_context(
+                    &packet,
+                    context,
+                    Some(&biome_sampler),
+                    item_runtime,
+                ),
+            );
+        }
+        batch
+    }
 }
 
 impl ParticleEventSink for NativeParticleRuntime {
@@ -389,11 +437,12 @@ impl ParticleEventSink for NativeParticleRuntime {
     fn spawn_explosion_particles(
         &mut self,
         state: &ExplosionEventState,
+        level_generation: u64,
         context: LevelParticleSpawnContext,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
         item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
-        self.resolver.resolve_level_particles_with_context(
+        let batch = self.resolver.resolve_level_particles_with_context(
             &LevelParticles {
                 override_limiter: false,
                 always_show: false,
@@ -410,7 +459,9 @@ impl ParticleEventSink for NativeParticleRuntime {
             context,
             biome_sampler,
             item_runtime,
-        )
+        );
+        self.explosion_tracker.track(state, level_generation);
+        batch
     }
 
     fn spawn_level_event_particles(
@@ -1468,6 +1519,7 @@ impl LegacyRandom {
 
 mod atlas;
 mod block_map_color;
+mod explosion;
 mod ids;
 mod resolver_block_events;
 mod resolver_core;
@@ -1477,6 +1529,7 @@ mod resolver_trial_vault;
 
 use atlas::*;
 use block_map_color::*;
+use explosion::*;
 use ids::*;
 
 #[cfg(test)]

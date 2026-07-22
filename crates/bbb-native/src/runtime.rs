@@ -2433,6 +2433,16 @@ pub(crate) fn advance_simulation(
         particle_camera_pose.map(|camera| camera_eye_position(camera).map(f64::from));
     let particle_player_motion_contexts = particle_player_motion_contexts(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
+    if advanced_ticks > 0 {
+        if let Some(particle_runtime) = particle_runtime.as_mut() {
+            particle_batches.submit_particle_batch(particle_runtime.tick_explosion_particles(
+                world,
+                level_event_sound_random,
+                particle_sound_camera_position,
+                item_runtime.as_ref(),
+            ));
+        }
+    }
     submit_primed_tnt_smoke_particles(particle_batches, world, advanced_ticks);
     let mut particle_events = particle_runtime
         .as_mut()
