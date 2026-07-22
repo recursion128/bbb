@@ -92,9 +92,14 @@ impl WorldStore {
     /// entity, which restarts the shake (`clickDirection = from3DDataValue(b1)`,
     /// `ticks = 0`, `shaking = true` — re-ringing a shaking bell resets the
     /// counter).
-    pub(crate) fn update_bell_shake_from_block_event(&mut self, pos: BlockPos, b0: u8, b1: u8) {
+    pub(crate) fn update_bell_shake_from_block_event(
+        &mut self,
+        pos: BlockPos,
+        b0: u8,
+        b1: u8,
+    ) -> bool {
         if b0 != 1 {
-            return;
+            return false;
         }
         let is_bell = self
             .probe_block(pos)
@@ -102,7 +107,7 @@ impl WorldStore {
             .as_deref()
             .is_some_and(is_bell_block_name);
         if !is_bell {
-            return;
+            return false;
         }
         let direction = BellShakeDirectionKind::from_3d_data_value(b1);
         if let Some(shake) = self.bell_shakes.iter_mut().find(|shake| shake.pos == pos) {
@@ -117,6 +122,7 @@ impl WorldStore {
                 direction,
             });
         }
+        true
     }
 
     /// Advances every tracked bell shake by `ticks` client ticks,

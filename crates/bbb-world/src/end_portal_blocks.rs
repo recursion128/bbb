@@ -85,7 +85,7 @@ pub fn is_end_portal_block_name(block_name: &str) -> bool {
 }
 
 impl WorldStore {
-    pub(crate) fn update_end_gateway_from_block_event(&mut self, pos: BlockPos, b0: u8) {
+    pub(crate) fn update_end_gateway_from_block_event(&mut self, pos: BlockPos, b0: u8) -> bool {
         if b0 != 1
             || self
                 .probe_block(pos)
@@ -93,11 +93,11 @@ impl WorldStore {
                 .as_deref()
                 != Some("minecraft:end_gateway")
         {
-            return;
+            return false;
         }
         if let Some(state) = self.end_gateways.iter_mut().find(|state| state.pos == pos) {
             state.teleport_cooldown = END_GATEWAY_COOLDOWN_TICKS;
-            return;
+            return true;
         }
         let source = self
             .end_portal_block_sources()
@@ -109,6 +109,7 @@ impl WorldStore {
         self.end_gateways.push(state);
         self.end_gateways
             .sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));
+        true
     }
 
     /// Advances `TheEndGatewayBlockEntity.beamAnimationTick`: `age++` every

@@ -1156,6 +1156,7 @@ fn insert_sign_text(world: &mut WorldStore, pos: BlockPos, front: [&str; 4], bac
             banner_patterns: None,
             end_gateway: None,
             spawner: None,
+            note_block_sound: None,
         }],
         light: LightData::default(),
     });

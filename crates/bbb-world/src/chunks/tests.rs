@@ -73,6 +73,35 @@ fn decodes_level_chunk_with_light_structure() {
 }
 
 #[test]
+fn decodes_skull_note_block_sound_from_initial_chunk_data() {
+    let mut packet = synthetic_level_chunk_packet();
+    packet
+        .chunk_data
+        .block_entities
+        .push(LevelChunkBlockEntity {
+            packed_xz: 0x12,
+            y: 7,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
+            raw_nbt: nbt_compound_with_string("note_block_sound", "bbb:initial/chime"),
+        });
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_level_chunk_with_light(packet).unwrap();
+
+    assert_eq!(
+        store.skull_note_block_sound_at(BlockPos {
+            x: 17,
+            y: 7,
+            z: -30
+        }),
+        Some("bbb:initial/chime")
+    );
+}
+
+#[test]
 fn terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
@@ -1902,6 +1931,7 @@ fn applies_block_entity_data_update() {
             banner_patterns: None,
             end_gateway: None,
             spawner: None,
+            note_block_sound: None,
         }
     );
     assert_eq!(

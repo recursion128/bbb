@@ -110,6 +110,96 @@ fn block_and_level_events_update_world_and_world_counters() {
 }
 
 #[test]
+fn note_block_event_emits_current_state_sound_and_particle() {
+    let pos = block_pos(20, -63, -32);
+    let note_block = vanilla_block_state_id(
+        "minecraft:note_block",
+        [("instrument", "harp"), ("note", "24"), ("powered", "false")],
+    );
+    let event = bbb_protocol::packets::BlockEvent {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        b0: 200,
+        b1: 100,
+        // Deliberately differs from the current state. Vanilla only resolves
+        // this holder during decode; Level.blockEvent dispatches at `pos`.
+        block_id: bbb_protocol::block_types::VANILLA_BLOCK_STONE_ID,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEvent(event)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    world
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut world, pos, note_block);
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_seed = expected_random.next_long();
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            None,
+            &mut random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.note_block.harp");
+    assert_eq!(command.category, AudioCategory::Records);
+    assert_eq!(command.position, [20.5, -62.5, -31.5]);
+    assert_close(command.packet_volume, 3.0);
+    assert_close(command.packet_pitch, 2.0);
+    assert_eq!(command.seed, expected_seed);
+
+    assert_eq!(particles.packets.len(), 1);
+    let particle = &particles.packets[0];
+    assert_eq!(
+        particle.particle.particle_type_id,
+        bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_NOTE_ID
+    );
+    assert_eq!(
+        particle.position,
+        ProtocolVec3d {
+            x: 20.5,
+            y: -61.8,
+            z: -31.5,
+        }
+    );
+    assert_eq!(
+        particle.offset,
+        ProtocolVec3d {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0
+        }
+    );
+    assert_eq!(particle.count, 0);
+    assert_eq!(world.counters().block_events_received, 1);
+    assert_eq!(world.counters().block_events_applied, 1);
+    assert_eq!(world.counters().block_events_ignored, 0);
+}
+
+#[test]
 fn level_event_2001_emits_vanilla_block_break_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {

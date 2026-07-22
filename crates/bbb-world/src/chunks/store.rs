@@ -1,5 +1,5 @@
 use bbb_protocol::{
-    block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
+    block_entity_types::{VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID},
     codec::ProtocolError,
     packets::{
         BlockEntityData as ProtocolBlockEntityData, BlockUpdate as ProtocolBlockUpdate,
@@ -193,6 +193,18 @@ impl WorldStore {
                 return Err(err);
             }
         };
+        let note_block_sound = if packet.block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
+        {
+            match crate::chunks::decode_skull_note_block_sound(&packet.raw_nbt) {
+                Ok(sound) => sound,
+                Err(err) => {
+                    self.record_apply_error("block_entity_data", &err);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
 
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
@@ -211,6 +223,7 @@ impl WorldStore {
             banner_patterns,
             end_gateway,
             spawner,
+            note_block_sound,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             self.counters.block_entity_updates_ignored += 1;
@@ -495,6 +508,13 @@ impl WorldStore {
     pub fn block_entity_raw_nbt_at(&self, pos: BlockPos) -> Option<&[u8]> {
         self.block_entity_record_at(pos)
             .map(|entity| entity.raw_nbt.as_slice())
+    }
+
+    pub fn skull_note_block_sound_at(&self, pos: BlockPos) -> Option<&str> {
+        let entity = self.block_entity_record_at(pos)?;
+        (entity.type_id == VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID)
+            .then_some(entity.note_block_sound.as_deref())
+            .flatten()
     }
 
     pub fn vault_shared_data_at(&self, pos: BlockPos) -> Option<&VaultSharedDataState> {

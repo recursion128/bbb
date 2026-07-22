@@ -135,9 +135,9 @@ impl WorldStore {
         pos: BlockPos,
         b0: u8,
         b1: u8,
-    ) {
+    ) -> bool {
         if b0 != 1 {
-            return;
+            return false;
         }
         let is_pot = self
             .probe_block(pos)
@@ -145,12 +145,12 @@ impl WorldStore {
             .as_deref()
             .is_some_and(is_decorated_pot_block_name);
         if !is_pot {
-            return;
+            return false;
         }
         let style = match b1 {
             0 => DecoratedPotWobbleStyleKind::Positive,
             1 => DecoratedPotWobbleStyleKind::Negative,
-            _ => return,
+            _ => return false,
         };
         if let Some(wobble) = self
             .decorated_pot_wobbles
@@ -166,6 +166,7 @@ impl WorldStore {
                 style,
             });
         }
+        true
     }
 
     /// Advances every tracked pot wobble by `ticks` client ticks. Vanilla has

@@ -7,6 +7,7 @@ mod nbt;
 mod palette;
 mod pot_decorations;
 mod sign_text;
+mod skull;
 mod spawner;
 mod state;
 mod store;
@@ -24,6 +25,7 @@ pub(crate) use light::{
 };
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub(crate) use pot_decorations::decode_decorated_pot_sherds;
+pub(crate) use skull::decode_skull_note_block_sound;
 pub(crate) use spawner::decode_spawner_block_entity_data;
 pub(crate) use state::EndGatewayBlockEntityData;
 pub use state::{

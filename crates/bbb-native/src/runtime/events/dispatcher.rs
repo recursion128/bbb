@@ -8,7 +8,8 @@ use bbb_protocol::packets::{
 };
 use bbb_protocol::particle_types::{
     VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID,
-    VANILLA_PARTICLE_TYPE_ENCHANTED_HIT_ID, VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID,
+    VANILLA_PARTICLE_TYPE_ENCHANTED_HIT_ID, VANILLA_PARTICLE_TYPE_NOTE_ID,
+    VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID,
 };
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
@@ -17,10 +18,10 @@ use bbb_world::{
     FireworkRocketExplosionParticleState, FoxEatParticleState, HoneyBlockParticleState,
     LevelEventGrowthRandomMode, LevelEventSoundRandomState, LivingEntityDrownParticleState,
     LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LlamaSpitRecreationParticleState, PlayApplyEffects, RabbitSprintParticleState,
-    RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TerrainFluidKind, ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState,
-    WorldStore,
+    LlamaSpitRecreationParticleState, NoteBlockParticleState, PlayApplyEffects,
+    RabbitSprintParticleState, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TerrainFluidKind, ThrownEggHitParticleState,
+    VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -353,6 +354,30 @@ struct NativePlayEffects<'a, 'b, 'c, 'audio, 'particle, 'renderer> {
 impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     fn positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
         emit_positioned_sound(self.audio_events, state);
+    }
+
+    fn note_block_particle(&mut self, world: &WorldStore, state: NoteBlockParticleState) {
+        let packet = LevelParticles {
+            override_limiter: false,
+            always_show: false,
+            position: state.position,
+            offset: state.velocity,
+            max_speed: 1.0,
+            count: 0,
+            particle: ParticlePayload {
+                particle_type_id: VANILLA_PARTICLE_TYPE_NOTE_ID,
+                raw_options: Vec::new(),
+            },
+        };
+        let biome_sampler = WorldParticleBiomeSampler { world };
+        emit_level_particles(
+            self.particle_events,
+            self.particle_target,
+            &packet,
+            level_particle_spawn_context(world, &packet),
+            Some(&biome_sampler),
+            self.item_runtime,
+        );
     }
 
     fn local_sound(&mut self, state: &bbb_world::LocalSoundEventState) {

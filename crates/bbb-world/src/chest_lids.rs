@@ -170,9 +170,14 @@ impl WorldStore {
     /// (`ChestBlockEntity.EVENT_SET_OPEN_COUNT`) on a block position whose
     /// *current* block state is a chest-family block reaches a lid controller,
     /// which sets `shouldBeOpen(count > 0)`.
-    pub(crate) fn update_chest_lid_from_block_event(&mut self, pos: BlockPos, b0: u8, b1: u8) {
+    pub(crate) fn update_chest_lid_from_block_event(
+        &mut self,
+        pos: BlockPos,
+        b0: u8,
+        b1: u8,
+    ) -> bool {
         if b0 != 1 {
-            return;
+            return false;
         }
         let is_chest = self
             .probe_block(pos)
@@ -181,7 +186,7 @@ impl WorldStore {
             .and_then(chest_model_kind_for_block_name)
             .is_some();
         if !is_chest {
-            return;
+            return false;
         }
         let should_be_open = b1 > 0;
         if let Some(lid) = self.chest_lids.iter_mut().find(|lid| lid.pos == pos) {
@@ -194,6 +199,7 @@ impl WorldStore {
                 o_openness: 0.0,
             });
         }
+        true
     }
 
     /// Advances every tracked chest lid by `ticks` client ticks, transcribing

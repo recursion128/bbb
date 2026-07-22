@@ -23,6 +23,7 @@ mod item_profiles;
 mod lectern_books;
 mod level;
 mod maps;
+mod note_blocks;
 mod painting_variants;
 mod play_apply;
 mod position;

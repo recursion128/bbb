@@ -4,7 +4,11 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{protocol_block_pos, BlockPos, JukeboxLevelEventState, WorldStore};
+use crate::{
+    chest_model_kind_for_block_name, is_bell_block_name, is_decorated_pot_block_name,
+    protocol_block_pos, shulker_box_color_for_block_name, BlockPos, JukeboxLevelEventState,
+    LevelEventSoundRandomState, NoPlayApplyEffects, PlayApplyEffects, WorldStore,
+};
 
 const BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS: u32 = 20;
 const BLOCK_DESTRUCTION_EXPIRY_TICKS: u32 = 400;
@@ -117,8 +121,32 @@ impl WorldStore {
         expired
     }
 
-    pub fn apply_block_event(&mut self, event: ProtocolBlockEvent) {
+    pub fn apply_block_event(&mut self, event: ProtocolBlockEvent) -> bool {
+        self.apply_block_event_with_effects(
+            event,
+            &mut LevelEventSoundRandomState::default(),
+            &mut NoPlayApplyEffects,
+        )
+    }
+
+    pub(crate) fn apply_block_event_with_effects(
+        &mut self,
+        event: ProtocolBlockEvent,
+        random: &mut LevelEventSoundRandomState,
+        effects: &mut dyn PlayApplyEffects,
+    ) -> bool {
         self.counters.block_events_received += 1;
+        // The packet holder is registry validated, but vanilla Level.blockEvent
+        // dispatches through getBlockState(pos) and does not compare the packet
+        // block against that current state.
+        if self
+            .registries
+            .block_name_by_registry_id(event.block_id)
+            .is_none()
+        {
+            self.counters.block_events_ignored += 1;
+            return false;
+        }
         let pos = protocol_block_pos(event.pos);
         self.block_events.push(BlockEventRecord {
             pos,
@@ -127,12 +155,38 @@ impl WorldStore {
             block_id: event.block_id,
         });
         self.counters.block_events_tracked = self.block_events.len();
-        self.update_chest_lid_from_block_event(pos, event.b0, event.b1);
-        self.update_bell_shake_from_block_event(pos, event.b0, event.b1);
-        self.update_shulker_box_lid_from_block_event(pos, event.b0, event.b1);
-        self.update_decorated_pot_wobble_from_block_event(pos, event.b0, event.b1);
-        self.update_end_gateway_from_block_event(pos, event.b0);
-        self.update_spawner_from_block_event(pos, event.b0);
+
+        let Some(current) = self.probe_block(pos) else {
+            self.counters.block_events_ignored += 1;
+            return false;
+        };
+        let Some(block_name) = current.block_name else {
+            self.counters.block_events_ignored += 1;
+            return false;
+        };
+        let applied = if chest_model_kind_for_block_name(&block_name).is_some() {
+            self.update_chest_lid_from_block_event(pos, event.b0, event.b1)
+        } else if is_bell_block_name(&block_name) {
+            self.update_bell_shake_from_block_event(pos, event.b0, event.b1)
+        } else if shulker_box_color_for_block_name(&block_name).is_some() {
+            self.update_shulker_box_lid_from_block_event(pos, event.b0, event.b1)
+        } else if is_decorated_pot_block_name(&block_name) {
+            self.update_decorated_pot_wobble_from_block_event(pos, event.b0, event.b1)
+        } else if block_name == "minecraft:end_gateway" {
+            self.update_end_gateway_from_block_event(pos, event.b0)
+        } else if block_name == "minecraft:spawner" {
+            self.update_spawner_from_block_event(pos, event.b0)
+        } else if block_name == "minecraft:note_block" {
+            self.trigger_note_block_event(pos, &current.block_properties, random, effects)
+        } else {
+            false
+        };
+        if applied {
+            self.counters.block_events_applied += 1;
+        } else {
+            self.counters.block_events_ignored += 1;
+        }
+        applied
     }
 
     pub fn apply_level_event(

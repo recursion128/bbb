@@ -174,6 +174,13 @@ fn decode_block_entities(
         let banner_patterns = crate::chunks::decode_banner_patterns(&raw_nbt)?;
         let end_gateway = crate::chunks::decode_end_gateway_block_entity_data(&raw_nbt)?;
         let spawner = crate::chunks::decode_spawner_block_entity_data(&raw_nbt)?;
+        let note_block_sound = if block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
+        {
+            crate::chunks::decode_skull_note_block_sound(&raw_nbt)?
+        } else {
+            None
+        };
         out.push(BlockEntityRecord {
             local_x: packed_xz >> 4,
             y,
@@ -187,6 +194,7 @@ fn decode_block_entities(
             banner_patterns,
             end_gateway,
             spawner,
+            note_block_sound,
         });
     }
     Ok(out)

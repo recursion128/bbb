@@ -172,9 +172,9 @@ impl WorldStore {
         pos: BlockPos,
         b0: u8,
         b1: u8,
-    ) {
+    ) -> bool {
         if b0 != 1 {
-            return;
+            return false;
         }
         let is_shulker_box = self
             .probe_block(pos)
@@ -183,12 +183,14 @@ impl WorldStore {
             .and_then(shulker_box_color_for_block_name)
             .is_some();
         if !is_shulker_box {
-            return;
+            return false;
         }
         let status = match b1 {
             0 => ShulkerBoxAnimationStatus::Closing,
             1 => ShulkerBoxAnimationStatus::Opening,
-            _ => return,
+            // Vanilla still accepts the event and updates `openCount`; bbb
+            // does not project that non-rendered counter.
+            _ => return true,
         };
         if let Some(lid) = self.shulker_box_lids.iter_mut().find(|lid| lid.pos == pos) {
             lid.status = status;
@@ -200,6 +202,7 @@ impl WorldStore {
                 o_progress: 0.0,
             });
         }
+        true
     }
 
     /// Advances every tracked shulker box lid by `ticks` client ticks,

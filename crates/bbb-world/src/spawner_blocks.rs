@@ -138,7 +138,7 @@ impl WorldStore {
         self.spawner_blocks = states;
     }
 
-    pub(crate) fn update_spawner_from_block_event(&mut self, pos: BlockPos, b0: u8) {
+    pub(crate) fn update_spawner_from_block_event(&mut self, pos: BlockPos, b0: u8) -> bool {
         if b0 != 1
             || self
                 .probe_block(pos)
@@ -146,7 +146,7 @@ impl WorldStore {
                 .as_deref()
                 != Some("minecraft:spawner")
         {
-            return;
+            return false;
         }
         if let Some(state) = self
             .spawner_blocks
@@ -154,7 +154,7 @@ impl WorldStore {
             .find(|state| state.pos == pos)
         {
             state.spawn_delay = state.min_spawn_delay;
-            return;
+            return true;
         }
         let source = self
             .spawner_block_sources()
@@ -166,6 +166,7 @@ impl WorldStore {
         self.spawner_blocks.push(state);
         self.spawner_blocks
             .sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));
+        true
     }
 
     pub fn spawner_block_states(&self) -> &[SpawnerBlockState] {

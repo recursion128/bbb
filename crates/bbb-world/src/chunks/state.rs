@@ -97,6 +97,8 @@ pub struct BlockEntityRecord {
     pub end_gateway: Option<EndGatewayBlockEntityData>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spawner: Option<SpawnerBlockEntityData>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note_block_sound: Option<String>,
 }
 
 /// The end gateway block entity fields read by `TheEndGatewayRenderer`:

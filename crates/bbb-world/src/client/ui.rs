@@ -2889,6 +2889,7 @@ mod tests {
                 banner_patterns: None,
                 end_gateway: None,
                 spawner: None,
+                note_block_sound: None,
             }],
             light: crate::LightData::default(),
         });

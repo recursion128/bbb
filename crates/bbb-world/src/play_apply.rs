@@ -89,6 +89,7 @@ pub enum EntityTrackingEmitterParticleKind {
 /// stream as the online dispatcher.
 pub trait PlayApplyEffects {
     fn positioned_sound(&mut self, _state: &SoundEventState) {}
+    fn note_block_particle(&mut self, _world: &WorldStore, _state: crate::NoteBlockParticleState) {}
     fn local_sound(&mut self, _state: &LocalSoundEventState) {}
     fn entity_sound(&mut self, _state: &SoundEntityEventState, _position: Option<[f64; 3]>) {}
     fn stop_sound(&mut self, _state: &StopSoundEventState) {}
@@ -959,7 +960,7 @@ impl WorldStore {
                 let _ = self.apply_block_entity_data(update);
             }
             PlayClientbound::BlockEvent(event) => {
-                self.apply_block_event(event);
+                self.apply_block_event_with_effects(event, random, effects);
             }
             PlayClientbound::LevelEvent(event) => {
                 self.apply_level_event_with_effects(event, random, effects);

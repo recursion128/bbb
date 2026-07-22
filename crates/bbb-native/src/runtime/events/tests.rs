@@ -1024,6 +1024,9 @@ fn test_sound_catalog() -> SoundCatalog {
             "block.grass.break": {
                 "sounds": ["dig/grass1"]
             },
+            "block.note_block.harp": {
+                "sounds": ["note/harp"]
+            },
             "item.bone_meal.use": {
                 "sounds": ["item/bone_meal/use"]
             },
