@@ -4061,7 +4061,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_set_structure_block_keeps_editor_and_authority_open() {
+    fn play_serverbound_set_structure_block_closes_editor_and_codec() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -4073,7 +4073,7 @@ mod tests {
         assert!(entry
             .coverage
             .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

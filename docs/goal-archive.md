@@ -255,3 +255,6 @@
   数据与 screen-scoped rich status/optional size 驱动原生编辑器；INIT/QUERY、四类关闭动作、
   Save 守卫和 Cancel/Escape 均有精确发包回归，双向 coverage 全单元 complete，合同见
   `docs/archive/test-instance-block-editor-packet-closure-design.md`。
+- **2026-07-22（StructureBlockEditScreen 包闭环）**：typed block-entity 权威投影驱动
+  四模式原生编辑器，Done/Save/Load/Detect 精确发包且 Cancel/Escape 零发送；五类 packet
+  coverage 全部 complete，合同见 `docs/archive/structure-block-editor-packet-closure-design.md`。

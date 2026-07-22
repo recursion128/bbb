@@ -5969,45 +5969,55 @@
       "coverage": {
         "ack_response": {
           "evidence": [
-            "crates/bbb-world/src/chunks/store.rs#apply_block_entity_data",
+            "crates/bbb-world/src/structure_blocks.rs#refresh_structure_block_editor_from_authoritative_data",
             "crates/bbb-world/src/client/hud.rs#apply_system_chat",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetStructureBlock"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_STRUCTURE_BLOCK",
+            "crates/bbb-native/src/input/mouse.rs#start_use_item",
+            "crates/bbb-native/src/input/structure_block.rs#sync_structure_block_editor",
+            "crates/bbb-native/src/input/structure_block.rs#handle_structure_block_editor_mouse_input",
             "vanilla:net/minecraft/client/player/LocalPlayer.java#openStructureBlock",
             "vanilla:net/minecraft/client/gui/screens/inventory/StructureBlockEditScreen.java#sendToServer"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_STRUCTURE_BLOCK",
+            "crates/bbb-protocol/src/packets/structure_blocks.rs#encode_play_set_structure_block",
+            "crates/bbb-net/src/driver/commands.rs#send_set_structure_block",
             "vanilla:net/minecraft/network/protocol/game/ServerboundSetStructureBlockPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
           "evidence": [
+            "crates/bbb-world/src/structure_blocks.rs#try_open_structure_block_editor",
+            "crates/bbb-native/src/input/structure_block.rs#parse_integrity",
+            "crates/bbb-native/src/input/structure_block.rs#handle_structure_block_editor_mouse_input",
             "vanilla:net/minecraft/client/gui/screens/inventory/StructureBlockEditScreen.java#sendToServer",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetStructureBlock"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
-            "scripts/generate-packet-catalog.py#extract_catalogs"
+            "crates/bbb-protocol/src/packets/structure_blocks.rs#encodes_set_structure_block_wire_order_bounds_and_flags",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_set_structure_block_encodes_editor_packet",
+            "crates/bbb-world/src/structure_blocks.rs#editor_requires_permission_refreshes_and_rejects_bad_root_atomically",
+            "crates/bbb-native/src/input/tests.rs#structure_block_editor_preloads_and_done_sends_clamped_exact_packet",
+            "crates/bbb-native/src/input/tests.rs#structure_block_editor_mode_visibility_and_controls_are_exact",
+            "crates/bbb-renderer/src/hud.rs#structure_block_editor_layout_matches_vanilla_absolute_geometry"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
