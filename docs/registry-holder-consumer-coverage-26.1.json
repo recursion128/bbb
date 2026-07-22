@@ -11,22 +11,24 @@
     {
       "call_site": "net/minecraft/advancements/criterion/BeeNestDestroyedTrigger.java:31:16:Registry.holderByNameCodec",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 31,
       "owner": "net.minecraft.advancements.criterion.BeeNestDestroyedTrigger.TriggerInstance",
       "registry_expression": "BuiltInRegistries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/advancements/criterion/BeeNestDestroyedTrigger.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/BlockPredicate.java:31:13:RegistryCodecs.homogeneousList",
@@ -106,22 +108,24 @@
     {
       "call_site": "net/minecraft/advancements/criterion/EnterBlockTrigger.java:30:19:Registry.holderByNameCodec",
       "column": 19,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 30,
       "owner": "net.minecraft.advancements.criterion.EnterBlockTrigger.TriggerInstance",
       "registry_expression": "BuiltInRegistries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/advancements/criterion/EnterBlockTrigger.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/EntityTypePredicate.java:13:59:RegistryCodecs.homogeneousList",
@@ -231,42 +235,46 @@
     {
       "call_site": "net/minecraft/advancements/criterion/PlayerPredicate.java:260:81:Registry.holderByNameCodec",
       "column": 81,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 260,
       "owner": "net.minecraft.advancements.criterion.PlayerPredicate.StatMatcher",
       "registry_expression": "type.getRegistry ()",
       "resource_id": null,
       "source_path": "net/minecraft/advancements/criterion/PlayerPredicate.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/SlideDownBlockTrigger.java:30:19:Registry.holderByNameCodec",
       "column": 19,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 30,
       "owner": "net.minecraft.advancements.criterion.SlideDownBlockTrigger.TriggerInstance",
       "registry_expression": "BuiltInRegistries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/advancements/criterion/SlideDownBlockTrigger.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/advancements/criterion/TagPredicate.java:13:23:TagKey.codec",
@@ -349,22 +357,24 @@
     {
       "call_site": "net/minecraft/core/RegistryCodecs.java:25:49:RegistryFixedCodec.create",
       "column": 49,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 25,
       "owner": "net.minecraft.core.RegistryCodecs",
       "registry_expression": "registryKey",
       "resource_id": null,
       "source_path": "net/minecraft/core/RegistryCodecs.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/core/component/DataComponents.java:285:25:RegistryCodecs.homogeneousList",
@@ -868,22 +878,27 @@
     {
       "call_site": "net/minecraft/world/damagesource/DamageType.java:23:58:RegistryFixedCodec.create",
       "column": 58,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 23,
       "owner": "net.minecraft.world.damagesource.DamageType",
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/damagesource/DamageType.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/damagesource/DamageType.java:24:96:ByteBufCodecs.holderRegistry",
@@ -913,22 +928,27 @@
     {
       "call_site": "net/minecraft/world/effect/MobEffect.java:40:57:Registry.holderByNameCodec",
       "column": 57,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 40,
       "owner": "net.minecraft.world.effect.MobEffect",
       "registry_expression": "BuiltInRegistries.MOB_EFFECT",
       "resource_id": "minecraft:mob_effect",
       "source_path": "net/minecraft/world/effect/MobEffect.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/effect/MobEffect.java:41:95:ByteBufCodecs.holderRegistry",
@@ -964,22 +984,27 @@
     {
       "call_site": "net/minecraft/world/entity/ai/attributes/Attribute.java:13:57:Registry.holderByNameCodec",
       "column": 57,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 13,
       "owner": "net.minecraft.world.entity.ai.attributes.Attribute",
       "registry_expression": "BuiltInRegistries.ATTRIBUTE",
       "resource_id": "minecraft:attribute",
       "source_path": "net/minecraft/world/entity/ai/attributes/Attribute.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/ai/attributes/Attribute.java:14:95:ByteBufCodecs.holderRegistry",
@@ -1013,62 +1038,71 @@
     {
       "call_site": "net/minecraft/world/entity/ai/attributes/AttributeInstance.java:204:16:Registry.holderByNameCodec",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 204,
       "owner": "net.minecraft.world.entity.ai.attributes.AttributeInstance.Packed",
       "registry_expression": "BuiltInRegistries.ATTRIBUTE",
       "resource_id": "minecraft:attribute",
       "source_path": "net/minecraft/world/entity/ai/attributes/AttributeInstance.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/entity/ai/village/poi/PoiRecord.java:93:16:RegistryFixedCodec.create",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 93,
       "owner": "net.minecraft.world.entity.ai.village.poi.PoiRecord.Packed",
       "registry_expression": "Registries.POINT_OF_INTEREST_TYPE",
       "resource_id": "minecraft:point_of_interest_type",
       "source_path": "net/minecraft/world/entity/ai/village/poi/PoiRecord.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java:16:67:RegistryFixedCodec.create",
       "column": 67,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 16,
       "owner": "net.minecraft.world.entity.animal.chicken.ChickenSoundVariant",
       "registry_expression": "Registries.CHICKEN_SOUND_VARIANT",
       "resource_id": "minecraft:chicken_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java:17:105:ByteBufCodecs.holderRegistry",
@@ -1105,22 +1139,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/chicken/ChickenVariant.java:38:62:RegistryFixedCodec.create",
       "column": 62,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 38,
       "owner": "net.minecraft.world.entity.animal.chicken.ChickenVariant",
       "registry_expression": "Registries.CHICKEN_VARIANT",
       "resource_id": "minecraft:chicken_variant",
       "source_path": "net/minecraft/world/entity/animal/chicken/ChickenVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/chicken/ChickenVariant.java:39:100:ByteBufCodecs.holderRegistry",
@@ -1154,22 +1193,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java:16:63:RegistryFixedCodec.create",
       "column": 63,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 16,
       "owner": "net.minecraft.world.entity.animal.cow.CowSoundVariant",
       "registry_expression": "Registries.COW_SOUND_VARIANT",
       "resource_id": "minecraft:cow_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
@@ -1206,22 +1250,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/cow/CowVariant.java:37:58:RegistryFixedCodec.create",
       "column": 58,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 37,
       "owner": "net.minecraft.world.entity.animal.cow.CowVariant",
       "registry_expression": "Registries.COW_VARIANT",
       "resource_id": "minecraft:cow_variant",
       "source_path": "net/minecraft/world/entity/animal/cow/CowVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/cow/CowVariant.java:38:96:ByteBufCodecs.holderRegistry",
@@ -1255,22 +1304,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java:16:63:RegistryFixedCodec.create",
       "column": 63,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 16,
       "owner": "net.minecraft.world.entity.animal.feline.CatSoundVariant",
       "registry_expression": "Registries.CAT_SOUND_VARIANT",
       "resource_id": "minecraft:cat_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
@@ -1307,22 +1361,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/feline/CatVariant.java:35:58:RegistryFixedCodec.create",
       "column": 58,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 35,
       "owner": "net.minecraft.world.entity.animal.feline.CatVariant",
       "registry_expression": "Registries.CAT_VARIANT",
       "resource_id": "minecraft:cat_variant",
       "source_path": "net/minecraft/world/entity/animal/feline/CatVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/feline/CatVariant.java:36:96:ByteBufCodecs.holderRegistry",
@@ -1354,22 +1413,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/frog/FrogVariant.java:30:59:RegistryFixedCodec.create",
       "column": 59,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 30,
       "owner": "net.minecraft.world.entity.animal.frog.FrogVariant",
       "registry_expression": "Registries.FROG_VARIANT",
       "resource_id": "minecraft:frog_variant",
       "source_path": "net/minecraft/world/entity/animal/frog/FrogVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/frog/FrogVariant.java:31:97:ByteBufCodecs.holderRegistry",
@@ -1401,22 +1465,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java:36:69:RegistryFixedCodec.create",
       "column": 69,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 36,
       "owner": "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariant",
       "registry_expression": "Registries.ZOMBIE_NAUTILUS_VARIANT",
       "resource_id": "minecraft:zombie_nautilus_variant",
       "source_path": "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java:37:107:ByteBufCodecs.holderRegistry",
@@ -1448,22 +1517,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java:16:63:RegistryFixedCodec.create",
       "column": 63,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 16,
       "owner": "net.minecraft.world.entity.animal.pig.PigSoundVariant",
       "registry_expression": "Registries.PIG_SOUND_VARIANT",
       "resource_id": "minecraft:pig_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
@@ -1500,22 +1574,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/pig/PigVariant.java:37:58:RegistryFixedCodec.create",
       "column": 58,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 37,
       "owner": "net.minecraft.world.entity.animal.pig.PigVariant",
       "registry_expression": "Registries.PIG_VARIANT",
       "resource_id": "minecraft:pig_variant",
       "source_path": "net/minecraft/world/entity/animal/pig/PigVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/pig/PigVariant.java:38:96:ByteBufCodecs.holderRegistry",
@@ -1549,22 +1628,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java:16:64:RegistryFixedCodec.create",
       "column": 64,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 16,
       "owner": "net.minecraft.world.entity.animal.wolf.WolfSoundVariant",
       "registry_expression": "Registries.WOLF_SOUND_VARIANT",
       "resource_id": "minecraft:wolf_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java:17:102:ByteBufCodecs.holderRegistry",
@@ -1601,22 +1685,27 @@
     {
       "call_site": "net/minecraft/world/entity/animal/wolf/WolfVariant.java:35:59:RegistryFixedCodec.create",
       "column": 59,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 35,
       "owner": "net.minecraft.world.entity.animal.wolf.WolfVariant",
       "registry_expression": "Registries.WOLF_VARIANT",
       "resource_id": "minecraft:wolf_variant",
       "source_path": "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/animal/wolf/WolfVariant.java:36:97:ByteBufCodecs.holderRegistry",
@@ -1697,42 +1786,52 @@
     {
       "call_site": "net/minecraft/world/entity/npc/villager/VillagerData.java:20:13:Registry.holderByNameCodec",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 20,
       "owner": "net.minecraft.world.entity.npc.villager.VillagerData",
       "registry_expression": "BuiltInRegistries.VILLAGER_TYPE",
       "resource_id": "minecraft:villager_type",
       "source_path": "net/minecraft/world/entity/npc/villager/VillagerData.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/npc/villager/VillagerData.java:25:13:Registry.holderByNameCodec",
       "column": 13,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 25,
       "owner": "net.minecraft.world.entity.npc.villager.VillagerData",
       "registry_expression": "BuiltInRegistries.VILLAGER_PROFESSION",
       "resource_id": "minecraft:villager_profession",
       "source_path": "net/minecraft/world/entity/npc/villager/VillagerData.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/npc/villager/VillagerData.java:35:7:ByteBufCodecs.holderRegistry",
@@ -1793,22 +1892,27 @@
     {
       "call_site": "net/minecraft/world/entity/npc/villager/VillagerType.java:27:60:RegistryFixedCodec.create",
       "column": 60,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 27,
       "owner": "net.minecraft.world.entity.npc.villager.VillagerType",
       "registry_expression": "Registries.VILLAGER_TYPE",
       "resource_id": "minecraft:villager_type",
       "source_path": "net/minecraft/world/entity/npc/villager/VillagerType.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/npc/villager/VillagerType.java:28:98:ByteBufCodecs.holderRegistry",
@@ -1923,22 +2027,27 @@
     {
       "call_site": "net/minecraft/world/item/Item.java:99:52:Registry.holderByNameCodec",
       "column": 52,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 99,
       "owner": "net.minecraft.world.item.Item",
       "registry_expression": "BuiltInRegistries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/Item.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/Item.java:102:90:ByteBufCodecs.holderRegistry",
@@ -1975,22 +2084,27 @@
     {
       "call_site": "net/minecraft/world/item/JukeboxSong.java:40:59:RegistryFixedCodec.create",
       "column": 59,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 40,
       "owner": "net.minecraft.world.item.JukeboxSong",
       "registry_expression": "Registries.JUKEBOX_SONG",
       "resource_id": "minecraft:jukebox_song",
       "source_path": "net/minecraft/world/item/JukeboxSong.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/JukeboxSong.java:41:97:ByteBufCodecs.holder",
@@ -2019,22 +2133,27 @@
     {
       "call_site": "net/minecraft/world/item/alchemy/Potion.java:18:54:Registry.holderByNameCodec",
       "column": 54,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 18,
       "owner": "net.minecraft.world.item.alchemy.Potion",
       "registry_expression": "BuiltInRegistries.POTION",
       "resource_id": "minecraft:potion",
       "source_path": "net/minecraft/world/item/alchemy/Potion.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/alchemy/Potion.java:19:92:ByteBufCodecs.holderRegistry",
@@ -2227,22 +2346,27 @@
     {
       "call_site": "net/minecraft/world/item/component/DebugStickState.java:15:10:Registry.holderByNameCodec",
       "column": 10,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 15,
       "owner": "net.minecraft.world.item.component.DebugStickState",
       "registry_expression": "BuiltInRegistries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/item/component/DebugStickState.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/component/Tool.java:62:16:RegistryCodecs.homogeneousList",
@@ -2500,22 +2624,27 @@
     {
       "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:71:59:RegistryFixedCodec.create",
       "column": 59,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 71,
       "owner": "net.minecraft.world.item.enchantment.Enchantment",
       "registry_expression": "Registries.ENCHANTMENT",
       "resource_id": "minecraft:enchantment",
       "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:72:97:ByteBufCodecs.holderRegistry",
@@ -3150,22 +3279,24 @@
     {
       "call_site": "net/minecraft/world/level/block/entity/BeaconBlockEntity.java:286:32:Registry.holderByNameCodec",
       "column": 32,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 286,
       "owner": "net.minecraft.world.level.block.entity.BeaconBlockEntity",
       "registry_expression": "BuiltInRegistries.MOB_EFFECT",
       "resource_id": "minecraft:mob_effect",
       "source_path": "net/minecraft/world/level/block/entity/BeaconBlockEntity.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig.java:56:66:RegistryFileCodec.create",
@@ -3189,22 +3320,24 @@
     {
       "call_site": "net/minecraft/world/level/chunk/PalettedContainerFactory.java:34:36:Registry.holderByNameCodec",
       "column": 36,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 34,
       "owner": "net.minecraft.world.level.chunk.PalettedContainerFactory",
       "registry_expression": "biomes",
       "resource_id": null,
       "source_path": "net/minecraft/world/level/chunk/PalettedContainerFactory.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/dimension/DimensionType.java:57:99:ByteBufCodecs.holderRegistry",
@@ -3295,22 +3428,27 @@
     {
       "call_site": "net/minecraft/world/level/gameevent/GameEvent.java:77:57:RegistryFixedCodec.create",
       "column": 57,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 77,
       "owner": "net.minecraft.world.level.gameevent.GameEvent",
       "registry_expression": "Registries.GAME_EVENT",
       "resource_id": "minecraft:game_event",
       "source_path": "net/minecraft/world/level/gameevent/GameEvent.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/DensityFunction.java:14:43:RegistryFileCodec.create",
@@ -3892,22 +4030,24 @@
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java:135:16:RegistryFileCodec.create",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 135,
       "owner": "net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.ExclusionZone",
       "registry_expression": "Registries.STRUCTURE_SET",
       "resource_id": "minecraft:worldgen/structure_set",
       "source_path": "net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool.java:41:7:RegistryFileCodec.create",
@@ -4029,22 +4169,27 @@
     {
       "call_site": "net/minecraft/world/level/saveddata/maps/MapDecorationType.java:14:65:Registry.holderByNameCodec",
       "column": 65,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+      "decision": "These 25 client-observable factories preserve exactly one named resource identity. Persistent component and entity-variant reconstruction resolves synchronized holder ids through the current session and uses generated fixed catalogs only when no server contents exist; dialog and synchronized registry payloads use the shared string-only resolver, and enchantment DamageType/GameEvent references reject missing or malformed candidates atomically.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
         "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_from_nbt",
+        "crates/bbb-world/src/registries/enchantments.rs#fn validate_enchantment_effect_holder_sets",
+        "crates/bbb-world/src/client/dialog/body/component_value/map_decorations.rs#fn decode_map_decoration",
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_resource_id",
+        "crates/bbb-native/src/input/component_patch.rs#fn named_variant_encoders_use_session_order_or_fixed_catalog",
+        "crates/bbb-native/src/input/component_patch.rs#fn damage_type_encoders_use_session_order_or_fixed_catalog"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-client",
       "kind": "persistent_holder_reference",
       "line": 14,
       "owner": "net.minecraft.world.level.saveddata.maps.MapDecorationType",
       "registry_expression": "BuiltInRegistries.MAP_DECORATION_TYPE",
       "resource_id": "minecraft:map_decoration_type",
       "source_path": "net/minecraft/world/level/saveddata/maps/MapDecorationType.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/level/saveddata/maps/MapDecorationType.java:15:103:ByteBufCodecs.holderRegistry",
@@ -4113,22 +4258,24 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/CopyBlockState.java:29:16:Registry.holderByNameCodec",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 29,
       "owner": "net.minecraft.world.level.storage.loot.functions.CopyBlockState",
       "registry_expression": "BuiltInRegistries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/storage/loot/functions/CopyBlockState.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java:37:16:RegistryCodecs.homogeneousList",
@@ -4213,22 +4360,24 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/SetContainerLootTable.java:26:16:Registry.holderByNameCodec",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 26,
       "owner": "net.minecraft.world.level.storage.loot.functions.SetContainerLootTable",
       "registry_expression": "BuiltInRegistries.BLOCK_ENTITY_TYPE",
       "resource_id": "minecraft:block_entity_type",
       "source_path": "net/minecraft/world/level/storage/loot/functions/SetContainerLootTable.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/functions/SetInstrumentFunction.java:20:15:RegistryCodecs.homogeneousList",
@@ -4275,22 +4424,24 @@
     {
       "call_site": "net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java:20:16:Registry.holderByNameCodec",
       "column": 16,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": null,
+      "decision": "These 13 factories are generic codec delegation or server-owned advancement, entity-save, POI, beacon-save, chunk-disk, structure-placement, and loot inputs. Their persistent Holder values are not sent as client registry payloads; applicable network projections use separately inventoried holder-id codecs, so bbb has no client consumer for these call sites.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/core/RegistrySynchronization.java#public static boolean isNetworkable",
+        "vanilla:net/minecraft/world/entity/ai/attributes/AttributeInstance.java#public record Packed",
+        "vanilla:net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java#public record ExclusionZone",
+        "vanilla:net/minecraft/world/level/storage/loot/functions/CopyBlockState.java#public class CopyBlockState"
       ],
       "factory": "Registry.holderByNameCodec",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-server-only",
       "kind": "persistent_holder_reference",
       "line": 20,
       "owner": "net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition",
       "registry_expression": "BuiltInRegistries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java",
-      "status": "partial"
+      "status": "not-applicable"
     },
     {
       "call_site": "net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java:16:45:RegistryFileCodec.create",

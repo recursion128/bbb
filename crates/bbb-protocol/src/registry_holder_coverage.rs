@@ -187,7 +187,8 @@ mod tests {
         assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(counts["persistent-holder-or-inline"], 23);
         assert_eq!(counts["persistent-holder-or-inline-banner-pattern"], 1);
-        assert_eq!(counts["persistent-holder-reference"], 38);
+        assert_eq!(counts["persistent-holder-reference-client"], 25);
+        assert_eq!(counts["persistent-holder-reference-server-only"], 13);
         assert_eq!(counts["persistent-holder-reference-painting-variant"], 1);
         assert_eq!(
             counts["persistent-holder-reference-timeline-synchronized"],
@@ -222,7 +223,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            89
+            51
         );
         assert_eq!(
             ledger
@@ -238,14 +239,14 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::NotApplicable)
                 .count(),
-            29
+            42
         );
         let complete = ledger
             .entries
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 76);
+        assert_eq!(complete.len(), 101);
         assert_eq!(
             complete
                 .iter()
@@ -455,6 +456,92 @@ mod tests {
     }
 
     #[test]
+    fn persistent_holder_reference_families_keep_named_identity_boundaries() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        let client = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.family == "persistent-holder-reference-client")
+            .collect::<Vec<_>>();
+        assert_eq!(client.len(), 25);
+        assert!(client
+            .iter()
+            .all(|entry| entry.status == RegistryHolderCoverageStatus::Complete));
+        assert_eq!(
+            client
+                .iter()
+                .map(|entry| entry.source_path.as_str())
+                .collect::<BTreeSet<_>>()
+                .len(),
+            24
+        );
+        for source in [
+            "net/minecraft/world/damagesource/DamageType.java",
+            "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
+            "net/minecraft/world/item/component/DebugStickState.java",
+            "net/minecraft/world/level/gameevent/GameEvent.java",
+            "net/minecraft/world/level/saveddata/maps/MapDecorationType.java",
+        ] {
+            assert!(client.iter().any(|entry| entry.source_path == source));
+        }
+
+        let server_only = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.family == "persistent-holder-reference-server-only")
+            .collect::<Vec<_>>();
+        assert_eq!(server_only.len(), 13);
+        assert!(server_only.iter().all(|entry| {
+            entry.status == RegistryHolderCoverageStatus::NotApplicable && entry.consumer.is_none()
+        }));
+        assert_eq!(client.len() + server_only.len(), 38);
+
+        let state = include_str!("../../bbb-world/src/registries/state.rs");
+        for required in [
+            "pub enum PersistentHolderDecodeError {",
+            "pub fn persistent_holder_from_nbt(",
+            ".persistent_holder_from_nbt(registry, value)",
+            "vanilla_debug_game_event_type_by_id(holder_id)",
+            "| \"minecraft:game_event\"",
+        ] {
+            assert!(
+                state.contains(required),
+                "persistent holder resolver lost structural guard {required}"
+            );
+        }
+
+        let dialog =
+            include_str!("../../bbb-world/src/client/dialog/body/component_value/holder_set.rs");
+        assert!(dialog.contains(".persistent_holder_from_nbt(registry, value)"));
+        let enchantments = include_str!("../../bbb-world/src/registries/enchantments.rs");
+        for required in [
+            "Some((\"damage_type\", \"minecraft:damage_type\", true))",
+            "Some((\"trigger_game_event\", \"minecraft:game_event\", false))",
+            ".persistent_holder_from_nbt(registry, value)",
+        ] {
+            assert!(
+                enchantments.contains(required),
+                "synchronized holder reference lost structural guard {required}"
+            );
+        }
+
+        let persistent = include_str!("../../bbb-native/src/input/component_patch.rs");
+        for required in [
+            "pub(super) fn registry_resource_id(",
+            "fn encode_damage_type(",
+            "fn encode_enchantments(",
+            "fn encode_named_variant(",
+            "fn damage_type_encoders_use_session_order_or_fixed_catalog(",
+            "fn named_variant_encoders_use_session_order_or_fixed_catalog(",
+        ] {
+            assert!(
+                persistent.contains(required),
+                "persistent holder reconstruction lost structural guard {required}"
+            );
+        }
+    }
+
+    #[test]
     fn complete_timeline_holder_families_keep_session_resolution_guards() {
         let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
         for family in [
@@ -478,7 +565,7 @@ mod tests {
         let timelines = include_str!("../../bbb-world/src/registries/timelines.rs");
         for required in [
             "pub fn synchronized_timeline_definition(",
-            "require_entry_by_resource_id(WORLD_CLOCK_REGISTRY",
+            ".persistent_holder_from_nbt(WORLD_CLOCK_REGISTRY, clock)",
         ] {
             assert!(
                 timelines.contains(required),
@@ -490,6 +577,7 @@ mod tests {
         for required in [
             "fn decode_timeline_holder_set(",
             ".persistent_holder_set_from_nbt(TIMELINE_REGISTRY, value)",
+            ".persistent_holder_from_nbt(super::WORLD_CLOCK_REGISTRY, clock)",
         ] {
             assert!(
                 dimension_types.contains(required),
