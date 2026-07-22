@@ -1,14 +1,26 @@
 use serde::{Deserialize, Serialize};
 
-use crate::codec::{Decoder, Encoder, ProtocolError, Result};
+use crate::{
+    block_entity_types::vanilla_block_entity_type,
+    codec::{Decoder, Encoder, ProtocolError, Result},
+    heightmap_types::{vanilla_heightmap_type, VANILLA_HEIGHTMAP_TYPES},
+};
 
 use super::BlockHitResult;
 
 const MAX_CHUNKS_BIOMES_BUFFER: usize = 2 * 1024 * 1024;
 const MAX_CHUNKS_BIOMES_UPDATES: usize = 65_536;
 const MAX_LEVEL_CHUNK_BUFFER: usize = 2 * 1024 * 1024;
+// DimensionType.Y_SIZE is 4,064 blocks, so a 16x16 column cannot contain more
+// distinct block-entity positions than this even in the tallest legal level.
+const MAX_LEVEL_CHUNK_BLOCK_ENTITIES: usize = 16 * 16 * 4064;
+const MAX_HEIGHTMAP_LONGS: usize = 16 * 16;
 const MAX_SECTION_BLOCK_UPDATES: usize = 4096;
 const LIGHT_ARRAY_BYTES: usize = 2048;
+// A maximum-height dimension has 254 chunk sections plus the two light-engine
+// boundary sections, so its four BitSet masks occupy at most four longs.
+const MAX_LIGHT_SECTIONS: usize = 256;
+const MAX_LIGHT_MASK_LONGS: usize = MAX_LIGHT_SECTIONS / 64;
 const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_LIST_ITEMS: usize = 4096;
 
@@ -322,11 +334,23 @@ fn decode_level_chunk_data(decoder: &mut Decoder<'_>) -> Result<LevelChunkData> 
 
 fn decode_heightmaps(decoder: &mut Decoder<'_>) -> Result<Vec<ChunkHeightmapData>> {
     let count = decoder.read_len()?;
+    if count > VANILLA_HEIGHTMAP_TYPES.len() {
+        return Err(ProtocolError::PacketTooLarge(
+            count,
+            VANILLA_HEIGHTMAP_TYPES.len(),
+        ));
+    }
     let mut heightmaps = Vec::with_capacity(count);
     for _ in 0..count {
+        let kind_id = decoder.read_var_i32()?;
+        if vanilla_heightmap_type(kind_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "unknown heightmap type id {kind_id}"
+            )));
+        }
         heightmaps.push(ChunkHeightmapData {
-            kind_id: decoder.read_var_i32()?,
-            data: read_long_array(decoder)?,
+            kind_id,
+            data: read_bounded_long_array(decoder, MAX_HEIGHTMAP_LONGS, "heightmap data")?,
         });
     }
     Ok(heightmaps)
@@ -336,12 +360,32 @@ fn decode_level_chunk_block_entities(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<LevelChunkBlockEntity>> {
     let count = decoder.read_len()?;
+    if count > MAX_LEVEL_CHUNK_BLOCK_ENTITIES {
+        return Err(ProtocolError::PacketTooLarge(
+            count,
+            MAX_LEVEL_CHUNK_BLOCK_ENTITIES,
+        ));
+    }
+    const MIN_BLOCK_ENTITY_BYTES: usize = 5;
+    if count > decoder.remaining_len() / MIN_BLOCK_ENTITY_BYTES {
+        return Err(ProtocolError::InvalidData(format!(
+            "level chunk block entity count {count} exceeds remaining packet bytes"
+        )));
+    }
     let mut out = Vec::with_capacity(count);
     for _ in 0..count {
+        let packed_xz = decoder.read_u8()?;
+        let y = decoder.read_i16()?;
+        let block_entity_type_id = decoder.read_var_i32()?;
+        if vanilla_block_entity_type(block_entity_type_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "unknown block entity type id {block_entity_type_id}"
+            )));
+        }
         out.push(LevelChunkBlockEntity {
-            packed_xz: decoder.read_u8()?,
-            y: decoder.read_i16()?,
-            block_entity_type_id: decoder.read_var_i32()?,
+            packed_xz,
+            y,
+            block_entity_type_id,
             raw_nbt: read_raw_nbt(decoder)?,
         });
     }
@@ -349,18 +393,36 @@ fn decode_level_chunk_block_entities(
 }
 
 fn decode_light_update_data(decoder: &mut Decoder<'_>) -> Result<LightUpdateData> {
-    Ok(LightUpdateData {
-        sky_y_mask: read_long_array(decoder)?,
-        block_y_mask: read_long_array(decoder)?,
-        empty_sky_y_mask: read_long_array(decoder)?,
-        empty_block_y_mask: read_long_array(decoder)?,
+    let light = LightUpdateData {
+        sky_y_mask: read_bounded_long_array(decoder, MAX_LIGHT_MASK_LONGS, "sky light mask")?,
+        block_y_mask: read_bounded_long_array(decoder, MAX_LIGHT_MASK_LONGS, "block light mask")?,
+        empty_sky_y_mask: read_bounded_long_array(
+            decoder,
+            MAX_LIGHT_MASK_LONGS,
+            "empty sky light mask",
+        )?,
+        empty_block_y_mask: read_bounded_long_array(
+            decoder,
+            MAX_LIGHT_MASK_LONGS,
+            "empty block light mask",
+        )?,
         sky_updates: read_light_array_list(decoder)?,
         block_updates: read_light_array_list(decoder)?,
-    })
+    };
+    validate_light_update_data(&light)?;
+    Ok(light)
 }
 
-fn read_long_array(decoder: &mut Decoder<'_>) -> Result<Vec<i64>> {
+fn read_bounded_long_array(decoder: &mut Decoder<'_>, max: usize, label: &str) -> Result<Vec<i64>> {
     let count = decoder.read_len()?;
+    if count > max {
+        return Err(ProtocolError::PacketTooLarge(count, max));
+    }
+    if count > decoder.remaining_len() / std::mem::size_of::<i64>() {
+        return Err(ProtocolError::InvalidData(format!(
+            "{label} count {count} exceeds remaining packet bytes"
+        )));
+    }
     let mut out = Vec::with_capacity(count);
     for _ in 0..count {
         out.push(decoder.read_i64()?);
@@ -370,6 +432,9 @@ fn read_long_array(decoder: &mut Decoder<'_>) -> Result<Vec<i64>> {
 
 fn read_light_array_list(decoder: &mut Decoder<'_>) -> Result<Vec<Vec<u8>>> {
     let count = decoder.read_len()?;
+    if count > MAX_LIGHT_SECTIONS {
+        return Err(ProtocolError::PacketTooLarge(count, MAX_LIGHT_SECTIONS));
+    }
     let mut out = Vec::with_capacity(count);
     for _ in 0..count {
         let len = decoder.read_len()?;
@@ -381,6 +446,47 @@ fn read_light_array_list(decoder: &mut Decoder<'_>) -> Result<Vec<Vec<u8>>> {
         out.push(decoder.read_exact(len, "light update array")?.to_vec());
     }
     Ok(out)
+}
+
+fn validate_light_update_data(light: &LightUpdateData) -> Result<()> {
+    for (layer, data_mask, empty_mask, updates) in [
+        (
+            "sky",
+            &light.sky_y_mask,
+            &light.empty_sky_y_mask,
+            &light.sky_updates,
+        ),
+        (
+            "block",
+            &light.block_y_mask,
+            &light.empty_block_y_mask,
+            &light.block_updates,
+        ),
+    ] {
+        let data_count = bit_count(data_mask);
+        if data_count != updates.len() {
+            return Err(ProtocolError::InvalidData(format!(
+                "{layer} light mask has {data_count} data sections but {} arrays",
+                updates.len()
+            )));
+        }
+        if data_mask
+            .iter()
+            .zip(empty_mask)
+            .any(|(data, empty)| data & empty != 0)
+        {
+            return Err(ProtocolError::InvalidData(format!(
+                "{layer} light data and empty masks overlap"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn bit_count(mask: &[i64]) -> usize {
+    mask.iter()
+        .map(|word| (*word as u64).count_ones() as usize)
+        .sum()
 }
 
 fn read_raw_nbt(decoder: &mut Decoder<'_>) -> Result<Vec<u8>> {

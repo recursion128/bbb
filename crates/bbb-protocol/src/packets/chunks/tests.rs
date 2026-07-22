@@ -121,6 +121,134 @@ fn rejects_light_update_arrays_that_are_not_data_layers() {
 }
 
 #[test]
+fn rejects_impossible_level_chunk_catalog_and_collection_domains() {
+    let mut too_many_heightmaps = Encoder::new();
+    too_many_heightmaps.write_i32(0);
+    too_many_heightmaps.write_i32(0);
+    too_many_heightmaps
+        .write_var_i32((crate::heightmap_types::VANILLA_HEIGHTMAP_TYPES.len() + 1) as i32);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT,
+            &too_many_heightmaps.into_inner()
+        ),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == crate::heightmap_types::VANILLA_HEIGHTMAP_TYPES.len() + 1
+                && max == crate::heightmap_types::VANILLA_HEIGHTMAP_TYPES.len()
+    ));
+
+    let mut unknown_heightmap = Encoder::new();
+    unknown_heightmap.write_i32(0);
+    unknown_heightmap.write_i32(0);
+    unknown_heightmap.write_var_i32(1);
+    unknown_heightmap.write_var_i32(crate::heightmap_types::VANILLA_HEIGHTMAP_TYPES.len() as i32);
+    unknown_heightmap.write_var_i32(0);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT,
+            &unknown_heightmap.into_inner()
+        ),
+        Err(ProtocolError::InvalidData(message))
+            if message.contains("unknown heightmap type id")
+    ));
+
+    let mut too_many_block_entities = Encoder::new();
+    too_many_block_entities.write_i32(0);
+    too_many_block_entities.write_i32(0);
+    too_many_block_entities.write_var_i32(0);
+    too_many_block_entities.write_var_i32(0);
+    too_many_block_entities.write_var_i32((MAX_LEVEL_CHUNK_BLOCK_ENTITIES + 1) as i32);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT,
+            &too_many_block_entities.into_inner()
+        ),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_LEVEL_CHUNK_BLOCK_ENTITIES + 1
+                && max == MAX_LEVEL_CHUNK_BLOCK_ENTITIES
+    ));
+
+    let mut unknown_block_entity_type = Encoder::new();
+    unknown_block_entity_type.write_i32(0);
+    unknown_block_entity_type.write_i32(0);
+    unknown_block_entity_type.write_var_i32(0);
+    unknown_block_entity_type.write_var_i32(0);
+    unknown_block_entity_type.write_var_i32(1);
+    unknown_block_entity_type.write_u8(0);
+    unknown_block_entity_type.write_i16(0);
+    unknown_block_entity_type
+        .write_var_i32(crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES.len() as i32);
+    unknown_block_entity_type.write_u8(0);
+    write_light_data(&mut unknown_block_entity_type, &[], &[], &[], &[], 0, 0);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT,
+            &unknown_block_entity_type.into_inner()
+        ),
+        Err(ProtocolError::InvalidData(message))
+            if message.contains("unknown block entity type id")
+    ));
+}
+
+#[test]
+fn rejects_impossible_light_mask_and_data_layer_cardinality() {
+    let mut oversized_mask = Encoder::new();
+    oversized_mask.write_var_i32(0);
+    oversized_mask.write_var_i32(0);
+    write_long_array(&mut oversized_mask, &[0; MAX_LIGHT_MASK_LONGS + 1]);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LIGHT_UPDATE,
+            &oversized_mask.into_inner()
+        ),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_LIGHT_MASK_LONGS + 1 && max == MAX_LIGHT_MASK_LONGS
+    ));
+
+    let mut too_many_layers = Encoder::new();
+    too_many_layers.write_var_i32(0);
+    too_many_layers.write_var_i32(0);
+    for _ in 0..4 {
+        write_long_array(&mut too_many_layers, &[]);
+    }
+    too_many_layers.write_var_i32((MAX_LIGHT_SECTIONS + 1) as i32);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LIGHT_UPDATE,
+            &too_many_layers.into_inner()
+        ),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_LIGHT_SECTIONS + 1 && max == MAX_LIGHT_SECTIONS
+    ));
+
+    let mut missing_layer = Encoder::new();
+    missing_layer.write_var_i32(0);
+    missing_layer.write_var_i32(0);
+    write_light_data(&mut missing_layer, &[1], &[], &[], &[], 0, 0);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LIGHT_UPDATE,
+            &missing_layer.into_inner()
+        ),
+        Err(ProtocolError::InvalidData(message))
+            if message.contains("sky light mask has 1 data sections but 0 arrays")
+    ));
+
+    let mut overlapping_masks = Encoder::new();
+    overlapping_masks.write_var_i32(0);
+    overlapping_masks.write_var_i32(0);
+    write_light_data(&mut overlapping_masks, &[1], &[], &[1], &[], 1, 0);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_LIGHT_UPDATE,
+            &overlapping_masks.into_inner()
+        ),
+        Err(ProtocolError::InvalidData(message))
+            if message.contains("sky light data and empty masks overlap")
+    ));
+}
+
+#[test]
 fn decodes_chunks_biomes_update() {
     let mut payload = Encoder::new();
     payload.write_var_i32(2);
