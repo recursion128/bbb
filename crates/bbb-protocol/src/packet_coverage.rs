@@ -1443,7 +1443,7 @@ mod tests {
     }
 
     #[test]
-    fn play_command_suggestions_keeps_only_list_ui_open() {
+    fn play_command_suggestions_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1452,14 +1452,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_COMMAND_SUGGESTIONS"
             })
             .expect("command suggestions coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -2394,21 +2390,17 @@ mod tests {
     }
 
     #[test]
-    fn play_commands_keeps_registry_aware_dispatcher_runtime_open() {
+    fn play_commands_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_COMMANDS")
             .expect("play commands coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -3332,7 +3324,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_command_suggestion_keeps_dispatcher_and_ui_open() {
+    fn play_serverbound_command_suggestion_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3342,20 +3334,10 @@ mod tests {
             })
             .expect("play serverbound command suggestion coverage row");
 
-        for dimension in ["command_surface", "encoder"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        for dimension in ["ack_response", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

@@ -86,11 +86,6 @@ Owner: `bbb-protocol`
   constant alone does not bound stack use across build profiles.
 - Then cover the remaining play, movement, inventory, chat and interaction
   families end to end.
-- Complete the remaining command-completion fidelity for nested selector option
-  values, block-property/component-value subgrammar suggestions and localized
-  summonable-entity tooltip components. Extend the world-owned dispatcher rather
-  than restoring a parallel native grammar or unconditional server requests.
-
 ## Vanilla Java generator frontend migration
 
 Owner: `scripts/` + each generated catalog's semantic crate

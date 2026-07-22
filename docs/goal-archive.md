@@ -245,3 +245,6 @@
   display patch，商人菜单补齐七行按钮 hover/focus、完整交易栈装饰与 tooltip、折扣删除线、
   补货提示及权威结果槽驱动的 XP 结果段；五类 packet coverage 全部 complete，合同见
   `docs/archive/merchant-offers-packet-closure-design.md`。
+- **2026-07-22（命令补全三包族闭环）**：Commands 驱动 selector、block-state 与 item
+  component 本地子语法，summon tooltip 在当前资源语言中解析；请求/响应收敛为单 pending
+  与单结果，三行 packet coverage 全单元 complete，合同见 `docs/archive/command-completion-packet-closure-design.md`。
