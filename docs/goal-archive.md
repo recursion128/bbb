@@ -248,3 +248,6 @@
 - **2026-07-22（命令补全三包族闭环）**：Commands 驱动 selector、block-state 与 item
   component 本地子语法，summon tooltip 在当前资源语言中解析；请求/响应收敛为单 pending
   与单结果，三行 packet coverage 全单元 complete，合同见 `docs/archive/command-completion-packet-closure-design.md`。
+- **2026-07-22（CommandBlockEditScreen 包闭环）**：权威 command-block block-entity
+  投影驱动原生编辑器与七行命令补全，Done 精确发送 typed packet，Cancel/Escape 零发送；
+  五类 packet coverage 全部 complete，合同见 `docs/archive/command-block-editor-packet-closure-design.md`。

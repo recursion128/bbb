@@ -3979,7 +3979,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_set_command_block_keeps_editor_and_authority_open() {
+    fn play_serverbound_set_command_block_closes_editor_and_authority_path() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3988,10 +3988,19 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_SET_COMMAND_BLOCK"
             })
             .expect("play serverbound set command block coverage row");
-        assert!(entry
-            .coverage
-            .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+        for dimension in [
+            "ack_response",
+            "command_surface",
+            "encoder",
+            "state_guard",
+            "tests",
+        ] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
     }
 
     #[test]
