@@ -708,6 +708,8 @@ pub struct Renderer {
     pub(super) hud_inventory_screen: Option<HudInventoryScreen>,
     pub(super) hud_sign_editor_screen: Option<crate::hud::HudSignEditorScreen>,
     pub(super) hud_command_block_editor_screen: Option<crate::hud::HudCommandBlockEditorScreen>,
+    pub(super) hud_test_instance_block_editor_screen:
+        Option<crate::hud::HudTestInstanceBlockEditorScreen>,
     pub(super) hud_pause_screen: Option<crate::hud::HudPauseScreen>,
     pub(super) hud_stats_screen: Option<crate::hud::HudStatsScreen>,
     pub(super) hud_debug_options_screen: Option<crate::hud::HudDebugOptionsScreen>,
@@ -1988,6 +1990,7 @@ impl Renderer {
             hud_inventory_screen: None,
             hud_sign_editor_screen: None,
             hud_command_block_editor_screen: None,
+            hud_test_instance_block_editor_screen: None,
             hud_pause_screen: None,
             hud_stats_screen: None,
             hud_debug_options_screen: None,

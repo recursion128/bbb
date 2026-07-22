@@ -1162,6 +1162,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
+        || world.test_instance_block_editor().is_some()
 }
 
 pub(crate) fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {

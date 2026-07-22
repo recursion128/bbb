@@ -192,6 +192,9 @@ impl SimulationInputRuntime {
                 self.cursor_position = None;
                 context
                     .input
+                    .handle_test_instance_block_editor_cursor_moved(None);
+                context
+                    .input
                     .handle_command_suggestion_cursor_moved(context.world, None);
             }
             SimulationCommand::ImePreedit { text, cursor_range } => {
@@ -283,6 +286,12 @@ impl SimulationInputRuntime {
                 self.surface_size,
                 &self.text_measurements,
             );
+            return;
+        }
+        if context
+            .input
+            .handle_test_instance_block_editor_cursor_moved(self.cursor_position)
+        {
             return;
         }
         if context
@@ -397,6 +406,7 @@ impl SimulationInputRuntime {
         let debug_options_open = context.input.debug_options_screen_is_open();
         let pause_open = context.input.debug_pause_screen_is_open();
         let command_entry_open = context.input.command_entry_is_active();
+        let test_instance_block_editor_open = context.input.test_instance_block_editor_is_active();
         if dialog_open {
             context
                 .input
@@ -448,6 +458,7 @@ impl SimulationInputRuntime {
             || debug_options_open
             || pause_open
             || command_entry_open
+            || test_instance_block_editor_open
         {
             self.request_cursor_capture(false, context.platform);
         }
@@ -465,6 +476,7 @@ impl SimulationInputRuntime {
             && !debug_options_open
             && !pause_open
             && !command_entry_open
+            && !test_instance_block_editor_open
             && !ordinary_pause_escape
         {
             return;
@@ -479,8 +491,9 @@ impl SimulationInputRuntime {
             state,
             self.surface_size,
         );
-        if command_entry_open
+        if (command_entry_open || test_instance_block_editor_open)
             && !context.input.command_entry_is_active()
+            && !context.input.test_instance_block_editor_is_active()
             && !simulation_wants_cursor(context.input, context.world)
         {
             self.request_cursor_capture(true, context.platform);
@@ -659,6 +672,7 @@ impl SimulationInputRuntime {
         let advancements_open = context.world.advancements_screen_is_open();
         let stats_open = context.world.stats_screen_is_open();
         let command_entry_open = context.input.command_entry_is_active();
+        let test_instance_block_editor_open = context.input.test_instance_block_editor_is_active();
         if context.input.debug_options_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             context.input.handle_debug_options_screen_text_input(text);
@@ -673,10 +687,19 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             return;
         }
-        if sign_editor_open || container_open || command_entry_open {
+        if sign_editor_open
+            || container_open
+            || command_entry_open
+            || test_instance_block_editor_open
+        {
             self.request_cursor_capture(false, context.platform);
         }
-        if !self.cursor_captured && !sign_editor_open && !container_open && !command_entry_open {
+        if !self.cursor_captured
+            && !sign_editor_open
+            && !container_open
+            && !command_entry_open
+            && !test_instance_block_editor_open
+        {
             return;
         }
         handle_text_input_with_item_runtime(
@@ -805,6 +828,23 @@ impl SimulationInputRuntime {
             );
             collect_dialog_open_uri_effects(context.world, &queued_effects);
             flush_platform_effects(&queued_effects, context.platform);
+            if !simulation_wants_cursor(context.input, context.world) {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+        if context.input.test_instance_block_editor_is_active() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_test_instance_block_editor_mouse_input(
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                button,
+                state,
+                self.cursor_position,
+                self.surface_size,
+                &self.text_measurements,
+            );
             if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
             }
@@ -1221,6 +1261,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
+        || world.test_instance_block_editor().is_some()
 }
 
 fn simulation_wants_cursor(input: &crate::input::ClientInputState, world: &WorldStore) -> bool {

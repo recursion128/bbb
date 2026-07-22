@@ -21,7 +21,8 @@ use bbb_protocol::{
     },
     packets::{
         AdvancementFrameType, CommandBlockMode, GameType, ItemCostSummary, ItemStackSummary,
-        MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
+        MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary,
+        TestInstanceBlockRotation, Vec3d,
     },
     particle_types::{
         VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
@@ -33,10 +34,10 @@ use bbb_protocol::{
     RichTextComponent, MC_VERSION,
 };
 use bbb_renderer::{
-    hud_command_block_editor_layout, sign_text_base_color, BlockDestroyOverlay,
-    BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment, CloudFrame, ConduitModelPart,
-    DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
-    EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
+    hud_command_block_editor_layout, hud_test_instance_block_editor_layout, sign_text_base_color,
+    BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment,
+    CloudFrame, ConduitModelPart, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine,
+    DebugTextBillboard, EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorScreen,
@@ -53,8 +54,9 @@ use bbb_renderer::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
-    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStyledTextRun, HudSystemToast, HudTextStyle,
-    HudUvRect, HudVehicleHealth, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
+    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStyledTextRun, HudSystemToast,
+    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
+    HudVehicleHealth, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
     ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
     ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
@@ -2356,6 +2358,7 @@ pub(crate) fn advance_simulation(
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_command_block_editor(world, net_counters, net_commands);
+    input.sync_test_instance_block_editor(world, net_counters, net_commands);
     let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed {
         if let Some(particle_events) = particle_runtime.as_mut() {
@@ -2939,11 +2942,21 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_command_block_editor_screen(input, item_runtime, surface_size)
     };
+    let hud_test_instance_block_editor_screen = if world.dialog_screen_is_open()
+        || hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || hud_stats_screen.is_some()
+    {
+        None
+    } else {
+        hud_test_instance_block_editor_screen(input, item_runtime, surface_size)
+    };
     let hud_inventory_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_stats_screen.is_some()
         || hud_sign_editor_screen.is_some()
         || hud_command_block_editor_screen.is_some()
+        || hud_test_instance_block_editor_screen.is_some()
     {
         None
     } else {
@@ -3458,6 +3471,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_screen_blur,
             hud_sign_editor_screen,
             hud_command_block_editor_screen,
+            hud_test_instance_block_editor_screen,
             hud_pause_screen,
             hud_stats_screen,
             hud_system_toast,
@@ -4084,6 +4098,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
+        || world.test_instance_block_editor().is_some()
         || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
         || input.sign_editor_is_active_or_pending(world)
@@ -5438,6 +5453,136 @@ fn hud_command_block_editor_screen(
         track_output_hovered: hovered(layout.track_output),
         done_hovered: hovered(layout.done),
         cancel_hovered: hovered(layout.cancel),
+    })
+}
+
+fn hud_test_instance_block_editor_screen(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudTestInstanceBlockEditorScreen> {
+    let state = input.test_instance_block_editor_hud_state()?;
+    let layout = hud_test_instance_block_editor_layout(surface_size);
+    let hovered = |rect: bbb_renderer::HudCommandBlockEditorRect| {
+        state
+            .mouse_position
+            .is_some_and(|(x, y)| rect.contains(x, y))
+    };
+    let field = |index: usize, rect: bbb_renderer::HudCommandBlockEditorRect| {
+        let state_field = &state.fields[index];
+        HudTestInstanceBlockEditorTextField {
+            text: state_field.text.clone(),
+            cursor: state_field.cursor,
+            selection: state_field.selection,
+            focused: state.focus_index == index,
+            hovered: hovered(rect),
+            max_length: state_field.max_utf16_units,
+        }
+    };
+
+    let mut info_runs = Vec::new();
+    if state.local_invalid_id {
+        info_runs.push(HudStyledTextRun {
+            text: localized_gui_text(
+                item_runtime,
+                "test_instance.description.invalid_id",
+                "Invalid test ID",
+            ),
+            style: HudTextStyle::default(),
+            color: Some(0xFF5555),
+        });
+    } else if let Some(status) = &state.response_status {
+        if let Some(error) = &state.error_message {
+            let failed = localized_gui_text(
+                item_runtime,
+                "test_instance.description.failed",
+                "Failed: %s",
+            )
+            .replace("%1$s", "")
+            .replace("%s", "");
+            info_runs.push(HudStyledTextRun {
+                text: failed,
+                style: HudTextStyle::default(),
+                color: None,
+            });
+            info_runs.extend(
+                hud_styled_runs_from_rich_text(error)
+                    .into_iter()
+                    .map(|mut run| {
+                        if run.color.is_none() {
+                            run.color = Some(0xFF5555);
+                        }
+                        run
+                    }),
+            );
+            info_runs.push(HudStyledTextRun::plain("\n\n"));
+        }
+        info_runs.extend(hud_styled_runs_from_rich_text(status));
+    }
+
+    Some(HudTestInstanceBlockEditorScreen {
+        title: localized_gui_text(
+            item_runtime,
+            "block.minecraft.test_instance_block",
+            "Test Instance Block",
+        ),
+        id_label: localized_gui_text(
+            item_runtime,
+            "test_instance_block.test_id",
+            "Test Instance ID",
+        ),
+        size_label: localized_gui_text(
+            item_runtime,
+            "test_instance_block.size",
+            "Test Structure Size",
+        ),
+        rotation_label: localized_gui_text(
+            item_runtime,
+            "test_instance_block.rotation",
+            "Rotation:",
+        ),
+        entities_label: localized_gui_text(
+            item_runtime,
+            "test_instance_block.entities",
+            "Entities:",
+        ),
+        id: field(0, layout.id),
+        size: [
+            field(1, layout.size[0]),
+            field(2, layout.size[1]),
+            field(3, layout.size[2]),
+        ],
+        info_runs,
+        rotation: match state.rotation {
+            TestInstanceBlockRotation::None => "0",
+            TestInstanceBlockRotation::Clockwise90 => "90",
+            TestInstanceBlockRotation::Clockwise180 => "180",
+            TestInstanceBlockRotation::Counterclockwise90 => "270",
+        }
+        .to_string(),
+        include_entities: localized_gui_text(
+            item_runtime,
+            if state.include_entities {
+                "options.on"
+            } else {
+                "options.off"
+            },
+            if state.include_entities { "On" } else { "Off" },
+        ),
+        reset: localized_gui_text(item_runtime, "test_instance.action.reset", "Reset and Load"),
+        save: localized_gui_text(item_runtime, "test_instance.action.save", "Save Structure"),
+        run: localized_gui_text(item_runtime, "test_instance.action.run", "Load and Run"),
+        done: localized_gui_text(item_runtime, "gui.done", "Done"),
+        cancel: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+        save_enabled: state.save_enabled,
+        rotation_hovered: hovered(layout.rotation),
+        include_entities_hovered: hovered(layout.include_entities),
+        reset_hovered: hovered(layout.reset),
+        save_hovered: hovered(layout.save),
+        run_hovered: hovered(layout.run),
+        done_hovered: hovered(layout.done),
+        cancel_hovered: hovered(layout.cancel),
+        cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
     })
 }
 

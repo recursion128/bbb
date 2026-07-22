@@ -173,6 +173,7 @@ mod component_patch;
 mod inventory;
 mod mouse;
 mod movement;
+mod test_instance_block;
 pub(crate) mod text_edit;
 
 use crate::camera_pose::camera_pose_from_world;
@@ -666,6 +667,7 @@ pub(crate) struct ClientInputState {
     merchant_focused_trade_row: Option<i32>,
     chat_entry: Option<ChatEntryState>,
     chat_scroll_lines: usize,
+    test_instance_block_editor: Option<test_instance_block::TestInstanceBlockEditorInputState>,
     #[cfg(test)]
     last_step: Option<Instant>,
     #[cfg(test)]
@@ -1122,6 +1124,7 @@ impl ClientInputState {
             merchant_focused_trade_row: self.merchant_focused_trade_row,
             chat_entry: self.chat_entry.clone(),
             chat_scroll_lines: self.chat_scroll_lines,
+            test_instance_block_editor: self.test_instance_block_editor.clone(),
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
             ..Self::default()
         })
@@ -1477,6 +1480,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.test_instance_block_editor().is_some()
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open();
@@ -10346,6 +10350,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if input.handle_test_instance_block_editor_key(counters, world, net_commands, code, pressed) {
+        return;
+    }
+
     if handle_sign_editor_key(input, counters, world, net_commands, code, pressed) {
         return;
     }
@@ -10656,6 +10664,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
     text: &str,
 ) {
     if !input.focused {
+        return;
+    }
+
+    if input.handle_test_instance_block_editor_text(counters, world, net_commands, text) {
         return;
     }
 

@@ -64,6 +64,8 @@ pub struct TestInstanceBlockEditorState {
     pub data: TestInstanceBlockEntityDataState,
     pub response_status: Option<RichTextComponent>,
     #[serde(default)]
+    pub response_size: Option<TestInstanceBlockSizeState>,
+    #[serde(default)]
     pub authoritative_revision: usize,
     #[serde(default)]
     pub response_revision: usize,
@@ -179,6 +181,7 @@ impl WorldStore {
             pos,
             data,
             response_status: None,
+            response_size: None,
             authoritative_revision: 0,
             response_revision: 0,
         });
@@ -200,8 +203,9 @@ impl WorldStore {
             return;
         };
         editor.response_status = Some(packet.status.clone());
-        if let Some(size) = packet.size {
-            editor.data.size = size.into();
+        editor.response_size = packet.size.map(Into::into);
+        if let Some(size) = editor.response_size {
+            editor.data.size = size;
         }
         editor.response_revision = editor.response_revision.saturating_add(1);
     }
@@ -371,6 +375,10 @@ mod tests {
         let editor = store.test_instance_block_editor().unwrap();
         assert_eq!(editor.response_status.as_ref(), Some(&status));
         assert_eq!(
+            editor.response_size,
+            Some(TestInstanceBlockSizeState { x: 8, y: 9, z: 10 })
+        );
+        assert_eq!(
             editor.data.size,
             TestInstanceBlockSizeState { x: 8, y: 9, z: 10 }
         );
@@ -385,6 +393,7 @@ mod tests {
             TestInstanceBlockSizeState { x: 8, y: 9, z: 10 }
         );
         assert_eq!(editor.response_revision, 2);
+        assert_eq!(editor.response_size, None);
 
         let original = store.test_instance_block_data_at(pos).cloned().unwrap();
         assert!(store

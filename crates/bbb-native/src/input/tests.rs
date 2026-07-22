@@ -4,7 +4,7 @@ use bbb_net::OutboundChatCommand;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
-    VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
 };
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_CYAN_ID,
@@ -119,8 +119,10 @@ use bbb_protocol::packets::{
     SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
     SetEquipment, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
     ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate, TagQuery,
-    UpdateAdvancements, Vec3d as ProtocolVec3d, WrittenBookContentSummary,
-    VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+    TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
+    TestInstanceBlockStatus, UpdateAdvancements, Vec3d as ProtocolVec3d, Vec3i,
+    WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
+    VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::recipe_wire_types::{
@@ -132,7 +134,7 @@ use bbb_protocol::stat_types::{
 };
 use bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID;
 use bbb_protocol::{
-    MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
+    RichTextComponent, MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
     MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_world::{
@@ -147,7 +149,8 @@ use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
     ChunkSection, ChunkState, CommandBlockEntityDataState, ItemEquipmentSlot, LightData,
     LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
-    SignBlockEntityTextState, WorldStore,
+    SignBlockEntityTextState, TestInstanceBlockEntityDataState, TestInstanceBlockRunStatus,
+    TestInstanceBlockSizeState, WorldStore,
 };
 use std::{
     collections::BTreeMap,
@@ -1257,6 +1260,89 @@ fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
         light: LightData::default(),
     });
     world
+}
+
+fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let block_state_id =
+        bbb_world::vanilla_block_state_id("minecraft:test_instance_block", &BTreeMap::new())
+            .expect("vanilla test-instance block state");
+    let section_index = usize::try_from((pos.y + 64).div_euclid(16))
+        .expect("test-instance block lies in the overworld build height");
+    let record = BlockEntityRecord {
+        local_x: pos.x.rem_euclid(16) as u8,
+        y: i16::try_from(pos.y).unwrap(),
+        local_z: pos.z.rem_euclid(16) as u8,
+        type_id: VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+        raw_nbt: vec![0],
+        nbt: None,
+        sign_text: None,
+        vault_shared_data: None,
+        decorated_pot_sherds: None,
+        banner_patterns: None,
+        end_gateway: None,
+        spawner: None,
+        command_block: None,
+        test_instance_block: Some(TestInstanceBlockEntityDataState {
+            test: Some("example:initial".to_string()),
+            size: TestInstanceBlockSizeState { x: 3, y: 4, z: 5 },
+            rotation: TestInstanceBlockRotation::None,
+            ignore_entities: false,
+            status: TestInstanceBlockRunStatus::Cleared,
+            error_message: None,
+        }),
+        note_block_sound: None,
+    };
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..24)
+            .map(|index| ChunkSection {
+                non_empty_block_count: if index == section_index { 4096 } else { 0 },
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    if index == section_index {
+                        block_state_id
+                    } else {
+                        0
+                    },
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            })
+            .collect(),
+        block_entities: vec![record],
+        light: LightData::default(),
+    });
+    world
+}
+
+fn click_test_instance_editor(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    commands: &Option<mpsc::Sender<NetCommand>>,
+    rect: bbb_renderer::HudCommandBlockEditorRect,
+) -> bool {
+    input.handle_test_instance_block_editor_mouse_input(
+        counters,
+        world,
+        commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(rect.x + 1),
+            f64::from(rect.y + 1),
+        )),
+        PhysicalSize::new(320, 240),
+        &FixedCommandSuggestionTextMeasurer,
+    )
 }
 
 fn empty_chunk_section() -> ChunkSection {
@@ -17929,6 +18015,375 @@ fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
     assert_eq!(input.chat_entry.as_ref().unwrap().text, "/seed");
     assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 5);
     assert!(input.chat_entry.as_ref().unwrap().suggestion_list.is_none());
+}
+
+#[test]
+fn test_instance_block_editor_initializes_queries_and_applies_only_present_response_size() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_test_instance_block(pos);
+    assert!(world.try_open_test_instance_block_editor(pos));
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::TestInstanceBlockAction(TestInstanceBlockAction {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            action: TestInstanceBlockActionKind::Init,
+            test: Some("example:initial".to_string()),
+            size: Vec3i { x: 3, y: 4, z: 5 },
+            rotation: TestInstanceBlockRotation::None,
+            ignore_entities: false,
+        })
+    );
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+    assert!(
+        rx.try_recv().is_err(),
+        "same open must not send a second INIT"
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "Bad ID");
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::TestInstanceBlockAction(TestInstanceBlockAction {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            action: TestInstanceBlockActionKind::Query,
+            test: None,
+            size: Vec3i { x: 3, y: 4, z: 5 },
+            rotation: TestInstanceBlockRotation::None,
+            ignore_entities: false,
+        })
+    );
+    assert!(
+        input
+            .test_instance_block_editor_hud_state()
+            .unwrap()
+            .local_invalid_id
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "new:test");
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::TestInstanceBlockAction(TestInstanceBlockAction {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            action: TestInstanceBlockActionKind::Query,
+            test: Some("new:test".to_string()),
+            size: Vec3i { x: 3, y: 4, z: 5 },
+            rotation: TestInstanceBlockRotation::None,
+            ignore_entities: false,
+        })
+    );
+    assert!(
+        !input
+            .test_instance_block_editor_hud_state()
+            .unwrap()
+            .local_invalid_id
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "33");
+    world.apply_test_instance_block_status(TestInstanceBlockStatus {
+        status: RichTextComponent::plain("No size"),
+        size: None,
+    });
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+    assert_eq!(
+        input.test_instance_block_editor_hud_state().unwrap().fields[1].text,
+        "33"
+    );
+
+    world.apply_test_instance_block_status(TestInstanceBlockStatus {
+        status: RichTextComponent::plain("Sized"),
+        size: Some(Vec3i { x: 8, y: 9, z: 10 }),
+    });
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+    let state = input.test_instance_block_editor_hud_state().unwrap();
+    assert_eq!(state.fields[1].text, "8");
+    assert_eq!(state.fields[2].text, "9");
+    assert_eq!(state.fields[3].text, "10");
+    assert_eq!(state.response_status.unwrap().text(), "Sized");
+    assert_eq!(counters.test_instance_block_action_commands_queued, 3);
+}
+
+#[test]
+fn test_instance_block_editor_buttons_send_clamped_exact_actions_and_close_once() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(16);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_test_instance_block(pos);
+    let layout = bbb_renderer::hud_test_instance_block_editor_layout(PhysicalSize::new(320, 240));
+    assert!(world.try_open_test_instance_block_editor(pos));
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::TestInstanceBlockAction(
+            TestInstanceBlockAction {
+                action: TestInstanceBlockActionKind::Init,
+                ..
+            }
+        ))
+    ));
+
+    assert!(click_test_instance_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.rotation,
+    ));
+    assert!(click_test_instance_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.save,
+    ));
+    assert!(input.test_instance_block_editor_is_active());
+    assert!(rx.try_recv().is_err(), "rotated Save is disabled");
+    assert!(click_test_instance_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.include_entities,
+    ));
+    for _ in 0..3 {
+        assert!(click_test_instance_editor(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            layout.rotation,
+        ));
+    }
+    assert!(click_test_instance_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.size[0],
+    ));
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "99");
+    assert!(click_test_instance_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.run,
+    ));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::TestInstanceBlockAction(TestInstanceBlockAction {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            action: TestInstanceBlockActionKind::Run,
+            test: Some("example:initial".to_string()),
+            size: Vec3i { x: 48, y: 4, z: 5 },
+            rotation: TestInstanceBlockRotation::None,
+            ignore_entities: true,
+        })
+    );
+    assert!(!input.test_instance_block_editor_is_active());
+    assert!(world.test_instance_block_editor().is_none());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn test_instance_block_editor_reset_save_and_done_buttons_map_to_exact_actions() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let layout = bbb_renderer::hud_test_instance_block_editor_layout(PhysicalSize::new(320, 240));
+    for (expected_action, rect) in [
+        (TestInstanceBlockActionKind::Reset, layout.reset),
+        (TestInstanceBlockActionKind::Save, layout.save),
+        (TestInstanceBlockActionKind::Set, layout.done),
+    ] {
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = world_with_test_instance_block(pos);
+        assert!(world.try_open_test_instance_block_editor(pos));
+        input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::TestInstanceBlockAction(
+                TestInstanceBlockAction {
+                    action: TestInstanceBlockActionKind::Init,
+                    ..
+                }
+            ))
+        ));
+        assert!(click_test_instance_editor(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            rect,
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::TestInstanceBlockAction(TestInstanceBlockAction {
+                pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                action: expected_action,
+                test: Some("example:initial".to_string()),
+                size: Vec3i { x: 3, y: 4, z: 5 },
+                rotation: TestInstanceBlockRotation::None,
+                ignore_entities: false,
+            })
+        );
+        assert_eq!(counters.test_instance_block_action_commands_queued, 2);
+        assert!(!input.test_instance_block_editor_is_active());
+        assert!(world.test_instance_block_editor().is_none());
+        assert!(rx.try_recv().is_err());
+    }
+}
+
+#[test]
+fn test_instance_block_editor_cancel_escape_and_right_click_use_are_exact() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(12);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_test_instance_block(pos);
+
+    assert!(mouse::start_use_item(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        Some(CrosshairTarget::Block(
+            crate::crosshair::CrosshairBlockHit {
+                pos,
+                face: ProtocolDirection::Up,
+                cursor: [0.25, 0.5, 0.75],
+                inside: false,
+            }
+        )),
+        None,
+    ));
+    assert!(input.test_instance_block_editor_is_active());
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::TestInstanceBlockAction(
+            TestInstanceBlockAction {
+                action: TestInstanceBlockActionKind::Init,
+                ..
+            }
+        ))
+    ));
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(!input.test_instance_block_editor_is_active());
+    assert!(rx.try_recv().is_err());
+
+    assert!(world.try_open_test_instance_block_editor(pos));
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::TestInstanceBlockAction(
+            TestInstanceBlockAction {
+                action: TestInstanceBlockActionKind::Init,
+                ..
+            }
+        ))
+    ));
+    let cancel =
+        bbb_renderer::hud_test_instance_block_editor_layout(PhysicalSize::new(320, 240)).cancel;
+    assert!(click_test_instance_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        cancel,
+    ));
+    assert!(!input.test_instance_block_editor_is_active());
+    assert!(rx.try_recv().is_err());
+
+    assert!(world.try_open_test_instance_block_editor(pos));
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::TestInstanceBlockAction(
+            TestInstanceBlockAction {
+                action: TestInstanceBlockActionKind::Init,
+                ..
+            }
+        ))
+    ));
+    assert!(world.open_local_inventory());
+    input.sync_test_instance_block_editor(&mut world, &mut counters, &commands);
+    assert!(!input.test_instance_block_editor_is_active());
+    assert!(world.test_instance_block_editor().is_none());
+    assert_eq!(counters.test_instance_block_action_commands_queued, 3);
+    assert_eq!(counters.use_item_on_commands_queued, 1);
 }
 
 #[test]

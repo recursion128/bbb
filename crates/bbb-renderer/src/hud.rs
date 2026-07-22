@@ -1969,6 +1969,97 @@ pub fn hud_command_block_editor_layout(
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudTestInstanceBlockEditorTextField {
+    pub text: String,
+    pub cursor: usize,
+    pub selection: usize,
+    pub focused: bool,
+    pub hovered: bool,
+    pub max_length: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudTestInstanceBlockEditorScreen {
+    pub title: String,
+    pub id_label: String,
+    pub size_label: String,
+    pub rotation_label: String,
+    pub entities_label: String,
+    pub id: HudTestInstanceBlockEditorTextField,
+    pub size: [HudTestInstanceBlockEditorTextField; 3],
+    pub info_runs: Vec<HudStyledTextRun>,
+    pub rotation: String,
+    pub include_entities: String,
+    pub reset: String,
+    pub save: String,
+    pub run: String,
+    pub done: String,
+    pub cancel: String,
+    pub save_enabled: bool,
+    pub rotation_hovered: bool,
+    pub include_entities_hovered: bool,
+    pub reset_hovered: bool,
+    pub save_hovered: bool,
+    pub run_hovered: bool,
+    pub done_hovered: bool,
+    pub cancel_hovered: bool,
+    pub cursor_visible: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudTestInstanceBlockEditorLayout {
+    pub id: HudCommandBlockEditorRect,
+    pub info: HudCommandBlockEditorRect,
+    pub size: [HudCommandBlockEditorRect; 3],
+    pub rotation: HudCommandBlockEditorRect,
+    pub include_entities: HudCommandBlockEditorRect,
+    pub reset: HudCommandBlockEditorRect,
+    pub save: HudCommandBlockEditorRect,
+    pub run: HudCommandBlockEditorRect,
+    pub done: HudCommandBlockEditorRect,
+    pub cancel: HudCommandBlockEditorRect,
+}
+
+pub fn hud_test_instance_block_editor_layout(
+    surface_size: PhysicalSize<u32>,
+) -> HudTestInstanceBlockEditorLayout {
+    let left = i32::try_from(surface_size.width / 2)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(158);
+    let widget = |index: i32, count: i32, y: i32| {
+        let exact_width = (316.0 - f64::from(count - 1) * 8.0) / f64::from(count);
+        HudCommandBlockEditorRect {
+            x: left.saturating_add((f64::from(index) * (8.0 + exact_width)) as i32),
+            y,
+            width: exact_width as u32,
+            height: 20,
+        }
+    };
+    HudTestInstanceBlockEditorLayout {
+        id: HudCommandBlockEditorRect {
+            x: left,
+            y: 40,
+            width: 316,
+            height: 20,
+        },
+        info: HudCommandBlockEditorRect {
+            x: left,
+            y: 70,
+            width: 316,
+            height: 72,
+        },
+        size: [widget(0, 5, 160), widget(1, 5, 160), widget(2, 5, 160)],
+        rotation: widget(3, 5, 160),
+        include_entities: widget(4, 5, 160),
+        reset: widget(0, 2, 185),
+        save: widget(1, 2, 185),
+        run: widget(0, 3, 210),
+        done: widget(1, 3, 210),
+        cancel: widget(2, 3, 210),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HudInventoryTextBackground {
     pub x: i32,
@@ -4316,6 +4407,14 @@ impl Renderer {
             screen.and_then(sanitize_hud_command_block_editor_screen);
     }
 
+    pub fn set_hud_test_instance_block_editor_screen(
+        &mut self,
+        screen: Option<HudTestInstanceBlockEditorScreen>,
+    ) {
+        self.hud_test_instance_block_editor_screen =
+            screen.and_then(sanitize_hud_test_instance_block_editor_screen);
+    }
+
     pub fn set_hud_pause_screen(&mut self, screen: Option<HudPauseScreen>) {
         self.hud_pause_screen = screen.and_then(sanitize_hud_pause_screen);
     }
@@ -5159,6 +5258,27 @@ impl Renderer {
                 &mut commands,
                 &self.hud_white_pixel,
                 self.hud_widget_text_field.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
+        if let Some(screen) = &self.hud_test_instance_block_editor_screen {
+            push_hud_test_instance_block_editor_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_widget_text_field.as_ref(),
+                self.hud_widget_text_field_highlighted.as_ref(),
                 HudDebugOptionsButtonSprites {
                     normal: self.hud_widget_button.as_ref(),
                     disabled: self.hud_widget_button_disabled.as_ref(),
@@ -9126,6 +9246,242 @@ fn push_hud_command_block_editor_screen<'a>(
                 hud_argb_to_tint(0xFFA0A0A0)
             },
             button_sprites,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_test_instance_block_editor_screen<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    text_field: Option<&'a HudSpriteGpu>,
+    text_field_highlighted: Option<&'a HudSpriteGpu>,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudTestInstanceBlockEditorScreen,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let layout = hud_test_instance_block_editor_layout(surface_size);
+    let label_tint = hud_argb_to_tint(0xFFA0A0A0);
+    push_hud_debug_options_centered_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &screen.title,
+        10,
+        HUD_TINT_WHITE,
+    );
+    for (label, x, y) in [
+        (&screen.id_label, layout.id.x, 30),
+        (&screen.size_label, layout.size[0].x, 150),
+    ] {
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            label,
+            (x as f32, y as f32),
+            label_tint,
+            1.0,
+            true,
+        );
+    }
+
+    let fields = std::iter::once((layout.id, &screen.id))
+        .chain(layout.size.into_iter().zip(screen.size.iter()));
+    for (rect, field) in fields {
+        let sprite = field
+            .focused
+            .then_some(text_field_highlighted)
+            .flatten()
+            .or(text_field);
+        if let Some(sprite) = sprite {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                sprite,
+                surface_size,
+                absolute_hud_rect(rect.x as f32, rect.y as f32, rect.width, rect.height),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TINT_WHITE,
+            );
+        } else {
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                rect.x,
+                rect.y,
+                rect.width,
+                rect.height,
+                if field.focused || field.hovered {
+                    [0.12, 0.12, 0.12, 0.96]
+                } else {
+                    [0.0, 0.0, 0.0, 0.72]
+                },
+            );
+        }
+        let label = HudInventoryTextLabel {
+            x: 0,
+            y: 0,
+            width: rect.width.saturating_sub(8),
+            text: field.text.clone(),
+            tint: HUD_COMMAND_INPUT_TINT,
+            background: None,
+            input: Some(HudInventoryTextInputDecoration {
+                cursor: field.cursor,
+                selection: field.selection,
+                scroll_to: field.cursor,
+                max_length: field.max_length,
+                cursor_visible: screen.cursor_visible && field.focused,
+                cursor_tint: HUD_COMMAND_INPUT_TINT,
+                selection_tint: HUD_COMMAND_SELECTION_TINT,
+            }),
+            scrolling: None,
+            shadow: true,
+            runs: Vec::new(),
+        };
+        push_hud_inventory_text_input_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &label,
+            label.input.expect("test-instance input decoration"),
+            (
+                rect.x.saturating_add(4) as f32,
+                rect.y.saturating_add(6) as f32,
+            ),
+        );
+    }
+
+    let info_lines =
+        hud_wrap_chat_runs_with_interactions(&screen.info_runs, &[], layout.info.width, glyphs);
+    for (line_index, line) in info_lines.into_iter().take(8).enumerate() {
+        for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
+            let geometry = hud_styled_text_pass_geometry(
+                &line.runs,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                (
+                    layout.info.x as f32,
+                    layout.info.y.saturating_add(line_index as i32 * 9) as f32,
+                ),
+                shadow_offset,
+                is_shadow,
+                HUD_TINT_WHITE,
+                Some(layout.info.width),
+                1.0,
+            );
+            push_hud_styled_text_pass(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                surface_size,
+                &geometry,
+            );
+        }
+    }
+
+    for (rect, label, hovered, enabled) in [
+        (
+            layout.rotation,
+            screen.rotation.as_str(),
+            screen.rotation_hovered,
+            true,
+        ),
+        (
+            layout.include_entities,
+            screen.include_entities.as_str(),
+            screen.include_entities_hovered,
+            true,
+        ),
+        (
+            layout.reset,
+            screen.reset.as_str(),
+            screen.reset_hovered,
+            true,
+        ),
+        (
+            layout.save,
+            screen.save.as_str(),
+            screen.save_hovered,
+            screen.save_enabled,
+        ),
+        (layout.run, screen.run.as_str(), screen.run_hovered, true),
+        (layout.done, screen.done.as_str(), screen.done_hovered, true),
+        (
+            layout.cancel,
+            screen.cancel.as_str(),
+            screen.cancel_hovered,
+            true,
+        ),
+    ] {
+        push_hud_debug_options_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            rect.x,
+            rect.y,
+            i32::try_from(rect.width).unwrap_or(i32::MAX),
+            i32::try_from(rect.height).unwrap_or(i32::MAX),
+            label,
+            enabled,
+            hovered,
+            if enabled { HUD_TINT_WHITE } else { label_tint },
+            button_sprites,
+        );
+    }
+    for (label, rect) in [
+        (&screen.rotation_label, layout.rotation),
+        (&screen.entities_label, layout.include_entities),
+    ] {
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            label,
+            (rect.x as f32, 150.0),
+            label_tint,
+            1.0,
+            true,
         );
     }
 }
@@ -14887,6 +15243,65 @@ fn sanitize_hud_command_block_editor_screen(
     .then_some(screen)
 }
 
+fn sanitize_hud_test_instance_block_editor_screen(
+    mut screen: HudTestInstanceBlockEditorScreen,
+) -> Option<HudTestInstanceBlockEditorScreen> {
+    screen.title = sanitize_hud_text_preserving_empty(screen.title, 256);
+    screen.id_label = sanitize_hud_text_preserving_empty(screen.id_label, 256);
+    screen.size_label = sanitize_hud_text_preserving_empty(screen.size_label, 256);
+    screen.rotation_label = sanitize_hud_text_preserving_empty(screen.rotation_label, 256);
+    screen.entities_label = sanitize_hud_text_preserving_empty(screen.entities_label, 256);
+    screen.id = sanitize_hud_test_instance_block_text_field(screen.id, 128);
+    screen.size = screen
+        .size
+        .map(|field| sanitize_hud_test_instance_block_text_field(field, 15));
+    let mut info_budget = 4096usize;
+    screen.info_runs = screen
+        .info_runs
+        .into_iter()
+        .take(256)
+        .filter_map(|run| {
+            let text = run
+                .text
+                .chars()
+                .filter(|ch| *ch == '\n' || !ch.is_control())
+                .take(info_budget)
+                .collect::<String>();
+            info_budget = info_budget.saturating_sub(text.chars().count());
+            (!text.is_empty()).then_some(HudStyledTextRun {
+                text,
+                style: run.style,
+                color: run.color.map(|color| color & 0xFF_FF_FF),
+            })
+        })
+        .collect();
+    screen.rotation = sanitize_hud_text_preserving_empty(screen.rotation, 64);
+    screen.include_entities = sanitize_hud_text_preserving_empty(screen.include_entities, 64);
+    screen.reset = sanitize_hud_text_preserving_empty(screen.reset, 256);
+    screen.save = sanitize_hud_text_preserving_empty(screen.save, 256);
+    screen.run = sanitize_hud_text_preserving_empty(screen.run, 256);
+    screen.done = sanitize_hud_text_preserving_empty(screen.done, 256);
+    screen.cancel = sanitize_hud_text_preserving_empty(screen.cancel, 256);
+    (!screen.title.is_empty()
+        && !screen.id_label.is_empty()
+        && !screen.size_label.is_empty()
+        && !screen.done.is_empty()
+        && !screen.cancel.is_empty())
+    .then_some(screen)
+}
+
+fn sanitize_hud_test_instance_block_text_field(
+    mut field: HudTestInstanceBlockEditorTextField,
+    max_length: usize,
+) -> HudTestInstanceBlockEditorTextField {
+    field.max_length = field.max_length.min(max_length);
+    field.text = sanitize_hud_text_preserving_empty_utf16(field.text, field.max_length);
+    let length = field.text.chars().count();
+    field.cursor = field.cursor.min(length);
+    field.selection = field.selection.min(length);
+    field
+}
+
 fn sanitize_hud_inventory_background_layer(
     layer: HudInventoryBackgroundLayer,
 ) -> Option<HudInventoryBackgroundLayer> {
@@ -17332,6 +17747,40 @@ mod tests {
         assert_eq!(wide.mode.x, 273);
         assert_eq!(wide.done.y, 252);
         assert_eq!(wide.cancel.x, 431);
+    }
+
+    #[test]
+    fn test_instance_block_editor_layout_matches_vanilla_absolute_geometry() {
+        let compact = hud_test_instance_block_editor_layout(PhysicalSize::new(320, 240));
+        assert_eq!(
+            compact.id,
+            HudCommandBlockEditorRect {
+                x: 2,
+                y: 40,
+                width: 316,
+                height: 20,
+            }
+        );
+        assert_eq!(
+            compact.size.map(|rect| (rect.x, rect.width)),
+            [(2, 56), (66, 56), (131, 56)]
+        );
+        assert_eq!((compact.rotation.x, compact.rotation.width), (196, 56));
+        assert_eq!(
+            (compact.include_entities.x, compact.include_entities.width),
+            (261, 56)
+        );
+        assert_eq!((compact.reset.x, compact.reset.width), (2, 154));
+        assert_eq!((compact.save.x, compact.save.width), (164, 154));
+        assert_eq!((compact.run.x, compact.run.width), (2, 100));
+        assert_eq!(compact.done.x, 110);
+        assert_eq!(compact.cancel.x, 218);
+
+        let wide = hud_test_instance_block_editor_layout(PhysicalSize::new(854, 480));
+        assert_eq!(wide.id.x, 269);
+        assert_eq!(wide.size[1].x, 333);
+        assert_eq!(wide.save.x, 431);
+        assert_eq!(wide.cancel.x, 485);
     }
 
     #[test]
