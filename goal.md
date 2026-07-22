@@ -314,6 +314,8 @@ save/debug、dimensions/collision/pick、model/texture/layers 已全量 complete
 
 已闭环的 `model/texture/layers` family 工程合同与逆向证明见
 `docs/entity-model-layers-closure-design.md`。
+当前 `animation` family closure 的工程合同、owner 边界与门禁位置见
+`docs/entity-animation-closure-design.md`。
 
 规则：
 
