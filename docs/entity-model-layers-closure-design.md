@@ -107,6 +107,15 @@ name, outline, fire, and exceptional culling in coherent source families.
 Each stage names its concrete Vanilla renderer/model classes and runs the
 affected crate's family-focused tests plus the renderer-catalog reverse tests.
 
+The first cross-cutting stage closes generic entity name displays from
+`EntityRenderer`, `LivingEntityRenderer`, `MobRenderer`, and
+`ArmorStandRenderer`: generate the `EntityType.Builder.nameTagOffset` override,
+project synchronized custom/player names, team visibility and below-name score,
+resolve camera/crosshair-dependent eligibility in native, and submit the
+ordered see-through plus normal font passes atomically. `ItemFrameRenderer`'s
+item-stack hover name remains with the item-frame family because it reads the
+displayed stack rather than the entity name.
+
 ### C. Matrix closure and delivery gate
 
 Prove that every official non-noop registration reaches a dedicated/shared

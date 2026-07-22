@@ -1362,8 +1362,10 @@ back into a todo. Do not delete these.
 
 - Audit every non-noop vanilla renderer registration for exact model family,
   texture/variant, shadow/culling, held-item/equipment, emissive, overlay, and
-  attachment layers. A generic cuboid or missing-texture fallback remains
-  partial.
+  attachment layers. Close generic name displays, including generated name-tag
+  attachment offsets, team/crosshair visibility, below-name scores, and ordered
+  see-through/normal text submissions. A generic cuboid or missing-texture
+  fallback remains partial.
 
 ### Entity coverage matrix animation
 

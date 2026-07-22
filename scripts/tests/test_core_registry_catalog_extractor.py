@@ -176,7 +176,7 @@ public interface DamageTypes {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new, MobCategory.CREATURE).sized(1, 1).eyeHeight(1.25F).passengerAttachments(0.5F).ridingOffset(-0.25F));
+      "one", Builder.of(One::new, MobCategory.CREATURE).sized(1, 1).eyeHeight(1.25F).nameTagOffset(1.5F).passengerAttachments(0.5F).ridingOffset(-0.25F));
   public static final EntityType<Two> TWO = register(
       "two", Builder.of(Two::new, MobCategory.MONSTER)
           .sized(0.6F, 1.8F).passengerAttachments(new Vec3(0.25, 1.0, -0.5))
@@ -198,6 +198,7 @@ public class EntityType {
         self.assertEqual([entry.serializable for entry in entries], [True, False])
         self.assertEqual([(entry.width, entry.height) for entry in entries], [(1.0, 1.0), (0.6, 1.8)])
         self.assertEqual([entry.eye_height for entry in entries], [1.25, None])
+        self.assertEqual([entry.name_tag_offset for entry in entries], [1.5, None])
         self.assertEqual(
             [entry.passenger_attachments for entry in entries],
             [((0.0, 0.5, 0.0),), ((0.25, 1.0, -0.5),)],
@@ -252,6 +253,24 @@ public class EntityType {
         with self.assertRaisesRegex(
             CoreRegistryExtractionError,
             r"DynamicEntityEyeHeight\.java:\d+:\d+: eyeHeight is not a numeric literal",
+        ):
+            entity_type_entries(source, expected_count=1)
+
+    def test_entity_name_tag_offset_rejects_non_literal_builder_values(self) -> None:
+        source = parse_source(
+            "fixture/DynamicEntityNameTagOffset.java",
+            b"""
+package fixture;
+public class EntityType {
+  public static final EntityType<One> ONE = register(
+      "one", Builder.of(One::new, MobCategory.MISC).sized(1, 1).nameTagOffset(DEFAULT_NAME_TAG_OFFSET));
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            CoreRegistryExtractionError,
+            r"DynamicEntityNameTagOffset\.java:\d+:\d+: nameTagOffset is not a numeric literal",
         ):
             entity_type_entries(source, expected_count=1)
 

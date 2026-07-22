@@ -33,6 +33,7 @@ class EntityTypeEntry:
     width: float
     height: float
     eye_height: float | None
+    name_tag_offset: float | None
     passenger_attachments: tuple[tuple[float, float, float], ...]
     vehicle_attachment: tuple[float, float, float]
 
@@ -367,6 +368,19 @@ def entity_type_entries(
             if len(call.arguments) != 1:
                 _fail(source, source.expression(call.node), "eyeHeight expects one argument")
             eye_height = _float_literal(source, call.arguments[0], "eyeHeight")
+        name_tag_offset_calls = _calls_in_expression(
+            source, field.initializer, "nameTagOffset"
+        )
+        if len(name_tag_offset_calls) > 1:
+            _fail(source, field.initializer, "entity builder has multiple nameTagOffset calls")
+        name_tag_offset = None
+        if name_tag_offset_calls:
+            call = name_tag_offset_calls[0]
+            if len(call.arguments) != 1:
+                _fail(source, source.expression(call.node), "nameTagOffset expects one argument")
+            name_tag_offset = _float_literal(
+                source, call.arguments[0], "nameTagOffset"
+            )
         passenger_attachment_calls = _calls_in_expression(
             source, field.initializer, "passengerAttachments"
         )
@@ -461,6 +475,7 @@ def entity_type_entries(
                 width,
                 height,
                 eye_height,
+                name_tag_offset,
                 tuple(passenger_attachments),
                 vehicle_attachment,
             )
