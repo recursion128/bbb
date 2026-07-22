@@ -587,7 +587,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_registry_packets_keep_registry_access_runtime_open() {
+    fn configuration_registry_packets_are_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from(["CLIENTBOUND_REGISTRY_DATA", "CLIENTBOUND_UPDATE_TAGS"]);
         let entries: Vec<_> = ledger
@@ -599,23 +599,22 @@ mod tests {
             .collect();
         assert_eq!(entries.len(), packets.len());
 
-        let partial: BTreeSet<_> = entries
-            .iter()
-            .flat_map(|entry| {
-                entry.coverage.iter().filter_map(move |(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial)
-                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
-                })
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([
-                ("CLIENTBOUND_REGISTRY_DATA", "canonical_apply"),
-                ("CLIENTBOUND_REGISTRY_DATA", "runtime_side_effect"),
-                ("CLIENTBOUND_UPDATE_TAGS", "runtime_side_effect"),
-            ])
-        );
+        assert!(entries.iter().all(|entry| entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete)));
+
+        for required in [
+            "registries/revision.rs#fn build",
+            "configuration_registry_and_tag_projections_commit_at_play_transition",
+            "hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+        ] {
+            assert!(entries.iter().any(|entry| entry
+                .coverage
+                .values()
+                .flat_map(|cell| &cell.evidence)
+                .any(|evidence| evidence.contains(required))));
+        }
     }
 
     #[test]

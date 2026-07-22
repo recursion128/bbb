@@ -211,3 +211,4 @@
 - **2026-07-22（DimensionType.NETWORK_CODEC 全字段闭环）**：原子 typed revision 保留全部标量、
   `infiniburn` hashed TagKey、七类有界 `IntProvider` 与 monster light settings，并将当前 session holder 投影到 level 快照；合同见 `docs/dimension-type-network-codec-design.md`。
 - **2026-07-22（registry holder/tag 194 行全量闭环）**：SlotDisplay 网络 item tag 保留规范身份并在每次配方展示时读取当前 UpdateTags 顺序，替换与删除都有 native 回归；其余 25 个 persistent/generic 调用点以 Vanilla 同步边界裁决为 not-applicable，账本归零 partial；合同见 `docs/registry-holder-tag-final-closure-design.md`。
+- **2026-07-22（configuration registry 双包闭环）**：RegistryData contents 与 UpdateTags 在 configuration pending candidate 中隔离，Play 转换时将 typed registry、tag、item defaults 与 native audio/presentation 原子发布；双包 packet coverage 全单元 complete，合同见 `docs/configuration-registry-packets-closure-design.md`。

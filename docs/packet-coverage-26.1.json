@@ -1671,14 +1671,17 @@
             "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
             "crates/bbb-world/src/registries/tests.rs#registry_lookup_uses_static_fallback_only_without_server_contents",
             "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
+            "crates/bbb-world/src/registries/revision.rs#fn build",
             "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
             "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
             "crates/bbb-world/src/registries/environment_attributes.rs#decode_client_environment_attributes",
             "crates/bbb-world/src/registries/biomes.rs#decode_biome_client_projection",
-            "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#appendContents"
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
+            "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#appendContents",
+            "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#collectGameRegistries"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -1706,10 +1709,11 @@
             "crates/bbb-native/src/runtime.rs#world_can_have_weather",
             "crates/bbb-native/src/terrain_runtime/textures.rs#synchronize_biome_registry",
             "crates/bbb-native/src/particle_runtime.rs#synchronize_terrain_textures",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#collectGameRegistries"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -1722,7 +1726,7 @@
             "crates/bbb-world/src/registries/tests.rs#registry_packets_classify_configuration_element_sources_from_generated_inventory",
             "crates/bbb-world/src/registries/tests.rs#production_registry_data_keeps_non_synchronized_elements_out_of_holder_state",
             "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#non_synchronized_sound_event_registry_data_keeps_static_audio_reference_resolution",
-            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_audio_registry_projections_commit_at_play_transition",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
             "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
             "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
             "crates/bbb-world/src/registries/tests.rs#tag_only_configuration_preserves_registry_contents_and_replaces_named_tags",
@@ -1750,7 +1754,7 @@
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_fluid_tags",
             "crates/bbb-native/src/runtime/tests.rs#dropped_item_models_use_world_trim_material_select_context",
             "crates/bbb-native/src/runtime/tests.rs#hud_inventory_tooltip_follows_synced_enchantment_holder_order_and_effects",
-            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_audio_registry_projections_commit_at_play_transition",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
             "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_chicken_variants_from_world_registry_order",
             "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_cow_variants_from_world_registry_order",
             "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_pig_variants_from_world_registry_order",
@@ -2054,10 +2058,13 @@
           "evidence": [
             "crates/bbb-native/src/entity_scene/hands.rs#entity_offhand_holds_loved_item",
             "crates/bbb-native/src/runtime.rs#hud_debug_looking_at_block_tag_lines",
+            "crates/bbb-native/src/recipe_book_ui.rs#push_slot_display_item_stack_candidates",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#resolveRegistryTags"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [

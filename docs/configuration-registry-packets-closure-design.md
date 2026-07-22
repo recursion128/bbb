@@ -72,10 +72,7 @@ under the local vanilla 26.1 source tree.
    catalog generator tests/check and `bbb-protocol` packet coverage tests plus
    non-test check.
 3. Append the milestone index entry, review the integrated diff, and run
-   `scripts/cargo-dev.sh gate`. The playable gate is not repeated because this
-   milestone changes only an already-covered configuration transition and the
-   immediately preceding holder/tag milestone ran it at the same behavioral
-   baseline; a gate failure or new transition behavior reopens it.
+   `scripts/cargo-dev.sh gate` followed by `scripts/playable-gate.sh auto`.
 
 The fully gated `ae5ef9151` is the pre-start checkpoint. Each stage is a clean,
 buildable commit. A pre/post-transition mismatch stops in stage 1; a ledger or

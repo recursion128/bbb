@@ -61,7 +61,8 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-protocol`
 
-- Audit field order, nullability, enum ordinals, and serverbound encoders against
+- Audit remaining play-family field order, nullability, enum ordinals, and
+  serverbound encoders against
   `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode tests with each
   packet slice, including strict unit-payload, terminal packet/component roots,
   remaining bounded strings/byte arrays, typed resource-id normalization,
