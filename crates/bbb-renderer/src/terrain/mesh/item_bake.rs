@@ -1,15 +1,16 @@
-//! Block-item geometry for the item-model renderer: bake a block's [`TerrainRenderShape`] into
-//! standalone [`ItemModelQuad`]s, reusing the terrain box/quad geometry, atlas UV mapping, and
-//! directional shade. Unlike chunk meshing there is no neighbour culling and no lightmap/AO: a held /
-//! dropped / framed / GUI block-item shows every present face, lit by the item context. `Cube`, `Box`,
-//! `Boxes`, and `Quads` cover every full and partial block model; `Cross`/`Crosses` are in-world-only
-//! foliage geometry and never the shape of an item, so they bake nothing.
+//! Standalone block geometry for item-model residency: bake a block's [`TerrainRenderShape`] into
+//! [`ItemModelQuad`]s, reusing terrain box/quad/cross geometry, atlas UV mapping, and directional
+//! shade. Unlike chunk meshing there is no neighbour culling and no lightmap/AO. Held / dropped /
+//! framed / GUI block items show every box/quad face but continue to suppress in-world-only
+//! `Cross`/`Crosses`; moving blocks preserve those crosses because `FallingBlockRenderer` accepts any
+//! block whose render shape is `MODEL`.
 
 use super::super::{
-    TerrainQuad, TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainTransparency,
+    TerrainCardinalLighting, TerrainQuad, TerrainRenderShape, TerrainTextureAtlas, TerrainTint,
+    TerrainTransparency,
 };
-use super::emitter::{cardinal_shade, face_from_normal};
-use super::geometry::{box_face_corners, face_uvs_from_crop, FACES};
+use super::emitter::face_from_normal;
+use super::geometry::{box_face_corners, face_uvs_from_crop, CROSS_FACES, FACES};
 use crate::item_models::ItemModelQuad;
 
 /// The default full-face UV crop (vanilla `0..=16` over the sprite) used for a bare cube's faces.
@@ -23,18 +24,58 @@ pub(in crate::terrain) fn bake_block_item_quads(
     tint: [TerrainTint; 6],
     atlas: &TerrainTextureAtlas,
 ) -> Vec<ItemModelQuad> {
+    bake_block_quads(
+        shape,
+        texture_indices,
+        tint,
+        TerrainCardinalLighting::Default,
+        atlas,
+        false,
+        [TerrainTransparency::OPAQUE; 6],
+    )
+}
+
+pub(in crate::terrain) fn bake_moving_block_quads(
+    shape: &TerrainRenderShape,
+    texture_indices: [u32; 6],
+    tint: [TerrainTint; 6],
+    face_transparency: [TerrainTransparency; 6],
+    cardinal_lighting: TerrainCardinalLighting,
+    atlas: &TerrainTextureAtlas,
+) -> Vec<ItemModelQuad> {
+    bake_block_quads(
+        shape,
+        texture_indices,
+        tint,
+        cardinal_lighting,
+        atlas,
+        true,
+        face_transparency,
+    )
+}
+
+fn bake_block_quads(
+    shape: &TerrainRenderShape,
+    texture_indices: [u32; 6],
+    tint: [TerrainTint; 6],
+    cardinal_lighting: TerrainCardinalLighting,
+    atlas: &TerrainTextureAtlas,
+    include_crosses: bool,
+    fallback_face_transparency: [TerrainTransparency; 6],
+) -> Vec<ItemModelQuad> {
     let mut quads = Vec::new();
     match shape {
         TerrainRenderShape::Cube => push_box(
             &mut quads,
             atlas,
+            cardinal_lighting,
             [0, 0, 0],
             [16, 16, 16],
             [true; 6],
             [FULL_FACE_UVS; 6],
             [0; 6],
             [true; 6],
-            [TerrainTransparency::OPAQUE; 6],
+            fallback_face_transparency,
             texture_indices,
             tint,
         ),
@@ -50,6 +91,7 @@ pub(in crate::terrain) fn bake_block_item_quads(
         } => push_box(
             &mut quads,
             atlas,
+            cardinal_lighting,
             *from,
             *to,
             *face_present,
@@ -65,6 +107,7 @@ pub(in crate::terrain) fn bake_block_item_quads(
                 push_box(
                     &mut quads,
                     atlas,
+                    cardinal_lighting,
                     model_box.from,
                     model_box.to,
                     model_box.face_present,
@@ -79,12 +122,61 @@ pub(in crate::terrain) fn bake_block_item_quads(
         }
         TerrainRenderShape::Quads(model_quads) => {
             for quad in model_quads {
-                quads.push(quad_to_item_quad(quad, atlas));
+                quads.push(quad_to_item_quad(quad, cardinal_lighting, atlas));
+            }
+        }
+        TerrainRenderShape::Cross {
+            shade,
+            light_emission: _,
+        } if include_crosses => push_cross(
+            &mut quads,
+            atlas,
+            cardinal_lighting,
+            texture_indices,
+            tint,
+            fallback_face_transparency,
+            *shade,
+        ),
+        TerrainRenderShape::Crosses(crosses) if include_crosses => {
+            for cross in crosses {
+                push_cross(
+                    &mut quads,
+                    atlas,
+                    cardinal_lighting,
+                    cross.texture_indices,
+                    cross.tint,
+                    cross.face_transparency,
+                    cross.shade,
+                );
             }
         }
         TerrainRenderShape::Cross { .. } | TerrainRenderShape::Crosses(_) => {}
     }
     quads
+}
+
+fn push_cross(
+    quads: &mut Vec<ItemModelQuad>,
+    atlas: &TerrainTextureAtlas,
+    cardinal_lighting: TerrainCardinalLighting,
+    texture_indices: [u32; 6],
+    tint: [TerrainTint; 6],
+    face_transparency: [TerrainTransparency; 6],
+    shade: bool,
+) {
+    let local_uvs = [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]];
+    for (face, normal, corners) in CROSS_FACES {
+        let index = face.index();
+        let rect = atlas.rect(texture_indices[index]);
+        quads.push(ItemModelQuad {
+            corners: corners.map(|corner| corner.map(|coordinate| coordinate * 16.0)),
+            uvs: local_uvs.map(|uv| rect.map(uv)),
+            tint: tint_rgba(tint[index]),
+            normal,
+            shade: cardinal_lighting.shade(shade, face),
+            translucent: face_transparency[index].has_translucent,
+        });
+    }
 }
 
 /// Emits every present face of a `0..=16` box as an item-model quad (mirrors the terrain `emit_box`
@@ -94,6 +186,7 @@ pub(in crate::terrain) fn bake_block_item_quads(
 fn push_box(
     quads: &mut Vec<ItemModelQuad>,
     atlas: &TerrainTextureAtlas,
+    cardinal_lighting: TerrainCardinalLighting,
     from: [u8; 3],
     to: [u8; 3],
     face_present: [bool; 6],
@@ -119,7 +212,7 @@ fn push_box(
             uvs: local_uvs.map(|uv| rect.map(uv)),
             tint: tint_rgba(tint[index]),
             normal: face.normal,
-            shade: cardinal_shade(face_shade[index], face.face),
+            shade: cardinal_lighting.shade(face_shade[index], face.face),
             translucent: face_transparency[index].has_translucent,
         });
     }
@@ -128,7 +221,11 @@ fn push_box(
 /// Converts a free-form model quad (already in `0..=16` model space with local UVs) into an item-model
 /// quad: the quad's local UVs mapped into its texture's atlas rect, tint, and the directional shade for
 /// the quad's cull face (or, lacking one, the face nearest its normal — vanilla `emit_quads`).
-fn quad_to_item_quad(quad: &TerrainQuad, atlas: &TerrainTextureAtlas) -> ItemModelQuad {
+fn quad_to_item_quad(
+    quad: &TerrainQuad,
+    cardinal_lighting: TerrainCardinalLighting,
+    atlas: &TerrainTextureAtlas,
+) -> ItemModelQuad {
     let rect = atlas.rect(quad.texture_index);
     let face = quad.cull.unwrap_or_else(|| face_from_normal(quad.normal));
     ItemModelQuad {
@@ -136,7 +233,7 @@ fn quad_to_item_quad(quad: &TerrainQuad, atlas: &TerrainTextureAtlas) -> ItemMod
         uvs: quad.uvs.map(|uv| rect.map(uv)),
         tint: tint_rgba(quad.tint),
         normal: quad.normal,
-        shade: cardinal_shade(quad.shade, face),
+        shade: cardinal_lighting.shade(quad.shade, face),
         translucent: quad.transparency.has_translucent,
     }
 }
@@ -187,6 +284,52 @@ mod tests {
         );
         // White tint, opaque.
         assert!(quads.iter().all(|quad| quad.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
+
+    #[test]
+    fn moving_block_quads_use_the_dimension_cardinal_lighting() {
+        let atlas = TerrainTextureAtlas::unit();
+        let quads = bake_moving_block_quads(
+            &TerrainRenderShape::Cube,
+            [0; 6],
+            [TerrainTint::WHITE; 6],
+            [TerrainTransparency::OPAQUE; 6],
+            TerrainCardinalLighting::Nether,
+            &atlas,
+        );
+        assert_eq!(quads.len(), 6);
+        assert_eq!(quads[0].shade, 0.9, "nether down face");
+        assert_eq!(quads[1].shade, 0.9, "nether up face");
+        assert_eq!(quads[2].shade, 0.8, "nether north face");
+        assert_eq!(quads[4].shade, 0.6, "nether west face");
+    }
+
+    #[test]
+    fn moving_block_quads_keep_world_cross_geometry() {
+        let atlas = TerrainTextureAtlas::unit();
+        let moving = bake_moving_block_quads(
+            &TerrainRenderShape::Cross {
+                shade: true,
+                light_emission: 0,
+            },
+            [0; 6],
+            [TerrainTint::WHITE; 6],
+            [TerrainTransparency::OPAQUE; 6],
+            TerrainCardinalLighting::Default,
+            &atlas,
+        );
+        assert_eq!(moving.len(), 4);
+        assert_eq!(moving[0].corners[2], [16.0, 16.0, 16.0]);
+        assert!(bake_block_item_quads(
+            &TerrainRenderShape::Cross {
+                shade: true,
+                light_emission: 0,
+            },
+            [0; 6],
+            [TerrainTint::WHITE; 6],
+            &atlas,
+        )
+        .is_empty());
     }
 
     #[test]

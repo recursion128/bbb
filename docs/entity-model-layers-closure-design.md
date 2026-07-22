@@ -113,8 +113,10 @@ The first cross-cutting stage is closed for generic entity name displays from
 project synchronized custom/player names, team visibility and below-name score,
 resolve camera/crosshair-dependent eligibility in native, and submit the
 ordered see-through plus normal font passes atomically. `ItemFrameRenderer`'s
-item-stack hover name remains with the item-frame family because it reads the
-displayed stack rather than the entity name.
+item-stack hover-name override is also closed on that path: world reads the
+displayed stack's exact `custom_name`, native applies render-names/crosshair/
+distance eligibility plus the facing-dependent renderer offset, and the same
+typed surfaces preserve ordered see-through and normal passes.
 
 Its bounded protocol/world prerequisite replaces the old trailing-byte
 `NumberFormat` summary with the source-generated `NumberFormatTypes.bootstrap`

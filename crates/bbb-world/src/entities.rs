@@ -1386,6 +1386,14 @@ pub struct EntityBlockModelState {
 pub struct FallingBlockModelState {
     pub block_state_id: i32,
     pub block: EntityBlockModelState,
+    /// Vanilla `MovingBlockRenderState.randomSeedPos`: the synchronized
+    /// `FallingBlockEntity.DATA_START_POS`, initialized from the add-entity
+    /// position by `recreateFromPacket`.
+    pub random_seed_pos: BlockPos,
+    /// Vanilla `MovingBlockRenderState.blockPos`: `BlockPos.containing(x,
+    /// boundingBox.maxY, z)` at extraction time. Biome tint and moving-block
+    /// light lookup use this position, independently of `random_seed_pos`.
+    pub block_pos: BlockPos,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

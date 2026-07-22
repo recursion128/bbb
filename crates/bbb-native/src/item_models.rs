@@ -25,6 +25,7 @@ use bbb_protocol::packets::{
     ConsumableSummary, DataComponentPatchSummary, EquipmentSlot, InteractionHand, ItemStackSummary,
     ItemUseAnimationSummary, SwingAnimationTypeSummary,
 };
+use bbb_renderer::terrain::TerrainCardinalLighting;
 use bbb_renderer::{
     allay_hand_attach_transform, bake_first_person_map_background_surface,
     bake_first_person_map_decoration_surface, bake_first_person_map_text_surface,
@@ -51,12 +52,12 @@ use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
     ItemModelMeshSet,
 };
-use bbb_world::{BlockPos, TerrainLight, WorldStore};
+use bbb_world::{BlockPos, ChunkPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::entity_scene::default_spear_kinetic_weapon_for_resource_id;
 use crate::map_textures::MapTextureExtractionCache;
-use crate::terrain_runtime::TerrainTextureState;
+use crate::terrain_runtime::{terrain_cardinal_lighting, BlockRenderPosition, TerrainTextureState};
 use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
 #[cfg(test)]
 use bbb_protocol::entity_types::*;

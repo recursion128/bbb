@@ -761,7 +761,6 @@ fn entity_block_attachments_apply_primed_tnt_block_state_fuse_and_outline() {
         primed_tnt_block_transform(&tnt, 4.5).unwrap()
     );
     assert!(!attachments[0].outline_only);
-
     let hidden = tnt.with_invisible(true);
     assert!(entity_block_attachments(&[hidden], &world, None, 0.5).is_empty());
     let outline = hidden.with_appears_glowing(true);
@@ -802,6 +801,15 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
         falling_block_transform(&falling).unwrap()
     );
     assert!(!attachments[0].outline_only);
+    assert_eq!(
+        attachments[0].moving_block,
+        Some(MovingBlockRenderContext {
+            random_seed_pos: BlockPos { x: 1, y: 4, z: 2 },
+            block_pos: BlockPos { x: 1, y: 4, z: 2 },
+            biome_id: None,
+            cardinal_lighting: TerrainCardinalLighting::Default,
+        })
+    );
 
     let hidden_outline = falling.with_invisible(true).with_appears_glowing(true);
     let hidden_attachments = entity_block_attachments(&[hidden_outline], &world, None, 1.0);
@@ -835,6 +843,12 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
     assert_eq!(
         entity_block_attachments(&[falling], &world, None, 1.0).len(),
         1
+    );
+    let loaded = entity_block_attachments(&[falling], &world, None, 1.0);
+    assert_eq!(
+        loaded[0].moving_block.unwrap().biome_id,
+        Some(0),
+        "MovingBlockRenderState samples the biome at blockPos"
     );
 }
 

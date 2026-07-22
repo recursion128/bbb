@@ -708,6 +708,59 @@ impl TerrainTextureState {
         quads
     }
 
+    /// Bakes the world form consumed by vanilla `MovingBlockRenderState`.
+    /// Weighted model selection uses the falling block's immutable start
+    /// position, while biome tint samples the current moving-block position;
+    /// cardinal lighting remains a separate per-dimension input.
+    pub(crate) fn moving_block_quads(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+        random_seed_position: BlockRenderPosition,
+        block_position: BlockRenderPosition,
+        biome_id: Option<i32>,
+        cardinal_lighting: bbb_renderer::terrain::TerrainCardinalLighting,
+    ) -> Option<Arc<[bbb_renderer::ItemModelQuad]>> {
+        let model = self.block_models.as_ref()?.block_render_model_with_seed(
+            block_name,
+            properties,
+            Some(block_model_seed(random_seed_position)),
+        )?;
+        let material = bbb_world::TerrainMaterialClass::Opaque;
+        let texture_indices = self
+            .fluid_texture_indices(block_name)
+            .unwrap_or_else(|| self.face_texture_indices(&model.face_textures));
+        let tint = self.face_tints(
+            block_name,
+            material,
+            &model.face_textures,
+            biome_id,
+            Some(block_position),
+            None,
+        );
+        let face_transparency = self.face_texture_transparencies(&model.face_textures);
+        let shape = self.terrain_render_shape_for_block(
+            block_name,
+            properties,
+            material,
+            model.shape,
+            texture_indices,
+            tint,
+            face_transparency,
+            biome_id,
+            Some(block_position),
+            None,
+        );
+        Some(Arc::from(bbb_renderer::terrain::bake_moving_block_quads(
+            &shape,
+            texture_indices,
+            tint,
+            face_transparency,
+            cardinal_lighting,
+            &self.atlas,
+        )))
+    }
+
     fn build_block_display_quads(
         &self,
         block_name: &str,

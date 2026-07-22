@@ -50,12 +50,28 @@ pub(super) struct EntityBlockAttachment {
     pub(super) light: [f32; 2],
     pub(super) overlay: [f32; 2],
     pub(super) outline_only: bool,
+    pub(super) moving_block: Option<MovingBlockRenderContext>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MovingBlockRenderContext {
+    pub(super) random_seed_pos: BlockPos,
+    pub(super) block_pos: BlockPos,
+    pub(super) biome_id: Option<i32>,
+    pub(super) cardinal_lighting: TerrainCardinalLighting,
 }
 
 fn entity_render_state_shader_light(instance: &EntityModelInstance) -> [f32; 2] {
     let block = (instance.render_state.light_coords >> 4) & 0xF;
     let sky = (instance.render_state.light_coords >> 20) & 0xF;
     [block as f32 / 15.0, sky as f32 / 15.0]
+}
+
+fn terrain_light_shader(light: TerrainLight) -> [f32; 2] {
+    [
+        f32::from(light.block.min(15)) / 15.0,
+        f32::from(light.sky.min(15)) / 15.0,
+    ]
 }
 
 fn minecart_tnt_display_block_overlay(instance: &EntityModelInstance) -> [f32; 2] {
@@ -80,17 +96,25 @@ pub(super) fn falling_block_should_render(
     world: &WorldStore,
     block_state_id: i32,
 ) -> bool {
-    match world.probe_block(falling_block_block_pos(instance)) {
+    match world.probe_block(falling_block_block_pos(instance, world)) {
         Some(block) => block.block_state_id != block_state_id,
         None => true,
     }
 }
 
-fn falling_block_block_pos(instance: &EntityModelInstance) -> BlockPos {
+fn falling_block_block_pos(instance: &EntityModelInstance, world: &WorldStore) -> BlockPos {
+    let position = world
+        .probe_entity_transform(instance.entity_id)
+        .map(|state| state.position)
+        .unwrap_or_else(|| bbb_world::EntityVec3 {
+            x: f64::from(instance.position[0]),
+            y: f64::from(instance.position[1]),
+            z: f64::from(instance.position[2]),
+        });
     BlockPos {
-        x: instance.position[0].floor() as i32,
-        y: instance.position[1].floor() as i32,
-        z: instance.position[2].floor() as i32,
+        x: position.x.floor() as i32,
+        y: position.y.floor() as i32,
+        z: position.z.floor() as i32,
     }
 }
 
@@ -119,13 +143,31 @@ pub(crate) fn entity_block_models(
         if attachment.outline_only {
             continue;
         }
-        let Some(quads) =
-            terrain_textures.block_item_quads(attachment.block_id.as_ref(), &attachment.properties)
-        else {
-            continue;
+        let base_variant = block_item_variant_identity(&attachment.properties);
+        let (quads, variant) = if let Some(context) = attachment.moving_block {
+            let Some(quads) = terrain_textures.moving_block_quads(
+                attachment.block_id.as_ref(),
+                &attachment.properties,
+                block_render_position(context.random_seed_pos),
+                block_render_position(context.block_pos),
+                context.biome_id,
+                context.cardinal_lighting,
+            ) else {
+                continue;
+            };
+            (
+                quads,
+                moving_block_variant_identity(base_variant.as_ref(), context),
+            )
+        } else {
+            let Some(quads) = terrain_textures
+                .block_item_quads(attachment.block_id.as_ref(), &attachment.properties)
+            else {
+                continue;
+            };
+            (quads, base_variant)
         };
         if !quads.is_empty() {
-            let variant = block_item_variant_identity(&attachment.properties);
             let identity = ItemModelAssetIdentity::new(
                 Arc::<str>::from(attachment.block_id.as_ref()),
                 variant,
@@ -167,6 +209,31 @@ pub(crate) fn entity_block_models(
     residency
 }
 
+fn block_render_position(pos: BlockPos) -> BlockRenderPosition {
+    BlockRenderPosition {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+    }
+}
+
+fn moving_block_variant_identity(base: &str, context: MovingBlockRenderContext) -> Arc<str> {
+    let cardinal = match context.cardinal_lighting {
+        TerrainCardinalLighting::Default => "default",
+        TerrainCardinalLighting::Nether => "nether",
+    };
+    Arc::from(format!(
+        "{base}|moving_seed={},{},{}|block_pos={},{},{}|biome={:?}|cardinal={cardinal}",
+        context.random_seed_pos.x,
+        context.random_seed_pos.y,
+        context.random_seed_pos.z,
+        context.block_pos.x,
+        context.block_pos.y,
+        context.block_pos.z,
+        context.biome_id,
+    ))
+}
+
 pub(super) fn block_item_variant_identity(properties: &BTreeMap<String, String>) -> Arc<str> {
     if properties.is_empty() {
         return Arc::from("default");
@@ -199,6 +266,7 @@ pub(super) fn entity_block_attachments(
                 light: entity_render_state_shader_light(instance),
                 overlay: ITEM_MODEL_NO_OVERLAY,
                 outline_only: entity_block_attachment_outline_only(instance),
+                moving_block: None,
             });
         }
         if let Some(transform) = iron_golem_flower_block_transform(instance) {
@@ -209,6 +277,7 @@ pub(super) fn entity_block_attachments(
                 light: entity_render_state_shader_light(instance),
                 overlay: ITEM_MODEL_NO_OVERLAY,
                 outline_only: false,
+                moving_block: None,
             });
         }
         if let Some(transform) = enderman_carried_block_transform(instance) {
@@ -220,6 +289,7 @@ pub(super) fn entity_block_attachments(
                     light: entity_render_state_shader_light(instance),
                     overlay: ITEM_MODEL_NO_OVERLAY,
                     outline_only: false,
+                    moving_block: None,
                 });
             }
         }
@@ -234,6 +304,7 @@ pub(super) fn entity_block_attachments(
                     light: entity_render_state_shader_light(instance),
                     overlay: minecart_tnt_display_block_overlay(instance),
                     outline_only: entity_block_attachment_outline_only(instance),
+                    moving_block: None,
                 });
             }
         }
@@ -249,19 +320,30 @@ pub(super) fn entity_block_attachments(
                     light: entity_render_state_shader_light(instance),
                     overlay: primed_tnt_block_overlay(fuse),
                     outline_only: entity_block_attachment_outline_only(instance),
+                    moving_block: None,
                 });
             }
         }
         if let Some(falling) = world.falling_block_state(instance.entity_id) {
             if falling_block_should_render(instance, world, falling.block_state_id) {
                 if let Some(transform) = falling_block_transform(instance) {
+                    let moving_block = moving_block_render_context(
+                        world,
+                        falling.random_seed_pos,
+                        falling.block_pos,
+                    );
+                    let light = world
+                        .sample_block_light(falling.block_pos)
+                        .map(terrain_light_shader)
+                        .unwrap_or_else(|| entity_render_state_shader_light(instance));
                     attachments.push(EntityBlockAttachment {
                         block_id: Cow::Owned(falling.block.name),
                         properties: falling.block.properties,
                         transform,
-                        light: entity_render_state_shader_light(instance),
+                        light,
                         overlay: ITEM_MODEL_NO_OVERLAY,
                         outline_only: false,
+                        moving_block: Some(moving_block),
                     });
                 }
             }
@@ -275,6 +357,7 @@ pub(super) fn entity_block_attachments(
                     light: entity_render_state_shader_light(instance),
                     overlay: ITEM_MODEL_NO_OVERLAY,
                     outline_only: entity_block_attachment_outline_only(instance),
+                    moving_block: None,
                 });
             }
         }
@@ -285,6 +368,27 @@ pub(super) fn entity_block_attachments(
         }
     }
     attachments
+}
+
+fn moving_block_render_context(
+    world: &WorldStore,
+    random_seed_pos: BlockPos,
+    block_pos: BlockPos,
+) -> MovingBlockRenderContext {
+    let chunk_pos = ChunkPos {
+        x: block_pos.x.div_euclid(16),
+        z: block_pos.z.div_euclid(16),
+    };
+    let biome_id =
+        world
+            .chunk_biome_sampler(chunk_pos)
+            .biome_id_at(block_pos.x, block_pos.y, block_pos.z);
+    MovingBlockRenderContext {
+        random_seed_pos,
+        block_pos,
+        biome_id,
+        cardinal_lighting: terrain_cardinal_lighting(world),
+    }
 }
 
 fn entity_block_attachment_outline_only(instance: &EntityModelInstance) -> bool {
@@ -316,6 +420,7 @@ pub(super) fn copper_golem_antenna_block_attachment_from_stack(
         light: entity_render_state_shader_light(instance),
         overlay: ITEM_MODEL_NO_OVERLAY,
         outline_only: false,
+        moving_block: None,
     })
 }
 

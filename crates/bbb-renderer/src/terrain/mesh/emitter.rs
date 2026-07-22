@@ -750,12 +750,6 @@ fn max_light(left: TerrainLight, right: TerrainLight) -> TerrainLight {
     }
 }
 
-/// `DEFAULT` cardinal shade, for dimension-independent consumers such as the
-/// item-model baker (baked item/block models are never Nether-shaded).
-pub(super) fn cardinal_shade(enabled: bool, face: TerrainFace) -> f32 {
-    TerrainCardinalLighting::Default.shade(enabled, face)
-}
-
 pub(super) fn face_from_normal(normal: [f32; 3]) -> TerrainFace {
     let [x, y, z] = normal;
     let abs_x = x.abs();

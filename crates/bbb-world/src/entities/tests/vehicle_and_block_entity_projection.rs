@@ -615,11 +615,14 @@ fn falling_block_state_projects_add_entity_block_state_data() {
         .expect("vanilla 26.1 air block state exists")
         .id;
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type_data(
-        131,
-        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-        grass_id,
-    ));
+    let mut falling =
+        protocol_add_entity_with_type_data(131, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, grass_id);
+    falling.position = ProtocolVec3d {
+        x: 1.25,
+        y: 64.25,
+        z: -1.25,
+    };
+    store.apply_add_entity(falling);
     store.apply_add_entity(protocol_add_entity_with_type_data(
         132,
         VANILLA_ENTITY_TYPE_COW_ID,
@@ -644,11 +647,31 @@ fn falling_block_state_projects_add_entity_block_state_data() {
                 name: "minecraft:grass_block".to_string(),
                 properties: grass_props,
             },
+            random_seed_pos: BlockPos { x: 1, y: 64, z: -2 },
+            block_pos: BlockPos { x: 1, y: 65, z: -2 },
         })
     );
     assert_eq!(store.falling_block_state(132), None);
     assert_eq!(store.falling_block_state(133), None);
     assert_eq!(store.falling_block_state(134), None);
+
+    let start_pos_accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        "DATA_START_POS",
+    )
+    .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 131,
+        values: vec![ProtocolEntityDataValue {
+            data_id: start_pos_accessor.data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_POS_ID,
+            value: EntityDataValueKind::BlockPos(ProtocolBlockPos { x: 7, y: 8, z: 9 }),
+        }],
+    }));
+    assert_eq!(
+        store.falling_block_state(131).unwrap().random_seed_pos,
+        BlockPos { x: 7, y: 8, z: 9 }
+    );
 }
 
 #[test]

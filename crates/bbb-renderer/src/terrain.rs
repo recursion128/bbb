@@ -636,6 +636,28 @@ pub fn bake_block_item_quads(
     mesh::bake_block_item_quads(shape, texture_indices, tint, atlas)
 }
 
+/// Bakes a `MovingBlockRenderState` model into standalone quads while retaining
+/// the dimension's cardinal-lighting table. Geometry/model selection and biome
+/// tint are resolved by native before this boundary; this function owns the
+/// final per-face `CardinalLighting.getShade` multiplier.
+pub fn bake_moving_block_quads(
+    shape: &TerrainRenderShape,
+    texture_indices: [u32; 6],
+    tint: [TerrainTint; 6],
+    face_transparency: [TerrainTransparency; 6],
+    cardinal_lighting: TerrainCardinalLighting,
+    atlas: &TerrainTextureAtlas,
+) -> Vec<crate::ItemModelQuad> {
+    mesh::bake_moving_block_quads(
+        shape,
+        texture_indices,
+        tint,
+        face_transparency,
+        cardinal_lighting,
+        atlas,
+    )
+}
+
 pub fn build_opaque_terrain_meshes(snapshots: &[TerrainChunkSnapshot]) -> Vec<TerrainMesh> {
     let atlas = TerrainTextureAtlas::unit();
     build_opaque_terrain_meshes_with_atlas(snapshots, &atlas)

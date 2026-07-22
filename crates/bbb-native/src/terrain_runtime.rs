@@ -751,7 +751,7 @@ fn chunk_distance_key(pos: ChunkPos, center: ChunkPos) -> i64 {
     dx * dx + dz * dz
 }
 
-fn terrain_cardinal_lighting(world: &WorldStore) -> TerrainCardinalLighting {
+pub(crate) fn terrain_cardinal_lighting(world: &WorldStore) -> TerrainCardinalLighting {
     match world.level_info().map(|level| level.cardinal_lighting()) {
         Some(WorldCardinalLighting::Nether) => TerrainCardinalLighting::Nether,
         _ => TerrainCardinalLighting::Default,

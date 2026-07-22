@@ -54,6 +54,7 @@ use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
+    vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
@@ -559,6 +560,32 @@ fn sync_derived_marker<T: hecs::Component + Default>(
     }
 }
 
+/// Vanilla `FallingBlockEntity.recreateFromPacket` seeds the synchronized
+/// `DATA_START_POS` from the add-entity position before the first metadata
+/// update. Retaining that client default keeps weighted block-model selection
+/// stable even before (or in the absence of) the server's dirty metadata item.
+fn entity_spawn_metadata(entity_type_id: i32, transform: EntityTransform) -> EntityMetadata {
+    let mut metadata = EntityMetadata::default();
+    if entity_type_id != VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID {
+        return metadata;
+    }
+    let Some(accessor) =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_START_POS")
+    else {
+        return metadata;
+    };
+    metadata.data_values.push(ProtocolEntityDataValue {
+        data_id: accessor.data_id,
+        serializer_id: accessor.serializer_id,
+        value: EntityDataValueKind::BlockPos(bbb_protocol::packets::BlockPos {
+            x: transform.position.x.floor() as i32,
+            y: transform.position.y.floor() as i32,
+            z: transform.position.z.floor() as i32,
+        }),
+    });
+    metadata
+}
+
 impl EntityStore {
     #[cfg(test)]
     pub(crate) fn block_effects_debug_state(
@@ -692,6 +719,7 @@ impl EntityStore {
                 animations
             },
         };
+        let fresh_metadata = entity_spawn_metadata(entity_type_id, transform);
 
         if let Some(entity) = self.by_protocol_id.get(&id).copied() {
             let previous_uuid = self
@@ -710,7 +738,9 @@ impl EntityStore {
                     *existing = T::default();
                 }
             }
-            reset::<EntityMetadata>(&mut self.ecs, entity);
+            if let Ok(mut existing) = self.ecs.get::<&mut EntityMetadata>(entity) {
+                *existing = fresh_metadata.clone();
+            }
             reset::<EntityEquipment>(&mut self.ecs, entity);
             reset::<EntityAttributes>(&mut self.ecs, entity);
             reset::<EntityTransientEvents>(&mut self.ecs, entity);
@@ -840,7 +870,7 @@ impl EntityStore {
         let entity = self.ecs.spawn((
             identity,
             transform,
-            EntityMetadata::default(),
+            fresh_metadata,
             EntityEquipment::default(),
             EntityAttributes::default(),
             EntityTransientEvents::default(),
@@ -1917,7 +1947,8 @@ impl EntityStore {
         id: i32,
         registries: &RegistrySet,
     ) -> Option<FallingBlockModelState> {
-        let identity = self.identity(id)?;
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         if identity.entity_type_id != VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID {
             return None;
         }
@@ -1925,12 +1956,40 @@ impl EntityStore {
         if state.name == "minecraft:air" {
             return None;
         }
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let [_, height] = vanilla_entity_type_dimensions(identity.entity_type_id)?;
+        let block_pos = crate::BlockPos {
+            x: transform.position.x.floor() as i32,
+            y: (transform.position.y + f64::from(height)).floor() as i32,
+            z: transform.position.z.floor() as i32,
+        };
+        let start_pos_data_id = vanilla_entity_metadata_accessor_for_entity_type(
+            identity.entity_type_id,
+            "DATA_START_POS",
+        )?
+        .data_id;
+        let random_seed_pos = metadata
+            .data_values
+            .iter()
+            .find(|value| value.data_id == start_pos_data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::BlockPos(pos) => Some(crate::BlockPos {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                }),
+                _ => None,
+            })
+            .unwrap_or(block_pos);
         Some(FallingBlockModelState {
             block_state_id: identity.data,
             block: EntityBlockModelState {
                 name: state.name.clone(),
                 properties: state.properties.clone(),
             },
+            random_seed_pos,
+            block_pos,
         })
     }
 

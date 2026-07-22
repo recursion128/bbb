@@ -801,9 +801,6 @@ Submission surfaces:
   ordered text phase. Texture-backed special geometry added by these surfaces
   must record complete submission metadata before atlas lookup rather than
   reuse the no-texture custom-geometry path.
-- Implement `ItemFrameRenderer`'s displayed-stack custom hover-name label;
-  unlike the closed generic entity pass, its eligibility and text come from
-  the framed ItemStack rather than the entity custom name.
 - Finish shared world-text font parity for entity names and display text:
   retained custom Component font ids still use the active default atlas, and
   obfuscated runs still draw their literal glyphs instead of frame-varying
@@ -834,9 +831,6 @@ Attachment and spawner presentation:
 - Wire the camel body-anchor passenger/leash attachment consumers. The anchor
   provider `Camel.getBodyAnchorAnimationYOffset` already exists.
 - Implement the ominous-item-spawner about-to-spawn and spawn sounds.
-- Add the exact falling-block `MovingBlockRenderState` biome / cardinal /
-  random-seed details consumed by `FallingBlockRenderer`.
-
 Environment:
 
 - Build the remaining `EnvironmentAttributeSystem` consumers over the frozen

@@ -236,6 +236,116 @@ fn block_model_seed_matches_vanilla_position_seed() {
 }
 
 #[test]
+fn moving_block_quads_use_start_seed_and_cardinal_context() {
+    let root = unique_temp_dir("moving-block-start-seed");
+    let asset_root = root
+        .join("sources")
+        .join(bbb_pack::MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "": [
+                    { "model": "minecraft:block/red_model", "weight": 2 },
+                    { "model": "minecraft:block/blue_model" }
+                ]
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("cube_all.json"),
+        r##"{
+            "textures": { "particle": "#all" },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" },
+                    "up": { "texture": "#all" },
+                    "north": { "texture": "#all" },
+                    "south": { "texture": "#all" },
+                    "west": { "texture": "#all" },
+                    "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+    for (model, texture) in [("red_model", "red"), ("blue_model", "blue")] {
+        write_json(
+            &asset_root
+                .join("models")
+                .join("block")
+                .join(format!("{model}.json")),
+            &format!(
+                r##"{{
+                    "parent": "minecraft:block/cube_all",
+                    "textures": {{ "all": "minecraft:block/{texture}" }}
+                }}"##
+            ),
+        );
+    }
+    let images = vec![
+        sprite("minecraft:block/red"),
+        sprite("minecraft:block/blue"),
+    ];
+    let atlas = bbb_pack::AtlasPacker::new(64, 1)
+        .unwrap()
+        .stitch(&images)
+        .unwrap();
+    let block_models = bbb_pack::PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let textures = TerrainTextureState::from_layout(&atlas.layout, Some(block_models), None, None);
+    let block_position = BlockRenderPosition { x: 20, y: 70, z: 4 };
+    let red = textures
+        .moving_block_quads(
+            "minecraft:test_block",
+            &BTreeMap::new(),
+            BlockRenderPosition { x: 0, y: 0, z: 0 },
+            block_position,
+            None,
+            bbb_renderer::terrain::TerrainCardinalLighting::Nether,
+        )
+        .unwrap();
+    let red_rect = textures.atlas.rects[textures.texture_index("minecraft:block/red") as usize];
+    assert_eq!(red.len(), 6);
+    assert!(red[0].uvs.iter().all(|uv| {
+        (red_rect.min[0]..=red_rect.max[0]).contains(&uv[0])
+            && (red_rect.min[1]..=red_rect.max[1]).contains(&uv[1])
+    }));
+    assert_eq!(red[0].shade, 0.9, "Nether down-face shade");
+
+    let blue_rect = textures.atlas.rects[textures.texture_index("minecraft:block/blue") as usize];
+    let blue = (1..=64)
+        .find_map(|x| {
+            let quads = textures.moving_block_quads(
+                "minecraft:test_block",
+                &BTreeMap::new(),
+                BlockRenderPosition { x, y: 0, z: 0 },
+                block_position,
+                None,
+                bbb_renderer::terrain::TerrainCardinalLighting::Default,
+            )?;
+            quads[0]
+                .uvs
+                .iter()
+                .all(|uv| {
+                    (blue_rect.min[0]..=blue_rect.max[0]).contains(&uv[0])
+                        && (blue_rect.min[1]..=blue_rect.max[1]).contains(&uv[1])
+                })
+                .then_some(quads)
+        })
+        .expect("a start-position seed selects the blue weighted model");
+    assert_eq!(blue.len(), 6);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn texture_alpha_maps_to_face_transparency() {
     let cutout =
         bbb_pack::SpriteImage::new("minecraft:block/cutout", 1, 1, vec![1, 2, 3, 0]).unwrap();
