@@ -16,7 +16,10 @@ use bbb_protocol::{
     ComponentStyle, NbtSummaryValue, RichTextComponent, StyledTextRun,
 };
 
-use super::{dimensions::sniffer_is_digging, schema, EntityModelSourceState, EntityVec3};
+use super::{
+    dimensions::{item_frame_facing, item_frame_item, sniffer_is_digging},
+    schema, EntityModelSourceState, EntityVec3, ItemFrameFacing,
+};
 use crate::WorldStore;
 
 /// One exact or synthetic Component fragment in a name-tag line.
@@ -74,6 +77,10 @@ pub enum EntityNameTagVisibilityPolicy {
     },
     /// `ArmorStandRenderer` bypasses the living/team/discrete rules entirely.
     ArmorStand { custom_name_visible: bool },
+    /// `ItemFrameRenderer` requires global name rendering plus the crosshair
+    /// target. The source only exists when the displayed stack has a custom
+    /// name; facing drives the renderer-specific dispatcher-root offset.
+    ItemFrame { facing: ItemFrameFacing },
 }
 
 /// World-owned input to one generic entity name-tag submission.
@@ -129,16 +136,54 @@ impl WorldStore {
         &self,
         source: &EntityModelSourceState,
     ) -> Option<EntityNameTagRenderSourceState> {
+        let entity_accessors = schema::vanilla_entity_metadata_entity_accessors()?;
+
         // ItemFrameRenderer replaces both eligibility and text with the displayed
-        // item's custom hover name. Its dedicated item-frame pass owns that family.
+        // stack's custom hover name. It still submits through the generic name-tag
+        // feature after applying its facing-dependent dispatcher-root offset.
         if matches!(
             source.entity_type_id,
             VANILLA_ENTITY_TYPE_ITEM_FRAME_ID | VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
         ) {
-            return None;
+            let accessors = schema::vanilla_entity_metadata_item_frame_accessors_for_entity_type(
+                source.entity_type_id,
+            )?;
+            let item = item_frame_item(accessors, &source.data_values)?;
+            let patch = &item.component_patch;
+            let custom_name = patch.custom_name.as_deref()?;
+            let identity = self.entities.identity(source.entity_id)?;
+            let shared_flags = metadata_byte(
+                &source.data_values,
+                entity_accessors.shared_flags_data_id,
+                entity_accessors.shared_flags_default,
+            );
+            let is_discrete = shared_flags & entity_accessors.shift_key_down_mask != 0;
+            let scoreboard_name =
+                self.scoreboard_name_for_identity(source.entity_type_id, source.uuid);
+            return Some(EntityNameTagRenderSourceState {
+                entity_id: source.entity_id,
+                distance_position: source.distance_position,
+                position: source.position,
+                // ItemFrame's dynamic pick box may grow to 0.75/1.0, but
+                // EntityAttachment.NAME_TAG uses its fixed EntityType height.
+                attachment_y: vanilla_entity_type(source.entity_type_id)?.height,
+                line_offset: 0,
+                is_discrete,
+                name: EntityNameTagTextState {
+                    segments: vec![stored_component_segment(
+                        patch.custom_name_nbt.as_ref(),
+                        patch.custom_name_styled.as_deref().unwrap_or_default(),
+                        custom_name,
+                    )],
+                    inherited_style: ComponentStyle::default(),
+                },
+                below_name: self.scoreboard_below_name(&scoreboard_name),
+                visibility: EntityNameTagVisibilityPolicy::ItemFrame {
+                    facing: item_frame_facing(accessors, identity.data, &source.data_values),
+                },
+            });
         }
 
-        let entity_accessors = schema::vanilla_entity_metadata_entity_accessors()?;
         let custom_name = self
             .entities
             .metadata_optional_rich_component_override(

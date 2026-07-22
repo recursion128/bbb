@@ -12,6 +12,7 @@ use bbb_renderer::{
 use bbb_world::{
     EntityNameTagLivingVisibilityState, EntityNameTagRenderSourceState,
     EntityNameTagTextSegmentState, EntityNameTagTextState, EntityNameTagVisibilityPolicy,
+    ItemFrameFacing,
 };
 
 use crate::component_text::{visit_localized_template, LocalizedTemplatePart};
@@ -82,7 +83,7 @@ pub(crate) fn entity_name_tag_surfaces(
         let baked = bake_entity_name_tag_surfaces(
             source.entity_id,
             submit_sequence,
-            entity_name_tag_root_position(instance),
+            entity_name_tag_root_position_for_policy(instance, source.visibility),
             source.attachment_y,
             source.line_offset,
             distance_to_camera_sq as f32,
@@ -123,6 +124,7 @@ fn entity_name_tag_is_visible(
         EntityNameTagVisibilityPolicy::ArmorStand {
             custom_name_visible,
         } => custom_name_visible,
+        EntityNameTagVisibilityPolicy::ItemFrame { .. } => render_names && targeted,
         EntityNameTagVisibilityPolicy::MobOrAvatar {
             living,
             entity_should_show_name,
@@ -148,6 +150,27 @@ fn entity_name_tag_is_visible(
             }
         }
     }
+}
+
+fn entity_name_tag_root_position_for_policy(
+    instance: EntityModelInstance,
+    policy: EntityNameTagVisibilityPolicy,
+) -> [f32; 3] {
+    let mut root = entity_name_tag_root_position(instance);
+    let EntityNameTagVisibilityPolicy::ItemFrame { facing } = policy else {
+        return root;
+    };
+    let [x, z] = match facing {
+        ItemFrameFacing::Down | ItemFrameFacing::Up => [0.0, 0.0],
+        ItemFrameFacing::North => [0.0, -0.3],
+        ItemFrameFacing::South => [0.0, 0.3],
+        ItemFrameFacing::West => [-0.3, 0.0],
+        ItemFrameFacing::East => [0.3, 0.0],
+    };
+    root[0] += x;
+    root[1] -= 0.25;
+    root[2] += z;
+    root
 }
 
 fn entity_name_tag_text_runs(
@@ -423,6 +446,60 @@ mod tests {
         ));
         assert!(below_name_is_within_render_distance(99.999));
         assert!(!below_name_is_within_render_distance(100.0));
+    }
+
+    #[test]
+    fn item_frame_name_visibility_and_root_offset_follow_renderer_override() {
+        let policy = EntityNameTagVisibilityPolicy::ItemFrame {
+            facing: ItemFrameFacing::North,
+        };
+        assert!(!entity_name_tag_is_visible(
+            policy,
+            12,
+            1.0,
+            Some(12),
+            None,
+            false
+        ));
+        assert!(!entity_name_tag_is_visible(
+            policy, 12, 1.0, None, None, true
+        ));
+        assert!(entity_name_tag_is_visible(
+            policy,
+            12,
+            4095.0,
+            Some(12),
+            None,
+            true
+        ));
+        assert!(!entity_name_tag_is_visible(
+            policy,
+            12,
+            4096.0,
+            Some(12),
+            None,
+            true
+        ));
+
+        let instance = EntityModelInstance::new(
+            12,
+            bbb_renderer::EntityModelKind::NoRender,
+            [4.0, 5.0, 6.0],
+            0.0,
+        );
+        assert_eq!(
+            entity_name_tag_root_position_for_policy(instance, policy),
+            [4.0, 4.75, 5.7]
+        );
+        assert_eq!(
+            entity_name_tag_root_position_for_policy(
+                instance,
+                EntityNameTagVisibilityPolicy::ItemFrame {
+                    facing: ItemFrameFacing::East,
+                },
+            ),
+            [4.3, 4.75, 6.0]
+        );
     }
 
     #[test]

@@ -46,6 +46,16 @@ fn shared_flags_data(flags: i8) -> ProtocolEntityDataValue {
     }
 }
 
+fn item_frame_item_data(entity_type_id: i32, item: ItemStackSummary) -> ProtocolEntityDataValue {
+    let accessors =
+        vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity_type_id).unwrap();
+    ProtocolEntityDataValue {
+        data_id: accessors.item_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        value: EntityDataValueKind::ItemStack(item),
+    }
+}
+
 fn assert_close(actual: f32, expected: f32, label: &str) {
     assert!(
         (actual - expected).abs() <= 1.0e-5,
@@ -337,6 +347,13 @@ fn entity_name_tag_renderer_policies_and_attachments_follow_vanilla_overrides() 
             Some(RichTextComponent::plain("Training Dummy")),
         )],
     }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 34,
+        values: vec![optional_component_data(
+            accessors.custom_name_data_id,
+            Some(RichTextComponent::plain("Frame Entity Name")),
+        )],
+    }));
 
     let armor_stand = name_source(&store, 30);
     assert_eq!(
@@ -401,6 +418,54 @@ fn entity_name_tag_renderer_policies_and_attachments_follow_vanilla_overrides() 
         .entity_name_tag_render_sources_at_partial_tick(1.0)
         .iter()
         .all(|source| source.entity_id != 34));
+}
+
+#[test]
+fn item_frame_name_tag_source_uses_the_displayed_stacks_custom_name() {
+    let mut store = WorldStore::new();
+    let frame_uuid = Uuid::from_u128(0xEEEE_EEEE_EEEE_EEEE_EEEE_EEEE_EEEE_EEEE);
+    let mut frame = protocol_add_entity_with_type(35, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID);
+    frame.uuid = frame_uuid;
+    frame.data = DIRECTION_EAST;
+    store.apply_add_entity(frame);
+
+    let item_name = rich_text("Framed Relic", "light_purple", true);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 35,
+        values: vec![item_frame_item_data(
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            ItemStackSummary {
+                item_id: Some(1),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![
+                        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                    ],
+                    custom_name: Some(item_name.text().to_string()),
+                    custom_name_styled: Some(item_name.styled().to_vec()),
+                    custom_name_nbt: Some(item_name.component().clone()),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        )],
+    }));
+
+    let source = name_source(&store, 35);
+    assert_eq!(source.attachment_y, 0.5);
+    assert_eq!(source.line_offset, 0);
+    assert!(matches!(
+        source.visibility,
+        EntityNameTagVisibilityPolicy::ItemFrame {
+            facing: ItemFrameFacing::East
+        }
+    ));
+    assert_eq!(source.name.inherited_style, ComponentStyle::default());
+    assert_eq!(source.name.segments.len(), 1);
+    assert_eq!(
+        rich_segment_text(&source.name.segments[0]),
+        Some("Framed Relic")
+    );
 }
 
 #[test]
