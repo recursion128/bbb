@@ -241,3 +241,7 @@
 - **2026-07-22（UpdateAdvancements 包闭环）**：trusted rich display、按包顺序的
   canonical tree/progress 与有界 completion handoff 驱动 native 五槽 toast、Vanilla
   滑动/淡入/音效及组件感知图标；合同见 `docs/update-advancements-packet-closure-design.md`。
+- **2026-07-22（MerchantOffers 包闭环）**：`ItemCost` 精确组件谓词值进入 canonical
+  display patch，商人菜单补齐七行按钮 hover/focus、完整交易栈装饰与 tooltip、折扣删除线、
+  补货提示及权威结果槽驱动的 XP 结果段；五类 packet coverage 全部 complete，合同见
+  `docs/archive/merchant-offers-packet-closure-design.md`。

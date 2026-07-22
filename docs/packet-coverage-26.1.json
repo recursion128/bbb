@@ -9546,20 +9546,24 @@
           "evidence": [
             "crates/bbb-world/src/client/inventory.rs#apply_merchant_offers",
             "crates/bbb-world/src/client/inventory/tests.rs#merchant_offers_apply_only_to_matching_open_container",
+            "crates/bbb-world/src/client/inventory/tests.rs#merchant_offer_replacement_retains_exact_cost_components_and_resets_local_view",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMerchantOffers"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offers_wire_order",
             "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offer_with_supported_component_predicate",
+            "crates/bbb-protocol/src/packets/merchant.rs#merchant_offer_normalizes_wire_stock_state_like_vanilla",
+            "crates/bbb-protocol/src/packets/merchant.rs#merchant_item_cost_rejects_oversized_component_predicates_before_values",
+            "crates/bbb-protocol/src/packets/merchant.rs#merchant_item_cost_rejects_an_out_of_range_builtin_item_holder",
             "crates/bbb-protocol/src/packets/data_components.rs#decode_data_component_exact_predicate_summary",
             "vanilla:net/minecraft/network/protocol/game/ClientboundMerchantOffersPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -9573,23 +9577,34 @@
           "evidence": [
             "crates/bbb-native/src/runtime.rs#merchant_offers_state",
             "crates/bbb-native/src/runtime.rs#push_merchant_trade_layers",
+            "crates/bbb-native/src/runtime.rs#hud_merchant_trade_decorations",
+            "crates/bbb-native/src/runtime.rs#hud_merchant_trade_tooltip",
+            "crates/bbb-native/src/input/inventory.rs#maybe_queue_merchant_trade_click",
             "crates/bbb-world/src/client/inventory/merchant.rs#merchant_offer_supports_local_payment_autofill",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMerchantOffers"
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMerchantOffers",
+            "vanilla:net/minecraft/client/gui/screens/inventory/MerchantScreen.java#extractContents"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offers_wire_order",
+            "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offer_with_supported_component_predicate",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_merchant_offers_closes_exact_predicate_and_native_presentation",
             "crates/bbb-net/src/event_stream.rs#play_inventory_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_inventory_container_packets_to_world",
             "crates/bbb-world/src/client/inventory/tests.rs#merchant_offers_apply_only_to_matching_open_container",
+            "crates/bbb-world/src/client/inventory/tests.rs#merchant_offer_replacement_retains_exact_cost_components_and_resets_local_view",
+            "crates/bbb-world/src/client/inventory/tests.rs#set_local_merchant_selected_offer_keeps_component_predicate_cost_server_authoritative",
             "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#merchant_offers_event_updates_world_inventory_state_and_world_counters",
-            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_merchant_trade_layers"
+            "crates/bbb-native/src/input/inventory/tests.rs#merchant_trade_row_click_queues_select_trade_command",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_merchant_trade_layers",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_merchant_future_xp_result",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_merchant_component_cost_decorations_and_tooltips"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

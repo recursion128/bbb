@@ -1216,10 +1216,6 @@ back into a todo. Do not delete these.
   invalid-transform prediction when item runtime or map state is unavailable.
 - `LoomMenu`: pattern-item component/tag lists beyond the single-pattern vanilla
   items, highlighted pattern buttons, banner preview, max-pattern error overlay.
-- `MerchantMenu`: generic button row backgrounds and hover/focus highlight,
-  selected row state if a future vanilla source adds one, trade XP result bar,
-  component-aware cost predicate rendering, full trade stack decorations and
-  hover tooltips, deprecated tooltip behavior, discount strikethrough.
 - `LecternMenu`: rich text styles and click events, exact vanilla font wrapping,
   text filtering toggle behavior.
 - `SmithingMenu`: generic held-item / non-skull head-item projection for the
