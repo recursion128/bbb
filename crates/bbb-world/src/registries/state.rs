@@ -26,7 +26,9 @@ use bbb_protocol::stat_types::{
 use bbb_protocol::world_clock_types::{
     vanilla_world_clock_type_by_id, vanilla_world_clock_type_by_resource_id,
 };
-use bbb_protocol::{entity_types::vanilla_entity_type, item_types::vanilla_item_type};
+use bbb_protocol::{
+    entity_types::vanilla_entity_type, item_types::vanilla_item_type, NbtSummaryValue,
+};
 use bbb_render_types::{
     cat_variants::CatModelVariant,
     temperature_animal_variants::{
@@ -275,6 +277,15 @@ pub enum RegistryResolutionError {
         registry: String,
         tag: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PersistentHolderSetDecodeError {
+    InvalidShape { registry: String },
+    InvalidTag { registry: String, value: String },
+    InvalidResourceId { registry: String, value: String },
+    NonStringEntry { registry: String, index: usize },
+    Resolution(RegistryResolutionError),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -901,6 +912,60 @@ impl<'a> FrozenRegistryAccess<'a> {
         })
     }
 
+    pub fn persistent_holder_set_from_nbt(
+        self,
+        registry: &str,
+        value: &NbtSummaryValue,
+    ) -> Result<FrozenRegistryHolderSet<'a>, PersistentHolderSetDecodeError> {
+        match value {
+            NbtSummaryValue::String(raw) if raw.starts_with('#') => {
+                let tag = super::normalize_codec_identifier(&raw[1..]).ok_or_else(|| {
+                    PersistentHolderSetDecodeError::InvalidTag {
+                        registry: registry.to_string(),
+                        value: raw.clone(),
+                    }
+                })?;
+                self.holder_set_by_tag(registry, &tag)
+                    .map_err(PersistentHolderSetDecodeError::Resolution)
+            }
+            NbtSummaryValue::String(raw) => {
+                let resource_id = super::normalize_codec_identifier(raw).ok_or_else(|| {
+                    PersistentHolderSetDecodeError::InvalidResourceId {
+                        registry: registry.to_string(),
+                        value: raw.clone(),
+                    }
+                })?;
+                self.holder_set_by_resource_ids(registry, &[resource_id])
+                    .map_err(PersistentHolderSetDecodeError::Resolution)
+            }
+            NbtSummaryValue::List(values) => {
+                let resource_ids = values
+                    .iter()
+                    .enumerate()
+                    .map(|(index, value)| {
+                        let NbtSummaryValue::String(raw) = value else {
+                            return Err(PersistentHolderSetDecodeError::NonStringEntry {
+                                registry: registry.to_string(),
+                                index,
+                            });
+                        };
+                        super::normalize_codec_identifier(raw).ok_or_else(|| {
+                            PersistentHolderSetDecodeError::InvalidResourceId {
+                                registry: registry.to_string(),
+                                value: raw.clone(),
+                            }
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                self.holder_set_by_resource_ids(registry, &resource_ids)
+                    .map_err(PersistentHolderSetDecodeError::Resolution)
+            }
+            _ => Err(PersistentHolderSetDecodeError::InvalidShape {
+                registry: registry.to_string(),
+            }),
+        }
+    }
+
     pub fn holder_ids_for_tag(self, registry: &str, tag: &str) -> Option<&'a [i32]> {
         self.registries.holder_ids_for_tag(registry, tag)
     }
@@ -965,6 +1030,41 @@ impl fmt::Display for RegistryResolutionError {
 }
 
 impl std::error::Error for RegistryResolutionError {}
+
+impl fmt::Display for PersistentHolderSetDecodeError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidShape { registry } => write!(
+                formatter,
+                "{registry} persistent holder set is neither a tag, resource id, nor list"
+            ),
+            Self::InvalidTag { registry, value } => {
+                write!(
+                    formatter,
+                    "invalid {registry} persistent holder-set tag {value}"
+                )
+            }
+            Self::InvalidResourceId { registry, value } => write!(
+                formatter,
+                "invalid {registry} persistent holder resource id {value}"
+            ),
+            Self::NonStringEntry { registry, index } => write!(
+                formatter,
+                "{registry} persistent holder-set entry {index} is not a resource id"
+            ),
+            Self::Resolution(error) => error.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for PersistentHolderSetDecodeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Resolution(error) => Some(error),
+            _ => None,
+        }
+    }
+}
 
 impl Default for RegistrySet {
     fn default() -> Self {

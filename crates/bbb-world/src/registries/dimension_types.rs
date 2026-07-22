@@ -6,8 +6,8 @@ use crate::{
 
 use super::{
     decode_client_environment_attributes,
-    environment_attributes::validate_client_environment_references, normalize_codec_identifier,
-    ClientEnvironmentAttributes, EnvironmentAttributeProjectionError, TIMELINE_REGISTRY,
+    environment_attributes::validate_client_environment_references, ClientEnvironmentAttributes,
+    EnvironmentAttributeProjectionError, TIMELINE_REGISTRY,
 };
 
 pub const DIMENSION_TYPE_REGISTRY: &str = "minecraft:dimension_type";
@@ -132,45 +132,9 @@ fn decode_timeline_holder_set(
     value: &NbtSummaryValue,
     registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<Vec<String>, String> {
-    let holder_set = match value {
-        NbtSummaryValue::String(value) if value.starts_with('#') => {
-            let tag = normalize_codec_identifier(&value[1..])
-                .ok_or_else(|| format!("invalid timeline tag {value}"))?;
-            registry_access
-                .holder_set_by_tag(TIMELINE_REGISTRY, &tag)
-                .map_err(|error| error.to_string())?
-        }
-        NbtSummaryValue::String(resource_id) => {
-            let resource_id = normalize_codec_identifier(resource_id)
-                .ok_or_else(|| format!("invalid timeline resource {resource_id}"))?;
-            registry_access
-                .holder_set_by_resource_ids(TIMELINE_REGISTRY, &[resource_id])
-                .map_err(|error| error.to_string())?
-        }
-        NbtSummaryValue::List(values) => {
-            let resource_ids = values
-                .iter()
-                .enumerate()
-                .map(|(index, value)| {
-                    let NbtSummaryValue::String(resource_id) = value else {
-                        return Err(format!(
-                            "timeline holder list entry {index} is not a resource id"
-                        ));
-                    };
-                    normalize_codec_identifier(resource_id)
-                        .ok_or_else(|| format!("invalid timeline resource {resource_id}"))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            registry_access
-                .holder_set_by_resource_ids(TIMELINE_REGISTRY, &resource_ids)
-                .map_err(|error| error.to_string())?
-        }
-        _ => {
-            return Err(
-                "timeline holder set is not a resource id, resource list, or named tag".to_string(),
-            )
-        }
-    };
+    let holder_set = registry_access
+        .persistent_holder_set_from_nbt(TIMELINE_REGISTRY, value)
+        .map_err(|error| error.to_string())?;
     Ok(holder_set
         .entries
         .into_iter()

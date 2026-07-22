@@ -404,8 +404,7 @@ mod tests {
         let dimension_types = include_str!("../../bbb-world/src/registries/dimension_types.rs");
         for required in [
             "fn decode_timeline_holder_set(",
-            "holder_set_by_tag(TIMELINE_REGISTRY",
-            "holder_set_by_resource_ids(TIMELINE_REGISTRY",
+            ".persistent_holder_set_from_nbt(TIMELINE_REGISTRY, value)",
         ] {
             assert!(
                 dimension_types.contains(required),

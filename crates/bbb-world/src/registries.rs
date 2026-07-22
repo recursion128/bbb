@@ -97,9 +97,9 @@ pub(crate) use sound_variants::{
 };
 pub use state::{
     FrozenRegistryAccess, FrozenRegistryEntry, FrozenRegistryHolderSet,
-    FrozenRegistryHolderSetKind, FrozenRegistryMembership, RegistryAccessRevision,
-    RegistryContentState, RegistryEntryPayload, RegistryEntrySource, RegistryPacket,
-    RegistryPacketEntry, RegistryResolutionError, RegistrySet, RegistryTagState,
+    FrozenRegistryHolderSetKind, FrozenRegistryMembership, PersistentHolderSetDecodeError,
+    RegistryAccessRevision, RegistryContentState, RegistryEntryPayload, RegistryEntrySource,
+    RegistryPacket, RegistryPacketEntry, RegistryResolutionError, RegistrySet, RegistryTagState,
     ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
 pub use store::RegistryValidationError;

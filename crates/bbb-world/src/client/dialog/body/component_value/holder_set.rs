@@ -450,78 +450,16 @@ pub(super) fn decode_registry_holder_set(
             "{what} holder set cannot be decoded without registry context"
         ));
     };
-    if let NbtSummaryValue::String(raw) = value {
-        if let Some(raw_tag) = raw.strip_prefix('#') {
-            return decode_named_holder_set(raw_tag, registry, registries, what);
-        }
-        return decode_direct_holder_set([raw.as_str()], registry, registries, what);
-    }
-
-    let NbtSummaryValue::List(values) = value else {
-        return Err(format!(
-            "{what} holder set is neither a tag, resource id, nor list"
-        ));
+    let holder_set = registries
+        .persistent_holder_set_from_nbt(registry, value)
+        .map_err(|error| format!("{error} for {what}"))?;
+    let (holder_set_kind, tag) = match holder_set.kind {
+        FrozenRegistryHolderSetKind::Direct => ("direct", None),
+        FrozenRegistryHolderSetKind::Named { tag, .. } => ("named", Some(tag.to_string())),
     };
-    let raw_resource_ids = values
-        .iter()
-        .enumerate()
-        .map(|(index, value)| {
-            let NbtSummaryValue::String(raw) = value else {
-                return Err(format!(
-                    "{what} holder set entry {index} is not a resource id"
-                ));
-            };
-            Ok(raw.as_str())
-        })
-        .collect::<Result<Vec<_>, String>>()?;
-    decode_direct_holder_set(raw_resource_ids, registry, registries, what)
-}
-
-fn decode_named_holder_set(
-    raw_tag: &str,
-    registry: &str,
-    registries: FrozenRegistryAccess<'_>,
-    what: &str,
-) -> Result<DialogRegistryHolderSetState, String> {
-    let tag = normalize_codec_identifier(raw_tag)
-        .ok_or_else(|| format!("invalid {what} holder-set tag #{raw_tag}"))?;
-    let holder_set = registries
-        .holder_set_by_tag(registry, &tag)
-        .map_err(|error| format!("{error} for {what}"))?;
-    debug_assert!(matches!(
-        holder_set.kind,
-        FrozenRegistryHolderSetKind::Named { .. }
-    ));
     Ok(DialogRegistryHolderSetState {
-        holder_set_kind: "named".to_string(),
-        tag: Some(tag),
-        entries: holder_set
-            .entries
-            .into_iter()
-            .map(dialog_registry_holder_reference)
-            .collect(),
-    })
-}
-
-fn decode_direct_holder_set<'a>(
-    raw_resource_ids: impl IntoIterator<Item = &'a str>,
-    registry: &str,
-    registries: FrozenRegistryAccess<'_>,
-    what: &str,
-) -> Result<DialogRegistryHolderSetState, String> {
-    let resource_ids = raw_resource_ids
-        .into_iter()
-        .map(|raw| {
-            normalize_codec_identifier(raw)
-                .ok_or_else(|| format!("invalid {what} holder resource id {raw}"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let holder_set = registries
-        .holder_set_by_resource_ids(registry, &resource_ids)
-        .map_err(|error| format!("{error} for {what}"))?;
-    Ok(DialogRegistryHolderSetState {
-        holder_set_kind: "direct".to_string(),
-        tag: None,
+        holder_set_kind: holder_set_kind.to_string(),
+        tag,
         entries: holder_set
             .entries
             .into_iter()

@@ -2,6 +2,7 @@ use bbb_protocol::packets::{
     EntityDataRegistryHolder, KnownPack, RegistryData, RegistryDataEntry, RegistryTags,
     TagNetworkPayload, UpdateTags,
 };
+use bbb_protocol::NbtSummaryValue;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -1125,6 +1126,97 @@ fn frozen_registry_access_resolves_reference_and_holder_set_forms() {
             .to_string(),
         "missing minecraft:test tag #example:missing"
     );
+}
+
+#[test]
+fn persistent_holder_set_decoder_uses_resource_order_tags_and_typed_failures() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![
+            RegistryPacketEntry::stub("example:second"),
+            RegistryPacketEntry::stub("example:first"),
+        ],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:test".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:ordered".to_string(),
+                entries: vec![1, 0],
+            }],
+        }],
+    });
+    let access = store.frozen_registry_access();
+
+    let direct = access
+        .persistent_holder_set_from_nbt(
+            "minecraft:test",
+            &NbtSummaryValue::List(vec![
+                NbtSummaryValue::String("example:first".to_string()),
+                NbtSummaryValue::String("example:second".to_string()),
+            ]),
+        )
+        .unwrap();
+    assert_eq!(direct.kind, FrozenRegistryHolderSetKind::Direct);
+    assert_eq!(
+        direct
+            .entries
+            .iter()
+            .map(|entry| (entry.holder_id, entry.resource_id))
+            .collect::<Vec<_>>(),
+        vec![(1, "example:first"), (0, "example:second")]
+    );
+
+    let named = access
+        .persistent_holder_set_from_nbt(
+            "minecraft:test",
+            &NbtSummaryValue::String("#example:ordered".to_string()),
+        )
+        .unwrap();
+    assert!(matches!(
+        named.kind,
+        FrozenRegistryHolderSetKind::Named {
+            tag: "example:ordered",
+            ..
+        }
+    ));
+    assert_eq!(
+        named
+            .entries
+            .iter()
+            .map(|entry| entry.resource_id)
+            .collect::<Vec<_>>(),
+        vec!["example:first", "example:second"]
+    );
+
+    for (value, expected) in [
+        (
+            NbtSummaryValue::String("#example:missing".to_string()),
+            "missing minecraft:test tag #example:missing",
+        ),
+        (
+            NbtSummaryValue::String("example:missing".to_string()),
+            "missing minecraft:test resource example:missing",
+        ),
+        (
+            NbtSummaryValue::List(vec![NbtSummaryValue::Int(0)]),
+            "minecraft:test persistent holder-set entry 0 is not a resource id",
+        ),
+        (
+            NbtSummaryValue::Int(0),
+            "minecraft:test persistent holder set is neither a tag, resource id, nor list",
+        ),
+    ] {
+        assert_eq!(
+            access
+                .persistent_holder_set_from_nbt("minecraft:test", &value)
+                .unwrap_err()
+                .to_string(),
+            expected
+        );
+    }
 }
 
 #[test]
