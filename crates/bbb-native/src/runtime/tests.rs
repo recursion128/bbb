@@ -1887,25 +1887,26 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let hotbar_icons_extract = source
         .find("let hud_hotbar_item_icons = if ordinary_hotbar {")
         .expect("pump should extract hotbar item icons");
+    let death_screen_extract = source
+        .find("let hud_death_screen = hud_death_screen(input, world, item_runtime);")
+        .expect("pump should extract death screen HUD state");
     let game_event_screen_extract = source
-        .find("let hud_game_event_screen = hud_game_event_screen(")
+        .find("let hud_game_event_screen = hud_death_screen")
         .expect("pump should extract game event screen HUD state");
     let debug_options_screen_extract = source
-        .find("let hud_debug_options_screen = if hud_game_event_screen.is_some()")
+        .find("let hud_debug_options_screen = if exclusive_game_screen_present")
         .expect("pump should extract debug options screen HUD state");
     let pause_screen_extract = source
-        .find(
-            "let hud_pause_screen = if hud_game_event_screen.is_some() || hud_debug_options_screen.is_some()",
-        )
+        .find("let hud_pause_screen = if exclusive_game_screen_present")
         .expect("pump should extract pause screen HUD state");
     let stats_screen_extract = source
-        .find("let hud_stats_screen = if hud_game_event_screen.is_some()")
+        .find("let hud_stats_screen = if exclusive_game_screen_present")
         .expect("pump should extract stats screen HUD state");
     let sign_editor_extract = source
-        .find("let hud_sign_editor_screen = if hud_game_event_screen.is_some()")
+        .find("let hud_sign_editor_screen = if exclusive_game_screen_present")
         .expect("pump should extract sign editor HUD state");
     let inventory_screen_extract = source
-        .find("let hud_inventory_screen = if hud_game_event_screen.is_some()")
+        .find("let hud_inventory_screen = if exclusive_game_screen_present")
         .expect("pump should extract inventory screen HUD state");
 
     for advance in [input_advance, destroy_advance, use_advance, using_item_tick] {
@@ -1918,6 +1919,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         selected_slot_extract,
         hotbar_mode_extract,
         hotbar_icons_extract,
+        death_screen_extract,
         game_event_screen_extract,
         debug_options_screen_extract,
         pause_screen_extract,
@@ -1930,6 +1932,18 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
             "HUD frame fields should read one post-input local player snapshot"
         );
     }
+
+    let frame_source = include_str!("render_extract.rs");
+    let death_field = frame_source
+        .find("pub(crate) hud_death_screen: Option<HudDeathScreen>")
+        .expect("RendererFrame must own the death-screen value");
+    let death_setter = frame_source
+        .find("renderer.set_hud_death_screen(frame.hud_death_screen);")
+        .expect("frame apply must forward the death-screen value");
+    assert!(
+        death_field < death_setter,
+        "death-screen state must cross the one-frame renderer boundary"
+    );
 }
 
 #[test]
