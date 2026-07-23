@@ -15303,11 +15303,8 @@ fn camera_environment_colors(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
 ) -> CameraEnvironmentColors {
-    let Some(camera) = camera_pose else {
-        return CameraEnvironmentColors::default();
-    };
-    let eye = camera_eye_position(camera);
-    let attributes = sampled_environment_attributes_at_camera(world, Some(camera));
+    let attributes = sampled_environment_attributes_at_camera(world, camera_pose);
+    let eye = camera_pose.map(camera_eye_position);
     CameraEnvironmentColors {
         sky_color: attributes.sky_color,
         fog_color: attributes.fog_color,
@@ -15324,8 +15321,8 @@ fn camera_environment_colors(
         water_fog_color: attributes.water_fog_color,
         water_fog_start_distance: attributes.water_fog_start_distance,
         water_fog_end_distance: attributes.water_fog_end_distance,
-        camera_forward: Some(camera_forward_vector(camera)),
-        fog_type: if camera_eye_in_water(world, eye) {
+        camera_forward: camera_pose.map(camera_forward_vector),
+        fog_type: if eye.is_some_and(|eye| camera_eye_in_water(world, eye)) {
             CameraFogType::Water
         } else {
             CameraFogType::Atmospheric
