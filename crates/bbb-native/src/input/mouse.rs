@@ -284,6 +284,9 @@ pub(super) fn start_use_item(
             if world.try_open_jigsaw_block_editor(hit.pos) {
                 input.sync_jigsaw_block_editor(world, counters, net_commands);
             }
+            if world.try_open_test_block_editor(hit.pos) {
+                input.sync_test_block_editor(world, counters, net_commands);
+            }
             if world.try_open_test_instance_block_editor(hit.pos) {
                 input.sync_test_instance_block_editor(world, counters, net_commands);
             }

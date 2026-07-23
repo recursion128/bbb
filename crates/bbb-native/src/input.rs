@@ -176,6 +176,7 @@ mod minecart_command_block;
 mod mouse;
 mod movement;
 mod structure_block;
+mod test_block;
 mod test_instance_block;
 pub(crate) mod text_edit;
 
@@ -212,9 +213,9 @@ pub(crate) use commands::{
     queue_rename_item_command, queue_request_game_rule_values_command, queue_request_stats_command,
     queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
     queue_set_command_block_command, queue_set_creative_mode_slot_command,
-    queue_set_jigsaw_block_command, queue_set_structure_block_command, queue_sign_update_command,
-    queue_spectate_entity_command, queue_teleport_to_entity_command, queue_vehicle_move_command,
-    select_hotbar_slot,
+    queue_set_jigsaw_block_command, queue_set_structure_block_command,
+    queue_set_test_block_command, queue_sign_update_command, queue_spectate_entity_command,
+    queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
 use component_patch::{encode_added_component_value_snbt_with_context, PersistentSnbtContext};
 #[cfg(test)]
@@ -674,6 +675,7 @@ pub(crate) struct ClientInputState {
     chat_scroll_lines: usize,
     structure_block_editor: Option<structure_block::StructureBlockEditorInputState>,
     jigsaw_block_editor: Option<jigsaw_block::JigsawBlockEditorInputState>,
+    test_block_editor: Option<test_block::TestBlockEditorInputState>,
     test_instance_block_editor: Option<test_instance_block::TestInstanceBlockEditorInputState>,
     #[cfg(test)]
     last_step: Option<Instant>,
@@ -1137,6 +1139,7 @@ impl ClientInputState {
             chat_scroll_lines: self.chat_scroll_lines,
             structure_block_editor: self.structure_block_editor.clone(),
             jigsaw_block_editor: self.jigsaw_block_editor.clone(),
+            test_block_editor: self.test_block_editor.clone(),
             test_instance_block_editor: self.test_instance_block_editor.clone(),
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
             ..Self::default()
@@ -1500,6 +1503,7 @@ impl ClientInputState {
             || world.stats_screen_is_open()
             || world.structure_block_editor().is_some()
             || world.jigsaw_block_editor().is_some()
+            || world.test_block_editor().is_some()
             || world.test_instance_block_editor().is_some()
             || world.minecart_command_block_editor().is_some()
             || self.sign_editor_is_active_or_pending(world)
@@ -10379,6 +10383,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if input.handle_test_block_editor_key(world, code, pressed) {
+        return;
+    }
+
     if input.handle_test_instance_block_editor_key(counters, world, net_commands, code, pressed) {
         return;
     }
@@ -10701,6 +10709,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
     }
 
     if input.handle_jigsaw_block_editor_text(world, text) {
+        return;
+    }
+
+    if input.handle_test_block_editor_text(world, text) {
         return;
     }
 

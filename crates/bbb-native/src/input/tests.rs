@@ -5,7 +5,8 @@ use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
     VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
-    VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID,
+    VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
 };
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_CYAN_ID,
@@ -120,11 +121,11 @@ use bbb_protocol::packets::{
     SetCommandMinecart, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetJigsawBlock,
     SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, SetStructureBlock,
-    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate,
+    SetTestBlock, ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate,
     StructureBlockMirror, StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind,
-    TagQuery, TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
-    TestInstanceBlockStatus, UpdateAdvancements, Vec3d as ProtocolVec3d, Vec3i,
-    WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
+    TagQuery, TestBlockMode, TestInstanceBlockAction, TestInstanceBlockActionKind,
+    TestInstanceBlockRotation, TestInstanceBlockStatus, UpdateAdvancements, Vec3d as ProtocolVec3d,
+    Vec3i, WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
     VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
@@ -153,8 +154,9 @@ use bbb_world::{
     ChunkSection, ChunkState, CommandBlockEntityDataState, ItemEquipmentSlot,
     JigsawBlockEntityDataState, LightData, LocalPlayerPoseState, PaletteDomain, PaletteKind,
     PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState,
-    StructureBlockEntityDataState, StructureBlockSizeState, TestInstanceBlockEntityDataState,
-    TestInstanceBlockRunStatus, TestInstanceBlockSizeState, WorldStore,
+    StructureBlockEntityDataState, StructureBlockSizeState, TestBlockEntityDataState,
+    TestInstanceBlockEntityDataState, TestInstanceBlockRunStatus, TestInstanceBlockSizeState,
+    WorldStore,
 };
 use std::{
     collections::BTreeMap,
@@ -1319,6 +1321,69 @@ fn apply_command_minecart_metadata(
     }));
 }
 
+fn world_with_test_block(pos: BlockPos, mode: TestBlockMode, message: &str) -> WorldStore {
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let block_state_id = bbb_world::vanilla_block_state_id(
+        "minecraft:test_block",
+        &BTreeMap::from([("mode".to_string(), mode.serialized_name().to_string())]),
+    )
+    .expect("vanilla test block state");
+    let section_index = usize::try_from((pos.y + 64).div_euclid(16))
+        .expect("test block lies in the overworld build height");
+    let record = BlockEntityRecord {
+        local_x: pos.x.rem_euclid(16) as u8,
+        y: i16::try_from(pos.y).unwrap(),
+        local_z: pos.z.rem_euclid(16) as u8,
+        type_id: VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID,
+        raw_nbt: vec![0],
+        nbt: None,
+        sign_text: None,
+        vault_shared_data: None,
+        decorated_pot_sherds: None,
+        banner_patterns: None,
+        end_gateway: None,
+        spawner: None,
+        command_block: None,
+        structure_block: None,
+        jigsaw_block: None,
+        test_block: Some(TestBlockEntityDataState {
+            mode,
+            message: message.to_string(),
+            powered: false,
+        }),
+        test_instance_block: None,
+        note_block_sound: None,
+    };
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..24)
+            .map(|index| ChunkSection {
+                non_empty_block_count: if index == section_index { 4096 } else { 0 },
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    if index == section_index {
+                        block_state_id
+                    } else {
+                        0
+                    },
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            })
+            .collect(),
+        block_entities: vec![record],
+        light: LightData::default(),
+    });
+    world
+}
+
 fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -1577,6 +1642,28 @@ fn click_test_instance_editor(
     rect: bbb_renderer::HudCommandBlockEditorRect,
 ) -> bool {
     input.handle_test_instance_block_editor_mouse_input(
+        counters,
+        world,
+        commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(rect.x + 1),
+            f64::from(rect.y + 1),
+        )),
+        PhysicalSize::new(320, 240),
+        &FixedCommandSuggestionTextMeasurer,
+    )
+}
+
+fn click_test_block_editor(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    commands: &Option<mpsc::Sender<NetCommand>>,
+    rect: bbb_renderer::HudCommandBlockEditorRect,
+) -> bool {
+    input.handle_test_block_editor_mouse_input(
         counters,
         world,
         commands,
@@ -18261,6 +18348,176 @@ fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
     assert_eq!(input.chat_entry.as_ref().unwrap().text, "/seed");
     assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 5);
     assert!(input.chat_entry.as_ref().unwrap().suggestion_list.is_none());
+}
+
+#[test]
+fn test_block_editor_preserves_hidden_message_cycles_modes_and_done_sends_once() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_test_block(pos, TestBlockMode::Log, "initial");
+    let layout = bbb_renderer::hud_test_block_editor_layout(PhysicalSize::new(320, 240));
+    assert!(world.try_open_test_block_editor(pos));
+    input.sync_test_block_editor(&mut world, &mut counters, &commands);
+
+    let hud = input.test_block_editor_hud_state().unwrap();
+    assert_eq!(hud.mode, TestBlockMode::Log);
+    assert_eq!(hud.message, "initial");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        &"😀".repeat(100),
+    );
+    assert_eq!(
+        input
+            .test_block_editor_hud_state()
+            .unwrap()
+            .message
+            .encode_utf16()
+            .count(),
+        128
+    );
+
+    for expected in [
+        TestBlockMode::Fail,
+        TestBlockMode::Accept,
+        TestBlockMode::Start,
+    ] {
+        assert!(click_test_block_editor(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            layout.mode,
+        ));
+        assert_eq!(input.test_block_editor_hud_state().unwrap().mode, expected);
+    }
+    let hidden_message = input.test_block_editor_hud_state().unwrap().message;
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "ignored while hidden",
+    );
+    assert_eq!(
+        input.test_block_editor_hud_state().unwrap().message,
+        hidden_message
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+    assert!(input.test_block_editor_is_active());
+    assert!(rx.try_recv().is_err(), "Enter must not submit the editor");
+
+    assert!(click_test_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.mode,
+    ));
+    assert_eq!(
+        input.test_block_editor_hud_state().unwrap().mode,
+        TestBlockMode::Log
+    );
+    assert!(click_test_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        layout.done,
+    ));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SetTestBlock(SetTestBlock {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            mode: TestBlockMode::Log,
+            message: hidden_message,
+        })
+    );
+    assert_eq!(counters.set_test_block_commands_queued, 1);
+    assert!(!input.test_block_editor_is_active());
+    assert!(world.test_block_editor().is_none());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn test_block_editor_right_click_cancel_and_escape_never_send_editor_packet() {
+    let pos = BlockPos { x: 0, y: 0, z: 0 };
+    let (tx, mut rx) = mpsc::channel(6);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_test_block(pos, TestBlockMode::Fail, "failure");
+
+    assert!(mouse::start_use_item(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        Some(CrosshairTarget::Block(
+            crate::crosshair::CrosshairBlockHit {
+                pos,
+                face: ProtocolDirection::Up,
+                cursor: [0.25, 0.5, 0.75],
+                inside: false,
+            }
+        )),
+        None,
+    ));
+    assert!(input.test_block_editor_is_active());
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(!input.test_block_editor_is_active());
+    assert!(rx.try_recv().is_err());
+
+    assert!(world.try_open_test_block_editor(pos));
+    input.sync_test_block_editor(&mut world, &mut counters, &commands);
+    let cancel = bbb_renderer::hud_test_block_editor_layout(PhysicalSize::new(320, 240)).cancel;
+    assert!(click_test_block_editor(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        cancel,
+    ));
+    assert!(!input.test_block_editor_is_active());
+    assert!(rx.try_recv().is_err());
+    assert_eq!(counters.set_test_block_commands_queued, 0);
+    assert_eq!(counters.use_item_on_commands_queued, 1);
 }
 
 #[test]

@@ -216,6 +216,7 @@ impl ClientInputState {
             || self.command_block_editor_is_active()
             || self.minecart_command_block_editor_is_active()
             || self.structure_block_editor_is_active()
+            || self.test_block_editor_is_active()
             || self.test_instance_block_editor_is_active();
         if replaced {
             world.close_jigsaw_block_editor();
@@ -241,9 +242,11 @@ impl ClientInputState {
         self.chat_entry = None;
         self.chat_scroll_lines = 0;
         self.structure_block_editor = None;
+        self.test_block_editor = None;
         self.test_instance_block_editor = None;
         world.close_command_block_editor();
         world.close_structure_block_editor();
+        world.close_test_block_editor();
         world.close_test_instance_block_editor();
         let data = authoritative.data;
         self.jigsaw_block_editor = Some(JigsawBlockEditorInputState {

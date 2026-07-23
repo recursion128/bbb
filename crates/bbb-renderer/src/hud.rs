@@ -2179,6 +2179,70 @@ pub fn hud_jigsaw_block_editor_layout(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudTestBlockEditorTextField {
+    pub text: String,
+    pub cursor: usize,
+    pub selection: usize,
+    pub focused: bool,
+    pub hovered: bool,
+    pub max_length: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudTestBlockEditorScreen {
+    pub title: String,
+    pub message_label: String,
+    pub message: HudTestBlockEditorTextField,
+    pub message_visible: bool,
+    pub mode: String,
+    pub mode_info: String,
+    pub done: String,
+    pub cancel: String,
+    pub mode_hovered: bool,
+    pub done_hovered: bool,
+    pub cancel_hovered: bool,
+    pub cursor_visible: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudTestBlockEditorLayout {
+    pub message: HudCommandBlockEditorRect,
+    pub mode: HudCommandBlockEditorRect,
+    pub done: HudCommandBlockEditorRect,
+    pub cancel: HudCommandBlockEditorRect,
+}
+
+pub fn hud_test_block_editor_layout(surface_size: PhysicalSize<u32>) -> HudTestBlockEditorLayout {
+    let center = i32::try_from(surface_size.width / 2).unwrap_or(i32::MAX);
+    HudTestBlockEditorLayout {
+        message: HudCommandBlockEditorRect {
+            x: center.saturating_sub(152),
+            y: 80,
+            width: 240,
+            height: 20,
+        },
+        mode: HudCommandBlockEditorRect {
+            x: center.saturating_sub(154),
+            y: 185,
+            width: 50,
+            height: 20,
+        },
+        done: HudCommandBlockEditorRect {
+            x: center.saturating_sub(154),
+            y: 210,
+            width: 150,
+            height: 20,
+        },
+        cancel: HudCommandBlockEditorRect {
+            x: center.saturating_add(4),
+            y: 210,
+            width: 150,
+            height: 20,
+        },
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudTestInstanceBlockEditorTextField {
     pub text: String,
     pub cursor: usize,
@@ -4632,6 +4696,10 @@ impl Renderer {
             screen.and_then(sanitize_hud_jigsaw_block_editor_screen);
     }
 
+    pub fn set_hud_test_block_editor_screen(&mut self, screen: Option<HudTestBlockEditorScreen>) {
+        self.hud_test_block_editor_screen = screen.and_then(sanitize_hud_test_block_editor_screen);
+    }
+
     pub fn set_hud_test_instance_block_editor_screen(
         &mut self,
         screen: Option<HudTestInstanceBlockEditorScreen>,
@@ -5541,6 +5609,27 @@ impl Renderer {
                 &self.hud_obfuscated_glyph_pool,
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
+        if let Some(screen) = &self.hud_test_block_editor_screen {
+            push_hud_test_block_editor_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_widget_text_field.as_ref(),
+                self.hud_widget_text_field_highlighted.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
                 self.counters.frame_index,
                 surface_size,
                 screen,
@@ -10162,6 +10251,178 @@ fn push_hud_jigsaw_slider_track<'a>(
                 max: [max_u, 1.0],
             },
             HUD_TINT_WHITE,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_test_block_editor_screen<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    text_field: Option<&'a HudSpriteGpu>,
+    text_field_highlighted: Option<&'a HudSpriteGpu>,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudTestBlockEditorScreen,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let layout = hud_test_block_editor_layout(surface_size);
+    let center = i32::try_from(surface_size.width / 2).unwrap_or(i32::MAX);
+    let label_tint = hud_argb_to_tint(0xFFA0A0A0);
+    push_hud_debug_options_centered_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &screen.title,
+        10,
+        HUD_TINT_WHITE,
+    );
+
+    if screen.message_visible {
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &screen.message_label,
+            (center.saturating_sub(153) as f32, 70.0),
+            label_tint,
+            1.0,
+            true,
+        );
+        let field = &screen.message;
+        let sprite = field
+            .focused
+            .then_some(text_field_highlighted)
+            .flatten()
+            .or(text_field);
+        if let Some(sprite) = sprite {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                sprite,
+                surface_size,
+                absolute_hud_rect(
+                    layout.message.x as f32,
+                    layout.message.y as f32,
+                    layout.message.width,
+                    layout.message.height,
+                ),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TINT_WHITE,
+            );
+        } else {
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                layout.message.x,
+                layout.message.y,
+                layout.message.width,
+                layout.message.height,
+                if field.focused || field.hovered {
+                    [0.12, 0.12, 0.12, 0.96]
+                } else {
+                    [0.0, 0.0, 0.0, 0.72]
+                },
+            );
+        }
+        let label = HudInventoryTextLabel {
+            x: 0,
+            y: 0,
+            width: layout.message.width.saturating_sub(8),
+            text: field.text.clone(),
+            tint: HUD_COMMAND_INPUT_TINT,
+            background: None,
+            input: Some(HudInventoryTextInputDecoration {
+                cursor: field.cursor,
+                selection: field.selection,
+                scroll_to: field.cursor,
+                max_length: field.max_length,
+                cursor_visible: screen.cursor_visible && field.focused,
+                cursor_tint: HUD_COMMAND_INPUT_TINT,
+                selection_tint: HUD_COMMAND_SELECTION_TINT,
+            }),
+            scrolling: None,
+            shadow: true,
+            runs: Vec::new(),
+        };
+        push_hud_inventory_text_input_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &label,
+            label.input.expect("test block input decoration"),
+            (
+                layout.message.x.saturating_add(4) as f32,
+                layout.message.y.saturating_add(6) as f32,
+            ),
+        );
+    }
+
+    push_hud_plain_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &screen.mode_info,
+        (center.saturating_sub(153) as f32, 174.0),
+        label_tint,
+        1.0,
+        true,
+    );
+    for (rect, label, hovered) in [
+        (layout.mode, screen.mode.as_str(), screen.mode_hovered),
+        (layout.done, screen.done.as_str(), screen.done_hovered),
+        (layout.cancel, screen.cancel.as_str(), screen.cancel_hovered),
+    ] {
+        push_hud_debug_options_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            rect.x,
+            rect.y,
+            i32::try_from(rect.width).unwrap_or(i32::MAX),
+            i32::try_from(rect.height).unwrap_or(i32::MAX),
+            label,
+            true,
+            hovered,
+            HUD_TINT_WHITE,
+            button_sprites,
         );
     }
 }
@@ -16268,6 +16529,30 @@ fn sanitize_hud_jigsaw_block_text_field(
     field
 }
 
+fn sanitize_hud_test_block_editor_screen(
+    mut screen: HudTestBlockEditorScreen,
+) -> Option<HudTestBlockEditorScreen> {
+    screen.title = sanitize_hud_text_preserving_empty(screen.title, 256);
+    screen.message_label = sanitize_hud_text_preserving_empty(screen.message_label, 256);
+    screen.message.max_length = screen.message.max_length.min(128);
+    screen.message.text =
+        sanitize_hud_text_preserving_empty_utf16(screen.message.text, screen.message.max_length);
+    let length = screen.message.text.chars().count();
+    screen.message.cursor = screen.message.cursor.min(length);
+    screen.message.selection = screen.message.selection.min(length);
+    screen.mode = sanitize_hud_text_preserving_empty(screen.mode, 64);
+    screen.mode_info = sanitize_hud_text_preserving_empty(screen.mode_info, 256);
+    screen.done = sanitize_hud_text_preserving_empty(screen.done, 256);
+    screen.cancel = sanitize_hud_text_preserving_empty(screen.cancel, 256);
+    (!screen.title.is_empty()
+        && !screen.message_label.is_empty()
+        && !screen.mode.is_empty()
+        && !screen.mode_info.is_empty()
+        && !screen.done.is_empty()
+        && !screen.cancel.is_empty())
+    .then_some(screen)
+}
+
 fn sanitize_hud_test_instance_block_editor_screen(
     mut screen: HudTestInstanceBlockEditorScreen,
 ) -> Option<HudTestInstanceBlockEditorScreen> {
@@ -18956,6 +19241,83 @@ mod tests {
         assert_eq!(wide.size[1].x, 333);
         assert_eq!(wide.save.x, 431);
         assert_eq!(wide.cancel.x, 485);
+    }
+
+    #[test]
+    fn test_block_editor_layout_matches_vanilla_absolute_geometry() {
+        let compact = hud_test_block_editor_layout(PhysicalSize::new(320, 240));
+        assert_eq!(
+            compact.message,
+            HudCommandBlockEditorRect {
+                x: 8,
+                y: 80,
+                width: 240,
+                height: 20,
+            }
+        );
+        assert_eq!(
+            compact.mode,
+            HudCommandBlockEditorRect {
+                x: 6,
+                y: 185,
+                width: 50,
+                height: 20
+            }
+        );
+        assert_eq!(
+            compact.done,
+            HudCommandBlockEditorRect {
+                x: 6,
+                y: 210,
+                width: 150,
+                height: 20
+            }
+        );
+        assert_eq!(
+            compact.cancel,
+            HudCommandBlockEditorRect {
+                x: 164,
+                y: 210,
+                width: 150,
+                height: 20
+            }
+        );
+
+        let wide = hud_test_block_editor_layout(PhysicalSize::new(854, 480));
+        assert_eq!(wide.message.x, 275);
+        assert_eq!(wide.mode.x, 273);
+        assert_eq!(wide.done.x, 273);
+        assert_eq!(wide.cancel.x, 431);
+    }
+
+    #[test]
+    fn test_block_editor_sanitizes_message_utf16_boundary() {
+        let screen = sanitize_hud_test_block_editor_screen(HudTestBlockEditorScreen {
+            title: "Test Block".to_string(),
+            message_label: "Message:".to_string(),
+            message: HudTestBlockEditorTextField {
+                text: "😀".repeat(200),
+                cursor: usize::MAX,
+                selection: usize::MAX,
+                focused: true,
+                hovered: false,
+                max_length: usize::MAX,
+            },
+            message_visible: true,
+            mode: "Log".to_string(),
+            mode_info: "Log Mode - Log a message".to_string(),
+            done: "Done".to_string(),
+            cancel: "Cancel".to_string(),
+            mode_hovered: false,
+            done_hovered: false,
+            cancel_hovered: false,
+            cursor_visible: true,
+        })
+        .unwrap();
+        assert_eq!(screen.message.text.encode_utf16().count(), 128);
+        assert_eq!(screen.message.cursor, 64);
+        assert_eq!(screen.message.selection, 64);
+        assert_eq!(screen.message.max_length, 128);
     }
 
     #[test]

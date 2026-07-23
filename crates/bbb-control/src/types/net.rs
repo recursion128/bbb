@@ -130,6 +130,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub jigsaw_generate_commands_queued: usize,
     #[serde(default)]
+    pub set_test_block_commands_queued: usize,
+    #[serde(default)]
     pub test_instance_block_action_commands_queued: usize,
     #[serde(default)]
     pub set_creative_mode_slot_commands_queued: usize,
@@ -476,6 +478,7 @@ mod tests {
         object.remove("set_structure_block_commands_queued");
         object.remove("set_jigsaw_block_commands_queued");
         object.remove("jigsaw_generate_commands_queued");
+        object.remove("set_test_block_commands_queued");
         object.remove("test_instance_block_action_commands_queued");
 
         let counters: NetCounters = serde_json::from_value(value).unwrap();
@@ -484,6 +487,7 @@ mod tests {
         assert_eq!(counters.set_structure_block_commands_queued, 0);
         assert_eq!(counters.set_jigsaw_block_commands_queued, 0);
         assert_eq!(counters.jigsaw_generate_commands_queued, 0);
+        assert_eq!(counters.set_test_block_commands_queued, 0);
         assert_eq!(counters.test_instance_block_action_commands_queued, 0);
     }
 }

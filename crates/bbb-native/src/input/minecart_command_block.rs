@@ -67,6 +67,7 @@ impl ClientInputState {
             || world.command_block_editor().is_some()
             || world.structure_block_editor().is_some()
             || world.jigsaw_block_editor().is_some()
+            || world.test_block_editor().is_some()
             || world.test_instance_block_editor().is_some()
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()
@@ -105,10 +106,12 @@ impl ClientInputState {
         release_active_input(self, world, counters, net_commands);
         self.structure_block_editor = None;
         self.jigsaw_block_editor = None;
+        self.test_block_editor = None;
         self.test_instance_block_editor = None;
         world.close_command_block_editor();
         world.close_structure_block_editor();
         world.close_jigsaw_block_editor();
+        world.close_test_block_editor();
         world.close_test_instance_block_editor();
 
         let cursor = text_edit::char_len(&authoritative.data.command);

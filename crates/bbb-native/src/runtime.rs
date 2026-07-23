@@ -22,7 +22,7 @@ use bbb_protocol::{
     packets::{
         AdvancementFrameType, CommandBlockMode, GameType, ItemCostSummary, ItemStackSummary,
         JigsawJoint, MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary,
-        StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+        StructureBlockMirror, StructureBlockMode, StructureBlockRotation, TestBlockMode,
         TestInstanceBlockRotation, Vec3d,
     },
     particle_types::{
@@ -37,10 +37,10 @@ use bbb_protocol::{
 use bbb_renderer::{
     hud_command_block_editor_layout, hud_jigsaw_block_editor_layout,
     hud_minecart_command_block_editor_layout, hud_structure_block_editor_layout,
-    hud_test_instance_block_editor_layout, sign_text_base_color, BlockDestroyOverlay,
-    BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment, CloudFrame, ConduitModelPart,
-    DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
-    EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
+    hud_test_block_editor_layout, hud_test_instance_block_editor_layout, sign_text_base_color,
+    BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment,
+    CloudFrame, ConduitModelPart, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine,
+    DebugTextBillboard, EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorKind,
@@ -59,7 +59,8 @@ use bbb_renderer::{
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudPauseScreen,
     HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudStatsItemRow, HudStatsRow,
     HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
-    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestInstanceBlockEditorScreen,
+    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
+    HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth,
     ItemModelAssetIdentity, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
@@ -2366,6 +2367,7 @@ pub(crate) fn advance_simulation(
     input.sync_minecart_command_block_editor(world, net_counters, net_commands);
     input.sync_structure_block_editor(world, net_counters, net_commands);
     input.sync_jigsaw_block_editor(world, net_counters, net_commands);
+    input.sync_test_block_editor(world, net_counters, net_commands);
     input.sync_test_instance_block_editor(world, net_counters, net_commands);
     let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed {
@@ -2968,6 +2970,15 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_jigsaw_block_editor_screen(input, item_runtime, surface_size)
     };
+    let hud_test_block_editor_screen = if world.dialog_screen_is_open()
+        || hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || hud_stats_screen.is_some()
+    {
+        None
+    } else {
+        hud_test_block_editor_screen(input, item_runtime, surface_size)
+    };
     let hud_test_instance_block_editor_screen = if world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -2984,6 +2995,7 @@ pub(crate) fn update_renderer_from_publication(
         || hud_command_block_editor_screen.is_some()
         || hud_structure_block_editor_screen.is_some()
         || hud_jigsaw_block_editor_screen.is_some()
+        || hud_test_block_editor_screen.is_some()
         || hud_test_instance_block_editor_screen.is_some()
     {
         None
@@ -3501,6 +3513,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_command_block_editor_screen,
             hud_structure_block_editor_screen,
             hud_jigsaw_block_editor_screen,
+            hud_test_block_editor_screen,
             hud_test_instance_block_editor_screen,
             hud_pause_screen,
             hud_stats_screen,
@@ -4131,6 +4144,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.minecart_command_block_editor().is_some()
         || world.structure_block_editor().is_some()
         || world.jigsaw_block_editor().is_some()
+        || world.test_block_editor().is_some()
         || world.test_instance_block_editor().is_some()
         || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
@@ -5797,6 +5811,68 @@ fn jigsaw_priority_tooltip_key(
     } else {
         None
     }
+}
+
+fn hud_test_block_editor_screen(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudTestBlockEditorScreen> {
+    let state = input.test_block_editor_hud_state()?;
+    let layout = hud_test_block_editor_layout(surface_size);
+    let hovered = |rect: bbb_renderer::HudCommandBlockEditorRect| {
+        state
+            .mouse_position
+            .is_some_and(|(x, y)| rect.contains(x, y))
+    };
+    let (mode_key, mode_fallback, info_key, info_fallback) = match state.mode {
+        TestBlockMode::Start => (
+            "test_block.mode.start",
+            "Start",
+            "test_block.mode_info.start",
+            "Start Mode - The starting point for a test",
+        ),
+        TestBlockMode::Log => (
+            "test_block.mode.log",
+            "Log",
+            "test_block.mode_info.log",
+            "Log Mode - Log a message",
+        ),
+        TestBlockMode::Fail => (
+            "test_block.mode.fail",
+            "Fail",
+            "test_block.mode_info.fail",
+            "Fail Mode - Fail the test",
+        ),
+        TestBlockMode::Accept => (
+            "test_block.mode.accept",
+            "Accept",
+            "test_block.mode_info.accept",
+            "Accept Mode - Accept success for (part of) a test",
+        ),
+    };
+    let message_visible = state.mode != TestBlockMode::Start;
+    Some(HudTestBlockEditorScreen {
+        title: localized_gui_text(item_runtime, "block.minecraft.test_block", "Test Block"),
+        message_label: localized_gui_text(item_runtime, "test_block.message", "Message:"),
+        message: HudTestBlockEditorTextField {
+            text: state.message,
+            cursor: state.cursor,
+            selection: state.selection,
+            focused: message_visible,
+            hovered: message_visible && hovered(layout.message),
+            max_length: bbb_protocol::packets::MAX_TEST_BLOCK_MESSAGE_UTF16_UNITS,
+        },
+        message_visible,
+        mode: localized_gui_text(item_runtime, mode_key, mode_fallback),
+        mode_info: localized_gui_text(item_runtime, info_key, info_fallback),
+        done: localized_gui_text(item_runtime, "gui.done", "Done"),
+        cancel: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+        mode_hovered: hovered(layout.mode),
+        done_hovered: hovered(layout.done),
+        cancel_hovered: hovered(layout.cancel),
+        cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
+    })
 }
 
 fn hud_test_instance_block_editor_screen(

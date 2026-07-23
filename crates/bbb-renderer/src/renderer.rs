@@ -710,6 +710,7 @@ pub struct Renderer {
     pub(super) hud_command_block_editor_screen: Option<crate::hud::HudCommandBlockEditorScreen>,
     pub(super) hud_structure_block_editor_screen: Option<crate::hud::HudStructureBlockEditorScreen>,
     pub(super) hud_jigsaw_block_editor_screen: Option<crate::hud::HudJigsawBlockEditorScreen>,
+    pub(super) hud_test_block_editor_screen: Option<crate::hud::HudTestBlockEditorScreen>,
     pub(super) hud_test_instance_block_editor_screen:
         Option<crate::hud::HudTestInstanceBlockEditorScreen>,
     pub(super) hud_pause_screen: Option<crate::hud::HudPauseScreen>,
@@ -1994,6 +1995,7 @@ impl Renderer {
             hud_command_block_editor_screen: None,
             hud_structure_block_editor_screen: None,
             hud_jigsaw_block_editor_screen: None,
+            hud_test_block_editor_screen: None,
             hud_test_instance_block_editor_screen: None,
             hud_pause_screen: None,
             hud_stats_screen: None,
