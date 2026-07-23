@@ -1,9 +1,14 @@
 use std::collections::BTreeSet;
 use std::fmt;
+use std::sync::Arc;
 
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
+use super::environment_attribute_catalog::{
+    vanilla_environment_attribute, VanillaEnvironmentAttribute, VanillaEnvironmentAttributeRange,
+    VanillaEnvironmentAttributeType,
+};
 use super::{decode_persistent_sound_event, normalize_codec_identifier, PersistentSoundEvent};
 use crate::FrozenRegistryAccess;
 
@@ -163,6 +168,35 @@ pub(super) enum EnvironmentTrackArgument {
     FilteredNonSyncable,
 }
 
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct ClientEnvironmentAttributeMap {
+    entries: Arc<[ClientEnvironmentAttributeMapEntry]>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct ClientEnvironmentAttributeMapEntry {
+    field: &'static str,
+    modifier: EnvironmentModifier,
+    argument: EnvironmentTrackArgument,
+}
+
+impl ClientEnvironmentAttributeMap {
+    pub(crate) fn apply_to(
+        &self,
+        attributes: &mut ClientEnvironmentAttributes,
+    ) -> Result<(), EnvironmentAttributeProjectionError> {
+        for entry in self.entries.iter() {
+            apply_environment_argument(
+                attributes,
+                entry.field,
+                entry.modifier,
+                entry.argument.clone(),
+            )?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum AttributeKind {
     Float(FloatRange),
@@ -191,7 +225,17 @@ enum FloatRange {
 pub(crate) fn decode_client_environment_attributes(
     entries: &[NbtSummaryEntry],
 ) -> Result<ClientEnvironmentAttributes, EnvironmentAttributeProjectionError> {
+    let attribute_map = decode_client_environment_attribute_map(entries, false)?;
     let mut attributes = ClientEnvironmentAttributes::default();
+    attribute_map.apply_to(&mut attributes)?;
+    Ok(attributes)
+}
+
+pub(crate) fn decode_client_environment_attribute_map(
+    entries: &[NbtSummaryEntry],
+    positional_only: bool,
+) -> Result<ClientEnvironmentAttributeMap, EnvironmentAttributeProjectionError> {
+    let mut decoded = Vec::with_capacity(entries.len());
     let mut seen = BTreeSet::new();
     for entry in entries {
         let Some(resource_id) = normalize_codec_identifier(&entry.name) else {
@@ -200,21 +244,34 @@ pub(crate) fn decode_client_environment_attributes(
                 "unknown environment attribute resource id",
             ));
         };
-        let Some((field, kind, syncable)) = known_attribute(&resource_id) else {
+        let Some(descriptor) = vanilla_environment_attribute(&resource_id) else {
             return Err(error(
                 "attributes",
                 "unknown environment attribute resource id",
             ));
         };
-        if !seen.insert(field) {
+        if positional_only && !descriptor.positional {
+            return Err(error(descriptor.resource_id, "attribute is not positional"));
+        }
+        if !seen.insert(descriptor.resource_id) {
             return Err(error("attributes", "duplicate environment attribute"));
         }
-        let (modifier, argument) = decode_map_entry(field, kind, &entry.value)?;
-        if syncable {
-            apply_environment_argument(&mut attributes, field, modifier, argument)?;
+        let (modifier, argument) = decode_map_entry(
+            descriptor.resource_id,
+            attribute_kind(descriptor),
+            &entry.value,
+        )?;
+        if descriptor.syncable {
+            decoded.push(ClientEnvironmentAttributeMapEntry {
+                field: descriptor.resource_id,
+                modifier,
+                argument,
+            });
         }
     }
-    Ok(attributes)
+    Ok(ClientEnvironmentAttributeMap {
+        entries: decoded.into(),
+    })
 }
 
 pub(super) fn decode_timeline_argument(
@@ -1201,171 +1258,44 @@ impl EnvironmentModifier {
 }
 
 fn syncable_attribute(name: &str) -> Option<(&'static str, AttributeKind)> {
-    Some(match name {
-        "minecraft:visual/fog_color" => ("minecraft:visual/fog_color", AttributeKind::Rgb),
-        "minecraft:visual/fog_start_distance" => (
-            "minecraft:visual/fog_start_distance",
-            AttributeKind::Float(FloatRange::Any),
-        ),
-        "minecraft:visual/fog_end_distance" => (
-            "minecraft:visual/fog_end_distance",
-            AttributeKind::Float(FloatRange::NonNegative),
-        ),
-        "minecraft:visual/sky_fog_end_distance" => (
-            "minecraft:visual/sky_fog_end_distance",
-            AttributeKind::Float(FloatRange::NonNegative),
-        ),
-        "minecraft:visual/cloud_fog_end_distance" => (
-            "minecraft:visual/cloud_fog_end_distance",
-            AttributeKind::Float(FloatRange::NonNegative),
-        ),
-        "minecraft:visual/water_fog_color" => {
-            ("minecraft:visual/water_fog_color", AttributeKind::Rgb)
-        }
-        "minecraft:visual/water_fog_start_distance" => (
-            "minecraft:visual/water_fog_start_distance",
-            AttributeKind::Float(FloatRange::Any),
-        ),
-        "minecraft:visual/water_fog_end_distance" => (
-            "minecraft:visual/water_fog_end_distance",
-            AttributeKind::Float(FloatRange::NonNegative),
-        ),
-        "minecraft:visual/sky_color" => ("minecraft:visual/sky_color", AttributeKind::Rgb),
-        "minecraft:visual/sunrise_sunset_color" => {
-            ("minecraft:visual/sunrise_sunset_color", AttributeKind::Argb)
-        }
-        "minecraft:visual/cloud_color" => ("minecraft:visual/cloud_color", AttributeKind::Argb),
-        "minecraft:visual/cloud_height" => (
-            "minecraft:visual/cloud_height",
-            AttributeKind::Float(FloatRange::Any),
-        ),
-        "minecraft:visual/sun_angle" => ("minecraft:visual/sun_angle", AttributeKind::Angle),
-        "minecraft:visual/moon_angle" => ("minecraft:visual/moon_angle", AttributeKind::Angle),
-        "minecraft:visual/star_angle" => ("minecraft:visual/star_angle", AttributeKind::Angle),
-        "minecraft:visual/moon_phase" => ("minecraft:visual/moon_phase", AttributeKind::MoonPhase),
-        "minecraft:visual/star_brightness" => (
-            "minecraft:visual/star_brightness",
-            AttributeKind::Float(FloatRange::Unit),
-        ),
-        "minecraft:visual/block_light_tint" => {
-            ("minecraft:visual/block_light_tint", AttributeKind::Rgb)
-        }
-        "minecraft:visual/sky_light_color" => {
-            ("minecraft:visual/sky_light_color", AttributeKind::Rgb)
-        }
-        "minecraft:visual/sky_light_factor" => (
-            "minecraft:visual/sky_light_factor",
-            AttributeKind::Float(FloatRange::Unit),
-        ),
-        "minecraft:visual/night_vision_color" => {
-            ("minecraft:visual/night_vision_color", AttributeKind::Rgb)
-        }
-        "minecraft:visual/ambient_light_color" => {
-            ("minecraft:visual/ambient_light_color", AttributeKind::Rgb)
-        }
-        "minecraft:visual/default_dripstone_particle" => (
-            "minecraft:visual/default_dripstone_particle",
-            AttributeKind::Particle,
-        ),
-        "minecraft:visual/ambient_particles" => (
-            "minecraft:visual/ambient_particles",
-            AttributeKind::AmbientParticles,
-        ),
-        "minecraft:audio/background_music" => (
-            "minecraft:audio/background_music",
-            AttributeKind::BackgroundMusic,
-        ),
-        "minecraft:audio/music_volume" => (
-            "minecraft:audio/music_volume",
-            AttributeKind::Float(FloatRange::Unit),
-        ),
-        "minecraft:audio/ambient_sounds" => (
-            "minecraft:audio/ambient_sounds",
-            AttributeKind::AmbientSounds,
-        ),
-        "minecraft:audio/firefly_bush_sounds" => (
-            "minecraft:audio/firefly_bush_sounds",
-            AttributeKind::Boolean,
-        ),
-        "minecraft:gameplay/sky_light_level" => (
-            "minecraft:gameplay/sky_light_level",
-            AttributeKind::Float(FloatRange::SkyLight),
-        ),
-        "minecraft:gameplay/water_evaporates" => (
-            "minecraft:gameplay/water_evaporates",
-            AttributeKind::Boolean,
-        ),
-        "minecraft:gameplay/fast_lava" => ("minecraft:gameplay/fast_lava", AttributeKind::Boolean),
-        "minecraft:gameplay/piglins_zombify" => {
-            ("minecraft:gameplay/piglins_zombify", AttributeKind::Boolean)
-        }
-        "minecraft:gameplay/creaking_active" => {
-            ("minecraft:gameplay/creaking_active", AttributeKind::Boolean)
-        }
-        _ => return None,
-    })
+    let descriptor = vanilla_environment_attribute(name)?;
+    descriptor
+        .syncable
+        .then(|| (descriptor.resource_id, attribute_kind(descriptor)))
 }
 
 fn known_attribute(name: &str) -> Option<(&'static str, AttributeKind, bool)> {
-    if let Some((field, kind)) = syncable_attribute(name) {
-        return Some((field, kind, true));
-    }
-    let (field, kind) = match name {
-        "minecraft:gameplay/can_start_raid"
-        | "minecraft:gameplay/respawn_anchor_works"
-        | "minecraft:gameplay/nether_portal_spawns_piglin"
-        | "minecraft:gameplay/increased_fire_burnout"
-        | "minecraft:gameplay/snow_golem_melts"
-        | "minecraft:gameplay/bees_stay_in_hive"
-        | "minecraft:gameplay/monsters_burn"
-        | "minecraft:gameplay/can_pillager_patrol_spawn" => {
-            (name_static(name)?, AttributeKind::Boolean)
-        }
-        "minecraft:gameplay/eyeblossom_open" => (
-            "minecraft:gameplay/eyeblossom_open",
-            AttributeKind::TriState,
-        ),
-        "minecraft:gameplay/turtle_egg_hatch_chance"
-        | "minecraft:gameplay/surface_slime_spawn_chance"
-        | "minecraft:gameplay/cat_waking_up_gift_chance" => {
-            (name_static(name)?, AttributeKind::Float(FloatRange::Unit))
-        }
-        "minecraft:gameplay/bed_rule" => ("minecraft:gameplay/bed_rule", AttributeKind::BedRule),
-        "minecraft:gameplay/villager_activity" | "minecraft:gameplay/baby_villager_activity" => {
-            (name_static(name)?, AttributeKind::Activity)
-        }
-        _ => return None,
-    };
-    Some((field, kind, false))
+    let descriptor = vanilla_environment_attribute(name)?;
+    Some((
+        descriptor.resource_id,
+        attribute_kind(descriptor),
+        descriptor.syncable,
+    ))
 }
 
-fn name_static(name: &str) -> Option<&'static str> {
-    Some(match name {
-        "minecraft:gameplay/can_start_raid" => "minecraft:gameplay/can_start_raid",
-        "minecraft:gameplay/respawn_anchor_works" => "minecraft:gameplay/respawn_anchor_works",
-        "minecraft:gameplay/nether_portal_spawns_piglin" => {
-            "minecraft:gameplay/nether_portal_spawns_piglin"
+fn attribute_kind(descriptor: &VanillaEnvironmentAttribute) -> AttributeKind {
+    match descriptor.value_type {
+        VanillaEnvironmentAttributeType::Boolean => AttributeKind::Boolean,
+        VanillaEnvironmentAttributeType::TriState => AttributeKind::TriState,
+        VanillaEnvironmentAttributeType::Float => {
+            AttributeKind::Float(match descriptor.value_range {
+                VanillaEnvironmentAttributeRange::Any => FloatRange::Any,
+                VanillaEnvironmentAttributeRange::NonNegativeFloat => FloatRange::NonNegative,
+                VanillaEnvironmentAttributeRange::UnitFloat => FloatRange::Unit,
+                VanillaEnvironmentAttributeRange::SkyLight => FloatRange::SkyLight,
+            })
         }
-        "minecraft:gameplay/increased_fire_burnout" => "minecraft:gameplay/increased_fire_burnout",
-        "minecraft:gameplay/snow_golem_melts" => "minecraft:gameplay/snow_golem_melts",
-        "minecraft:gameplay/bees_stay_in_hive" => "minecraft:gameplay/bees_stay_in_hive",
-        "minecraft:gameplay/monsters_burn" => "minecraft:gameplay/monsters_burn",
-        "minecraft:gameplay/can_pillager_patrol_spawn" => {
-            "minecraft:gameplay/can_pillager_patrol_spawn"
-        }
-        "minecraft:gameplay/turtle_egg_hatch_chance" => {
-            "minecraft:gameplay/turtle_egg_hatch_chance"
-        }
-        "minecraft:gameplay/surface_slime_spawn_chance" => {
-            "minecraft:gameplay/surface_slime_spawn_chance"
-        }
-        "minecraft:gameplay/cat_waking_up_gift_chance" => {
-            "minecraft:gameplay/cat_waking_up_gift_chance"
-        }
-        "minecraft:gameplay/villager_activity" => "minecraft:gameplay/villager_activity",
-        "minecraft:gameplay/baby_villager_activity" => "minecraft:gameplay/baby_villager_activity",
-        _ => return None,
-    })
+        VanillaEnvironmentAttributeType::AngleDegrees => AttributeKind::Angle,
+        VanillaEnvironmentAttributeType::RgbColor => AttributeKind::Rgb,
+        VanillaEnvironmentAttributeType::ArgbColor => AttributeKind::Argb,
+        VanillaEnvironmentAttributeType::MoonPhase => AttributeKind::MoonPhase,
+        VanillaEnvironmentAttributeType::Activity => AttributeKind::Activity,
+        VanillaEnvironmentAttributeType::BedRule => AttributeKind::BedRule,
+        VanillaEnvironmentAttributeType::Particle => AttributeKind::Particle,
+        VanillaEnvironmentAttributeType::AmbientParticles => AttributeKind::AmbientParticles,
+        VanillaEnvironmentAttributeType::BackgroundMusic => AttributeKind::BackgroundMusic,
+        VanillaEnvironmentAttributeType::AmbientSounds => AttributeKind::AmbientSounds,
+    }
 }
 
 pub(super) fn sanitize_environment_attributes(attributes: &mut ClientEnvironmentAttributes) {
@@ -1812,6 +1742,61 @@ mod tests {
         )];
         assert_eq!(
             decode_client_environment_attributes(&invalid).unwrap_err(),
+            EnvironmentAttributeProjectionError {
+                field: "minecraft:gameplay/villager_activity",
+                reason: "unknown activity",
+            }
+        );
+    }
+
+    #[test]
+    fn environment_attribute_map_preserves_modifier_for_later_base() {
+        let entries = vec![modifier(
+            "minecraft:visual/water_fog_end_distance",
+            "multiply",
+            NbtSummaryValue::Float(0.85_f32.to_bits()),
+        )];
+        let attribute_map = decode_client_environment_attribute_map(&entries, true).unwrap();
+        let mut attributes = ClientEnvironmentAttributes {
+            water_fog_end_distance: Some(200.0),
+            ..ClientEnvironmentAttributes::default()
+        };
+
+        attribute_map.apply_to(&mut attributes).unwrap();
+
+        assert!((attributes.water_fog_end_distance.unwrap() - 170.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn environment_attribute_map_enforces_positional_and_network_filtering() {
+        let entries = vec![
+            entry("gameplay/can_start_raid", NbtSummaryValue::Byte(1)),
+            entry(
+                "minecraft:visual/sky_light_factor",
+                NbtSummaryValue::Float(0.5_f32.to_bits()),
+            ),
+        ];
+        let attribute_map = decode_client_environment_attribute_map(&entries, true).unwrap();
+        assert_eq!(attribute_map.entries.len(), 1);
+
+        let non_positional = vec![entry(
+            "minecraft:gameplay/sky_light_level",
+            NbtSummaryValue::Float(12.0_f32.to_bits()),
+        )];
+        assert_eq!(
+            decode_client_environment_attribute_map(&non_positional, true).unwrap_err(),
+            EnvironmentAttributeProjectionError {
+                field: "minecraft:gameplay/sky_light_level",
+                reason: "attribute is not positional",
+            }
+        );
+
+        let malformed_filtered = vec![entry(
+            "minecraft:gameplay/villager_activity",
+            NbtSummaryValue::String("example:unknown".to_string()),
+        )];
+        assert_eq!(
+            decode_client_environment_attribute_map(&malformed_filtered, true).unwrap_err(),
             EnvironmentAttributeProjectionError {
                 field: "minecraft:gameplay/villager_activity",
                 reason: "unknown activity",

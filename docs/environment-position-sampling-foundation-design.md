@@ -17,11 +17,12 @@ interpolated flags; biome typed projections retain every valid positional
 modifier rather than reducing it against the attribute default; the world
 exposes exact direct-noise-biome and camera-Gaussian sampling modes; modifiers
 are applied before timeline tracks and sanitized afterwards; unknown,
-malformed, non-positional, or non-syncable biome entries fail the registry
-candidate atomically; synchronized holder reorder and `ChunksBiomes`
-replacement immediately affect the next sample; and all existing visual,
-sound, entity, fluid, and level-event consumers use the correct positional or
-dimension-only query.
+malformed, or non-positional biome entries fail the registry candidate
+atomically; malformed non-syncable entries fail before valid non-syncable
+entries are filtered from the client map; synchronized holder reorder and
+`ChunksBiomes` replacement immediately affect the next sample; and all
+existing visual, sound, entity, fluid, and level-event consumers use the
+correct positional or dimension-only query.
 
 ## Scope, ownership, and non-goals
 
@@ -65,6 +66,12 @@ the RGB/ARGB, float, and angle declarations that call
 `spatiallyInterpolated` use their attribute type's spatial lerp. The generator
 derives those facts and the `AttributeTypes` reference from the declaration
 chain rather than copying a Rust table.
+
+`Biome.NETWORK_CODEC` uses `EnvironmentAttributeMap.NETWORK_CODEC`: decoding
+validates every received entry and then filters non-syncable attributes.
+Therefore malformed non-syncable values still reject the atomic registry
+candidate, while valid non-syncable values are omitted rather than retained as
+client positional state.
 
 `EnvironmentAttributeSystem.addDefaultLayers` orders dimension constants,
 biome positional layers, dimension timelines, then weather. A biome layer

@@ -8,6 +8,7 @@ mod damage_types;
 mod dimension_types;
 mod element_value;
 mod enchantments;
+mod environment_attribute_catalog;
 mod environment_attributes;
 mod game_tests;
 mod instrument_values;

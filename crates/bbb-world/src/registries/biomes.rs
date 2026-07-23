@@ -1,6 +1,9 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
-use super::environment_attributes::{decode_client_environment_attributes, parse_rgb};
+use super::environment_attributes::{
+    decode_client_environment_attribute_map, parse_rgb, ClientEnvironmentAttributeMap,
+    ClientEnvironmentAttributes,
+};
 use super::RegistryPacketEntry;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +34,7 @@ pub struct BiomeClientProjection {
     pub sky_color: Option<[u8; 3]>,
     pub water_fog_color: Option<[u8; 3]>,
     pub water_fog_end_distance: Option<f32>,
+    pub(crate) environment_attribute_modifiers: ClientEnvironmentAttributeMap,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,13 +77,17 @@ fn decode_biome_client_projection_value(
         Some("swamp") => BiomeGrassColorModifier::Swamp,
         Some(_) => return Err(error("effects.grass_color_modifier", "unknown enum value")),
     };
-    let attributes = optional_compound(fields, "attributes")?
+    let environment_attribute_modifiers = optional_compound(fields, "attributes")?
         .map(|entries| {
-            decode_client_environment_attributes(entries)
+            decode_client_environment_attribute_map(entries, true)
                 .map_err(|err| error(format!("attributes.{}", err.field), err.reason))
         })
         .transpose()?
         .unwrap_or_default();
+    let mut attributes = ClientEnvironmentAttributes::default();
+    environment_attribute_modifiers
+        .apply_to(&mut attributes)
+        .map_err(|err| error(format!("attributes.{}", err.field), err.reason))?;
 
     Ok(BiomeClientProjection {
         has_precipitation,
@@ -95,6 +103,7 @@ fn decode_biome_client_projection_value(
         sky_color: attributes.sky_color,
         water_fog_color: attributes.water_fog_color,
         water_fog_end_distance: attributes.water_fog_end_distance,
+        environment_attribute_modifiers,
     })
 }
 
@@ -285,6 +294,15 @@ mod tests {
         assert_eq!(projection.water_color, [0x11, 0x22, 0x33]);
         assert_eq!(projection.fog_color, Some([0x44, 0x66, 0x88]));
         assert!((projection.water_fog_end_distance.unwrap() - 81.6).abs() < 0.0001);
+        let mut dimension_attributes = ClientEnvironmentAttributes {
+            water_fog_end_distance: Some(200.0),
+            ..ClientEnvironmentAttributes::default()
+        };
+        projection
+            .environment_attribute_modifiers
+            .apply_to(&mut dimension_attributes)
+            .unwrap();
+        assert!((dimension_attributes.water_fog_end_distance.unwrap() - 170.0).abs() < 0.0001);
     }
 
     #[test]
