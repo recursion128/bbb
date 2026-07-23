@@ -192,6 +192,12 @@ impl VehicleMoveCommand {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttackEntityCommand {
+    pub packet: AttackEntity,
+    pub selected_hotbar_slot: u8,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NetCommand {
     ClientTickEnd,
@@ -220,7 +226,7 @@ pub enum NetCommand {
     DebugSubscriptionRequest {
         subscription_ids: Vec<i32>,
     },
-    AttackEntity(AttackEntity),
+    AttackEntity(AttackEntityCommand),
     InteractEntity(InteractEntity),
     SetHeldSlot(u8),
     Swing(InteractionHand),

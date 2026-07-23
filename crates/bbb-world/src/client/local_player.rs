@@ -580,6 +580,10 @@ impl WorldStore {
         attack.item_swap_ticks = 0;
     }
 
+    pub fn reset_only_local_player_attack_strength(&mut self) {
+        self.local_player.interaction.attack.attack_strength_ticks = 0;
+    }
+
     pub fn local_player_cannot_attack_with_selected_item(&self) -> bool {
         let required_strength = self.local_selected_main_hand_minimum_attack_charge();
         if required_strength <= 0.0 {

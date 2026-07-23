@@ -1,5 +1,5 @@
 use bbb_control::NetCounters;
-use bbb_net::NetCommand;
+use bbb_net::{AttackEntityCommand, NetCommand};
 use bbb_protocol::packets::{
     Direction as ProtocolDirection, InteractionHand, PlayerActionKind, SpectateEntity,
 };
@@ -84,7 +84,10 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     };
     match (button, state) {
         (MouseButton::Left, ElementState::Pressed) => {
-            if local_player_attack_is_blocked(world) {
+            if local_player_attack_is_blocked(input, world) {
+                return;
+            }
+            if local_player_hands_are_busy(input, world) {
                 return;
             }
             if world.local_player_is_spectator() {
@@ -99,12 +102,18 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                 }
                 return;
             }
+            if !world.local_selected_main_hand_is_enabled()
+                || world.local_player_cannot_attack_with_selected_item()
+            {
+                return;
+            }
             if world.local_selected_main_hand_has_piercing_weapon() {
                 queue_zero_pos_player_action_command(
                     counters,
                     net_commands,
                     PlayerActionKind::Stab,
                 );
+                world.reset_only_local_player_attack_strength();
                 queue_swing_command(world, counters, net_commands, InteractionHand::MainHand);
                 return;
             }
@@ -112,7 +121,13 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
             match camera_target {
                 Some(CrosshairTarget::Entity(hit)) => {
                     if selected_attack_range_allows_entity_hit(world, player_pose, hit) {
-                        queue_attack_entity_command(counters, net_commands, hit.entity_id);
+                        queue_attack_entity_command(
+                            counters,
+                            net_commands,
+                            hit.entity_id,
+                            world.local_player().selected_hotbar_slot,
+                        );
+                        world.reset_local_player_attack_strength();
                     }
                 }
                 Some(CrosshairTarget::Block(hit)) => {
@@ -120,11 +135,17 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                         start_destroy_block(input, counters, world, net_commands, hit);
                     }
                 }
-                None => {}
+                None => {
+                    if !world.local_player_is_creative() {
+                        input.attack_miss_time_ticks = 10;
+                    }
+                    world.reset_local_player_attack_strength();
+                }
             }
             queue_swing_command(world, counters, net_commands, InteractionHand::MainHand);
         }
         (MouseButton::Left, ElementState::Released) => {
+            input.attack_miss_time_ticks = 0;
             input.destroy_block_held = false;
             if world.local_selected_main_hand_has_piercing_weapon() {
                 return;
@@ -411,7 +432,7 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     {
         return;
     }
-    if local_player_attack_is_blocked(world) {
+    if local_player_attack_is_blocked(input, world) {
         return;
     }
     if world.local_selected_main_hand_has_piercing_weapon() {
@@ -596,8 +617,15 @@ fn local_player_instabuild(world: &WorldStore) -> bool {
         .is_some_and(|abilities| abilities.instabuild)
 }
 
-fn local_player_attack_is_blocked(world: &WorldStore) -> bool {
-    world.local_player().interaction.using_item
+fn local_player_attack_is_blocked(input: &ClientInputState, world: &WorldStore) -> bool {
+    world.local_player().interaction.using_item || input.attack_miss_time_ticks > 0
+}
+
+fn local_player_hands_are_busy(input: &ClientInputState, world: &WorldStore) -> bool {
+    world
+        .local_player_first_passenger_root_boat_vehicle_id()
+        .is_some()
+        && (input.left || input.right || input.forward || input.backward)
 }
 
 pub(crate) fn handle_mouse_wheel(
@@ -704,7 +732,8 @@ mod tests {
         CommonPlayerSpawnInfo, EntityEvent as ProtocolEntityEvent, GameEvent as ProtocolGameEvent,
         InitializeBorder, InteractEntity, ItemStackSummary as ProtocolItemStackSummary,
         OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
-        PlayerAction, SetPlayerInventory as ProtocolSetPlayerInventory, UseItem, UseItemOn,
+        PlayerAction, RemoveEntities, SetPassengers,
+        SetPlayerInventory as ProtocolSetPlayerInventory, UseItem, UseItemOn,
         Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
@@ -1070,7 +1099,10 @@ mod tests {
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::AttackEntity(AttackEntity { entity_id: 123 })
+            NetCommand::AttackEntity(AttackEntityCommand {
+                packet: AttackEntity { entity_id: 123 },
+                selected_hotbar_slot: 0,
+            })
         );
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -1104,7 +1136,10 @@ mod tests {
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::AttackEntity(AttackEntity { entity_id: 123 })
+            NetCommand::AttackEntity(AttackEntityCommand {
+                packet: AttackEntity { entity_id: 123 },
+                selected_hotbar_slot: 0,
+            })
         );
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -1265,6 +1300,278 @@ mod tests {
         assert_eq!(counters.attack_entity_commands_queued, 0);
         assert_eq!(counters.swing_commands_queued, 0);
         assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn local_attack_entity_carries_selected_slot_and_resets_both_strength_clocks() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = local_attack_world_with_player_and_target(123);
+        assert!(world.set_local_selected_hotbar_slot(4));
+        world.advance_client_level_entity_ticks_with_observation(6);
+        assert_eq!(world.local_player_attack_strength_ticks(), 6);
+        assert_eq!(world.local_player_item_swap_ticks(), 6);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_player_attack_strength_ticks(), 0);
+        assert_eq!(world.local_player_item_swap_ticks(), 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(AttackEntityCommand {
+                packet: AttackEntity { entity_id: 123 },
+                selected_hotbar_slot: 4,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
+    fn local_attack_charge_and_feature_gates_emit_no_action_or_swing() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = local_attack_world_with_player_and_target(123);
+        world.set_default_item_minimum_attack_charges(BTreeMap::from([(42, 1.0)]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        world.advance_client_level_entity_ticks_with_observation(5);
+        assert_eq!(world.local_player_attack_strength_ticks(), 4);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        assert_eq!(counters.attack_entity_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        world.advance_client_level_entity_ticks_with_observation(1);
+        world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec!["minecraft:trade_rebalance".to_string()],
+        });
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        assert_eq!(counters.attack_entity_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec!["minecraft:vanilla".to_string()],
+        });
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        assert_eq!(counters.attack_entity_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(_)
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
+    fn local_attack_miss_time_uses_screen_sentinel_and_clears_on_release() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = local_attack_world_with_player_and_target(123);
+        assert_eq!(
+            world.apply_remove_entities(RemoveEntities {
+                entity_ids: vec![123],
+            }),
+            1
+        );
+        world.advance_client_level_entity_ticks_with_observation(6);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        assert_eq!(input.attack_miss_time_ticks, 10);
+        assert_eq!(world.local_player_attack_strength_ticks(), 0);
+        assert_eq!(world.local_player_item_swap_ticks(), 0);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(rx.try_recv().is_err());
+
+        input.open_debug_pause_screen_with_menu();
+        crate::input::advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &None,
+            std::time::Instant::now(),
+            5,
+        );
+        assert_eq!(input.attack_miss_time_ticks, 10_000);
+        input.close_debug_pause_screen();
+        crate::input::advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &None,
+            std::time::Instant::now(),
+            5,
+        );
+        assert_eq!(input.attack_miss_time_ticks, 9_995);
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &None,
+            MouseButton::Left,
+            ElementState::Released,
+        );
+        assert_eq!(input.attack_miss_time_ticks, 0);
+
+        world.apply_game_event(ProtocolGameEvent {
+            event_id: 3,
+            param: 1.0,
+        });
+        assert!(world.local_player_is_creative());
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        assert_eq!(input.attack_miss_time_ticks, 0);
+        assert_eq!(counters.swing_commands_queued, 2);
+    }
+
+    #[test]
+    fn local_attack_boat_directional_input_blocks_before_spectator_or_item_routing() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = local_attack_world_with_player_and_target(123);
+        world.apply_add_entity(AddEntity {
+            id: 50,
+            uuid: Uuid::from_u128(50),
+            entity_type_id: VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            position: ProtocolVec3d::default(),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 50,
+            passenger_ids: vec![42],
+        }));
+        assert_eq!(
+            world.local_player_first_passenger_root_boat_vehicle_id(),
+            Some(50)
+        );
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.attack_entity_commands_queued, 0);
+        assert_eq!(counters.spectate_entity_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn local_attack_piercing_weapon_resets_only_attack_strength() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = local_attack_world_with_player_and_target(123);
+        set_selected_piercing_weapon(&mut world, 42);
+        world.advance_client_level_entity_ticks_with_observation(6);
+        assert_eq!(world.local_player_attack_strength_ticks(), 5);
+        assert_eq!(world.local_player_item_swap_ticks(), 5);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_player_attack_strength_ticks(), 0);
+        assert_eq!(world.local_player_item_swap_ticks(), 5);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::Stab,
+                ..
+            })
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
     }
 
     #[test]
@@ -2187,7 +2494,10 @@ mod tests {
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::AttackEntity(AttackEntity { entity_id: 123 })
+            NetCommand::AttackEntity(AttackEntityCommand {
+                packet: AttackEntity { entity_id: 123 },
+                selected_hotbar_slot: 0,
+            })
         );
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -3086,6 +3396,62 @@ mod tests {
 
     fn world_with_crosshair_entity(entity_id: i32) -> WorldStore {
         world_with_crosshair_entity_at(entity_id, [0.0, 1.0, 3.0])
+    }
+
+    fn local_attack_world_with_player_and_target(entity_id: i32) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        world.apply_add_entity(AddEntity {
+            id: 42,
+            uuid: Uuid::from_u128(42),
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: ProtocolVec3d::default(),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world.apply_add_entity(AddEntity {
+            id: entity_id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: VANILLA_ENTITY_TYPE_MINECART_ID,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 1.0,
+                z: 3.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world
     }
 
     fn world_with_crosshair_command_minecart(entity_id: i32) -> WorldStore {

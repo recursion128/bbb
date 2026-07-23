@@ -133,6 +133,17 @@ impl EventStreamContext {
                 );
                 self.conn.send_packet(id, &payload).await?;
             }
+            PlayClientbound::SetHeldSlot(update) => {
+                if (0..=8).contains(&update.slot) {
+                    self.conn
+                        .remember_serverbound_carried_hotbar_slot(update.slot as u8);
+                }
+                emit(
+                    &self.events,
+                    NetEvent::Play(PlayClientbound::SetHeldSlot(update)),
+                )
+                .await?;
+            }
             PlayClientbound::Unknown { packet_id, len } => {
                 emit(
                     &self.events,

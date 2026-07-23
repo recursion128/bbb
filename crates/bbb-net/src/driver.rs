@@ -426,7 +426,7 @@ async fn read_packet_or_disconnect_command(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{OutboundChatCommand, OutboundChatMessage};
+    use crate::types::{AttackEntityCommand, OutboundChatCommand, OutboundChatMessage};
     use bbb_protocol::{
         codec::Decoder,
         ids,
@@ -1609,9 +1609,12 @@ mod tests {
         }))
         .await
         .unwrap();
-        tx.send(NetCommand::AttackEntity(AttackEntity { entity_id: 123 }))
-            .await
-            .unwrap();
+        tx.send(NetCommand::AttackEntity(AttackEntityCommand {
+            packet: AttackEntity { entity_id: 123 },
+            selected_hotbar_slot: 0,
+        }))
+        .await
+        .unwrap();
         tx.send(NetCommand::InteractEntity(InteractEntity {
             entity_id: 5,
             hand: InteractionHand::OffHand,
@@ -1687,6 +1690,12 @@ mod tests {
         );
         assert_eq!(decoder.read_u8().unwrap(), 4);
         assert_eq!(decoder.read_var_i32().unwrap(), 9);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "carried slot repair").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 0);
         assert!(decoder.is_empty());
 
         let (packet_id, payload) = read_server_packet(&mut server, "attack entity").await;

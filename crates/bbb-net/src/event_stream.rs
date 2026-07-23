@@ -3091,6 +3091,25 @@ mod tests {
         assert!(
             matches!(event, NetEvent::Play(PlayClientbound::SetHeldSlot(update)) if update == held_slot)
         );
+        assert_eq!(stream.conn.serverbound_carried_hotbar_slot(), Some(5));
+
+        let invalid_held_slot = packets::SetHeldSlot { slot: 99 };
+        stream
+            .handle_play_packet(PlayClientbound::SetHeldSlot(invalid_held_slot))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("invalid held slot event should be emitted")
+            .unwrap();
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::SetHeldSlot(update)) if update == invalid_held_slot)
+        );
+        assert_eq!(
+            stream.conn.serverbound_carried_hotbar_slot(),
+            Some(5),
+            "vanilla ignores invalid clientbound held slots"
+        );
 
         let spawn = packets::SetDefaultSpawnPosition {
             dimension: "minecraft:overworld".to_string(),

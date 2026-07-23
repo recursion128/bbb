@@ -28,6 +28,7 @@ pub(crate) struct RawConnection {
     decrypt_cipher: Option<MinecraftCfb8>,
     encrypt_cipher: Option<MinecraftCfb8>,
     login_hello_sent: bool,
+    serverbound_carried_hotbar_slot: Option<u8>,
 }
 
 impl RawConnection {
@@ -50,7 +51,16 @@ impl RawConnection {
             decrypt_cipher: None,
             encrypt_cipher: None,
             login_hello_sent: false,
+            serverbound_carried_hotbar_slot: None,
         }
+    }
+
+    pub(crate) fn serverbound_carried_hotbar_slot(&self) -> Option<u8> {
+        self.serverbound_carried_hotbar_slot
+    }
+
+    pub(crate) fn remember_serverbound_carried_hotbar_slot(&mut self, slot: u8) {
+        self.serverbound_carried_hotbar_slot = Some(slot.min(8));
     }
 
     pub(crate) fn mark_login_hello_sent(&mut self) -> Result<()> {
@@ -245,6 +255,24 @@ mod tests {
             (4, b"server encrypted".to_vec())
         );
         assert!(client.enable_encryption(secret).is_err());
+    }
+
+    #[tokio::test]
+    async fn new_raw_connection_resets_attack_entity_carried_slot_observation() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+
+        let first_stream = TcpStream::connect(address).await.unwrap();
+        let (_server_stream, _) = listener.accept().await.unwrap();
+        let mut first = RawConnection::from_stream(first_stream, None);
+        assert_eq!(first.serverbound_carried_hotbar_slot(), None);
+        first.remember_serverbound_carried_hotbar_slot(5);
+        assert_eq!(first.serverbound_carried_hotbar_slot(), Some(5));
+
+        let second_stream = TcpStream::connect(address).await.unwrap();
+        let (_server_stream, _) = listener.accept().await.unwrap();
+        let second = RawConnection::from_stream(second_stream, None);
+        assert_eq!(second.serverbound_carried_hotbar_slot(), None);
     }
 
     #[tokio::test]

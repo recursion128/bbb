@@ -1,22 +1,22 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
-    self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate,
-    ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-    ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, JigsawGenerate, LockDifficultyCommand, PaddleBoat,
-    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
-    RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-    SetCommandMinecart, SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SetTestBlock,
-    SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
+    self, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand, ChatAcknowledgement,
+    ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate, ClientCommandAction,
+    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+    ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery, InteractEntity,
+    InteractionHand, JigsawGenerate, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
+    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
+    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+    ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCommandMinecart, SetCreativeModeSlot,
+    SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate, SpectateEntity, TeleportToEntity,
+    TestInstanceBlockAction, UseItem, UseItemOn,
 };
 use uuid::Uuid;
 
 use crate::{
     connection::RawConnection,
-    types::{ConnectionState, PlayerMoveCommand, VehicleMoveCommand},
+    types::{AttackEntityCommand, ConnectionState, PlayerMoveCommand, VehicleMoveCommand},
 };
 
 pub(super) async fn send_resource_pack_response(
@@ -146,9 +146,10 @@ pub(crate) async fn send_debug_subscription_request(
 
 pub(crate) async fn send_attack_entity(
     conn: &mut RawConnection,
-    packet: AttackEntity,
+    command: AttackEntityCommand,
 ) -> Result<()> {
-    let (id, payload) = packets::encode_play_attack_entity(packet);
+    send_set_held_slot_command(conn, command.selected_hotbar_slot).await?;
+    let (id, payload) = packets::encode_play_attack_entity(command.packet);
     conn.send_packet(id, &payload).await
 }
 
@@ -185,8 +186,14 @@ pub(crate) async fn send_player_abilities_command(
 }
 
 pub(crate) async fn send_set_held_slot_command(conn: &mut RawConnection, slot: u8) -> Result<()> {
-    let (id, payload) = packets::encode_play_set_carried_item(i16::from(slot.min(8)));
-    conn.send_packet(id, &payload).await
+    let slot = slot.min(8);
+    if conn.serverbound_carried_hotbar_slot() == Some(slot) {
+        return Ok(());
+    }
+    let (id, payload) = packets::encode_play_set_carried_item(i16::from(slot));
+    conn.send_packet(id, &payload).await?;
+    conn.remember_serverbound_carried_hotbar_slot(slot);
+    Ok(())
 }
 
 pub(crate) async fn send_swing_command(

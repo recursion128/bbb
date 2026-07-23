@@ -565,6 +565,7 @@ pub(crate) struct ClientInputState {
     mouse_left_down: bool,
     mouse_right_down: bool,
     mouse_middle_down: bool,
+    attack_miss_time_ticks: u16,
     use_item_repeat_delay_ticks: u8,
     mouse_delta_x: f64,
     mouse_delta_y: f64,
@@ -1099,6 +1100,38 @@ enum PendingDebugRecreateServerQueryTarget {
 }
 
 impl ClientInputState {
+    fn advance_attack_miss_time(&mut self, world: &WorldStore, client_ticks: u32) {
+        if client_ticks == 0 {
+            return;
+        }
+        if self.gameplay_input_screen_is_open(world) {
+            self.attack_miss_time_ticks = 10_000;
+            return;
+        }
+        self.attack_miss_time_ticks = self
+            .attack_miss_time_ticks
+            .saturating_sub(client_ticks.min(u32::from(u16::MAX)) as u16);
+    }
+
+    fn gameplay_input_screen_is_open(&self, world: &WorldStore) -> bool {
+        self.command_entry_is_active()
+            || self.sign_editor_is_active_or_pending(world)
+            || self.debug_options_screen_is_open()
+            || self.debug_pause_screen_is_open()
+            || self.debug_game_mode_switcher_is_open()
+            || world.open_container_id().is_some()
+            || world.dialog_screen_is_open()
+            || world.current_book().is_some()
+            || world.advancements_screen_is_open()
+            || world.stats_screen_is_open()
+            || world.command_block_editor().is_some()
+            || world.minecart_command_block_editor().is_some()
+            || world.structure_block_editor().is_some()
+            || world.jigsaw_block_editor().is_some()
+            || world.test_block_editor().is_some()
+            || world.test_instance_block_editor().is_some()
+    }
+
     pub(crate) fn new(focused: bool) -> Self {
         Self {
             focused,
@@ -1355,6 +1388,7 @@ impl ClientInputState {
         self.mouse_left_down = false;
         self.mouse_right_down = false;
         self.mouse_middle_down = false;
+        self.attack_miss_time_ticks = 0;
         self.use_item_repeat_delay_ticks = 0;
         self.mouse_delta_x = 0.0;
         self.mouse_delta_y = 0.0;

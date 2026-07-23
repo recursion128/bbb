@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{
     connection::RawConnection,
-    types::{PlayerMoveCommand, VehicleMoveCommand},
+    types::{AttackEntityCommand, PlayerMoveCommand, VehicleMoveCommand},
 };
 use bbb_protocol::{
     codec::Decoder,
@@ -792,7 +792,7 @@ async fn send_client_command_encodes_client_command_actions() {
 }
 
 #[tokio::test]
-async fn send_entity_interaction_commands_encode_packets() {
+async fn send_attack_entity_repairs_and_deduplicates_carried_slot_before_packet() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
@@ -801,11 +801,40 @@ async fn send_entity_interaction_commands_encode_packets() {
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
-            .expect("attack entity command should be sent")
+            .expect("carried slot should be repaired")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 3);
+        assert!(decoder.is_empty());
+
+        for expected_entity_id in [123, 124] {
+            let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+                .await
+                .expect("attack entity command should be sent")
+                .unwrap();
+            assert_eq!(packet_id, ids::play::SERVERBOUND_ATTACK);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_var_i32().unwrap(), expected_entity_id);
+            assert!(decoder.is_empty());
+        }
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("changed carried slot should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 4);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("attack entity command should follow changed slot")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_ATTACK);
         let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert_eq!(decoder.read_var_i32().unwrap(), 125);
         assert!(decoder.is_empty());
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
@@ -827,9 +856,34 @@ async fn send_entity_interaction_commands_encode_packets() {
         .await
         .unwrap();
 
-    send_attack_entity(&mut conn, AttackEntity { entity_id: 123 })
-        .await
-        .unwrap();
+    send_attack_entity(
+        &mut conn,
+        AttackEntityCommand {
+            packet: AttackEntity { entity_id: 123 },
+            selected_hotbar_slot: 3,
+        },
+    )
+    .await
+    .unwrap();
+    send_attack_entity(
+        &mut conn,
+        AttackEntityCommand {
+            packet: AttackEntity { entity_id: 124 },
+            selected_hotbar_slot: 3,
+        },
+    )
+    .await
+    .unwrap();
+    send_set_held_slot_command(&mut conn, 4).await.unwrap();
+    send_attack_entity(
+        &mut conn,
+        AttackEntityCommand {
+            packet: AttackEntity { entity_id: 125 },
+            selected_hotbar_slot: 4,
+        },
+    )
+    .await
+    .unwrap();
     send_interact_entity(
         &mut conn,
         InteractEntity {

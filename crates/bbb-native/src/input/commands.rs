@@ -6,7 +6,9 @@ use std::{
 };
 
 use bbb_control::NetCounters;
-use bbb_net::{NetCommand, OutboundChatCommand, OutboundChatMessage, VehicleMoveCommand};
+use bbb_net::{
+    AttackEntityCommand, NetCommand, OutboundChatCommand, OutboundChatMessage, VehicleMoveCommand,
+};
 use bbb_protocol::packets::{
     AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
     CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
@@ -678,10 +680,14 @@ pub(super) fn queue_attack_entity_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     entity_id: i32,
+    selected_hotbar_slot: u8,
 ) {
     if let Some(tx) = net_commands {
-        let packet = AttackEntity { entity_id };
-        if tx.try_send(NetCommand::AttackEntity(packet)).is_ok() {
+        let command = AttackEntityCommand {
+            packet: AttackEntity { entity_id },
+            selected_hotbar_slot: selected_hotbar_slot.min(8),
+        };
+        if tx.try_send(NetCommand::AttackEntity(command)).is_ok() {
             counters.attack_entity_commands_queued += 1;
         }
     }
@@ -1531,7 +1537,7 @@ mod tests {
             z: -0.5,
         };
 
-        queue_attack_entity_command(&mut counters, &commands, 123);
+        queue_attack_entity_command(&mut counters, &commands, 123, 4);
         queue_interact_entity_command(
             &mut counters,
             &commands,
@@ -1545,7 +1551,10 @@ mod tests {
         assert_eq!(counters.interact_entity_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::AttackEntity(AttackEntity { entity_id: 123 })
+            NetCommand::AttackEntity(AttackEntityCommand {
+                packet: AttackEntity { entity_id: 123 },
+                selected_hotbar_slot: 4,
+            })
         );
         assert_eq!(
             rx.try_recv().unwrap(),
