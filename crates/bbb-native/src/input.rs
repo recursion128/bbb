@@ -181,6 +181,7 @@ mod jigsaw_block;
 mod minecart_command_block;
 mod mouse;
 mod movement;
+mod spectator_menu;
 mod structure_block;
 mod test_block;
 mod test_instance_block;
@@ -693,6 +694,7 @@ pub(crate) struct ClientInputState {
     sprint_trigger_elapsed_seconds: f64,
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
+    spectator_gui: spectator_menu::SpectatorGuiInputState,
 }
 
 /// Immutable input projection consumed by render and event-loop readers.
@@ -1255,6 +1257,7 @@ impl ClientInputState {
             test_block_editor: self.test_block_editor.clone(),
             test_instance_block_editor: self.test_instance_block_editor.clone(),
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
+            spectator_gui: self.spectator_gui.clone(),
             ..Self::default()
         })
     }
@@ -10692,6 +10695,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         }
         if let Some(slot) = hotbar_slot_for_key(code) {
             if world.local_player_is_spectator() {
+                input.handle_spectator_hotbar_selected(world, counters, net_commands, slot);
                 return;
             }
             select_hotbar_slot(counters, world, net_commands, slot);

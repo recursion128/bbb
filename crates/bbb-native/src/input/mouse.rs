@@ -72,6 +72,17 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
         return;
     }
     input.set_mouse_button_down(button, matches!(state, ElementState::Pressed));
+    if matches!(
+        (button, state),
+        (MouseButton::Middle, ElementState::Pressed)
+    ) && world.local_player_is_spectator()
+    {
+        if world.local_player().interaction.using_item
+            || input.handle_spectator_hotbar_action(world, counters, net_commands)
+        {
+            return;
+        }
+    }
     let player_pose = world.local_player_pose();
     let camera_target = match (button, state) {
         (MouseButton::Left | MouseButton::Right | MouseButton::Middle, ElementState::Pressed) => {
@@ -655,6 +666,9 @@ pub(crate) fn handle_mouse_wheel(
         return;
     };
     if world.local_player_is_spectator() {
+        if input.handle_spectator_menu_scroll(world, -wheel.primary()) {
+            return;
+        }
         if wheel.y != 0 {
             world.adjust_local_flying_speed(
                 wheel.y as f32 * SPECTATOR_MOUSE_WHEEL_FLYING_SPEED_STEP,
@@ -3161,6 +3175,53 @@ mod tests {
     }
 
     #[test]
+    fn spectator_middle_mouse_opens_menu_instead_of_picking_target() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Middle,
+            ElementState::Pressed,
+        );
+
+        assert!(input.spectator_menu_is_active());
+        assert_eq!(counters.pick_item_from_entity_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn spectator_middle_mouse_does_nothing_while_using_item() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        set_local_spectator(&mut world);
+        world.set_local_using_item(true);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Middle,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.spectator_menu_is_active());
+        assert_eq!(counters.pick_item_from_entity_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn mouse_wheel_selects_hotbar_slot_updates_world_and_queues_command() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -3229,6 +3290,27 @@ mod tests {
         assert_eq!(world.local_player().abilities.unwrap().flying_speed, 0.055);
         assert_eq!(counters.held_slot_commands_queued, 0);
         assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn spectator_mouse_wheel_selects_active_menu_without_changing_flying_speed() {
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        set_local_spectator(&mut world);
+        set_flying_abilities(&mut world, 0.05);
+        let mut counters = NetCounters::default();
+        assert!(input.handle_spectator_hotbar_action(&world, &mut counters, &None));
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &None,
+            MouseScrollDelta::LineDelta(0.0, -1.0),
+        );
+
+        assert_eq!(input.spectator_menu_selected_slot(), Some(8));
+        assert_eq!(world.local_player().abilities.unwrap().flying_speed, 0.05);
     }
 
     #[test]

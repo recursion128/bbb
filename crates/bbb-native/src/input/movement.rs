@@ -79,6 +79,7 @@ pub(crate) fn advance_player_input_for_client_ticks(
     now: Instant,
     client_ticks: u32,
 ) {
+    input.expire_spectator_menu_at(now);
     input.advance_attack_miss_time(world, client_ticks);
     // Vanilla calls LocalPlayer.tick from Minecraft.tick, so movement constants
     // remain per-tick (0.05 s) even when synchronized tick rate slows wall time.

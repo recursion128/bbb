@@ -769,11 +769,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Implement `PlayerSocialManager` state and the Social Interactions screen,
   including add/remove cleanup driven by PlayerInfo packets and blocked/hidden
   player filtering. Current player-info/listed state is not a social manager.
-- Implement the multiplayer `SpectatorGui` menu surface: root/player/team
-  categories, eligible-target filtering, paging, hotbar selection and fade/
-  close behavior. Spectator crosshair-click + `ServerboundSpectateEntityPacket`
-  and server-confirmed SetCamera handling are covered, but that shortcut and a
-  maintenance command do not replace the vanilla spectator menu.
+- Render the multiplayer `SpectatorGui` HUD from the native root/player/team
+  menu: substitute it for the item hotbar, preserve the exact fade geometry,
+  key labels and action prompt, and load its pack-backed navigation/category
+  sprites plus player/team face icons.
 - Preserve full trusted Components in the TabList header/footer and complete
   remaining player-list presentation parity: encrypted-session player heads,
   narrator visibility announcements, and vanilla ping sprites.

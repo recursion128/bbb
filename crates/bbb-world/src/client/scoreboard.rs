@@ -221,6 +221,35 @@ impl ScoreboardState {
         )
     }
 
+    /// Vanilla `PlayerTeam.getDisplayName()` as one canonical rich component.
+    ///
+    /// Spectator menu categories retain the team object selected when the root
+    /// category is built. The native input owner snapshots this projection
+    /// rather than copying renderer text into serializable world state.
+    pub fn team_display_name(&self, team_name: &str) -> Option<ScoreboardTextState> {
+        let team = self.teams.get(team_name)?;
+        let segment = team.parameters.as_ref().map_or_else(
+            || ScoreboardTextSegmentState::Styled(vec![plain_run(&team.name)]),
+            |parameters| {
+                stored_scoreboard_component(
+                    parameters.display_name_component.as_ref(),
+                    &parameters.display_name_styled,
+                    &parameters.display_name,
+                )
+            },
+        );
+        Some(ScoreboardTextState {
+            segments: vec![segment],
+            inherited_style: ComponentStyle::default(),
+        })
+    }
+
+    /// Vanilla `PlayerTeam.getColor().getColor()` for team menu icon fills.
+    pub fn team_color_rgb(&self, team_name: &str) -> Option<u32> {
+        let parameters = self.teams.get(team_name)?.parameters.as_ref()?;
+        chat_formatting_rgb(&parameters.color)
+    }
+
     pub fn same_team_can_see_friendly_invisibles(
         &self,
         viewer_scoreboard_name: &str,

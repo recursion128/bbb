@@ -275,6 +275,44 @@ fn scoreboard_display_objective_can_be_cleared_by_empty_name() {
 }
 
 #[test]
+fn scoreboard_projects_rich_team_menu_name_and_color() {
+    let mut store = WorldStore::new();
+    let mut parameters = protocol_team_parameters(
+        "Builders",
+        0,
+        TeamVisibility::Always,
+        TeamCollisionRule::Always,
+        ChatFormatting::Aqua,
+        "",
+        "",
+    );
+    parameters.display_name = styled_component("Rich Builders", "gold", true);
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "builders",
+        PlayerTeamMethod::Add,
+        Some(parameters),
+        &["Alex"],
+    )));
+
+    let display = store
+        .scoreboard()
+        .team_display_name("builders")
+        .expect("team display");
+    let styled = match &display.segments[0] {
+        super::ScoreboardTextSegmentState::Rich(component) => component.styled(),
+        super::ScoreboardTextSegmentState::Styled(styled) => styled,
+    };
+    assert_eq!(styled[0].text, "Rich Builders");
+    assert_eq!(styled[0].style.color, Some(0xFF_AA_00));
+    assert_eq!(styled[0].style.bold, Some(true));
+    assert_eq!(
+        store.scoreboard().team_color_rgb("builders"),
+        Some(0x55_FF_FF)
+    );
+    assert_eq!(store.scoreboard().team_display_name("missing"), None);
+}
+
+#[test]
 fn configuration_reentry_rebuilds_listener_scoreboard_and_preserves_packet_counters() {
     let mut store = WorldStore::new();
 

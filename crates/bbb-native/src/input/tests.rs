@@ -2073,7 +2073,7 @@ fn digit_key_selects_hotbar_slot_updates_world_and_queues_command() {
 }
 
 #[test]
-fn spectator_digit_key_does_not_queue_held_slot() {
+fn spectator_digit_key_opens_menu_without_queuing_held_slot() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
@@ -2093,6 +2093,7 @@ fn spectator_digit_key_does_not_queue_held_slot() {
 
     assert_eq!(world.local_player().selected_hotbar_slot, 2);
     assert_eq!(counters.held_slot_commands_queued, 0);
+    assert!(input.spectator_menu_is_active());
     assert!(rx.try_recv().is_err());
 }
 
