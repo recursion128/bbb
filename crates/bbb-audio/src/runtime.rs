@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Result};
 use kira::{
@@ -25,6 +25,7 @@ pub struct KiraAudioRuntime {
     listener_position: [f64; 3],
     delayed_positioned: Vec<KiraDelayedPositionedSound>,
     playing: Vec<KiraPlayingSound>,
+    music_gain: f32,
     residency: AudioResidency,
 }
 
@@ -42,6 +43,8 @@ struct KiraPlayingSound {
     handle: KiraSoundHandle,
     track: Option<SpatialTrackHandle>,
     tickable: bool,
+    ambient_loop: bool,
+    base_channel_gain: f32,
 }
 
 enum KiraSoundHandle {
@@ -66,6 +69,7 @@ impl KiraAudioRuntime {
             listener_position: [0.0, 0.0, 0.0],
             delayed_positioned: Vec::new(),
             playing: Vec::new(),
+            music_gain: 1.0,
             residency: AudioResidency::new(resource_generation),
         })
     }
@@ -138,6 +142,11 @@ impl KiraAudioRuntime {
                 self.stop_sounds(command);
                 Ok(())
             }
+            AudioCommand::SetMusicGain(command) => {
+                self.set_music_gain(command.gain);
+                Ok(())
+            }
+            AudioCommand::SyncAmbientLoops(command) => self.sync_ambient_loops(&command.loops),
             AudioCommand::TickEntitySoundPositions(command) => {
                 self.tick_entity_sound_positions(command)
             }
@@ -151,11 +160,24 @@ impl KiraAudioRuntime {
         channel_gain: f32,
         playback_rate: f32,
     ) -> Result<()> {
+        self.play_local_sound_with_role(sound, category, channel_gain, playback_rate, false, false)
+    }
+
+    fn play_local_sound_with_role(
+        &mut self,
+        sound: &ResolvedSound,
+        category: AudioCategory,
+        channel_gain: f32,
+        playback_rate: f32,
+        looping: bool,
+        ambient_loop: bool,
+    ) -> Result<()> {
         self.retain_active_sounds();
         if !sound_should_start(channel_gain, &category) {
             return Ok(());
         }
-        let volume = channel_decibels_from_gain(channel_gain);
+        let effective_gain = effective_channel_gain(&category, channel_gain, self.music_gain);
+        let volume = channel_decibels_from_gain(effective_gain);
         let playback_rate = channel_playback_rate(playback_rate);
         let handle = if sound.stream {
             let data = self
@@ -163,6 +185,7 @@ impl KiraAudioRuntime {
                 .streaming_sound(sound)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
+            let data = if looping { data.loop_region(..) } else { data };
             KiraSoundHandle::Streaming(self.manager.play(data)?)
         } else {
             let data = self
@@ -170,6 +193,7 @@ impl KiraAudioRuntime {
                 .static_sound(sound)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
+            let data = if looping { data.loop_region(..) } else { data };
             KiraSoundHandle::Static(self.manager.play(data)?)
         };
         self.playing.push(KiraPlayingSound {
@@ -180,6 +204,8 @@ impl KiraAudioRuntime {
             handle,
             track: None,
             tickable: false,
+            ambient_loop,
+            base_channel_gain: channel_gain,
         });
         Ok(())
     }
@@ -284,6 +310,8 @@ impl KiraAudioRuntime {
             handle,
             track,
             tickable,
+            ambient_loop: false,
+            base_channel_gain: channel_gain,
         });
         Ok(())
     }
@@ -341,6 +369,59 @@ impl KiraAudioRuntime {
         self.playing = retained;
     }
 
+    fn set_music_gain(&mut self, gain: f32) {
+        self.music_gain = normalized_gain(gain);
+        for sound in &mut self.playing {
+            if sound.category == AudioCategory::Music {
+                sound.handle.set_volume(effective_channel_gain(
+                    &sound.category,
+                    sound.base_channel_gain,
+                    self.music_gain,
+                ));
+            }
+        }
+    }
+
+    fn sync_ambient_loops(&mut self, desired: &[crate::AmbientLoopSoundCommand]) -> Result<()> {
+        self.retain_active_sounds();
+        let plan = ambient_loop_sync_plan(
+            self.playing
+                .iter()
+                .filter(|sound| sound.ambient_loop)
+                .map(|sound| sound.event_id.as_str()),
+            desired,
+        );
+        for sound in &mut self.playing {
+            if !sound.ambient_loop {
+                continue;
+            }
+            let Some(desired_index) = plan
+                .updates
+                .iter()
+                .find_map(|(event_id, index)| (event_id == &sound.event_id).then_some(*index))
+            else {
+                sound.handle.stop();
+                continue;
+            };
+            let desired = &desired[desired_index];
+            sound.base_channel_gain = desired.channel_gain;
+            sound.handle.set_volume(desired.channel_gain);
+        }
+        self.retain_active_sounds();
+        for desired_index in plan.starts {
+            let desired = &desired[desired_index];
+            self.play_local_sound_with_role(
+                &desired.sound,
+                AudioCategory::Ambient,
+                desired.channel_gain,
+                1.0,
+                true,
+                true,
+            )?;
+        }
+        Ok(())
+    }
+
     fn tick_entity_sound_positions(
         &mut self,
         command: &TickEntitySoundPositionsCommand,
@@ -395,6 +476,7 @@ impl KiraAudioRuntime {
                     track.set_position(audio_position(update.position), Tween::default());
                 }
                 sound.handle.set_volume(update.channel_gain);
+                sound.base_channel_gain = update.channel_gain;
                 sound.handle.set_playback_rate(update.playback_rate);
             }
         }
@@ -541,6 +623,52 @@ fn channel_decibels_from_gain(gain: f32) -> Decibels {
         let gain = gain.min(1.0);
         Decibels((20.0 * gain.log10()).max(Decibels::SILENCE.0))
     }
+}
+
+fn normalized_gain(gain: f32) -> f32 {
+    if gain.is_finite() {
+        gain.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
+fn effective_channel_gain(
+    category: &AudioCategory,
+    base_channel_gain: f32,
+    music_gain: f32,
+) -> f32 {
+    if category == &AudioCategory::Music {
+        base_channel_gain * normalized_gain(music_gain)
+    } else {
+        base_channel_gain
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct AmbientLoopSyncPlan {
+    updates: Vec<(String, usize)>,
+    starts: Vec<usize>,
+}
+
+fn ambient_loop_sync_plan<'a>(
+    active_event_ids: impl IntoIterator<Item = &'a str>,
+    desired: &[crate::AmbientLoopSoundCommand],
+) -> AmbientLoopSyncPlan {
+    let mut remaining = desired
+        .iter()
+        .enumerate()
+        .map(|(index, sound)| (sound.sound.event_id.as_str(), index))
+        .collect::<HashMap<_, _>>();
+    let mut updates = Vec::new();
+    for active in active_event_ids {
+        if let Some(index) = remaining.remove(active) {
+            updates.push((active.to_string(), index));
+        }
+    }
+    let mut starts = remaining.into_values().collect::<Vec<_>>();
+    starts.sort_unstable();
+    AmbientLoopSyncPlan { updates, starts }
 }
 
 fn channel_playback_rate(playback_rate: f32) -> f32 {
@@ -959,6 +1087,49 @@ mod tests {
         assert_eq!(
             latest_active_music_event_id(all_completed.into_iter()),
             None
+        );
+    }
+
+    #[test]
+    fn music_gain_clamps_and_only_scales_music_category_handles() {
+        assert_eq!(normalized_gain(-1.0), 0.0);
+        assert_eq!(normalized_gain(0.25), 0.25);
+        assert_eq!(normalized_gain(2.0), 1.0);
+        assert_eq!(normalized_gain(f32::NAN), 0.0);
+        assert_eq!(
+            effective_channel_gain(&AudioCategory::Music, 0.8, 0.25),
+            0.2
+        );
+        assert_eq!(
+            effective_channel_gain(&AudioCategory::Ambient, 0.8, 0.25),
+            0.8
+        );
+    }
+
+    #[test]
+    fn ambient_loop_sync_updates_retained_stops_omitted_and_starts_new() {
+        let desired = [
+            crate::AmbientLoopSoundCommand {
+                sound: test_resolved_sound("minecraft:ambient.keep"),
+                channel_gain: 0.75,
+            },
+            crate::AmbientLoopSoundCommand {
+                sound: test_resolved_sound("minecraft:ambient.new"),
+                channel_gain: 0.25,
+            },
+        ];
+
+        let plan = ambient_loop_sync_plan(
+            ["minecraft:ambient.old", "minecraft:ambient.keep"],
+            &desired,
+        );
+
+        assert_eq!(
+            plan,
+            AmbientLoopSyncPlan {
+                updates: vec![("minecraft:ambient.keep".to_string(), 0)],
+                starts: vec![1],
+            }
         );
     }
 

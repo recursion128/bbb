@@ -6,10 +6,11 @@ mod residency;
 mod runtime;
 
 pub use command::{
-    AudioCategory, AudioCommand, AudioListenerState, AudioVolumeSettings, EntitySoundPosition,
-    PlayEntitySoundCommand, PlayJukeboxSongCommand, PlayLocalSoundCommand,
-    PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand, StopSoundCommand,
-    TickEntitySoundPositionsCommand, TickableEntitySoundUpdate,
+    AmbientLoopSoundCommand, AudioCategory, AudioCommand, AudioListenerState, AudioVolumeSettings,
+    EntitySoundPosition, PlayEntitySoundCommand, PlayJukeboxSongCommand, PlayLocalSoundCommand,
+    PlayPositionedSoundCommand, ResolvedSound, SetMusicGainCommand, StopJukeboxSongCommand,
+    StopSoundCommand, SyncAmbientLoopsCommand, TickEntitySoundPositionsCommand,
+    TickableEntitySoundUpdate,
 };
 
 #[cfg(feature = "kira")]

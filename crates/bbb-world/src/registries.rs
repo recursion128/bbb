@@ -73,9 +73,9 @@ pub(crate) use environment_attributes::{
     EnvironmentAttributeProjectionError,
 };
 pub use environment_attributes::{
-    ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle, ClientAmbientSounds,
-    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase, ClientMusic,
-    ClientParticleOptions, ClientSoundEventHolder,
+    AmbientLoopSoundState, ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle,
+    ClientAmbientSounds, ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase,
+    ClientMusic, ClientParticleOptions, ClientSoundEventHolder,
 };
 pub use environment_sampling::EnvironmentBiomeSampling;
 pub use game_tests::{

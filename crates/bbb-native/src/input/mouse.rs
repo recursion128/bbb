@@ -782,6 +782,10 @@ mod tests {
 
         fn stop_sound(&mut self, _state: &bbb_world::StopSoundEventState) {}
 
+        fn set_music_gain(&mut self, _gain: f32) {}
+
+        fn sync_ambient_loops(&mut self, _loops: &[bbb_world::AmbientLoopSoundState]) {}
+
         fn tick_entity_sound_positions(
             &mut self,
             _command: bbb_audio::TickEntitySoundPositionsCommand,

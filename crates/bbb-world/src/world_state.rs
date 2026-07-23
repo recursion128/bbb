@@ -13,9 +13,9 @@ pub use crate::level::{
     WorldLevelLoadState, WorldSkybox, WorldTickingState, WorldTimeState, WorldWeatherState,
 };
 pub use crate::registries::{
-    ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle, ClientAmbientSounds,
-    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase, ClientMusic,
-    ClientParticleOptions, ClientSoundEventHolder, EnvironmentBiomeSampling, WorldIntProvider,
-    WorldWeightedIntProvider,
+    AmbientLoopSoundState, ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle,
+    ClientAmbientSounds, ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase,
+    ClientMusic, ClientParticleOptions, ClientSoundEventHolder, EnvironmentBiomeSampling,
+    WorldIntProvider, WorldWeightedIntProvider,
 };
 pub use crate::store::WorldStore;

@@ -2,17 +2,19 @@
 use std::sync::OnceLock;
 
 use bbb_audio::{
-    AudioCategory, AudioCommand, AudioVolumeSettings, PlayEntitySoundCommand,
-    PlayJukeboxSongCommand, PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound,
-    StopJukeboxSongCommand, StopSoundCommand, TickableEntitySoundUpdate,
+    AmbientLoopSoundCommand, AudioCategory, AudioCommand, AudioVolumeSettings,
+    PlayEntitySoundCommand, PlayJukeboxSongCommand, PlayLocalSoundCommand,
+    PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand, StopSoundCommand,
+    TickableEntitySoundUpdate,
 };
 use bbb_pack::{
     JukeboxSongRegistry, SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition,
     SoundEventRegistry,
 };
 use bbb_world::{
-    JukeboxLevelEventAction, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
-    SoundEventState, SoundHolderState, StopSoundEventState,
+    AmbientLoopSoundState, ClientSoundEventHolder, JukeboxLevelEventAction, JukeboxLevelEventState,
+    LocalSoundEventState, SoundEntityEventState, SoundEventState, SoundHolderState,
+    StopSoundEventState,
 };
 use thiserror::Error;
 
@@ -138,6 +140,28 @@ impl<'a> AudioCommandResolver<'a> {
             category,
             sound,
         }))
+    }
+
+    pub fn ambient_loop_sound(
+        &self,
+        state: &AmbientLoopSoundState,
+    ) -> Result<AmbientLoopSoundCommand, AudioResolveError> {
+        let event_id = match &state.sound {
+            ClientSoundEventHolder::Reference { resource_id } => resource_id.clone(),
+            ClientSoundEventHolder::Direct { sound_id, .. } => sound_id.clone(),
+        };
+        let sound = self.resolve_event_for_seed(&event_id, state.seed)?;
+        let gain = if state.gain.is_finite() {
+            state.gain.clamp(0.0, 1.0)
+        } else {
+            0.0
+        } * sound.entry_volume;
+        Ok(AmbientLoopSoundCommand {
+            channel_gain: self
+                .volume_settings
+                .channel_gain(gain, &AudioCategory::Ambient),
+            sound,
+        })
     }
 
     #[cfg(test)]
@@ -605,6 +629,40 @@ mod tests {
         assert_near(play.playback_rate, 1.1);
         assert_eq!(play.packet_volume, 0.25);
         assert_eq!(play.packet_pitch, 1.0);
+    }
+
+    #[test]
+    fn resolves_environment_loop_holder_with_fade_gain_and_stable_seed() {
+        let assets_dir = unique_assets_dir("ambient-loop");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "ambient.loop": {
+                "sounds": [
+                  {
+                    "name": "ambient/loop",
+                    "volume": 0.8
+                  }
+                ]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+
+        let command = resolver
+            .ambient_loop_sound(&AmbientLoopSoundState {
+                sound: ClientSoundEventHolder::Reference {
+                    resource_id: "minecraft:ambient.loop".to_string(),
+                },
+                gain: 0.25,
+                seed: 19,
+            })
+            .unwrap();
+
+        assert_eq!(command.sound.event_id, "minecraft:ambient.loop");
+        assert_eq!(command.sound.sound_name, "minecraft:ambient/loop");
+        assert_near(command.channel_gain, 0.2);
     }
 
     #[test]

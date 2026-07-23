@@ -11,8 +11,8 @@ use bbb_audio::{AudioCommand, KiraAudioRuntime, TickEntitySoundPositionsCommand}
 use bbb_control::AudioCounters;
 use bbb_pack::{JukeboxSongRegistry, PackRoots, SoundCatalog, SoundEventRegistry};
 use bbb_world::{
-    JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState,
+    AmbientLoopSoundState, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
+    SoundEventState, StopSoundEventState,
 };
 
 use resolver::{AudioCommandResolver, AudioResolveError};
@@ -27,6 +27,8 @@ pub(crate) trait AudioEventSink {
     fn play_jukebox_song(&mut self, state: &JukeboxLevelEventState);
     fn stop_jukebox_song(&mut self, state: &JukeboxLevelEventState);
     fn stop_sound(&mut self, state: &StopSoundEventState);
+    fn set_music_gain(&mut self, gain: f32);
+    fn sync_ambient_loops(&mut self, loops: &[AmbientLoopSoundState]);
     fn stop_music(&mut self) {
         self.stop_sound(&StopSoundEventState {
             source: Some(
@@ -250,6 +252,41 @@ impl AudioEventSink for NativeAudioRuntime {
             resolver.stop_sound(state)
         };
         self.submit_command(command);
+    }
+
+    fn set_music_gain(&mut self, gain: f32) {
+        self.submit_command(AudioCommand::SetMusicGain(bbb_audio::SetMusicGainCommand {
+            gain,
+        }));
+    }
+
+    fn sync_ambient_loops(&mut self, loops: &[AmbientLoopSoundState]) {
+        let resolved = {
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
+            loops
+                .iter()
+                .map(|state| resolver.ambient_loop_sound(state))
+                .collect::<Vec<_>>()
+        };
+        let mut commands = Vec::with_capacity(resolved.len());
+        for command in resolved {
+            match command {
+                Ok(command) => commands.push(command),
+                Err(err) => {
+                    self.counters.resolve_failures += 1;
+                    self.counters.last_resolve_error = Some(err.to_string());
+                    tracing::warn!(?err, "failed to resolve ambient loop sound");
+                }
+            }
+        }
+        self.submit_command(AudioCommand::SyncAmbientLoops(
+            bbb_audio::SyncAmbientLoopsCommand { loops: commands },
+        ));
     }
 
     fn tick_entity_sound_positions(

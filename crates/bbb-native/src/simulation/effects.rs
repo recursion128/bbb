@@ -5,8 +5,8 @@ use bbb_control::AudioCounters;
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_renderer::{ParticleSpawnBatch, Renderer};
 use bbb_world::{
-    JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, TickableEntitySoundState,
+    AmbientLoopSoundState, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
+    SoundEventState, StopSoundEventState, TickableEntitySoundState,
 };
 
 use crate::{
@@ -199,6 +199,18 @@ impl AudioEventSink for AudioEffectCollector<'_> {
             .push(RenderEffect::Audio(AudioEffect::Stop(state.clone())));
     }
 
+    fn set_music_gain(&mut self, gain: f32) {
+        self.collector
+            .push(RenderEffect::Audio(AudioEffect::SetMusicGain(gain)));
+    }
+
+    fn sync_ambient_loops(&mut self, loops: &[AmbientLoopSoundState]) {
+        self.collector
+            .push(RenderEffect::Audio(AudioEffect::SyncAmbientLoops(
+                loops.to_vec(),
+            )));
+    }
+
     fn tick_entity_sound_positions(
         &mut self,
         command: TickEntitySoundPositionsCommand,
@@ -297,7 +309,7 @@ mod tests {
     use std::{cell::RefCell, rc::Rc};
 
     use bbb_protocol::packets::SoundSource;
-    use bbb_world::SoundHolderState;
+    use bbb_world::{ClientSoundEventHolder, SoundHolderState};
 
     use super::*;
 
@@ -332,6 +344,14 @@ mod tests {
         fn stop_jukebox_song(&mut self, _state: &JukeboxLevelEventState) {}
 
         fn stop_sound(&mut self, _state: &StopSoundEventState) {}
+
+        fn set_music_gain(&mut self, _gain: f32) {
+            self.log.borrow_mut().push("music_gain");
+        }
+
+        fn sync_ambient_loops(&mut self, _loops: &[AmbientLoopSoundState]) {
+            self.log.borrow_mut().push("ambient_loops");
+        }
 
         fn tick_entity_sound_positions(
             &mut self,
@@ -372,15 +392,27 @@ mod tests {
         }
     }
 
+    fn ambient_loop() -> AmbientLoopSoundState {
+        AmbientLoopSoundState {
+            sound: ClientSoundEventHolder::Reference {
+                resource_id: "minecraft:ambient.test".to_string(),
+            },
+            gain: 0.5,
+            seed: 2,
+        }
+    }
+
     fn ordered_batch(sequence: u64) -> RenderEffectBatch {
         let collector = RenderEffectCollector::new(sequence, AudioCounters::default());
         let mut audio = collector.audio();
         let mut particles = collector.particles();
+        audio.set_music_gain(0.5);
         audio.play_local_sound(&local_sound());
         particles.submit_particle_batch(ParticleSpawnBatch::default());
         collector
             .platform()
             .submit(PlatformEffect::SetCursorCapture(false));
+        audio.sync_ambient_loops(&[ambient_loop()]);
         audio.play_local_sound(&local_sound());
         drop((audio, particles));
         collector.finish(None).expect("ordered effects")
@@ -424,7 +456,17 @@ mod tests {
             .consume(ordered_batch(1), Some(&mut audio), &mut particles,)
             .unwrap()
             .is_none());
-        assert_eq!(*log.borrow(), ["audio", "particles", "platform", "audio"]);
+        assert_eq!(
+            *log.borrow(),
+            [
+                "music_gain",
+                "audio",
+                "particles",
+                "platform",
+                "ambient_loops",
+                "audio"
+            ]
+        );
     }
 
     #[test]

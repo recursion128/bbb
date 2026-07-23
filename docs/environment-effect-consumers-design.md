@@ -42,8 +42,8 @@ effects on the next tick; and the exact environment TODO and remaining
   `set_music_gain(gain: f32)` and
   `sync_ambient_loops(loops: &[AmbientLoopSoundState])`.
   `AmbientLoopSoundState`, exported by `bbb-world`, contains the exact
-  `ClientSoundEventHolder` plus the clamped current gain. The simulation effect
-  collector preserves these calls in FIFO order.
+  `ClientSoundEventHolder`, the clamped current gain, and a stable selection
+  seed. The simulation effect collector preserves these calls in FIFO order.
 - `bbb-audio::AudioCommand` gains typed music-gain and ambient-loop sync
   commands. Kira owns the corresponding handles; every sync is an idempotent
   desired-state replacement so the next tick restores loops after resource

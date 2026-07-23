@@ -49,6 +49,13 @@ pub enum ClientSoundEventHolder {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AmbientLoopSoundState {
+    pub sound: ClientSoundEventHolder,
+    pub gain: f32,
+    pub seed: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientMusic {
     pub sound: ClientSoundEventHolder,

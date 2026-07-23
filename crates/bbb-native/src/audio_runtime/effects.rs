@@ -1,8 +1,8 @@
 use bbb_audio::TickEntitySoundPositionsCommand;
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_world::{
-    JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, TickableEntitySoundState,
+    AmbientLoopSoundState, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
+    SoundEventState, StopSoundEventState, TickableEntitySoundState,
 };
 
 use super::AudioEventSink;
@@ -20,6 +20,8 @@ pub(crate) enum AudioEffect {
     PlayJukebox(JukeboxLevelEventState),
     StopJukebox(JukeboxLevelEventState),
     Stop(StopSoundEventState),
+    SetMusicGain(f32),
+    SyncAmbientLoops(Vec<AmbientLoopSoundState>),
     TickEntityPositions {
         command: TickEntitySoundPositionsCommand,
         tickable_sounds: Vec<TickableEntitySoundState>,
@@ -37,6 +39,8 @@ impl AudioEffect {
             Self::PlayJukebox(state) => sink.play_jukebox_song(&state),
             Self::StopJukebox(state) => sink.stop_jukebox_song(&state),
             Self::Stop(state) => sink.stop_sound(&state),
+            Self::SetMusicGain(gain) => sink.set_music_gain(gain),
+            Self::SyncAmbientLoops(loops) => sink.sync_ambient_loops(&loops),
             Self::TickEntityPositions {
                 command,
                 tickable_sounds,

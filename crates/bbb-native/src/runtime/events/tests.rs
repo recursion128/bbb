@@ -614,6 +614,32 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
         self.commands.push(command);
     }
 
+    fn set_music_gain(&mut self, gain: f32) {
+        self.commands
+            .push(AudioCommand::SetMusicGain(bbb_audio::SetMusicGainCommand {
+                gain,
+            }));
+    }
+
+    fn sync_ambient_loops(&mut self, loops: &[bbb_world::AmbientLoopSoundState]) {
+        let resolver = AudioCommandResolver::with_jukebox_registry(
+            &self.catalog,
+            &self.registry,
+            &self.jukebox_registry,
+            bbb_audio::AudioVolumeSettings::default(),
+        );
+        let mut resolved = Vec::new();
+        for state in loops {
+            match resolver.ambient_loop_sound(state) {
+                Ok(command) => resolved.push(command),
+                Err(err) => self.errors.push(err.to_string()),
+            }
+        }
+        self.commands.push(AudioCommand::SyncAmbientLoops(
+            bbb_audio::SyncAmbientLoopsCommand { loops: resolved },
+        ));
+    }
+
     fn tick_entity_sound_positions(
         &mut self,
         mut command: bbb_audio::TickEntitySoundPositionsCommand,

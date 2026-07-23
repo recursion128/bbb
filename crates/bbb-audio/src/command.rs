@@ -10,6 +10,8 @@ pub enum AudioCommand {
     PlayJukeboxSong(PlayJukeboxSongCommand),
     StopJukeboxSong(StopJukeboxSongCommand),
     StopSound(StopSoundCommand),
+    SetMusicGain(SetMusicGainCommand),
+    SyncAmbientLoops(SyncAmbientLoopsCommand),
     TickEntitySoundPositions(TickEntitySoundPositionsCommand),
 }
 
@@ -86,6 +88,22 @@ pub struct StopJukeboxSongCommand {
 pub struct StopSoundCommand {
     pub category: Option<AudioCategory>,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SetMusicGainCommand {
+    pub gain: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SyncAmbientLoopsCommand {
+    pub loops: Vec<AmbientLoopSoundCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AmbientLoopSoundCommand {
+    pub sound: ResolvedSound,
+    pub channel_gain: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
