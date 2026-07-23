@@ -1,5 +1,5 @@
 use bbb_control::NetCounters;
-use bbb_net::{AttackEntityCommand, NetCommand};
+use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     Direction as ProtocolDirection, InteractionHand, PlayerActionKind, SpectateEntity,
 };
@@ -724,6 +724,7 @@ fn scroll_signum(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_net::AttackEntityCommand;
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::packets::{
