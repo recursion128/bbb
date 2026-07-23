@@ -176,8 +176,8 @@ mod tests {
         runtime.advance(5, &world, None);
         assert_eq!(runtime.brightness, 1.0);
 
-        // An unloaded camera-light sample uses the explicit full-bright
-        // fallback, whose target darkness is zero.
+        // An unloaded camera-light sample is explicitly full-bright, so its
+        // target darkness is zero.
         runtime.advance(1, &world, Some([0.0, 64.0, 0.0]));
         assert!((runtime.brightness - 0.99).abs() < 1.0e-6);
         assert_eq!(runtime.extract(&world, Some([0.0; 3]), true), None);
