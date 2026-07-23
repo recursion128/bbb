@@ -33,6 +33,7 @@ use crate::{
     simulation::effects::ResourceReloadEffect,
     sky_assets::try_load_sky_textures,
     terrain_runtime::{try_load_terrain_textures, TerrainTextureState, TerrainUploadState},
+    win_screen_resources::WinScreenResources,
 };
 
 enum PreparedAudioReload {
@@ -57,6 +58,7 @@ pub(crate) struct ResourceReloadSimulationCommit {
     pub(crate) available_command_sounds: Vec<String>,
     pub(crate) block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     pub(crate) block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
+    pub(crate) win_screen_resources: WinScreenResources,
 }
 
 pub(crate) struct ResourceReloadAck {
@@ -97,6 +99,7 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
     player_skin_cache_dir: &Path,
+    username: &str,
 ) -> ResourceReloadAck {
     let generation = effect.request.generation;
     let result = apply_native_resource_reload(
@@ -116,6 +119,7 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
         client_locale,
         particle_status,
         player_skin_cache_dir,
+        username,
     );
     let (result, failure) = match result {
         Ok(commit) => (Ok(commit), None),
@@ -156,6 +160,7 @@ fn apply_native_resource_reload(
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
     player_skin_cache_dir: &Path,
+    username: &str,
 ) -> std::result::Result<ResourceReloadSimulationCommit, NativeResourceReloadFailure> {
     let mut prepared = prepare_native_resource_reload(
         base_roots,
@@ -183,7 +188,7 @@ fn apply_native_resource_reload(
             error,
         })?;
 
-    let next_terrain_textures = renderer
+    let (next_terrain_textures, win_screen_resources) = renderer
         .transactional_resource_reload(|renderer| {
             upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
                 .and_then(|()| {
@@ -193,6 +198,12 @@ fn apply_native_resource_reload(
                 .and_then(|textures| {
                     try_load_hud_textures(renderer, &prepared.roots)
                         .context("upload HUD resources during resource reload")?;
+                    let win_screen_resources = WinScreenResources::load(
+                        &prepared.roots,
+                        username,
+                        &renderer.hud_text_measurements(),
+                    )
+                    .context("prepare win-screen resources during resource reload")?;
                     try_load_entity_model_textures(renderer, &prepared.roots)
                         .context("upload entity resources during resource reload")?;
                     try_load_sky_textures(renderer, &prepared.roots)
@@ -217,7 +228,7 @@ fn apply_native_resource_reload(
                     // same render-thread transaction.
                     renderer.invalidate_map_texture_residency();
                     renderer.invalidate_item_model_resources();
-                    Ok(textures)
+                    Ok((textures, win_screen_resources))
                 })
         })
         .map_err(|error| NativeResourceReloadFailure {
@@ -255,6 +266,7 @@ fn apply_native_resource_reload(
         available_command_sounds,
         block_destroy_profiles: prepared.block_destroy_profiles,
         block_sound_profiles: prepared.block_sound_profiles,
+        win_screen_resources,
     })
 }
 

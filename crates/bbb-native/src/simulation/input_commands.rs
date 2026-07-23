@@ -1509,6 +1509,7 @@ pub(crate) struct SimulationInputContext<'a, 'collector> {
     pub(crate) item_runtime: &'a mut Option<NativeItemRuntime>,
     pub(crate) terrain_textures: &'a mut crate::terrain_runtime::TerrainTextureState,
     pub(crate) code_of_conduct: Option<&'a mut CodeOfConductAcceptance>,
+    pub(crate) win_screen_resources: &'a mut crate::win_screen_resources::WinScreenResources,
     pub(crate) entity_partial_tick: f32,
     pub(crate) platform: &'a mut PlatformEffectCollector<'collector>,
 }
@@ -1544,6 +1545,7 @@ fn apply_resource_reload_ack(
             *context.particle_runtime = Some(commit.particle_runtime);
             *context.item_runtime = Some(commit.item_runtime);
             *context.terrain_textures = commit.terrain_textures;
+            *context.win_screen_resources = commit.win_screen_resources;
             tracing::info!(
                 generation = ack.generation,
                 "applied server resource pack reload"

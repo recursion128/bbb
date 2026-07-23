@@ -13,6 +13,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 pub(crate) const MAX_RESOURCE_JSON_FILE_BYTES: u64 = 16 * 1024 * 1024;
+pub(crate) const MAX_RESOURCE_TEXT_FILE_BYTES: u64 = 16 * 1024 * 1024;
 pub(crate) const MAX_RESOURCE_JSON_DOCUMENT_NODES: u64 = 262_144;
 pub(crate) const MAX_RESOURCE_JSON_DOCUMENT_STRING_BYTES: u64 = 16 * 1024 * 1024;
 pub(crate) const MAX_RESOURCE_LIST_RESULTS: u64 = 65_536;
@@ -31,6 +32,8 @@ pub struct ResourceDataMemoryObservation {
     pub json_documents: u64,
     pub json_nodes: u64,
     pub json_string_bytes: u64,
+    pub text_source_bytes: u64,
+    pub text_documents: u64,
     pub listing_entries: u64,
     pub derived_logical_bytes: u64,
     pub rejections: u64,
@@ -45,6 +48,8 @@ pub(crate) struct ResourceDataGenerationBudget {
     json_documents: AtomicU64,
     json_nodes: AtomicU64,
     json_string_bytes: AtomicU64,
+    text_source_bytes: AtomicU64,
+    text_documents: AtomicU64,
     listing_entries: AtomicU64,
     derived_logical_bytes: AtomicU64,
     rejections: AtomicU64,
@@ -60,6 +65,8 @@ impl ResourceDataGenerationBudget {
             json_documents: AtomicU64::new(0),
             json_nodes: AtomicU64::new(0),
             json_string_bytes: AtomicU64::new(0),
+            text_source_bytes: AtomicU64::new(0),
+            text_documents: AtomicU64::new(0),
             listing_entries: AtomicU64::new(0),
             derived_logical_bytes: AtomicU64::new(0),
             rejections: AtomicU64::new(0),
@@ -199,6 +206,50 @@ impl ResourceDataGenerationBudget {
         Ok(bytes)
     }
 
+    pub(crate) fn read_text(&self, path: &Path, label: &str) -> Result<String> {
+        let file =
+            File::open(path).with_context(|| format!("open text {label} {}", path.display()))?;
+        let file_bytes = file
+            .metadata()
+            .with_context(|| format!("read text metadata for {label} {}", path.display()))?
+            .len();
+        if file_bytes > MAX_RESOURCE_TEXT_FILE_BYTES {
+            return Err(self.reject(format!(
+                "text {label} {} is {file_bytes} bytes, exceeding the {} byte limit",
+                path.display(),
+                MAX_RESOURCE_TEXT_FILE_BYTES
+            )));
+        }
+        self.reserve(file_bytes, label)?;
+        self.text_source_bytes
+            .fetch_add(file_bytes, Ordering::Relaxed);
+
+        let capacity = usize::try_from(file_bytes)
+            .with_context(|| format!("text {label} file size does not fit usize"))?;
+        let mut bytes = Vec::with_capacity(capacity);
+        file.take(MAX_RESOURCE_TEXT_FILE_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .with_context(|| format!("read text {label} {}", path.display()))?;
+        if bytes.len() as u64 > MAX_RESOURCE_TEXT_FILE_BYTES {
+            return Err(self.reject(format!(
+                "text {label} {} grew beyond the {} byte limit while being read",
+                path.display(),
+                MAX_RESOURCE_TEXT_FILE_BYTES
+            )));
+        }
+        let actual_bytes = u64::try_from(bytes.len())
+            .with_context(|| format!("text {label} byte length does not fit u64"))?;
+        if actual_bytes > file_bytes {
+            let growth = actual_bytes - file_bytes;
+            self.reserve(growth, label)?;
+            self.text_source_bytes.fetch_add(growth, Ordering::Relaxed);
+        }
+        let text = String::from_utf8(bytes)
+            .with_context(|| format!("decode UTF-8 text {label} {}", path.display()))?;
+        self.text_documents.fetch_add(1, Ordering::Relaxed);
+        Ok(text)
+    }
+
     pub(crate) fn reserve_listing_entry(&self, path_bytes: u64, label: &str) -> Result<()> {
         let logical_bytes = RESOURCE_LIST_ENTRY_LOGICAL_BYTES
             .checked_add(path_bytes)
@@ -234,6 +285,8 @@ impl ResourceDataGenerationBudget {
             json_documents: self.json_documents.load(Ordering::Relaxed),
             json_nodes: self.json_nodes.load(Ordering::Relaxed),
             json_string_bytes: self.json_string_bytes.load(Ordering::Relaxed),
+            text_source_bytes: self.text_source_bytes.load(Ordering::Relaxed),
+            text_documents: self.text_documents.load(Ordering::Relaxed),
             listing_entries: self.listing_entries.load(Ordering::Relaxed),
             derived_logical_bytes: self.derived_logical_bytes.load(Ordering::Relaxed),
             rejections: self.rejections.load(Ordering::Acquire),

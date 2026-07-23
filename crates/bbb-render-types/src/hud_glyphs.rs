@@ -425,6 +425,13 @@ impl HudFontGlyphMap {
         })
     }
 
+    /// Measures one character with the active fallback glyph and resolved
+    /// style. Native presentation owners use this to perform Vanilla-width
+    /// wrapping before publishing immutable renderer values.
+    pub fn styled_char_advance(&self, ch: char, style: HudTextStyle) -> u32 {
+        self.plain_glyph(ch).styled_advance(style)
+    }
+
     /// Returns the character cursor reached by consuming at most `width`
     /// pixels from `display_start`, or `None` before a font projection loads.
     pub fn plain_text_cursor_for_width_from(

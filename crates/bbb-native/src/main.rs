@@ -62,6 +62,7 @@ mod sky_assets;
 mod spawner_scene;
 mod startup;
 mod terrain_runtime;
+mod win_screen_resources;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use bbb_item_model::default_player_skin_cache_dir;
@@ -113,6 +114,7 @@ use startup::{
     NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
+use win_screen_resources::WinScreenResources;
 
 impl input::DebugOptionsSearchTextMeasurer for bbb_renderer::Renderer {
     fn debug_options_search_display_start_for_width(
@@ -569,6 +571,13 @@ fn main() -> Result<()> {
         }
     }
     load_hud_textures(&mut renderer, pack_roots.as_ref());
+    let win_screen_resources = pack_roots
+        .as_ref()
+        .map(|roots| {
+            WinScreenResources::load(roots, &args.username, &renderer.hud_text_measurements())
+        })
+        .transpose()?
+        .unwrap_or_default();
     simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
         renderer.hud_text_measurements(),
     ));
@@ -681,6 +690,7 @@ fn main() -> Result<()> {
         environment_audio: environment_audio_runtime::EnvironmentAudioRuntime::default(),
         environment_animate: environment_animate_runtime::EnvironmentAnimateRuntime::default(),
         music: MusicRuntime::default(),
+        win_screen_resources,
         particle_runtime,
         terrain_textures: terrain_textures.clone(),
         item_runtime: simulation_item_runtime,
@@ -774,6 +784,7 @@ fn main() -> Result<()> {
                 &args.client_locale,
                 client_particle_status,
                 &player_skin_cache_dir,
+                &args.username,
             );
             non_entity_render_extraction.invalidate_resources();
             simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(

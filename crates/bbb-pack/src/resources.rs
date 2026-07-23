@@ -231,6 +231,14 @@ impl PackResourceStack {
         self.data_budget.read_json_value(path, label)
     }
 
+    pub fn read_text_resource(&self, resource: &PackResource, label: &str) -> Result<String> {
+        self.read_text_file(&resource.path, label)
+    }
+
+    pub fn read_text_file(&self, path: &Path, label: &str) -> Result<String> {
+        self.data_budget.read_text(path, label)
+    }
+
     pub(crate) fn read_json_bytes_and_value(
         &self,
         path: &Path,
