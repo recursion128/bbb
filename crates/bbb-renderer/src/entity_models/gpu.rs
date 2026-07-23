@@ -2459,10 +2459,12 @@ impl Renderer {
 
         let had_dynamic_textures = !self.entity_dynamic_player_skin_images.is_empty()
             || self.entity_dynamic_player_skin_atlas.is_some()
+            || !self.hud_dynamic_player_faces.is_empty()
             || !self.entity_dynamic_player_texture_images.is_empty()
             || self.entity_dynamic_player_texture_atlas.is_some();
         self.entity_dynamic_player_skin_images.clear();
         self.entity_dynamic_player_skin_atlas = None;
+        self.hud_dynamic_player_faces.clear();
         self.entity_dynamic_player_texture_images.clear();
         self.entity_dynamic_player_texture_atlas = None;
         if had_dynamic_textures {
@@ -2476,13 +2478,18 @@ impl Renderer {
         &mut self,
         images: &[EntityModelTextureImage],
     ) -> Result<()> {
-        self.entity_model_texture_atlas = Some(create_entity_model_texture_atlas_gpu(
+        let (default_faces, dynamic_faces) =
+            self.build_hud_player_face_owners(images, &self.entity_dynamic_player_skin_images)?;
+        let atlas = create_entity_model_texture_atlas_gpu(
             &self.device,
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
             images,
-        )?);
+        )?;
+        self.entity_model_texture_atlas = Some(atlas);
+        self.hud_default_player_faces = default_faces;
+        self.hud_dynamic_player_faces = dynamic_faces;
         self.rebuild_entity_model_meshes();
         self.rebuild_first_person_player_arm_meshes();
         Ok(())
@@ -2490,23 +2497,24 @@ impl Renderer {
 
     pub fn upload_dynamic_player_skin(&mut self, image: DynamicPlayerSkinImage) -> Result<()> {
         validate_dynamic_player_skin_image(&image)?;
-        match self
-            .entity_dynamic_player_skin_images
-            .iter_mut()
-            .find(|skin| skin.handle == image.handle)
-        {
+        let handle = image.handle;
+        let face = self.build_hud_dynamic_player_face(&image)?;
+        let mut images = self.entity_dynamic_player_skin_images.clone();
+        match images.iter_mut().find(|skin| skin.handle == image.handle) {
             Some(existing) => *existing = image,
-            None => self.entity_dynamic_player_skin_images.push(image),
+            None => images.push(image),
         }
-        self.entity_dynamic_player_skin_images
-            .sort_by_key(|skin| skin.handle);
-        self.entity_dynamic_player_skin_atlas = Some(create_dynamic_player_skin_atlas_gpu(
+        images.sort_by_key(|skin| skin.handle);
+        let atlas = create_dynamic_player_skin_atlas_gpu(
             &self.device,
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
-            &self.entity_dynamic_player_skin_images,
-        )?);
+            &images,
+        )?;
+        self.entity_dynamic_player_skin_images = images;
+        self.entity_dynamic_player_skin_atlas = Some(atlas);
+        self.hud_dynamic_player_faces.insert(handle, face);
         self.rebuild_entity_model_meshes();
         self.rebuild_first_person_player_arm_meshes();
         Ok(())
@@ -4032,6 +4040,7 @@ mod tests {
             .unwrap();
         assert_eq!(renderer.entity_dynamic_player_skin_images.len(), 1);
         assert!(renderer.entity_dynamic_player_skin_atlas.is_some());
+        assert!(renderer.hud_dynamic_player_faces.contains_key(&91));
 
         assert!(!renderer.synchronize_dynamic_entity_texture_generation(7, 3, true));
         assert_eq!(renderer.entity_dynamic_player_skin_images.len(), 1);
@@ -4039,6 +4048,7 @@ mod tests {
         assert!(renderer.synchronize_dynamic_entity_texture_generation(7, 3, false));
         assert!(renderer.entity_dynamic_player_skin_images.is_empty());
         assert!(renderer.entity_dynamic_player_skin_atlas.is_none());
+        assert!(renderer.hud_dynamic_player_faces.is_empty());
 
         renderer
             .upload_dynamic_player_skin(bbb_render_types::DynamicPlayerSkinImage {
@@ -4049,6 +4059,7 @@ mod tests {
         assert!(renderer.synchronize_dynamic_entity_texture_generation(8, 4, true));
         assert!(renderer.entity_dynamic_player_skin_images.is_empty());
         assert!(renderer.entity_dynamic_player_skin_atlas.is_none());
+        assert!(renderer.hud_dynamic_player_faces.is_empty());
     }
 
     #[test]

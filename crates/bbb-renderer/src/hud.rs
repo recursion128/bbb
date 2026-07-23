@@ -20,6 +20,7 @@ mod gpu;
 mod layout;
 mod player_list;
 mod scoreboard;
+mod spectator;
 
 pub use self::book::{
     hud_book_layout, HudBookHitTarget, HudBookInteraction, HudBookLayout, HudBookMode,
@@ -63,6 +64,7 @@ use self::layout::{
 pub use self::player_list::{HudPlayerList, HudPlayerListEntry, HudPlayerListScore};
 pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
 pub use self::scoreboard::{HudScoreboardSidebar, HudScoreboardSidebarEntry};
+pub use self::spectator::{HudHotbarMode, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon};
 
 pub use bbb_render_types::{
     HudAsciiGlyph, HudComponentTextRun, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap,
@@ -2727,6 +2729,56 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_spectator_close(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_spectator_close = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_spectator_scroll_left(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_spectator_scroll_left = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_spectator_scroll_right(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_spectator_scroll_right = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_spectator_teleport_to_player(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_spectator_teleport_to_player = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_spectator_teleport_to_team(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_spectator_teleport_to_team = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_item_atlas(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         self.hud_item_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
@@ -4874,6 +4926,10 @@ impl Renderer {
         self.hud_experience_level = hud_experience_level_projection(level);
     }
 
+    pub fn set_hud_hotbar_mode(&mut self, mode: HudHotbarMode) {
+        self.hud_hotbar_mode = spectator::sanitize_hud_hotbar_mode(mode);
+    }
+
     pub fn set_hud_selected_slot(&mut self, slot: u8) {
         self.hud_selected_slot = slot.min((HUD_HOTBAR_SLOTS - 1) as u8);
     }
@@ -5198,7 +5254,9 @@ impl Renderer {
             |model: &HudBlockItemModel, placement: glam::Mat4, scissor: Option<HudRect>| {
                 visit(model, placement, scissor);
             };
-        if stratum != HudScreenStratum::AfterBlur {
+        if stratum != HudScreenStratum::AfterBlur
+            && matches!(&self.hud_hotbar_mode, HudHotbarMode::Ordinary)
+        {
             for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
                 if let Some(model) = model {
                     let placement =
@@ -5318,69 +5376,12 @@ impl Renderer {
             );
         }
 
-        if let Some(hotbar) = &self.hud_hotbar {
-            push_hud_draw(
-                &mut vertices,
-                &mut commands,
-                hotbar,
-                surface_size,
-                hotbar_hud_rect(surface_size, hotbar.width, hotbar.height),
-            );
-        }
-        if let Some(selection) = &self.hud_hotbar_selection {
-            push_hud_draw(
-                &mut vertices,
-                &mut commands,
-                selection,
-                surface_size,
-                hotbar_selection_hud_rect(
-                    surface_size,
-                    self.hud_selected_slot,
-                    selection.width,
-                    selection.height,
-                ),
-            );
-        }
-
-        if let Some(atlas) = &self.hud_item_atlas {
-            for (slot, icon) in self.hud_hotbar_item_icons.iter().enumerate() {
-                if let Some(icon) = icon {
-                    let item_rect = hotbar_item_hud_rect(surface_size, slot);
-                    let renders_as_3d_block = self
-                        .hud_hotbar_block_item_models
-                        .get(slot)
-                        .is_some_and(Option::is_some);
-                    push_hud_item_icon(
-                        &mut vertices,
-                        &mut commands,
-                        atlas,
-                        &self.hud_white_pixel,
-                        self.hud_digit_atlas.as_ref(),
-                        &self.hud_digit_glyphs,
-                        surface_size,
-                        item_rect,
-                        icon,
-                        !renders_as_3d_block,
-                        !renders_as_3d_block,
-                    );
-                    if renders_as_3d_block {
-                        push_hud_item_icon(
-                            &mut vertices,
-                            &mut post_gui_item_commands,
-                            atlas,
-                            &self.hud_white_pixel,
-                            self.hud_digit_atlas.as_ref(),
-                            &self.hud_digit_glyphs,
-                            surface_size,
-                            item_rect,
-                            icon,
-                            false,
-                            true,
-                        );
-                    }
-                }
-            }
-        }
+        self.push_hud_hotbar_draws(
+            &mut vertices,
+            &mut commands,
+            &mut post_gui_item_commands,
+            surface_size,
+        );
 
         match &self.hud_contextual_bar {
             HudContextualBar::Empty => {}
@@ -5762,6 +5763,7 @@ impl Renderer {
                 level,
             );
         }
+        self.push_hud_spectator_action_draws(&mut vertices, &mut commands, surface_size);
 
         let inventory_effect_panel_visible = self.hud_inventory_shows_mob_effects
             && self.hud_inventory_screen.as_ref().is_some_and(|screen| {
@@ -24087,6 +24089,28 @@ mod tests {
                 .filter(|instance| instance.target == ItemModelDrawTarget::GuiAfterBlur)
                 .count(),
             1
+        );
+
+        renderer.set_hud_hotbar_mode(HudHotbarMode::Spectator(None));
+        let mut residency = ItemModelResidencyFrame::default();
+        renderer.append_hud_block_item_residency(&mut residency);
+        assert_eq!(
+            residency
+                .instances
+                .iter()
+                .filter(|instance| instance.target == ItemModelDrawTarget::GuiBeforeBlur)
+                .count(),
+            0,
+            "spectator hotbars must not retain ordinary 3D item models"
+        );
+        assert_eq!(
+            residency
+                .instances
+                .iter()
+                .filter(|instance| instance.target == ItemModelDrawTarget::GuiAfterBlur)
+                .count(),
+            1,
+            "screen item residency is independent of the hotbar mode"
         );
     }
 

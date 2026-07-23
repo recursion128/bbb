@@ -202,6 +202,13 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_crosshair);
         $take_owner!(hud_hotbar);
         $take_owner!(hud_hotbar_selection);
+        $take_owner!(hud_spectator_close);
+        $take_owner!(hud_spectator_scroll_left);
+        $take_owner!(hud_spectator_scroll_right);
+        $take_owner!(hud_spectator_teleport_to_player);
+        $take_owner!(hud_spectator_teleport_to_team);
+        $take_owner!(hud_default_player_faces);
+        $take_owner!(hud_dynamic_player_faces);
         $take_owner!(hud_item_atlas);
         $take_owner!(hud_digit_atlas);
         $take_owner!(hud_digit_glyphs);
@@ -728,6 +735,12 @@ mod tests {
                 checkpoint_source.contains(&format!("take_owner!({owner})"))
                     || checkpoint_source.contains(&format!("clone_owner!({owner})")),
                 "reloadable HUD owner {owner} is missing from the transaction checkpoint"
+            );
+        }
+        for owner in ["hud_default_player_faces", "hud_dynamic_player_faces"] {
+            assert!(
+                checkpoint_source.contains(&format!("take_owner!({owner})")),
+                "derived spectator face owner {owner} is missing from the transaction checkpoint"
             );
         }
     }

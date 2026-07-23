@@ -1,9 +1,10 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     time::Instant,
 };
 
 use anyhow::{anyhow, Result};
+use bbb_render_types::EntityDefaultPlayerSkin;
 use glam::Mat4;
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -65,8 +66,8 @@ use crate::{
         create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
         create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
         HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudChatContext, HudChatLine,
-        HudChatMessage, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap, HudInventoryScreen,
-        HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu,
+        HudChatMessage, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap, HudHotbarMode,
+        HudInventoryScreen, HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu,
         HudStatsScrollbarSprite, HudStatsSprite, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
@@ -532,6 +533,13 @@ pub struct Renderer {
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_selection: Option<HudSpriteGpu>,
+    pub(super) hud_spectator_close: Option<HudSpriteGpu>,
+    pub(super) hud_spectator_scroll_left: Option<HudSpriteGpu>,
+    pub(super) hud_spectator_scroll_right: Option<HudSpriteGpu>,
+    pub(super) hud_spectator_teleport_to_player: Option<HudSpriteGpu>,
+    pub(super) hud_spectator_teleport_to_team: Option<HudSpriteGpu>,
+    pub(super) hud_default_player_faces: HashMap<EntityDefaultPlayerSkin, HudSpriteGpu>,
+    pub(super) hud_dynamic_player_faces: HashMap<u64, HudSpriteGpu>,
     pub(super) hud_item_atlas: Option<HudSpriteGpu>,
     pub(super) hud_digit_atlas: Option<HudSpriteGpu>,
     pub(super) hud_digit_glyphs: [HudDigitGlyph; 10],
@@ -773,6 +781,7 @@ pub struct Renderer {
     pub(super) hud_vignette_texture: Option<VignetteTextureGpu>,
     pub(super) hud_contextual_bar: crate::hud::HudContextualBar,
     pub(super) hud_experience_level: Option<i32>,
+    pub(super) hud_hotbar_mode: HudHotbarMode,
     pub(super) hud_selected_slot: u8,
     pub(super) hud_action_bar_text: Option<crate::hud::HudActionBarText>,
     pub(super) hud_title_text: Option<crate::hud::HudTitleText>,
@@ -1850,6 +1859,13 @@ impl Renderer {
             hud_crosshair: None,
             hud_hotbar: None,
             hud_hotbar_selection: None,
+            hud_spectator_close: None,
+            hud_spectator_scroll_left: None,
+            hud_spectator_scroll_right: None,
+            hud_spectator_teleport_to_player: None,
+            hud_spectator_teleport_to_team: None,
+            hud_default_player_faces: HashMap::new(),
+            hud_dynamic_player_faces: HashMap::new(),
             hud_item_atlas: None,
             hud_digit_atlas: None,
             hud_digit_glyphs: [HudDigitGlyph::default(); 10],
@@ -2078,6 +2094,7 @@ impl Renderer {
             hud_vignette_texture: None,
             hud_contextual_bar: crate::hud::HudContextualBar::Empty,
             hud_experience_level: None,
+            hud_hotbar_mode: HudHotbarMode::Ordinary,
             hud_selected_slot: 0,
             hud_action_bar_text: None,
             hud_title_text: None,

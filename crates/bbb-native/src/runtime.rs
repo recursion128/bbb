@@ -47,17 +47,17 @@ use bbb_renderer::{
     HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
     HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
-    HudGameModeSwitcherMode, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen,
-    HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect, HudPauseScreen, HudPlayerHealth,
-    HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudStatsItemRow, HudStatsRow,
-    HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
-    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
+    HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
+    HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
+    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
+    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth,
     ItemModelAssetIdentity, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
@@ -2766,6 +2766,10 @@ pub(crate) fn update_renderer_from_publication(
     // Vanilla draws the level number only when `experienceLevel > 0`
     // (Gui.java:533); the renderer setter applies that gate.
     let hud_experience_level = local_player.experience.map(|experience| experience.level);
+    // Vanilla `Gui.extractHotbarAndDecorations` substitutes `SpectatorGui`
+    // for the ordinary item hotbar and samples its wall-clock fade during
+    // render extraction, after input publication.
+    let hud_hotbar_mode = hud_hotbar_mode_from_world(input, world, item_runtime, render_started_at);
     let hud_selected_slot = local_player.selected_hotbar_slot;
     // Vanilla `Gui.extractOverlayMessage` / `extractTitle` read the post-tick
     // countdowns with the frame partial tick; the renderer resolves fade
@@ -2815,14 +2819,21 @@ pub(crate) fn update_renderer_from_publication(
         stable_world_unchanged,
     );
     let item_model_keybind_context = input.item_model_keybind_context();
-    let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(
-        world,
-        item_runtime,
-        entity_partial_tick,
-        input.shift_down(),
-        item_model_keybind_context,
-    );
-    let hud_hotbar_block_item_models = if stable_world_unchanged {
+    let ordinary_hotbar = matches!(&hud_hotbar_mode, HudHotbarMode::Ordinary);
+    let hud_hotbar_item_icons = if ordinary_hotbar {
+        hotbar_item_icons_with_input_context(
+            world,
+            item_runtime,
+            entity_partial_tick,
+            input.shift_down(),
+            item_model_keybind_context,
+        )
+    } else {
+        std::array::from_fn(|_| None)
+    };
+    let hud_hotbar_block_item_models = if !ordinary_hotbar {
+        RendererFrameUpdate::Replace(Vec::new())
+    } else if stable_world_unchanged {
         RendererFrameUpdate::Unchanged
     } else {
         RendererFrameUpdate::Replace(hotbar_block_item_models(
@@ -3528,6 +3539,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_vignette,
             hud_contextual_bar,
             hud_experience_level,
+            hud_hotbar_mode,
             hud_selected_slot,
             hud_hotbar_item_icons,
             hud_hotbar_block_item_models,

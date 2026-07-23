@@ -15,14 +15,15 @@ use bbb_renderer::{
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
     HudComponentTextRun, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen,
-    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth,
-    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudScoreboardSidebar,
-    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
-    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen,
+    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudScoreboardSidebar,
+    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSpectatorGui,
+    HudSpectatorGuiSlot, HudSpectatorIcon, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen,
+    HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette, ItemEntityBillboard,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
+    SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -1569,6 +1570,138 @@ pub(crate) fn hud_scoreboard_sidebar_from_world(
     })
 }
 
+pub(crate) fn hud_hotbar_mode_from_world(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    now: Instant,
+) -> HudHotbarMode {
+    if input.hide_gui() {
+        return HudHotbarMode::Hidden;
+    }
+    if !world.local_player_is_spectator() {
+        return HudHotbarMode::Ordinary;
+    }
+    let Some(page) = input.spectator_menu_page_at(now) else {
+        return HudHotbarMode::Spectator(None);
+    };
+    let prompt_runs = match page.prompt {
+        crate::input::spectator_menu::SpectatorMenuPrompt::Root => spectator_localized_runs(
+            item_runtime,
+            "spectatorMenu.root.prompt",
+            "Press a key to select a command, and again to use it.",
+        ),
+        crate::input::spectator_menu::SpectatorMenuPrompt::Player => spectator_localized_runs(
+            item_runtime,
+            "spectatorMenu.teleport.prompt",
+            "Select a player to teleport to",
+        ),
+        crate::input::spectator_menu::SpectatorMenuPrompt::Team => spectator_localized_runs(
+            item_runtime,
+            "spectatorMenu.team_teleport.prompt",
+            "Select a team to teleport to",
+        ),
+    };
+    HudHotbarMode::Spectator(Some(HudSpectatorGui {
+        alpha: page.alpha,
+        selected_slot: u8::try_from(page.selected_slot).ok(),
+        prompt_runs,
+        slots: page.slots.map(|item| {
+            use crate::input::spectator_menu::SpectatorMenuItemView;
+            let (icon, enabled, name_runs) = match item {
+                SpectatorMenuItemView::Empty => return None,
+                SpectatorMenuItemView::PlayersCategory { enabled } => (
+                    HudSpectatorIcon::TeleportToPlayer,
+                    enabled,
+                    spectator_localized_runs(
+                        item_runtime,
+                        "spectatorMenu.teleport",
+                        "Teleport to Player",
+                    ),
+                ),
+                SpectatorMenuItemView::TeamsCategory { enabled } => (
+                    HudSpectatorIcon::TeleportToTeam,
+                    enabled,
+                    spectator_localized_runs(
+                        item_runtime,
+                        "spectatorMenu.team_teleport",
+                        "Teleport to Team Member",
+                    ),
+                ),
+                SpectatorMenuItemView::Player(player) => (
+                    HudSpectatorIcon::Player {
+                        skin: spectator_player_skin(&player.profile, item_runtime),
+                    },
+                    item.enabled(),
+                    vec![HudStyledTextRun::plain(&player.profile.name)],
+                ),
+                SpectatorMenuItemView::Team(team) => (
+                    HudSpectatorIcon::Team {
+                        skin: spectator_player_skin(&team.icon_player.profile, item_runtime),
+                        color_rgb: team.color_rgb,
+                    },
+                    item.enabled(),
+                    hud_scoreboard_text_runs(&team.display_name, item_runtime),
+                ),
+                SpectatorMenuItemView::PreviousPage => (
+                    HudSpectatorIcon::PreviousPage,
+                    item.enabled(),
+                    spectator_localized_runs(
+                        item_runtime,
+                        "spectatorMenu.previous_page",
+                        "Previous Page",
+                    ),
+                ),
+                SpectatorMenuItemView::NextPage { .. } => (
+                    HudSpectatorIcon::NextPage,
+                    item.enabled(),
+                    spectator_localized_runs(item_runtime, "spectatorMenu.next_page", "Next Page"),
+                ),
+                SpectatorMenuItemView::Close => (
+                    HudSpectatorIcon::Close,
+                    item.enabled(),
+                    spectator_localized_runs(item_runtime, "spectatorMenu.close", "Close Menu"),
+                ),
+            };
+            Some(HudSpectatorGuiSlot {
+                icon,
+                enabled,
+                name_runs,
+            })
+        }),
+    }))
+}
+
+fn spectator_localized_runs(
+    item_runtime: Option<&NativeItemRuntime>,
+    translation_key: &str,
+    fallback: &str,
+) -> Vec<HudStyledTextRun> {
+    vec![HudStyledTextRun::plain(localized_gui_text(
+        item_runtime,
+        translation_key,
+        fallback,
+    ))]
+}
+
+fn spectator_player_skin(
+    profile: &bbb_world::PlayerInfoProfileState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> bbb_renderer::EntityPlayerSkin {
+    item_runtime.map_or_else(
+        || {
+            bbb_renderer::EntityPlayerSkin::ProfiledDefault(
+                bbb_item_model::default_player_skin_for_profile_id(profile.uuid.as_u128()),
+            )
+        },
+        |item_runtime| {
+            item_runtime.player_skin_for_profile(
+                &crate::entity_scene::player_info_resolvable_profile(profile),
+            )
+        },
+    )
+}
+
 fn hud_scoreboard_text_runs(
     text: &bbb_world::ScoreboardTextState,
     item_runtime: Option<&NativeItemRuntime>,
@@ -1620,6 +1753,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_vignette: Option<HudVignette>,
     pub(crate) hud_contextual_bar: HudContextualBar,
     pub(crate) hud_experience_level: Option<i32>,
+    pub(crate) hud_hotbar_mode: HudHotbarMode,
     pub(crate) hud_selected_slot: u8,
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(crate) hud_hotbar_block_item_models: RendererFrameUpdate<Vec<Option<HudBlockItemModel>>>,
@@ -1880,6 +2014,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_vignette(frame.hud_vignette);
     renderer.set_hud_contextual_bar(frame.hud_contextual_bar);
     renderer.set_hud_experience_level(frame.hud_experience_level);
+    renderer.set_hud_hotbar_mode(frame.hud_hotbar_mode);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
     if let RendererFrameUpdate::Replace(models) = frame.hud_hotbar_block_item_models {

@@ -125,7 +125,7 @@ impl EntityPlayerSkin {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EntityDefaultPlayerSkin {
     SlimAlex,
     SlimAri,
@@ -148,32 +148,34 @@ pub enum EntityDefaultPlayerSkin {
 }
 
 impl EntityDefaultPlayerSkin {
+    pub const ALL: [Self; 18] = [
+        Self::SlimAlex,
+        Self::SlimAri,
+        Self::SlimEfe,
+        Self::SlimKai,
+        Self::SlimMakena,
+        Self::SlimNoor,
+        Self::SlimSteve,
+        Self::SlimSunny,
+        Self::SlimZuri,
+        Self::WideAlex,
+        Self::WideAri,
+        Self::WideEfe,
+        Self::WideKai,
+        Self::WideMakena,
+        Self::WideNoor,
+        Self::WideSteve,
+        Self::WideSunny,
+        Self::WideZuri,
+    ];
+
     pub fn from_vanilla_index(index: usize) -> Self {
-        match index % DEFAULT_PLAYER_SKINS.len() {
-            0 => Self::SlimAlex,
-            1 => Self::SlimAri,
-            2 => Self::SlimEfe,
-            3 => Self::SlimKai,
-            4 => Self::SlimMakena,
-            5 => Self::SlimNoor,
-            6 => Self::SlimSteve,
-            7 => Self::SlimSunny,
-            8 => Self::SlimZuri,
-            9 => Self::WideAlex,
-            10 => Self::WideAri,
-            11 => Self::WideEfe,
-            12 => Self::WideKai,
-            13 => Self::WideMakena,
-            14 => Self::WideNoor,
-            15 => Self::WideSteve,
-            16 => Self::WideSunny,
-            _ => Self::WideZuri,
-        }
+        Self::ALL[index % Self::ALL.len()]
     }
 
     pub fn from_texture_path(path: &str) -> Option<Self> {
         let path = path.strip_prefix("minecraft:").unwrap_or(path);
-        DEFAULT_PLAYER_SKINS
+        Self::ALL
             .iter()
             .copied()
             .find(|skin| skin.texture_path() == path)
@@ -225,27 +227,6 @@ impl EntityDefaultPlayerSkin {
         }
     }
 }
-
-const DEFAULT_PLAYER_SKINS: [EntityDefaultPlayerSkin; 18] = [
-    EntityDefaultPlayerSkin::SlimAlex,
-    EntityDefaultPlayerSkin::SlimAri,
-    EntityDefaultPlayerSkin::SlimEfe,
-    EntityDefaultPlayerSkin::SlimKai,
-    EntityDefaultPlayerSkin::SlimMakena,
-    EntityDefaultPlayerSkin::SlimNoor,
-    EntityDefaultPlayerSkin::SlimSteve,
-    EntityDefaultPlayerSkin::SlimSunny,
-    EntityDefaultPlayerSkin::SlimZuri,
-    EntityDefaultPlayerSkin::WideAlex,
-    EntityDefaultPlayerSkin::WideAri,
-    EntityDefaultPlayerSkin::WideEfe,
-    EntityDefaultPlayerSkin::WideKai,
-    EntityDefaultPlayerSkin::WideMakena,
-    EntityDefaultPlayerSkin::WideNoor,
-    EntityDefaultPlayerSkin::WideSteve,
-    EntityDefaultPlayerSkin::WideSunny,
-    EntityDefaultPlayerSkin::WideZuri,
-];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EntityModelTextureRef {

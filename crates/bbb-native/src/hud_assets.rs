@@ -50,6 +50,36 @@ pub(crate) fn try_load_hud_textures(
         hotbar_selection.height,
         &hotbar_selection.rgba,
     )?;
+    let spectator_close = hud_sprite(&sprites, "spectator/close")?;
+    renderer.upload_hud_spectator_close(
+        spectator_close.width,
+        spectator_close.height,
+        &spectator_close.rgba,
+    )?;
+    let spectator_scroll_left = hud_sprite(&sprites, "spectator/scroll_left")?;
+    renderer.upload_hud_spectator_scroll_left(
+        spectator_scroll_left.width,
+        spectator_scroll_left.height,
+        &spectator_scroll_left.rgba,
+    )?;
+    let spectator_scroll_right = hud_sprite(&sprites, "spectator/scroll_right")?;
+    renderer.upload_hud_spectator_scroll_right(
+        spectator_scroll_right.width,
+        spectator_scroll_right.height,
+        &spectator_scroll_right.rgba,
+    )?;
+    let spectator_player = hud_sprite(&sprites, "spectator/teleport_to_player")?;
+    renderer.upload_hud_spectator_teleport_to_player(
+        spectator_player.width,
+        spectator_player.height,
+        &spectator_player.rgba,
+    )?;
+    let spectator_team = hud_sprite(&sprites, "spectator/teleport_to_team")?;
+    renderer.upload_hud_spectator_teleport_to_team(
+        spectator_team.width,
+        spectator_team.height,
+        &spectator_team.rgba,
+    )?;
     let chat_modified = hud_sprite(&sprites, "icon/chat_modified")?;
     renderer.upload_hud_chat_modified_icon(
         chat_modified.width,
@@ -1643,6 +1673,34 @@ mod tests {
                 stretch_inner: false,
             }
         );
+    }
+
+    #[test]
+    fn spectator_sprite_catalog_resolves_all_five_vanilla_icons() {
+        let mut sprites = HashMap::new();
+        for id in [
+            "spectator/close",
+            "spectator/scroll_left",
+            "spectator/scroll_right",
+            "spectator/teleport_to_player",
+            "spectator/teleport_to_team",
+        ] {
+            let image = SpriteImage::new(format!("minecraft:{id}"), 16, 16, vec![255; 16 * 16 * 4])
+                .unwrap();
+            sprites.insert(image.id.clone(), image);
+        }
+
+        for id in [
+            "spectator/close",
+            "spectator/scroll_left",
+            "spectator/scroll_right",
+            "spectator/teleport_to_player",
+            "spectator/teleport_to_team",
+        ] {
+            let sprite = hud_sprite(&sprites, id).unwrap();
+            assert_eq!(sprite.id, format!("minecraft:{id}"));
+            assert_eq!((sprite.width, sprite.height), (16, 16));
+        }
     }
 
     #[test]

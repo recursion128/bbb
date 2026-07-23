@@ -806,6 +806,114 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
 }
 
 #[test]
+fn hud_spectator_projection_substitutes_root_and_player_pages() {
+    let mut world = WorldStore::new();
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    let profile_id = uuid::Uuid::from_u128(0x1234);
+    world.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+        actions: vec![
+            bbb_protocol::packets::PlayerInfoAction::AddPlayer,
+            bbb_protocol::packets::PlayerInfoAction::UpdateListed,
+            bbb_protocol::packets::PlayerInfoAction::UpdateGameMode,
+        ],
+        entries: vec![bbb_protocol::packets::PlayerInfoEntry {
+            profile_id,
+            profile: Some(bbb_protocol::packets::GameProfile {
+                uuid: profile_id,
+                name: "Target".to_string(),
+                properties: Vec::new(),
+            }),
+            listed: true,
+            latency: 0,
+            game_mode: bbb_protocol::packets::GameType::Survival,
+            display_name: None,
+            show_hat: true,
+            list_order: 0,
+            chat_session: None,
+        }],
+    });
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    assert!(input.handle_spectator_hotbar_action(&world, &mut counters, &None));
+
+    let HudHotbarMode::Spectator(Some(root)) =
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now())
+    else {
+        panic!("spectator root hotbar");
+    };
+    assert!(root.alpha > 0.99);
+    assert_eq!(root.selected_slot, None);
+    assert_eq!(
+        root.prompt_runs[0].text,
+        "Press a key to select a command, and again to use it."
+    );
+    assert!(matches!(
+        root.slots[0].as_ref().unwrap(),
+        bbb_renderer::HudSpectatorGuiSlot {
+            icon: bbb_renderer::HudSpectatorIcon::TeleportToPlayer,
+            enabled: true,
+            ..
+        }
+    ));
+    assert!(matches!(
+        root.slots[1].as_ref().unwrap(),
+        bbb_renderer::HudSpectatorGuiSlot {
+            icon: bbb_renderer::HudSpectatorIcon::TeleportToTeam,
+            enabled: false,
+            ..
+        }
+    ));
+
+    input.handle_spectator_hotbar_selected(&world, &mut counters, &None, 0);
+    input.handle_spectator_hotbar_selected(&world, &mut counters, &None, 0);
+    let HudHotbarMode::Spectator(Some(players)) =
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now())
+    else {
+        panic!("spectator player hotbar");
+    };
+    assert_eq!(players.selected_slot, None);
+    assert_eq!(
+        players.prompt_runs[0].text,
+        "Select a player to teleport to"
+    );
+    let player = players.slots[0].as_ref().unwrap();
+    assert_eq!(player.name_runs[0].text, "Target");
+    assert!(matches!(
+        player.icon,
+        bbb_renderer::HudSpectatorIcon::Player {
+            skin: bbb_renderer::EntityPlayerSkin::ProfiledDefault(_)
+        }
+    ));
+}
+
+#[test]
+fn hud_spectator_projection_preserves_ordinary_and_hidden_hotbar_modes() {
+    let mut world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    assert!(matches!(
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now()),
+        HudHotbarMode::Ordinary
+    ));
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::F1),
+        ElementState::Pressed,
+    );
+    assert!(matches!(
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now()),
+        HudHotbarMode::Hidden
+    ));
+}
+
+#[test]
 fn hud_scoreboard_projection_localizes_rich_team_and_score_runs() {
     use bbb_protocol::packets::{
         ChatFormatting, NumberFormatSummary, ObjectiveRenderType, PlayerTeamMethod,
@@ -1517,8 +1625,11 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let selected_slot_extract = source
         .find("let hud_selected_slot = local_player.selected_hotbar_slot;")
         .expect("pump should extract the selected hotbar slot");
+    let hotbar_mode_extract = source
+        .find("hud_hotbar_mode_from_world(input, world, item_runtime, render_started_at);")
+        .expect("pump should extract the spectator/ordinary hotbar mode");
     let hotbar_icons_extract = source
-        .find("let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(")
+        .find("let hud_hotbar_item_icons = if ordinary_hotbar {")
         .expect("pump should extract hotbar item icons");
     let debug_options_screen_extract = source
         .find(
@@ -1546,6 +1657,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     }
     for extraction in [
         selected_slot_extract,
+        hotbar_mode_extract,
         hotbar_icons_extract,
         debug_options_screen_extract,
         pause_screen_extract,

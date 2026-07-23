@@ -15,6 +15,7 @@ const SPECTATOR_MENU_PREVIOUS_SLOT: u8 = 0;
 const SPECTATOR_MENU_NEXT_SLOT: u8 = 7;
 const SPECTATOR_MENU_CLOSE_SLOT: u8 = 8;
 const SPECTATOR_MENU_FADE_OUT_DELAY: Duration = Duration::from_millis(5_000);
+const SPECTATOR_MENU_FADE_OUT_TIME_MILLIS: f32 = 2_000.0;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SpectatorGuiInputState {
@@ -48,6 +49,45 @@ pub(crate) struct SpectatorMenuTeam {
     pub(crate) color_rgb: Option<u32>,
     pub(crate) icon_player: SpectatorMenuPlayer,
     players: Vec<SpectatorMenuPlayer>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SpectatorMenuPrompt {
+    Root,
+    Player,
+    Team,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum SpectatorMenuItemView<'a> {
+    Empty,
+    PlayersCategory { enabled: bool },
+    TeamsCategory { enabled: bool },
+    Player(&'a SpectatorMenuPlayer),
+    Team(&'a SpectatorMenuTeam),
+    PreviousPage,
+    NextPage { enabled: bool },
+    Close,
+}
+
+impl SpectatorMenuItemView<'_> {
+    pub(crate) fn enabled(self) -> bool {
+        match self {
+            Self::Empty => false,
+            Self::PlayersCategory { enabled }
+            | Self::TeamsCategory { enabled }
+            | Self::NextPage { enabled } => enabled,
+            Self::Player(_) | Self::Team(_) | Self::PreviousPage | Self::Close => true,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SpectatorMenuPageView<'a> {
+    pub(crate) alpha: f32,
+    pub(crate) selected_slot: i8,
+    pub(crate) prompt: SpectatorMenuPrompt,
+    pub(crate) slots: [SpectatorMenuItemView<'a>; SPECTATOR_MENU_SLOT_COUNT],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -276,6 +316,48 @@ impl SpectatorMenuInputState {
         self.selected_slot = -1;
         self.page = 0;
     }
+
+    fn prompt(&self) -> SpectatorMenuPrompt {
+        match self.category {
+            SpectatorMenuCategory::Root => SpectatorMenuPrompt::Root,
+            SpectatorMenuCategory::Players | SpectatorMenuCategory::Team(_) => {
+                SpectatorMenuPrompt::Player
+            }
+            SpectatorMenuCategory::TeamList => SpectatorMenuPrompt::Team,
+        }
+    }
+
+    fn item_view(&self, slot: u8) -> SpectatorMenuItemView<'_> {
+        match self.item(slot) {
+            SpectatorMenuItem::Empty => SpectatorMenuItemView::Empty,
+            SpectatorMenuItem::PlayersCategory { enabled } => {
+                SpectatorMenuItemView::PlayersCategory { enabled }
+            }
+            SpectatorMenuItem::TeamsCategory { enabled } => {
+                SpectatorMenuItemView::TeamsCategory { enabled }
+            }
+            SpectatorMenuItem::Player(uuid) => self
+                .catalog
+                .players
+                .iter()
+                .chain(
+                    self.catalog
+                        .teams
+                        .iter()
+                        .flat_map(|team| team.players.iter()),
+                )
+                .find(|player| player.profile.uuid == uuid)
+                .map_or(SpectatorMenuItemView::Empty, SpectatorMenuItemView::Player),
+            SpectatorMenuItem::Team(index) => self
+                .catalog
+                .teams
+                .get(index)
+                .map_or(SpectatorMenuItemView::Empty, SpectatorMenuItemView::Team),
+            SpectatorMenuItem::PreviousPage => SpectatorMenuItemView::PreviousPage,
+            SpectatorMenuItem::NextPage { enabled } => SpectatorMenuItemView::NextPage { enabled },
+            SpectatorMenuItem::Close => SpectatorMenuItemView::Close,
+        }
+    }
 }
 
 impl ClientInputState {
@@ -393,14 +475,35 @@ impl ClientInputState {
     }
 
     pub(crate) fn expire_spectator_menu_at(&mut self, now: Instant) {
-        let expired = self
-            .spectator_gui
-            .last_selection_at
-            .and_then(|last| now.checked_duration_since(last))
-            .is_some_and(|elapsed| elapsed >= SPECTATOR_MENU_FADE_OUT_DELAY);
-        if expired {
+        if self.spectator_menu_alpha_at(now) <= 0.0 {
             self.close_spectator_menu();
         }
+    }
+
+    pub(crate) fn spectator_menu_page_at(&self, now: Instant) -> Option<SpectatorMenuPageView<'_>> {
+        let menu = self.spectator_gui.menu.as_ref()?;
+        let alpha = self.spectator_menu_alpha_at(now);
+        (alpha > 0.0).then(|| SpectatorMenuPageView {
+            alpha,
+            selected_slot: menu.selected_slot,
+            prompt: menu.prompt(),
+            slots: std::array::from_fn(|slot| menu.item_view(slot as u8)),
+        })
+    }
+
+    fn spectator_menu_alpha_at(&self, now: Instant) -> f32 {
+        let Some(last) = self.spectator_gui.last_selection_at else {
+            return 0.0;
+        };
+        let elapsed = now
+            .checked_duration_since(last)
+            .unwrap_or_default()
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64;
+        let remaining = SPECTATOR_MENU_FADE_OUT_DELAY
+            .as_millis()
+            .saturating_sub(u128::from(elapsed)) as f32;
+        (remaining / SPECTATOR_MENU_FADE_OUT_TIME_MILLIS).clamp(0.0, 1.0)
     }
 
     fn apply_spectator_menu_outcome(
@@ -730,6 +833,19 @@ mod tests {
             input.spectator_gui.menu.as_ref().unwrap().selected_slot,
             SPECTATOR_MENU_CLOSE_SLOT as i8
         );
+        let opaque = input
+            .spectator_menu_page_at(start + Duration::from_millis(3_001))
+            .unwrap();
+        assert_eq!(opaque.alpha, 1.0);
+        assert_eq!(opaque.prompt, SpectatorMenuPrompt::Root);
+        assert!(matches!(
+            opaque.slots[SPECTATOR_MENU_CLOSE_SLOT as usize],
+            SpectatorMenuItemView::Close
+        ));
+        let fading = input
+            .spectator_menu_page_at(start + Duration::from_millis(4_001))
+            .unwrap();
+        assert_eq!(fading.alpha, 0.5);
         input.expire_spectator_menu_at(start + Duration::from_millis(5_000));
         assert!(input.spectator_menu_is_active());
         input.expire_spectator_menu_at(start + Duration::from_millis(5_001));

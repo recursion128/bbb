@@ -181,7 +181,7 @@ mod jigsaw_block;
 mod minecart_command_block;
 mod mouse;
 mod movement;
-mod spectator_menu;
+pub(crate) mod spectator_menu;
 mod structure_block;
 mod test_block;
 mod test_instance_block;

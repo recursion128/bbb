@@ -1204,5 +1204,11 @@ pub(crate) fn default_spear_kinetic_weapon_for_resource_id(
     hands::spear_kinetic_weapon_for_resource_id(item_runtime, resource_id)
 }
 
+pub(crate) fn player_info_resolvable_profile(
+    profile: &bbb_world::PlayerInfoProfileState,
+) -> ResolvableProfileSummary {
+    variants::player_info_profile_resolvable(profile)
+}
+
 #[cfg(test)]
 mod tests;
