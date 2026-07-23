@@ -909,6 +909,8 @@ impl WorldStore {
         self.close_minecart_command_block_editor();
         self.close_structure_block_editor();
         self.close_jigsaw_block_editor();
+        self.close_test_block_editor();
+        self.close_test_instance_block_editor();
         self.clear_debug_subscriber_values();
         self.clear_queued_light_updates();
         self.chunks.clear();

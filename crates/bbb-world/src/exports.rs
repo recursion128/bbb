@@ -522,5 +522,6 @@ pub use crate::registries::{
 };
 pub use crate::structure_blocks::*;
 pub use crate::terrain_state::*;
+pub use crate::test_blocks::*;
 pub use crate::test_instance_blocks::*;
 pub use crate::world_state::*;

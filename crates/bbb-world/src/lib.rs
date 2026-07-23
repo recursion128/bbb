@@ -43,6 +43,7 @@ mod store;
 mod structure_blocks;
 mod terrain;
 mod terrain_state;
+mod test_blocks;
 mod test_instance_blocks;
 mod world_state;
 

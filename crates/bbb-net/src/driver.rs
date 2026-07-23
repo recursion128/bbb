@@ -27,8 +27,9 @@ pub(crate) use commands::{
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
     send_set_beacon, send_set_command_block, send_set_command_minecart,
     send_set_creative_mode_slot, send_set_held_slot_command, send_set_jigsaw_block,
-    send_set_structure_block, send_sign_update, send_spectate_entity, send_swing_command,
-    send_teleport_to_entity, send_test_instance_block_action, send_use_item, send_use_item_on,
+    send_set_structure_block, send_set_test_block, send_sign_update, send_spectate_entity,
+    send_swing_command, send_teleport_to_entity, send_test_instance_block_action, send_use_item,
+    send_use_item_on,
 };
 use commands::{
     send_client_tick_end, send_player_loaded, send_player_move_command,
@@ -266,6 +267,9 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::SetStructureBlock(packet)) => {
                         send_set_structure_block(conn, packet).await?;
                     }
+                    Some(NetCommand::SetTestBlock(packet)) => {
+                        send_set_test_block(conn, packet).await?;
+                    }
                     Some(NetCommand::TestInstanceBlockAction(packet)) => {
                         send_test_instance_block_action(conn, packet).await?;
                     }
@@ -387,6 +391,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::SetJigsawBlock(_)) => {}
                     Some(NetCommand::JigsawGenerate(_)) => {}
                     Some(NetCommand::SetStructureBlock(_)) => {}
+                    Some(NetCommand::SetTestBlock(_)) => {}
                     Some(NetCommand::TestInstanceBlockAction(_)) => {}
                     Some(NetCommand::SetCreativeModeSlot(_)) => {}
                     Some(NetCommand::SignUpdate(_)) => {}
@@ -438,9 +443,9 @@ mod tests {
             RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
             ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
             ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCommandMinecart,
-            SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity,
-            StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
-            StructureBlockUpdateKind, TeleportToEntity, TestInstanceBlockAction,
+            SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate,
+            SpectateEntity, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+            StructureBlockUpdateKind, TeleportToEntity, TestBlockMode, TestInstanceBlockAction,
             TestInstanceBlockActionKind, TestInstanceBlockRotation, UseItem, UseItemOn, Vec3d,
             Vec3i,
         },
@@ -1485,6 +1490,31 @@ mod tests {
         assert_eq!(decoder.read_var_i32().unwrap(), 3);
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert_eq!(decoder.read_string(128).unwrap(), "example:test");
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_test_block_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetTestBlock(SetTestBlock {
+            pos: BlockPos { x: 1, y: 2, z: 3 },
+            mode: TestBlockMode::Log,
+            message: "log this test".to_string(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set test block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_TEST_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_string(128).unwrap(), "log this test");
+        assert!(decoder.is_empty());
     }
 
     #[tokio::test]

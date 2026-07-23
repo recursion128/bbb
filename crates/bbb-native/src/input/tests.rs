@@ -1180,6 +1180,7 @@ fn insert_sign_text(world: &mut WorldStore, pos: BlockPos, front: [&str; 4], bac
             command_block: None,
             structure_block: None,
             jigsaw_block: None,
+            test_block: None,
             test_instance_block: None,
             vault_shared_data: None,
             decorated_pot_sherds: None,
@@ -1238,6 +1239,7 @@ fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
         }),
         structure_block: None,
         jigsaw_block: None,
+        test_block: None,
         test_instance_block: None,
         note_block_sound: None,
     };
@@ -1341,6 +1343,7 @@ fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
         command_block: None,
         structure_block: None,
         jigsaw_block: None,
+        test_block: None,
         test_instance_block: Some(TestInstanceBlockEntityDataState {
             test: Some("example:initial".to_string()),
             size: TestInstanceBlockSizeState { x: 3, y: 4, z: 5 },
@@ -1404,6 +1407,7 @@ fn world_with_structure_block(pos: BlockPos) -> WorldStore {
         end_gateway: None,
         spawner: None,
         command_block: None,
+        test_block: None,
         structure_block: Some(StructureBlockEntityDataState {
             name: "example:initial".to_string(),
             author: "builder".to_string(),
@@ -1488,6 +1492,7 @@ fn world_with_jigsaw_block(pos: BlockPos, orientation: &str) -> WorldStore {
             selection_priority: -2,
             placement_priority: 3,
         }),
+        test_block: None,
         test_instance_block: None,
         note_block_sound: None,
     };

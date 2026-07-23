@@ -2246,6 +2246,7 @@ fn applies_block_entity_data_update() {
             command_block: None,
             structure_block: None,
             jigsaw_block: None,
+            test_block: None,
             test_instance_block: None,
             note_block_sound: None,
         }

@@ -27,6 +27,7 @@ pub mod server_presentation;
 pub mod serverbound;
 pub mod structure_blocks;
 pub mod tags;
+pub mod test_blocks;
 pub mod test_instance_blocks;
 pub mod waypoints;
 mod wire;

@@ -12,9 +12,9 @@ use super::{
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
     send_select_bundle_item, send_select_trade, send_set_beacon, send_set_command_block,
     send_set_command_minecart, send_set_creative_mode_slot, send_set_held_slot_command,
-    send_set_jigsaw_block, send_set_structure_block, send_sign_update, send_spectate_entity,
-    send_swing_command, send_teleport_to_entity, send_test_instance_block_action, send_use_item,
-    send_use_item_on, send_vehicle_move_command,
+    send_set_jigsaw_block, send_set_structure_block, send_set_test_block, send_sign_update,
+    send_spectate_entity, send_swing_command, send_teleport_to_entity,
+    send_test_instance_block_action, send_use_item, send_use_item_on, send_vehicle_move_command,
 };
 use crate::{
     connection::RawConnection,
@@ -35,10 +35,11 @@ use bbb_protocol::{
         PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
         RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements,
         SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-        SetCommandMinecart, SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate,
-        SpectateEntity, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
-        StructureBlockUpdateKind, TeleportToEntity, TestInstanceBlockAction,
-        TestInstanceBlockActionKind, TestInstanceBlockRotation, Vec3d, Vec3i,
+        SetCommandMinecart, SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SetTestBlock,
+        SignUpdate, SpectateEntity, StructureBlockMirror, StructureBlockMode,
+        StructureBlockRotation, StructureBlockUpdateKind, TeleportToEntity, TestBlockMode,
+        TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation, Vec3d,
+        Vec3i,
     },
 };
 use std::{
@@ -1880,6 +1881,42 @@ async fn send_set_structure_block_encodes_editor_packet() {
             show_bounding_box: false,
             integrity: 0.75,
             seed: 42,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_set_test_block_encodes_editor_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection::from_stream(stream, None);
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("set test block command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_TEST_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -274_877_898_688);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_string(128).unwrap(), "accept this test");
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_set_test_block(
+        &mut conn,
+        SetTestBlock {
+            pos: BlockPos { x: -1, y: 64, z: 2 },
+            mode: TestBlockMode::Accept,
+            message: "accept this test".to_string(),
         },
     )
     .await

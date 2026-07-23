@@ -235,6 +235,19 @@ impl WorldStore {
         } else {
             None
         };
+        let test_block = if packet.block_entity_type_id
+            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID
+        {
+            match crate::test_blocks::decode_test_block_entity_data(&packet.raw_nbt) {
+                Ok(data) => Some(data),
+                Err(err) => {
+                    self.record_apply_error("block_entity_data", &err);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
         let test_instance_block = if packet.block_entity_type_id
             == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
         {
@@ -283,6 +296,7 @@ impl WorldStore {
             command_block,
             structure_block,
             jigsaw_block,
+            test_block,
             test_instance_block,
             note_block_sound,
         };
