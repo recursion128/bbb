@@ -246,10 +246,9 @@ filesystem path, decoded asset, GPU handle or mutable selection control.
 
 The remaining resource-specific gaps are behavioral breadth rather than a
 parallel lifecycle: atlas mip animation consumption, full dynamic item tint
-coverage, equipment layer presentation, player-head block-entity profile skin,
-and broader non-profile remote texture producers. New consumers must join the
-same selected generation and bounded dynamic texture surface; they must not add
-another cache state machine.
+coverage, equipment layer presentation, and broader non-profile remote texture
+producers. New consumers must join the same selected generation and bounded
+dynamic texture surface; they must not add another cache state machine.
 
 ## Vanilla 26.1 Evidence
 

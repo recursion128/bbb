@@ -7050,6 +7050,8 @@
             "crates/bbb-world/src/chunks/store.rs#apply_block_entity_data",
             "crates/bbb-world/src/chunks/tests.rs#block_entity_data_updates_every_known_matching_type_and_ignores_mismatches_before_decode",
             "crates/bbb-world/src/chunks/tests.rs#typed_block_entity_projections_are_selected_only_by_generated_type_identity",
+            "crates/bbb-world/src/chunks/tests.rs#decodes_and_replaces_skull_profile_from_chunk_and_block_entity_data",
+            "crates/bbb-world/src/skull_blocks.rs#player_skull_source_projects_exact_block_entity_profile",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockEntityData",
             "vanilla:net/minecraft/world/level/BlockGetter.java#getBlockEntity"
           ],
@@ -7081,6 +7083,8 @@
             "crates/bbb-native/src/banner_scene.rs#projects_banner_instances_with_color_patterns_yaw_phase_and_light",
             "crates/bbb-native/src/decorated_pot_scene.rs#projects_pot_instances_with_patterns_facing_wobble_and_light",
             "crates/bbb-native/src/spawner_scene.rs#projects_spawner_display_entity_as_wrapped_entity_model_instance",
+            "crates/bbb-native/src/skull_scene.rs#profiled_player_head_projects_owner_fallback_and_ready_dynamic_skin",
+            "crates/bbb-renderer/src/entity_models/tests/custom_head_skull.rs#custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockEntityData"
           ],
           "gap": null,
@@ -7094,7 +7098,12 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_block_entity_sign_text_to_world",
             "crates/bbb-world/src/chunks/tests.rs#block_entity_data_updates_every_known_matching_type_and_ignores_mismatches_before_decode",
             "crates/bbb-world/src/chunks/tests.rs#typed_block_entity_projections_are_selected_only_by_generated_type_identity",
-            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#block_entity_data_sign_text_updates_world_through_event_dispatcher"
+            "crates/bbb-world/src/chunks/tests.rs#decodes_and_replaces_skull_profile_from_chunk_and_block_entity_data",
+            "crates/bbb-world/src/skull_blocks.rs#player_skull_source_projects_exact_block_entity_profile",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#player_skin_for_profile_resolves_dynamic_owner_before_skin_selection",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#block_entity_data_sign_text_updates_world_through_event_dispatcher",
+            "crates/bbb-native/src/skull_scene.rs#profiled_player_head_projects_owner_fallback_and_ready_dynamic_skin",
+            "crates/bbb-renderer/src/entity_models/tests/custom_head_skull.rs#custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas"
           ],
           "gap": null,
           "status": "complete"

@@ -266,8 +266,6 @@ foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺
 - entity-in-UI preview 的 `item_layers` GPU 绘制（原 P1-4）：defer，需 native
   侧 baked hand/head item model 元数据。
 - font bidi / unihex（原 P1-3 font 五连剩余）：defer。
-- player-head BE `profile` owner skin（原 P2 terrain 边界）：随 P3 动态纹理 /
-  profile 管线落地；无 profile 的 player head 已走 vanilla 默认皮肤 fallback。
 
 ### P1：可玩 Session 端到端门禁
 
@@ -426,9 +424,8 @@ elytra 动态纹理 owner 已落地；owner/失效合同以
 `docs/resource-pack-lifecycle-design.md` 为准。剩余工作不得重建平行 pack
 stack、cache 状态机或 selectable old/new reload path。
 
-1. **non-profile 动态纹理**：player-head block entity profile skin 及后续
-   真实远端 producer 复用既有 bounded pending/ready/failed owner；
-   profileless head 保留 vanilla default skin。
+1. **non-profile 动态纹理**：后续真实远端 producer 复用既有 bounded
+   pending/ready/failed owner。
 2. **同步 registry 到 custom presentation**：server/datapack 的 custom
    block/entity identity 接现有 model/texture loader 与 exact fallback；不用
    bootstrap ordinal、名称猜测或第二套 schema 代替 session RegistryAccess。

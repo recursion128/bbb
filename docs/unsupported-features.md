@@ -970,8 +970,6 @@ publishes source/priority/failure plus bounded dynamic-texture observations.
 Skin/cape/elytra requests share one exact resource/session-generation cache.
 
 - Implement broader non-profile dynamic texture loading.
-- Resolve player-head block-entity `profile` owner skins through that pipeline.
-  Profileless player heads use the vanilla default player skin fallback.
 - Connect synchronized custom block/entity registry identities to the existing
   resource-pack model/texture loaders. The selected-generation fixtures already
   cover custom item/cuboid model, PNG texture, font, sound and data-resource

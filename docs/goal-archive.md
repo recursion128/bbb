@@ -335,3 +335,7 @@
   10 秒到期与 level reset；0.02 膨胀绿盒和相对坐标标签经透明合成后的独立深度清除
   pass 呈现，五类 coverage 全部 complete，合同见
   `docs/archive/game-test-highlight-presentation-closure-design.md`。
+- **2026-07-23（玩家头颅方块 profile 皮肤闭环）**：共享 ResolvableProfile Codec
+  投影贯穿初始区块/BlockEntityData 原子 owner、异步 profile/skin generation 与现有
+  dynamic atlas；profileless/ProfiledDefault/ready/failure fallback 均锁定，合同见
+  `docs/archive/player-head-block-profile-skin-closure-design.md`。
