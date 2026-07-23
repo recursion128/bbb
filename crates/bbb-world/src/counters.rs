@@ -486,8 +486,8 @@ mod tests {
         let obj = value
             .as_object()
             .expect("WorldCounters serializes to a JSON object");
-        // Total field count must stay at 338 (guards dropped / extra fields).
-        assert_eq!(obj.len(), 338, "WorldCounters field count changed");
+        // Total field count must stay at 339 (guards dropped / extra fields).
+        assert_eq!(obj.len(), 339, "WorldCounters field count changed");
         assert_eq!(obj.len(), EXPECTED_FIELDS.len());
         // Exact name set (guards renames).
         for name in EXPECTED_FIELDS {
