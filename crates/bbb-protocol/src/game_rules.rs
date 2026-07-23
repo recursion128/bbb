@@ -3,88 +3,147 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameRuleValueKind {
     Boolean,
     Integer { min: i32, max: i32 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
+pub enum GameRuleValue {
+    Boolean(bool),
+    Integer(i32),
+}
+
+impl GameRuleValue {
+    pub fn serialize(self) -> String {
+        match self {
+            Self::Boolean(value) => value.to_string(),
+            Self::Integer(value) => value.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameRuleCatalogEntry {
     pub constant_name: &'static str,
     pub resource_id: &'static str,
+    pub category: &'static str,
     pub value_kind: GameRuleValueKind,
+}
+
+impl GameRuleCatalogEntry {
+    pub fn parse_value(self, raw: &str) -> Option<GameRuleValue> {
+        match self.value_kind {
+            GameRuleValueKind::Boolean => match raw {
+                "true" => Some(GameRuleValue::Boolean(true)),
+                "false" => Some(GameRuleValue::Boolean(false)),
+                _ => None,
+            },
+            GameRuleValueKind::Integer { min, max } => {
+                if !game_rule_integer_syntax_is_valid(raw) {
+                    return None;
+                }
+                let value = raw.parse::<i32>().ok()?;
+                (min..=max)
+                    .contains(&value)
+                    .then_some(GameRuleValue::Integer(value))
+            }
+        }
+    }
+}
+
+fn game_rule_integer_syntax_is_valid(raw: &str) -> bool {
+    let digits = raw.strip_prefix('-').unwrap_or(raw);
+    !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "ADVANCE_TIME",
         resource_id: "minecraft:advance_time",
+        category: "updates",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "ADVANCE_WEATHER",
         resource_id: "minecraft:advance_weather",
+        category: "updates",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "ALLOW_ENTERING_NETHER_USING_PORTALS",
         resource_id: "minecraft:allow_entering_nether_using_portals",
+        category: "misc",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "BLOCK_DROPS",
         resource_id: "minecraft:block_drops",
+        category: "drops",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "BLOCK_EXPLOSION_DROP_DECAY",
         resource_id: "minecraft:block_explosion_drop_decay",
+        category: "drops",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "COMMAND_BLOCKS_WORK",
         resource_id: "minecraft:command_blocks_work",
+        category: "misc",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "COMMAND_BLOCK_OUTPUT",
         resource_id: "minecraft:command_block_output",
+        category: "chat",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "DROWNING_DAMAGE",
         resource_id: "minecraft:drowning_damage",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "ELYTRA_MOVEMENT_CHECK",
         resource_id: "minecraft:elytra_movement_check",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "ENDER_PEARLS_VANISH_ON_DEATH",
         resource_id: "minecraft:ender_pearls_vanish_on_death",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "ENTITY_DROPS",
         resource_id: "minecraft:entity_drops",
+        category: "drops",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "FALL_DAMAGE",
         resource_id: "minecraft:fall_damage",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "FIRE_DAMAGE",
         resource_id: "minecraft:fire_damage",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "FIRE_SPREAD_RADIUS_AROUND_PLAYER",
         resource_id: "minecraft:fire_spread_radius_around_player",
+        category: "updates",
         value_kind: GameRuleValueKind::Integer {
             min: -1,
             max: 2147483647,
@@ -93,51 +152,61 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "FORGIVE_DEAD_PLAYERS",
         resource_id: "minecraft:forgive_dead_players",
+        category: "mobs",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "FREEZE_DAMAGE",
         resource_id: "minecraft:freeze_damage",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "GLOBAL_SOUND_EVENTS",
         resource_id: "minecraft:global_sound_events",
+        category: "misc",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "IMMEDIATE_RESPAWN",
         resource_id: "minecraft:immediate_respawn",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "KEEP_INVENTORY",
         resource_id: "minecraft:keep_inventory",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "LAVA_SOURCE_CONVERSION",
         resource_id: "minecraft:lava_source_conversion",
+        category: "updates",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "LIMITED_CRAFTING",
         resource_id: "minecraft:limited_crafting",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "LOCATOR_BAR",
         resource_id: "minecraft:locator_bar",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "LOG_ADMIN_COMMANDS",
         resource_id: "minecraft:log_admin_commands",
+        category: "chat",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "MAX_BLOCK_MODIFICATIONS",
         resource_id: "minecraft:max_block_modifications",
+        category: "misc",
         value_kind: GameRuleValueKind::Integer {
             min: 1,
             max: 2147483647,
@@ -146,6 +215,7 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "MAX_COMMAND_FORKS",
         resource_id: "minecraft:max_command_forks",
+        category: "misc",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -154,6 +224,7 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "MAX_COMMAND_SEQUENCE_LENGTH",
         resource_id: "minecraft:max_command_sequence_length",
+        category: "misc",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -162,6 +233,7 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "MAX_ENTITY_CRAMMING",
         resource_id: "minecraft:max_entity_cramming",
+        category: "mobs",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -170,41 +242,49 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "MAX_MINECART_SPEED",
         resource_id: "minecraft:max_minecart_speed",
+        category: "misc",
         value_kind: GameRuleValueKind::Integer { min: 1, max: 1000 },
     },
     GameRuleCatalogEntry {
         constant_name: "MAX_SNOW_ACCUMULATION_HEIGHT",
         resource_id: "minecraft:max_snow_accumulation_height",
+        category: "updates",
         value_kind: GameRuleValueKind::Integer { min: 0, max: 8 },
     },
     GameRuleCatalogEntry {
         constant_name: "MOB_DROPS",
         resource_id: "minecraft:mob_drops",
+        category: "drops",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "MOB_EXPLOSION_DROP_DECAY",
         resource_id: "minecraft:mob_explosion_drop_decay",
+        category: "drops",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "MOB_GRIEFING",
         resource_id: "minecraft:mob_griefing",
+        category: "mobs",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "NATURAL_HEALTH_REGENERATION",
         resource_id: "minecraft:natural_health_regeneration",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "PLAYER_MOVEMENT_CHECK",
         resource_id: "minecraft:player_movement_check",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "PLAYERS_NETHER_PORTAL_CREATIVE_DELAY",
         resource_id: "minecraft:players_nether_portal_creative_delay",
+        category: "player",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -213,6 +293,7 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "PLAYERS_NETHER_PORTAL_DEFAULT_DELAY",
         resource_id: "minecraft:players_nether_portal_default_delay",
+        category: "player",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -221,6 +302,7 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "PLAYERS_SLEEPING_PERCENTAGE",
         resource_id: "minecraft:players_sleeping_percentage",
+        category: "player",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -229,21 +311,25 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "PROJECTILES_CAN_BREAK_BLOCKS",
         resource_id: "minecraft:projectiles_can_break_blocks",
+        category: "drops",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "PVP",
         resource_id: "minecraft:pvp",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "RAIDS",
         resource_id: "minecraft:raids",
+        category: "mobs",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "RANDOM_TICK_SPEED",
         resource_id: "minecraft:random_tick_speed",
+        category: "updates",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -252,11 +338,13 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "REDUCED_DEBUG_INFO",
         resource_id: "minecraft:reduced_debug_info",
+        category: "misc",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "RESPAWN_RADIUS",
         resource_id: "minecraft:respawn_radius",
+        category: "player",
         value_kind: GameRuleValueKind::Integer {
             min: 0,
             max: 2147483647,
@@ -265,81 +353,97 @@ pub const VANILLA_GAME_RULES: &[GameRuleCatalogEntry] = &[
     GameRuleCatalogEntry {
         constant_name: "SEND_COMMAND_FEEDBACK",
         resource_id: "minecraft:send_command_feedback",
+        category: "chat",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SHOW_ADVANCEMENT_MESSAGES",
         resource_id: "minecraft:show_advancement_messages",
+        category: "chat",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SHOW_DEATH_MESSAGES",
         resource_id: "minecraft:show_death_messages",
+        category: "chat",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPAWNER_BLOCKS_WORK",
         resource_id: "minecraft:spawner_blocks_work",
+        category: "misc",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPAWN_MOBS",
         resource_id: "minecraft:spawn_mobs",
+        category: "spawning",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPAWN_MONSTERS",
         resource_id: "minecraft:spawn_monsters",
+        category: "spawning",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPAWN_PATROLS",
         resource_id: "minecraft:spawn_patrols",
+        category: "spawning",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPAWN_PHANTOMS",
         resource_id: "minecraft:spawn_phantoms",
+        category: "spawning",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPAWN_WANDERING_TRADERS",
         resource_id: "minecraft:spawn_wandering_traders",
+        category: "spawning",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPAWN_WARDENS",
         resource_id: "minecraft:spawn_wardens",
+        category: "spawning",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPECTATORS_GENERATE_CHUNKS",
         resource_id: "minecraft:spectators_generate_chunks",
+        category: "player",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "SPREAD_VINES",
         resource_id: "minecraft:spread_vines",
+        category: "updates",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "TNT_EXPLODES",
         resource_id: "minecraft:tnt_explodes",
+        category: "misc",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "TNT_EXPLOSION_DROP_DECAY",
         resource_id: "minecraft:tnt_explosion_drop_decay",
+        category: "drops",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "UNIVERSAL_ANGER",
         resource_id: "minecraft:universal_anger",
+        category: "mobs",
         value_kind: GameRuleValueKind::Boolean,
     },
     GameRuleCatalogEntry {
         constant_name: "WATER_SOURCE_CONVERSION",
         resource_id: "minecraft:water_source_conversion",
+        category: "updates",
         value_kind: GameRuleValueKind::Boolean,
     },
 ];
@@ -363,6 +467,10 @@ mod tests {
         for entry in VANILLA_GAME_RULES {
             assert!(resource_ids.insert(entry.resource_id));
             assert_eq!(vanilla_game_rule(entry.resource_id), Some(entry));
+            assert!(matches!(
+                entry.category,
+                "chat" | "drops" | "misc" | "mobs" | "player" | "spawning" | "updates"
+            ));
         }
         assert_eq!(vanilla_game_rule("minecraft:unknown"), None);
         assert_eq!(
@@ -392,6 +500,38 @@ mod tests {
                 .value_kind,
             GameRuleValueKind::Integer { min: 1, max: 1000 },
         );
+        assert_eq!(
+            vanilla_game_rule("minecraft:keep_inventory")
+                .unwrap()
+                .category,
+            "player"
+        );
+    }
+
+    #[test]
+    fn game_rule_values_parse_like_brigadier_and_apply_bounds() {
+        let boolean = *vanilla_game_rule("minecraft:keep_inventory").unwrap();
+        assert_eq!(
+            boolean.parse_value("true"),
+            Some(GameRuleValue::Boolean(true))
+        );
+        assert_eq!(
+            boolean.parse_value("false"),
+            Some(GameRuleValue::Boolean(false))
+        );
+        assert_eq!(boolean.parse_value("TRUE"), None);
+        assert_eq!(boolean.parse_value(" true"), None);
+
+        let snow = *vanilla_game_rule("minecraft:max_snow_accumulation_height").unwrap();
+        assert_eq!(snow.parse_value("0"), Some(GameRuleValue::Integer(0)));
+        assert_eq!(snow.parse_value("-0"), Some(GameRuleValue::Integer(0)));
+        assert_eq!(snow.parse_value("08"), Some(GameRuleValue::Integer(8)));
+        assert_eq!(snow.parse_value("-1"), None);
+        assert_eq!(snow.parse_value("9"), None);
+        assert_eq!(snow.parse_value("+1"), None);
+        assert_eq!(snow.parse_value("1x"), None);
+        assert_eq!(snow.parse_value("2147483648"), None);
+        assert_eq!(GameRuleValue::Integer(8).serialize(), "8");
     }
 
     #[test]

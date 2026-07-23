@@ -7,9 +7,9 @@ use bbb_protocol::packets::{
     PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
     RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
     SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-    SetCommandMinecart, SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SetTestBlock,
-    SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
-    Vec3d,
+    SetCommandMinecart, SetCreativeModeSlot, SetGameRule, SetJigsawBlock, SetStructureBlock,
+    SetTestBlock, SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem,
+    UseItemOn, Vec3d,
 };
 use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
 use serde::{Deserialize, Serialize};
@@ -241,6 +241,7 @@ pub enum NetCommand {
     ChangeDifficulty(ChangeDifficultyCommand),
     ChangeGameMode(ChangeGameModeCommand),
     LockDifficulty(LockDifficultyCommand),
+    SetGameRule(SetGameRule),
     PlaceRecipe(PlaceRecipeCommand),
     RecipeBookChangeSettings(RecipeBookChangeSettingsCommand),
     RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand),

@@ -11,6 +11,7 @@ pub use crate::player_action_kinds::PlayerActionKind;
 pub use crate::player_command_actions::PlayerCommandAction;
 use crate::{
     codec::{Encoder, ProtocolError, Result},
+    game_rules::{vanilla_game_rule, VANILLA_GAME_RULES},
     ids,
 };
 
@@ -40,6 +41,7 @@ const MAX_ARGUMENT_SIGNATURE_NAME_CHARS: usize = 16;
 const MAX_CHAT_MESSAGE_CHARS: usize = 256;
 const MAX_CONTAINER_CLICK_CHANGED_SLOTS: usize = 128;
 const MAX_HASHED_COMPONENT_PATCH_ENTRIES: usize = 256;
+const MAX_GAME_RULE_VALUE_UTF16_UNITS: usize = 32767;
 const MAX_PROFILE_PUBLIC_KEY_BYTES: usize = 512;
 const MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES: usize = 4096;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
@@ -183,6 +185,17 @@ pub struct ChatAcknowledgement {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LockDifficultyCommand {
     pub locked: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetGameRule {
+    pub entries: Vec<SetGameRuleEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetGameRuleEntry {
+    pub rule: String,
+    pub value: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -555,6 +568,50 @@ pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<
     let mut out = Encoder::new();
     out.write_bool(command.locked);
     (ids::play::SERVERBOUND_LOCK_DIFFICULTY, out.into_inner())
+}
+
+pub fn encode_play_set_game_rule(packet: &SetGameRule) -> Result<(i32, Vec<u8>)> {
+    if packet.entries.len() > VANILLA_GAME_RULES.len() {
+        return Err(ProtocolError::InvalidData(format!(
+            "set game rule entry count {} exceeds built-in game rule count {}",
+            packet.entries.len(),
+            VANILLA_GAME_RULES.len()
+        )));
+    }
+
+    let mut seen = BTreeSet::new();
+    let mut entries = Vec::with_capacity(packet.entries.len());
+    for entry in &packet.entries {
+        let rule = normalize_resource_location(entry.rule.clone())?;
+        let catalog = vanilla_game_rule(&rule).ok_or_else(|| {
+            ProtocolError::InvalidData(format!("unknown built-in game rule {rule}"))
+        })?;
+        if !seen.insert(rule.clone()) {
+            return Err(ProtocolError::InvalidData(format!(
+                "duplicate set game rule entry {rule}"
+            )));
+        }
+        if entry.value.encode_utf16().count() > MAX_GAME_RULE_VALUE_UTF16_UNITS {
+            return Err(ProtocolError::InvalidData(format!(
+                "set game rule value exceeds vanilla maximum of {MAX_GAME_RULE_VALUE_UTF16_UNITS} UTF-16 code units"
+            )));
+        }
+        if catalog.parse_value(&entry.value).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid value `{}` for built-in game rule {rule}",
+                entry.value
+            )));
+        }
+        entries.push((rule, entry.value.as_str()));
+    }
+
+    let mut out = Encoder::new();
+    out.write_var_i32(i32::try_from(entries.len()).expect("built-in game rule count fits i32"));
+    for (rule, value) in entries {
+        out.write_string(&rule);
+        out.write_string(value);
+    }
+    Ok((ids::play::SERVERBOUND_SET_GAME_RULE, out.into_inner()))
 }
 
 pub fn encode_play_block_entity_tag_query(packet: BlockEntityTagQuery) -> (i32, Vec<u8>) {

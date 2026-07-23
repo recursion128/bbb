@@ -1308,6 +1308,76 @@ fn encodes_client_command_actions() {
 }
 
 #[test]
+fn encodes_set_game_rule_entries_in_wire_order() {
+    let (id, payload) = encode_play_set_game_rule(&SetGameRule {
+        entries: vec![
+            SetGameRuleEntry {
+                rule: "keep_inventory".to_string(),
+                value: "true".to_string(),
+            },
+            SetGameRuleEntry {
+                rule: "minecraft:random_tick_speed".to_string(),
+                value: "12".to_string(),
+            },
+        ],
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_GAME_RULE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 2);
+    assert_eq!(
+        decoder.read_string(32767).unwrap(),
+        "minecraft:keep_inventory"
+    );
+    assert_eq!(decoder.read_string(32767).unwrap(), "true");
+    assert_eq!(
+        decoder.read_string(32767).unwrap(),
+        "minecraft:random_tick_speed"
+    );
+    assert_eq!(decoder.read_string(32767).unwrap(), "12");
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn set_game_rule_rejects_unknown_duplicate_and_invalid_entries() {
+    for packet in [
+        SetGameRule {
+            entries: vec![SetGameRuleEntry {
+                rule: "minecraft:custom_rule".to_string(),
+                value: "true".to_string(),
+            }],
+        },
+        SetGameRule {
+            entries: vec![
+                SetGameRuleEntry {
+                    rule: "keep_inventory".to_string(),
+                    value: "true".to_string(),
+                },
+                SetGameRuleEntry {
+                    rule: "minecraft:keep_inventory".to_string(),
+                    value: "false".to_string(),
+                },
+            ],
+        },
+        SetGameRule {
+            entries: vec![SetGameRuleEntry {
+                rule: "minecraft:keep_inventory".to_string(),
+                value: "TRUE".to_string(),
+            }],
+        },
+        SetGameRule {
+            entries: vec![SetGameRuleEntry {
+                rule: "minecraft:max_snow_accumulation_height".to_string(),
+                value: "9".to_string(),
+            }],
+        },
+    ] {
+        assert!(encode_play_set_game_rule(&packet).is_err());
+    }
+}
+
+#[test]
 fn encodes_set_carried_item() {
     let (id, payload) = encode_play_set_carried_item(6);
     assert_eq!(id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);

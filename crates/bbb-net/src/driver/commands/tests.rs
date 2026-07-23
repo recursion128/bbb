@@ -11,10 +11,11 @@ use super::{
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
     send_select_bundle_item, send_select_trade, send_set_beacon, send_set_command_block,
-    send_set_command_minecart, send_set_creative_mode_slot, send_set_held_slot_command,
-    send_set_jigsaw_block, send_set_structure_block, send_set_test_block, send_sign_update,
-    send_spectate_entity, send_swing_command, send_teleport_to_entity,
-    send_test_instance_block_action, send_use_item, send_use_item_on, send_vehicle_move_command,
+    send_set_command_minecart, send_set_creative_mode_slot, send_set_game_rule,
+    send_set_held_slot_command, send_set_jigsaw_block, send_set_structure_block,
+    send_set_test_block, send_sign_update, send_spectate_entity, send_swing_command,
+    send_teleport_to_entity, send_test_instance_block_action, send_use_item, send_use_item_on,
+    send_vehicle_move_command,
 };
 use crate::{
     connection::RawConnection,
@@ -35,11 +36,11 @@ use bbb_protocol::{
         PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
         RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements,
         SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-        SetCommandMinecart, SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SetTestBlock,
-        SignUpdate, SpectateEntity, StructureBlockMirror, StructureBlockMode,
-        StructureBlockRotation, StructureBlockUpdateKind, TeleportToEntity, TestBlockMode,
-        TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation, Vec3d,
-        Vec3i,
+        SetCommandMinecart, SetCreativeModeSlot, SetGameRule, SetGameRuleEntry, SetJigsawBlock,
+        SetStructureBlock, SetTestBlock, SignUpdate, SpectateEntity, StructureBlockMirror,
+        StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind, TeleportToEntity,
+        TestBlockMode, TestInstanceBlockAction, TestInstanceBlockActionKind,
+        TestInstanceBlockRotation, Vec3d, Vec3i,
     },
 };
 use std::{
@@ -1603,6 +1604,57 @@ async fn send_difficulty_commands_encode_packets() {
     send_lock_difficulty(&mut conn, LockDifficultyCommand { locked: true })
         .await
         .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_set_game_rule_encodes_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection::from_stream(stream, None);
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("set game rule command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_GAME_RULE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert_eq!(
+            decoder.read_string(32_767).unwrap(),
+            "minecraft:keep_inventory"
+        );
+        assert_eq!(decoder.read_string(32_767).unwrap(), "true");
+        assert_eq!(
+            decoder.read_string(32_767).unwrap(),
+            "minecraft:random_tick_speed"
+        );
+        assert_eq!(decoder.read_string(32_767).unwrap(), "6");
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_set_game_rule(
+        &mut conn,
+        SetGameRule {
+            entries: vec![
+                SetGameRuleEntry {
+                    rule: "keep_inventory".to_string(),
+                    value: "true".to_string(),
+                },
+                SetGameRuleEntry {
+                    rule: "random_tick_speed".to_string(),
+                    value: "6".to_string(),
+                },
+            ],
+        },
+    )
+    .await
+    .unwrap();
 
     server.await.unwrap();
 }

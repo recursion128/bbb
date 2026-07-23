@@ -9,8 +9,8 @@ use bbb_protocol::packets::{
     PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
     RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
     ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCommandMinecart, SetCreativeModeSlot,
-    SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate, SpectateEntity, TeleportToEntity,
-    TestInstanceBlockAction, UseItem, UseItemOn,
+    SetGameRule, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate, SpectateEntity,
+    TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
 };
 use uuid::Uuid;
 
@@ -277,6 +277,14 @@ pub(crate) async fn send_lock_difficulty(
     command: LockDifficultyCommand,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_lock_difficulty(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_set_game_rule(
+    conn: &mut RawConnection,
+    packet: SetGameRule,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_set_game_rule(&packet)?;
     conn.send_packet(id, &payload).await
 }
 

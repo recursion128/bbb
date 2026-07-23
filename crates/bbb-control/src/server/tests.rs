@@ -1041,11 +1041,13 @@ fn net_difficulty_counters_deserialize_with_defaults() {
     let object = value.as_object_mut().unwrap();
     object.remove("change_difficulty_commands_queued");
     object.remove("lock_difficulty_commands_queued");
+    object.remove("set_game_rule_commands_queued");
 
     let counters: NetCounters = serde_json::from_value(value).unwrap();
 
     assert_eq!(counters.change_difficulty_commands_queued, 0);
     assert_eq!(counters.lock_difficulty_commands_queued, 0);
+    assert_eq!(counters.set_game_rule_commands_queued, 0);
 }
 
 #[test]

@@ -205,6 +205,7 @@ class WorldClockEntry:
 class GameRuleEntry:
     constant_name: str
     resource_id: str
+    category: str
     value_kind: str
     min_value: int | None
     max_value: int | None
@@ -1483,10 +1484,19 @@ def game_rule_entries(
                 _fail(source, initializer, f"{field.name} has an inverted integer range")
         else:
             _fail(source, initializer, f"{field.name} uses unsupported {method}")
+        category = call_arguments[1].canonical
+        if not category.startswith("GameRuleCategory."):
+            _fail(
+                source,
+                call_arguments[1],
+                f"{field.name} category must reference GameRuleCategory",
+            )
+        category = category.removeprefix("GameRuleCategory.").lower()
         entries.append(
             GameRuleEntry(
                 field.name,
                 "minecraft:" + _string(source, call_arguments[0]),
+                category,
                 value_kind,
                 min_value,
                 max_value,

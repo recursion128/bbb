@@ -26,10 +26,10 @@ pub(crate) use commands::{
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
     send_set_beacon, send_set_command_block, send_set_command_minecart,
-    send_set_creative_mode_slot, send_set_held_slot_command, send_set_jigsaw_block,
-    send_set_structure_block, send_set_test_block, send_sign_update, send_spectate_entity,
-    send_swing_command, send_teleport_to_entity, send_test_instance_block_action, send_use_item,
-    send_use_item_on,
+    send_set_creative_mode_slot, send_set_game_rule, send_set_held_slot_command,
+    send_set_jigsaw_block, send_set_structure_block, send_set_test_block, send_sign_update,
+    send_spectate_entity, send_swing_command, send_teleport_to_entity,
+    send_test_instance_block_action, send_use_item, send_use_item_on,
 };
 use commands::{
     send_client_tick_end, send_player_loaded, send_player_move_command,
@@ -228,6 +228,9 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::LockDifficulty(command)) => {
                         send_lock_difficulty(conn, command).await?;
                     }
+                    Some(NetCommand::SetGameRule(packet)) => {
+                        send_set_game_rule(conn, packet).await?;
+                    }
                     Some(NetCommand::PlaceRecipe(command)) => {
                         send_place_recipe(conn, command).await?;
                     }
@@ -378,6 +381,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ChangeDifficulty(_)) => {}
                     Some(NetCommand::ChangeGameMode(_)) => {}
                     Some(NetCommand::LockDifficulty(_)) => {}
+                    Some(NetCommand::SetGameRule(_)) => {}
                     Some(NetCommand::PlaceRecipe(_)) => {}
                     Some(NetCommand::RecipeBookChangeSettings(_)) => {}
                     Some(NetCommand::RecipeBookSeenRecipe(_)) => {}
@@ -443,11 +447,11 @@ mod tests {
             RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
             ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
             ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCommandMinecart,
-            SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate,
-            SpectateEntity, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
-            StructureBlockUpdateKind, TeleportToEntity, TestBlockMode, TestInstanceBlockAction,
-            TestInstanceBlockActionKind, TestInstanceBlockRotation, UseItem, UseItemOn, Vec3d,
-            Vec3i,
+            SetCreativeModeSlot, SetGameRule, SetGameRuleEntry, SetJigsawBlock, SetStructureBlock,
+            SetTestBlock, SignUpdate, SpectateEntity, StructureBlockMirror, StructureBlockMode,
+            StructureBlockRotation, StructureBlockUpdateKind, TeleportToEntity, TestBlockMode,
+            TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
+            UseItem, UseItemOn, Vec3d, Vec3i,
         },
     };
     use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
@@ -1275,9 +1279,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn drive_connection_sends_difficulty_net_commands_in_play() {
+    async fn drive_connection_sends_difficulty_and_set_game_rule_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
-        let (tx, mut commands) = mpsc::channel(4);
+        let (tx, mut commands) = mpsc::channel(5);
         tx.send(NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
             difficulty: Difficulty::Easy,
         }))
@@ -1290,6 +1294,14 @@ mod tests {
         .unwrap();
         tx.send(NetCommand::LockDifficulty(LockDifficultyCommand {
             locked: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::SetGameRule(SetGameRule {
+            entries: vec![SetGameRuleEntry {
+                rule: "keep_inventory".to_string(),
+                value: "true".to_string(),
+            }],
         }))
         .await
         .unwrap();
@@ -1314,6 +1326,17 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_LOCK_DIFFICULTY);
         let mut decoder = Decoder::new(&payload);
         assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set game rule").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_GAME_RULE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(
+            decoder.read_string(32_767).unwrap(),
+            "minecraft:keep_inventory"
+        );
+        assert_eq!(decoder.read_string(32_767).unwrap(), "true");
         assert!(decoder.is_empty());
     }
 

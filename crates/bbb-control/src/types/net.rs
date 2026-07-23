@@ -78,6 +78,8 @@ pub struct NetCounters {
     pub request_stats_commands_queued: usize,
     #[serde(default)]
     pub request_game_rule_values_commands_queued: usize,
+    #[serde(default)]
+    pub set_game_rule_commands_queued: usize,
     pub player_input_commands_queued: usize,
     #[serde(default)]
     pub chat_command_commands_queued: usize,

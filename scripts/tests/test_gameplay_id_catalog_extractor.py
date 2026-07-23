@@ -90,6 +90,7 @@ class GameRules {
                 (
                     entry.constant_name,
                     entry.resource_id,
+                    entry.category,
                     entry.value_kind,
                     entry.min_value,
                     entry.max_value,
@@ -97,10 +98,38 @@ class GameRules {
                 for entry in game_rule_entries(source, 4)
             ],
             [
-                ("KEEP_INVENTORY", "minecraft:keep_inventory", "boolean", None, None),
-                ("RANDOM_TICK_SPEED", "minecraft:random_tick_speed", "integer", 0, 2_147_483_647),
-                ("MAX_SNOW", "minecraft:max_snow", "integer", 0, 8),
-                ("FEATURE_SPEED", "minecraft:feature_speed", "integer", 1, 1000),
+                (
+                    "KEEP_INVENTORY",
+                    "minecraft:keep_inventory",
+                    "player",
+                    "boolean",
+                    None,
+                    None,
+                ),
+                (
+                    "RANDOM_TICK_SPEED",
+                    "minecraft:random_tick_speed",
+                    "updates",
+                    "integer",
+                    0,
+                    2_147_483_647,
+                ),
+                (
+                    "MAX_SNOW",
+                    "minecraft:max_snow",
+                    "updates",
+                    "integer",
+                    0,
+                    8,
+                ),
+                (
+                    "FEATURE_SPEED",
+                    "minecraft:feature_speed",
+                    "misc",
+                    "integer",
+                    1,
+                    1000,
+                ),
             ],
         )
 
@@ -117,6 +146,23 @@ class GameRules {
         with self.assertRaisesRegex(
             GameplayIdExtractionError,
             r"fixture/BadGameRules\.java:3:\d+: BAD uses unsupported registerCustom",
+        ):
+            game_rule_entries(source, 1)
+
+    def test_game_rules_reject_non_category_reference_with_span(self) -> None:
+        source = parse_source(
+            "fixture/BadGameRules.java",
+            b"""package fixture;
+class GameRules {
+  public static final GameRule<Boolean> BAD = registerBoolean(
+      "bad", OtherCategory.MISC, true);
+}
+""",
+        )
+
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError,
+            r"fixture/BadGameRules\.java:4:\d+: BAD category must reference GameRuleCategory",
         ):
             game_rule_entries(source, 1)
 
