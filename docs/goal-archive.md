@@ -354,3 +354,9 @@
   诗歌 credits、PerformRespawn、demo 提示/可信链接与旁白贯穿 canonical→native；
   pack 资源、credits 音乐、末地传送门/弹窗/vignette 像素呈现使该包五类 coverage
   全部 complete，合同见 `docs/archive/game-event-win-demo-presentation-design.md`。
+- **2026-07-23（PlayerCombatKill 与死亡界面闭环）**：terminal trusted Component、
+  local-player 身份、score/hardcore 与 showDeathScreen 分支进入 generation-safe
+  canonical 状态；20-tick Respawn/Spectate、退出/链接确认、旁白和一次性命令贯穿
+  native，普通 HUD 后的红色渐变、富文本字体/链接命中及离屏像素完成 renderer
+  呈现；五类 coverage 全部 complete，合同见
+  `docs/archive/player-combat-kill-death-screen-design.md`。

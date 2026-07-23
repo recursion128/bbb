@@ -1,5 +1,7 @@
 # Player Combat Kill and Death Screen Closure
 
+Status: closed and archived after the packet coverage row reached complete in every dimension.
+
 This document freezes the engineering contract for closing Vanilla 26.1
 `ClientboundPlayerCombatKillPacket` from the full-gated baseline
 `e24e73c10`.

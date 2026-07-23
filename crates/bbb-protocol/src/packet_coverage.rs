@@ -1830,7 +1830,7 @@ mod tests {
     }
 
     #[test]
-    fn play_player_combat_kill_keeps_death_screen_and_component_semantics_open() {
+    fn play_player_combat_kill_is_closed_through_native_death_screen_presentation() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1839,17 +1839,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_PLAYER_COMBAT_KILL"
             })
             .expect("play player combat kill coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

@@ -1058,8 +1058,6 @@ back into a todo. Do not delete these.
   its diagnostic counter is not evidence of an additional combat-mode runtime.
 - PlayerCombatEnd likewise has an empty 26.1 handler; its decoded duration may
   remain diagnostic but does not establish a client combat-mode transition.
-- PlayerCombatKill still needs the local-player identity gate, DeathScreen versus
-  respawn branch, and full rich death-message Component preservation.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

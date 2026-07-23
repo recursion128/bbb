@@ -10698,14 +10698,19 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/combat.rs#apply_player_combat_kill",
+            "crates/bbb-world/src/client/combat.rs#player_combat_kill_only_opens_death_screen_for_local_player",
+            "crates/bbb-world/src/client/combat.rs#player_combat_kill_requests_immediate_respawn_when_screen_is_disabled",
+            "crates/bbb-world/src/client/combat.rs#death_screen_generation_guards_close_and_replacement",
+            "crates/bbb-world/src/level.rs#respawn_and_level_clear_close_death_screen",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerCombatKill"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_combat_kill_message",
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#player_combat_kill_preserves_exact_trusted_component",
             "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerCombatKillPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -10720,19 +10725,29 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/combat.rs#apply_player_combat_kill",
+            "crates/bbb-world/src/play_apply.rs#player_combat_kill_routes_immediate_respawn_effect_once",
+            "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
+            "crates/bbb-native/src/input/death_screen.rs#cause_link_is_generation_checked_and_returns_to_same_death_screen",
+            "crates/bbb-native/src/runtime/tests.rs#hud_death_screen_projection_and_narration_track_main_and_quit_focus",
+            "crates/bbb-renderer/src/hud/death_screen.rs#hud_death_screen_main_uses_vanilla_button_rects_and_activation_delay",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur",
+            "vanilla:net/minecraft/client/gui/screens/DeathScreen.java#extractRenderState",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerCombatKill"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_combat_kill_message",
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#player_combat_kill_preserves_exact_trusted_component",
             "crates/bbb-net/src/event_stream.rs#play_stats_cooldown_boss_and_combat_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_player_combat_packets_to_world",
-            "crates/bbb-world/src/client/combat.rs#tracks_last_player_combat_event_and_counters",
-            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#player_action_events_update_snapshot_counters"
+            "crates/bbb-world/src/client/combat.rs#player_combat_kill_only_opens_death_screen_for_local_player",
+            "crates/bbb-world/src/play_apply.rs#player_combat_kill_routes_immediate_respawn_effect_once",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#player_combat_kill_queues_immediate_respawn_when_death_screen_is_disabled",
+            "crates/bbb-native/src/input/death_screen.rs#escape_never_closes_main_screen_and_delayed_quit_escape_respawns",
+            "crates/bbb-renderer/src/hud/death_screen.rs#hud_death_screen_cause_link_uses_centered_visual_run_and_canonical_index",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur"
           ],
           "gap": null,
           "status": "complete"
