@@ -283,12 +283,11 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_beacon_button);
         $take_owner!(hud_beacon_confirm);
         $take_owner!(hud_beacon_cancel);
-        $take_owner!(hud_beacon_effect_speed);
-        $take_owner!(hud_beacon_effect_haste);
-        $take_owner!(hud_beacon_effect_resistance);
-        $take_owner!(hud_beacon_effect_jump_boost);
-        $take_owner!(hud_beacon_effect_strength);
-        $take_owner!(hud_beacon_effect_regeneration);
+        $take_owner!(hud_mob_effect_sprites);
+        $take_owner!(hud_effect_background);
+        $take_owner!(hud_effect_background_ambient);
+        $take_owner!(hud_inventory_effect_background);
+        $take_owner!(hud_inventory_effect_background_ambient);
         $take_owner!(hud_brewing_stand_background);
         $take_owner!(hud_brewing_stand_fuel_length);
         $take_owner!(hud_brewing_stand_brew_progress);

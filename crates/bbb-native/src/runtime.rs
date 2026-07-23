@@ -53,17 +53,18 @@ use bbb_renderer::{
     HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen,
-    HudJigsawBlockEditorTextField, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind,
-    HudSignEditorPreedit, HudSignEditorScreen, HudStatsItemRow, HudStatsRow, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
-    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
-    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
-    HudVehicleHealth, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect, HudPauseScreen, HudPlayerHealth,
+    HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudStatsItemRow, HudStatsRow,
+    HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
+    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
+    HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
+    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth,
+    ItemModelAssetIdentity, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
+    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -206,12 +207,12 @@ use bbb_protocol::attribute_types::{
 use bbb_protocol::entity_types::*;
 use bbb_protocol::menu_types::VANILLA_MENU_TYPE_LOOM_ID;
 use bbb_protocol::mob_effect_types::{
-    VANILLA_BEACON_EFFECT_TIERS, VANILLA_MOB_EFFECT_BLINDNESS_ID,
-    VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_DARKNESS_ID,
-    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
-    VANILLA_MOB_EFFECT_NAUSEA_ID, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, VANILLA_MOB_EFFECT_POISON_ID,
-    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_RESISTANCE_ID,
-    VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID, VANILLA_MOB_EFFECT_WITHER_ID,
+    vanilla_mob_effect_type, MobEffectCategory, VANILLA_BEACON_EFFECT_TIERS,
+    VANILLA_MOB_EFFECT_BLINDNESS_ID, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+    VANILLA_MOB_EFFECT_DARKNESS_ID, VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_NAUSEA_ID,
+    VANILLA_MOB_EFFECT_NIGHT_VISION_ID, VANILLA_MOB_EFFECT_POISON_ID,
+    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID,
+    VANILLA_MOB_EFFECT_STRENGTH_ID, VANILLA_MOB_EFFECT_WITHER_ID,
 };
 
 #[cfg(test)]
@@ -2755,6 +2756,8 @@ pub(crate) fn update_renderer_from_publication(
         hunger_effect: local_player_effect(world, VANILLA_MOB_EFFECT_HUNGER_ID).is_some(),
         tick_count: publication.client_tick_index,
     };
+    let hud_mob_effects = hud_mob_effects_from_world(world, item_runtime);
+    let hud_inventory_shows_mob_effects = world.local_inventory_is_open();
     let hud_experience_progress = local_player
         .experience
         .map(|experience| experience.progress);
@@ -3513,6 +3516,8 @@ pub(crate) fn update_renderer_from_publication(
             hud_sleep_overlay,
             hud_food,
             hud_food_effect,
+            hud_mob_effects,
+            hud_inventory_shows_mob_effects,
             hud_armor,
             hud_air,
             hud_vehicle_health,
@@ -4869,6 +4874,113 @@ fn localized_gui_text(
         .filter(|text| *text != translation_key)
         .unwrap_or(fallback)
         .to_string()
+}
+
+fn hud_mob_effects_from_world(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudMobEffect> {
+    let Some(local_player_id) = world.local_player_id() else {
+        return Vec::new();
+    };
+    world
+        .entity_effects(local_player_id)
+        .unwrap_or_default()
+        .into_values()
+        .filter_map(|effect| {
+            let descriptor = vanilla_mob_effect_type(effect.effect_id)?;
+            let resource_path = descriptor
+                .resource_id
+                .strip_prefix("minecraft:")
+                .unwrap_or(descriptor.resource_id);
+            let name_key = format!("effect.minecraft.{resource_path}");
+            let fallback_name = humanize_resource_path(resource_path);
+            let mut display_name =
+                localized_gui_text(item_runtime, &name_key, &fallback_name).to_string();
+            if (1..=9).contains(&effect.amplifier) {
+                let level = effect.amplifier + 1;
+                let level_key = format!("enchantment.level.{level}");
+                let fallback_level = mob_effect_level_fallback(level);
+                let localized_level = localized_gui_text(item_runtime, &level_key, fallback_level);
+                display_name.push(' ');
+                display_name.push_str(&localized_level);
+            }
+            Some(HudMobEffect {
+                effect_id: effect.effect_id,
+                beneficial: descriptor.category == MobEffectCategory::Beneficial,
+                color: descriptor.color,
+                amplifier: effect.amplifier,
+                duration_ticks: effect.duration_ticks,
+                ambient: effect.ambient,
+                show_icon: effect.show_icon,
+                display_name,
+                duration_text: hud_mob_effect_duration_text(
+                    item_runtime,
+                    effect.duration_ticks,
+                    world.ticking().tick_rate,
+                ),
+            })
+        })
+        .collect()
+}
+
+fn humanize_resource_path(resource_path: &str) -> String {
+    resource_path
+        .split(['_', '/'])
+        .filter(|word| !word.is_empty())
+        .map(|word| {
+            let mut characters = word.chars();
+            characters
+                .next()
+                .map(|first| {
+                    first
+                        .to_uppercase()
+                        .chain(characters.flat_map(char::to_lowercase))
+                        .collect::<String>()
+                })
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn mob_effect_level_fallback(level: i32) -> &'static str {
+    match level {
+        2 => "II",
+        3 => "III",
+        4 => "IV",
+        5 => "V",
+        6 => "VI",
+        7 => "VII",
+        8 => "VIII",
+        9 => "IX",
+        10 => "X",
+        _ => "",
+    }
+}
+
+fn hud_mob_effect_duration_text(
+    item_runtime: Option<&NativeItemRuntime>,
+    duration_ticks: i32,
+    tick_rate: f32,
+) -> String {
+    if duration_ticks == -1 {
+        return localized_gui_text(item_runtime, "effect.duration.infinite", "∞").to_string();
+    }
+    let tick_rate = if tick_rate.is_finite() && tick_rate > 0.0 {
+        tick_rate
+    } else {
+        20.0
+    };
+    let total_seconds = ((duration_ticks.max(0) as f32) / tick_rate).floor() as u64;
+    let seconds = total_seconds % 60;
+    let minutes = (total_seconds / 60) % 60;
+    let hours = total_seconds / 3_600;
+    if hours > 0 {
+        format!("{hours:02}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes:02}:{seconds:02}")
+    }
 }
 
 fn hud_styled_runs_from_rich_text(component: &RichTextComponent) -> Vec<HudStyledTextRun> {
@@ -13529,21 +13641,12 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
 }
 
 fn beacon_effect_icon_texture(effect_id: i32) -> Option<HudInventoryBackgroundTexture> {
-    match effect_id {
-        VANILLA_MOB_EFFECT_SPEED_ID => Some(HudInventoryBackgroundTexture::BeaconEffectSpeed),
-        VANILLA_MOB_EFFECT_HASTE_ID => Some(HudInventoryBackgroundTexture::BeaconEffectHaste),
-        VANILLA_MOB_EFFECT_RESISTANCE_ID => {
-            Some(HudInventoryBackgroundTexture::BeaconEffectResistance)
-        }
-        VANILLA_MOB_EFFECT_JUMP_BOOST_ID => {
-            Some(HudInventoryBackgroundTexture::BeaconEffectJumpBoost)
-        }
-        VANILLA_MOB_EFFECT_STRENGTH_ID => Some(HudInventoryBackgroundTexture::BeaconEffectStrength),
-        VANILLA_MOB_EFFECT_REGENERATION_ID => {
-            Some(HudInventoryBackgroundTexture::BeaconEffectRegeneration)
-        }
-        _ => None,
-    }
+    VANILLA_BEACON_EFFECT_TIERS
+        .iter()
+        .copied()
+        .flatten()
+        .any(|candidate| *candidate == effect_id)
+        .then_some(HudInventoryBackgroundTexture::MobEffect(effect_id))
 }
 
 fn push_beacon_action_button_layer(

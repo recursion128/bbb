@@ -1544,6 +1544,73 @@ fn camera_spinning_effect_stops_without_resetting_phase_after_nausea_removal() {
 }
 
 #[test]
+fn hud_mob_effect_projection_uses_catalog_category_flags_level_and_duration() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    let mut speed = mob_effect(42, VANILLA_MOB_EFFECT_SPEED_ID, 1_220);
+    speed.amplifier = 1;
+    speed.flags = MobEffectFlags {
+        raw: 0b0011,
+        ambient: true,
+        visible: true,
+        show_icon: false,
+        blend: false,
+    };
+    assert!(world.apply_update_mob_effect(speed));
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 10.0,
+        frozen: false,
+    });
+    let mut blindness = mob_effect(42, VANILLA_MOB_EFFECT_BLINDNESS_ID, -1);
+    blindness.amplifier = 10;
+    assert!(world.apply_update_mob_effect(blindness));
+
+    let effects = hud_mob_effects_from_world(&world, None);
+    assert_eq!(effects.len(), 2);
+    let speed = effects
+        .iter()
+        .find(|effect| effect.effect_id == VANILLA_MOB_EFFECT_SPEED_ID)
+        .expect("speed effect");
+    assert!(speed.beneficial);
+    assert_eq!(
+        speed.color,
+        vanilla_mob_effect_type(VANILLA_MOB_EFFECT_SPEED_ID)
+            .unwrap()
+            .color
+    );
+    assert_eq!(speed.amplifier, 1);
+    assert_eq!(speed.duration_ticks, 1_220);
+    assert!(speed.ambient);
+    assert!(!speed.show_icon);
+    assert_eq!(speed.display_name, "Speed II");
+    assert_eq!(speed.duration_text, "02:02");
+
+    let blindness = effects
+        .iter()
+        .find(|effect| effect.effect_id == VANILLA_MOB_EFFECT_BLINDNESS_ID)
+        .expect("blindness effect");
+    assert!(!blindness.beneficial);
+    assert_eq!(blindness.display_name, "Blindness");
+    assert_eq!(blindness.duration_text, "∞");
+}
+
+#[test]
+fn hud_mob_effect_projection_requires_local_player_and_formats_vanilla_time_ranges() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CHICKEN_ID));
+    assert!(world.apply_update_mob_effect(mob_effect(100, VANILLA_MOB_EFFECT_SPEED_ID, 200,)));
+    assert!(hud_mob_effects_from_world(&world, None).is_empty());
+
+    assert_eq!(hud_mob_effect_duration_text(None, 20, 20.0), "00:01");
+    assert_eq!(hud_mob_effect_duration_text(None, 72_020, 20.0), "01:00:01");
+    assert_eq!(hud_mob_effect_duration_text(None, 20, 0.0), "00:01");
+    assert_eq!(
+        humanize_resource_path("hero_of_the_village"),
+        "Hero Of The Village"
+    );
+}
+
+#[test]
 fn hud_action_bar_and_title_projection_matches_world_state() {
     let mut world = WorldStore::new();
     assert_eq!(hud_action_bar_text_from_world(&world, None, 0.25), None);
@@ -15130,7 +15197,7 @@ fn hud_inventory_screen_projects_beacon_layout() {
     assert!(screen
         .background_layers
         .contains(&hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::BeaconEffectSpeed,
+            HudInventoryBackgroundTexture::MobEffect(VANILLA_MOB_EFFECT_SPEED_ID),
             55,
             24,
             18,
@@ -15141,7 +15208,7 @@ fn hud_inventory_screen_projects_beacon_layout() {
     assert!(screen
         .background_layers
         .contains(&hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::BeaconEffectRegeneration,
+            HudInventoryBackgroundTexture::MobEffect(VANILLA_MOB_EFFECT_REGENERATION_ID),
             146,
             49,
             18,
@@ -15306,7 +15373,7 @@ fn hud_inventory_screen_projects_local_beacon_effect_selection() {
     assert!(screen
         .background_layers
         .contains(&hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::BeaconEffectStrength,
+            HudInventoryBackgroundTexture::MobEffect(VANILLA_MOB_EFFECT_STRENGTH_ID),
             67,
             74,
             18,
@@ -15328,7 +15395,7 @@ fn hud_inventory_screen_projects_local_beacon_effect_selection() {
     assert!(screen
         .background_layers
         .contains(&hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::BeaconEffectStrength,
+            HudInventoryBackgroundTexture::MobEffect(VANILLA_MOB_EFFECT_STRENGTH_ID),
             170,
             49,
             18,

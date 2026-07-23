@@ -861,6 +861,22 @@ pub struct HudFoodEffect {
     pub tick_count: u64,
 }
 
+/// One canonical local-player mob effect projected for vanilla HUD and
+/// inventory presentation. Ordering and geometry remain renderer-owned;
+/// native resolves catalog category/color plus localized text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudMobEffect {
+    pub effect_id: i32,
+    pub beneficial: bool,
+    pub color: u32,
+    pub amplifier: i32,
+    pub duration_ticks: i32,
+    pub ambient: bool,
+    pub show_icon: bool,
+    pub display_name: String,
+    pub duration_text: String,
+}
+
 /// One frame's air-bubble row inputs (vanilla `Gui.extractAirBubbles`,
 /// Gui.java:887-915): the synced air supply, the fixed max, the
 /// `isEyeInFluid(FluidTags.WATER)` gate, and the client tick for the all-empty
@@ -1176,6 +1192,17 @@ pub struct HudBossBar {
 }
 
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const HUD_MOB_EFFECT_OVERLAY_SPACING: i32 = 25;
+const HUD_MOB_EFFECT_OVERLAY_HARMFUL_Y: i32 = 27;
+const HUD_MOB_EFFECT_BACKGROUND_SIZE: u32 = 24;
+const HUD_MOB_EFFECT_ICON_SIZE: u32 = 18;
+const HUD_INVENTORY_EFFECT_SPACING: i32 = 7;
+const HUD_INVENTORY_EFFECT_SQUARE_SIZE: u32 = 32;
+const HUD_INVENTORY_EFFECT_TEXT_X_OFFSET: i32 = 32;
+const HUD_INVENTORY_EFFECT_DEFAULT_Y_STEP: i32 = 33;
+const HUD_INVENTORY_EFFECT_TOTAL_HEIGHT: i32 = 132;
+const HUD_INVENTORY_EFFECT_WIDE_THRESHOLD: i32 = 120;
+const HUD_INVENTORY_EFFECT_TEXT_GRAY: [f32; 4] = [128.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0, 1.0];
 const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
 const HUD_COMMAND_INPUT_TINT: [f32; 4] = [224.0 / 255.0, 224.0 / 255.0, 224.0 / 255.0, 1.0];
 const HUD_COMMAND_SUFFIX_TINT: [f32; 4] = [128.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0, 1.0];
@@ -1671,12 +1698,7 @@ pub enum HudInventoryBackgroundTexture {
     BeaconButton,
     BeaconConfirm,
     BeaconCancel,
-    BeaconEffectSpeed,
-    BeaconEffectHaste,
-    BeaconEffectResistance,
-    BeaconEffectJumpBoost,
-    BeaconEffectStrength,
-    BeaconEffectRegeneration,
+    MobEffect(i32),
     BrewingStand,
     BrewingStandFuelLength,
     BrewingStandBrewProgress,
@@ -3525,63 +3547,65 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn upload_hud_beacon_effect_speed(
+    pub fn upload_hud_effect_background(
         &mut self,
         width: u32,
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
-        self.hud_beacon_effect_speed = Some(self.upload_hud_sprite(width, height, rgba)?);
+        self.hud_effect_background = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
-    pub fn upload_hud_beacon_effect_haste(
+    pub fn upload_hud_effect_background_ambient(
         &mut self,
         width: u32,
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
-        self.hud_beacon_effect_haste = Some(self.upload_hud_sprite(width, height, rgba)?);
+        self.hud_effect_background_ambient = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
-    pub fn upload_hud_beacon_effect_resistance(
+    pub fn upload_hud_inventory_effect_background(
         &mut self,
         width: u32,
         height: u32,
         rgba: &[u8],
+        scaling: HudNineSliceScaling,
     ) -> Result<()> {
-        self.hud_beacon_effect_resistance = Some(self.upload_hud_sprite(width, height, rgba)?);
+        self.hud_inventory_effect_background = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
         Ok(())
     }
 
-    pub fn upload_hud_beacon_effect_jump_boost(
+    pub fn upload_hud_inventory_effect_background_ambient(
         &mut self,
         width: u32,
         height: u32,
         rgba: &[u8],
+        scaling: HudNineSliceScaling,
     ) -> Result<()> {
-        self.hud_beacon_effect_jump_boost = Some(self.upload_hud_sprite(width, height, rgba)?);
+        self.hud_inventory_effect_background_ambient = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
         Ok(())
     }
 
-    pub fn upload_hud_beacon_effect_strength(
+    /// Replaces the complete fixed-registry effect icon generation only after
+    /// every sprite has uploaded successfully.
+    pub fn upload_hud_mob_effect_sprites(
         &mut self,
-        width: u32,
-        height: u32,
-        rgba: &[u8],
+        sprites: &[(i32, u32, u32, &[u8])],
     ) -> Result<()> {
-        self.hud_beacon_effect_strength = Some(self.upload_hud_sprite(width, height, rgba)?);
-        Ok(())
-    }
-
-    pub fn upload_hud_beacon_effect_regeneration(
-        &mut self,
-        width: u32,
-        height: u32,
-        rgba: &[u8],
-    ) -> Result<()> {
-        self.hud_beacon_effect_regeneration = Some(self.upload_hud_sprite(width, height, rgba)?);
+        let mut uploaded = BTreeMap::new();
+        for &(effect_id, width, height, rgba) in sprites {
+            uploaded.insert(effect_id, self.upload_hud_sprite(width, height, rgba)?);
+        }
+        self.hud_mob_effect_sprites = uploaded;
         Ok(())
     }
 
@@ -4840,6 +4864,19 @@ impl Renderer {
         self.hud_food_effect = effect;
     }
 
+    pub fn set_hud_mob_effects(
+        &mut self,
+        effects: Vec<HudMobEffect>,
+        inventory_shows_effects: bool,
+    ) {
+        self.hud_mob_effects = effects
+            .into_iter()
+            .take(40)
+            .map(sanitize_hud_mob_effect)
+            .collect();
+        self.hud_inventory_shows_mob_effects = inventory_shows_effects;
+    }
+
     /// Projects the experience level to render as centered text above the bar.
     /// Vanilla only draws it when `experienceLevel > 0`
     /// (Gui.java:533), so non-positive levels clear the text.
@@ -5732,6 +5769,22 @@ impl Renderer {
             );
         }
 
+        let inventory_effect_panel_visible = self.hud_inventory_shows_mob_effects
+            && self.hud_inventory_screen.as_ref().is_some_and(|screen| {
+                hud_inventory_mob_effect_panel_width(surface_size, screen).is_some()
+            });
+        if !inventory_effect_panel_visible {
+            push_hud_mob_effect_overlay(
+                &mut vertices,
+                &mut commands,
+                self.hud_effect_background.as_ref(),
+                self.hud_effect_background_ambient.as_ref(),
+                &self.hud_mob_effect_sprites,
+                surface_size,
+                &self.hud_mob_effects,
+            );
+        }
+
         // Vanilla `Gui.extractRenderState` submits the boss overlay right
         // after the hotbar/status decorations and before the overlay message
         // / title strata (Gui.java:203-217). Per bar: the sprite layers, then
@@ -5979,6 +6032,23 @@ impl Renderer {
                     first_base_command: commands.len(),
                     first_overlay_command: post_gui_item_commands.len(),
                 });
+            }
+            if self.hud_inventory_shows_mob_effects {
+                push_hud_inventory_mob_effects(
+                    &mut vertices,
+                    &mut commands,
+                    &self.hud_white_pixel,
+                    self.hud_font_atlas.as_ref(),
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    self.hud_inventory_effect_background.as_ref(),
+                    self.hud_inventory_effect_background_ambient.as_ref(),
+                    &self.hud_mob_effect_sprites,
+                    surface_size,
+                    screen,
+                    &self.hud_mob_effects,
+                );
             }
             push_hud_inventory_background_layers(
                 &mut vertices,
@@ -6823,23 +6893,8 @@ impl Renderer {
             HudInventoryBackgroundTexture::BeaconButton => self.hud_beacon_button.as_ref(),
             HudInventoryBackgroundTexture::BeaconConfirm => self.hud_beacon_confirm.as_ref(),
             HudInventoryBackgroundTexture::BeaconCancel => self.hud_beacon_cancel.as_ref(),
-            HudInventoryBackgroundTexture::BeaconEffectSpeed => {
-                self.hud_beacon_effect_speed.as_ref()
-            }
-            HudInventoryBackgroundTexture::BeaconEffectHaste => {
-                self.hud_beacon_effect_haste.as_ref()
-            }
-            HudInventoryBackgroundTexture::BeaconEffectResistance => {
-                self.hud_beacon_effect_resistance.as_ref()
-            }
-            HudInventoryBackgroundTexture::BeaconEffectJumpBoost => {
-                self.hud_beacon_effect_jump_boost.as_ref()
-            }
-            HudInventoryBackgroundTexture::BeaconEffectStrength => {
-                self.hud_beacon_effect_strength.as_ref()
-            }
-            HudInventoryBackgroundTexture::BeaconEffectRegeneration => {
-                self.hud_beacon_effect_regeneration.as_ref()
+            HudInventoryBackgroundTexture::MobEffect(effect_id) => {
+                self.hud_mob_effect_sprites.get(&effect_id)
             }
             HudInventoryBackgroundTexture::BrewingStand => {
                 self.hud_brewing_stand_background.as_ref()
@@ -7302,6 +7357,351 @@ fn interpolate_item_model_vertex(
         light: lerp_array(a.light, b.light, t),
         overlay: lerp_array(a.overlay, b.overlay, t),
         normal_diffuse: lerp_array(a.normal_diffuse, b.normal_diffuse, t),
+    }
+}
+
+fn hud_mob_effect_natural_cmp(a: &HudMobEffect, b: &HudMobEffect) -> std::cmp::Ordering {
+    let uses_duration_order =
+        (a.duration_ticks <= 32_147 || b.duration_ticks <= 32_147) && (!a.ambient || !b.ambient);
+    if uses_duration_order {
+        a.ambient
+            .cmp(&b.ambient)
+            .then_with(|| (a.duration_ticks == -1).cmp(&(b.duration_ticks == -1)))
+            .then_with(|| a.duration_ticks.cmp(&b.duration_ticks))
+            .then_with(|| a.color.cmp(&b.color))
+    } else {
+        a.ambient
+            .cmp(&b.ambient)
+            .then_with(|| a.color.cmp(&b.color))
+    }
+}
+
+fn sanitize_hud_mob_effect(mut effect: HudMobEffect) -> HudMobEffect {
+    effect.display_name = sanitize_hud_text_preserving_empty(effect.display_name, 256);
+    effect.duration_text = sanitize_hud_text_preserving_empty(effect.duration_text, 64);
+    effect
+}
+
+fn hud_mob_effect_icon_alpha(effect: &HudMobEffect) -> f32 {
+    if effect.ambient || effect.duration_ticks == -1 || effect.duration_ticks > 200 {
+        return 1.0;
+    }
+    let remaining = effect.duration_ticks;
+    let used_seconds = 10 - remaining / 20;
+    let steady = (remaining as f32 / 10.0 / 5.0 * 0.5).clamp(0.0, 0.5);
+    let pulse = (remaining as f32 * std::f32::consts::PI / 5.0).cos()
+        * (used_seconds as f32 / 10.0 * 0.25).clamp(0.0, 0.25);
+    (steady + pulse).clamp(0.0, 1.0)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct HudMobEffectOverlayInstance {
+    effect_id: i32,
+    ambient: bool,
+    background: HudRect,
+    icon: HudRect,
+    icon_alpha: f32,
+}
+
+fn hud_mob_effect_overlay_instances(
+    surface_size: PhysicalSize<u32>,
+    effects: &[HudMobEffect],
+) -> Vec<HudMobEffectOverlayInstance> {
+    let mut ordered = effects
+        .iter()
+        .filter(|effect| effect.show_icon)
+        .collect::<Vec<_>>();
+    ordered.sort_by(|a, b| hud_mob_effect_natural_cmp(b, a));
+    let mut beneficial_count = 0i32;
+    let mut harmful_count = 0i32;
+    ordered
+        .into_iter()
+        .map(|effect| {
+            let (count, y) = if effect.beneficial {
+                beneficial_count += 1;
+                (beneficial_count, 1)
+            } else {
+                harmful_count += 1;
+                (harmful_count, HUD_MOB_EFFECT_OVERLAY_HARMFUL_Y)
+            };
+            let x = i32::try_from(surface_size.width)
+                .unwrap_or(i32::MAX)
+                .saturating_sub(HUD_MOB_EFFECT_OVERLAY_SPACING.saturating_mul(count));
+            HudMobEffectOverlayInstance {
+                effect_id: effect.effect_id,
+                ambient: effect.ambient,
+                background: absolute_hud_rect(
+                    x as f32,
+                    y as f32,
+                    HUD_MOB_EFFECT_BACKGROUND_SIZE,
+                    HUD_MOB_EFFECT_BACKGROUND_SIZE,
+                ),
+                icon: absolute_hud_rect(
+                    (x + 3) as f32,
+                    (y + 3) as f32,
+                    HUD_MOB_EFFECT_ICON_SIZE,
+                    HUD_MOB_EFFECT_ICON_SIZE,
+                ),
+                icon_alpha: hud_mob_effect_icon_alpha(effect),
+            }
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_mob_effect_overlay<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    background: Option<&'a HudSpriteGpu>,
+    ambient_background: Option<&'a HudSpriteGpu>,
+    effect_sprites: &'a BTreeMap<i32, HudSpriteGpu>,
+    surface_size: PhysicalSize<u32>,
+    effects: &[HudMobEffect],
+) {
+    for instance in hud_mob_effect_overlay_instances(surface_size, effects) {
+        let background = if instance.ambient {
+            ambient_background
+        } else {
+            background
+        };
+        if let Some(background) = background {
+            push_hud_draw(
+                vertices,
+                commands,
+                background,
+                surface_size,
+                instance.background,
+            );
+        }
+        if let Some(icon) = effect_sprites.get(&instance.effect_id) {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                icon,
+                surface_size,
+                instance.icon,
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                [1.0, 1.0, 1.0, instance.icon_alpha],
+            );
+        }
+    }
+}
+
+fn hud_inventory_mob_effect_panel_width(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+) -> Option<(i32, u32)> {
+    let surface_width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let screen_width = i32::try_from(screen.width).unwrap_or(i32::MAX);
+    let left = (surface_width - screen_width) / 2;
+    let x = left.saturating_add(screen_width).saturating_add(2);
+    let available_width = surface_width.saturating_sub(x);
+    (available_width >= HUD_INVENTORY_EFFECT_SQUARE_SIZE as i32).then(|| {
+        let max_width = if available_width >= HUD_INVENTORY_EFFECT_WIDE_THRESHOLD {
+            available_width.saturating_sub(HUD_INVENTORY_EFFECT_SPACING)
+        } else {
+            HUD_INVENTORY_EFFECT_SQUARE_SIZE as i32
+        };
+        (x, u32::try_from(max_width).unwrap_or_default())
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HudInventoryMobEffectInstance {
+    effect_id: i32,
+    ambient: bool,
+    background_x: i32,
+    background_y: i32,
+    background_width: u32,
+    icon_x: i32,
+    icon_y: i32,
+    name: Option<String>,
+    duration: Option<String>,
+    text_x: i32,
+    text_y: i32,
+}
+
+fn hud_clip_plain_text(text: &str, max_width: u32, glyphs: &HudFontGlyphMap) -> String {
+    let mut clipped = String::new();
+    for character in text.chars() {
+        clipped.push(character);
+        if hud_plain_text_width(&clipped, glyphs) > max_width {
+            clipped.pop();
+            break;
+        }
+    }
+    clipped
+}
+
+fn hud_inventory_mob_effect_instances(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    effects: &[HudMobEffect],
+    glyphs: &HudFontGlyphMap,
+) -> Vec<HudInventoryMobEffectInstance> {
+    let Some((x, max_width)) = hud_inventory_mob_effect_panel_width(surface_size, screen) else {
+        return Vec::new();
+    };
+    let mut ordered = effects.iter().collect::<Vec<_>>();
+    ordered.sort_by(|a, b| hud_mob_effect_natural_cmp(a, b));
+    let y_step = if ordered.len() > 5 {
+        HUD_INVENTORY_EFFECT_TOTAL_HEIGHT
+            / i32::try_from(ordered.len() - 1).unwrap_or(i32::MAX).max(1)
+    } else {
+        HUD_INVENTORY_EFFECT_DEFAULT_Y_STEP
+    };
+    let surface_height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let screen_height = i32::try_from(screen.height).unwrap_or(i32::MAX);
+    let top = (surface_height - screen_height) / 2;
+    ordered
+        .into_iter()
+        .enumerate()
+        .map(|(index, effect)| {
+            let name_width = HUD_INVENTORY_EFFECT_TEXT_X_OFFSET
+                + i32::try_from(hud_plain_text_width(&effect.display_name, glyphs))
+                    .unwrap_or(i32::MAX)
+                + HUD_INVENTORY_EFFECT_SPACING;
+            let duration_width = HUD_INVENTORY_EFFECT_TEXT_X_OFFSET
+                + i32::try_from(hud_plain_text_width(&effect.duration_text, glyphs))
+                    .unwrap_or(i32::MAX)
+                + HUD_INVENTORY_EFFECT_SPACING;
+            let background_width = max_width.min(
+                u32::try_from(name_width.max(duration_width))
+                    .unwrap_or(u32::MAX)
+                    .max(HUD_INVENTORY_EFFECT_SQUARE_SIZE),
+            );
+            let y = top.saturating_add(
+                i32::try_from(index)
+                    .unwrap_or(i32::MAX)
+                    .saturating_mul(y_step),
+            );
+            let max_text_width = background_width
+                .saturating_sub(HUD_INVENTORY_EFFECT_TEXT_X_OFFSET as u32)
+                .saturating_sub(HUD_INVENTORY_EFFECT_SPACING as u32);
+            let (name, duration) = if max_text_width > 0 {
+                (
+                    Some(hud_clip_plain_text(
+                        &effect.display_name,
+                        max_text_width,
+                        glyphs,
+                    )),
+                    Some(effect.duration_text.clone()),
+                )
+            } else {
+                (None, None)
+            };
+            HudInventoryMobEffectInstance {
+                effect_id: effect.effect_id,
+                ambient: effect.ambient,
+                background_x: x,
+                background_y: y,
+                background_width,
+                icon_x: x + HUD_INVENTORY_EFFECT_SPACING,
+                icon_y: y + HUD_INVENTORY_EFFECT_SPACING,
+                name,
+                duration,
+                text_x: x + HUD_INVENTORY_EFFECT_TEXT_X_OFFSET,
+                text_y: y + HUD_INVENTORY_EFFECT_SPACING,
+            }
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_mob_effects<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    background: Option<&'a HudNineSliceSprite>,
+    ambient_background: Option<&'a HudNineSliceSprite>,
+    effect_sprites: &'a BTreeMap<i32, HudSpriteGpu>,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    effects: &[HudMobEffect],
+) {
+    for instance in hud_inventory_mob_effect_instances(surface_size, screen, effects, glyphs) {
+        let background = if instance.ambient {
+            ambient_background
+        } else {
+            background
+        };
+        if let Some(background) = background {
+            let rect = absolute_hud_rect(
+                instance.background_x as f32,
+                instance.background_y as f32,
+                instance.background_width,
+                HUD_INVENTORY_EFFECT_SQUARE_SIZE,
+            );
+            for segment in nine_slice_segments(rect, background.scaling) {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    &background.gpu,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        }
+        if let Some(icon) = effect_sprites.get(&instance.effect_id) {
+            push_hud_draw(
+                vertices,
+                commands,
+                icon,
+                surface_size,
+                absolute_hud_rect(
+                    instance.icon_x as f32,
+                    instance.icon_y as f32,
+                    HUD_MOB_EFFECT_ICON_SIZE,
+                    HUD_MOB_EFFECT_ICON_SIZE,
+                ),
+            );
+        }
+        let Some(font_atlas) = font_atlas else {
+            continue;
+        };
+        if let Some(name) = instance.name.as_deref() {
+            push_hud_plain_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                name,
+                (instance.text_x as f32, instance.text_y as f32),
+                HUD_TINT_WHITE,
+                1.0,
+                false,
+            );
+        }
+        if let Some(duration) = instance.duration.as_deref() {
+            push_hud_plain_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                duration,
+                (instance.text_x as f32, (instance.text_y + 9) as f32),
+                HUD_INVENTORY_EFFECT_TEXT_GRAY,
+                1.0,
+                false,
+            );
+        }
     }
 }
 
@@ -23487,6 +23887,177 @@ mod tests {
             hovered_slot_id: None,
             tooltip: None,
         }
+    }
+
+    fn test_hud_mob_effect(
+        effect_id: i32,
+        beneficial: bool,
+        color: u32,
+        duration_ticks: i32,
+        ambient: bool,
+        show_icon: bool,
+    ) -> HudMobEffect {
+        HudMobEffect {
+            effect_id,
+            beneficial,
+            color,
+            amplifier: 0,
+            duration_ticks,
+            ambient,
+            show_icon,
+            display_name: format!("Effect {effect_id}"),
+            duration_text: "00:10".to_string(),
+        }
+    }
+
+    fn hud_mob_effect_test_glyphs() -> HudFontGlyphMap {
+        let mut glyphs = HudFontGlyphMap::new();
+        for character in ' '..='~' {
+            glyphs.insert_first_wins(
+                character,
+                HudAsciiGlyph {
+                    advance: 6,
+                    width: 5,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        glyphs
+    }
+
+    #[test]
+    fn hud_mob_effect_overlay_matches_vanilla_order_rows_and_icon_alpha() {
+        let effects = vec![
+            test_hud_mob_effect(1, true, 1, 100, false, true),
+            test_hud_mob_effect(2, false, 2, 60, false, true),
+            test_hud_mob_effect(3, true, 3, 200, false, true),
+            test_hud_mob_effect(4, false, 4, 1_000, true, true),
+            test_hud_mob_effect(5, true, 5, 2_000, false, false),
+        ];
+
+        let instances = hud_mob_effect_overlay_instances(PhysicalSize::new(320, 240), &effects);
+        assert_eq!(
+            instances
+                .iter()
+                .map(|instance| instance.effect_id)
+                .collect::<Vec<_>>(),
+            vec![4, 3, 1, 2]
+        );
+        assert_eq!(
+            instances
+                .iter()
+                .map(|instance| { (instance.background.x as i32, instance.background.y as i32,) })
+                .collect::<Vec<_>>(),
+            vec![(295, 27), (295, 1), (270, 1), (270, 27)]
+        );
+        assert_eq!(instances[0].icon_alpha, 1.0);
+        assert!((instances[1].icon_alpha - 0.5).abs() < 1e-6);
+        assert!((instances[2].icon_alpha - 0.625).abs() < 1e-6);
+        assert!((instances[3].icon_alpha - 0.675).abs() < 1e-6);
+        assert_eq!(
+            (
+                instances[0].icon.x as i32,
+                instances[0].icon.y as i32,
+                instances[0].icon.width,
+                instances[0].icon.height,
+            ),
+            (298, 30, 18, 18)
+        );
+    }
+
+    #[test]
+    fn hud_mob_effect_icon_alpha_matches_vanilla_ending_window_edges() {
+        let mut effect = test_hud_mob_effect(1, true, 1, 201, false, true);
+        assert_eq!(hud_mob_effect_icon_alpha(&effect), 1.0);
+        effect.duration_ticks = 200;
+        assert!((hud_mob_effect_icon_alpha(&effect) - 0.5).abs() < 1e-6);
+        effect.duration_ticks = 0;
+        assert!((hud_mob_effect_icon_alpha(&effect) - 0.25).abs() < 1e-6);
+        effect.duration_ticks = -1;
+        assert_eq!(hud_mob_effect_icon_alpha(&effect), 1.0);
+        effect.duration_ticks = 0;
+        effect.ambient = true;
+        assert_eq!(hud_mob_effect_icon_alpha(&effect), 1.0);
+    }
+
+    #[test]
+    fn hud_inventory_mob_effects_match_wide_compact_and_dense_layouts() {
+        let screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        let glyphs = hud_mob_effect_test_glyphs();
+        let mut effects = (0..6)
+            .map(|index| {
+                test_hud_mob_effect(
+                    index,
+                    index % 2 == 0,
+                    index as u32,
+                    20 * (index + 1),
+                    false,
+                    true,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let wide = hud_inventory_mob_effect_instances(
+            PhysicalSize::new(500, 240),
+            &screen,
+            &effects,
+            &glyphs,
+        );
+        assert_eq!(wide.len(), 6);
+        assert_eq!(
+            wide.iter()
+                .map(|instance| instance.effect_id)
+                .collect::<Vec<_>>(),
+            vec![0, 1, 2, 3, 4, 5]
+        );
+        assert_eq!(
+            (
+                wide[0].background_x,
+                wide[0].background_y,
+                wide[0].background_width,
+                wide[0].icon_x,
+                wide[0].icon_y,
+                wide[5].background_y,
+            ),
+            (340, 37, 87, 347, 44, 167)
+        );
+        assert_eq!(wide[0].name.as_deref(), Some("Effect 0"));
+        assert_eq!(wide[0].duration.as_deref(), Some("00:10"));
+
+        let compact = hud_inventory_mob_effect_instances(
+            PhysicalSize::new(400, 240),
+            &screen,
+            &effects,
+            &glyphs,
+        );
+        assert_eq!(
+            (
+                compact[0].background_x,
+                compact[0].background_width,
+                compact[0].icon_x,
+                compact[0].name.as_deref(),
+                compact[0].duration.as_deref(),
+            ),
+            (290, 32, 297, None, None)
+        );
+
+        effects[0].display_name = "Effect name too wide for the available panel".to_string();
+        let clipped = hud_inventory_mob_effect_instances(
+            PhysicalSize::new(420, 240),
+            &screen,
+            &effects,
+            &glyphs,
+        );
+        let clipped_name = clipped[0].name.as_deref().expect("wide panel text");
+        assert!(clipped_name.len() < effects[0].display_name.len());
+        assert!(
+            hud_plain_text_width(clipped_name, &glyphs)
+                <= clipped[0]
+                    .background_width
+                    .saturating_sub(HUD_INVENTORY_EFFECT_TEXT_X_OFFSET as u32)
+                    .saturating_sub(HUD_INVENTORY_EFFECT_SPACING as u32)
+        );
     }
 
     #[test]

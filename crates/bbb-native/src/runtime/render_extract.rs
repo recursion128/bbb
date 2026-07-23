@@ -15,8 +15,8 @@ use bbb_renderer::{
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
     HudComponentTextRun, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen,
-    HudInventoryScreen, HudJigsawBlockEditorScreen, HudPauseScreen, HudPlayerHealth, HudPlayerList,
-    HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
+    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth,
+    HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
     HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
     HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
@@ -1544,6 +1544,8 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_sleep_overlay: Option<HudSleepOverlay>,
     pub(crate) hud_food: Option<i32>,
     pub(crate) hud_food_effect: HudFoodEffect,
+    pub(crate) hud_mob_effects: Vec<HudMobEffect>,
+    pub(crate) hud_inventory_shows_mob_effects: bool,
     pub(crate) hud_armor: Option<i32>,
     pub(crate) hud_air: Option<HudAirSupply>,
     pub(crate) hud_vehicle_health: Option<HudVehicleHealth>,
@@ -1802,6 +1804,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_sleep_overlay(frame.hud_sleep_overlay);
     renderer.set_hud_food(frame.hud_food);
     renderer.set_hud_food_effect(frame.hud_food_effect);
+    renderer.set_hud_mob_effects(frame.hud_mob_effects, frame.hud_inventory_shows_mob_effects);
     renderer.set_hud_armor(frame.hud_armor);
     renderer.set_hud_air(frame.hud_air);
     renderer.set_hud_vehicle_health(frame.hud_vehicle_health);

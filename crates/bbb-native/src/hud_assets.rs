@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
+use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_TYPES;
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind,
@@ -802,42 +803,62 @@ pub(crate) fn try_load_hud_textures(
         beacon_cancel.height,
         &beacon_cancel.rgba,
     )?;
-    let beacon_effect_speed = hud_sprite(&sprites, "mob_effect/speed")?;
-    renderer.upload_hud_beacon_effect_speed(
-        beacon_effect_speed.width,
-        beacon_effect_speed.height,
-        &beacon_effect_speed.rgba,
+    let effect_background = hud_sprite(&sprites, "hud/effect_background")?;
+    let effect_background_ambient = hud_sprite(&sprites, "hud/effect_background_ambient")?;
+    let inventory_effect_background =
+        hud_sprite(&sprites, "container/inventory/effect_background")?;
+    let inventory_effect_background_scaling = hud_nine_slice_scaling(inventory_effect_background)?;
+    let inventory_effect_background_ambient =
+        hud_sprite(&sprites, "container/inventory/effect_background_ambient")?;
+    let inventory_effect_background_ambient_scaling =
+        hud_nine_slice_scaling(inventory_effect_background_ambient)?;
+    let mob_effect_sprites = VANILLA_MOB_EFFECT_TYPES
+        .iter()
+        .map(|effect| {
+            let path = effect
+                .resource_id
+                .strip_prefix("minecraft:")
+                .unwrap_or(effect.resource_id);
+            Ok((
+                effect.id,
+                hud_sprite(&sprites, &format!("mob_effect/{path}"))?,
+            ))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    renderer.upload_hud_effect_background(
+        effect_background.width,
+        effect_background.height,
+        &effect_background.rgba,
     )?;
-    let beacon_effect_haste = hud_sprite(&sprites, "mob_effect/haste")?;
-    renderer.upload_hud_beacon_effect_haste(
-        beacon_effect_haste.width,
-        beacon_effect_haste.height,
-        &beacon_effect_haste.rgba,
+    renderer.upload_hud_effect_background_ambient(
+        effect_background_ambient.width,
+        effect_background_ambient.height,
+        &effect_background_ambient.rgba,
     )?;
-    let beacon_effect_resistance = hud_sprite(&sprites, "mob_effect/resistance")?;
-    renderer.upload_hud_beacon_effect_resistance(
-        beacon_effect_resistance.width,
-        beacon_effect_resistance.height,
-        &beacon_effect_resistance.rgba,
+    renderer.upload_hud_inventory_effect_background(
+        inventory_effect_background.width,
+        inventory_effect_background.height,
+        &inventory_effect_background.rgba,
+        inventory_effect_background_scaling,
     )?;
-    let beacon_effect_jump_boost = hud_sprite(&sprites, "mob_effect/jump_boost")?;
-    renderer.upload_hud_beacon_effect_jump_boost(
-        beacon_effect_jump_boost.width,
-        beacon_effect_jump_boost.height,
-        &beacon_effect_jump_boost.rgba,
+    renderer.upload_hud_inventory_effect_background_ambient(
+        inventory_effect_background_ambient.width,
+        inventory_effect_background_ambient.height,
+        &inventory_effect_background_ambient.rgba,
+        inventory_effect_background_ambient_scaling,
     )?;
-    let beacon_effect_strength = hud_sprite(&sprites, "mob_effect/strength")?;
-    renderer.upload_hud_beacon_effect_strength(
-        beacon_effect_strength.width,
-        beacon_effect_strength.height,
-        &beacon_effect_strength.rgba,
-    )?;
-    let beacon_effect_regeneration = hud_sprite(&sprites, "mob_effect/regeneration")?;
-    renderer.upload_hud_beacon_effect_regeneration(
-        beacon_effect_regeneration.width,
-        beacon_effect_regeneration.height,
-        &beacon_effect_regeneration.rgba,
-    )?;
+    let mob_effect_uploads = mob_effect_sprites
+        .iter()
+        .map(|(effect_id, sprite)| {
+            (
+                *effect_id,
+                sprite.width,
+                sprite.height,
+                sprite.rgba.as_slice(),
+            )
+        })
+        .collect::<Vec<_>>();
+    renderer.upload_hud_mob_effect_sprites(&mob_effect_uploads)?;
     let furnace = gui_texture(
         roots,
         "textures/gui/container/furnace.png",
@@ -1619,6 +1640,41 @@ mod tests {
                 stretch_inner: false,
             }
         );
+    }
+
+    #[test]
+    fn hud_mob_effect_sprite_catalog_resolves_every_generated_effect_id() {
+        let mut sprites = HashMap::new();
+        for effect in VANILLA_MOB_EFFECT_TYPES {
+            let path = effect
+                .resource_id
+                .strip_prefix("minecraft:")
+                .unwrap_or(effect.resource_id);
+            let id = format!("minecraft:mob_effect/{path}");
+            let image = SpriteImage::new(id.clone(), 18, 18, vec![255; 18 * 18 * 4]).unwrap();
+            assert!(sprites.insert(id, image).is_none());
+        }
+
+        let resolved = VANILLA_MOB_EFFECT_TYPES
+            .iter()
+            .map(|effect| {
+                let path = effect
+                    .resource_id
+                    .strip_prefix("minecraft:")
+                    .unwrap_or(effect.resource_id);
+                (
+                    effect.id,
+                    hud_sprite(&sprites, &format!("mob_effect/{path}"))
+                        .expect("generated mob-effect icon"),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(resolved.len(), VANILLA_MOB_EFFECT_TYPES.len());
+        assert_eq!(resolved.len(), 40);
+        assert!(resolved
+            .iter()
+            .all(|(_, sprite)| (sprite.width, sprite.height) == (18, 18)));
     }
 
     #[test]

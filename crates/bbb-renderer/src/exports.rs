@@ -117,7 +117,7 @@ pub use crate::hud::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJigsawBlockEditorLayout, HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField,
-    HudJumpBar, HudLocatorBar, HudLocatorMarker, HudLocatorPitch, HudLocatorStyle,
+    HudJumpBar, HudLocatorBar, HudLocatorMarker, HudLocatorPitch, HudLocatorStyle, HudMobEffect,
     HudNineSliceScaling, HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry,
     HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudSleepOverlay, HudStatsItemRow,
     HudStatsRow, HudStatsScreen, HudStatsScrollbarSprite, HudStatsSprite,
