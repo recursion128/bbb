@@ -7465,9 +7465,10 @@
           "evidence": [
             "crates/bbb-world/src/chunks/store.rs#apply_biome_update",
             "crates/bbb-world/src/chunks/tests.rs#applies_biome_update_to_existing_chunk_sections",
+            "crates/bbb-world/src/registries/environment_sampling.rs#environment_position_observes_holder_reorder_and_biome_replacement",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunksBiomes"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
+          "gap": "docs/unsupported-features.md#environment",
           "status": "partial"
         },
         "decode": {
@@ -7490,9 +7491,11 @@
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
             "crates/bbb-native/src/terrain_runtime/textures.rs#synchronize_biome_registry",
             "crates/bbb-native/src/particle_runtime.rs#synchronize_terrain_textures",
+            "crates/bbb-native/src/runtime.rs#sampled_environment_attributes_at_camera",
+            "crates/bbb-native/src/runtime/tests.rs#biome_positional_environment_values_override_custom_dimension_base",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunksBiomes"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
+          "gap": "docs/unsupported-features.md#environment",
           "status": "partial"
         },
         "tests": {

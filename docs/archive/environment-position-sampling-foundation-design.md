@@ -1,5 +1,7 @@
 # Environment position sampling foundation
 
+Status: completed on 2026-07-23.
+
 ## Goal and completion contract
 
 Establish the missing Vanilla 26.1 positional layer of

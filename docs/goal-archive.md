@@ -304,3 +304,6 @@
   双强度时钟、missTime、船只忙手及功能门控复现原版输入顺序；连接按选槽修复→攻击发包，
   全部适用 coverage 单元 complete，合同见
   `docs/archive/local-attack-preflight-closure-design.md`。
+- **2026-07-23（环境位置采样 foundation）**：生成的 48 项属性目录与 world-owned
+  `EnvironmentAttributeMap` 完成维度→直接/高斯生物群系→timeline 顺序，并迁移全部既有
+  位置消费者；合同见 `docs/archive/environment-position-sampling-foundation-design.md`。

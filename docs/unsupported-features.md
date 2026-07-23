@@ -760,12 +760,12 @@ Attachment and spawner presentation:
 - Implement the ominous-item-spawner about-to-spawn and spawn sounds.
 Environment:
 
-- Build the remaining `EnvironmentAttributeSystem` consumers over the frozen
-  dimension/timeline projection: positional ambient-particle ticks, background
-  music selection and volume, biome ambient loop/mood/additions, firefly-bush
-  sounds, sky-light-level darkening, and creaking activation. Apply biome and
-  weather layers at their vanilla positional/dimension boundaries rather than
-  treating the dimension sample as the final value for those consumers.
+- Build the remaining `EnvironmentAttributeSystem` consumers over the
+  position-sampled world projection: the 667-pair ambient-particle animate
+  loop, general delayed `MusicManager` scheduling and playback, biome ambient
+  loop/mood/additions, firefly-bush sounds, and creaking activation. These
+  consumers must observe `ChunksBiomes` replacement through the existing
+  direct/Gaussian sampling API.
 - Preserve complete `ParticleOptions` payloads when a custom dimension selects
   a complex default dripstone particle. The current level-event bridge carries
   the synchronized particle type but does not project block/item/color/vibration
@@ -1173,13 +1173,6 @@ back into a todo. Do not delete these.
   between adjacent leaves and `ModelBlockRenderer.forceOpaque` from the effective graphics
   option; add the same resource-remesh boundary without reintroducing block-name render-layer
   guesses. The exact 11-block leaves membership is generated and shared already.
-- Complete the remaining synchronized biome positional visual fields beyond
-  current fog/sky/water-fog colors and water-fog end distance. Biome replacement
-  already invalidates the complete level-height 3x3 chunk neighborhood. All
-  current fields use the shared `EnvironmentAttributeMap` modifier codec.
-  Direct custom climate and color effects project through the active holder
-  order; malformed synchronized data is omitted instead of falling back to a
-  same-name pack default.
 - **Per-block-entity distance/frustum culling.** Block entities currently submit
   like entities, unculled.
 - **Banner pattern no-depth-write pipeline.** Vanilla's `bannerPattern` pipeline
@@ -1356,8 +1349,6 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `ITEM_SNIPPET` does not bind `Sampler1`; `core/item` samples only the item
   atlas and lightmap, and `RenderTypes.itemCutout` / `itemTranslucent` never call
   `useOverlay()`.
-- **Biome `BLOCK_LIGHT_TINT` / `NIGHT_VISION_COLOR` overrides.** Vanilla biome
-  JSON does not provide them.
 - **Lightning sky flash tinting water fog.** Vanilla does not tint it.
 
 ## Block entities
