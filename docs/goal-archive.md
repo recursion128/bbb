@@ -339,3 +339,6 @@
   投影贯穿初始区块/BlockEntityData 原子 owner、异步 profile/skin generation 与现有
   dynamic atlas；profileless/ProfiledDefault/ready/failure fallback 均锁定，合同见
   `docs/archive/player-head-block-profile-skin-closure-design.md`。
+- **2026-07-23（Mob-effect 客户端行为闭环）**：生成的 40 项目录驱动 canonical
+  duration/blend tick、移动/光照/雾/天空/恶心投影和 HUD/背包效果面板；Update/Remove
+  两行 coverage 全单元 complete，合同见 `docs/archive/mob-effect-client-behavior-design.md`。

@@ -2015,7 +2015,7 @@ mod tests {
     }
 
     #[test]
-    fn play_update_mob_effect_keeps_remaining_client_effect_behaviors_open() {
+    fn play_update_mob_effect_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2024,14 +2024,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_UPDATE_MOB_EFFECT"
             })
             .expect("play update mob effect coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -2805,7 +2801,7 @@ mod tests {
     }
 
     #[test]
-    fn play_remove_mob_effect_keeps_broader_effect_consumers_open() {
+    fn play_remove_mob_effect_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2814,14 +2810,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_REMOVE_MOB_EFFECT"
             })
             .expect("play remove mob effect coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

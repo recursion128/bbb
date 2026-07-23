@@ -1,6 +1,6 @@
 # Mob-effect client behavior closure
 
-Status: active engineering contract.
+Status: completed engineering contract.
 
 ## Goal and completion
 

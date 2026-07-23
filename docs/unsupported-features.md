@@ -627,9 +627,6 @@ Movement:
   and first-person presentation. Generic entity-name visibility consumes it;
   the rest of the GUI still renders.
 
-- UpdateMobEffect wire/state replacement, living-entity gate and common movement/
-  render consumers are covered; remaining vanilla client behavior across all mob
-  effects (attributes, particles, HUD and specialized movement) stays open.
 - Complete the remaining camera-FOV inputs beyond synchronized player abilities:
   configurable base FOV/effect scale, bow-use/scoping zoom, and death/fluid
   modifiers. Vanilla keeps `walkingSpeed` as the FOV ratio denominator; it does
@@ -1301,6 +1298,10 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 - **Exact golden pixel parity to vanilla screenshots.** No golden PNG or
   full-frame hash: driver and float jitter make it unreliable.
+- **Fire-resistance lava fog — deferred.** Vanilla widens lava fog only when the
+  active camera is actually in lava and has Fire Resistance. Restart when the
+  camera environment owns a real lava fog medium; an effect-only approximation
+  would incorrectly alter atmospheric and water fog.
 - **Item-pipeline overlay-texture (`Sampler1`) sampling.** Vanilla's
   `ITEM_SNIPPET` does not bind `Sampler1`; `core/item` samples only the item
   atlas and lightmap, and `RenderTypes.itemCutout` / `itemTranslucent` never call
