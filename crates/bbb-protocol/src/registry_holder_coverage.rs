@@ -396,11 +396,13 @@ mod tests {
         assert!(network[0]
             .consumer
             .as_deref()
-            .is_some_and(|consumer| consumer.contains("push_slot_display_item_stack_candidates")));
+            .is_some_and(|consumer| consumer.contains("resolve_slot_display_first_stack")));
         for required in [
             "decode_slot_display_value",
             "decodes_update_recipes_with_tag_slot_display",
+            "push_slot_display_item_stack_candidates",
             "hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+            "stonecutter_buttons_and_tooltips_follow_current_tag_and_trim_context",
         ] {
             assert!(network[0]
                 .evidence
