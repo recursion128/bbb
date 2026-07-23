@@ -97,6 +97,9 @@
 # English display template/key fallback. Canonical Component/style ownership,
 # packet acceptance, and renderer submission metadata are unchanged.
 ^crates/bbb-native/src/runtime/render_extract[.]rs$	chat_translation_fallback|let [(]translation_key, fallback[)]|^[[:space:]]*fallback[:,]|unwrap_or[(]fallback[)]
+# Social status text follows the same selected-language then fixed-English
+# display fallback; player removal/hidden/blocked state is already canonical.
+^crates/bbb-native/src/runtime/render_extract[.]rs$	let [(]key, fallback[)] = match [(]player[.]blocked, player[.]hidden, player[.]removed[)]|localized_gui_text[(]item_runtime, key, fallback[)]
 # Advancement toast frame labels likewise resolve the selected language first;
 # the fixed English text is only the Vanilla localization fallback for a missing key.
 ^crates/bbb-native/src/runtime/advancement_toast[.]rs$	let [(]translation_key, fallback, frame_label_color[)]|localized_gui_text[(]Some[(]item_runtime[)], translation_key, fallback[)]
