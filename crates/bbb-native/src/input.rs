@@ -174,6 +174,7 @@ use crate::particle_runtime::{LocalDestroyHitParticleState, LocalPlayerActionPar
 mod bundle;
 mod commands;
 mod component_patch;
+mod game_rules;
 mod inventory;
 mod jigsaw_block;
 mod minecart_command_block;
@@ -217,11 +218,12 @@ pub(crate) use commands::{
     queue_rename_item_command, queue_request_game_rule_values_command, queue_request_stats_command,
     queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
     queue_set_command_block_command, queue_set_creative_mode_slot_command,
-    queue_set_jigsaw_block_command, queue_set_structure_block_command,
+    queue_set_game_rule_command, queue_set_jigsaw_block_command, queue_set_structure_block_command,
     queue_set_test_block_command, queue_sign_update_command, queue_spectate_entity_command,
     queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
 use component_patch::{encode_added_component_value_snbt_with_context, PersistentSnbtContext};
+pub(crate) use game_rules::{GameRuleSearchEntry, GameRulesInteractionRow, GameRulesScreenFocus};
 #[cfg(test)]
 pub(crate) use inventory::handle_inventory_mouse_input;
 pub(crate) use inventory::{
@@ -636,6 +638,7 @@ pub(crate) struct ClientInputState {
     stats_screen_total_rows: usize,
     stats_screen_focus: StatsScreenFocus,
     stats_screen_was_loading: bool,
+    game_rules_screen: Option<game_rules::GameRulesScreenInputState>,
     pause_screen_link_requests: Vec<PauseScreenLinkRequest>,
     pause_screen_disconnect_requested: bool,
     debug_entries: DebugScreenEntryList,
@@ -1124,6 +1127,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.game_rules_screen().is_some()
             || world.command_block_editor().is_some()
             || world.minecart_command_block_editor().is_some()
             || world.structure_block_editor().is_some()
@@ -1229,6 +1233,7 @@ impl ClientInputState {
             stats_screen_total_rows: self.stats_screen_total_rows,
             stats_screen_focus: self.stats_screen_focus,
             stats_screen_was_loading: self.stats_screen_was_loading,
+            game_rules_screen: self.game_rules_screen.clone(),
             pause_screen_disconnect_requested: self.pause_screen_disconnect_requested,
             debug_entries: self.debug_entries.clone(),
             debug_profiler_chart_visible: self.debug_profiler_chart_visible,
@@ -1621,6 +1626,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.game_rules_screen().is_some()
             || world.structure_block_editor().is_some()
             || world.jigsaw_block_editor().is_some()
             || world.test_block_editor().is_some()
@@ -2221,6 +2227,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.game_rules_screen().is_some()
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open()
             || self.sign_editor_is_active_or_pending(world)
@@ -4109,6 +4116,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.game_rules_screen().is_some()
     }
 
     fn next_debug_query_transaction_id(&mut self) -> i32 {
@@ -10655,6 +10663,17 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if input.handle_game_rules_screen_key(
+        counters,
+        world,
+        net_commands,
+        code,
+        pressed,
+        surface_size,
+    ) {
+        return;
+    }
+
     if input.handle_structure_block_editor_key(counters, world, net_commands, code, pressed) {
         return;
     }
@@ -11002,6 +11021,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
         return;
     }
 
+    if input.handle_game_rules_screen_text(world, text) {
+        return;
+    }
+
     if input.handle_structure_block_editor_text(world, text) {
         return;
     }
@@ -11026,6 +11049,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.game_rules_screen().is_some()
     {
         return;
     }

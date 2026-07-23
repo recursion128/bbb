@@ -325,7 +325,17 @@ pub(crate) fn pump_control_net_requests(
                 queue_request_stats_command(counters, net_commands);
             }
             NetControlRequest::RequestGameRuleValues => {
-                queue_request_game_rule_values_command(counters, net_commands);
+                if world.game_rules_screen().is_none()
+                    && world.local_player_has_gamemaster_permission()
+                {
+                    if let Some(container_id) = world.open_container_id() {
+                        world.close_local_container(container_id);
+                        queue_container_close_request_command(counters, net_commands, container_id);
+                    }
+                    if world.open_game_rules_screen() {
+                        queue_request_game_rule_values_command(counters, net_commands);
+                    }
+                }
             }
             NetControlRequest::PlaceRecipe {
                 container_id,
@@ -581,10 +591,43 @@ mod tests {
     use super::*;
     use bbb_protocol::menu_types::{VANILLA_MENU_TYPE_GENERIC_9X3_ID, VANILLA_MENU_TYPE_LOOM_ID};
     use bbb_protocol::packets::{
-        CommandArgumentParser, CommandNode, CommandNodeType, Commands,
-        VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+        CommandArgumentParser, CommandNode, CommandNodeType, Commands, CommonPlayerSpawnInfo,
+        EntityEvent, PlayLogin, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
     };
     use uuid::Uuid;
+
+    fn operator_world() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 1,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        });
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 42,
+            event_id: 26,
+        }));
+        world
+    }
 
     #[test]
     fn pump_control_input_requests_opens_local_inventory_through_the_real_key_handler() {
@@ -1069,14 +1112,15 @@ mod tests {
     }
 
     #[test]
-    fn pump_control_net_requests_queues_client_command_requests() {
+    fn pump_control_net_requests_opens_game_rules_once_with_permission() {
         let requests = bbb_control::SharedControlRequests::default();
         requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::RequestStats,
             bbb_control::NetControlRequest::RequestGameRuleValues,
+            bbb_control::NetControlRequest::RequestGameRuleValues,
         ]);
         let (tx, mut rx) = tokio::sync::mpsc::channel(2);
-        let mut world = WorldStore::new();
+        let mut world = operator_world();
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
@@ -1085,7 +1129,27 @@ mod tests {
         assert_eq!(counters.request_game_rule_values_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestStats);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestGameRuleValues);
+        assert!(world.game_rules_screen().unwrap().loading);
         assert!(requests.lock().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_rejects_game_rules_without_permission() {
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::RequestGameRuleValues);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.request_game_rule_values_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+        assert!(world.game_rules_screen().is_none());
     }
 
     #[test]

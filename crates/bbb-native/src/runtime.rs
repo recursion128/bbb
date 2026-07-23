@@ -220,6 +220,7 @@ mod advancement_toast;
 mod control_requests;
 mod debug_light_sections;
 mod dialog_screen;
+mod game_rules_screen;
 mod render_extract;
 pub(crate) use render_extract::*;
 mod events;
@@ -238,6 +239,7 @@ use dialog_screen::{
     hud_dialog_confirm_link_screen, hud_dialog_screen_with_measurer, hud_dialog_warning_screen,
     hud_waiting_response_screen,
 };
+use game_rules_screen::hud_game_rules_screen;
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_MAX_CLIENT_TICKS_PER_STEP: u32 = 10;
@@ -2368,6 +2370,12 @@ pub(crate) fn advance_simulation(
     input.sync_jigsaw_block_editor(world, net_counters, net_commands);
     input.sync_test_block_editor(world, net_counters, net_commands);
     input.sync_test_instance_block_editor(world, net_counters, net_commands);
+    let _ = hud_game_rules_screen(
+        input,
+        world,
+        item_runtime.as_ref(),
+        input_runtime.surface_size(),
+    );
     let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed {
         if let Some(particle_events) = particle_runtime.as_mut() {
@@ -2912,8 +2920,16 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_pause_screen(input, surface_size)
     };
+    let hud_game_rules_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some()
+    {
+        None
+    } else {
+        let mut game_rules_input = input.clone();
+        hud_game_rules_screen(&mut game_rules_input, world, item_runtime, surface_size)
+    };
     let hud_stats_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || !world.stats_screen_is_open()
     {
         None
@@ -2958,6 +2974,7 @@ pub(crate) fn update_renderer_from_publication(
     };
     let hud_sign_editor_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
     {
         None
@@ -2966,6 +2983,7 @@ pub(crate) fn update_renderer_from_publication(
     };
     let hud_command_block_editor_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
     {
         None
@@ -2975,6 +2993,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_structure_block_editor_screen = if world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
     {
         None
@@ -2984,6 +3003,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_jigsaw_block_editor_screen = if world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
     {
         None
@@ -2993,6 +3013,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_test_block_editor_screen = if world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
     {
         None
@@ -3002,6 +3023,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_test_instance_block_editor_screen = if world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
     {
         None
@@ -3010,6 +3032,7 @@ pub(crate) fn update_renderer_from_publication(
     };
     let hud_inventory_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
         || hud_sign_editor_screen.is_some()
         || hud_command_block_editor_screen.is_some()
@@ -3051,10 +3074,12 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         )
     };
-    // `DialogScreen`, its warning confirmation, and `GenericMessageScreen` inherit
-    // `Screen.extractBlurredBackground`; container/book/advancement screens remain
-    // vanilla in-game UI and must not create a blur stratum.
-    let hud_screen_blur = hud_screen_blur_for_world(world, hud_inventory_screen.is_some());
+    // Dialog and in-world game-rules screens inherit `Screen.extractBlurredBackground`;
+    // container/book/advancement/stats screens remain vanilla in-game UI.
+    let hud_screen_blur = hud_screen_blur_for_world(
+        world,
+        hud_inventory_screen.is_some() || hud_game_rules_screen.is_some(),
+    );
     let hud_duration = hud_started_at.elapsed();
     let item_pre_started_at = Instant::now();
     // Vanilla extracts item/entity render state after `Minecraft.tick` has advanced keybinds,
@@ -3538,6 +3563,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_test_block_editor_screen,
             hud_test_instance_block_editor_screen,
             hud_pause_screen,
+            hud_game_rules_screen,
             hud_stats_screen,
             hud_system_toast,
             hud_advancement_toasts,
@@ -4185,6 +4211,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.game_rules_screen().is_some()
         || world.command_block_editor().is_some()
         || world.minecart_command_block_editor().is_some()
         || world.structure_block_editor().is_some()
@@ -8163,6 +8190,10 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         return None;
     }
 
+    if world.game_rules_screen().is_some() {
+        return None;
+    }
+
     let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let container = if world.local_inventory_is_open() {
         &world.inventory().inventory_menu
@@ -8446,7 +8477,8 @@ pub(crate) fn hud_screen_blur_for_world(world: &WorldStore, screen_present: bool
     screen_present
         && (world.dialog_warning_is_open()
             || world.current_dialog().is_some()
-            || world.dialog_waiting_ticks().is_some())
+            || world.dialog_waiting_ticks().is_some()
+            || world.game_rules_screen().is_some())
 }
 
 fn hud_recipe_book_background_layer() -> HudInventoryBackgroundLayer {

@@ -715,6 +715,7 @@ pub struct Renderer {
         Option<crate::hud::HudTestInstanceBlockEditorScreen>,
     pub(super) hud_pause_screen: Option<crate::hud::HudPauseScreen>,
     pub(super) hud_stats_screen: Option<crate::hud::HudStatsScreen>,
+    pub(super) hud_game_rules_screen: Option<crate::hud::HudGameRulesScreen>,
     pub(super) hud_debug_options_screen: Option<crate::hud::HudDebugOptionsScreen>,
     /// One persistent PIP target per sanitized `hud_inventory_screen` entity preview, indexed by
     /// preview order (vanilla `PictureInPictureRenderer` private color+depth textures).
@@ -2000,6 +2001,7 @@ impl Renderer {
             hud_test_instance_block_editor_screen: None,
             hud_pause_screen: None,
             hud_stats_screen: None,
+            hud_game_rules_screen: None,
             hud_debug_options_screen: None,
             hud_entity_preview_pip_targets: Vec::new(),
             hud_experience_background: None,

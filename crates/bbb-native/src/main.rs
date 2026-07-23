@@ -1171,6 +1171,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.game_rules_screen().is_some()
         || world.command_block_editor().is_some()
         || world.minecart_command_block_editor().is_some()
         || world.test_block_editor().is_some()

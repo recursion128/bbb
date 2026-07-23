@@ -14,9 +14,17 @@ use crate::item_models::{
 };
 use crate::Renderer;
 
+mod game_rules;
 mod gpu;
 mod layout;
 
+pub use self::game_rules::{
+    hud_game_rules_confirmation_buttons, hud_game_rules_layout, HudGameRulesDiscardConfirmation,
+    HudGameRulesLayout, HudGameRulesRect, HudGameRulesRow, HudGameRulesScreen,
+    HUD_GAME_RULES_FOOTER_HEIGHT, HUD_GAME_RULES_HEADER_HEIGHT, HUD_GAME_RULES_LIST_WIDTH,
+    HUD_GAME_RULES_ROW_HEIGHT, HUD_GAME_RULES_SEARCH_HEIGHT, HUD_GAME_RULES_SEARCH_WIDTH,
+    HUD_GAME_RULES_VALUE_HEIGHT, HUD_GAME_RULES_VALUE_WIDTH,
+};
 pub(super) use self::gpu::{
     create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
     create_hud_sprite_gpu, create_repeating_hud_sprite_gpu, HudSpriteGpu,
@@ -4769,6 +4777,10 @@ impl Renderer {
         self.hud_stats_screen = screen.and_then(sanitize_hud_stats_screen);
     }
 
+    pub fn set_hud_game_rules_screen(&mut self, screen: Option<HudGameRulesScreen>) {
+        self.hud_game_rules_screen = screen.and_then(game_rules::sanitize_hud_game_rules_screen);
+    }
+
     pub fn set_hud_system_toast(&mut self, toast: Option<HudSystemToast>) {
         self.hud_system_toast = toast.and_then(sanitize_hud_system_toast);
     }
@@ -6259,6 +6271,28 @@ impl Renderer {
                 &self.hud_digit_glyphs,
                 &self.hud_stats_sprites,
                 &self.hud_stats_scrollbar_sprites,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
+        if let Some(screen) = &self.hud_game_rules_screen {
+            game_rules::push_hud_game_rules_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_widget_text_field_highlighted.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),

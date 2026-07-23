@@ -338,6 +338,13 @@ impl SimulationInputRuntime {
         {
             return;
         }
+        if context.input.handle_game_rules_screen_cursor_moved(
+            context.world,
+            self.cursor_position,
+            self.surface_size,
+        ) {
+            return;
+        }
         if context.input.handle_stats_screen_cursor_moved(
             context.world,
             self.cursor_position,
@@ -441,6 +448,7 @@ impl SimulationInputRuntime {
         let book_open = context.world.current_book().is_some();
         let advancements_open = context.world.advancements_screen_is_open();
         let stats_open = context.world.stats_screen_is_open();
+        let game_rules_open = context.world.game_rules_screen().is_some();
         let debug_options_open = context.input.debug_options_screen_is_open();
         let pause_open = context.input.debug_pause_screen_is_open();
         let command_entry_open = context.input.command_entry_is_active();
@@ -480,6 +488,7 @@ impl SimulationInputRuntime {
             && !book_open
             && !advancements_open
             && !stats_open
+            && !game_rules_open
             && !debug_options_open
             && !pause_open
             && !world_wants_cursor(context.world);
@@ -496,6 +505,7 @@ impl SimulationInputRuntime {
             || book_open
             || advancements_open
             || stats_open
+            || game_rules_open
             || debug_options_open
             || pause_open
             || command_entry_open
@@ -517,6 +527,7 @@ impl SimulationInputRuntime {
             && !book_open
             && !advancements_open
             && !stats_open
+            && !game_rules_open
             && !debug_options_open
             && !pause_open
             && !command_entry_open
@@ -743,6 +754,7 @@ impl SimulationInputRuntime {
         let book_open = context.world.current_book().is_some();
         let advancements_open = context.world.advancements_screen_is_open();
         let stats_open = context.world.stats_screen_is_open();
+        let game_rules_open = context.world.game_rules_screen().is_some();
         let command_entry_open = context.input.command_entry_is_active();
         let structure_block_editor_open = context.input.structure_block_editor_is_active();
         let jigsaw_block_editor_open = context.input.jigsaw_block_editor_is_active();
@@ -764,6 +776,7 @@ impl SimulationInputRuntime {
         }
         if sign_editor_open
             || container_open
+            || game_rules_open
             || command_entry_open
             || structure_block_editor_open
             || jigsaw_block_editor_open
@@ -775,6 +788,7 @@ impl SimulationInputRuntime {
         if !self.cursor_captured
             && !sign_editor_open
             && !container_open
+            && !game_rules_open
             && !command_entry_open
             && !structure_block_editor_open
             && !jigsaw_block_editor_open
@@ -859,6 +873,22 @@ impl SimulationInputRuntime {
             if context.input.pause_screen_disconnect_requested() {
                 request_net_disconnect(context.net_commands, &mut self.net_disconnect_requested);
             }
+            if !simulation_wants_cursor(context.input, context.world) {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+        if context.world.game_rules_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_game_rules_screen_mouse_input(
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                button,
+                state,
+                self.cursor_position,
+                self.surface_size,
+            );
             if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
             }
@@ -1214,6 +1244,13 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             return;
         }
+        if context.world.game_rules_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .handle_game_rules_screen_mouse_wheel(context.world, delta);
+            return;
+        }
         if context.world.stats_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             context.platform.submit(PlatformEffect::StatsScreenInput(
@@ -1318,6 +1355,7 @@ impl SimulationInputRuntime {
             pending.net_requests.extend(net);
             pending.input_requests.extend(input_request);
         }
+        let game_rules_was_open = context.world.game_rules_screen().is_some();
         pump_control_net_requests(
             &requests,
             context.net_commands,
@@ -1325,6 +1363,16 @@ impl SimulationInputRuntime {
             context.world,
             context.code_of_conduct.as_deref_mut(),
         );
+        if !game_rules_was_open && context.world.game_rules_screen().is_some() {
+            release_active_input(
+                context.input,
+                context.world,
+                context.net_counters,
+                context.net_commands,
+            );
+            context.input.sync_game_rules_screen(context.world);
+            self.request_cursor_capture(false, context.platform);
+        }
         pump_control_input_requests(
             &requests,
             context.input,
@@ -1422,6 +1470,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.game_rules_screen().is_some()
         || world.command_block_editor().is_some()
         || world.minecart_command_block_editor().is_some()
         || world.structure_block_editor().is_some()

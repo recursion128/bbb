@@ -105,7 +105,8 @@ pub use crate::hud::{
     HudDebugOverlay, HudDebugProfilerChart, HudDebugProfilerSlice, HudDebugTpsChart,
     HudDebugTpsSample, HudDigitGlyph, HudEntityPreview, HudEntityPreviewItemDisplayContext,
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphMap,
-    HudFoodEffect, HudGameModeSwitcherMode, HudHeartKind, HudIconLayer,
+    HudFoodEffect, HudGameModeSwitcherMode, HudGameRulesDiscardConfirmation, HudGameRulesLayout,
+    HudGameRulesRect, HudGameRulesRow, HudGameRulesScreen, HudHeartKind, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
     HudInventoryPreeditOverlay, HudInventoryScreen, HudInventoryScrollArea, HudInventoryScrollbar,
@@ -121,8 +122,12 @@ pub use crate::hud::{
     HudTestBlockEditorLayout, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
     HudTestInstanceBlockEditorLayout, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudTitleText, HudUvRect, HudVehicleHealth,
-    HUD_ADVANCEMENT_TOAST_SLOTS, HUD_FONT_BASELINE, HUD_HOTBAR_SLOTS,
+    HUD_ADVANCEMENT_TOAST_SLOTS, HUD_FONT_BASELINE, HUD_GAME_RULES_FOOTER_HEIGHT,
+    HUD_GAME_RULES_HEADER_HEIGHT, HUD_GAME_RULES_LIST_WIDTH, HUD_GAME_RULES_ROW_HEIGHT,
+    HUD_GAME_RULES_SEARCH_HEIGHT, HUD_GAME_RULES_SEARCH_WIDTH, HUD_GAME_RULES_VALUE_HEIGHT,
+    HUD_GAME_RULES_VALUE_WIDTH, HUD_HOTBAR_SLOTS,
 };
+pub use crate::hud::{hud_game_rules_confirmation_buttons, hud_game_rules_layout};
 pub use crate::item_entities::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
 };

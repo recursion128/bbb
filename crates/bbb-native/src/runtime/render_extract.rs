@@ -14,14 +14,14 @@ use bbb_renderer::{
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
     HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatInteraction,
     HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions, HudDebugOptionsScreen,
-    HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJigsawBlockEditorScreen, HudJumpBar,
-    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen,
-    HudSleepOverlay, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
-    HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
-    HudTitleText, HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
-    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
-    ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, SelectionOutline,
-    SignTextSurface, WorldBorderRenderState,
+    HudDebugOverlay, HudFoodEffect, HudGameRulesScreen, HudInventoryScreen,
+    HudJigsawBlockEditorScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
+    HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
+    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
+    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{visit_localized_template, LocalizedTemplatePart};
@@ -1442,6 +1442,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_test_block_editor_screen: Option<HudTestBlockEditorScreen>,
     pub(crate) hud_test_instance_block_editor_screen: Option<HudTestInstanceBlockEditorScreen>,
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
+    pub(crate) hud_game_rules_screen: Option<HudGameRulesScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_system_toast: Option<HudSystemToast>,
     pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
@@ -1699,6 +1700,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_test_block_editor_screen(frame.hud_test_block_editor_screen);
     renderer.set_hud_test_instance_block_editor_screen(frame.hud_test_instance_block_editor_screen);
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
+    renderer.set_hud_game_rules_screen(frame.hud_game_rules_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_system_toast(frame.hud_system_toast);
     renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);

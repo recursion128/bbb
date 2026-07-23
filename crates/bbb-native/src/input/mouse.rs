@@ -67,6 +67,7 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
         || input.sign_editor_is_active_or_pending(world)
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
+        || world.game_rules_screen().is_some()
     {
         return;
     }
@@ -639,6 +640,7 @@ pub(crate) fn handle_mouse_wheel(
         || input.sign_editor_is_active_or_pending(world)
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
+        || world.game_rules_screen().is_some()
     {
         return;
     }

@@ -18,7 +18,7 @@ use bbb_protocol::packets::{
     PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
     RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
     SelectBundleItem, SelectTradeCommand, SetBeacon, SetCommandBlock, SetCommandMinecart,
-    SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate,
+    SetCreativeModeSlot, SetGameRule, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate,
     SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
     Vec3d as ProtocolVec3d,
 };
@@ -129,6 +129,24 @@ pub(crate) fn queue_request_game_rule_values_command(
             counters.request_game_rule_values_commands_queued += 1;
         }
     }
+}
+
+pub(crate) fn queue_set_game_rule_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetGameRule,
+) -> bool {
+    if command.entries.is_empty() {
+        return false;
+    }
+    let Some(tx) = net_commands else {
+        return false;
+    };
+    if tx.try_send(NetCommand::SetGameRule(command)).is_err() {
+        return false;
+    }
+    counters.set_game_rule_commands_queued += 1;
+    true
 }
 
 pub(crate) fn queue_place_recipe_command(
@@ -1119,6 +1137,37 @@ mod tests {
         assert_eq!(counters.request_game_rule_values_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestStats);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestGameRuleValues);
+    }
+
+    #[test]
+    fn queues_non_empty_game_rule_updates_only() {
+        use bbb_protocol::packets::SetGameRuleEntry;
+
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(!queue_set_game_rule_command(
+            &mut counters,
+            &commands,
+            SetGameRule {
+                entries: Vec::new(),
+            },
+        ));
+        let command = SetGameRule {
+            entries: vec![SetGameRuleEntry {
+                rule: "minecraft:keep_inventory".to_string(),
+                value: "true".to_string(),
+            }],
+        };
+        assert!(queue_set_game_rule_command(
+            &mut counters,
+            &commands,
+            command.clone(),
+        ));
+
+        assert_eq!(counters.set_game_rule_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetGameRule(command));
     }
 
     #[test]
