@@ -1883,7 +1883,7 @@ mod tests {
     }
 
     #[test]
-    fn play_set_objective_keeps_unknown_method_and_runtime_presentation_open() {
+    fn play_set_objective_keeps_only_runtime_presentation_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1899,7 +1899,7 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(partial, BTreeSet::from(["decode", "runtime_side_effect"]));
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
     #[test]
@@ -1921,7 +1921,7 @@ mod tests {
     }
 
     #[test]
-    fn play_set_player_team_keeps_unknown_method_and_runtime_presentation_open() {
+    fn play_set_player_team_keeps_only_runtime_presentation_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1937,7 +1937,7 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(partial, BTreeSet::from(["decode", "runtime_side_effect"]));
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
     #[test]

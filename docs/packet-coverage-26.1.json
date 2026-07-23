@@ -12822,11 +12822,12 @@
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_objective_add_and_remove_packets",
-            "crates/bbb-protocol/src/packets/scoreboard.rs#rejects_invalid_scoreboard_method_ids",
+            "crates/bbb-protocol/src/packets/scoreboard.rs#preserves_unknown_scoreboard_method_ids_without_conditional_payloads",
+            "crates/bbb-protocol/src/packets/scoreboard.rs#unknown_scoreboard_methods_still_reject_trailing_payloads",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSetObjectivePacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -12986,11 +12987,12 @@
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_player_team_add_join_and_leave_packets",
-            "crates/bbb-protocol/src/packets/scoreboard.rs#rejects_invalid_scoreboard_method_ids",
+            "crates/bbb-protocol/src/packets/scoreboard.rs#preserves_unknown_scoreboard_method_ids_without_conditional_payloads",
+            "crates/bbb-protocol/src/packets/scoreboard.rs#unknown_scoreboard_methods_still_reject_trailing_payloads",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSetPlayerTeamPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [

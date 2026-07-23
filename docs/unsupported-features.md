@@ -1079,14 +1079,12 @@ back into a todo. Do not delete these.
   are covered; remaining scoreboard gaps are presentation specific.
 - SetDisplayObjective slot selection and clear/unknown-objective behavior are covered;
   remaining sidebar/list presentation is tracked below.
-- SetObjective still rejects unknown method bytes that vanilla decodes as handler no-ops,
-  rather than preserving them for the handler no-op.
+- Consume SetObjective display name, render type, and number format in the
+  remaining sidebar/list presentation.
 - SetScore's optional display Component is retained as styled canonical state but still
   needs consumption by the remaining sidebar/list presentation.
-- SetPlayerTeam preserves add/change/remove/join/leave membership semantics, including
-  moving a player out of the previous team. Unknown method bytes still differ from
-  vanilla's handler no-op; retained styled prefix/suffix content still needs generic
-  entity name-display consumption.
+- Consume SetPlayerTeam's retained styled prefix/suffix in the remaining
+  sidebar/list name presentation.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its
