@@ -1593,24 +1593,17 @@ mod tests {
     }
 
     #[test]
-    fn play_open_book_keeps_rich_filtered_pages_open() {
+    fn play_open_book_closes_rich_filtered_pages_and_interactions() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_OPEN_BOOK")
             .expect("play open book coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -3504,7 +3497,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_edit_book_keeps_native_editor_and_slot_guards_open() {
+    fn play_serverbound_edit_book_closes_native_editor_and_slot_guards() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3516,14 +3509,10 @@ mod tests {
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        assert_eq!(
-            entry.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        for dimension in ["command_surface", "state_guard", "tests"] {
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
+                PacketCoverageStatus::Complete,
                 "{dimension}"
             );
         }
