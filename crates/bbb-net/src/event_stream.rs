@@ -3645,7 +3645,7 @@ mod tests {
 
         let objective = packets::SetObjective {
             objective_name: "kills".to_string(),
-            method: packets::SetObjectiveMethod::Add,
+            method: packets::SetObjectiveMethod::Add.into(),
             parameters: Some(packets::SetObjectiveParameters {
                 display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                 render_type: packets::ObjectiveRenderType::Integer,
@@ -3683,7 +3683,7 @@ mod tests {
 
         let team = packets::SetPlayerTeam {
             name: "red".to_string(),
-            method: packets::PlayerTeamMethod::Add,
+            method: packets::PlayerTeamMethod::Add.into(),
             parameters: Some(packets::PlayerTeamParameters {
                 display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                 options: 0b11,

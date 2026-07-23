@@ -330,7 +330,7 @@ fn scoreboard_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::SetObjective(
         bbb_protocol::packets::SetObjective {
             objective_name: "kills".to_string(),
-            method: bbb_protocol::packets::SetObjectiveMethod::Add,
+            method: bbb_protocol::packets::SetObjectiveMethod::Add.into(),
             parameters: Some(bbb_protocol::packets::SetObjectiveParameters {
                 display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                 render_type: bbb_protocol::packets::ObjectiveRenderType::Integer,
@@ -369,7 +369,7 @@ fn scoreboard_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::SetPlayerTeam(
         bbb_protocol::packets::SetPlayerTeam {
             name: "red".to_string(),
-            method: bbb_protocol::packets::PlayerTeamMethod::Add,
+            method: bbb_protocol::packets::PlayerTeamMethod::Add.into(),
             parameters: Some(bbb_protocol::packets::PlayerTeamParameters {
                 display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                 options: 0b11,
@@ -393,7 +393,7 @@ fn scoreboard_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::SetObjective(
         bbb_protocol::packets::SetObjective {
             objective_name: "missing".to_string(),
-            method: bbb_protocol::packets::SetObjectiveMethod::Change,
+            method: bbb_protocol::packets::SetObjectiveMethod::Change.into(),
             parameters: Some(bbb_protocol::packets::SetObjectiveParameters {
                 display_name: bbb_protocol::RichTextComponent::plain("Missing"),
                 render_type: bbb_protocol::packets::ObjectiveRenderType::Integer,
@@ -422,7 +422,7 @@ fn scoreboard_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::SetPlayerTeam(
         bbb_protocol::packets::SetPlayerTeam {
             name: "missing".to_string(),
-            method: bbb_protocol::packets::PlayerTeamMethod::Join,
+            method: bbb_protocol::packets::PlayerTeamMethod::Join.into(),
             parameters: None,
             players: vec!["Nobody".to_string()],
         },

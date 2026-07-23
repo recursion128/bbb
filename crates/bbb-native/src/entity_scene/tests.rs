@@ -10221,7 +10221,7 @@ fn entity_model_instances_project_glowing_shared_flag_from_world() {
     }));
     assert!(world.apply_set_player_team(SetPlayerTeam {
         name: "green".to_string(),
-        method: PlayerTeamMethod::Add,
+        method: PlayerTeamMethod::Add.into(),
         parameters: Some(PlayerTeamParameters {
             display_name: bbb_protocol::RichTextComponent::plain("Green"),
             options: 0,

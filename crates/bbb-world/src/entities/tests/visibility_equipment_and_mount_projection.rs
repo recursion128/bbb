@@ -246,7 +246,7 @@ fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
 
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "green".to_string(),
-        method: ProtocolPlayerTeamMethod::Add,
+        method: ProtocolPlayerTeamMethod::Add.into(),
         parameters: Some(ProtocolPlayerTeamParameters {
             display_name: bbb_protocol::RichTextComponent::plain("Green"),
             options: 0,
@@ -274,7 +274,7 @@ fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
 
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "green".to_string(),
-        method: ProtocolPlayerTeamMethod::Change,
+        method: ProtocolPlayerTeamMethod::Change.into(),
         parameters: Some(ProtocolPlayerTeamParameters {
             display_name: bbb_protocol::RichTextComponent::plain("Green"),
             options: 2,
@@ -347,7 +347,7 @@ fn entity_model_sources_project_team_outline_color() {
     });
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "green".to_string(),
-        method: ProtocolPlayerTeamMethod::Add,
+        method: ProtocolPlayerTeamMethod::Add.into(),
         parameters: Some(ProtocolPlayerTeamParameters {
             display_name: bbb_protocol::RichTextComponent::plain("Green"),
             options: 0,

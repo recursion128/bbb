@@ -33,8 +33,42 @@ pub struct SetDisplayObjective {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetObjective {
     pub objective_name: String,
-    pub method: SetObjectiveMethod,
+    pub method: SetObjectiveOperation,
     pub parameters: Option<SetObjectiveParameters>,
+}
+
+/// Vanilla preserves the signed method byte even when it is outside the three
+/// known objective operations. Unknown values carry no parameter payload and
+/// become handler no-ops.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SetObjectiveOperation(i8);
+
+impl SetObjectiveOperation {
+    pub const fn from_raw(raw: i8) -> Self {
+        Self(raw)
+    }
+
+    pub const fn raw(self) -> i8 {
+        self.0
+    }
+
+    pub fn known(self) -> Option<SetObjectiveMethod> {
+        SetObjectiveMethod::from_id(self.0)
+    }
+
+    fn has_parameters(self) -> bool {
+        matches!(
+            self.known(),
+            Some(SetObjectiveMethod::Add | SetObjectiveMethod::Change)
+        )
+    }
+}
+
+impl From<SetObjectiveMethod> for SetObjectiveOperation {
+    fn from(method: SetObjectiveMethod) -> Self {
+        Self(method.id())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,12 +76,6 @@ pub struct SetObjectiveParameters {
     pub display_name: RichTextComponent,
     pub render_type: ObjectiveRenderType,
     pub number_format: Option<NumberFormatSummary>,
-}
-
-impl SetObjectiveMethod {
-    fn has_parameters(self) -> bool {
-        matches!(self, Self::Add | Self::Change)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,9 +90,50 @@ pub struct SetScore {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetPlayerTeam {
     pub name: String,
-    pub method: PlayerTeamMethod,
+    pub method: PlayerTeamOperation,
     pub parameters: Option<PlayerTeamParameters>,
     pub players: Vec<String>,
+}
+
+/// Vanilla preserves the signed method byte even when it is outside the five
+/// known team operations. Unknown values carry neither parameters nor players
+/// and become handler no-ops.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct PlayerTeamOperation(i8);
+
+impl PlayerTeamOperation {
+    pub const fn from_raw(raw: i8) -> Self {
+        Self(raw)
+    }
+
+    pub const fn raw(self) -> i8 {
+        self.0
+    }
+
+    pub fn known(self) -> Option<PlayerTeamMethod> {
+        PlayerTeamMethod::from_id(self.0)
+    }
+
+    fn has_parameters(self) -> bool {
+        matches!(
+            self.known(),
+            Some(PlayerTeamMethod::Add | PlayerTeamMethod::Change)
+        )
+    }
+
+    fn has_player_list(self) -> bool {
+        matches!(
+            self.known(),
+            Some(PlayerTeamMethod::Add | PlayerTeamMethod::Join | PlayerTeamMethod::Leave)
+        )
+    }
+}
+
+impl From<PlayerTeamMethod> for PlayerTeamOperation {
+    fn from(method: PlayerTeamMethod) -> Self {
+        Self(method.id())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,16 +156,6 @@ pub enum NumberFormatSummary {
     Blank,
     Styled(ComponentStyle),
     Fixed(RichTextComponent),
-}
-
-impl PlayerTeamMethod {
-    fn has_parameters(self) -> bool {
-        matches!(self, Self::Add | Self::Change)
-    }
-
-    fn has_player_list(self) -> bool {
-        matches!(self, Self::Add | Self::Join | Self::Leave)
-    }
 }
 
 pub(super) fn decode_reset_score(decoder: &mut Decoder<'_>) -> Result<ResetScore> {
@@ -132,9 +191,7 @@ pub(super) fn decode_set_display_objective(
 pub(super) fn decode_set_objective(decoder: &mut Decoder<'_>) -> Result<SetObjective> {
     let objective_name = decoder.read_string(32767)?;
     let method_id = decoder.read_i8()?;
-    let method = SetObjectiveMethod::from_id(method_id).ok_or_else(|| {
-        ProtocolError::InvalidData(format!("invalid objective method {method_id}"))
-    })?;
+    let method = SetObjectiveOperation::from_raw(method_id);
     let parameters = if method.has_parameters() {
         Some(SetObjectiveParameters {
             display_name: decode_rich_text_component_from_decoder(decoder)?,
@@ -182,9 +239,7 @@ pub(super) fn decode_set_score(decoder: &mut Decoder<'_>) -> Result<SetScore> {
 pub(super) fn decode_set_player_team(decoder: &mut Decoder<'_>) -> Result<SetPlayerTeam> {
     let name = decoder.read_string(32767)?;
     let method_id = decoder.read_i8()?;
-    let method = PlayerTeamMethod::from_id(method_id).ok_or_else(|| {
-        ProtocolError::InvalidData(format!("invalid player team method {method_id}"))
-    })?;
+    let method = PlayerTeamOperation::from_raw(method_id);
     let parameters = if method.has_parameters() {
         Some(decode_player_team_parameters(decoder)?)
     } else {
@@ -328,7 +383,7 @@ mod tests {
             packet,
             PlayClientbound::SetObjective(SetObjective {
                 objective_name: "kills".to_string(),
-                method: SetObjectiveMethod::Add,
+                method: SetObjectiveMethod::Add.into(),
                 parameters: Some(SetObjectiveParameters {
                     display_name: RichTextComponent::plain("Kills"),
                     render_type: ObjectiveRenderType::Hearts,
@@ -347,7 +402,7 @@ mod tests {
             packet,
             PlayClientbound::SetObjective(SetObjective {
                 objective_name: "kills".to_string(),
-                method: SetObjectiveMethod::Remove,
+                method: SetObjectiveMethod::Remove.into(),
                 parameters: None,
             })
         );
@@ -376,24 +431,66 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_scoreboard_method_ids() {
+    fn preserves_unknown_scoreboard_method_ids_without_conditional_payloads() {
         let mut objective = Encoder::new();
         objective.write_string("kills");
         objective.write_i8(3);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_OBJECTIVE,
+            &objective.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetObjective(SetObjective {
+                objective_name: "kills".to_string(),
+                method: SetObjectiveOperation::from_raw(3),
+                parameters: None,
+            })
+        );
+
+        let mut team = Encoder::new();
+        team.write_string("red");
+        team.write_i8(-1);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_PLAYER_TEAM, &team.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetPlayerTeam(SetPlayerTeam {
+                name: "red".to_string(),
+                method: PlayerTeamOperation::from_raw(-1),
+                parameters: None,
+                players: Vec::new(),
+            })
+        );
+    }
+
+    #[test]
+    fn unknown_scoreboard_methods_still_reject_trailing_payloads() {
+        let mut objective = Encoder::new();
+        objective.write_string("kills");
+        objective.write_i8(3);
+        objective.write_u8(0);
         let error = decode_play_clientbound(
             ids::play::CLIENTBOUND_SET_OBJECTIVE,
             &objective.into_inner(),
         )
         .unwrap_err();
-        assert!(error.to_string().contains("invalid objective method 3"));
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set objective packet"));
 
         let mut team = Encoder::new();
         team.write_string("red");
         team.write_i8(5);
+        team.write_u8(0);
         let error =
             decode_play_clientbound(ids::play::CLIENTBOUND_SET_PLAYER_TEAM, &team.into_inner())
                 .unwrap_err();
-        assert!(error.to_string().contains("invalid player team method 5"));
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set player team packet"));
     }
 
     #[test]
@@ -562,7 +659,7 @@ mod tests {
             packet,
             PlayClientbound::SetPlayerTeam(SetPlayerTeam {
                 name: "red".to_string(),
-                method: PlayerTeamMethod::Add,
+                method: PlayerTeamMethod::Add.into(),
                 parameters: Some(PlayerTeamParameters {
                     display_name: RichTextComponent::plain("Red Team"),
                     options: 0b11,
@@ -591,7 +688,7 @@ mod tests {
             packet,
             PlayClientbound::SetPlayerTeam(SetPlayerTeam {
                 name: "red".to_string(),
-                method: PlayerTeamMethod::Join,
+                method: PlayerTeamMethod::Join.into(),
                 parameters: None,
                 players: vec!["Sam".to_string()],
             })
@@ -612,7 +709,7 @@ mod tests {
             packet,
             PlayClientbound::SetPlayerTeam(SetPlayerTeam {
                 name: "red".to_string(),
-                method: PlayerTeamMethod::Leave,
+                method: PlayerTeamMethod::Leave.into(),
                 parameters: None,
                 players: vec!["Sam".to_string()],
             })

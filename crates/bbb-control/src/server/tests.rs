@@ -3640,7 +3640,7 @@ fn client_scoreboard_reads_canonical_world_state() {
         let mut store = WorldStore::new();
         assert!(store.apply_set_objective(SetObjective {
             objective_name: "kills".to_string(),
-            method: SetObjectiveMethod::Add,
+            method: SetObjectiveMethod::Add.into(),
             parameters: Some(SetObjectiveParameters {
                 display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                 render_type: ObjectiveRenderType::Hearts,
@@ -3660,7 +3660,7 @@ fn client_scoreboard_reads_canonical_world_state() {
         }));
         assert!(store.apply_set_player_team(SetPlayerTeam {
             name: "red".to_string(),
-            method: PlayerTeamMethod::Add,
+            method: PlayerTeamMethod::Add.into(),
             parameters: Some(PlayerTeamParameters {
                 display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                 options: 3,

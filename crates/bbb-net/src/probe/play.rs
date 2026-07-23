@@ -3642,7 +3642,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::SetObjective(SetObjective {
                 objective_name: "kills".to_string(),
-                method: SetObjectiveMethod::Add,
+                method: SetObjectiveMethod::Add.into(),
                 parameters: Some(SetObjectiveParameters {
                     display_name: bbb_protocol::RichTextComponent::plain("Kills"),
                     render_type: ObjectiveRenderType::Integer,
@@ -3681,7 +3681,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::SetPlayerTeam(SetPlayerTeam {
                 name: "red".to_string(),
-                method: PlayerTeamMethod::Add,
+                method: PlayerTeamMethod::Add.into(),
                 parameters: Some(PlayerTeamParameters {
                     display_name: bbb_protocol::RichTextComponent::plain("Red Team"),
                     options: 0b11,
@@ -3705,7 +3705,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::SetObjective(SetObjective {
                 objective_name: "missing".to_string(),
-                method: SetObjectiveMethod::Change,
+                method: SetObjectiveMethod::Change.into(),
                 parameters: Some(SetObjectiveParameters {
                     display_name: bbb_protocol::RichTextComponent::plain("Missing"),
                     render_type: ObjectiveRenderType::Integer,
@@ -3734,7 +3734,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::SetPlayerTeam(SetPlayerTeam {
                 name: "missing".to_string(),
-                method: PlayerTeamMethod::Join,
+                method: PlayerTeamMethod::Join.into(),
                 parameters: None,
                 players: vec!["Nobody".to_string()],
             }))

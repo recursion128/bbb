@@ -19,6 +19,7 @@ mod local_player_fluid;
 mod local_player_movement;
 mod player_info;
 mod scoreboard;
+pub(crate) use scoreboard::scoreboard_team_formatting_style;
 mod server_presentation;
 pub(crate) mod state;
 mod stats;

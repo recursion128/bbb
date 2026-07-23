@@ -101,7 +101,7 @@ fn entity_name_tag_source_preserves_rich_team_and_below_name_components() {
     }));
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "green".to_string(),
-        method: ProtocolPlayerTeamMethod::Add,
+        method: ProtocolPlayerTeamMethod::Add.into(),
         parameters: Some(ProtocolPlayerTeamParameters {
             display_name: RichTextComponent::plain("Green"),
             options: 0,
@@ -116,7 +116,7 @@ fn entity_name_tag_source_preserves_rich_team_and_below_name_components() {
 
     assert!(store.apply_set_objective(SetObjective {
         objective_name: "health".to_string(),
-        method: SetObjectiveMethod::Add,
+        method: SetObjectiveMethod::Add.into(),
         parameters: Some(SetObjectiveParameters {
             display_name: rich_text("Health", "red", true),
             render_type: ObjectiveRenderType::Integer,
@@ -173,7 +173,7 @@ fn entity_name_tag_source_drops_score_without_a_name_attachment() {
     ));
     assert!(store.apply_set_objective(SetObjective {
         objective_name: "nearby".to_string(),
-        method: SetObjectiveMethod::Add,
+        method: SetObjectiveMethod::Add.into(),
         parameters: Some(SetObjectiveParameters {
             display_name: RichTextComponent::plain("Nearby"),
             render_type: ObjectiveRenderType::Integer,
@@ -221,7 +221,7 @@ fn entity_name_tag_living_visibility_preserves_team_early_returns_and_vehicle_fa
 
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "target".to_string(),
-        method: ProtocolPlayerTeamMethod::Add,
+        method: ProtocolPlayerTeamMethod::Add.into(),
         parameters: Some(ProtocolPlayerTeamParameters {
             display_name: RichTextComponent::plain("Target"),
             options: 0,
@@ -235,7 +235,7 @@ fn entity_name_tag_living_visibility_preserves_team_early_returns_and_vehicle_fa
     }));
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "local".to_string(),
-        method: ProtocolPlayerTeamMethod::Add,
+        method: ProtocolPlayerTeamMethod::Add.into(),
         parameters: Some(ProtocolPlayerTeamParameters {
             display_name: RichTextComponent::plain("Local"),
             options: 0,
@@ -257,7 +257,7 @@ fn entity_name_tag_living_visibility_preserves_team_early_returns_and_vehicle_fa
 
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "target".to_string(),
-        method: ProtocolPlayerTeamMethod::Join,
+        method: ProtocolPlayerTeamMethod::Join.into(),
         parameters: None,
         players: vec!["PickTarget".to_string()],
     }));
@@ -267,7 +267,7 @@ fn entity_name_tag_living_visibility_preserves_team_early_returns_and_vehicle_fa
     }));
     assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
         name: "target".to_string(),
-        method: ProtocolPlayerTeamMethod::Change,
+        method: ProtocolPlayerTeamMethod::Change.into(),
         parameters: Some(ProtocolPlayerTeamParameters {
             display_name: RichTextComponent::plain("Target"),
             options: 2,

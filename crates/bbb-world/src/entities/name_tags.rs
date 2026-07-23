@@ -5,7 +5,6 @@
 //! scoreboard/team, metadata, attachment, and entity-renderer policy facts together.
 
 use bbb_protocol::{
-    chat_formattings::{ChatFormatting, VANILLA_CHAT_FORMATTINGS},
     entity_types::{
         vanilla_entity_type, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
@@ -20,6 +19,7 @@ use super::{
     dimensions::{item_frame_facing, item_frame_item, sniffer_is_digging},
     schema, EntityModelSourceState, EntityVec3, ItemFrameFacing,
 };
+use crate::client::scoreboard_team_formatting_style;
 use crate::WorldStore;
 
 /// One exact or synthetic Component fragment in a name-tag line.
@@ -302,7 +302,7 @@ impl WorldStore {
                     &parameters.player_suffix,
                 ),
             ],
-            inherited_style: team_formatting_style(&parameters.color),
+            inherited_style: scoreboard_team_formatting_style(&parameters.color),
         }
     }
 
@@ -462,30 +462,6 @@ fn stored_component_segment(
     } else {
         EntityNameTagTextSegmentState::Styled(vec![plain_run(plain)])
     }
-}
-
-fn team_formatting_style(name: &str) -> ComponentStyle {
-    let Some(formatting) = VANILLA_CHAT_FORMATTINGS
-        .iter()
-        .find(|entry| entry.serialized_name == name)
-        .map(|entry| entry.formatting)
-    else {
-        return ComponentStyle::default();
-    };
-    let mut style = ComponentStyle::default();
-    if let Some(color) = formatting.color() {
-        style.color = Some(color);
-        return style;
-    }
-    match formatting {
-        ChatFormatting::Obfuscated => style.obfuscated = Some(true),
-        ChatFormatting::Bold => style.bold = Some(true),
-        ChatFormatting::Strikethrough => style.strikethrough = Some(true),
-        ChatFormatting::Underline => style.underlined = Some(true),
-        ChatFormatting::Italic => style.italic = Some(true),
-        _ => {}
-    }
-    style
 }
 
 fn plain_run(text: impl Into<String>) -> StyledTextRun {

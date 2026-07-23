@@ -1,8 +1,9 @@
 use super::*;
 use bbb_protocol::packets::{
-    ChatFormatting, ObjectiveRenderType, PlayerTeamMethod, PlayerTeamParameters, ResetScore,
-    ScoreboardDisplaySlot, SetDisplayObjective, SetObjective, SetObjectiveMethod,
-    SetObjectiveParameters, SetPlayerTeam, SetScore, TeamCollisionRule, TeamVisibility,
+    ChatFormatting, ObjectiveRenderType, PlayerTeamMethod, PlayerTeamOperation,
+    PlayerTeamParameters, ResetScore, ScoreboardDisplaySlot, SetDisplayObjective, SetObjective,
+    SetObjectiveMethod, SetObjectiveOperation, SetObjectiveParameters, SetPlayerTeam, SetScore,
+    TeamCollisionRule, TeamVisibility,
 };
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
@@ -667,8 +668,233 @@ fn scoreboard_ignored_updates_are_counted() {
     assert_eq!(counters.set_player_team_updates_ignored, 1);
 }
 
+#[test]
+fn scoreboard_unknown_methods_and_duplicate_objective_adds_are_noops() {
+    let mut store = WorldStore::new();
+    assert!(store.apply_set_objective(protocol_set_objective(
+        "kills",
+        SetObjectiveMethod::Add,
+        Some(protocol_objective_parameters(
+            "Kills",
+            ObjectiveRenderType::Integer,
+            None,
+        )),
+    )));
+    assert!(!store.apply_set_objective(protocol_set_objective(
+        "kills",
+        SetObjectiveMethod::Add,
+        Some(protocol_objective_parameters(
+            "Replacement",
+            ObjectiveRenderType::Hearts,
+            Some(NumberFormatSummary::Blank),
+        )),
+    )));
+    assert!(!store.apply_set_objective(SetObjective {
+        objective_name: "kills".to_string(),
+        method: SetObjectiveOperation::from_raw(3),
+        parameters: None,
+    }));
+    assert_eq!(store.scoreboard().objectives["kills"].display_name, "Kills");
+    assert_eq!(
+        store.scoreboard().objectives["kills"].render_type,
+        "integer"
+    );
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "red",
+        PlayerTeamMethod::Add,
+        Some(protocol_team_parameters(
+            "Red",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Red,
+            "[",
+            "]",
+        )),
+        &["Alice"],
+    )));
+    assert!(!store.apply_set_player_team(SetPlayerTeam {
+        name: "red".to_string(),
+        method: PlayerTeamOperation::from_raw(-1),
+        parameters: None,
+        players: Vec::new(),
+    }));
+    assert_eq!(team_players(&store.scoreboard().teams["red"]), ["Alice"]);
+
+    let counters = store.counters();
+    assert_eq!(counters.set_objective_packets, 3);
+    assert_eq!(counters.set_objective_updates_applied, 1);
+    assert_eq!(counters.set_objective_updates_ignored, 2);
+    assert_eq!(counters.set_player_team_packets, 2);
+    assert_eq!(counters.set_player_team_updates_applied, 1);
+    assert_eq!(counters.set_player_team_updates_ignored, 1);
+}
+
+#[test]
+fn scoreboard_sidebar_prefers_team_slot_and_filters_sorts_and_limits_scores() {
+    let mut store = WorldStore::new();
+    for objective in ["generic", "red"] {
+        assert!(store.apply_set_objective(protocol_set_objective(
+            objective,
+            SetObjectiveMethod::Add,
+            Some(protocol_objective_parameters(
+                objective,
+                ObjectiveRenderType::Integer,
+                None,
+            )),
+        )));
+    }
+    assert!(store.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::Sidebar,
+        objective_name: Some("generic".to_string()),
+    }));
+    assert!(store.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::TeamRed,
+        objective_name: Some("red".to_string()),
+    }));
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "viewers",
+        PlayerTeamMethod::Add,
+        Some(protocol_team_parameters(
+            "Viewers",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Red,
+            "<",
+            ">",
+        )),
+        &["Local", "Player03"],
+    )));
+    assert!(store.apply_set_score(SetScore {
+        owner: "#hidden".to_string(),
+        objective_name: "red".to_string(),
+        score: 1000,
+        display: None,
+        number_format: None,
+    }));
+    for index in 0..17 {
+        let owner = format!("Player{index:02}");
+        assert!(store.apply_set_score(SetScore {
+            owner,
+            objective_name: "red".to_string(),
+            score: index / 2,
+            display: None,
+            number_format: None,
+        }));
+    }
+
+    let sidebar = store
+        .scoreboard()
+        .sidebar_state(Some("Local"))
+        .expect("team sidebar");
+    assert_eq!(sidebar.objective_name, "red");
+    assert_eq!(sidebar.entries.len(), 15);
+    assert!(sidebar.entries.iter().all(|entry| entry.owner != "#hidden"));
+    assert_eq!(sidebar.entries[0].owner, "Player16");
+    assert_eq!(sidebar.entries[1].owner, "Player14");
+    assert_eq!(sidebar.entries[2].owner, "Player15");
+    assert_eq!(sidebar.entries.last().unwrap().owner, "Player03");
+    let formatted = sidebar.entries.last().unwrap();
+    assert_eq!(formatted.owner, "Player03");
+    assert_eq!(scoreboard_text(&formatted.name), "<Player03>");
+    assert_eq!(formatted.name.inherited_style.color, Some(0xFF5555));
+    assert_eq!(scoreboard_text(&formatted.score), "1");
+    assert_eq!(
+        scoreboard_first_run(&formatted.score).style.color,
+        Some(0xFF5555)
+    );
+
+    let generic = store
+        .scoreboard()
+        .sidebar_state(None)
+        .expect("generic sidebar");
+    assert_eq!(generic.objective_name, "generic");
+    assert!(generic.entries.is_empty());
+}
+
+#[test]
+fn scoreboard_player_list_formats_missing_override_and_heart_scores() {
+    let mut store = WorldStore::new();
+    assert!(store.apply_set_objective(protocol_set_objective(
+        "list",
+        SetObjectiveMethod::Add,
+        Some(protocol_objective_parameters(
+            "List",
+            ObjectiveRenderType::Integer,
+            None,
+        )),
+    )));
+    assert!(store.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::List,
+        objective_name: Some("list".to_string()),
+    }));
+    let missing = store
+        .scoreboard()
+        .player_list_score("Missing")
+        .expect("list objective");
+    let ScoreboardPlayerListScoreState::Integer(missing) = missing else {
+        panic!("integer score");
+    };
+    assert_eq!(scoreboard_text(&missing), "0");
+    assert_eq!(scoreboard_first_run(&missing).style.color, Some(0xFFFF55));
+
+    assert!(store.apply_set_score(SetScore {
+        owner: "Blank".to_string(),
+        objective_name: "list".to_string(),
+        score: 7,
+        display: None,
+        number_format: Some(NumberFormatSummary::Blank),
+    }));
+    let ScoreboardPlayerListScoreState::Integer(blank) = store
+        .scoreboard()
+        .player_list_score("Blank")
+        .expect("list objective")
+    else {
+        panic!("integer score");
+    };
+    assert!(blank.segments.is_empty());
+
+    assert!(store.apply_set_objective(protocol_set_objective(
+        "list",
+        SetObjectiveMethod::Change,
+        Some(protocol_objective_parameters(
+            "Health",
+            ObjectiveRenderType::Hearts,
+            None,
+        )),
+    )));
+    assert_eq!(
+        store.scoreboard().player_list_score("Blank"),
+        Some(ScoreboardPlayerListScoreState::Hearts(7))
+    );
+    assert_eq!(
+        store.scoreboard().player_list_score("Missing"),
+        Some(ScoreboardPlayerListScoreState::Hearts(0))
+    );
+}
+
 fn team_players(team: &ScoreboardTeam) -> Vec<&str> {
     team.players.iter().map(String::as_str).collect()
+}
+
+fn scoreboard_text(text: &ScoreboardTextState) -> String {
+    text.segments
+        .iter()
+        .flat_map(|segment| match segment {
+            ScoreboardTextSegmentState::Rich(component) => component.styled().to_vec(),
+            ScoreboardTextSegmentState::Styled(runs) => runs.clone(),
+        })
+        .map(|run| run.text)
+        .collect()
+}
+
+fn scoreboard_first_run(text: &ScoreboardTextState) -> StyledTextRun {
+    match &text.segments[0] {
+        ScoreboardTextSegmentState::Rich(component) => component.styled()[0].clone(),
+        ScoreboardTextSegmentState::Styled(runs) => runs[0].clone(),
+    }
 }
 
 fn protocol_set_objective(
@@ -678,7 +904,7 @@ fn protocol_set_objective(
 ) -> SetObjective {
     SetObjective {
         objective_name: objective_name.to_string(),
-        method,
+        method: method.into(),
         parameters,
     }
 }
@@ -703,7 +929,7 @@ fn protocol_set_player_team(
 ) -> SetPlayerTeam {
     SetPlayerTeam {
         name: name.to_string(),
-        method,
+        method: method.into(),
         parameters,
         players: players.iter().map(|player| player.to_string()).collect(),
     }

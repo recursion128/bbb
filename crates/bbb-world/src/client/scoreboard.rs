@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_protocol::{
-    chat_formattings::vanilla_chat_formatting_color_by_name,
+    chat_formattings::{
+        vanilla_chat_formatting_color_by_name, ChatFormatting, VANILLA_CHAT_FORMATTINGS,
+    },
     packets::{
         ChatFormatting as ProtocolChatFormatting, NumberFormatSummary,
         ObjectiveRenderType as ProtocolObjectiveRenderType,
@@ -80,6 +82,43 @@ pub struct ScoreboardTeamParameters {
     pub player_suffix_component: Option<NbtSummaryValue>,
 }
 
+/// One canonical scoreboard Component fragment before native localization.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ScoreboardTextSegmentState {
+    Rich(RichTextComponent),
+    Styled(Vec<StyledTextRun>),
+}
+
+/// A composed scoreboard line. Team formatting is inherited by each child
+/// fragment, so explicit child styles continue to win like vanilla Component
+/// style inheritance.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ScoreboardTextState {
+    pub segments: Vec<ScoreboardTextSegmentState>,
+    pub inherited_style: ComponentStyle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScoreboardSidebarEntryState {
+    pub owner: String,
+    pub value: i32,
+    pub name: ScoreboardTextState,
+    pub score: ScoreboardTextState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScoreboardSidebarState {
+    pub objective_name: String,
+    pub title: ScoreboardTextState,
+    pub entries: Vec<ScoreboardSidebarEntryState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ScoreboardPlayerListScoreState {
+    Integer(ScoreboardTextState),
+    Hearts(i32),
+}
+
 impl ScoreboardState {
     pub fn team_for_scoreboard_name(&self, scoreboard_name: &str) -> Option<&ScoreboardTeam> {
         self.teams
@@ -91,6 +130,95 @@ impl ScoreboardState {
         let team = self.team_for_scoreboard_name(scoreboard_name)?;
         let parameters = team.parameters.as_ref()?;
         chat_formatting_rgb(parameters.color.as_str())
+    }
+
+    /// Vanilla `Gui.extractScoreboardSidebar`: a color-specific team slot
+    /// overrides the generic sidebar when that slot has an objective.
+    pub fn sidebar_state(
+        &self,
+        local_scoreboard_name: Option<&str>,
+    ) -> Option<ScoreboardSidebarState> {
+        let team_slot = local_scoreboard_name
+            .and_then(|name| self.team_for_scoreboard_name(name))
+            .and_then(|team| team.parameters.as_ref())
+            .filter(|parameters| chat_formatting_rgb(&parameters.color).is_some())
+            .map(|parameters| format!("sidebar.team.{}", parameters.color));
+        let objective_name = team_slot
+            .as_deref()
+            .and_then(|slot| self.display_slots.get(slot))
+            .or_else(|| self.display_slots.get("sidebar"))?;
+        let objective = self.objectives.get(objective_name)?;
+        let mut scores = self
+            .scores
+            .iter()
+            .filter(|(owner, _)| !owner.starts_with('#'))
+            .filter_map(|(owner, scores)| {
+                scores
+                    .get(objective_name)
+                    .map(|score| (owner.as_str(), score))
+            })
+            .collect::<Vec<_>>();
+        scores.sort_by(|(left_owner, left), (right_owner, right)| {
+            right
+                .value
+                .cmp(&left.value)
+                .then_with(|| left_owner.to_lowercase().cmp(&right_owner.to_lowercase()))
+        });
+
+        let entries = scores
+            .into_iter()
+            .take(15)
+            .map(|(owner, score)| ScoreboardSidebarEntryState {
+                owner: owner.to_string(),
+                value: score.value,
+                name: self.team_formatted_name(owner, scoreboard_owner_name_segment(owner, score)),
+                score: formatted_score_text(
+                    score.value,
+                    score.number_format.as_ref(),
+                    objective.number_format.as_ref(),
+                    "red",
+                ),
+            })
+            .collect();
+        Some(ScoreboardSidebarState {
+            objective_name: objective_name.clone(),
+            title: stored_scoreboard_text(
+                objective.display_name_component.as_ref(),
+                &objective.display_name_styled,
+                &objective.display_name,
+            ),
+            entries,
+        })
+    }
+
+    /// Vanilla `PlayerTabOverlay` LIST objective score. Missing owner scores
+    /// are formatted as zero through `ReadOnlyScoreInfo.safeFormatValue`.
+    pub fn player_list_score(&self, owner: &str) -> Option<ScoreboardPlayerListScoreState> {
+        let objective_name = self.display_slots.get("list")?;
+        let objective = self.objectives.get(objective_name)?;
+        let score = self
+            .scores
+            .get(owner)
+            .and_then(|scores| scores.get(objective_name));
+        let value = score.map_or(0, |score| score.value);
+        if objective.render_type == "hearts" {
+            return Some(ScoreboardPlayerListScoreState::Hearts(value));
+        }
+        Some(ScoreboardPlayerListScoreState::Integer(
+            formatted_score_text(
+                value,
+                score.and_then(|score| score.number_format.as_ref()),
+                objective.number_format.as_ref(),
+                "yellow",
+            ),
+        ))
+    }
+
+    pub fn team_formatted_literal_name(&self, scoreboard_name: &str) -> ScoreboardTextState {
+        self.team_formatted_name(
+            scoreboard_name,
+            ScoreboardTextSegmentState::Styled(vec![plain_run(scoreboard_name)]),
+        )
     }
 
     pub fn same_team_can_see_friendly_invisibles(
@@ -174,6 +302,38 @@ impl ScoreboardState {
         }
         (pusher_rule != "pushOtherTeams" && target_rule != "pushOtherTeams") || same_team
     }
+
+    fn team_formatted_name(
+        &self,
+        scoreboard_name: &str,
+        base: ScoreboardTextSegmentState,
+    ) -> ScoreboardTextState {
+        let Some(parameters) = self
+            .team_for_scoreboard_name(scoreboard_name)
+            .and_then(|team| team.parameters.as_ref())
+        else {
+            return ScoreboardTextState {
+                segments: vec![base],
+                inherited_style: ComponentStyle::default(),
+            };
+        };
+        ScoreboardTextState {
+            segments: vec![
+                stored_scoreboard_component(
+                    parameters.player_prefix_component.as_ref(),
+                    &parameters.player_prefix_styled,
+                    &parameters.player_prefix,
+                ),
+                base,
+                stored_scoreboard_component(
+                    parameters.player_suffix_component.as_ref(),
+                    &parameters.player_suffix_styled,
+                    &parameters.player_suffix,
+                ),
+            ],
+            inherited_style: scoreboard_team_formatting_style(&parameters.color),
+        }
+    }
 }
 
 impl ScoreboardTeamParameters {
@@ -186,11 +346,18 @@ impl WorldStore {
     pub fn apply_set_objective(&mut self, packet: ProtocolSetObjective) -> bool {
         self.counters.set_objective_packets += 1;
 
-        let applied = match packet.method {
-            ProtocolSetObjectiveMethod::Add => {
+        let applied = match packet.method.known() {
+            Some(ProtocolSetObjectiveMethod::Add) => {
                 let Some(parameters) = packet.parameters else {
                     return self.finish_set_objective_update(false);
                 };
+                if self
+                    .scoreboard
+                    .objectives
+                    .contains_key(&packet.objective_name)
+                {
+                    return self.finish_set_objective_update(false);
+                }
                 let (display_name, display_name_styled, display_name_component) =
                     rich_text_projection(parameters.display_name);
                 let objective = ScoreboardObjective {
@@ -206,10 +373,10 @@ impl WorldStore {
                     .insert(packet.objective_name, objective);
                 true
             }
-            ProtocolSetObjectiveMethod::Remove => {
+            Some(ProtocolSetObjectiveMethod::Remove) => {
                 self.remove_scoreboard_objective(&packet.objective_name)
             }
-            ProtocolSetObjectiveMethod::Change => {
+            Some(ProtocolSetObjectiveMethod::Change) => {
                 let Some(parameters) = packet.parameters else {
                     return self.finish_set_objective_update(false);
                 };
@@ -226,6 +393,7 @@ impl WorldStore {
                 objective.number_format = parameters.number_format;
                 true
             }
+            None => false,
         };
         self.finish_set_objective_update(applied)
     }
@@ -301,8 +469,8 @@ impl WorldStore {
     pub fn apply_set_player_team(&mut self, packet: ProtocolSetPlayerTeam) -> bool {
         self.counters.set_player_team_packets += 1;
 
-        let applied = match packet.method {
-            ProtocolPlayerTeamMethod::Add => {
+        let applied = match packet.method.known() {
+            Some(ProtocolPlayerTeamMethod::Add) => {
                 self.scoreboard
                     .teams
                     .entry(packet.name.clone())
@@ -319,10 +487,10 @@ impl WorldStore {
                 self.add_players_to_scoreboard_team(&packet.name, packet.players);
                 true
             }
-            ProtocolPlayerTeamMethod::Remove => {
+            Some(ProtocolPlayerTeamMethod::Remove) => {
                 self.scoreboard.teams.remove(&packet.name).is_some()
             }
-            ProtocolPlayerTeamMethod::Change => {
+            Some(ProtocolPlayerTeamMethod::Change) => {
                 let Some(team) = self.scoreboard.teams.get_mut(&packet.name) else {
                     return self.finish_set_player_team_update(false);
                 };
@@ -332,14 +500,14 @@ impl WorldStore {
                 team.parameters = Some(scoreboard_team_parameters(parameters));
                 true
             }
-            ProtocolPlayerTeamMethod::Join => {
+            Some(ProtocolPlayerTeamMethod::Join) => {
                 if !self.scoreboard.teams.contains_key(&packet.name) {
                     return self.finish_set_player_team_update(false);
                 }
                 self.add_players_to_scoreboard_team(&packet.name, packet.players);
                 true
             }
-            ProtocolPlayerTeamMethod::Leave => {
+            Some(ProtocolPlayerTeamMethod::Leave) => {
                 let Some(team) = self.scoreboard.teams.get_mut(&packet.name) else {
                     return self.finish_set_player_team_update(false);
                 };
@@ -348,12 +516,19 @@ impl WorldStore {
                 }
                 true
             }
+            None => false,
         };
         self.finish_set_player_team_update(applied)
     }
 
     pub fn scoreboard(&self) -> &ScoreboardState {
         &self.scoreboard
+    }
+
+    pub fn scoreboard_sidebar(&self) -> Option<ScoreboardSidebarState> {
+        let local_scoreboard_name = self.local_player_scoreboard_name();
+        self.scoreboard
+            .sidebar_state(local_scoreboard_name.as_deref())
     }
 
     fn remove_scoreboard_objective(&mut self, objective_name: &str) -> bool {
@@ -458,6 +633,30 @@ fn chat_formatting_rgb(color: &str) -> Option<u32> {
     vanilla_chat_formatting_color_by_name(color)
 }
 
+pub(crate) fn scoreboard_team_formatting_style(name: &str) -> ComponentStyle {
+    let Some(formatting) = VANILLA_CHAT_FORMATTINGS
+        .iter()
+        .find(|entry| entry.serialized_name == name)
+        .map(|entry| entry.formatting)
+    else {
+        return ComponentStyle::default();
+    };
+    let mut style = ComponentStyle::default();
+    if let Some(color) = formatting.color() {
+        style.color = Some(color);
+        return style;
+    }
+    match formatting {
+        ChatFormatting::Obfuscated => style.obfuscated = Some(true),
+        ChatFormatting::Bold => style.bold = Some(true),
+        ChatFormatting::Strikethrough => style.strikethrough = Some(true),
+        ChatFormatting::Underline => style.underlined = Some(true),
+        ChatFormatting::Italic => style.italic = Some(true),
+        _ => {}
+    }
+    style
+}
+
 fn scoreboard_team_parameters(
     parameters: ProtocolPlayerTeamParameters,
 ) -> ScoreboardTeamParameters {
@@ -498,6 +697,90 @@ fn rich_text_projection(
         component.styled().to_vec(),
         component.component().clone(),
     )
+}
+
+fn scoreboard_owner_name_segment(
+    owner: &str,
+    score: &ScoreboardScore,
+) -> ScoreboardTextSegmentState {
+    score.display_component.as_ref().map_or_else(
+        || ScoreboardTextSegmentState::Styled(vec![plain_run(owner)]),
+        |component| {
+            stored_scoreboard_component(
+                Some(component),
+                score.display_styled.as_deref().unwrap_or_default(),
+                score.display.as_deref().unwrap_or(owner),
+            )
+        },
+    )
+}
+
+fn formatted_score_text(
+    value: i32,
+    score_format: Option<&NumberFormatSummary>,
+    objective_format: Option<&NumberFormatSummary>,
+    default_color: &str,
+) -> ScoreboardTextState {
+    let format = score_format.or(objective_format);
+    let segments = match format {
+        Some(NumberFormatSummary::Blank) => Vec::new(),
+        Some(NumberFormatSummary::Styled(style)) => {
+            vec![ScoreboardTextSegmentState::Styled(vec![StyledTextRun {
+                text: value.to_string(),
+                style: style.clone(),
+            }])]
+        }
+        Some(NumberFormatSummary::Fixed(component)) => {
+            vec![ScoreboardTextSegmentState::Rich(component.clone())]
+        }
+        None => vec![ScoreboardTextSegmentState::Styled(vec![StyledTextRun {
+            text: value.to_string(),
+            style: ComponentStyle {
+                color: chat_formatting_rgb(default_color),
+                ..ComponentStyle::default()
+            },
+        }])],
+    };
+    ScoreboardTextState {
+        segments,
+        inherited_style: ComponentStyle::default(),
+    }
+}
+
+fn stored_scoreboard_text(
+    exact: Option<&NbtSummaryValue>,
+    styled: &[StyledTextRun],
+    plain: &str,
+) -> ScoreboardTextState {
+    ScoreboardTextState {
+        segments: vec![stored_scoreboard_component(exact, styled, plain)],
+        inherited_style: ComponentStyle::default(),
+    }
+}
+
+fn stored_scoreboard_component(
+    exact: Option<&NbtSummaryValue>,
+    styled: &[StyledTextRun],
+    plain: &str,
+) -> ScoreboardTextSegmentState {
+    if let Some(component) = exact
+        .cloned()
+        .and_then(|component| RichTextComponent::try_from_component_nbt(component).ok())
+    {
+        return ScoreboardTextSegmentState::Rich(component);
+    }
+    if !styled.is_empty() {
+        ScoreboardTextSegmentState::Styled(styled.to_vec())
+    } else {
+        ScoreboardTextSegmentState::Styled(vec![plain_run(plain)])
+    }
+}
+
+fn plain_run(text: impl Into<String>) -> StyledTextRun {
+    StyledTextRun {
+        text: text.into(),
+        style: ComponentStyle::default(),
+    }
 }
 
 fn format_score_value(
