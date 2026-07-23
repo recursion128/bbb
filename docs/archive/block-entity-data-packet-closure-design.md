@@ -131,3 +131,6 @@ atomicity failures stop before runtime evidence; native extraction failures
 stop before coverage closeout. A failed full gate is localized from the latest
 fully gated checkpoint only when focused tests do not identify it. Failures
 are fixed forward without rewriting history.
+
+Closeout completed all five packet-coverage cells after strict protocol,
+identity/atomicity world, and ordered native-presentation regressions passed.

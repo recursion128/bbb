@@ -292,3 +292,7 @@
   当前 tag/fuel/potion/component/dye/trim 上下文解析和原子代次替换；Stonecutter 按钮与
   tooltip 共用 world 首栈解析，五类 coverage 全部 complete，合同见
   `docs/archive/update-recipes-packet-closure-design.md`。
+- **2026-07-23（BlockEntityData 包闭环）**：固定 49 项 BlockEntityType holder 与必需
+  CompoundTag 严格解码；已有同类型 canonical record 原子替换并按类型投影到编辑器和
+  原生场景，五类 coverage 全部 complete，合同见
+  `docs/archive/block-entity-data-packet-closure-design.md`。
