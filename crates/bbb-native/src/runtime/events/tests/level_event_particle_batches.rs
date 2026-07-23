@@ -1486,6 +1486,7 @@ fn debug_game_events_update_world_counters() {
     assert_eq!(world_counters.debug_sample_packets, 1);
     assert_eq!(world_counters.game_rule_value_packets, 1);
     assert_eq!(world_counters.game_test_highlight_pos_packets, 1);
+    assert_eq!(world_counters.game_test_highlights_tracked, 1);
     assert_eq!(world_counters.test_instance_block_status_packets, 1);
     assert_eq!(
         world.last_debug_block_value(),
@@ -1550,6 +1551,14 @@ fn debug_game_events_update_world_counters() {
             relative_pos: BlockPos { x: 1, y: 2, z: 3 },
         })
     );
+    assert_eq!(world.game_test_highlight_markers().len(), 1);
+    let marker = &world.game_test_highlight_markers()[&BlockPos {
+        x: -10,
+        y: 70,
+        z: 22,
+    }];
+    assert_eq!(marker.relative_pos, BlockPos { x: 1, y: 2, z: 3 });
+    assert!(marker.remove_at_monotonic_millis >= 10_000);
     assert_eq!(
         world.last_test_instance_block_status(),
         Some(&bbb_world::TestInstanceBlockStatusState {
@@ -1557,6 +1566,40 @@ fn debug_game_events_update_world_counters() {
             size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
         })
     );
+}
+
+#[test]
+fn game_test_highlight_network_apply_uses_monotonic_deadline() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::GameTestHighlightPos(
+        GameTestHighlightPos {
+            absolute_pos: ProtocolBlockPos { x: 4, y: 5, z: 6 },
+            relative_pos: ProtocolBlockPos { x: -7, y: 8, z: -9 },
+        },
+    )))
+    .unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    let marker = &world.game_test_highlight_markers()[&BlockPos { x: 4, y: 5, z: 6 }];
+    assert_eq!(marker.relative_pos, BlockPos { x: -7, y: 8, z: -9 });
+    assert!(marker.remove_at_monotonic_millis > 10_000);
+    let runtime_source = include_str!("../../../runtime.rs");
+    let drain = runtime_source
+        .find("events::drain_net_events_with_sinks_and_debug(")
+        .expect("network drain");
+    let expire = runtime_source
+        .find("world.expire_game_test_highlight_markers_at(monotonic_millis());")
+        .expect("GameTest marker expiry");
+    let light_poll = runtime_source
+        .find("world.poll_queued_light_updates();")
+        .expect("light poll after network drain");
+    assert!(drain < expire && expire < light_poll);
 }
 
 #[test]

@@ -34,6 +34,8 @@ use crate::{protocol_block_pos, BlockPos, ChunkPos, WorldStore};
 
 use super::game_rules::GameRuleValuesState;
 
+pub const GAME_TEST_HIGHLIGHT_DURATION_MILLIS: u64 = 10_000;
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientDebugGameState {
     #[serde(default)]
@@ -54,6 +56,8 @@ pub struct ClientDebugGameState {
     pub last_game_rule_values: Option<GameRuleValuesState>,
     #[serde(default)]
     pub last_game_test_highlight_pos: Option<GameTestHighlightPosState>,
+    #[serde(default)]
+    pub game_test_highlight_markers: DebugValueMap<BlockPos, GameTestHighlightMarkerState>,
     #[serde(default)]
     pub last_test_instance_block_status: Option<TestInstanceBlockStatusState>,
 }
@@ -228,6 +232,12 @@ pub struct DebugSampleState {
 pub struct GameTestHighlightPosState {
     pub absolute_pos: BlockPos,
     pub relative_pos: BlockPos,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameTestHighlightMarkerState {
+    pub relative_pos: BlockPos,
+    pub remove_at_monotonic_millis: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -411,11 +421,44 @@ impl WorldStore {
     }
 
     pub fn apply_game_test_highlight_pos(&mut self, packet: ProtocolGameTestHighlightPos) {
+        self.apply_game_test_highlight_pos_at(packet, 0);
+    }
+
+    pub fn apply_game_test_highlight_pos_at(
+        &mut self,
+        packet: ProtocolGameTestHighlightPos,
+        now_monotonic_millis: u64,
+    ) {
         self.counters.game_test_highlight_pos_packets += 1;
-        self.client_debug_game.last_game_test_highlight_pos = Some(GameTestHighlightPosState {
+        let state = GameTestHighlightPosState {
             absolute_pos: protocol_block_pos(packet.absolute_pos),
             relative_pos: protocol_block_pos(packet.relative_pos),
-        });
+        };
+        self.client_debug_game.last_game_test_highlight_pos = Some(state.clone());
+        self.client_debug_game.game_test_highlight_markers.insert(
+            state.absolute_pos,
+            GameTestHighlightMarkerState {
+                relative_pos: state.relative_pos,
+                remove_at_monotonic_millis: now_monotonic_millis
+                    .saturating_add(GAME_TEST_HIGHLIGHT_DURATION_MILLIS),
+            },
+        );
+        self.counters.game_test_highlights_tracked =
+            self.client_debug_game.game_test_highlight_markers.len();
+    }
+
+    pub fn expire_game_test_highlight_markers_at(&mut self, now_monotonic_millis: u64) {
+        self.client_debug_game
+            .game_test_highlight_markers
+            .retain(|_, marker| now_monotonic_millis <= marker.remove_at_monotonic_millis);
+        self.counters.game_test_highlights_tracked =
+            self.client_debug_game.game_test_highlight_markers.len();
+    }
+
+    pub(crate) fn clear_game_test_highlight_markers(&mut self) {
+        self.client_debug_game.game_test_highlight_markers.clear();
+        self.client_debug_game.last_game_test_highlight_pos = None;
+        self.counters.game_test_highlights_tracked = 0;
     }
 
     pub fn apply_test_instance_block_status(&mut self, packet: ProtocolTestInstanceBlockStatus) {
@@ -454,6 +497,12 @@ impl WorldStore {
 
     pub fn last_game_test_highlight_pos(&self) -> Option<&GameTestHighlightPosState> {
         self.client_debug_game.last_game_test_highlight_pos.as_ref()
+    }
+
+    pub fn game_test_highlight_markers(
+        &self,
+    ) -> &DebugValueMap<BlockPos, GameTestHighlightMarkerState> {
+        &self.client_debug_game.game_test_highlight_markers
     }
 
     pub fn last_test_instance_block_status(&self) -> Option<&TestInstanceBlockStatusState> {
@@ -882,7 +931,81 @@ mod tests {
         assert_eq!(counters.debug_sample_packets, 1);
         assert_eq!(counters.game_rule_value_packets, 1);
         assert_eq!(counters.game_test_highlight_pos_packets, 1);
+        assert_eq!(counters.game_test_highlights_tracked, 1);
         assert_eq!(counters.test_instance_block_status_packets, 1);
+    }
+
+    #[test]
+    fn game_test_highlight_markers_refresh_expire_strictly_and_clear_with_level() {
+        let mut store = WorldStore::new();
+        let absolute_a = ProtocolBlockPos { x: 1, y: 2, z: 3 };
+        let absolute_b = ProtocolBlockPos { x: -4, y: 5, z: -6 };
+
+        store.apply_game_test_highlight_pos_at(
+            GameTestHighlightPos {
+                absolute_pos: absolute_a,
+                relative_pos: ProtocolBlockPos { x: 7, y: 8, z: 9 },
+            },
+            100,
+        );
+        store.apply_game_test_highlight_pos_at(
+            GameTestHighlightPos {
+                absolute_pos: absolute_b,
+                relative_pos: ProtocolBlockPos {
+                    x: -10,
+                    y: 11,
+                    z: 12,
+                },
+            },
+            200,
+        );
+        store.apply_game_test_highlight_pos_at(
+            GameTestHighlightPos {
+                absolute_pos: absolute_a,
+                relative_pos: ProtocolBlockPos {
+                    x: 13,
+                    y: 14,
+                    z: 15,
+                },
+            },
+            300,
+        );
+
+        assert_eq!(store.game_test_highlight_markers().len(), 2);
+        assert_eq!(store.counters().game_test_highlight_pos_packets, 3);
+        assert_eq!(store.counters().game_test_highlights_tracked, 2);
+        assert_eq!(
+            store.game_test_highlight_markers()[&BlockPos { x: 1, y: 2, z: 3 }],
+            GameTestHighlightMarkerState {
+                relative_pos: BlockPos {
+                    x: 13,
+                    y: 14,
+                    z: 15
+                },
+                remove_at_monotonic_millis: 10_300,
+            }
+        );
+
+        store.expire_game_test_highlight_markers_at(10_200);
+        assert_eq!(store.game_test_highlight_markers().len(), 2);
+        store.expire_game_test_highlight_markers_at(10_201);
+        assert_eq!(store.game_test_highlight_markers().len(), 1);
+        store.expire_game_test_highlight_markers_at(10_300);
+        assert_eq!(store.game_test_highlight_markers().len(), 1);
+        store.expire_game_test_highlight_markers_at(10_301);
+        assert!(store.game_test_highlight_markers().is_empty());
+
+        store.apply_game_test_highlight_pos_at(
+            GameTestHighlightPos {
+                absolute_pos: absolute_a,
+                relative_pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            },
+            20_000,
+        );
+        store.clear_client_level();
+        assert!(store.game_test_highlight_markers().is_empty());
+        assert!(store.last_game_test_highlight_pos().is_none());
+        assert_eq!(store.counters().game_test_highlights_tracked, 0);
     }
 
     #[test]

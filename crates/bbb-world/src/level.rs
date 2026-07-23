@@ -914,6 +914,7 @@ impl WorldStore {
         self.close_test_block_editor();
         self.close_test_instance_block_editor();
         self.clear_debug_subscriber_values();
+        self.clear_game_test_highlight_markers();
         self.clear_queued_light_updates();
         self.chunks.clear();
         self.clear_terrain_revisions();

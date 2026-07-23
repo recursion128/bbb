@@ -418,6 +418,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         crate::runtime::monotonic_millis()
     }
 
+    fn client_monotonic_millis(&mut self) -> u64 {
+        crate::runtime::monotonic_millis()
+    }
+
     fn chat_disconnect(&mut self, reason: ChatDisconnectReason) {
         tracing::error!(?reason, "disconnecting after invalid signed-chat stream");
         queue_chat_disconnect(self.net_commands);

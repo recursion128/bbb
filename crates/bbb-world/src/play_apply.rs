@@ -102,6 +102,9 @@ pub trait PlayApplyEffects {
     fn chat_monotonic_millis(&mut self) -> u64 {
         u64::MAX
     }
+    fn client_monotonic_millis(&mut self) -> u64 {
+        0
+    }
     fn chat_disconnect(&mut self, _reason: ChatDisconnectReason) {}
     fn container_close(&mut self, _container_id: i32) {}
     fn vehicle_move_report(&mut self, _report: VehicleMoveReport) {}
@@ -981,7 +984,8 @@ impl WorldStore {
                 self.apply_game_rule_values(update);
             }
             PlayClientbound::GameTestHighlightPos(update) => {
-                self.apply_game_test_highlight_pos(update);
+                let now_monotonic_millis = effects.client_monotonic_millis();
+                self.apply_game_test_highlight_pos_at(update, now_monotonic_millis);
             }
             PlayClientbound::SetTime(update) => {
                 self.apply_world_time(update);

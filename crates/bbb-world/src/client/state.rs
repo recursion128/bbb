@@ -29,8 +29,8 @@ pub use crate::client::debug_game::{
     DebugEntityValueState, DebugEventState, DebugGameEventInfoState, DebugHiveInfoState,
     DebugPoiInfoState, DebugSampleState, DebugStructureInfoState, DebugStructurePieceState,
     DebugSubscriptionValueState, DebugSubscriptionValuesState, DebugTimedValueState, DebugValueMap,
-    DebugVec3iState, GameTestHighlightPosState, InvalidDebugSubscriptionId,
-    TestInstanceBlockStatusState,
+    DebugVec3iState, GameTestHighlightMarkerState, GameTestHighlightPosState,
+    InvalidDebugSubscriptionId, TestInstanceBlockStatusState, GAME_TEST_HIGHLIGHT_DURATION_MILLIS,
 };
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
 pub use crate::client::dialog::{
