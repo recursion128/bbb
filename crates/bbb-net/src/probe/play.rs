@@ -1218,10 +1218,20 @@ mod tests {
         let mut probe = ProbeContext::new(client);
 
         probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(
+                synthetic_probe_level_chunk_packet(),
+            ))
+            .await
+            .unwrap();
+        probe
             .handle_play_packet(PlayClientbound::BlockEntityData(BlockEntityData {
-                pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
+                pos: ProtocolBlockPos {
+                    x: 16,
+                    y: -64,
+                    z: -32,
+                },
                 block_entity_type_id:
-                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                 raw_nbt: vec![1],
             }))
             .await
@@ -1240,7 +1250,7 @@ mod tests {
         );
         assert_eq!(counters.world_apply_errors, 1);
 
-        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(2, ChunkPos { x: 1, z: -2 });
         assert_eq!(report.world_apply_errors.len(), 1);
         assert!(report.world_apply_errors[0].contains("nbt byte"));
         assert_eq!(report.world_counters.world_apply_errors, 1);

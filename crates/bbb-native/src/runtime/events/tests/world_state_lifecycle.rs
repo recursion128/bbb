@@ -1,4 +1,6 @@
 use super::*;
+use crate::sign_scene::sign_scene_from_world;
+use bbb_item_model::NativeItemRuntime;
 
 #[test]
 fn block_changed_ack_updates_world_counters() {
@@ -187,7 +189,10 @@ fn terrain_chunk_events_update_world_counters() {
             y: -64,
             z: -32,
         },
-        block_state_id: 5,
+        block_state_id: vanilla_block_state_id(
+            "minecraft:oak_sign",
+            [("rotation", "0"), ("waterlogged", "false")],
+        ),
     })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::SectionBlocksUpdate(
@@ -215,7 +220,7 @@ fn terrain_chunk_events_update_world_counters() {
             },
             block_entity_type_id:
                 bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
-            raw_nbt: vec![0],
+            raw_nbt: vec![10, 0],
         },
     )))
     .unwrap();
@@ -321,10 +326,22 @@ fn network_drain_queues_light_until_the_runtime_poll_boundary() {
 
 #[test]
 fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
-    let (tx, mut rx) = mpsc::channel(2);
+    let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
     )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        block_state_id: vanilla_block_state_id(
+            "minecraft:oak_sign",
+            [("rotation", "0"), ("waterlogged", "false")],
+        ),
+    })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
         BlockEntityData {
@@ -348,7 +365,7 @@ fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        2
+        3
     );
 
     let pos = BlockPos {
@@ -375,6 +392,14 @@ fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
         ])
     );
     assert_eq!(world.counters().block_entity_updates_applied, 1);
+
+    let scene = sign_scene_from_world(&world, Some(&NativeItemRuntime::empty_for_test()), false);
+    assert_eq!(scene.instances.len(), 1);
+    assert_eq!(scene.text_surfaces.len(), 2);
+    assert!(scene
+        .text_surfaces
+        .iter()
+        .all(|surface| surface.vertex_count() > 0));
 }
 
 #[test]
@@ -478,10 +503,18 @@ fn terrain_chunk_ignored_counters_stay_in_world_store() {
 
 #[test]
 fn terrain_apply_errors_stay_in_world_store() {
-    let (tx, mut rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    )))
+    .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
         BlockEntityData {
-            pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
+            pos: ProtocolBlockPos {
+                x: 16,
+                y: -64,
+                z: -32,
+            },
             block_entity_type_id:
                 bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
             raw_nbt: vec![1],
@@ -494,7 +527,7 @@ fn terrain_apply_errors_stay_in_world_store() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        1
+        2
     );
 
     assert!(counters.last_error.is_none());

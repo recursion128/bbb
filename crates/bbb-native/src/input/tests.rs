@@ -3402,7 +3402,7 @@ fn shift_f3_i_with_permission_copies_local_block_entity_nbt_to_clipboard() {
             y: target_pos.y,
             z: target_pos.z,
         },
-        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "x")]),
+        block_state_id: vanilla_block_state_id("minecraft:spawner", []),
     }));
     assert!(world
         .apply_block_entity_data(BlockEntityData {
@@ -3446,7 +3446,7 @@ fn shift_f3_i_with_permission_copies_local_block_entity_nbt_to_clipboard() {
 
     assert_eq!(
         clipboard.text.as_deref(),
-        Some("/setblock 0 1 3 minecraft:oak_log[axis=x]{Lock:\"secret\"}")
+        Some("/setblock 0 1 3 minecraft:spawner{Lock:\"secret\"}")
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
     let messages = &world.client_chat().messages;
@@ -3469,7 +3469,7 @@ fn shift_f3_i_without_permission_omits_local_block_entity_nbt() {
             y: target_pos.y,
             z: target_pos.z,
         },
-        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "x")]),
+        block_state_id: vanilla_block_state_id("minecraft:spawner", []),
     }));
     assert!(world
         .apply_block_entity_data(BlockEntityData {
@@ -3513,7 +3513,7 @@ fn shift_f3_i_without_permission_omits_local_block_entity_nbt() {
 
     assert_eq!(
         clipboard.text.as_deref(),
-        Some("/setblock 0 1 3 minecraft:oak_log[axis=x]")
+        Some("/setblock 0 1 3 minecraft:spawner")
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
     let messages = &world.client_chat().messages;
@@ -19234,7 +19234,7 @@ fn jigsaw_authoritative_refresh_preserves_unsent_native_fields_in_same_open() {
         .apply_block_entity_data(BlockEntityData {
             pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
             block_entity_type_id: VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID,
-            raw_nbt: vec![0],
+            raw_nbt: vec![10, 0],
         })
         .unwrap());
     input.sync_jigsaw_block_editor(&mut world, &mut counters, &None);

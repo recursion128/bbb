@@ -879,17 +879,22 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
         data: 0,
         global: false,
     };
-    let (tx, mut rx) = mpsc::channel(4);
+    let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
     )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
+        pos: vault_event.pos,
+        block_state_id: vault_block_state_id("north"),
+    })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
         BlockEntityData {
             pos: vault_event.pos,
             block_entity_type_id:
                 bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
-            raw_nbt: vec![0],
+            raw_nbt: vec![10, 0],
         },
     )))
     .unwrap();
@@ -919,7 +924,7 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
             None,
             &mut level_event_sound_random,
         ),
-        4
+        5
     );
 
     assert_eq!(
