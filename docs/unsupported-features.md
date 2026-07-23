@@ -643,14 +643,6 @@ Movement:
   inside-block snowflake particle and extinguish effects are wired through the
   block-effect evaluator and particle resolver).
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
-- Complete the remaining relative-entity authority/interpolation edges: resolve
-  every entity-specific local-authority controller beyond the direct local player
-  and first-passenger root boat, apply vanilla's collision predicate before
-  carrying independent client motion into an active interpolation target, and
-  retain the previous-pose partial-tick presentation surface.
-- Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
-  interpolation, indirect-passenger reposition/old-pose reset, and locally-
-  authoritative vehicle echo.
 - Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`):
   gate it on Player, clear the bed's local occupied state, resolve the safe
   stand-up position/yaw, move to that position, set standing pose, clear

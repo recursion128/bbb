@@ -742,7 +742,7 @@ mod tests {
     }
 
     #[test]
-    fn play_relative_entity_moves_keep_authority_and_interpolation_open() {
+    fn play_relative_entity_moves_close_authority_and_interpolation() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "CLIENTBOUND_MOVE_ENTITY_POS",
@@ -755,30 +755,14 @@ mod tests {
             .filter(|entry| entry.state == "play" && packets.contains(entry.constant_name.as_str()))
             .collect();
         assert_eq!(entries.len(), packets.len());
-        let partial: BTreeSet<_> = entries
-            .iter()
-            .flat_map(|entry| {
-                entry.coverage.iter().filter_map(move |(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial)
-                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
-                })
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([
-                ("CLIENTBOUND_MOVE_ENTITY_POS", "canonical_apply"),
-                ("CLIENTBOUND_MOVE_ENTITY_POS", "runtime_side_effect"),
-                ("CLIENTBOUND_MOVE_ENTITY_POS_ROT", "canonical_apply"),
-                ("CLIENTBOUND_MOVE_ENTITY_POS_ROT", "runtime_side_effect"),
-                ("CLIENTBOUND_MOVE_ENTITY_ROT", "canonical_apply"),
-                ("CLIENTBOUND_MOVE_ENTITY_ROT", "runtime_side_effect"),
-            ])
-        );
+        assert!(entries.iter().all(|entry| entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete)));
     }
 
     #[test]
-    fn play_absolute_entity_corrections_keep_authority_and_interpolation_open() {
+    fn play_absolute_entity_corrections_close_authority_and_interpolation() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "CLIENTBOUND_ENTITY_POSITION_SYNC",
@@ -790,24 +774,10 @@ mod tests {
             .filter(|entry| entry.state == "play" && packets.contains(entry.constant_name.as_str()))
             .collect();
         assert_eq!(entries.len(), packets.len());
-        let partial: BTreeSet<_> = entries
-            .iter()
-            .flat_map(|entry| {
-                entry.coverage.iter().filter_map(move |(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial)
-                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
-                })
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([
-                ("CLIENTBOUND_ENTITY_POSITION_SYNC", "canonical_apply"),
-                ("CLIENTBOUND_ENTITY_POSITION_SYNC", "runtime_side_effect"),
-                ("CLIENTBOUND_TELEPORT_ENTITY", "canonical_apply"),
-                ("CLIENTBOUND_TELEPORT_ENTITY", "runtime_side_effect"),
-            ])
-        );
+        assert!(entries.iter().all(|entry| entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete)));
     }
 
     #[test]

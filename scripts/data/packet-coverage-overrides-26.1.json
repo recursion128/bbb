@@ -2600,10 +2600,11 @@
       "canonical_apply": {
         "evidence": [
           "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#relative_move_handler_overrides_snap_non_interpolating_entities",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_vehicle_authority_uses_vanilla_controller_conditions",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -2618,16 +2619,19 @@
       },
       "runtime_side_effect": {
         "evidence": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#interpolation_carries_independent_motion_only_into_collision_free_target_bounds",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
           "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_relative_move_only_advances_server_position_base",
-          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#moveOrInterpolateTo"
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity",
+          "vanilla:net/minecraft/world/entity/InterpolationHandler.java#interpolate"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_move_entity_variants_strictly",
-          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#rotation_only_retarget_keeps_the_active_position_target"
         ],
         "status": "complete"
       }
@@ -2636,10 +2640,11 @@
       "canonical_apply": {
         "evidence": [
           "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#relative_move_handler_overrides_snap_non_interpolating_entities",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_vehicle_authority_uses_vanilla_controller_conditions",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -2654,16 +2659,19 @@
       },
       "runtime_side_effect": {
         "evidence": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#interpolation_carries_independent_motion_only_into_collision_free_target_bounds",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
           "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_relative_move_only_advances_server_position_base",
-          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#moveOrInterpolateTo"
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity",
+          "vanilla:net/minecraft/world/entity/InterpolationHandler.java#interpolate"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_move_entity_variants_strictly",
-          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#rotation_only_retarget_keeps_the_active_position_target"
         ],
         "status": "complete"
       }
@@ -2672,10 +2680,11 @@
       "canonical_apply": {
         "evidence": [
           "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#relative_move_handler_overrides_snap_non_interpolating_entities",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_vehicle_authority_uses_vanilla_controller_conditions",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -2690,16 +2699,19 @@
       },
       "runtime_side_effect": {
         "evidence": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#interpolation_carries_independent_motion_only_into_collision_free_target_bounds",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
           "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_relative_move_only_advances_server_position_base",
-          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#moveOrInterpolateTo"
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity",
+          "vanilla:net/minecraft/world/entity/InterpolationHandler.java#interpolate"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_move_entity_variants_strictly",
-          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#rotation_only_retarget_keeps_the_active_position_target"
         ],
         "status": "complete"
       }
@@ -2708,10 +2720,11 @@
       "canonical_apply": {
         "evidence": [
           "crates/bbb-world/src/entities/movement.rs#apply_entity_position_sync",
-          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_position_sync_only_rebases_server_position_codec"
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#position_sync_uses_loaded_chunk_ticking_distance_and_keeps_packet_velocity_unchanged",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_position_sync_only_rebases_server_position_codec",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityPositionSync"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -2726,16 +2739,18 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-world/src/entities/movement.rs#apply_entity_position_sync",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#snapped_position_sync_repositions_noncontrolling_local_passenger",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityPositionSync"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_absolute_entity_corrections_strictly",
-          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#position_sync_uses_loaded_chunk_ticking_distance_and_keeps_packet_velocity_unchanged",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_position_sync_only_rebases_server_position_codec",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#snapped_position_sync_repositions_noncontrolling_local_passenger"
         ],
         "status": "complete"
       }
@@ -2744,10 +2759,11 @@
       "canonical_apply": {
         "evidence": [
           "crates/bbb-world/src/entities/movement.rs#apply_teleport_entity",
-          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#teleport_resolves_relative_values_from_active_target_and_snap_old_endpoints",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#snapped_controlled_vehicle_teleport_repositions_rider_and_reports_after_state",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTeleportEntity"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -2762,16 +2778,19 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-world/src/entities/movement.rs#apply_teleport_entity",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#controlled_vehicle_teleport_queues_post_snap_vehicle_correction",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#removed_player_vehicle_teleport_queues_forced_player_pos_rot",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTeleportEntity"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_absolute_entity_corrections_strictly",
-          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#teleport_resolves_relative_values_from_active_target_and_snap_old_endpoints",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#controlled_vehicle_teleport_queues_post_snap_vehicle_correction"
         ],
         "status": "complete"
       }

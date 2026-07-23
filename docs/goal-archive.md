@@ -276,3 +276,7 @@
 - **2026-07-22（PlayerAction 八动作包闭环）**：START/ABORT/STOP 按预测顺序驱动方块替换、
   本地挥手、轮廓击中粒子及 redstone/dragon-egg attack 回调；drop/release/swap/STAB 保持各自
   客户端守卫与服务端权威，五类 packet coverage 全部 complete，合同见 `docs/player-action-packet-closure-design.md`。
+- **2026-07-22（实体 transform 五包族闭环）**：PositionSync、三类 MoveEntity 与 Teleport
+  统一到递归 controlling-passenger 权威、loaded-section/4096 插值、碰撞目标 carry、旧姿态
+  partial-tick 及乘客/车辆回显路径；五行 packet coverage 全单元 complete，沿用
+  `docs/archive/entity-transform-interpolation-design.md` 工程合同。
