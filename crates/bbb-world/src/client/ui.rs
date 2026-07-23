@@ -474,10 +474,26 @@ pub struct BookScreenState {
     pub current_page: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpenSignEditorState {
     pub pos: BlockPos,
     pub is_front_text: bool,
+    #[serde(default)]
+    pub lines: [String; 4],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filtered_lines: Option<[String; 4]>,
+}
+
+impl OpenSignEditorState {
+    /// The screen's immutable preload snapshot selected by the startup client
+    /// text-filter setting. Missing filtered NBT falls back to raw messages.
+    pub fn lines_for_filter(&self, should_filter: bool) -> &[String; 4] {
+        if should_filter {
+            self.filtered_lines.as_ref().unwrap_or(&self.lines)
+        } else {
+            &self.lines
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -736,6 +752,13 @@ impl WorldStore {
             self.counters.open_sign_editor_updates_ignored += 1;
             return;
         }
+        let (lines, filtered_lines) = self
+            .sign_text_state_at(pos)
+            .map(|text| {
+                let side = text.side(packet.is_front_text);
+                (side.plain_lines(), side.filtered_plain_lines())
+            })
+            .unwrap_or_default();
         self.counters.open_sign_editor_updates_applied += 1;
         self.client_ui.replace_dialog();
         self.client_ui.current_book = None;
@@ -744,6 +767,8 @@ impl WorldStore {
         self.client_ui.last_open_sign_editor = Some(OpenSignEditorState {
             pos,
             is_front_text: packet.is_front_text,
+            lines,
+            filtered_lines,
         });
     }
 
@@ -2613,8 +2638,23 @@ mod tests {
                     z: 12,
                 },
                 is_front_text: false,
+                lines: [
+                    "raw back".to_string(),
+                    String::new(),
+                    String::new(),
+                    String::new(),
+                ],
+                filtered_lines: Some([
+                    "filtered back".to_string(),
+                    String::new(),
+                    String::new(),
+                    String::new(),
+                ]),
             })
         );
+        let editor = store.last_open_sign_editor().unwrap();
+        assert_eq!(editor.lines_for_filter(false)[0], "raw back");
+        assert_eq!(editor.lines_for_filter(true)[0], "filtered back");
 
         let counters = store.counters();
         assert_eq!(counters.mount_screen_open_packets, 1);
@@ -2907,7 +2947,11 @@ mod tests {
                 type_id: VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                 raw_nbt: vec![0],
                 nbt: None,
-                sign_text: Some(crate::SignBlockEntityTextState::default()),
+                sign_text: Some(crate::SignBlockEntityTextState {
+                    front: test_sign_side("raw front", "filtered front"),
+                    back: test_sign_side("raw back", "filtered back"),
+                    is_waxed: false,
+                }),
                 vault_shared_data: None,
                 decorated_pot_sherds: None,
                 banner_patterns: None,
@@ -2922,6 +2966,21 @@ mod tests {
             }],
             light: crate::LightData::default(),
         });
+    }
+
+    fn test_sign_side(raw: &str, filtered: &str) -> crate::SignTextSideState {
+        let line = |text: &str| {
+            vec![bbb_protocol::StyledTextRun {
+                text: text.to_string(),
+                style: bbb_protocol::ComponentStyle::default(),
+            }]
+        };
+        crate::SignTextSideState {
+            lines: [line(raw), Vec::new(), Vec::new(), Vec::new()],
+            filtered_lines: Some([line(filtered), Vec::new(), Vec::new(), Vec::new()]),
+            color: crate::SignTextDyeColor::Black,
+            has_glowing_text: false,
+        }
     }
 
     #[test]

@@ -14,6 +14,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use bbb_protocol::attribute_types::{
+    VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID, VANILLA_ATTRIBUTE_TYPES,
+};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
 };
@@ -124,6 +127,38 @@ impl WorldStore {
             .is_some_and(|name| sign_wood_and_form_for_block_name(&name).is_some())
     }
 
+    /// Whether Vanilla's active sign editor may keep editing `pos`: the sign
+    /// still exists, the local player and pose exist, and the squared distance
+    /// from the player's eye to the block unit AABB is strictly below
+    /// `(BLOCK_INTERACTION_RANGE + 4)^2`.
+    pub fn sign_editor_is_valid_at(&self, pos: BlockPos) -> bool {
+        if !self.has_sign_block_entity_at(pos) {
+            return false;
+        }
+        let Some(player_id) = self.local_player_id() else {
+            return false;
+        };
+        let Some(pose) = self.local_player_pose() else {
+            return false;
+        };
+        let default_range = VANILLA_ATTRIBUTE_TYPES
+            .iter()
+            .find(|entry| entry.id == VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID)
+            .map(|entry| f64::from_bits(entry.default_value_bits))
+            .expect("generated block interaction range attribute");
+        let max_range = self
+            .entities
+            .attribute_value(player_id, VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID)
+            .unwrap_or(default_range)
+            + 4.0;
+        let eye = [
+            pose.position.x,
+            pose.position.y + pose.eye_height(),
+            pose.position.z,
+        ];
+        point_to_block_aabb_distance_squared(eye, pos) < max_range * max_range
+    }
+
     /// Enumerates every sign-family block in the loaded chunks as a render
     /// source, deriving wood/attachment/yaw from the block state (the vanilla
     /// client materialises a `SignBlockEntity` per sign block state) and the
@@ -225,6 +260,23 @@ impl WorldStore {
     }
 }
 
+fn point_to_block_aabb_distance_squared(point: [f64; 3], pos: BlockPos) -> f64 {
+    let min = [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)];
+    let max = [min[0] + 1.0, min[1] + 1.0, min[2] + 1.0];
+    (0..3)
+        .map(|axis| {
+            let distance = if point[axis] < min[axis] {
+                min[axis] - point[axis]
+            } else if point[axis] > max[axis] {
+                point[axis] - max[axis]
+            } else {
+                0.0
+            };
+            distance * distance
+        })
+        .sum()
+}
+
 /// Whether a section's block palette can hold a sign-family state. Local and
 /// single-value palettes are answered from the palette id list; a global
 /// palette stores raw state ids, so it must be scanned.
@@ -316,15 +368,21 @@ mod tests {
     }
 
     fn sign_nbt(front: [&str; 4], color: Option<&str>, glowing: bool) -> Vec<u8> {
+        sign_nbt_with_filtered(front, None, color, glowing)
+    }
+
+    fn sign_nbt_with_filtered(
+        front: [&str; 4],
+        filtered: Option<[&str; 4]>,
+        color: Option<&str>,
+        glowing: bool,
+    ) -> Vec<u8> {
         let mut payload = vec![10];
         payload.push(10);
         write_mutf8(&mut payload, "front_text");
-        payload.push(9);
-        write_mutf8(&mut payload, "messages");
-        payload.push(8);
-        payload.extend_from_slice(&4i32.to_be_bytes());
-        for line in front {
-            write_mutf8(&mut payload, line);
+        write_sign_lines(&mut payload, "messages", front);
+        if let Some(filtered) = filtered {
+            write_sign_lines(&mut payload, "filtered_messages", filtered);
         }
         if let Some(color) = color {
             payload.push(8);
@@ -339,6 +397,16 @@ mod tests {
         payload.push(0);
         payload.push(0);
         payload
+    }
+
+    fn write_sign_lines(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
+        out.push(9);
+        write_mutf8(out, name);
+        out.push(8);
+        out.extend_from_slice(&4i32.to_be_bytes());
+        for line in lines {
+            write_mutf8(out, line);
+        }
     }
 
     fn write_mutf8(out: &mut Vec<u8>, value: &str) {
@@ -543,6 +611,101 @@ mod tests {
     }
 
     #[test]
+    fn filtered_sign_lines_are_canonical_and_fall_back_to_raw() {
+        let mut world = world_with_air_chunk();
+        let filtered_pos = BlockPos { x: 1, y: 4, z: 2 };
+        set_block(
+            &mut world,
+            filtered_pos,
+            "minecraft:oak_sign",
+            &[("rotation", "0"), ("waterlogged", "false")],
+        );
+        apply_sign_text(
+            &mut world,
+            filtered_pos,
+            sign_nbt_with_filtered(
+                ["raw", "", "", ""],
+                Some(["filtered", "", "", ""]),
+                None,
+                false,
+            ),
+        );
+        assert_eq!(
+            world.sign_text_lines_for_filter(filtered_pos, true, false),
+            Some([
+                "raw".to_string(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ])
+        );
+        assert_eq!(
+            world.sign_text_lines_for_filter(filtered_pos, true, true),
+            Some([
+                "filtered".to_string(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ])
+        );
+
+        let raw_only_pos = BlockPos { x: 2, y: 4, z: 2 };
+        set_block(
+            &mut world,
+            raw_only_pos,
+            "minecraft:oak_sign",
+            &[("rotation", "0"), ("waterlogged", "false")],
+        );
+        apply_sign_text(
+            &mut world,
+            raw_only_pos,
+            sign_nbt(["fallback", "", "", ""], None, false),
+        );
+        assert_eq!(
+            world.sign_text_lines_for_filter(raw_only_pos, true, true),
+            Some([
+                "fallback".to_string(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ])
+        );
+    }
+
+    #[test]
+    fn sign_editor_validity_uses_eye_to_block_aabb_strict_range() {
+        let mut world = world_with_air_chunk();
+        let pos = BlockPos { x: 1, y: 4, z: 2 };
+        set_block(
+            &mut world,
+            pos,
+            "minecraft:oak_sign",
+            &[("rotation", "0"), ("waterlogged", "false")],
+        );
+        world.local_player_id = Some(42);
+        world.set_local_player_pose(crate::LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: -7.5,
+                y: 2.88,
+                z: 2.5,
+            },
+            ..Default::default()
+        });
+
+        // Vanilla uses `<`, so the exact default 4.5 + 4.0 boundary closes.
+        assert!(!world.sign_editor_is_valid_at(pos));
+        let mut pose = world.local_player_pose().unwrap();
+        pose.position.x = -7.499;
+        world.set_local_player_pose(pose);
+        assert!(world.sign_editor_is_valid_at(pos));
+
+        set_block(&mut world, pos, "minecraft:air", &[]);
+        assert!(!world.sign_editor_is_valid_at(pos));
+        world.local_player_id = None;
+        assert!(!world.sign_editor_is_valid_at(pos));
+    }
+
+    #[test]
     fn sign_editor_preload_lines_flatten_styled_runs() {
         let state = SignBlockEntityTextState {
             front: crate::SignTextSideState {
@@ -564,6 +727,7 @@ mod tests {
                     Vec::new(),
                     Vec::new(),
                 ],
+                filtered_lines: None,
                 color: SignTextDyeColor::Black,
                 has_glowing_text: false,
             },

@@ -223,36 +223,68 @@ impl SignBlockEntityTextState {
     }
 }
 
-/// One sign face's text — vanilla `SignText`: four lines of styled component
-/// runs (the shared `StyledTextRun` flattening), the face's `DyeColor`, and
-/// the `has_glowing_text` flag.
+/// One sign face's text — vanilla `SignText`: four raw lines plus an optional
+/// filtered four-line variant of styled component runs (the shared
+/// `StyledTextRun` flattening), the face's `DyeColor`, and the
+/// `has_glowing_text` flag.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignTextSideState {
     pub lines: [Vec<StyledTextRun>; 4],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filtered_lines: Option<[Vec<StyledTextRun>; 4]>,
     pub color: SignTextDyeColor,
     pub has_glowing_text: bool,
 }
 
 impl SignTextSideState {
+    /// The effective styled lines selected by Vanilla's client text-filter
+    /// setting. Missing/malformed filtered NBT falls back to the raw lines.
+    pub fn lines_for_filter(&self, should_filter: bool) -> &[Vec<StyledTextRun>; 4] {
+        if should_filter {
+            self.filtered_lines.as_ref().unwrap_or(&self.lines)
+        } else {
+            &self.lines
+        }
+    }
+
     /// The plain concatenated text per line (styles dropped) — what the sign
     /// edit screen preloads (vanilla `AbstractSignEditScreen` edits raw
     /// strings).
     pub fn plain_lines(&self) -> [String; 4] {
-        std::array::from_fn(|index| {
-            self.lines[index]
-                .iter()
-                .map(|run| run.text.as_str())
-                .collect()
-        })
+        plain_sign_lines(&self.lines)
     }
 
-    /// Vanilla `SignText.hasMessage`-ish emptiness probe: whether any line
-    /// has non-empty text (an all-empty face submits no text render).
-    pub fn has_any_text(&self) -> bool {
-        self.lines
-            .iter()
-            .any(|line| line.iter().any(|run| !run.text.is_empty()))
+    /// The effective plain text selected by the client text-filter setting.
+    pub fn plain_lines_for_filter(&self, should_filter: bool) -> [String; 4] {
+        plain_sign_lines(self.lines_for_filter(should_filter))
     }
+
+    /// The decoded filtered text without fallback, retained so an open sign
+    /// editor can snapshot both variants before later world updates arrive.
+    pub fn filtered_plain_lines(&self) -> Option<[String; 4]> {
+        self.filtered_lines.as_ref().map(plain_sign_lines)
+    }
+
+    /// Whether either selectable variant has text. Extraction cannot decide
+    /// the command-line filtering policy, so it retains a face needed by
+    /// either runtime choice.
+    pub fn has_any_text(&self) -> bool {
+        sign_lines_have_text(&self.lines)
+            || self
+                .filtered_lines
+                .as_ref()
+                .is_some_and(sign_lines_have_text)
+    }
+}
+
+fn plain_sign_lines(lines: &[Vec<StyledTextRun>; 4]) -> [String; 4] {
+    std::array::from_fn(|index| lines[index].iter().map(|run| run.text.as_str()).collect())
+}
+
+fn sign_lines_have_text(lines: &[Vec<StyledTextRun>; 4]) -> bool {
+    lines
+        .iter()
+        .any(|line| line.iter().any(|run| !run.text.is_empty()))
 }
 
 /// Vanilla `DyeColor` for sign text (`SignText.color`, serialized by name via

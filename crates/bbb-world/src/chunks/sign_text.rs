@@ -38,5 +38,6 @@ fn sign_text_side(side: SignTextNbt) -> SignTextSideState {
             .unwrap_or_default(),
         has_glowing_text: side.has_glowing_text,
         lines: side.messages,
+        filtered_lines: side.filtered_messages,
     }
 }

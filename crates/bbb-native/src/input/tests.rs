@@ -1147,6 +1147,7 @@ fn sign_text_side(lines: [&str; 4]) -> bbb_world::SignTextSideState {
                 }]
             }
         }),
+        filtered_lines: None,
         color: bbb_world::SignTextDyeColor::Black,
         has_glowing_text: false,
     }

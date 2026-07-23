@@ -583,6 +583,21 @@ impl WorldStore {
         )
     }
 
+    /// The effective plain sign lines selected by the client text-filter
+    /// setting. A side without decoded filtered messages uses its raw lines.
+    pub fn sign_text_lines_for_filter(
+        &self,
+        pos: BlockPos,
+        is_front_text: bool,
+        should_filter: bool,
+    ) -> Option<[String; 4]> {
+        Some(
+            self.sign_text_state_at(pos)?
+                .side(is_front_text)
+                .plain_lines_for_filter(should_filter),
+        )
+    }
+
     /// The stored sign text state at a block position (both faces + waxed),
     /// if a sign block entity record exists there.
     pub fn sign_text_state_at(&self, pos: BlockPos) -> Option<&SignBlockEntityTextState> {

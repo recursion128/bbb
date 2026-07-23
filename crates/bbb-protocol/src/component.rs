@@ -427,13 +427,15 @@ pub fn decode_styled_component_summary(payload: &[u8]) -> Result<Vec<StyledTextR
 /// `SignText.DIRECT_CODEC` (`SignText.java`): `messages` is a list of exactly
 /// four chat components (`LINES_CODEC` enforces `Util.fixedSize(_, 4)`), each
 /// flattened here into styled runs by the shared component traversal;
+/// `filtered_messages` is a lenient optional list of exactly four components
+/// and falls back to `messages` when absent or malformed;
 /// `color` is the raw `DyeColor.CODEC` name string (`"black"` when absent —
 /// `fieldOf("color").orElse(DyeColor.BLACK)`); `has_glowing_text` is the
-/// `Codec.BOOL` byte (`orElse(false)`). The `filtered_messages` list only
-/// matters when text filtering is enabled and is not decoded.
+/// `Codec.BOOL` byte (`orElse(false)`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignTextNbt {
     pub messages: [Vec<StyledTextRun>; 4],
+    pub filtered_messages: Option<[Vec<StyledTextRun>; 4]>,
     pub color: Option<String>,
     pub has_glowing_text: bool,
 }
@@ -483,31 +485,41 @@ fn decode_sign_text_nbt(entries: &[NbtSummaryEntry], key: &str) -> Option<SignTe
     let NbtSummaryValue::Compound(text_entries) = find_entry(entries, key)? else {
         return None;
     };
-    let NbtSummaryValue::List(messages) = find_entry(text_entries, "messages")? else {
-        return None;
-    };
-    // Vanilla `SignText.LINES_CODEC` rejects any list that is not exactly four
-    // components (`Util.fixedSize(_, 4)`), falling back to an empty SignText.
-    if messages.len() != 4 {
-        return None;
-    }
-    let messages = std::array::from_fn(|index| {
-        let mut runs = RunCollector::default();
-        append_component_runs(&messages[index], &ComponentStyle::default(), &mut runs);
-        runs.runs
-    });
+    let messages = decode_sign_lines(find_entry(text_entries, "messages")?)?;
+    // Vanilla wraps `filtered_messages` in `ExtraCodecs.lenientOptionalFieldOf`:
+    // absence or any codec failure is the same as no filtered value, after
+    // which `SignText` copies the raw messages for filtered reads.
+    let filtered_messages =
+        find_entry(text_entries, "filtered_messages").and_then(decode_sign_lines);
     let color = match find_entry(text_entries, "color") {
         Some(NbtSummaryValue::String(color)) => Some(color.clone()),
         _ => None,
     };
     Some(SignTextNbt {
         messages,
+        filtered_messages,
         color,
         has_glowing_text: matches!(
             find_entry(text_entries, "has_glowing_text"),
             Some(NbtSummaryValue::Byte(value)) if *value != 0
         ),
     })
+}
+
+fn decode_sign_lines(value: &NbtSummaryValue) -> Option<[Vec<StyledTextRun>; 4]> {
+    let NbtSummaryValue::List(lines) = value else {
+        return None;
+    };
+    // Vanilla `SignText.LINES_CODEC` rejects any list that is not exactly four
+    // components (`Util.fixedSize(_, 4)`).
+    if lines.len() != 4 {
+        return None;
+    }
+    Some(std::array::from_fn(|index| {
+        let mut runs = RunCollector::default();
+        append_component_runs(&lines[index], &ComponentStyle::default(), &mut runs);
+        runs.runs
+    }))
 }
 
 /// Accumulates flattened runs, merging adjacent same-style text so the run
@@ -1042,13 +1054,7 @@ mod tests {
     ) {
         out.push(10);
         write_mutf8(out, key);
-        out.push(9);
-        write_mutf8(out, "messages");
-        out.push(8);
-        out.extend_from_slice(&(lines.len() as i32).to_be_bytes());
-        for line in lines {
-            write_mutf8(out, line);
-        }
+        write_sign_line_list(out, "messages", lines);
         if let Some(color) = color {
             write_named_string(out, "color", color);
         }
@@ -1056,6 +1062,16 @@ mod tests {
             write_named_byte(out, "has_glowing_text", 1);
         }
         out.push(0);
+    }
+
+    fn write_sign_line_list(out: &mut Vec<u8>, key: &str, lines: &[&str]) {
+        out.push(9);
+        write_mutf8(out, key);
+        out.push(8);
+        out.extend_from_slice(&(lines.len() as i32).to_be_bytes());
+        for line in lines {
+            write_mutf8(out, line);
+        }
     }
 
     #[test]
@@ -1083,6 +1099,44 @@ mod tests {
         assert_eq!(back.color, None);
         assert!(!back.has_glowing_text);
         assert!(back.messages.iter().all(Vec::is_empty));
+    }
+
+    #[test]
+    fn sign_filtered_messages_decode_leniently_and_fall_back_when_malformed() {
+        let mut payload = vec![10, 10];
+        write_mutf8(&mut payload, "front_text");
+        write_sign_line_list(&mut payload, "messages", &["raw", "b", "c", "d"]);
+        write_sign_line_list(
+            &mut payload,
+            "filtered_messages",
+            &["filtered", "B", "C", "D"],
+        );
+        payload.push(0);
+        payload.push(0);
+
+        let sign = decode_sign_block_entity_nbt(&payload).unwrap().unwrap();
+        let front = sign.front_text.unwrap();
+        assert_eq!(front.messages[0][0].text, "raw");
+        assert_eq!(
+            front.filtered_messages.as_ref().unwrap()[0][0].text,
+            "filtered"
+        );
+
+        let mut malformed = vec![10, 10];
+        write_mutf8(&mut malformed, "front_text");
+        write_sign_line_list(&mut malformed, "messages", &["raw", "b", "c", "d"]);
+        write_sign_line_list(
+            &mut malformed,
+            "filtered_messages",
+            &["only", "three", "lines"],
+        );
+        malformed.push(0);
+        malformed.push(0);
+
+        let sign = decode_sign_block_entity_nbt(&malformed).unwrap().unwrap();
+        let front = sign.front_text.unwrap();
+        assert_eq!(front.messages[0][0].text, "raw");
+        assert_eq!(front.filtered_messages, None);
     }
 
     #[test]
