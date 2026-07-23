@@ -12631,7 +12631,8 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/runtime.rs#hud_experience_progress",
-            "crates/bbb-renderer/src/hud.rs#set_hud_experience_progress",
+            "crates/bbb-native/src/runtime/waypoint_locator.rs#HudContextualRuntime",
+            "crates/bbb-renderer/src/hud.rs#set_hud_contextual_bar",
             "crates/bbb-world/src/client/inventory/slot_ops.rs#experience"
           ],
           "gap": null,
