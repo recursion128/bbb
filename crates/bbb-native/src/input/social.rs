@@ -1,4 +1,7 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    time::{Duration, Instant},
+};
 
 use bbb_renderer::{
     HudSocialInteractionsFocus, HudSocialInteractionsHitTarget, HudSocialInteractionsHitTargetKind,
@@ -16,6 +19,7 @@ use super::{text_edit, ClientInputState};
 pub(crate) const BLOCKING_HELP_URL: &str = "https://aka.ms/javablocking";
 const MAX_SEARCH_CHARS: usize = 16;
 const ROW_HEIGHT: i32 = 36;
+const TOOLTIP_DELAY: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SocialInteractionsPlatformRequest {
@@ -33,6 +37,7 @@ pub(crate) struct SocialInteractionsRuntime {
     search_selection: usize,
     focus: HudSocialInteractionsFocus,
     hovered: Option<HudSocialInteractionsFocus>,
+    hovered_since: Option<Instant>,
     rows: Vec<SocialPlayerState>,
     scroll_amount: f64,
     max_scroll_amount: f64,
@@ -51,6 +56,7 @@ impl SocialInteractionsRuntime {
             search_selection: 0,
             focus: HudSocialInteractionsFocus::Search,
             hovered: None,
+            hovered_since: None,
             rows: Vec::new(),
             scroll_amount: 0.0,
             max_scroll_amount: 0.0,
@@ -65,6 +71,52 @@ impl SocialInteractionsRuntime {
         self.generation
     }
 
+    pub(crate) fn page(&self) -> SocialInteractionsPage {
+        self.page
+    }
+
+    pub(crate) fn search_text(&self) -> &str {
+        &self.search_text
+    }
+
+    pub(crate) fn search_cursor(&self) -> usize {
+        self.search_cursor
+    }
+
+    pub(crate) fn search_selection(&self) -> usize {
+        self.search_selection
+    }
+
+    pub(crate) fn focus(&self) -> HudSocialInteractionsFocus {
+        self.focus
+    }
+
+    pub(crate) fn hovered(&self) -> Option<HudSocialInteractionsFocus> {
+        self.hovered
+    }
+
+    pub(crate) fn tooltip_is_ready(&self, now: Instant) -> bool {
+        matches!(
+            (self.hovered, self.hovered_since),
+            (
+                Some(HudSocialInteractionsFocus::Player { .. }),
+                Some(hovered_since)
+            ) if now.saturating_duration_since(hovered_since) >= TOOLTIP_DELAY
+        )
+    }
+
+    pub(crate) fn rows(&self) -> &[SocialPlayerState] {
+        &self.rows
+    }
+
+    pub(crate) fn scroll_amount(&self) -> i32 {
+        self.scroll_amount as i32
+    }
+
+    pub(crate) fn link_confirmation_is_open(&self) -> bool {
+        self.link_confirmation_open
+    }
+
     fn synchronize_rows(&mut self, world: &WorldStore) {
         let incoming = world
             .social_players(SocialInteractionsPage::All)
@@ -77,6 +129,8 @@ impl SocialInteractionsRuntime {
                 *row = current.clone();
             } else {
                 row.removed = true;
+                row.hidden = world.social_player_is_hidden(row.profile.uuid);
+                row.blocked = world.social_player_is_blocked(row.profile.uuid);
             }
         }
 
@@ -85,7 +139,7 @@ impl SocialInteractionsRuntime {
                 .rows
                 .iter()
                 .any(|row| row.profile.uuid == player.profile.uuid)
-                || !player_matches_page(&player, self.page)
+                || !player_matches_live_page_add(&player, self.page)
                 || !player_matches_search(&player, &self.search_text)
             {
                 continue;
@@ -108,7 +162,7 @@ impl SocialInteractionsRuntime {
     fn set_page(&mut self, world: &WorldStore, page: SocialInteractionsPage) {
         self.page = page;
         self.focus = HudSocialInteractionsFocus::Tab(renderer_page(page));
-        self.hovered = None;
+        self.set_hovered(None);
         self.rebuild_rows(world);
     }
 
@@ -162,15 +216,24 @@ impl SocialInteractionsRuntime {
 
     fn refresh_player_action_focus(&mut self, world: &WorldStore) {
         self.focus = refreshed_player_focus(self.focus, &self.rows).unwrap_or(self.focus);
-        self.hovered = self
+        let hovered = self
             .hovered
             .and_then(|hovered| refreshed_player_focus(hovered, &self.rows));
+        self.set_hovered(hovered);
         self.validate_focus(world);
     }
 
     fn set_search_text_changed(&mut self, world: &WorldStore) {
         self.rebuild_rows(world);
         self.focus = HudSocialInteractionsFocus::Search;
+        self.set_hovered(None);
+    }
+
+    fn set_hovered(&mut self, hovered: Option<HudSocialInteractionsFocus>) {
+        if self.hovered != hovered {
+            self.hovered = hovered;
+            self.hovered_since = hovered.map(|_| Instant::now());
+        }
     }
 }
 
@@ -183,6 +246,22 @@ pub(crate) struct SocialInteractionsInputState {
 impl ClientInputState {
     pub(crate) fn social_interactions_runtime(&self) -> Option<&SocialInteractionsRuntime> {
         self.social_interactions.active.as_ref()
+    }
+
+    pub(crate) fn refresh_social_interactions_scroll_bounds(
+        &mut self,
+        surface_size: winit::dpi::PhysicalSize<u32>,
+    ) {
+        let Some(state) = self.social_interactions.active.as_mut() else {
+            return;
+        };
+        state.max_scroll_amount = f64::from(
+            bbb_renderer::hud_social_interactions_max_scroll_amount(state.rows.len(), surface_size),
+        );
+        state.scroll_amount = state.scroll_amount.clamp(0.0, state.max_scroll_amount);
+        if state.max_scroll_amount == 0.0 {
+            state.scrolling = false;
+        }
     }
 
     pub(super) fn take_social_interactions_for_dialog(
@@ -405,7 +484,7 @@ impl ClientInputState {
                 state.scroll_amount = f64::from(scroll_amount).clamp(0.0, state.max_scroll_amount);
             }
         }
-        state.hovered = target.and_then(|target| match target.kind {
+        let hovered = target.and_then(|target| match target.kind {
             HudSocialInteractionsHitTargetKind::Focus(focus)
                 if state.focusables(world).contains(&focus) =>
             {
@@ -413,6 +492,7 @@ impl ClientInputState {
             }
             _ => None,
         });
+        state.set_hovered(hovered);
         true
     }
 
@@ -596,7 +676,7 @@ impl ClientInputState {
                 if state.page == SocialInteractionsPage::Blocked {
                     state.link_confirmation_open = true;
                     state.focus = HudSocialInteractionsFocus::LinkOpen;
-                    state.hovered = None;
+                    state.set_hovered(None);
                 }
             }
             HudSocialInteractionsFocus::Done => {
@@ -628,15 +708,16 @@ impl ClientInputState {
         };
         state.link_confirmation_open = false;
         state.focus = HudSocialInteractionsFocus::BlockingHelp;
-        state.hovered = None;
+        state.set_hovered(None);
     }
 }
 
-fn player_matches_page(player: &SocialPlayerState, page: SocialInteractionsPage) -> bool {
+fn player_matches_live_page_add(player: &SocialPlayerState, page: SocialInteractionsPage) -> bool {
     match page {
         SocialInteractionsPage::All => true,
-        SocialInteractionsPage::Hidden => !player.removed && player.hidden,
-        SocialInteractionsPage::Blocked => !player.removed && player.blocked,
+        SocialInteractionsPage::Hidden | SocialInteractionsPage::Blocked => {
+            !player.removed && (player.hidden || player.blocked)
+        }
     }
 }
 
@@ -990,6 +1071,44 @@ mod tests {
     }
 
     #[test]
+    fn social_interactions_player_tooltip_uses_vanilla_half_second_delay() {
+        let mut world = WorldStore::new();
+        let player_id = Uuid::from_u128(0x11111111111141118111111111111111);
+        world.apply_player_info_update(PlayerInfoUpdate {
+            actions: vec![PlayerInfoAction::AddPlayer],
+            entries: vec![player_info_entry(player_id, "Hovered")],
+        });
+        let mut input = ClientInputState::new(true);
+        input.open_social_interactions_screen(&mut world, false);
+        let generation = input.social_interactions_runtime().unwrap().generation;
+        let target = HudSocialInteractionsHitTarget {
+            generation,
+            kind: HudSocialInteractionsHitTargetKind::Focus(HudSocialInteractionsFocus::Player {
+                profile_id: *player_id.as_bytes(),
+                action: HudSocialInteractionsPlayerAction::Hide,
+            }),
+        };
+
+        assert!(input.handle_social_interactions_hover(&world, Some(target)));
+        let runtime = input.social_interactions_runtime().unwrap();
+        let hovered_since = runtime.hovered_since.expect("hover start");
+        assert!(!runtime.tooltip_is_ready(hovered_since + Duration::from_millis(499)));
+        assert!(runtime.tooltip_is_ready(hovered_since + Duration::from_millis(500)));
+
+        assert!(input.handle_social_interactions_hover(&world, Some(target)));
+        assert_eq!(
+            input.social_interactions_runtime().unwrap().hovered_since,
+            Some(hovered_since),
+            "steady hover must not restart the tooltip delay"
+        );
+        assert!(input.handle_social_interactions_hover(&world, None));
+        assert_eq!(
+            input.social_interactions_runtime().unwrap().hovered_since,
+            None
+        );
+    }
+
+    #[test]
     fn player_info_remove_marks_retained_social_row_and_readd_restores_it() {
         let mut world = WorldStore::new();
         let player_id = Uuid::from_u128(0x11111111111141118111111111111111);
@@ -1131,6 +1250,8 @@ mod tests {
         let platform = include_str!("../main.rs");
         assert!(platform.contains("self.social_interactions_narration"));
         assert!(platform.contains(".after_input(input, Instant::now());"));
+        assert!(platform.contains("social_interactions_narration.tick("));
+        assert!(platform.contains("hud_render_runtime.social_interactions_narration()"));
     }
 
     fn click_focus(

@@ -19,7 +19,10 @@ use bbb_renderer::{
     HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode, HudInventoryScreen,
     HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList,
     HudPlayerListEntry, HudPlayerListScore, HudScoreboardSidebar, HudScoreboardSidebarEntry,
-    HudSignEditorScreen, HudSleepOverlay, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
+    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
     HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast,
     HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText,
     HudVehicleHealth, HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface,
@@ -168,6 +171,198 @@ pub(crate) fn hud_death_screen(
         }
     };
     Some(screen)
+}
+
+pub(crate) fn hud_social_interactions_screen(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<(i32, i32)>,
+    frame_index: u64,
+    now: Option<std::time::Instant>,
+) -> Option<HudSocialInteractionsScreen> {
+    let canonical = world.social_interactions_screen()?;
+    let runtime = input
+        .social_interactions_runtime()
+        .filter(|runtime| runtime.generation() == canonical.generation)?;
+    if runtime.link_confirmation_is_open() {
+        return Some(HudSocialInteractionsScreen::LinkConfirmation(
+            HudSocialInteractionsLinkConfirmationScreen {
+                generation: canonical.generation,
+                title: localized_gui_text(
+                    item_runtime,
+                    "chat.link.confirmTrusted",
+                    "Do you want to open this link or copy it to your clipboard?",
+                ),
+                message: crate::input::social::BLOCKING_HELP_URL.to_string(),
+                open_label: localized_gui_text(item_runtime, "chat.link.open", "Open in Browser"),
+                copy_label: localized_gui_text(item_runtime, "chat.copy", "Copy to Clipboard"),
+                cancel_label: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+                focus: runtime.focus(),
+                hovered: runtime.hovered(),
+            },
+        ));
+    }
+
+    let player_count = world.player_info().entries.len();
+    let server_label = localized_gui_text_with_args(
+        item_runtime,
+        if player_count > 1 {
+            "gui.socialInteractions.server_label.multiple"
+        } else {
+            "gui.socialInteractions.server_label.single"
+        },
+        if player_count > 1 {
+            "%s - %s players"
+        } else {
+            "%s - %s player"
+        },
+        &[
+            world.player_social().server_label.as_str(),
+            &player_count.to_string(),
+        ],
+    );
+    let local_player = world.local_player_profile_id();
+    let rows = runtime
+        .rows()
+        .iter()
+        .map(|player| {
+            let action = (Some(player.profile.uuid) != local_player).then_some(if player.hidden {
+                HudSocialInteractionsPlayerAction::Show
+            } else {
+                HudSocialInteractionsPlayerAction::Hide
+            });
+            HudSocialInteractionsPlayer {
+                profile_id: *player.profile.uuid.as_bytes(),
+                name: player.profile.name.clone(),
+                skin: spectator_player_skin(&player.profile, item_runtime),
+                removed: player.removed,
+                hidden: player.hidden,
+                blocked: player.blocked,
+                action,
+                status: social_player_status(player, item_runtime),
+            }
+        })
+        .collect::<Vec<_>>();
+    let page = match runtime.page() {
+        bbb_world::SocialInteractionsPage::All => HudSocialInteractionsPage::All,
+        bbb_world::SocialInteractionsPage::Hidden => HudSocialInteractionsPage::Hidden,
+        bbb_world::SocialInteractionsPage::Blocked => HudSocialInteractionsPage::Blocked,
+    };
+    let empty_text = rows.is_empty().then(|| {
+        if !runtime.search_text().is_empty() {
+            localized_gui_text(
+                item_runtime,
+                "gui.socialInteractions.search_empty",
+                "Couldn't find any players with that name",
+            )
+        } else {
+            match page {
+                HudSocialInteractionsPage::Hidden => localized_gui_text(
+                    item_runtime,
+                    "gui.socialInteractions.empty_hidden",
+                    "No players hidden in chat",
+                ),
+                HudSocialInteractionsPage::Blocked => localized_gui_text(
+                    item_runtime,
+                    "gui.socialInteractions.empty_blocked",
+                    "No blocked players in chat",
+                ),
+                HudSocialInteractionsPage::All => String::new(),
+            }
+        }
+    });
+    let tooltip = match now
+        .is_some_and(|now| runtime.tooltip_is_ready(now))
+        .then_some(runtime.hovered())
+        .flatten()
+    {
+        Some(HudSocialInteractionsFocus::Player { action, .. }) => {
+            cursor_position.map(|(x, y)| bbb_renderer::HudDebugOptionsTooltip {
+                text: localized_gui_text(
+                    item_runtime,
+                    match action {
+                        HudSocialInteractionsPlayerAction::Hide => {
+                            "gui.socialInteractions.tooltip.hide"
+                        }
+                        HudSocialInteractionsPlayerAction::Show => {
+                            "gui.socialInteractions.tooltip.show"
+                        }
+                    },
+                    match action {
+                        HudSocialInteractionsPlayerAction::Hide => "Hide messages",
+                        HudSocialInteractionsPlayerAction::Show => "Show messages",
+                    },
+                ),
+                x,
+                y,
+            })
+        }
+        _ => None,
+    };
+    Some(HudSocialInteractionsScreen::Main(
+        HudSocialInteractionsMainScreen {
+            generation: canonical.generation,
+            title: localized_gui_text(
+                item_runtime,
+                "gui.socialInteractions.title",
+                "Social Interactions",
+            ),
+            server_label,
+            page,
+            tab_labels: [
+                localized_gui_text(item_runtime, "gui.socialInteractions.tab_all", "All"),
+                localized_gui_text(item_runtime, "gui.socialInteractions.tab_hidden", "Hidden"),
+                localized_gui_text(
+                    item_runtime,
+                    "gui.socialInteractions.tab_blocked",
+                    "Blocked",
+                ),
+            ],
+            search_text: runtime.search_text().to_string(),
+            search_hint: localized_gui_text(
+                item_runtime,
+                "gui.socialInteractions.search_hint",
+                "Search...",
+            ),
+            search_cursor: runtime.search_cursor(),
+            search_selection: runtime.search_selection(),
+            search_cursor_visible: frame_index % 12 < 6,
+            rows,
+            scroll_amount: runtime.scroll_amount(),
+            empty_text: empty_text.filter(|text| !text.is_empty()),
+            blocking_help_label: localized_gui_text(
+                item_runtime,
+                "gui.socialInteractions.blocking_hint",
+                "Manage with Microsoft account",
+            ),
+            done_label: localized_gui_text(item_runtime, "gui.done", "Done"),
+            focus: runtime.focus(),
+            hovered: runtime.hovered(),
+            tooltip,
+        },
+    ))
+}
+
+fn social_player_status(
+    player: &bbb_world::SocialPlayerState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let (key, fallback) = match (player.blocked, player.hidden, player.removed) {
+        (true, _, true) => (
+            "gui.socialInteractions.status_blocked_offline",
+            "Blocked - Offline",
+        ),
+        (false, true, true) => (
+            "gui.socialInteractions.status_hidden_offline",
+            "Hidden - Offline",
+        ),
+        (true, _, false) => ("gui.socialInteractions.status_blocked", "Blocked"),
+        (false, true, false) => ("gui.socialInteractions.status_hidden", "Hidden"),
+        (false, false, true) => ("gui.socialInteractions.status_offline", "Offline"),
+        (false, false, false) => return None,
+    };
+    Some(localized_gui_text(item_runtime, key, fallback))
 }
 
 fn death_score_runs(
@@ -1965,6 +2160,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_game_rules_screen: Option<HudGameRulesScreen>,
     pub(crate) hud_death_screen: Option<HudDeathScreen>,
     pub(crate) hud_game_event_screen: Option<HudGameEventScreen>,
+    pub(crate) hud_social_interactions_screen: Option<HudSocialInteractionsScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_system_toast: Option<HudSystemToast>,
     pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
@@ -2230,6 +2426,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_game_rules_screen(frame.hud_game_rules_screen);
     renderer.set_hud_death_screen(frame.hud_death_screen);
     renderer.set_hud_game_event_screen(frame.hud_game_event_screen);
+    renderer.set_hud_social_interactions_screen(frame.hud_social_interactions_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_system_toast(frame.hud_system_toast);
     renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);

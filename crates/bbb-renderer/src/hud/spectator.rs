@@ -456,7 +456,7 @@ impl Renderer {
         );
     }
 
-    fn hud_player_face(&self, skin: EntityPlayerSkin) -> Option<&HudSpriteGpu> {
+    pub(super) fn hud_player_face(&self, skin: EntityPlayerSkin) -> Option<&HudSpriteGpu> {
         let default = skin.fallback();
         match skin {
             EntityPlayerSkin::Dynamic(dynamic)

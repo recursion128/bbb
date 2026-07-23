@@ -942,6 +942,18 @@ fn main() -> Result<()> {
                     if let Some(particles) = particle_render_runtime.as_mut() {
                         particles.maybe_upload_particle_atlas_animation(&mut renderer);
                     }
+                    social_interactions_narration.tick(
+                        render_publication
+                            .world
+                            .social_interactions_screen()
+                            .is_some()
+                            .then(|| hud_render_runtime.social_interactions_narration())
+                            .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
                     stats_screen_narration.tick(
                         render_publication
                             .world
@@ -1214,6 +1226,9 @@ fn enqueue_simulation_window_event(
                         .hud_game_event_hit_target_at((position.x, position.y))
                         .is_some()
                     || renderer
+                        .hud_social_interactions_hit_target_at((position.x, position.y))
+                        .is_some()
+                    || renderer
                         .hud_book_hit_target_at((position.x, position.y))
                         .is_some()
                 {
@@ -1227,6 +1242,8 @@ fn enqueue_simulation_window_event(
                 death_screen_target: renderer
                     .hud_death_screen_hit_target_at((position.x, position.y)),
                 game_event_target: renderer.hud_game_event_hit_target_at((position.x, position.y)),
+                social_interactions_target: renderer
+                    .hud_social_interactions_hit_target_at((position.x, position.y)),
             }
         }
         WindowEvent::CursorLeft { .. } => {
@@ -1290,6 +1307,16 @@ fn enqueue_simulation_window_event(
             .then(|| {
                 (*cursor_position).and_then(|position| {
                     renderer.hud_game_event_hit_target_at((position.x, position.y))
+                })
+            })
+            .flatten(),
+            social_interactions_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position).and_then(|position| {
+                    renderer.hud_social_interactions_hit_target_at((position.x, position.y))
                 })
             })
             .flatten(),

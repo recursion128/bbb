@@ -113,11 +113,14 @@ mod tests {
     use std::sync::Arc;
 
     use crate::{
-        ClearColor, EntityModelTextureImage, EntityModelTextureRef, HudAsciiGlyph,
-        HudComponentTextRun, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
-        HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen,
-        HudFontGlyphMap, HudGameEventButton, HudGameEventScreen, HudNineSliceScaling,
-        HudStyledTextRun, HudVignette, HudWinScreen, Renderer,
+        ClearColor, EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef,
+        EntityPlayerSkin, HudAsciiGlyph, HudComponentTextRun, HudDeathLinkConfirmationScreen,
+        HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton,
+        HudDemoPopupScreen, HudFontGlyphMap, HudGameEventButton, HudGameEventScreen,
+        HudNineSliceScaling, HudSocialInteractionsFocus,
+        HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
+        HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
+        HudSocialInteractionsScreen, HudStyledTextRun, HudVignette, HudWinScreen, Renderer,
     };
 
     const WIDTH: u32 = 320;
@@ -310,6 +313,267 @@ mod tests {
         assert!(
             renderer.counters.hud_draw_calls >= 2,
             "portal and credits vignette must both be submitted"
+        );
+    }
+
+    #[test]
+    fn offscreen_social_interactions_draws_shared_rows_faces_scroll_empty_and_link_surfaces() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_crosshair(4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        renderer
+            .upload_hud_inworld_menu_background(1, 1, &[16, 32, 64, 255])
+            .expect("menu background");
+        renderer
+            .upload_hud_social_interactions_background(
+                1,
+                1,
+                &[180, 16, 32, 255],
+                HudNineSliceScaling {
+                    sprite_width: 1,
+                    sprite_height: 1,
+                    border_left: 0,
+                    border_top: 0,
+                    border_right: 0,
+                    border_bottom: 0,
+                    stretch_inner: true,
+                },
+            )
+            .expect("social background");
+        renderer
+            .upload_hud_social_interactions_search(1, 1, &[0, 255, 255, 255])
+            .expect("search icon");
+        renderer
+            .upload_hud_social_interactions_mute(1, 1, &[255, 128, 0, 255])
+            .expect("mute");
+        renderer
+            .upload_hud_social_interactions_mute_highlighted(1, 1, &[255, 255, 0, 255])
+            .expect("highlighted mute");
+        renderer
+            .upload_hud_social_interactions_unmute(1, 1, &[0, 128, 255, 255])
+            .expect("unmute");
+        renderer
+            .upload_hud_social_interactions_unmute_highlighted(1, 1, &[0, 255, 0, 255])
+            .expect("highlighted unmute");
+        renderer
+            .upload_hud_widget_text_field(1, 1, &[8, 8, 8, 255])
+            .expect("search field");
+        renderer
+            .upload_hud_widget_button(1, 1, &[0, 160, 0, 255])
+            .expect("button");
+        renderer
+            .upload_hud_widget_button_highlighted(1, 1, &[160, 160, 0, 255])
+            .expect("highlighted button");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "SocialInteractionsServerAllHiddenBlockedSearchDoneRemoteOfflineManage".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 1,
+                    height: 1,
+                    advance: 2,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("font");
+        let mut skin_rgba = vec![0_u8; 64 * 64 * 4];
+        for pixel in skin_rgba.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[0, 255, 0, 255]);
+        }
+        renderer
+            .upload_entity_model_textures(&[EntityModelTextureImage::with_physical_size(
+                EntityModelTextureRef {
+                    path: EntityDefaultPlayerSkin::WideSteve.texture_path(),
+                    size: [64, 64],
+                },
+                [64, 64],
+                skin_rgba,
+            )])
+            .expect("default player face");
+
+        let make_player = |id: u128, removed, hidden| HudSocialInteractionsPlayer {
+            profile_id: id.to_be_bytes(),
+            name: format!("Remote{id}"),
+            skin: EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::WideSteve),
+            removed,
+            hidden,
+            blocked: false,
+            action: Some(if hidden {
+                HudSocialInteractionsPlayerAction::Show
+            } else {
+                HudSocialInteractionsPlayerAction::Hide
+            }),
+            status: removed.then(|| "Offline".to_string()),
+        };
+        let rows = (1_u128..=8)
+            .map(|id| make_player(id, id == 2, id == 2))
+            .collect::<Vec<_>>();
+        renderer.set_hud_screen_blur(false);
+        renderer.set_hud_social_interactions_screen(Some(HudSocialInteractionsScreen::Main(
+            HudSocialInteractionsMainScreen {
+                generation: 9,
+                title: "Social Interactions".to_string(),
+                server_label: "Server".to_string(),
+                page: HudSocialInteractionsPage::All,
+                tab_labels: [
+                    "All".to_string(),
+                    "Hidden".to_string(),
+                    "Blocked".to_string(),
+                ],
+                search_text: String::new(),
+                search_hint: "Search".to_string(),
+                search_cursor: 0,
+                search_selection: 0,
+                search_cursor_visible: false,
+                rows: rows.clone(),
+                scroll_amount: 0,
+                empty_text: None,
+                blocking_help_label: "Manage".to_string(),
+                done_label: "Done".to_string(),
+                focus: HudSocialInteractionsFocus::Search,
+                hovered: Some(HudSocialInteractionsFocus::Player {
+                    profile_id: 1_u128.to_be_bytes(),
+                    action: HudSocialInteractionsPlayerAction::Hide,
+                }),
+                tooltip: None,
+            },
+        )));
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("social interactions frame");
+        let corner = pixels.pixel(4, 4);
+        let panel = pixels.pixel(45, 70);
+        let search_icon = pixels.pixel(55, 77);
+        let active_face = pixels.pixel(55, 100);
+        let removed_face = pixels.pixel(55, 136);
+        let hovered_mute = pixels.pixel(225, 100);
+        let scrollbar = pixels.pixel(280, 120);
+        assert!(
+            corner[0] < corner[1] && corner[1] < corner[2],
+            "menu background must cover ordinary HUD outside the panel, got {corner:?}"
+        );
+        assert!(
+            panel[0] > panel[1].saturating_add(80),
+            "official social panel owner must draw at y=64, got {panel:?}"
+        );
+        assert!(
+            search_icon[1] > 180 && search_icon[2] > 180,
+            "search icon must draw at the shared layout coordinate, got {search_icon:?}"
+        );
+        assert!(
+            active_face[1] > active_face[0].saturating_add(80),
+            "default player face must draw at 24 pixels, got {active_face:?}"
+        );
+        assert!(
+            removed_face[1] < active_face[1],
+            "removed row must shade the same face, active={active_face:?}, removed={removed_face:?}"
+        );
+        assert!(
+            hovered_mute[0] > 180 && hovered_mute[1] > 180,
+            "hovered hide action must use its highlighted sprite, got {hovered_mute:?}"
+        );
+        assert!(
+            scrollbar[0].abs_diff(scrollbar[1]) < 24,
+            "overflowing rows must draw a deterministic scrollbar, got {scrollbar:?}"
+        );
+
+        renderer.set_hud_social_interactions_screen(Some(HudSocialInteractionsScreen::Main(
+            HudSocialInteractionsMainScreen {
+                generation: 9,
+                title: String::new(),
+                server_label: String::new(),
+                page: HudSocialInteractionsPage::All,
+                tab_labels: [String::new(), String::new(), String::new()],
+                search_text: String::new(),
+                search_hint: String::new(),
+                search_cursor: 0,
+                search_selection: 0,
+                search_cursor_visible: false,
+                rows,
+                scroll_amount: 36,
+                empty_text: None,
+                blocking_help_label: String::new(),
+                done_label: String::new(),
+                focus: HudSocialInteractionsFocus::Search,
+                hovered: None,
+                tooltip: None,
+            },
+        )));
+        let scrolled = renderer
+            .render_offscreen_frame()
+            .expect("scrolled social list");
+        assert!(
+            scrolled.pixel(55, 100)[1] < active_face[1],
+            "one-row scroll must move the removed shaded face into the first visible row"
+        );
+
+        renderer.set_hud_social_interactions_screen(Some(HudSocialInteractionsScreen::Main(
+            HudSocialInteractionsMainScreen {
+                generation: 9,
+                title: String::new(),
+                server_label: String::new(),
+                page: HudSocialInteractionsPage::Blocked,
+                tab_labels: [String::new(), String::new(), String::new()],
+                search_text: String::new(),
+                search_hint: String::new(),
+                search_cursor: 0,
+                search_selection: 0,
+                search_cursor_visible: false,
+                rows: Vec::new(),
+                scroll_amount: 0,
+                empty_text: Some("Blocked".to_string()),
+                blocking_help_label: String::new(),
+                done_label: String::new(),
+                focus: HudSocialInteractionsFocus::BlockingHelp,
+                hovered: None,
+                tooltip: None,
+            },
+        )));
+        let empty = renderer
+            .render_offscreen_frame()
+            .expect("empty blocked page");
+        assert!(
+            empty.pixel(61, 161)[1] > 80,
+            "blocked empty page must retain its dedicated help button"
+        );
+
+        renderer.set_hud_social_interactions_screen(Some(
+            HudSocialInteractionsScreen::LinkConfirmation(
+                HudSocialInteractionsLinkConfirmationScreen {
+                    generation: 9,
+                    title: "Social".to_string(),
+                    message: "Server".to_string(),
+                    open_label: String::new(),
+                    copy_label: String::new(),
+                    cancel_label: String::new(),
+                    focus: HudSocialInteractionsFocus::LinkOpen,
+                    hovered: None,
+                },
+            ),
+        ));
+        let link = renderer
+            .render_offscreen_frame()
+            .expect("social link confirmation");
+        assert!(
+            link.pixel(10, 10)[2] > link.pixel(10, 10)[0],
+            "link confirmation must retain the ordinary menu background"
+        );
+        let first_link_button = link.pixel(8, 138);
+        assert!(
+            first_link_button[0] > 80 && first_link_button[1] > 80,
+            "link confirmation must draw its highlighted first button, got {first_link_button:?}"
         );
     }
 

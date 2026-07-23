@@ -299,6 +299,46 @@ pub(crate) fn try_load_hud_textures(
         widget_button_highlighted.height,
         &widget_button_highlighted.rgba,
     )?;
+    let social_background = hud_sprite(&sprites, "social_interactions/background")?;
+    let social_background_scaling = hud_nine_slice_scaling(social_background)?;
+    renderer.upload_hud_social_interactions_background(
+        social_background.width,
+        social_background.height,
+        &social_background.rgba,
+        social_background_scaling,
+    )?;
+    let social_search = hud_sprite(&sprites, "icon/search")?;
+    renderer.upload_hud_social_interactions_search(
+        social_search.width,
+        social_search.height,
+        &social_search.rgba,
+    )?;
+    let social_mute = hud_sprite(&sprites, "social_interactions/mute_button")?;
+    renderer.upload_hud_social_interactions_mute(
+        social_mute.width,
+        social_mute.height,
+        &social_mute.rgba,
+    )?;
+    let social_mute_highlighted =
+        hud_sprite(&sprites, "social_interactions/mute_button_highlighted")?;
+    renderer.upload_hud_social_interactions_mute_highlighted(
+        social_mute_highlighted.width,
+        social_mute_highlighted.height,
+        &social_mute_highlighted.rgba,
+    )?;
+    let social_unmute = hud_sprite(&sprites, "social_interactions/unmute_button")?;
+    renderer.upload_hud_social_interactions_unmute(
+        social_unmute.width,
+        social_unmute.height,
+        &social_unmute.rgba,
+    )?;
+    let social_unmute_highlighted =
+        hud_sprite(&sprites, "social_interactions/unmute_button_highlighted")?;
+    renderer.upload_hud_social_interactions_unmute_highlighted(
+        social_unmute_highlighted.width,
+        social_unmute_highlighted.height,
+        &social_unmute_highlighted.rgba,
+    )?;
     let dialog_warning_button = hud_sprite(&sprites, "dialog/warning_button")?;
     renderer.upload_hud_dialog_warning_button(
         dialog_warning_button.width,

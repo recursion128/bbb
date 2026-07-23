@@ -279,6 +279,107 @@ fn hud_death_screen_projection_and_narration_track_main_and_quit_focus() {
         "Are you sure you want to quit?. Title Screen button. Screen element 1 out of 2. Press Tab to navigate to the next element. Press Enter to activate"
     );
 }
+
+#[test]
+fn hud_social_interactions_projection_tracks_faces_removed_status_links_and_narration() {
+    use bbb_protocol::packets::{
+        GameProfile, PlayerInfoAction, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate,
+    };
+    use bbb_renderer::{
+        EntityPlayerSkin, HudSocialInteractionsFocus, HudSocialInteractionsPlayerAction,
+        HudSocialInteractionsScreen,
+    };
+
+    let local_id = uuid::Uuid::from_u128(1);
+    let remote_id = uuid::Uuid::from_u128(2);
+    let mut world = WorldStore::new();
+    world.set_local_player_profile_id(local_id);
+    world.set_social_server_label("fixture.example");
+    world.apply_player_info_update(PlayerInfoUpdate {
+        actions: vec![PlayerInfoAction::AddPlayer],
+        entries: [(local_id, "Local"), (remote_id, "Remote")]
+            .into_iter()
+            .map(|(profile_id, name)| PlayerInfoEntry {
+                profile_id,
+                profile: Some(GameProfile {
+                    uuid: profile_id,
+                    name: name.to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: bbb_protocol::packets::GameType::Survival,
+                display_name: None,
+                show_hat: false,
+                list_order: 0,
+                chat_session: None,
+            })
+            .collect(),
+    });
+    let mut input = ClientInputState::new(true);
+    assert!(input.open_social_interactions_screen(&mut world, false));
+    world.hide_social_player(remote_id);
+    world.apply_player_info_remove(PlayerInfoRemove {
+        profile_ids: vec![remote_id],
+    });
+    input.sync_social_interactions_screen(&world);
+
+    let HudSocialInteractionsScreen::Main(screen) =
+        hud_social_interactions_screen(&input, &world, None, Some((230, 100)), 0, None)
+            .expect("social HUD")
+    else {
+        panic!("main social screen");
+    };
+    assert_eq!(screen.title, "Social Interactions");
+    assert_eq!(screen.server_label, "fixture.example - 1 player");
+    assert_eq!(screen.rows.len(), 2);
+    assert_eq!(screen.rows[0].name, "Local");
+    assert!(screen.rows[0].action.is_none());
+    assert!(matches!(
+        screen.rows[0].skin,
+        EntityPlayerSkin::ProfiledDefault(_)
+    ));
+    let remote = screen
+        .rows
+        .iter()
+        .find(|player| player.profile_id == *remote_id.as_bytes())
+        .expect("retained removed row");
+    assert!(remote.removed);
+    assert!(remote.hidden);
+    assert_eq!(remote.status.as_deref(), Some("Hidden - Offline"));
+    assert_eq!(remote.action, Some(HudSocialInteractionsPlayerAction::Show));
+    assert_eq!(
+        social_interactions_narration_frame(&input, &world, None)
+            .expect("main narration")
+            .all_text_for_test(),
+        "Social Interactions. fixture.example - 1 player. Search.... Type to search"
+    );
+
+    for _ in 0..3 {
+        input.handle_social_interactions_key(&mut world, KeyCode::Tab, true);
+    }
+    input.handle_social_interactions_key(&mut world, KeyCode::Enter, true);
+    input.handle_social_interactions_key(&mut world, KeyCode::Tab, true);
+    assert_eq!(
+        input
+            .social_interactions_runtime()
+            .map(|runtime| runtime.focus()),
+        Some(HudSocialInteractionsFocus::BlockingHelp)
+    );
+    input.handle_social_interactions_key(&mut world, KeyCode::Enter, true);
+    let HudSocialInteractionsScreen::LinkConfirmation(link) =
+        hud_social_interactions_screen(&input, &world, None, None, 0, None)
+            .expect("blocking-help link HUD")
+    else {
+        panic!("link confirmation");
+    };
+    assert_eq!(link.message, "https://aka.ms/javablocking");
+    assert_eq!(link.focus, HudSocialInteractionsFocus::LinkOpen);
+    assert!(social_interactions_narration_frame(&input, &world, None)
+        .expect("link narration")
+        .all_text_for_test()
+        .contains("https://aka.ms/javablocking"));
+}
 use tokio::sync::mpsc;
 use winit::{
     event::{ElementState, MouseButton},
@@ -1893,6 +1994,9 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let game_event_screen_extract = source
         .find("let hud_game_event_screen = hud_death_screen")
         .expect("pump should extract game event screen HUD state");
+    let social_interactions_extract = source
+        .find("let hud_social_interactions_screen = (hud_death_screen.is_none()")
+        .expect("pump should extract social-interactions HUD state");
     let debug_options_screen_extract = source
         .find("let hud_debug_options_screen = if exclusive_game_screen_present")
         .expect("pump should extract debug options screen HUD state");
@@ -1921,6 +2025,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         hotbar_icons_extract,
         death_screen_extract,
         game_event_screen_extract,
+        social_interactions_extract,
         debug_options_screen_extract,
         pause_screen_extract,
         stats_screen_extract,
@@ -1943,6 +2048,16 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     assert!(
         death_field < death_setter,
         "death-screen state must cross the one-frame renderer boundary"
+    );
+    let social_field = frame_source
+        .find("pub(crate) hud_social_interactions_screen: Option<HudSocialInteractionsScreen>")
+        .expect("RendererFrame must own the social-interactions value");
+    let social_setter = frame_source
+        .find("renderer.set_hud_social_interactions_screen(frame.hud_social_interactions_screen);")
+        .expect("frame apply must forward the social-interactions value");
+    assert!(
+        social_field < social_setter,
+        "social-interactions state must cross the one-frame renderer boundary"
     );
 }
 

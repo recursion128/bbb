@@ -56,18 +56,19 @@ use bbb_renderer::{
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
     HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
-    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
-    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
-    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
-    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
-    HudWinScreenLine, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudSocialInteractionsFocus, HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudStatsItemRow, HudStatsRow, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
+    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
+    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
+    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, LevelLighting,
+    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
+    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -695,6 +696,7 @@ pub(crate) struct HudRenderRuntime {
     low_disk_space_toast: SystemToastAnimationState,
     advancement_toasts: AdvancementToastRuntime,
     stats_screen_narration: Option<ScreenNarrationFrame>,
+    social_interactions_narration: Option<ScreenNarrationFrame>,
     death_screen_narration: Option<ScreenNarrationFrame>,
     game_event_screen_narration: Option<ScreenNarrationFrame>,
     win_screen_resource_owner: Option<Arc<crate::win_screen_resources::WinScreenResources>>,
@@ -734,6 +736,10 @@ impl ClientAnimationTickState {
 impl HudRenderRuntime {
     pub(crate) fn stats_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.stats_screen_narration.as_ref()
+    }
+
+    pub(crate) fn social_interactions_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.social_interactions_narration.as_ref()
     }
 
     pub(crate) fn game_event_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
@@ -2938,10 +2944,34 @@ pub(crate) fn update_renderer_from_publication(
             )
         })
         .flatten();
-    let exclusive_game_screen_present =
-        hud_death_screen.is_some() || hud_game_event_screen.is_some();
+    let hud_social_interactions_screen = (hud_death_screen.is_none()
+        && hud_game_event_screen.is_none())
+    .then(|| {
+        hud_social_interactions_screen(
+            input,
+            world,
+            item_runtime,
+            publication
+                .input_runtime
+                .cursor_position
+                .and_then(|position| {
+                    (position.x.is_finite() && position.y.is_finite())
+                        .then(|| (position.x.floor() as i32, position.y.floor() as i32))
+                }),
+            renderer.counters().frame_index,
+            Some(now),
+        )
+    })
+    .flatten();
+    let exclusive_game_screen_present = hud_death_screen.is_some()
+        || hud_game_event_screen.is_some()
+        || hud_social_interactions_screen.is_some();
     hud_render_runtime.death_screen_narration =
         death_screen_narration_frame(input, world, item_runtime);
+    hud_render_runtime.social_interactions_narration = hud_social_interactions_screen
+        .is_some()
+        .then(|| social_interactions_narration_frame(input, world, item_runtime))
+        .flatten();
     let hud_debug_options_screen = if exclusive_game_screen_present {
         None
     } else {
@@ -3156,6 +3186,7 @@ pub(crate) fn update_renderer_from_publication(
         world,
         hud_inventory_screen.is_some()
             || hud_game_rules_screen.is_some()
+            || hud_social_interactions_screen.is_some()
             || hud_game_event_screen.is_some(),
     );
     let hud_duration = hud_started_at.elapsed();
@@ -3673,6 +3704,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_game_rules_screen,
             hud_death_screen,
             hud_game_event_screen,
+            hud_social_interactions_screen,
             hud_stats_screen,
             hud_system_toast,
             hud_advancement_toasts,
@@ -5119,6 +5151,160 @@ fn death_screen_narration_frame(
             };
             let label = localized_gui_text(item_runtime, key, fallback);
             add_game_event_button_narration(&mut frame, item_runtime, &label, position, 3);
+        }
+    }
+    Some(frame)
+}
+
+fn social_interactions_narration_frame(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<ScreenNarrationFrame> {
+    let runtime = input.social_interactions_runtime()?;
+    let screen = hud_social_interactions_screen(input, world, item_runtime, None, 0, None)?;
+    let mut frame = ScreenNarrationFrame::default();
+    match screen {
+        HudSocialInteractionsScreen::LinkConfirmation(screen) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                [screen.title, screen.message].join(". "),
+            );
+            let label = match runtime.focus() {
+                HudSocialInteractionsFocus::LinkOpen => screen.open_label,
+                HudSocialInteractionsFocus::LinkCopy => screen.copy_label,
+                HudSocialInteractionsFocus::LinkCancel => screen.cancel_label,
+                _ => return Some(frame),
+            };
+            frame.add(NarratedElementKind::Title, 1, label);
+            frame.add(
+                NarratedElementKind::Usage,
+                1,
+                localized_gui_text(
+                    item_runtime,
+                    "narration.button.usage.focused",
+                    "Press Enter to activate",
+                ),
+            );
+        }
+        HudSocialInteractionsScreen::Main(screen) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                [screen.title.clone(), screen.server_label.clone()].join(". "),
+            );
+            match runtime.focus() {
+                HudSocialInteractionsFocus::Search => {
+                    let search = if screen.search_text.is_empty() {
+                        screen.search_hint
+                    } else {
+                        screen.search_text
+                    };
+                    frame.add(NarratedElementKind::Title, 1, search);
+                    if let Some(empty) = screen.empty_text {
+                        frame.add(NarratedElementKind::Hint, 1, empty);
+                    }
+                    frame.add(
+                        NarratedElementKind::Usage,
+                        1,
+                        localized_gui_text(
+                            item_runtime,
+                            "narration.edit_box.usage",
+                            "Type to search",
+                        ),
+                    );
+                }
+                HudSocialInteractionsFocus::Tab(page) => {
+                    let index = match page {
+                        HudSocialInteractionsPage::All => 0,
+                        HudSocialInteractionsPage::Hidden => 1,
+                        HudSocialInteractionsPage::Blocked => 2,
+                    };
+                    frame.add(
+                        NarratedElementKind::Title,
+                        1,
+                        screen.tab_labels[index].clone(),
+                    );
+                    frame.add(
+                        NarratedElementKind::Position,
+                        1,
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "narrator.position.object_list",
+                            "%1$s out of %2$s",
+                            &[&(index + 1).to_string(), "3"],
+                        ),
+                    );
+                }
+                HudSocialInteractionsFocus::Player { profile_id, action } => {
+                    let Some((index, player)) = screen
+                        .rows
+                        .iter()
+                        .enumerate()
+                        .find(|(_, player)| player.profile_id == profile_id)
+                    else {
+                        return Some(frame);
+                    };
+                    let action_text = localized_gui_text_with_args(
+                        item_runtime,
+                        match action {
+                            HudSocialInteractionsPlayerAction::Hide => {
+                                "gui.socialInteractions.narration.hide"
+                            }
+                            HudSocialInteractionsPlayerAction::Show => {
+                                "gui.socialInteractions.narration.show"
+                            }
+                        },
+                        match action {
+                            HudSocialInteractionsPlayerAction::Hide => "Hide messages from %s",
+                            HudSocialInteractionsPlayerAction::Show => "Show messages from %s",
+                        },
+                        &[&player.name],
+                    );
+                    frame.add(
+                        NarratedElementKind::Title,
+                        1,
+                        [
+                            Some(player.name.clone()),
+                            player.status.clone(),
+                            Some(action_text),
+                        ]
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    );
+                    frame.add(
+                        NarratedElementKind::Position,
+                        1,
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "narrator.position.object_list",
+                            "%1$s out of %2$s",
+                            &[&(index + 1).to_string(), &screen.rows.len().to_string()],
+                        ),
+                    );
+                    frame.add(
+                        NarratedElementKind::Usage,
+                        1,
+                        localized_gui_text(
+                            item_runtime,
+                            "narration.button.usage.focused",
+                            "Press Enter to activate",
+                        ),
+                    );
+                }
+                HudSocialInteractionsFocus::BlockingHelp => {
+                    frame.add(NarratedElementKind::Title, 1, screen.blocking_help_label);
+                }
+                HudSocialInteractionsFocus::Done => {
+                    frame.add(NarratedElementKind::Title, 1, screen.done_label);
+                }
+                HudSocialInteractionsFocus::LinkOpen
+                | HudSocialInteractionsFocus::LinkCopy
+                | HudSocialInteractionsFocus::LinkCancel => {}
+            }
         }
     }
     Some(frame)

@@ -10,7 +10,7 @@ use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
 use bbb_renderer::{
     HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
-    HudFontGlyphMap, HudGameEventHitTarget,
+    HudFontGlyphMap, HudGameEventHitTarget, HudSocialInteractionsHitTarget,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -187,6 +187,7 @@ impl SimulationInputRuntime {
                 book_target,
                 death_screen_target,
                 game_event_target,
+                social_interactions_target,
             } => {
                 self.apply_mouse_button(
                     button,
@@ -195,6 +196,7 @@ impl SimulationInputRuntime {
                     book_target,
                     death_screen_target,
                     game_event_target,
+                    social_interactions_target,
                     context,
                 );
             }
@@ -204,8 +206,15 @@ impl SimulationInputRuntime {
                 position,
                 death_screen_target,
                 game_event_target,
+                social_interactions_target,
             } => {
-                self.apply_cursor_moved(position, death_screen_target, game_event_target, context);
+                self.apply_cursor_moved(
+                    position,
+                    death_screen_target,
+                    game_event_target,
+                    social_interactions_target,
+                    context,
+                );
             }
             SimulationCommand::GameEventScreenRenderDelta {
                 generation,
@@ -226,6 +235,9 @@ impl SimulationInputRuntime {
                 self.cursor_position = None;
                 context.input.handle_death_screen_hover(None);
                 context.input.handle_game_event_screen_hover(None);
+                context
+                    .input
+                    .handle_social_interactions_hover(context.world, None);
                 context.input.update_screen_cursor_position(None);
                 context.input.handle_sign_editor_cursor_moved(None);
                 context
@@ -300,6 +312,7 @@ impl SimulationInputRuntime {
         position: PhysicalPosition<f64>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        social_interactions_target: Option<HudSocialInteractionsHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
         let previous_cursor_position = self.cursor_position;
@@ -353,7 +366,10 @@ impl SimulationInputRuntime {
         if context.world.social_interactions_screen().is_some() {
             context
                 .input
-                .handle_social_interactions_hover(context.world, None);
+                .refresh_social_interactions_scroll_bounds(self.surface_size);
+            context
+                .input
+                .handle_social_interactions_hover(context.world, social_interactions_target);
             context
                 .platform
                 .submit(PlatformEffect::SocialInteractionsInput(
@@ -526,6 +542,9 @@ impl SimulationInputRuntime {
 
         if context.world.social_interactions_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .refresh_social_interactions_scroll_bounds(self.surface_size);
             handle_key_input_with_item_runtime(
                 context.input,
                 context.net_counters,
@@ -1013,6 +1032,7 @@ impl SimulationInputRuntime {
         book_target: Option<HudBookHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        social_interactions_target: Option<HudSocialInteractionsHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
@@ -1125,11 +1145,14 @@ impl SimulationInputRuntime {
         }
         if context.world.social_interactions_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .refresh_social_interactions_scroll_bounds(self.surface_size);
             context.input.handle_social_interactions_mouse_input(
                 context.world,
                 button,
                 state,
-                None,
+                social_interactions_target,
             );
             collect_social_interactions_platform_effects(context.input, context.platform);
             context
@@ -1518,6 +1541,9 @@ impl SimulationInputRuntime {
         }
         if context.world.social_interactions_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .refresh_social_interactions_scroll_bounds(self.surface_size);
             context
                 .input
                 .handle_social_interactions_mouse_wheel(context.world, delta);

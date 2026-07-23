@@ -76,8 +76,11 @@ pub use self::player_list::{HudPlayerList, HudPlayerListEntry, HudPlayerListScor
 pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
 pub use self::scoreboard::{HudScoreboardSidebar, HudScoreboardSidebarEntry};
 pub use self::social::{
+    hud_social_interactions_layout, hud_social_interactions_max_scroll_amount,
     HudSocialInteractionsFocus, HudSocialInteractionsHitTarget, HudSocialInteractionsHitTargetKind,
-    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsLayout, HudSocialInteractionsLinkConfirmationScreen,
+    HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
+    HudSocialInteractionsPlayerAction, HudSocialInteractionsRect, HudSocialInteractionsScreen,
 };
 pub use self::spectator::{HudHotbarMode, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon};
 
@@ -6699,6 +6702,47 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
+        if let Some(screen) = &self.hud_social_interactions_screen {
+            if self.hud_screen_blur && self.menu_background_blurriness >= 1.0 {
+                screen_blur = Some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: post_gui_item_commands.len(),
+                });
+            }
+            social::push_hud_social_interactions_screen(
+                self,
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_inworld_menu_background.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_widget_text_field.as_ref(),
+                self.hud_widget_text_field_highlighted.as_ref(),
+                &self.hud_stats_scrollbar_sprites,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
+                social::HudSocialInteractionsSprites {
+                    background: self.hud_social_interactions_background.as_ref(),
+                    search: self.hud_social_interactions_search.as_ref(),
+                    mute: self.hud_social_interactions_mute.as_ref(),
+                    mute_highlighted: self.hud_social_interactions_mute_highlighted.as_ref(),
+                    unmute: self.hud_social_interactions_unmute.as_ref(),
+                    unmute_highlighted: self.hud_social_interactions_unmute_highlighted.as_ref(),
+                },
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,

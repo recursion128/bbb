@@ -215,6 +215,12 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_spectator_teleport_to_team);
         $take_owner!(hud_default_player_faces);
         $take_owner!(hud_dynamic_player_faces);
+        $take_owner!(hud_social_interactions_background);
+        $take_owner!(hud_social_interactions_search);
+        $take_owner!(hud_social_interactions_mute);
+        $take_owner!(hud_social_interactions_mute_highlighted);
+        $take_owner!(hud_social_interactions_unmute);
+        $take_owner!(hud_social_interactions_unmute_highlighted);
         $take_owner!(hud_item_atlas);
         $take_owner!(hud_digit_atlas);
         $take_owner!(hud_digit_glyphs);

@@ -9,7 +9,7 @@ use std::{
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
 use bbb_renderer::{
     HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudFontGlyphMap,
-    HudGameEventHitTarget,
+    HudGameEventHitTarget, HudSocialInteractionsHitTarget,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -35,6 +35,7 @@ pub(crate) enum SimulationCommand {
         book_target: Option<HudBookHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        social_interactions_target: Option<HudSocialInteractionsHitTarget>,
     },
     MouseMotion {
         delta: (f64, f64),
@@ -46,6 +47,7 @@ pub(crate) enum SimulationCommand {
         position: PhysicalPosition<f64>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        social_interactions_target: Option<HudSocialInteractionsHitTarget>,
     },
     GameEventScreenRenderDelta {
         generation: u64,
@@ -347,16 +349,19 @@ fn try_coalesce_tail(
                 position,
                 death_screen_target,
                 game_event_target,
+                social_interactions_target,
             },
             SimulationCommand::CursorMoved {
                 position: incoming_position,
                 death_screen_target: incoming_death_screen_target,
                 game_event_target: incoming_game_event_target,
+                social_interactions_target: incoming_social_interactions_target,
             },
         ) => {
             *position = *incoming_position;
             *death_screen_target = *incoming_death_screen_target;
             *game_event_target = *incoming_game_event_target;
+            *social_interactions_target = *incoming_social_interactions_target;
             true
         }
         (
@@ -467,6 +472,7 @@ mod tests {
             book_target: None,
             death_screen_target: None,
             game_event_target: None,
+            social_interactions_target: None,
         });
         ControlRequestSink::submit(
             &mailbox,
@@ -535,6 +541,7 @@ mod tests {
                 kind: HudDeathScreenHitTargetKind::Button(HudDeathScreenButton::Respawn),
             }),
             game_event_target: None,
+            social_interactions_target: None,
         });
         let latest = HudDeathScreenHitTarget {
             generation: 8,
@@ -544,6 +551,7 @@ mod tests {
             position: PhysicalPosition::new(30.0, 40.0),
             death_screen_target: Some(latest),
             game_event_target: None,
+            social_interactions_target: None,
         });
         mailbox.enqueue(SimulationCommand::MouseButton {
             button: MouseButton::Left,
@@ -552,6 +560,7 @@ mod tests {
             book_target: None,
             death_screen_target: Some(latest),
             game_event_target: None,
+            social_interactions_target: None,
         });
 
         let drained = mailbox.drain_through_barrier();
@@ -568,6 +577,59 @@ mod tests {
             drained[1].command,
             SimulationCommand::MouseButton {
                 death_screen_target: Some(target),
+                ..
+            } if target == latest
+        ));
+    }
+
+    #[test]
+    fn hud_social_interactions_targets_survive_cursor_coalescing_and_mouse_barrier() {
+        use bbb_renderer::{
+            HudSocialInteractionsFocus, HudSocialInteractionsHitTarget,
+            HudSocialInteractionsHitTargetKind,
+        };
+
+        let mailbox = SimulationMailbox::with_coalescing_threshold(1);
+        mailbox.enqueue(SimulationCommand::CursorMoved {
+            position: PhysicalPosition::new(10.0, 20.0),
+            death_screen_target: None,
+            game_event_target: None,
+            social_interactions_target: None,
+        });
+        let latest = HudSocialInteractionsHitTarget {
+            generation: 8,
+            kind: HudSocialInteractionsHitTargetKind::Focus(HudSocialInteractionsFocus::Search),
+        };
+        mailbox.enqueue(SimulationCommand::CursorMoved {
+            position: PhysicalPosition::new(30.0, 40.0),
+            death_screen_target: None,
+            game_event_target: None,
+            social_interactions_target: Some(latest),
+        });
+        mailbox.enqueue(SimulationCommand::MouseButton {
+            button: MouseButton::Left,
+            state: ElementState::Pressed,
+            chat_target: None,
+            book_target: None,
+            death_screen_target: None,
+            game_event_target: None,
+            social_interactions_target: Some(latest),
+        });
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(drained.len(), 2);
+        assert!(matches!(
+            drained[0].command,
+            SimulationCommand::CursorMoved {
+                position,
+                social_interactions_target: Some(target),
+                ..
+            } if position == PhysicalPosition::new(30.0, 40.0) && target == latest
+        ));
+        assert!(matches!(
+            drained[1].command,
+            SimulationCommand::MouseButton {
+                social_interactions_target: Some(target),
                 ..
             } if target == latest
         ));
