@@ -247,7 +247,7 @@ pub(super) fn player_skin_for_profile(
     local_dynamic_skins: &RefCell<LocalDynamicPlayerSkinCache>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> EntityPlayerSkin {
-    let fallback = profile_default_player_skin(profile);
+    let fallback = default_player_skin_for_profile(profile);
     if let Some(body) = profile.skin_patch.body.as_ref() {
         if EntityDefaultPlayerSkin::from_texture_path(&body.texture_path).is_none() {
             if let Some(skin) = local_dynamic_skins.borrow_mut().skin_for_patch(
@@ -445,13 +445,14 @@ impl NativeItemRuntime {
     }
 
     pub fn player_skin_for_profile(&self, profile: &ResolvableProfileSummary) -> EntityPlayerSkin {
+        let profile = self.resolved_or_pending_profile(profile);
         let player_skin = player_skin_for_profile(
-            profile,
+            &profile,
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
             &self.profile_skins,
         );
-        queue_dynamic_profile_texture_downloads(profile, player_skin, &self.dynamic_textures);
+        queue_dynamic_profile_texture_downloads(&profile, player_skin, &self.dynamic_textures);
         player_skin
     }
 
@@ -460,19 +461,31 @@ impl NativeItemRuntime {
         profile: &ResolvableProfileSummary,
         kind: EntityDynamicPlayerTextureKind,
     ) -> Option<EntityDynamicPlayerTexture> {
+        let profile = self.resolved_or_pending_profile(profile);
         let player_skin = player_skin_for_profile(
-            profile,
+            &profile,
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
             &self.profile_skins,
         );
-        queue_dynamic_profile_texture_downloads(profile, player_skin, &self.dynamic_textures);
+        queue_dynamic_profile_texture_downloads(&profile, player_skin, &self.dynamic_textures);
         dynamic_player_texture_for_profile(
-            profile,
+            &profile,
             kind,
             &self.profile_texture_resources,
             &self.local_dynamic_textures,
         )
+    }
+
+    fn resolved_or_pending_profile(
+        &self,
+        profile: &ResolvableProfileSummary,
+    ) -> ResolvableProfileSummary {
+        self.profile_resolutions
+            .borrow_mut()
+            .as_mut()
+            .map(|profile_resolutions| profile_resolutions.resolve_or_queue(profile))
+            .unwrap_or_else(|| profile.clone())
     }
 
     pub fn enable_http_profile_resolution(&self) {

@@ -23,7 +23,7 @@ impl ProfileSkinCache {
         &mut self,
         profile: &ResolvableProfileSummary,
     ) -> EntityPlayerSkin {
-        let fallback = profile_default_player_skin(profile);
+        let fallback = default_player_skin_for_profile(profile);
         if profile.skin_patch.body.is_some() {
             return EntityPlayerSkin::ProfiledDefault(fallback);
         }
@@ -83,7 +83,7 @@ impl ProfileSkinCache {
     }
 }
 
-pub(crate) fn profile_default_player_skin(
+pub fn default_player_skin_for_profile(
     profile: &ResolvableProfileSummary,
 ) -> EntityDefaultPlayerSkin {
     if let Some(body) = profile.skin_patch.body.as_ref() {

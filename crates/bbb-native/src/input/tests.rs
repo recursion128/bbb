@@ -1209,6 +1209,7 @@ fn insert_sign_text_state(
             end_gateway: None,
             spawner: None,
             note_block_sound: None,
+            skull_profile: None,
         }],
         light: LightData::default(),
     });
@@ -1263,6 +1264,7 @@ fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
         test_block: None,
         test_instance_block: None,
         note_block_sound: None,
+        skull_profile: None,
     };
     world.insert_decoded_chunk(ChunkColumn {
         pos: ChunkPos {
@@ -1373,6 +1375,7 @@ fn world_with_test_block(pos: BlockPos, mode: TestBlockMode, message: &str) -> W
         }),
         test_instance_block: None,
         note_block_sound: None,
+        skull_profile: None,
     };
     world.insert_decoded_chunk(ChunkColumn {
         pos: ChunkPos {
@@ -1437,6 +1440,7 @@ fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
             error_message: None,
         }),
         note_block_sound: None,
+        skull_profile: None,
     };
     world.insert_decoded_chunk(ChunkColumn {
         pos: ChunkPos {
@@ -1512,6 +1516,7 @@ fn world_with_structure_block(pos: BlockPos) -> WorldStore {
         jigsaw_block: None,
         test_instance_block: None,
         note_block_sound: None,
+        skull_profile: None,
     };
     world.insert_decoded_chunk(ChunkColumn {
         pos: ChunkPos {
@@ -1579,6 +1584,7 @@ fn world_with_jigsaw_block(pos: BlockPos, orientation: &str) -> WorldStore {
         test_block: None,
         test_instance_block: None,
         note_block_sound: None,
+        skull_profile: None,
     };
     world.insert_decoded_chunk(ChunkColumn {
         pos: ChunkPos {

@@ -79,9 +79,9 @@ use icon_model::{
     item_icon_model_ref_for_definition, CompassTarget, CrossbowChargeType, IconResolveContext,
     ItemIconModel, ItemIconModelRef, TimeSource,
 };
-pub use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
-use profile_skin::{entity_player_skin_model, profile_default_player_skin, profile_texture_handle};
+pub use profile_skin::{default_player_skin_for_profile, default_player_skin_for_profile_id};
+use profile_skin::{entity_player_skin_model, profile_texture_handle};
 
 use crate::font::load_hud_font_atlas;
 

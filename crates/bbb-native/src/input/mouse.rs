@@ -3370,6 +3370,7 @@ mod tests {
                 end_gateway: None,
                 spawner: None,
                 note_block_sound: None,
+                skull_profile: None,
             }],
             light: LightData::default(),
         });

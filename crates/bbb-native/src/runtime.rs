@@ -3351,6 +3351,7 @@ pub(crate) fn update_renderer_from_publication(
     entity_instances.extend(skull_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
+        item_runtime,
     ));
     entity_instances.extend(spawner_display_entity_instances_from_world_at_partial_tick(
         world,

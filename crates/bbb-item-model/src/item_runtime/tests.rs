@@ -3997,6 +3997,96 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
 }
 
 #[test]
+fn player_skin_for_profile_resolves_dynamic_owner_before_skin_selection() {
+    struct TestProfileFetcher {
+        uuid: uuid::Uuid,
+        name_calls: Arc<AtomicUsize>,
+        id_calls: Arc<AtomicUsize>,
+    }
+
+    impl crate::profile_resolver::GameProfileFetcher for TestProfileFetcher {
+        fn fetch_id_by_name(
+            &mut self,
+            name: &str,
+        ) -> anyhow::Result<Option<crate::profile_resolver::NameAndId>> {
+            self.name_calls.fetch_add(1, Ordering::Relaxed);
+            Ok(
+                (name == "Alex").then(|| crate::profile_resolver::NameAndId {
+                    uuid: self.uuid,
+                    name: name.to_string(),
+                }),
+            )
+        }
+
+        fn fetch_profile_by_id(
+            &mut self,
+            id: uuid::Uuid,
+        ) -> anyhow::Result<Option<crate::profile_resolver::ResolvedGameProfile>> {
+            self.id_calls.fetch_add(1, Ordering::Relaxed);
+            Ok((id == self.uuid).then(|| crate::profile_resolver::ResolvedGameProfile {
+                uuid: self.uuid,
+                name: "Alex".to_string(),
+                properties: vec![bbb_protocol::packets::GameProfilePropertySummary {
+                    name: "textures".to_string(),
+                    value: "eyJ0aW1lc3RhbXAiOjEsInByb2ZpbGVJZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwicHJvZmlsZU5hbWUiOiJBbGV4IiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9za2luaGFzaCIsIm1ldGFkYXRhIjp7Im1vZGVsIjoic2xpbSJ9fSwiQ0FQRSI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9jYXBlaGFzaCJ9LCJFTFlUUkEiOnsidXJsIjoiaHR0cHM6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWx5dHJhaGFzaCJ9fX0=".to_string(),
+                    signature: Some("signature".to_string()),
+                }],
+            }))
+        }
+    }
+
+    let uuid = uuid::Uuid::from_u128(0);
+    let name_calls = Arc::new(AtomicUsize::new(0));
+    let id_calls = Arc::new(AtomicUsize::new(0));
+    let runtime = NativeItemRuntime::empty_for_test();
+    *runtime.profile_resolutions.borrow_mut() = Some(
+        crate::profile_resolver::AsyncProfileResolutionRuntime::new(TestProfileFetcher {
+            uuid,
+            name_calls: name_calls.clone(),
+            id_calls: id_calls.clone(),
+        }),
+    );
+    let profile = ResolvableProfileSummary {
+        kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+        uuid: None,
+        name: Some("Alex".to_string()),
+        properties: Vec::new(),
+        profile_textures: None,
+        skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+            body: None,
+            cape: None,
+            elytra: None,
+            model: Some(bbb_protocol::packets::PlayerModelTypeSummary::Wide),
+        },
+    };
+
+    assert_eq!(
+        runtime.player_skin_for_profile(&profile),
+        EntityPlayerSkin::ProfiledDefault(default_player_skin_for_profile(&profile))
+    );
+
+    let expected = EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+        handle: profile_texture_handle("https://textures.minecraft.net/texture/skinhash"),
+        fallback: EntityDefaultPlayerSkin::SlimAlex,
+        model: EntityPlayerSkinModel::Wide,
+        status: EntityDynamicPlayerSkinStatus::Loading,
+    });
+    let mut resolved = None;
+    for _ in 0..100 {
+        let skin = runtime.player_skin_for_profile(&profile);
+        if skin == expected {
+            resolved = Some(skin);
+            break;
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+
+    assert_eq!(resolved, Some(expected));
+    assert_eq!(name_calls.load(Ordering::Relaxed), 1);
+    assert_eq!(id_calls.load(Ordering::Relaxed), 1);
+}
+
+#[test]
 fn player_profile_queues_dynamic_cape_and_elytra_texture_downloads() {
     let root = unique_temp_dir("item-runtime-profile-texture-downloads");
     let runtime = NativeItemRuntime::empty_for_test();

@@ -6,6 +6,7 @@
 //! (`animationTickCount + partial` while powered). bbb projects those source
 //! states into the shared entity-model stream as block-sentinel instances.
 
+use bbb_item_model::{default_player_skin_for_profile, NativeItemRuntime};
 use bbb_renderer::{
     EntityAttachmentFace, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityModelInstance,
     EntityPlayerSkin, SkullBlockModelAttachment,
@@ -21,15 +22,20 @@ const SKULL_BLOCK_MODEL_ENTITY_ID: i32 = -1;
 pub(crate) fn skull_model_instances_from_world_at_partial_tick(
     world: &WorldStore,
     partial_tick: f32,
+    item_runtime: Option<&NativeItemRuntime>,
 ) -> Vec<EntityModelInstance> {
     world
         .skull_model_source_states(partial_tick)
         .into_iter()
-        .map(|source| skull_model_instance(&source, world))
+        .map(|source| skull_model_instance(&source, world, item_runtime))
         .collect()
 }
 
-fn skull_model_instance(source: &SkullModelSourceState, world: &WorldStore) -> EntityModelInstance {
+fn skull_model_instance(
+    source: &SkullModelSourceState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> EntityModelInstance {
     let (attachment, y_rot) = skull_attachment(source.attachment);
     let mut instance = EntityModelInstance::skull_block(
         SKULL_BLOCK_MODEL_ENTITY_ID,
@@ -39,7 +45,7 @@ fn skull_model_instance(source: &SkullModelSourceState, world: &WorldStore) -> E
             source.pos.z as f32,
         ],
         y_rot,
-        skull_kind(source.kind),
+        skull_kind(source, item_runtime),
         attachment,
     )
     .with_worn_head_animation_pos(source.animation_progress);
@@ -49,13 +55,29 @@ fn skull_model_instance(source: &SkullModelSourceState, world: &WorldStore) -> E
     instance
 }
 
-fn skull_kind(kind: SkullBlockKind) -> EntityCustomHeadSkull {
-    match kind {
+fn skull_kind(
+    source: &SkullModelSourceState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> EntityCustomHeadSkull {
+    match source.kind {
         SkullBlockKind::Skeleton => EntityCustomHeadSkull::Skeleton,
         SkullBlockKind::WitherSkeleton => EntityCustomHeadSkull::WitherSkeleton,
-        SkullBlockKind::Player => EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
-            EntityDefaultPlayerSkin::WideSteve,
-        )),
+        SkullBlockKind::Player => {
+            let skin = source.owner_profile.as_ref().map_or(
+                EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimSteve),
+                |profile| {
+                    item_runtime.map_or_else(
+                        || {
+                            EntityPlayerSkin::ProfiledDefault(default_player_skin_for_profile(
+                                profile,
+                            ))
+                        },
+                        |item_runtime| item_runtime.player_skin_for_profile(profile),
+                    )
+                },
+            );
+            EntityCustomHeadSkull::Player(skin)
+        }
         SkullBlockKind::Zombie => EntityCustomHeadSkull::Zombie,
         SkullBlockKind::Creeper => EntityCustomHeadSkull::Creeper,
         SkullBlockKind::Dragon => EntityCustomHeadSkull::Dragon,
@@ -95,15 +117,27 @@ fn skull_light_coords(light: TerrainLight) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID;
+    use bbb_protocol::packets::inventory::{
+        PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
+        ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+    };
     use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, BlockUpdate};
-    use bbb_renderer::EntityModelKind;
+    use bbb_renderer::{
+        EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus, EntityModelKind,
+        EntityPlayerSkinModel,
+    };
     use bbb_world::{
-        BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain,
-        PaletteKind, PalettedContainerData, WorldDimension,
+        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
     };
     use std::collections::BTreeMap;
 
     fn world_with_air_chunk() -> WorldStore {
+        world_with_block_entities(Vec::new())
+    }
+
+    fn world_with_block_entities(block_entities: Vec<BlockEntityRecord>) -> WorldStore {
         let mut world = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
             height: 16,
@@ -122,7 +156,7 @@ mod tests {
                 ),
                 biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
             }],
-            block_entities: Vec::new(),
+            block_entities,
             light: LightData::default(),
         });
         world
@@ -172,7 +206,7 @@ mod tests {
             &[("powered", "false"), ("rotation", "4")],
         );
 
-        let instances = skull_model_instances_from_world_at_partial_tick(&world, 0.5);
+        let instances = skull_model_instances_from_world_at_partial_tick(&world, 0.5, None);
 
         assert_eq!(instances.len(), 1);
         assert_eq!(
@@ -196,17 +230,95 @@ mod tests {
             &[("powered", "false"), ("facing", "west")],
         );
 
-        let instances = skull_model_instances_from_world_at_partial_tick(&world, 0.5);
+        let instances = skull_model_instances_from_world_at_partial_tick(&world, 0.5, None);
 
         assert_eq!(
             instances[0].kind,
             EntityModelKind::SkullBlock {
                 skull: EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
-                    EntityDefaultPlayerSkin::WideSteve,
+                    EntityDefaultPlayerSkin::SlimSteve,
                 )),
                 attachment: SkullBlockModelAttachment::Wall {
                     facing: EntityAttachmentFace::West,
                 },
+            }
+        );
+    }
+
+    #[test]
+    fn profiled_player_head_projects_owner_fallback_and_ready_dynamic_skin() {
+        let pos = BlockPos { x: 2, y: 3, z: 4 };
+        let skin_url = "https://textures.minecraft.net/texture/block-head";
+        let profile = ResolvableProfileSummary {
+            kind: ResolvableProfileKindSummary::GameProfile,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: Some("Alex".to_string()),
+            properties: Vec::new(),
+            profile_textures: Some(ProfileTexturesSummary {
+                skin: Some(ProfileSkinTextureSummary {
+                    url: skin_url.to_string(),
+                    model: PlayerModelTypeSummary::Wide,
+                }),
+                cape: None,
+                elytra: None,
+            }),
+            skin_patch: PlayerSkinPatchSummary::default(),
+        };
+        let mut world = world_with_block_entities(vec![BlockEntityRecord {
+            local_x: pos.x as u8,
+            y: pos.y as i16,
+            local_z: pos.z as u8,
+            type_id: VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
+            raw_nbt: vec![10, 0],
+            nbt: None,
+            sign_text: None,
+            vault_shared_data: None,
+            decorated_pot_sherds: None,
+            banner_patterns: None,
+            end_gateway: None,
+            spawner: None,
+            command_block: None,
+            structure_block: None,
+            jigsaw_block: None,
+            test_block: None,
+            test_instance_block: None,
+            note_block_sound: None,
+            skull_profile: Some(profile),
+        }]);
+        set_block(
+            &mut world,
+            pos,
+            "minecraft:player_head",
+            &[("powered", "false"), ("rotation", "0")],
+        );
+
+        let fallback = skull_model_instances_from_world_at_partial_tick(&world, 0.5, None);
+        assert_eq!(
+            fallback[0].kind,
+            EntityModelKind::SkullBlock {
+                skull: EntityCustomHeadSkull::Player(EntityPlayerSkin::ProfiledDefault(
+                    EntityDefaultPlayerSkin::SlimAlex,
+                )),
+                attachment: SkullBlockModelAttachment::Ground,
+            }
+        );
+
+        let item_runtime = NativeItemRuntime::empty_for_test();
+        item_runtime.mark_profile_skin_resolved(skin_url, 12_345);
+        let ready =
+            skull_model_instances_from_world_at_partial_tick(&world, 0.5, Some(&item_runtime));
+        assert_eq!(
+            ready[0].kind,
+            EntityModelKind::SkullBlock {
+                skull: EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
+                    EntityDynamicPlayerSkin {
+                        handle: 12_345,
+                        fallback: EntityDefaultPlayerSkin::SlimAlex,
+                        model: EntityPlayerSkinModel::Wide,
+                        status: EntityDynamicPlayerSkinStatus::Ready,
+                    },
+                )),
+                attachment: SkullBlockModelAttachment::Ground,
             }
         );
     }
@@ -222,7 +334,7 @@ mod tests {
         );
         world.advance_skull_block_ticks(2);
 
-        let instances = skull_model_instances_from_world_at_partial_tick(&world, 0.25);
+        let instances = skull_model_instances_from_world_at_partial_tick(&world, 0.25, None);
 
         assert_eq!(
             instances[0].kind,
