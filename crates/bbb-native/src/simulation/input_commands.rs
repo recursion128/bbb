@@ -190,6 +190,7 @@ impl SimulationInputRuntime {
             }
             SimulationCommand::CursorLeft => {
                 self.cursor_position = None;
+                context.input.handle_sign_editor_cursor_moved(None);
                 context
                     .input
                     .handle_structure_block_editor_cursor_moved(None);
@@ -208,7 +209,10 @@ impl SimulationInputRuntime {
                 self.apply_ime_preedit(&text, cursor_range, context);
             }
             SimulationCommand::ImeCommit(text) => self.apply_ime_commit(&text, context),
-            SimulationCommand::ImeDisabled => context.input.clear_dialog_ime_preedit(),
+            SimulationCommand::ImeDisabled => {
+                context.input.clear_dialog_ime_preedit();
+                context.input.clear_sign_editor_ime_preedit();
+            }
             SimulationCommand::SurfaceResized(size) => self.surface_size = size,
             SimulationCommand::TextMeasurements(measurements) => {
                 self.text_measurements = measurements;
@@ -317,6 +321,15 @@ impl SimulationInputRuntime {
             .input
             .handle_test_instance_block_editor_cursor_moved(self.cursor_position)
         {
+            return;
+        }
+        if context
+            .input
+            .sign_editor_is_active_or_pending(context.world)
+        {
+            context
+                .input
+                .handle_sign_editor_cursor_moved(self.cursor_position);
             return;
         }
         if context
@@ -524,7 +537,10 @@ impl SimulationInputRuntime {
             physical_key,
             state,
             self.surface_size,
+            &self.text_measurements,
+            Some(&mut clipboard),
         );
+        flush_platform_effects(&queued_effects, context.platform);
         if (command_entry_open
             || structure_block_editor_open
             || jigsaw_block_editor_open
@@ -694,13 +710,28 @@ impl SimulationInputRuntime {
                 cursor_range,
                 context.world.dialog_screen_revision(),
             );
+        } else if context
+            .input
+            .sign_editor_is_active_or_pending(context.world)
+        {
+            context.input.sync_sign_editor(
+                context.world,
+                context.net_counters,
+                context.net_commands,
+            );
+            context
+                .input
+                .handle_sign_editor_ime_preedit(text, cursor_range);
+            self.request_cursor_capture(false, context.platform);
         } else {
             context.input.clear_dialog_ime_preedit();
+            context.input.clear_sign_editor_ime_preedit();
         }
     }
 
     fn apply_ime_commit(&mut self, text: &str, context: &mut SimulationInputContext<'_, '_>) {
         context.input.clear_dialog_ime_preedit();
+        context.input.clear_sign_editor_ime_preedit();
         if self.code_of_conduct_overlay.is_visible(context.world) {
             self.request_cursor_capture(false, context.platform);
             return;
@@ -759,6 +790,7 @@ impl SimulationInputRuntime {
             context.net_commands,
             context.item_runtime.as_ref(),
             text,
+            &self.text_measurements,
         );
     }
 
@@ -998,6 +1030,18 @@ impl SimulationInputRuntime {
             .sign_editor_is_active_or_pending(context.world)
         {
             self.request_cursor_capture(false, context.platform);
+            context.input.handle_sign_editor_mouse_input(
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                button,
+                state,
+                self.cursor_position,
+                self.surface_size,
+            );
+            if !simulation_wants_cursor(context.input, context.world) {
+                self.request_cursor_capture(true, context.platform);
+            }
             return;
         }
         if context.world.current_book().is_some() {

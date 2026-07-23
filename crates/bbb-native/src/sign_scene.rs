@@ -36,6 +36,7 @@ pub(crate) struct SignSceneModels {
 pub(crate) fn sign_scene_from_world(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    should_filter_text: bool,
 ) -> SignSceneModels {
     let glyphs = item_runtime.and_then(NativeItemRuntime::map_text_glyphs);
     let mut instances = Vec::new();
@@ -65,7 +66,14 @@ pub(crate) fn sign_scene_from_world(
                     continue;
                 };
                 text_surfaces.extend(bake_sign_text_face(
-                    source.pos, attachment, body_rot, front, side, light, glyphs,
+                    source.pos,
+                    attachment,
+                    body_rot,
+                    front,
+                    side,
+                    light,
+                    glyphs,
+                    should_filter_text,
                 ));
             }
         }
@@ -84,9 +92,11 @@ fn bake_sign_text_face(
     side: &SignTextSideState,
     light: Option<TerrainLight>,
     glyphs: &HudFontGlyphMap,
+    should_filter_text: bool,
 ) -> Option<SignTextSurface> {
-    let lines: [Vec<HudStyledTextRun>; 4] =
-        std::array::from_fn(|index| hud_runs_from_sign_line(&side.lines[index]));
+    let lines: [Vec<HudStyledTextRun>; 4] = std::array::from_fn(|index| {
+        hud_runs_from_sign_line(&side.lines_for_filter(should_filter_text)[index])
+    });
     // Vanilla `submitSignText`: glowing text renders full-bright
     // (`lightVal = 15728880`), otherwise the block-position light coords.
     let text_light = if side.has_glowing_text {
@@ -240,15 +250,20 @@ mod tests {
     }
 
     fn sign_nbt(front: [&str; 4], glowing: bool) -> Vec<u8> {
+        sign_nbt_with_filtered(front, None, glowing)
+    }
+
+    fn sign_nbt_with_filtered(
+        front: [&str; 4],
+        filtered: Option<[&str; 4]>,
+        glowing: bool,
+    ) -> Vec<u8> {
         let mut payload = vec![10];
         payload.push(10);
         write_mutf8(&mut payload, "front_text");
-        payload.push(9);
-        write_mutf8(&mut payload, "messages");
-        payload.push(8);
-        payload.extend_from_slice(&4i32.to_be_bytes());
-        for line in front {
-            write_mutf8(&mut payload, line);
+        write_sign_lines(&mut payload, "messages", front);
+        if let Some(filtered) = filtered {
+            write_sign_lines(&mut payload, "filtered_messages", filtered);
         }
         if glowing {
             payload.push(1);
@@ -258,6 +273,16 @@ mod tests {
         payload.push(0);
         payload.push(0);
         payload
+    }
+
+    fn write_sign_lines(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
+        out.push(9);
+        write_mutf8(out, name);
+        out.push(8);
+        out.extend_from_slice(&4i32.to_be_bytes());
+        for line in lines {
+            write_mutf8(out, line);
+        }
     }
 
     fn write_mutf8(out: &mut Vec<u8>, value: &str) {
@@ -276,7 +301,8 @@ mod tests {
             "minecraft:oak_sign",
             &[("rotation", "3"), ("waterlogged", "false")],
         );
-        let scene = sign_scene_from_world(&world, Some(&NativeItemRuntime::empty_for_test()));
+        let scene =
+            sign_scene_from_world(&world, Some(&NativeItemRuntime::empty_for_test()), false);
         assert_eq!(scene.instances.len(), 1);
         let instance = &scene.instances[0];
         assert_eq!(
@@ -319,7 +345,7 @@ mod tests {
             })
             .unwrap());
         let runtime = NativeItemRuntime::empty_for_test();
-        let scene = sign_scene_from_world(&world, Some(&runtime));
+        let scene = sign_scene_from_world(&world, Some(&runtime), false);
         assert_eq!(scene.instances.len(), 1);
         assert_eq!(
             scene.instances[0].kind,
@@ -371,7 +397,7 @@ mod tests {
             })
             .unwrap());
         let runtime = NativeItemRuntime::empty_for_test();
-        let scene = sign_scene_from_world(&world, Some(&runtime));
+        let scene = sign_scene_from_world(&world, Some(&runtime), false);
         assert_eq!(scene.text_surfaces.len(), 1);
         let surface = &scene.text_surfaces[0];
         assert!(surface.submission.has_glowing_text);
@@ -382,6 +408,35 @@ mod tests {
             surface.submission.attachment,
             SignModelAttachment::HangingCeiling
         );
+    }
+
+    #[test]
+    fn world_sign_rendering_selects_filtered_messages_from_startup_policy() {
+        let mut world = world_with_air_chunk();
+        let pos = BlockPos { x: 1, y: 2, z: 3 };
+        set_block(
+            &mut world,
+            pos,
+            "minecraft:oak_sign",
+            &[("rotation", "0"), ("waterlogged", "false")],
+        );
+        assert!(world
+            .apply_block_entity_data(BlockEntityData {
+                pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+                raw_nbt: sign_nbt_with_filtered(
+                    ["a", "", "", ""],
+                    Some(["bbb", "", "", ""]),
+                    false,
+                ),
+            })
+            .unwrap());
+        let runtime = NativeItemRuntime::empty_for_test();
+        let raw = sign_scene_from_world(&world, Some(&runtime), false);
+        let filtered = sign_scene_from_world(&world, Some(&runtime), true);
+        assert_eq!(raw.text_surfaces[0].vertex_count(), 4);
+        assert_eq!(filtered.text_surfaces[0].vertex_count(), 12);
     }
 
     #[test]

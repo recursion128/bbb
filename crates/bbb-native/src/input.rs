@@ -8,6 +8,7 @@ use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::{
     attribute_types::vanilla_attribute_type,
+    chat_formattings::VANILLA_CHAT_FORMATTINGS,
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ALLAY_ID,
         VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
@@ -80,6 +81,7 @@ use bbb_protocol::{
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
     PROTOCOL_VERSION,
 };
+use bbb_world::sign_wood_and_form_for_block_name;
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_accessors_for_entity_type;
@@ -139,7 +141,7 @@ use bbb_world::{
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos,
     CommandSuggestionState, CommandSuggestionsResultState, EntityState, EntityVec3,
-    LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
+    LocalPlayerInputState, LocalPlayerPoseState, SignBlockForm, TagQueryResponseState,
     VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
 };
 use bbb_world::{
@@ -378,7 +380,8 @@ const SLIME_MAX_SIZE: i32 = 127;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
 const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
-const SIGN_LINE_MAX_LENGTH: usize = 384;
+const STANDING_SIGN_MAX_LINE_WIDTH: u32 = 90;
+const HANGING_SIGN_MAX_LINE_WIDTH: u32 = 60;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
 const BOOK_PAGE_BUTTON_Y: i32 = 157;
@@ -575,6 +578,7 @@ pub(crate) struct ClientInputState {
     dialog_last_click_at: Option<Instant>,
     dialog_last_click_screen_revision: Option<u64>,
     dialog_ime_preedit: Option<DialogImePreeditState>,
+    client_text_filtering_enabled: bool,
     dialog_screen_was_open: bool,
     dialog_native_previous_screen: Option<NativeDialogPreviousScreenState>,
     inventory_quick_craft_button_num: Option<i8>,
@@ -669,6 +673,8 @@ pub(crate) struct ClientInputState {
     debug_crash_report_count: u32,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
+    sign_editor_cursor_position: Option<(i32, i32)>,
+    sign_editor_ime_preedit: Option<SignEditorImePreeditState>,
     merchant_trade_scrolling: bool,
     merchant_focused_trade_row: Option<i32>,
     chat_entry: Option<ChatEntryState>,
@@ -911,6 +917,33 @@ impl CommandSuggestionTextMeasurer for bbb_renderer::Renderer {
     }
 }
 
+pub(crate) struct FallbackTextMeasurer;
+
+impl CommandSuggestionTextMeasurer for FallbackTextMeasurer {
+    fn command_suggestion_text_width(&self, text: &str) -> u32 {
+        u32::try_from(text.chars().count())
+            .unwrap_or(u32::MAX)
+            .saturating_mul(6)
+    }
+
+    fn command_suggestion_display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
+        scroll_to
+            .min(text.chars().count())
+            .saturating_sub(usize::try_from(width / 6).unwrap_or(usize::MAX))
+    }
+
+    fn command_suggestion_cursor_for_width(
+        &self,
+        text: &str,
+        display_start: usize,
+        width: u32,
+    ) -> usize {
+        display_start
+            .saturating_add(usize::try_from(width / 6).unwrap_or(usize::MAX))
+            .min(text.chars().count())
+    }
+}
+
 impl ChatEntryState {
     fn commands_only(&self) -> bool {
         matches!(
@@ -956,6 +989,7 @@ struct SignEditorInputState {
     line: usize,
     cursor: usize,
     selection: usize,
+    max_line_width: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -966,6 +1000,26 @@ pub(crate) struct SignEditorHudState {
     pub(crate) line: usize,
     pub(crate) cursor: usize,
     pub(crate) selection: usize,
+    pub(crate) preedit: Option<SignEditorImePreeditHudState>,
+}
+
+#[derive(Debug, Clone)]
+struct SignEditorImePreeditState {
+    text: String,
+    caret: Option<usize>,
+    focused_start: usize,
+    focused_end: usize,
+    signature: SignEditorInputSignature,
+    initialized_at: Instant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SignEditorImePreeditHudState {
+    pub(crate) text: String,
+    pub(crate) caret: Option<usize>,
+    pub(crate) focused_start: usize,
+    pub(crate) focused_end: usize,
+    pub(crate) caret_visible: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -1053,6 +1107,14 @@ impl ClientInputState {
         }
     }
 
+    pub(crate) fn set_client_text_filtering_enabled(&mut self, enabled: bool) {
+        self.client_text_filtering_enabled = enabled;
+    }
+
+    pub(crate) fn client_text_filtering_enabled(&self) -> bool {
+        self.client_text_filtering_enabled
+    }
+
     /// Builds the immutable subset consumed by render and event-loop readers.
     ///
     /// This is intentionally an explicit projection instead of `self.clone()`:
@@ -1073,6 +1135,7 @@ impl ClientInputState {
             inventory_hovered_slot: self.inventory_hovered_slot,
             inventory_cursor_position: self.inventory_cursor_position,
             dialog_ime_preedit: self.dialog_ime_preedit.clone(),
+            client_text_filtering_enabled: self.client_text_filtering_enabled,
             dialog_native_previous_screen: self.dialog_native_previous_screen.clone(),
             inventory_quick_craft_button_num: self.inventory_quick_craft_button_num,
             inventory_quick_craft_slots: self.inventory_quick_craft_slots.clone(),
@@ -1133,6 +1196,8 @@ impl ClientInputState {
             debug_game_mode_switcher: self.debug_game_mode_switcher.clone(),
             sign_editor: self.sign_editor.clone(),
             dismissed_sign_editor: self.dismissed_sign_editor.clone(),
+            sign_editor_cursor_position: self.sign_editor_cursor_position,
+            sign_editor_ime_preedit: self.sign_editor_ime_preedit.clone(),
             merchant_trade_scrolling: self.merchant_trade_scrolling,
             merchant_focused_trade_row: self.merchant_focused_trade_row,
             chat_entry: self.chat_entry.clone(),
@@ -1287,6 +1352,8 @@ impl ClientInputState {
         self.dialog_last_click_at = None;
         self.dialog_last_click_screen_revision = None;
         self.dialog_ime_preedit = None;
+        self.sign_editor_cursor_position = None;
+        self.sign_editor_ime_preedit = None;
         self.inventory_quick_craft_button_num = None;
         self.inventory_quick_craft_slots.clear();
         self.loom_pattern_scrolling = false;
@@ -1802,6 +1869,26 @@ impl ClientInputState {
         })
     }
 
+    /// Synchronizes the world-owned open request and enforces Vanilla's
+    /// per-tick sign-presence/player-range lifetime guard. Every exit funnels
+    /// through the one-shot `removed()` packet path.
+    pub(crate) fn sync_sign_editor(
+        &mut self,
+        world: &mut WorldStore,
+        counters: &mut NetCounters,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+    ) -> bool {
+        let mut changed = sync_sign_editor_input(self, counters, world, net_commands);
+        let invalid = self.sign_editor.as_ref().is_some_and(|editor| {
+            !world.sign_editor_is_valid_at(world_block_pos_from_protocol(editor.signature.pos))
+        });
+        if invalid {
+            submit_sign_editor(self, counters, net_commands);
+            changed = true;
+        }
+        changed
+    }
+
     pub(crate) fn sign_editor_hud_state(&self, world: &WorldStore) -> Option<SignEditorHudState> {
         let current_signature = sign_editor_signature_from_world(world);
         if current_signature
@@ -1812,7 +1899,10 @@ impl ClientInputState {
         }
         if let Some(editor) = &self.sign_editor {
             if current_signature.as_ref() == Some(&editor.signature) {
-                return Some(sign_editor_hud_state_from_editor(editor));
+                return Some(sign_editor_hud_state_from_editor(
+                    editor,
+                    self.sign_editor_ime_preedit_hud_state(editor, Instant::now()),
+                ));
             }
         }
 
@@ -1820,7 +1910,7 @@ impl ClientInputState {
         if self.dismissed_sign_editor.as_ref() == Some(&signature) {
             return None;
         }
-        let lines = sign_editor_initial_lines(world);
+        let lines = sign_editor_initial_lines(self, world);
         let cursor = sign_line_char_len(&lines[0]);
         Some(SignEditorHudState {
             pos: world_block_pos_from_protocol(signature.pos),
@@ -1829,6 +1919,134 @@ impl ClientInputState {
             line: 0,
             cursor,
             selection: cursor,
+            preedit: None,
+        })
+    }
+
+    pub(crate) fn handle_sign_editor_cursor_moved(
+        &mut self,
+        position: Option<PhysicalPosition<f64>>,
+    ) -> bool {
+        if self.sign_editor.is_none() {
+            return false;
+        }
+        self.sign_editor_cursor_position = position.and_then(|position| {
+            (position.x.is_finite() && position.y.is_finite())
+                .then_some((position.x.floor() as i32, position.y.floor() as i32))
+        });
+        true
+    }
+
+    pub(crate) fn handle_sign_editor_mouse_input(
+        &mut self,
+        counters: &mut NetCounters,
+        world: &mut WorldStore,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        button: MouseButton,
+        state: ElementState,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        sync_sign_editor_input(self, counters, world, net_commands);
+        if self.sign_editor.is_none() {
+            return false;
+        }
+        self.handle_sign_editor_cursor_moved(cursor_position);
+        if matches!((button, state), (MouseButton::Left, ElementState::Pressed))
+            && self.sign_editor_done_button_hovered(surface_size)
+        {
+            submit_sign_editor(self, counters, net_commands);
+        }
+        true
+    }
+
+    pub(crate) fn sign_editor_done_button_hovered(&self, surface_size: PhysicalSize<u32>) -> bool {
+        self.sign_editor_cursor_position.is_some_and(|(x, y)| {
+            bbb_renderer::hud_sign_editor_done_button_rect(surface_size).contains(x, y)
+        })
+    }
+
+    pub(crate) fn handle_sign_editor_ime_preedit(
+        &mut self,
+        text: &str,
+        cursor_range: Option<(usize, usize)>,
+    ) -> bool {
+        self.handle_sign_editor_ime_preedit_at(text, cursor_range, Instant::now())
+    }
+
+    fn handle_sign_editor_ime_preedit_at(
+        &mut self,
+        text: &str,
+        cursor_range: Option<(usize, usize)>,
+        now: Instant,
+    ) -> bool {
+        let Some(editor) = self.sign_editor.as_ref() else {
+            self.sign_editor_ime_preedit = None;
+            return false;
+        };
+        if text.is_empty() {
+            self.sign_editor_ime_preedit = None;
+            return true;
+        }
+        let original_text = text;
+        let text = original_text
+            .chars()
+            .filter(|ch| !ch.is_control())
+            .take(DIALOG_IME_PREEDIT_MAX_CHARS)
+            .collect::<String>();
+        if text.is_empty() {
+            self.sign_editor_ime_preedit = None;
+            return true;
+        }
+        let text_len = text.chars().count();
+        let (caret, focused_start, focused_end) =
+            cursor_range.map_or((None, 0, text_len), |(begin, end)| {
+                let begin = dialog_ime_preedit_char_index_for_byte(original_text, begin);
+                let end = dialog_ime_preedit_char_index_for_byte(original_text, end);
+                let start = begin.min(end);
+                let finish = begin.max(end);
+                if start == finish {
+                    (Some(end), 0, text_len)
+                } else {
+                    (Some(end), start, finish)
+                }
+            });
+        self.sign_editor_ime_preedit = Some(SignEditorImePreeditState {
+            text,
+            caret,
+            focused_start,
+            focused_end,
+            signature: editor.signature.clone(),
+            initialized_at: now,
+        });
+        true
+    }
+
+    pub(crate) fn clear_sign_editor_ime_preedit(&mut self) {
+        self.sign_editor_ime_preedit = None;
+    }
+
+    fn sign_editor_ime_preedit_hud_state(
+        &self,
+        editor: &SignEditorInputState,
+        now: Instant,
+    ) -> Option<SignEditorImePreeditHudState> {
+        let state = self.sign_editor_ime_preedit.as_ref()?;
+        if state.signature != editor.signature {
+            return None;
+        }
+        let elapsed = now
+            .checked_duration_since(state.initialized_at)
+            .unwrap_or_default();
+        Some(SignEditorImePreeditHudState {
+            text: state.text.clone(),
+            caret: state.caret,
+            focused_start: state.focused_start,
+            focused_end: state.focused_end,
+            caret_visible: (elapsed.as_millis()
+                / DIALOG_IME_PREEDIT_CURSOR_BLINK_INTERVAL.as_millis())
+                % 2
+                == 0,
         })
     }
 
@@ -1926,10 +2144,15 @@ impl ClientInputState {
             return None;
         }
         self.chat_entry = None;
-        self.sign_editor
+        self.sign_editor_ime_preedit = None;
+        if let Some(editor) = self
+            .sign_editor
             .take()
             .filter(|editor| editor.signature == signature)
-            .or_else(|| Some(sign_editor_input_state_from_world(world, signature)))
+        {
+            return Some(editor);
+        }
+        Some(sign_editor_input_state_from_world(self, world, signature))
     }
 
     fn dialog_suspends_sign_editor(&self, signature: &SignEditorInputSignature) -> bool {
@@ -10324,6 +10547,8 @@ pub(crate) fn handle_key_input(
         physical_key,
         state,
         PhysicalSize::new(1280, 720),
+        &FallbackTextMeasurer,
+        None,
     );
 }
 
@@ -10336,6 +10561,8 @@ pub(crate) fn handle_key_input_with_item_runtime(
     physical_key: PhysicalKey,
     state: ElementState,
     surface_size: PhysicalSize<u32>,
+    text_measurer: &impl CommandSuggestionTextMeasurer,
+    clipboard: Option<&mut dyn DebugClipboard>,
 ) {
     if !input.focused {
         return;
@@ -10391,7 +10618,16 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
-    if handle_sign_editor_key(input, counters, world, net_commands, code, pressed) {
+    if handle_sign_editor_key(
+        input,
+        counters,
+        world,
+        net_commands,
+        code,
+        pressed,
+        text_measurer,
+        clipboard,
+    ) {
         return;
     }
 
@@ -10689,7 +10925,15 @@ pub(crate) fn handle_text_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     text: &str,
 ) {
-    handle_text_input_with_item_runtime(input, counters, world, net_commands, None, text);
+    handle_text_input_with_item_runtime(
+        input,
+        counters,
+        world,
+        net_commands,
+        None,
+        text,
+        &FallbackTextMeasurer,
+    );
 }
 
 pub(crate) fn handle_text_input_with_item_runtime(
@@ -10699,6 +10943,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     item_runtime: Option<&NativeItemRuntime>,
     text: &str,
+    text_measurer: &impl CommandSuggestionTextMeasurer,
 ) {
     if !input.focused {
         return;
@@ -10720,7 +10965,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
         return;
     }
 
-    if handle_sign_editor_text(input, counters, world, net_commands, text) {
+    if handle_sign_editor_text(input, counters, world, net_commands, text, text_measurer) {
         return;
     }
 
@@ -11682,13 +11927,14 @@ fn handle_sign_editor_text(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     text: &str,
+    text_measurer: &impl CommandSuggestionTextMeasurer,
 ) -> bool {
     sync_sign_editor_input(input, counters, world, net_commands);
     let Some(editor) = &mut input.sign_editor else {
         return false;
     };
 
-    insert_sign_line_text(editor, text);
+    insert_sign_line_text(editor, text, text_measurer);
     true
 }
 
@@ -11699,6 +11945,8 @@ fn handle_sign_editor_key(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     code: KeyCode,
     pressed: bool,
+    text_measurer: &impl CommandSuggestionTextMeasurer,
+    mut clipboard: Option<&mut dyn DebugClipboard>,
 ) -> bool {
     sync_sign_editor_input(input, counters, world, net_commands);
     if input.sign_editor.is_none() {
@@ -11708,11 +11956,39 @@ fn handle_sign_editor_key(
         return true;
     }
 
+    let control_down = input.control_down();
+    let shift_down = input.shift_down();
     match code {
         KeyCode::Escape => submit_sign_editor(input, counters, net_commands),
-        KeyCode::KeyA if input.control_down() => {
+        KeyCode::KeyA if control_down => {
             if let Some(editor) = &mut input.sign_editor {
                 select_sign_editor_line(editor);
+            }
+        }
+        KeyCode::KeyC if control_down => {
+            if let Some(editor) = &input.sign_editor {
+                let selected = selected_sign_line_text(editor);
+                if let Some(clipboard) = clipboard.as_deref_mut() {
+                    clipboard.set_debug_clipboard_text(&selected);
+                }
+            }
+        }
+        KeyCode::KeyX if control_down => {
+            if let Some(editor) = &mut input.sign_editor {
+                let selected = selected_sign_line_text(editor);
+                if let Some(clipboard) = clipboard.as_deref_mut() {
+                    clipboard.set_debug_clipboard_text(&selected);
+                }
+                delete_sign_selection(editor);
+            }
+        }
+        KeyCode::KeyV if control_down => {
+            let pasted = clipboard
+                .as_deref_mut()
+                .and_then(DebugClipboard::get_debug_clipboard_text)
+                .map(|text| sanitize_sign_clipboard_text(&text));
+            if let (Some(editor), Some(pasted)) = (&mut input.sign_editor, pasted) {
+                insert_sign_line_text(editor, &pasted, text_measurer);
             }
         }
         KeyCode::ArrowUp => {
@@ -11726,35 +12002,37 @@ fn handle_sign_editor_key(
             }
         }
         KeyCode::ArrowLeft => {
-            let control_down = input.control_down();
             if let Some(editor) = &mut input.sign_editor {
                 let cursor = if control_down {
                     text_edit::word_position(&editor.lines[editor.line], editor.cursor, -1)
                 } else {
                     editor.cursor.saturating_sub(1)
                 };
-                set_sign_editor_cursor(editor, cursor);
+                move_sign_editor_cursor(editor, cursor, shift_down);
             }
         }
         KeyCode::ArrowRight => {
-            let control_down = input.control_down();
             if let Some(editor) = &mut input.sign_editor {
                 let cursor = if control_down {
                     text_edit::word_position(&editor.lines[editor.line], editor.cursor, 1)
                 } else {
                     (editor.cursor + 1).min(sign_line_char_len(&editor.lines[editor.line]))
                 };
-                set_sign_editor_cursor(editor, cursor);
+                move_sign_editor_cursor(editor, cursor, shift_down);
             }
         }
         KeyCode::Home => {
             if let Some(editor) = &mut input.sign_editor {
-                set_sign_editor_cursor(editor, 0);
+                move_sign_editor_cursor(editor, 0, shift_down);
             }
         }
         KeyCode::End => {
             if let Some(editor) = &mut input.sign_editor {
-                set_sign_editor_cursor(editor, sign_line_char_len(&editor.lines[editor.line]));
+                move_sign_editor_cursor(
+                    editor,
+                    sign_line_char_len(&editor.lines[editor.line]),
+                    shift_down,
+                );
             }
         }
         KeyCode::Backspace => {
@@ -11803,8 +12081,12 @@ fn sync_sign_editor_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) -> bool {
     let Some(signature) = sign_editor_signature_from_world(world) else {
-        input.sign_editor = None;
-        return false;
+        let Some(editor) = input.sign_editor.take() else {
+            return false;
+        };
+        queue_sign_editor_removed(counters, net_commands, &editor);
+        input.sign_editor_ime_preedit = None;
+        return true;
     };
     if input.dialog_suspends_sign_editor(&signature) {
         input.sign_editor = None;
@@ -11822,23 +12104,31 @@ fn sync_sign_editor_input(
         return false;
     }
 
-    input.sign_editor = Some(sign_editor_input_state_from_world(world, signature));
+    if let Some(editor) = input.sign_editor.take() {
+        queue_sign_editor_removed(counters, net_commands, &editor);
+    }
+    input.sign_editor_ime_preedit = None;
+    let editor = sign_editor_input_state_from_world(input, world, signature);
+    input.sign_editor = Some(editor);
     release_active_input(input, world, counters, net_commands);
     true
 }
 
 fn sign_editor_input_state_from_world(
+    input: &ClientInputState,
     world: &WorldStore,
     signature: SignEditorInputSignature,
 ) -> SignEditorInputState {
-    let lines = sign_editor_initial_lines(world);
+    let lines = sign_editor_initial_lines(input, world);
     let cursor = sign_line_char_len(&lines[0]);
+    let max_line_width = sign_editor_max_line_width(world, signature.pos);
     SignEditorInputState {
         signature,
         lines,
         line: 0,
         cursor,
         selection: cursor,
+        max_line_width,
     }
 }
 
@@ -11855,14 +12145,39 @@ fn sign_editor_signature_from_world(world: &WorldStore) -> Option<SignEditorInpu
     })
 }
 
-fn sign_editor_initial_lines(world: &WorldStore) -> [String; 4] {
+fn sign_editor_initial_lines(input: &ClientInputState, world: &WorldStore) -> [String; 4] {
     world
         .last_open_sign_editor()
-        .and_then(|editor| world.sign_text_lines(editor.pos, editor.is_front_text))
+        .map(|editor| {
+            editor
+                .lines_for_filter(input.client_text_filtering_enabled())
+                .clone()
+        })
         .unwrap_or_else(|| std::array::from_fn(|_| String::new()))
 }
 
-fn sign_editor_hud_state_from_editor(editor: &SignEditorInputState) -> SignEditorHudState {
+fn sign_editor_max_line_width(world: &WorldStore, pos: ProtocolBlockPos) -> u32 {
+    let hanging = world
+        .probe_block(world_block_pos_from_protocol(pos))
+        .and_then(|probe| probe.block_name)
+        .and_then(|name| sign_wood_and_form_for_block_name(&name))
+        .is_some_and(|(_, form)| {
+            matches!(
+                form,
+                SignBlockForm::HangingCeiling | SignBlockForm::HangingWall
+            )
+        });
+    if hanging {
+        HANGING_SIGN_MAX_LINE_WIDTH
+    } else {
+        STANDING_SIGN_MAX_LINE_WIDTH
+    }
+}
+
+fn sign_editor_hud_state_from_editor(
+    editor: &SignEditorInputState,
+    preedit: Option<SignEditorImePreeditHudState>,
+) -> SignEditorHudState {
     SignEditorHudState {
         pos: world_block_pos_from_protocol(editor.signature.pos),
         is_front_text: editor.signature.is_front_text,
@@ -11870,6 +12185,7 @@ fn sign_editor_hud_state_from_editor(editor: &SignEditorInputState) -> SignEdito
         line: editor.line,
         cursor: editor.cursor,
         selection: editor.selection,
+        preedit,
     }
 }
 
@@ -11889,6 +12205,7 @@ fn submit_sign_editor(
     let Some(editor) = input.sign_editor.take() else {
         return;
     };
+    input.sign_editor_ime_preedit = None;
     input.dismissed_sign_editor = Some(editor.signature.clone());
     queue_sign_editor_removed(counters, net_commands, &editor);
 }
@@ -11911,35 +12228,91 @@ fn queue_sign_editor_removed(
 
 fn set_sign_editor_line(editor: &mut SignEditorInputState, line: usize) {
     editor.line = line;
-    set_sign_editor_cursor(editor, sign_line_char_len(&editor.lines[editor.line]));
+    move_sign_editor_cursor(
+        editor,
+        sign_line_char_len(&editor.lines[editor.line]),
+        false,
+    );
 }
 
-fn insert_sign_line_text(editor: &mut SignEditorInputState, text: &str) {
-    delete_sign_selection(editor);
-    let current = &mut editor.lines[editor.line];
-    editor.cursor = editor.cursor.min(sign_line_char_len(current));
-    let mut remaining = SIGN_LINE_MAX_LENGTH.saturating_sub(sign_line_len(current));
-    for ch in text.chars().filter(|ch| is_sign_text_char(*ch)) {
-        let len = ch.len_utf16();
-        if len > remaining {
-            break;
-        }
-        let insert_at = sign_line_byte_index(current, editor.cursor);
-        current.insert(insert_at, ch);
-        editor.cursor += 1;
-        remaining -= len;
+fn insert_sign_line_text(
+    editor: &mut SignEditorInputState,
+    text: &str,
+    text_measurer: &impl CommandSuggestionTextMeasurer,
+) {
+    let inserted = text
+        .chars()
+        .filter(|ch| is_sign_text_char(*ch))
+        .collect::<String>();
+    let current = &editor.lines[editor.line];
+    let start = editor
+        .selection
+        .min(editor.cursor)
+        .min(sign_line_char_len(current));
+    let end = editor
+        .selection
+        .max(editor.cursor)
+        .min(sign_line_char_len(current));
+    let start_byte = sign_line_byte_index(current, start);
+    let end_byte = sign_line_byte_index(current, end);
+    let mut candidate = String::with_capacity(
+        current
+            .len()
+            .saturating_sub(end_byte.saturating_sub(start_byte))
+            .saturating_add(inserted.len()),
+    );
+    candidate.push_str(&current[..start_byte]);
+    candidate.push_str(&inserted);
+    candidate.push_str(&current[end_byte..]);
+    if text_measurer.command_suggestion_text_width(&candidate) > editor.max_line_width {
+        return;
     }
+    editor.lines[editor.line] = candidate;
+    editor.cursor = start.saturating_add(inserted.chars().count());
     editor.selection = editor.cursor;
 }
 
-fn set_sign_editor_cursor(editor: &mut SignEditorInputState, cursor: usize) {
+fn move_sign_editor_cursor(editor: &mut SignEditorInputState, cursor: usize, selecting: bool) {
     editor.cursor = cursor.min(sign_line_char_len(&editor.lines[editor.line]));
-    editor.selection = editor.cursor;
+    if !selecting {
+        editor.selection = editor.cursor;
+    }
 }
 
 fn select_sign_editor_line(editor: &mut SignEditorInputState) {
     editor.selection = 0;
     editor.cursor = sign_line_char_len(&editor.lines[editor.line]);
+}
+
+fn selected_sign_line_text(editor: &SignEditorInputState) -> String {
+    let start = editor.selection.min(editor.cursor);
+    let end = editor.selection.max(editor.cursor);
+    let line = &editor.lines[editor.line];
+    line[sign_line_byte_index(line, start)..sign_line_byte_index(line, end)].to_string()
+}
+
+fn sanitize_sign_clipboard_text(text: &str) -> String {
+    let mut sanitized = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\r' {
+            continue;
+        }
+        if ch == '\u{a7}' {
+            let formatting = chars.peek().copied().is_some_and(|code| {
+                let code = code.to_ascii_lowercase();
+                VANILLA_CHAT_FORMATTINGS
+                    .iter()
+                    .any(|entry| entry.legacy_code == code)
+            });
+            if formatting {
+                chars.next();
+                continue;
+            }
+        }
+        sanitized.push(ch);
+    }
+    sanitized
 }
 
 fn delete_sign_selection(editor: &mut SignEditorInputState) -> bool {
@@ -11959,10 +12332,6 @@ fn delete_sign_selection(editor: &mut SignEditorInputState) -> bool {
 
 fn is_sign_text_char(ch: char) -> bool {
     ch != '\u{a7}' && ch >= ' ' && ch != '\u{7f}'
-}
-
-fn sign_line_len(text: &str) -> usize {
-    text.encode_utf16().count()
 }
 
 fn sign_line_char_len(text: &str) -> usize {

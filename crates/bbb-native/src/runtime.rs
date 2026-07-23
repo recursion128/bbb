@@ -57,8 +57,8 @@ use bbb_renderer::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudPauseScreen,
-    HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudStatsItemRow, HudStatsRow,
-    HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
+    HudPlayerHealth, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudStatsItemRow,
+    HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
     HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
     HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth,
@@ -2363,6 +2363,7 @@ pub(crate) fn advance_simulation(
     let pump_net_drained_at = Instant::now();
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
+    input.sync_sign_editor(world, net_counters, net_commands);
     input.sync_command_block_editor(world, net_counters, net_commands);
     input.sync_minecart_command_block_editor(world, net_counters, net_commands);
     input.sync_structure_block_editor(world, net_counters, net_commands);
@@ -2942,7 +2943,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         None
     } else {
-        hud_sign_editor_screen(input, world)
+        hud_sign_editor_screen(input, world, surface_size)
     };
     let hud_command_block_editor_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3206,7 +3207,8 @@ pub(crate) fn update_renderer_from_publication(
     ));
     // Sign block-entity models ride the same stream; their face text bakes
     // into world-space glyph quads drawn with the map-label font atlas.
-    let sign_scene = sign_scene_from_world(world, item_runtime);
+    let sign_scene =
+        sign_scene_from_world(world, item_runtime, input.client_text_filtering_enabled());
     entity_instances.extend(sign_scene.instances);
     let sign_text_surfaces = sign_scene.text_surfaces;
     // Bed and bell block-entity models ride the same stream: beds are static
@@ -6050,6 +6052,7 @@ fn hud_debug_options_status(
 fn hud_sign_editor_screen(
     input: &ClientInputState,
     world: &WorldStore,
+    surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudSignEditorScreen> {
     let state = input.sign_editor_hud_state(world)?;
     let kind = hud_sign_editor_kind(world, state.pos);
@@ -6068,6 +6071,15 @@ fn hud_sign_editor_screen(
         selection: state.selection,
         cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
         text_tint: hud_sign_editor_text_tint(world, state.pos, state.is_front_text),
+        done: "Done".to_string(),
+        done_hovered: input.sign_editor_done_button_hovered(surface_size),
+        preedit: state.preedit.map(|preedit| HudSignEditorPreedit {
+            text: preedit.text,
+            focused_start: preedit.focused_start,
+            focused_end: preedit.focused_end,
+            caret: preedit.caret,
+            caret_visible: preedit.caret_visible,
+        }),
     })
 }
 

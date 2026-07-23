@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
-use winit::dpi::PhysicalSize;
+use winit::dpi::{PhysicalPosition, PhysicalSize};
 
 use crate::entity_models::{
     EntityModelInstance, SignModelAttachment, SignModelWood, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
@@ -1866,6 +1866,18 @@ pub struct HudSignEditorScreen {
     pub selection: usize,
     pub cursor_visible: bool,
     pub text_tint: [f32; 4],
+    pub done: String,
+    pub done_hovered: bool,
+    pub preedit: Option<HudSignEditorPreedit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudSignEditorPreedit {
+    pub text: String,
+    pub focused_start: usize,
+    pub focused_end: usize,
+    pub caret: Option<usize>,
+    pub caret_visible: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1910,6 +1922,23 @@ impl HudCommandBlockEditorRect {
             && y >= self.y
             && x < self.x.saturating_add_unsigned(self.width)
             && y < self.y.saturating_add_unsigned(self.height)
+    }
+}
+
+/// Vanilla `AbstractSignEditScreen.init`: one 200x20 Done button centred at
+/// `height / 4 + 144`.
+pub fn hud_sign_editor_done_button_rect(
+    surface_size: PhysicalSize<u32>,
+) -> HudCommandBlockEditorRect {
+    HudCommandBlockEditorRect {
+        x: i32::try_from(surface_size.width / 2)
+            .unwrap_or(i32::MAX)
+            .saturating_sub(100),
+        y: i32::try_from(surface_size.height / 4)
+            .unwrap_or(i32::MAX)
+            .saturating_add(144),
+        width: 200,
+        height: 20,
     }
 }
 
@@ -4672,6 +4701,18 @@ impl Renderer {
         self.hud_sign_editor_screen = screen.and_then(sanitize_hud_sign_editor_screen);
     }
 
+    pub fn hud_sign_editor_ime_cursor_area(
+        &self,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<(PhysicalPosition<i32>, PhysicalSize<u32>)> {
+        let projection = hud_sign_editor_preedit_projection(
+            self.hud_sign_editor_screen.as_ref()?,
+            surface_size,
+            &self.hud_font_glyphs,
+        )?;
+        Some((projection.ime_position, projection.ime_size))
+    }
+
     pub fn set_hud_command_block_editor_screen(
         &mut self,
         screen: Option<HudCommandBlockEditorScreen>,
@@ -6152,6 +6193,12 @@ impl Renderer {
                 &mut commands,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_widget_preedit.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -8417,6 +8464,8 @@ fn push_hud_sign_editor_screen<'a>(
     commands: &mut Vec<HudDrawCommand<'a>>,
     post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
+    preedit_background: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -8485,6 +8534,39 @@ fn push_hud_sign_editor_screen<'a>(
         obfuscated_seed,
         surface_size,
         screen,
+    );
+    let done = hud_sign_editor_done_button_rect(surface_size);
+    push_hud_debug_options_button(
+        vertices,
+        post_gui_item_commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        surface_size,
+        done.x,
+        done.y,
+        i32::try_from(done.width).unwrap_or(i32::MAX),
+        i32::try_from(done.height).unwrap_or(i32::MAX),
+        &screen.done,
+        true,
+        screen.done_hovered,
+        HUD_TINT_WHITE,
+        button_sprites,
+    );
+    let preedit = hud_sign_editor_preedit_projection(screen, surface_size, glyphs);
+    push_hud_inventory_preedit_overlay(
+        vertices,
+        post_gui_item_commands,
+        white_pixel,
+        preedit_background,
+        Some(font_atlas),
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        surface_size,
+        preedit.as_ref().map(|projection| &projection.overlay),
     );
 }
 
@@ -11778,6 +11860,100 @@ fn hud_sign_editor_standing_preview_rect(surface_size: PhysicalSize<u32>) -> Hud
 fn hud_sign_editor_hanging_background_rect(surface_size: PhysicalSize<u32>) -> HudRect {
     let center_x = surface_size.width.max(1) as f32 * 0.5;
     absolute_hud_rect(center_x - 36.0, 30.5, 72, 72)
+}
+
+const HUD_SIGN_PREEDIT_TEXT_HEIGHT: i32 = 9;
+const HUD_SIGN_PREEDIT_INPUT_SEPARATION: i32 = 4;
+const HUD_SIGN_PREEDIT_BACKGROUND_OFFSET: i32 = 5;
+const HUD_SIGN_PREEDIT_HOT_AREA_MARGIN: i32 = 2;
+
+struct HudSignEditorPreeditProjection {
+    overlay: HudInventoryPreeditOverlay,
+    ime_position: PhysicalPosition<i32>,
+    ime_size: PhysicalSize<u32>,
+}
+
+fn hud_sign_editor_preedit_projection(
+    screen: &HudSignEditorScreen,
+    surface_size: PhysicalSize<u32>,
+    glyphs: &HudFontGlyphMap,
+) -> Option<HudSignEditorPreeditProjection> {
+    let preedit = screen
+        .preedit
+        .as_ref()
+        .filter(|preedit| !preedit.text.is_empty())?;
+    let (offset_y, scale, line_height, input_height) = match screen.kind {
+        HudSignEditorKind::Standing { .. } => (90.0, 0.976_562_8, 10.0, 10),
+        HudSignEditorKind::Hanging { .. } => (125.0, 1.0, 9.0, 9),
+    };
+    let active_line = &screen.lines[screen.line];
+    let line_width = i32::try_from(hud_plain_text_width(active_line, glyphs)).unwrap_or(i32::MAX);
+    let cursor_prefix = hud_prefix_by_chars(active_line, screen.cursor);
+    let cursor_width =
+        i32::try_from(hud_plain_text_width(&cursor_prefix, glyphs)).unwrap_or(i32::MAX);
+    let sign_midpoint = 4.0 * line_height * 0.5;
+    let cursor_y = screen.line as f32 * line_height - sign_midpoint;
+    // Vanilla derives this from integer font widths before applying the sign
+    // transform, so odd line widths truncate at the same point as Java `/ 2`.
+    let cursor_x = cursor_width.saturating_sub(line_width / 2);
+    let input_left = (surface_size.width as f32 * 0.5 + cursor_x as f32 * scale) as i32;
+    let input_top = (offset_y + cursor_y * scale) as i32;
+    let preedit_width =
+        i32::try_from(hud_plain_text_width(&preedit.text, glyphs)).unwrap_or(i32::MAX);
+    let surface_width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let surface_height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let mut preedit_left = input_left;
+    let mut preedit_right = preedit_left.saturating_add(preedit_width);
+    if preedit_right > surface_width {
+        preedit_left = surface_width.saturating_sub(preedit_width);
+        preedit_right = preedit_left.saturating_add(preedit_width);
+    }
+    let input_bottom = input_top.saturating_add(input_height);
+    let mut preedit_bottom = input_bottom
+        .saturating_add(HUD_SIGN_PREEDIT_INPUT_SEPARATION)
+        .saturating_add(HUD_SIGN_PREEDIT_TEXT_HEIGHT);
+    if preedit_bottom > surface_height {
+        preedit_bottom = input_top
+            .saturating_sub(HUD_SIGN_PREEDIT_INPUT_SEPARATION)
+            .saturating_sub(HUD_SIGN_PREEDIT_TEXT_HEIGHT);
+    }
+    let preedit_top = preedit_bottom.saturating_sub(HUD_SIGN_PREEDIT_TEXT_HEIGHT);
+    let hot_left = preedit_left
+        .min(input_left)
+        .saturating_sub(HUD_SIGN_PREEDIT_HOT_AREA_MARGIN);
+    let hot_top = preedit_top
+        .min(input_top)
+        .saturating_sub(HUD_SIGN_PREEDIT_HOT_AREA_MARGIN);
+    let hot_right = preedit_right.saturating_add(HUD_SIGN_PREEDIT_HOT_AREA_MARGIN);
+    let hot_bottom = preedit_bottom
+        .max(input_bottom)
+        .saturating_add(HUD_SIGN_PREEDIT_HOT_AREA_MARGIN);
+    Some(HudSignEditorPreeditProjection {
+        overlay: HudInventoryPreeditOverlay {
+            text: preedit.text.clone(),
+            focused_start: preedit.focused_start,
+            focused_end: preedit.focused_end,
+            caret: preedit.caret,
+            caret_visible: preedit.caret_visible,
+            text_x: preedit_left,
+            text_y: preedit_top,
+            background_x: preedit_left.saturating_sub(HUD_SIGN_PREEDIT_BACKGROUND_OFFSET),
+            background_y: preedit_top.saturating_sub(HUD_SIGN_PREEDIT_BACKGROUND_OFFSET),
+            background_width: u32::try_from(
+                preedit_width.saturating_add(HUD_SIGN_PREEDIT_BACKGROUND_OFFSET * 2),
+            )
+            .unwrap_or(u32::MAX),
+            background_height: u32::try_from(
+                HUD_SIGN_PREEDIT_TEXT_HEIGHT + HUD_SIGN_PREEDIT_BACKGROUND_OFFSET * 2,
+            )
+            .unwrap_or(u32::MAX),
+        },
+        ime_position: PhysicalPosition::new(hot_left, hot_top),
+        ime_size: PhysicalSize::new(
+            u32::try_from(hot_right.saturating_sub(hot_left).max(1)).unwrap_or(u32::MAX),
+            u32::try_from(hot_bottom.saturating_sub(hot_top).max(1)).unwrap_or(u32::MAX),
+        ),
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -16382,12 +16558,17 @@ fn sanitize_hud_sign_editor_screen(mut screen: HudSignEditorScreen) -> Option<Hu
     }
     screen.lines = screen
         .lines
-        .map(|line| sanitize_hud_text_preserving_empty(line, 384));
+        .map(|line| sanitize_hud_text_preserving_empty(line, usize::MAX));
     screen.line = screen.line.min(screen.lines.len().saturating_sub(1));
     let line_len = screen.lines[screen.line].chars().count();
     screen.cursor = screen.cursor.min(line_len);
     screen.selection = screen.selection.min(line_len);
     screen.text_tint = screen.text_tint.map(|component| component.clamp(0.0, 1.0));
+    screen.done = sanitize_hud_text_preserving_empty(screen.done, 256);
+    if screen.done.is_empty() {
+        return None;
+    }
+    screen.preedit = screen.preedit.and_then(sanitize_hud_sign_editor_preedit);
     screen.sign_preview = match screen.kind {
         HudSignEditorKind::Standing { .. } => {
             screen.sign_preview.and_then(sanitize_hud_entity_preview)
@@ -16395,6 +16576,20 @@ fn sanitize_hud_sign_editor_screen(mut screen: HudSignEditorScreen) -> Option<Hu
         HudSignEditorKind::Hanging { .. } => None,
     };
     Some(screen)
+}
+
+fn sanitize_hud_sign_editor_preedit(
+    mut preedit: HudSignEditorPreedit,
+) -> Option<HudSignEditorPreedit> {
+    preedit.text = sanitize_hud_text_preserving_empty(preedit.text, 256);
+    if preedit.text.is_empty() {
+        return None;
+    }
+    let text_len = preedit.text.chars().count();
+    preedit.focused_start = preedit.focused_start.min(text_len);
+    preedit.focused_end = preedit.focused_end.clamp(preedit.focused_start, text_len);
+    preedit.caret = preedit.caret.map(|caret| caret.min(text_len));
+    Some(preedit)
 }
 
 fn sanitize_hud_command_block_editor_screen(
@@ -23224,6 +23419,9 @@ mod tests {
             selection: 98,
             cursor_visible: true,
             text_tint: [2.0, 0.5, -1.0, 1.5],
+            done: "Done".to_string(),
+            done_hovered: false,
+            preedit: None,
         })
         .expect("standing sign editor");
         assert_eq!(standing.line, 3);
@@ -23245,9 +23443,80 @@ mod tests {
             selection: 0,
             cursor_visible: true,
             text_tint: [1.0, 1.0, 1.0, 1.0],
+            done: "Done".to_string(),
+            done_hovered: false,
+            preedit: None,
         })
         .expect("hanging sign editor");
         assert!(hanging.sign_preview.is_none());
+    }
+
+    #[test]
+    fn sign_editor_done_layout_and_preedit_projection_match_vanilla_geometry() {
+        let surface = PhysicalSize::new(320, 240);
+        assert_eq!(
+            hud_sign_editor_done_button_rect(surface),
+            HudCommandBlockEditorRect {
+                x: 60,
+                y: 204,
+                width: 200,
+                height: 20,
+            }
+        );
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, advance) in [('a', 5), ('b', 6), ('c', 6), ('?', 6)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        let screen = HudSignEditorScreen {
+            kind: HudSignEditorKind::Standing {
+                wood: SignModelWood::Oak,
+                attachment: SignModelAttachment::Standing,
+            },
+            sign_preview: None,
+            title: "Edit Sign Message".to_string(),
+            lines: [
+                "ab".to_string(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ],
+            line: 0,
+            cursor: 1,
+            selection: 1,
+            cursor_visible: true,
+            text_tint: [0.0, 0.0, 0.0, 1.0],
+            done: "Done".to_string(),
+            done_hovered: true,
+            preedit: Some(HudSignEditorPreedit {
+                text: "c".to_string(),
+                focused_start: 0,
+                focused_end: 1,
+                caret: Some(1),
+                caret_visible: true,
+            }),
+        };
+        let projection = hud_sign_editor_preedit_projection(&screen, surface, &glyphs).unwrap();
+        assert_eq!(
+            (projection.overlay.text_x, projection.overlay.text_y),
+            (160, 84)
+        );
+        assert_eq!(
+            (
+                projection.overlay.background_x,
+                projection.overlay.background_y,
+                projection.overlay.background_width,
+                projection.overlay.background_height,
+            ),
+            (155, 79, 16, 19)
+        );
+        assert_eq!(projection.ime_position, PhysicalPosition::new(158, 68));
+        assert_eq!(projection.ime_size, PhysicalSize::new(10, 27));
     }
 
     #[test]

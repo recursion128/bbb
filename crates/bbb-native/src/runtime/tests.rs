@@ -8165,7 +8165,8 @@ fn hud_sign_editor_screen_projects_standing_sign_preview() {
         is_front_text: true,
     });
 
-    let screen = hud_sign_editor_screen(&input, &world).expect("sign editor screen");
+    let screen = hud_sign_editor_screen(&input, &world, winit::dpi::PhysicalSize::new(320, 240))
+        .expect("sign editor screen");
     assert_eq!(screen.title, "Edit Sign Message");
     assert_eq!(
         screen.kind,
@@ -8206,7 +8207,8 @@ fn hud_sign_editor_screen_projects_hanging_sign_background_state() {
         is_front_text: true,
     });
 
-    let screen = hud_sign_editor_screen(&input, &world).expect("hanging sign editor screen");
+    let screen = hud_sign_editor_screen(&input, &world, winit::dpi::PhysicalSize::new(320, 240))
+        .expect("hanging sign editor screen");
     assert_eq!(screen.title, "Edit Hanging Sign Message");
     assert_eq!(
         screen.kind,

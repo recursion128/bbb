@@ -6179,7 +6179,7 @@
             "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_sign_update",
             "crates/bbb-native/src/input/tests.rs#pending_sign_editor_escape_preserves_existing_sign_text",
             "crates/bbb-native/src/input/tests.rs#sign_editor_text_input_changes_lines_and_queues_sign_update",
-            "crates/bbb-native/src/input/tests.rs#sign_editor_text_input_filters_invalid_chars_and_max_length",
+            "crates/bbb-native/src/input/tests.rs#sign_editor_text_input_filters_invalid_chars_and_measured_width",
             "crates/bbb-world/src/chunks/tests.rs#applies_sign_block_entity_text_update"
           ],
           "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",

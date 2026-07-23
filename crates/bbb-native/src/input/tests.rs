@@ -1153,6 +1153,15 @@ fn sign_text_side(lines: [&str; 4]) -> bbb_world::SignTextSideState {
     }
 }
 
+fn sign_text_side_with_filtered(
+    lines: [&str; 4],
+    filtered: [&str; 4],
+) -> bbb_world::SignTextSideState {
+    let mut side = sign_text_side(lines);
+    side.filtered_lines = Some(sign_text_side(filtered).lines);
+    side
+}
+
 fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> WorldStore {
     let mut world = WorldStore::new();
     insert_sign_text(&mut world, pos, front, back);
@@ -1160,6 +1169,15 @@ fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> Wor
 }
 
 fn insert_sign_text(world: &mut WorldStore, pos: BlockPos, front: [&str; 4], back: [&str; 4]) {
+    insert_sign_text_state(world, pos, sign_text_side(front), sign_text_side(back));
+}
+
+fn insert_sign_text_state(
+    world: &mut WorldStore,
+    pos: BlockPos,
+    front: bbb_world::SignTextSideState,
+    back: bbb_world::SignTextSideState,
+) {
     world.insert_decoded_chunk(ChunkColumn {
         pos: ChunkPos {
             x: pos.x.div_euclid(16),
@@ -1176,8 +1194,8 @@ fn insert_sign_text(world: &mut WorldStore, pos: BlockPos, front: [&str; 4], bac
             raw_nbt: vec![0],
             nbt: None,
             sign_text: Some(SignBlockEntityTextState {
-                front: sign_text_side(front),
-                back: sign_text_side(back),
+                front,
+                back,
                 is_waxed: false,
             }),
             command_block: None,
@@ -21153,6 +21171,7 @@ fn anvil_text_input_starts_from_default_hover_name_when_item_runtime_is_availabl
         &commands,
         Some(&item_runtime),
         "!",
+        &FixedCommandSuggestionTextMeasurer,
     );
 
     assert_eq!(input.anvil_rename_text(), "Test Combo!");
@@ -21275,6 +21294,7 @@ fn anvil_default_hover_name_is_sent_as_empty_rename() {
         &commands,
         Some(&item_runtime),
         "!",
+        &FixedCommandSuggestionTextMeasurer,
     );
     handle_key_input_with_item_runtime(
         &mut input,
@@ -21285,6 +21305,8 @@ fn anvil_default_hover_name_is_sent_as_empty_rename() {
         PhysicalKey::Code(KeyCode::Backspace),
         ElementState::Pressed,
         PhysicalSize::new(1280, 720),
+        &FixedCommandSuggestionTextMeasurer,
+        None,
     );
 
     assert_eq!(input.anvil_rename_text(), "Test Combo");
@@ -21327,6 +21349,7 @@ fn anvil_custom_name_matching_hover_name_is_sent_verbatim() {
         &commands,
         Some(&item_runtime),
         "!",
+        &FixedCommandSuggestionTextMeasurer,
     );
     handle_key_input_with_item_runtime(
         &mut input,
@@ -21337,6 +21360,8 @@ fn anvil_custom_name_matching_hover_name_is_sent_verbatim() {
         PhysicalKey::Code(KeyCode::Backspace),
         ElementState::Pressed,
         PhysicalSize::new(1280, 720),
+        &FixedCommandSuggestionTextMeasurer,
+        None,
     );
 
     assert_eq!(input.anvil_rename_text(), "Custom Combo");
@@ -21931,6 +21956,7 @@ fn dialog_stack_submits_suspends_and_restores_the_native_sign_editor() {
         &mut world,
         &commands,
         "draft",
+        &FixedCommandSuggestionTextMeasurer,
     ));
     let editor = input.sign_editor.as_mut().unwrap();
     editor.cursor = 2;
@@ -21959,7 +21985,7 @@ fn dialog_stack_submits_suspends_and_restores_the_native_sign_editor() {
     assert_eq!(input.sign_editor.as_ref(), Some(&expected));
     assert_eq!(
         input.sign_editor_hud_state(&world),
-        Some(sign_editor_hud_state_from_editor(&expected))
+        Some(sign_editor_hud_state_from_editor(&expected, None))
     );
 
     submit_sign_editor(&mut input, &mut counters, &commands);
@@ -22295,13 +22321,7 @@ fn sign_editor_control_word_keys_edit_current_line() {
         is_front_text: false,
     });
 
-    handle_text_input(
-        &mut input,
-        &mut counters,
-        &mut world,
-        &commands,
-        "alpha beta gamma",
-    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "aa bb cc");
     handle_key_input(
         &mut input,
         &mut counters,
@@ -22374,7 +22394,7 @@ fn sign_editor_control_word_keys_edit_current_line() {
             pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
             is_front_text: false,
             lines: [
-                "alpha ".to_string(),
+                "aa ".to_string(),
                 String::new(),
                 String::new(),
                 String::new(),
@@ -22552,7 +22572,7 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
 }
 
 #[test]
-fn sign_editor_text_input_filters_invalid_chars_and_max_length() {
+fn sign_editor_text_input_filters_invalid_chars_and_measured_width() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
@@ -22563,9 +22583,17 @@ fn sign_editor_text_input_filters_invalid_chars_and_max_length() {
         pos: ProtocolBlockPos { x: 0, y: 1, z: 2 },
         is_front_text: true,
     });
-    let text = format!("{}{}\u{a7}\n", "a".repeat(383), "🙂");
-
-    handle_text_input(&mut input, &mut counters, &mut world, &commands, &text);
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        &"a".repeat(15),
+    );
+    // The 16th six-pixel glyph exceeds a standing sign's 90-pixel width and
+    // the whole candidate is rejected. Invalid chat characters insert nothing.
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "b");
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "\u{a7}\n");
     handle_key_input(
         &mut input,
         &mut counters,
@@ -22575,7 +22603,7 @@ fn sign_editor_text_input_filters_invalid_chars_and_max_length() {
         ElementState::Pressed,
     );
 
-    let expected = "a".repeat(383);
+    let expected = "a".repeat(15);
     assert_eq!(counters.sign_update_commands_queued, 1);
     assert_eq!(
         rx.try_recv().unwrap(),
@@ -22585,6 +22613,343 @@ fn sign_editor_text_input_filters_invalid_chars_and_max_length() {
             lines: [expected, String::new(), String::new(), String::new(),],
         })
     );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sign_editor_hanging_block_uses_60_pixel_candidate_limit() {
+    let sign_pos = BlockPos { x: 0, y: 1, z: 2 };
+    let mut world = WorldStore::new();
+    insert_empty_chunk_for_block(&mut world, sign_pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 0, y: 1, z: 2 },
+        block_state_id: vanilla_block_state_id(
+            "minecraft:bamboo_hanging_sign",
+            [
+                ("attached", "true"),
+                ("rotation", "0"),
+                ("waterlogged", "false"),
+            ],
+        ),
+    }));
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 0, y: 1, z: 2 },
+        is_front_text: true,
+    });
+    let mut input = ClientInputState::new(true);
+    assert!(sync_sign_editor_input(
+        &mut input,
+        &mut NetCounters::default(),
+        &mut world,
+        &None,
+    ));
+    assert_eq!(
+        input.sign_editor.as_ref().unwrap().max_line_width,
+        HANGING_SIGN_MAX_LINE_WIDTH
+    );
+
+    let editor = input.sign_editor.as_mut().unwrap();
+    insert_sign_line_text(editor, &"a".repeat(10), &FixedCommandSuggestionTextMeasurer);
+    insert_sign_line_text(editor, "b", &FixedCommandSuggestionTextMeasurer);
+    assert_eq!(editor.lines[0], "a".repeat(10));
+}
+
+#[test]
+fn sign_editor_preload_uses_filtered_open_snapshot() {
+    let sign_pos = BlockPos { x: 1, y: 64, z: 1 };
+    let mut world = WorldStore::new();
+    insert_sign_text_state(
+        &mut world,
+        sign_pos,
+        sign_text_side_with_filtered(["raw", "", "", ""], ["filtered", "", "", ""]),
+        sign_text_side(["", "", "", ""]),
+    );
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 1, y: 64, z: 1 },
+        is_front_text: true,
+    });
+    let mut input = ClientInputState::new(true);
+    input.set_client_text_filtering_enabled(true);
+    assert!(input.render_publication().client_text_filtering_enabled());
+
+    assert_eq!(
+        input.sign_editor_hud_state(&world).unwrap().lines[0],
+        "filtered"
+    );
+    assert!(sync_sign_editor_input(
+        &mut input,
+        &mut NetCounters::default(),
+        &mut world,
+        &None,
+    ));
+    assert_eq!(input.sign_editor.as_ref().unwrap().lines[0], "filtered");
+}
+
+#[test]
+fn sign_editor_shift_selection_replaces_the_selected_range() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let sign_pos = BlockPos { x: 2, y: 64, z: 2 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 2, y: 64, z: 2 },
+        is_front_text: true,
+    });
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "abcd");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    );
+    for _ in 0..2 {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            ElementState::Pressed,
+        );
+    }
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Released,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "X");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(matches!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate { lines, .. }) if lines[0] == "abX"
+    ));
+}
+
+#[test]
+fn sign_editor_clipboard_copy_cut_and_sanitized_paste_match_text_field_helper() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let sign_pos = BlockPos { x: 3, y: 64, z: 3 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 3, y: 64, z: 3 },
+        is_front_text: true,
+    });
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "copy");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    let mut clipboard = MockDebugClipboard::accepting();
+    for code in [KeyCode::KeyC, KeyCode::KeyX] {
+        handle_key_input_with_item_runtime(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            None,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+            PhysicalSize::new(320, 240),
+            &FixedCommandSuggestionTextMeasurer,
+            Some(&mut clipboard),
+        );
+        assert_eq!(clipboard.text.as_deref(), Some("copy"));
+    }
+    assert_eq!(input.sign_editor.as_ref().unwrap().lines[0], "");
+    clipboard.text = Some("\u{a7}aP\raste\n".to_string());
+    handle_key_input_with_item_runtime(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        None,
+        PhysicalKey::Code(KeyCode::KeyV),
+        ElementState::Pressed,
+        PhysicalSize::new(320, 240),
+        &FixedCommandSuggestionTextMeasurer,
+        Some(&mut clipboard),
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(matches!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate { lines, .. }) if lines[0] == "Paste"
+    ));
+}
+
+#[test]
+fn sign_editor_tick_range_guard_submits_once() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+    let sign_pos = BlockPos { x: 4, y: 64, z: 4 };
+    let mut world = world_with_local_player_id(42);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 4.5,
+            y: 63.0,
+            z: 4.5,
+        },
+        ..Default::default()
+    });
+    insert_sign_text(
+        &mut world,
+        sign_pos,
+        ["draft", "", "", ""],
+        ["", "", "", ""],
+    );
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 4, y: 64, z: 4 },
+        is_front_text: true,
+    });
+    let mut input = ClientInputState::new(true);
+    assert!(input.sync_sign_editor(&mut world, &mut counters, &commands));
+    assert!(input.sign_editor.is_some());
+
+    let mut pose = world.local_player_pose().unwrap();
+    pose.position.x = 100.0;
+    world.set_local_player_pose(pose);
+    assert!(input.sync_sign_editor(&mut world, &mut counters, &commands));
+    assert!(!input.sync_sign_editor(&mut world, &mut counters, &commands));
+    assert!(input.sign_editor.is_none());
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::SignUpdate(_)));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sign_editor_tick_removed_sign_submits_once() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+    let sign_pos = BlockPos { x: 4, y: 64, z: 4 };
+    let mut world = world_with_local_player_id(42);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 4.5,
+            y: 63.0,
+            z: 4.5,
+        },
+        ..Default::default()
+    });
+    insert_sign_text(
+        &mut world,
+        sign_pos,
+        ["draft", "", "", ""],
+        ["", "", "", ""],
+    );
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 4, y: 64, z: 4 },
+        is_front_text: true,
+    });
+    let mut input = ClientInputState::new(true);
+    assert!(input.sync_sign_editor(&mut world, &mut counters, &commands));
+
+    assert!(world.forget_chunk(ChunkPos { x: 0, z: 0 }));
+    assert!(input.sync_sign_editor(&mut world, &mut counters, &commands));
+    assert!(!input.sync_sign_editor(&mut world, &mut counters, &commands));
+    assert!(input.sign_editor.is_none());
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::SignUpdate(_)));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sign_editor_done_mouse_and_ime_preedit_share_one_submit_path() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+    let sign_pos = BlockPos { x: 5, y: 64, z: 5 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 5, y: 64, z: 5 },
+        is_front_text: true,
+    });
+    let mut input = ClientInputState::new(true);
+    assert!(sync_sign_editor_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+    ));
+    assert!(input.handle_sign_editor_ime_preedit("候補", Some((0, 3))));
+    let state = input.sign_editor_hud_state(&world).unwrap();
+    assert_eq!(state.lines[0], "");
+    assert_eq!(state.preedit.as_ref().unwrap().text, "候補");
+    assert_eq!(state.preedit.as_ref().unwrap().focused_end, 1);
+
+    input.clear_sign_editor_ime_preedit();
+    assert!(handle_sign_editor_text(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "候",
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    let surface = PhysicalSize::new(320, 240);
+    let done = bbb_renderer::hud_sign_editor_done_button_rect(surface);
+    assert!(input.handle_sign_editor_mouse_input(
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(done.x + 1),
+            f64::from(done.y + 1),
+        )),
+        surface,
+    ));
+    assert!(matches!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate { lines, .. }) if lines[0] == "候"
+    ));
     assert!(rx.try_recv().is_err());
 }
 
@@ -22896,6 +23261,8 @@ fn escape_key_closes_narrow_recipe_book_before_container() {
         PhysicalKey::Code(KeyCode::Escape),
         ElementState::Pressed,
         PhysicalSize::new(378, 720),
+        &FixedCommandSuggestionTextMeasurer,
+        None,
     );
 
     assert!(world.inventory().open_container.is_some());

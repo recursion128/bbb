@@ -95,6 +95,8 @@ pub(crate) fn pump_control_input_requests(
                     PhysicalKey::Code(input_key_code(key)),
                     state,
                     surface_size,
+                    &crate::input::FallbackTextMeasurer,
+                    None,
                 );
             }
             InputControlRequest::LookDelta { dx, dy } => {

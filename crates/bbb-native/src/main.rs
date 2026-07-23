@@ -518,6 +518,7 @@ fn main() -> Result<()> {
     let window = build_window(&event_loop)?;
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
+    input.set_client_text_filtering_enabled(args.client_text_filtering);
     let startup_debug_profile = args.debug_profile.into();
     if let Some(path) = args.debug_profile_store.clone() {
         input.set_debug_profile_store_path(path.clone());
@@ -885,12 +886,17 @@ fn main() -> Result<()> {
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                     );
                     let dialog_preedit = render_publication.input.dialog_ime_preedit_hud_state();
-                    if let Some((position, size)) = dialog_ime_cursor_area(
-                        &render_publication.world,
-                        dialog_preedit.as_ref(),
-                        window.inner_size(),
-                        &renderer,
-                    ) {
+                    let sign_preedit_area =
+                        renderer.hud_sign_editor_ime_cursor_area(window.inner_size());
+                    let dialog_preedit_area = || {
+                        dialog_ime_cursor_area(
+                            &render_publication.world,
+                            dialog_preedit.as_ref(),
+                            window.inner_size(),
+                            &renderer,
+                        )
+                    };
+                    if let Some((position, size)) = sign_preedit_area.or_else(dialog_preedit_area) {
                         window.set_ime_cursor_area(position, size);
                     }
                     let profiler_update_duration = profiler_update_started_at.elapsed();
