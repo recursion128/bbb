@@ -8,7 +8,8 @@ pub use crate::client::audio::{
 };
 pub use crate::client::book::{
     BookEditScreenState, BookEditSubmission, BookScreenState, BookSignScreenState,
-    BookViewPageState, BookViewScreenState, OpenBookState,
+    BookViewPageState, BookViewScreenState, OpenBookState, MAX_BOOK_PAGE_UTF16_UNITS,
+    MAX_BOOK_TITLE_UTF16_UNITS,
 };
 pub use crate::client::chat::{
     ChatDecorationArgumentState, ChatDecorationState, ChatDisconnectReason, ChatMessageKind,

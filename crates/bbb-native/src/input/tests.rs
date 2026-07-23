@@ -21896,7 +21896,7 @@ fn book_screen_mouse_clicks_turn_pages_and_close() {
     open_test_book_screen(&mut world, vec!["First", "Second"]);
     let surface_size = PhysicalSize::new(800, 600);
     let origin_x = (800.0 - f64::from(BOOK_SCREEN_WIDTH)) * 0.5;
-    let origin_y = (600.0 - f64::from(BOOK_SCREEN_HEIGHT)) * 0.5;
+    let origin_y = 2.0;
 
     assert!(handle_book_screen_mouse_input(
         &mut world,

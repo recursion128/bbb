@@ -1,10 +1,7 @@
 //! Native camera/locale projection for generic entity name tags.
 
 use bbb_item_model::NativeItemRuntime;
-use bbb_protocol::{
-    component_node_style_from_nbt_value, ComponentStyle, NbtSummaryEntry, NbtSummaryValue,
-    RichTextComponent,
-};
+use bbb_protocol::ComponentStyle;
 use bbb_renderer::{
     bake_entity_name_tag_surfaces, entity_name_tag_root_position, CameraPose, EntityModelInstance,
     EntityNameTagSurface, HudTextStyle, WorldTextRun,
@@ -15,7 +12,7 @@ use bbb_world::{
     ItemFrameFacing,
 };
 
-use crate::component_text::{visit_localized_template, LocalizedTemplatePart};
+use crate::component_text::{localized_component_runs, localized_or_fallback};
 
 const NAME_TAG_MAX_DISTANCE_SQ: f64 = 64.0 * 64.0;
 const DISCRETE_NAME_TAG_MAX_DISTANCE_SQ: f64 = 32.0 * 32.0;
@@ -182,12 +179,12 @@ fn entity_name_tag_text_runs(
     let mut runs = Vec::new();
     for segment in &state.segments {
         match segment {
-            EntityNameTagTextSegmentState::Rich(component) => append_localized_component_runs(
-                &mut runs,
-                component,
-                &state.inherited_style,
-                item_runtime,
-            ),
+            EntityNameTagTextSegmentState::Rich(component) => {
+                for run in localized_component_runs(component, &state.inherited_style, item_runtime)
+                {
+                    push_run(&mut runs, hud_run(&run.text, &run.style));
+                }
+            }
             EntityNameTagTextSegmentState::Styled(styled) => {
                 for run in styled {
                     let style = run.style.apply_to(&state.inherited_style);
@@ -201,126 +198,6 @@ fn entity_name_tag_text_runs(
         }
     }
     runs
-}
-
-fn append_localized_component_runs(
-    out: &mut Vec<WorldTextRun>,
-    component: &RichTextComponent,
-    inherited: &ComponentStyle,
-    item_runtime: Option<&NativeItemRuntime>,
-) {
-    append_component_value_runs(out, component.component(), inherited, item_runtime);
-}
-
-fn append_component_value_runs(
-    out: &mut Vec<WorldTextRun>,
-    value: &NbtSummaryValue,
-    inherited: &ComponentStyle,
-    item_runtime: Option<&NativeItemRuntime>,
-) {
-    match value {
-        NbtSummaryValue::String(text) => push_run(out, hud_run(text, inherited)),
-        NbtSummaryValue::List(values) => {
-            for value in values {
-                append_component_value_runs(out, value, inherited, item_runtime);
-            }
-        }
-        NbtSummaryValue::Compound(entries) => {
-            let style = component_node_style_from_nbt_value(value).apply_to(inherited);
-            append_primary_component_runs(out, entries, &style, item_runtime);
-            if let Some(extra) = find_entry(entries, "extra") {
-                append_component_value_runs(out, extra, &style, item_runtime);
-            }
-        }
-        _ => {}
-    }
-}
-
-fn append_primary_component_runs(
-    out: &mut Vec<WorldTextRun>,
-    entries: &[NbtSummaryEntry],
-    style: &ComponentStyle,
-    item_runtime: Option<&NativeItemRuntime>,
-) {
-    if let Some(text) = find_entry(entries, "text") {
-        append_component_value_runs(out, text, style, item_runtime);
-        return;
-    }
-    if let Some(NbtSummaryValue::String(key)) = find_entry(entries, "translate") {
-        let fallback = match find_entry(entries, "fallback") {
-            Some(NbtSummaryValue::String(fallback)) => fallback.as_str(),
-            _ => key.as_str(),
-        };
-        let template = localized_or_fallback(item_runtime, key, fallback);
-        let arguments = translation_arguments(entries, style, item_runtime);
-        append_translation_template(out, &template, style, &arguments);
-        return;
-    }
-    if let Some(NbtSummaryValue::String(key)) = find_entry(entries, "keybind") {
-        let text = localized_or_fallback(item_runtime, key, key);
-        push_run(out, hud_run(&text, style));
-        return;
-    }
-    for key in ["selector", "nbt"] {
-        if let Some(NbtSummaryValue::String(text)) = find_entry(entries, key) {
-            push_run(out, hud_run(text, style));
-            return;
-        }
-    }
-}
-
-fn translation_arguments(
-    entries: &[NbtSummaryEntry],
-    style: &ComponentStyle,
-    item_runtime: Option<&NativeItemRuntime>,
-) -> Vec<Vec<WorldTextRun>> {
-    let Some(with) = find_entry(entries, "with") else {
-        return Vec::new();
-    };
-    let values = match with {
-        NbtSummaryValue::List(values) => values.as_slice(),
-        value => std::slice::from_ref(value),
-    };
-    values
-        .iter()
-        .map(|value| {
-            let mut runs = Vec::new();
-            append_component_value_runs(&mut runs, value, style, item_runtime);
-            runs
-        })
-        .collect()
-}
-
-fn append_translation_template(
-    out: &mut Vec<WorldTextRun>,
-    template: &str,
-    style: &ComponentStyle,
-    arguments: &[Vec<WorldTextRun>],
-) {
-    visit_localized_template(template, |part| match part {
-        LocalizedTemplatePart::Literal(text) => push_run(out, hud_run(text, style)),
-        LocalizedTemplatePart::Argument { index, raw } => {
-            if let Some(argument) = arguments.get(index) {
-                for run in argument {
-                    push_run(out, run.clone());
-                }
-            } else {
-                push_run(out, hud_run(raw, style));
-            }
-        }
-    });
-}
-
-fn localized_or_fallback(
-    item_runtime: Option<&NativeItemRuntime>,
-    key: &str,
-    fallback: &str,
-) -> String {
-    item_runtime
-        .map(|runtime| runtime.localized_text(key))
-        .filter(|text| *text != key)
-        .unwrap_or(fallback)
-        .to_string()
 }
 
 fn hud_run(text: &str, style: &ComponentStyle) -> WorldTextRun {
@@ -351,15 +228,10 @@ fn push_run(runs: &mut Vec<WorldTextRun>, run: WorldTextRun) {
     }
 }
 
-fn find_entry<'a>(entries: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
-    entries
-        .iter()
-        .find(|entry| entry.name == name)
-        .map(|entry| &entry.value)
-}
-
 #[cfg(test)]
 mod tests {
+    use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue, RichTextComponent};
+
     use super::*;
 
     fn general_policy() -> EntityNameTagVisibilityPolicy {

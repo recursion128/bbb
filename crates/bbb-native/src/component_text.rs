@@ -1,5 +1,11 @@
 //! Shared language-template tokenization for native Component presenters.
 
+use bbb_item_model::NativeItemRuntime;
+use bbb_protocol::{
+    component_node_style_from_nbt_value, ComponentStyle, NbtSummaryEntry, NbtSummaryValue,
+    RichTextComponent, StyledTextRun,
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LocalizedTemplatePart<'a> {
     Literal(&'a str),
@@ -64,8 +70,156 @@ pub(crate) fn visit_localized_template<'a>(
     }
 }
 
+/// Resolves one validated Component into localized, fully inherited runs.
+///
+/// Unlike visual-only projections, this retains click, hover, and font data so
+/// each screen can decide how to present or dispatch the exact resolved style.
+pub(crate) fn localized_component_runs(
+    component: &RichTextComponent,
+    inherited: &ComponentStyle,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<StyledTextRun> {
+    let mut runs = Vec::new();
+    append_component_value_runs(&mut runs, component.component(), inherited, item_runtime);
+    runs
+}
+
+pub(crate) fn localized_or_fallback(
+    item_runtime: Option<&NativeItemRuntime>,
+    key: &str,
+    fallback: &str,
+) -> String {
+    item_runtime
+        .map(|runtime| runtime.localized_text(key))
+        .filter(|text| *text != key)
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn append_component_value_runs(
+    out: &mut Vec<StyledTextRun>,
+    value: &NbtSummaryValue,
+    inherited: &ComponentStyle,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    match value {
+        NbtSummaryValue::String(text) => push_styled_run(out, text, inherited),
+        NbtSummaryValue::List(values) => {
+            for value in values {
+                append_component_value_runs(out, value, inherited, item_runtime);
+            }
+        }
+        NbtSummaryValue::Compound(entries) => {
+            let style = component_node_style_from_nbt_value(value).apply_to(inherited);
+            append_primary_component_runs(out, entries, &style, item_runtime);
+            if let Some(extra) = find_entry(entries, "extra") {
+                append_component_value_runs(out, extra, &style, item_runtime);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn append_primary_component_runs(
+    out: &mut Vec<StyledTextRun>,
+    entries: &[NbtSummaryEntry],
+    style: &ComponentStyle,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    if let Some(text) = find_entry(entries, "text") {
+        append_component_value_runs(out, text, style, item_runtime);
+        return;
+    }
+    if let Some(NbtSummaryValue::String(key)) = find_entry(entries, "translate") {
+        let fallback = match find_entry(entries, "fallback") {
+            Some(NbtSummaryValue::String(fallback)) => fallback.as_str(),
+            _ => key.as_str(),
+        };
+        let template = localized_or_fallback(item_runtime, key, fallback);
+        let arguments = translation_arguments(entries, style, item_runtime);
+        append_translation_template(out, &template, style, &arguments);
+        return;
+    }
+    if let Some(NbtSummaryValue::String(key)) = find_entry(entries, "keybind") {
+        let text = localized_or_fallback(item_runtime, key, key);
+        push_styled_run(out, &text, style);
+        return;
+    }
+    for key in ["selector", "nbt"] {
+        if let Some(NbtSummaryValue::String(text)) = find_entry(entries, key) {
+            push_styled_run(out, text, style);
+            return;
+        }
+    }
+}
+
+fn translation_arguments(
+    entries: &[NbtSummaryEntry],
+    style: &ComponentStyle,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<Vec<StyledTextRun>> {
+    let Some(with) = find_entry(entries, "with") else {
+        return Vec::new();
+    };
+    let values = match with {
+        NbtSummaryValue::List(values) => values.as_slice(),
+        value => std::slice::from_ref(value),
+    };
+    values
+        .iter()
+        .map(|value| {
+            let mut runs = Vec::new();
+            append_component_value_runs(&mut runs, value, style, item_runtime);
+            runs
+        })
+        .collect()
+}
+
+fn append_translation_template(
+    out: &mut Vec<StyledTextRun>,
+    template: &str,
+    style: &ComponentStyle,
+    arguments: &[Vec<StyledTextRun>],
+) {
+    visit_localized_template(template, |part| match part {
+        LocalizedTemplatePart::Literal(text) => push_styled_run(out, text, style),
+        LocalizedTemplatePart::Argument { index, raw } => {
+            if let Some(argument) = arguments.get(index) {
+                for run in argument {
+                    push_styled_run(out, &run.text, &run.style);
+                }
+            } else {
+                push_styled_run(out, raw, style);
+            }
+        }
+    });
+}
+
+fn push_styled_run(runs: &mut Vec<StyledTextRun>, text: &str, style: &ComponentStyle) {
+    if text.is_empty() {
+        return;
+    }
+    if let Some(previous) = runs.last_mut().filter(|previous| previous.style == *style) {
+        previous.text.push_str(text);
+    } else {
+        runs.push(StyledTextRun {
+            text: text.to_string(),
+            style: style.clone(),
+        });
+    }
+}
+
+fn find_entry<'a>(entries: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    entries
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
+}
+
 #[cfg(test)]
 mod tests {
+    use bbb_protocol::{ComponentClickEvent, ComponentHoverEvent};
+
     use super::*;
 
     #[test]
@@ -92,5 +246,46 @@ mod tests {
                 LocalizedTemplatePart::Literal("q"),
             ]
         );
+    }
+
+    #[test]
+    fn localized_component_arguments_retain_interactive_and_font_style() {
+        let component = RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: NbtSummaryValue::String("missing.test".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "fallback".to_string(),
+                value: NbtSummaryValue::String("Open %s".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "with".to_string(),
+                value: NbtSummaryValue::List(vec![NbtSummaryValue::String("guide".to_string())]),
+            },
+        ]))
+        .unwrap();
+        let inherited = ComponentStyle {
+            click_event: Some(ComponentClickEvent::ChangePage { page: 4 }),
+            hover_event: Some(ComponentHoverEvent::ShowText {
+                value: vec![StyledTextRun {
+                    text: "Page four".to_string(),
+                    style: ComponentStyle::default(),
+                }],
+            }),
+            font: Some("example:book".to_string()),
+            ..ComponentStyle::default()
+        };
+
+        let runs = localized_component_runs(&component, &inherited, None);
+
+        assert_eq!(
+            runs.iter().map(|run| run.text.as_str()).collect::<String>(),
+            "Open guide"
+        );
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].style.click_event, inherited.click_event);
+        assert_eq!(runs[0].style.hover_event, inherited.hover_event);
+        assert_eq!(runs[0].style.font, inherited.font);
     }
 }

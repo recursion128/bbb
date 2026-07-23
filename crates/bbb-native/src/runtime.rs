@@ -2364,6 +2364,7 @@ pub(crate) fn advance_simulation(
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_sign_editor(world, net_counters, net_commands);
+    input.sync_book_screen(world);
     input.sync_command_block_editor(world, net_counters, net_commands);
     input.sync_minecart_command_block_editor(world, net_counters, net_commands);
     input.sync_structure_block_editor(world, net_counters, net_commands);

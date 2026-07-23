@@ -171,6 +171,7 @@ use crate::debug_entries::{
 };
 use crate::particle_runtime::{LocalDestroyHitParticleState, LocalPlayerActionParticleState};
 
+mod book;
 mod bundle;
 mod commands;
 mod component_patch;
@@ -203,6 +204,12 @@ use bbb_world::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
     PigSoundVariantIdentity, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
     VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, WolfSoundVariantIdentity,
+};
+pub(crate) use book::BookInputState;
+#[cfg(test)]
+pub(crate) use book::{
+    handle_book_screen_mouse_input, BOOK_MENU_BUTTON_Y, BOOK_MENU_DONE_BUTTON_X,
+    BOOK_PAGE_BUTTON_Y, BOOK_PAGE_FORWARD_BUTTON_X, BOOK_SCREEN_WIDTH,
 };
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
@@ -386,17 +393,6 @@ const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
 const STANDING_SIGN_MAX_LINE_WIDTH: u32 = 90;
 const HANGING_SIGN_MAX_LINE_WIDTH: u32 = 60;
-const BOOK_SCREEN_WIDTH: i32 = 192;
-const BOOK_SCREEN_HEIGHT: i32 = 192;
-const BOOK_PAGE_BUTTON_Y: i32 = 157;
-const BOOK_PAGE_BACK_BUTTON_X: i32 = 43;
-const BOOK_PAGE_FORWARD_BUTTON_X: i32 = 116;
-const BOOK_PAGE_BUTTON_WIDTH: i32 = 23;
-const BOOK_PAGE_BUTTON_HEIGHT: i32 = 13;
-const BOOK_MENU_BUTTON_Y: i32 = 194;
-const BOOK_MENU_DONE_BUTTON_X: i32 = -4;
-const BOOK_MENU_BUTTON_WIDTH: i32 = 200;
-const BOOK_MENU_BUTTON_HEIGHT: i32 = 20;
 const DEBUG_GAME_MODE_SWITCHER_SLOT_AREA: i32 = 26;
 const DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED: i32 = 31;
 const DEBUG_GAME_MODE_SWITCHER_ALL_SLOTS_WIDTH: i32 = 4 * DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED - 5;
@@ -418,13 +414,6 @@ const ADVANCEMENTS_TAB_LEFT_MAX: usize = 5;
 const ADVANCEMENTS_TAB_RIGHT_WIDTH: i32 = 32;
 const ADVANCEMENTS_TAB_RIGHT_HEIGHT: i32 = 28;
 const ADVANCEMENTS_TAB_RIGHT_MAX: usize = 5;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BookScreenClickTarget {
-    Done,
-    PreviousPage,
-    NextPage,
-}
 
 pub(crate) trait DebugClipboard {
     fn set_debug_clipboard_text(&mut self, text: &str) -> bool;
@@ -585,6 +574,7 @@ pub(crate) struct ClientInputState {
     dialog_last_click_screen_revision: Option<u64>,
     dialog_ime_preedit: Option<DialogImePreeditState>,
     client_text_filtering_enabled: bool,
+    book_input: Option<BookInputState>,
     dialog_screen_was_open: bool,
     dialog_native_previous_screen: Option<NativeDialogPreviousScreenState>,
     inventory_quick_craft_button_num: Option<i8>,
@@ -1192,6 +1182,7 @@ impl ClientInputState {
             inventory_cursor_position: self.inventory_cursor_position,
             dialog_ime_preedit: self.dialog_ime_preedit.clone(),
             client_text_filtering_enabled: self.client_text_filtering_enabled,
+            book_input: self.book_input.clone(),
             dialog_native_previous_screen: self.dialog_native_previous_screen.clone(),
             inventory_quick_craft_button_num: self.inventory_quick_craft_button_num,
             inventory_quick_craft_slots: self.inventory_quick_craft_slots.clone(),
@@ -9868,28 +9859,6 @@ pub(crate) fn handle_focus_change(
     input.focused = focused;
 }
 
-fn handle_book_screen_key(world: &mut WorldStore, code: KeyCode, pressed: bool) -> bool {
-    if world.current_book().is_none() {
-        return false;
-    }
-    if !pressed {
-        return true;
-    }
-    match code {
-        KeyCode::Escape | KeyCode::KeyE => {
-            world.close_current_book();
-        }
-        KeyCode::PageUp => {
-            world.turn_current_book_page(-1);
-        }
-        KeyCode::PageDown => {
-            world.turn_current_book_page(1);
-        }
-        _ => {}
-    }
-    true
-}
-
 fn handle_advancements_screen_key(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -10518,78 +10487,6 @@ fn advancements_done_button_contains(
         && cursor.y < y + f64::from(ADVANCEMENTS_DONE_BUTTON_HEIGHT)
 }
 
-pub(crate) fn handle_book_screen_mouse_input(
-    world: &mut WorldStore,
-    button: MouseButton,
-    state: ElementState,
-    cursor_position: Option<PhysicalPosition<f64>>,
-    surface_size: PhysicalSize<u32>,
-) -> bool {
-    if world.current_book().is_none() {
-        return false;
-    }
-    if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
-        return true;
-    }
-    match book_screen_click_target_at_position(world, cursor_position, surface_size) {
-        Some(BookScreenClickTarget::Done) => {
-            world.close_current_book();
-        }
-        Some(BookScreenClickTarget::PreviousPage) => {
-            world.turn_current_book_page(-1);
-        }
-        Some(BookScreenClickTarget::NextPage) => {
-            world.turn_current_book_page(1);
-        }
-        None => {}
-    }
-    true
-}
-
-fn book_screen_click_target_at_position(
-    world: &WorldStore,
-    cursor_position: Option<PhysicalPosition<f64>>,
-    surface_size: PhysicalSize<u32>,
-) -> Option<BookScreenClickTarget> {
-    let book = world.current_book()?;
-    let cursor = cursor_position?;
-    let (origin_x, origin_y) = book_screen_origin(surface_size);
-    let x = cursor.x - origin_x;
-    let y = cursor.y - origin_y;
-    if y >= f64::from(BOOK_MENU_BUTTON_Y)
-        && y < f64::from(BOOK_MENU_BUTTON_Y + BOOK_MENU_BUTTON_HEIGHT)
-        && x >= f64::from(BOOK_MENU_DONE_BUTTON_X)
-        && x < f64::from(BOOK_MENU_DONE_BUTTON_X + BOOK_MENU_BUTTON_WIDTH)
-    {
-        return Some(BookScreenClickTarget::Done);
-    }
-    if y < f64::from(BOOK_PAGE_BUTTON_Y)
-        || y >= f64::from(BOOK_PAGE_BUTTON_Y + BOOK_PAGE_BUTTON_HEIGHT)
-    {
-        return None;
-    }
-    if book.current_page() > 0
-        && x >= f64::from(BOOK_PAGE_BACK_BUTTON_X)
-        && x < f64::from(BOOK_PAGE_BACK_BUTTON_X + BOOK_PAGE_BUTTON_WIDTH)
-    {
-        return Some(BookScreenClickTarget::PreviousPage);
-    }
-    if book.current_page() + 1 < book.page_count()
-        && x >= f64::from(BOOK_PAGE_FORWARD_BUTTON_X)
-        && x < f64::from(BOOK_PAGE_FORWARD_BUTTON_X + BOOK_PAGE_BUTTON_WIDTH)
-    {
-        return Some(BookScreenClickTarget::NextPage);
-    }
-    None
-}
-
-fn book_screen_origin(surface_size: PhysicalSize<u32>) -> (f64, f64) {
-    (
-        (f64::from(surface_size.width.max(1)) - f64::from(BOOK_SCREEN_WIDTH)) * 0.5,
-        (f64::from(surface_size.height.max(1)) - f64::from(BOOK_SCREEN_HEIGHT)) * 0.5,
-    )
-}
-
 #[cfg(test)]
 pub(crate) fn handle_key_input(
     input: &mut ClientInputState,
@@ -10690,6 +10587,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    let mut clipboard = clipboard;
     if handle_sign_editor_key(
         input,
         counters,
@@ -10698,7 +10596,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         code,
         pressed,
         text_measurer,
-        clipboard,
+        &mut clipboard,
     ) {
         return;
     }
@@ -10708,7 +10606,15 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
-    if handle_book_screen_key(world, code, pressed) {
+    if input.handle_book_screen_key(
+        counters,
+        world,
+        net_commands,
+        code,
+        pressed,
+        text_measurer,
+        &mut clipboard,
+    ) {
         return;
     }
 
@@ -11045,8 +10951,11 @@ pub(crate) fn handle_text_input_with_item_runtime(
         return;
     }
 
+    if input.handle_book_screen_text(world, text, text_measurer) {
+        return;
+    }
+
     if world.dialog_screen_is_open()
-        || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.game_rules_screen().is_some()
@@ -12023,7 +11932,7 @@ fn handle_sign_editor_key(
     code: KeyCode,
     pressed: bool,
     text_measurer: &impl CommandSuggestionTextMeasurer,
-    mut clipboard: Option<&mut dyn DebugClipboard>,
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
 ) -> bool {
     sync_sign_editor_input(input, counters, world, net_commands);
     if input.sign_editor.is_none() {

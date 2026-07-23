@@ -26,8 +26,7 @@ use crate::{
     code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
         handle_advancements_screen_cursor_moved, handle_advancements_screen_mouse_input,
-        handle_advancements_screen_mouse_wheel, handle_book_screen_mouse_input,
-        handle_focus_change, handle_inventory_cursor_moved,
+        handle_advancements_screen_mouse_wheel, handle_focus_change, handle_inventory_cursor_moved,
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
         handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick,
         handle_mouse_motion, handle_mouse_wheel, handle_text_input_with_item_runtime,
@@ -330,6 +329,14 @@ impl SimulationInputRuntime {
             context
                 .input
                 .handle_sign_editor_cursor_moved(self.cursor_position);
+            return;
+        }
+        if context.input.handle_book_screen_cursor_moved(
+            context.world,
+            self.cursor_position,
+            self.surface_size,
+            &self.text_measurements,
+        ) {
             return;
         }
         if context
@@ -770,12 +777,13 @@ impl SimulationInputRuntime {
             handle_dialog_text_input_with_measurer(context.world, text, &self.text_measurements);
             return;
         }
-        if book_open || advancements_open || stats_open {
+        if advancements_open || stats_open {
             self.request_cursor_capture(false, context.platform);
             return;
         }
         if sign_editor_open
             || container_open
+            || book_open
             || game_rules_open
             || command_entry_open
             || structure_block_editor_open
@@ -788,6 +796,7 @@ impl SimulationInputRuntime {
         if !self.cursor_captured
             && !sign_editor_open
             && !container_open
+            && !book_open
             && !game_rules_open
             && !command_entry_open
             && !structure_block_editor_open
@@ -1076,13 +1085,19 @@ impl SimulationInputRuntime {
         }
         if context.world.current_book().is_some() {
             self.request_cursor_capture(false, context.platform);
-            handle_book_screen_mouse_input(
+            context.input.handle_book_screen_mouse_input(
+                context.net_counters,
                 context.world,
+                context.net_commands,
                 button,
                 state,
                 self.cursor_position,
                 self.surface_size,
+                &self.text_measurements,
             );
+            if !simulation_wants_cursor(context.input, context.world) {
+                self.request_cursor_capture(true, context.platform);
+            }
             return;
         }
         if context.world.advancements_screen_is_open() {

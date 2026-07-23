@@ -26,7 +26,7 @@ use super::{
         queue_use_item_command, queue_use_item_on_command, queue_zero_pos_player_action_command,
         select_hotbar_slot,
     },
-    ClientInputState,
+    release_active_input, ClientInputState,
 };
 #[cfg(test)]
 use bbb_protocol::entity_types::*;
@@ -330,6 +330,13 @@ pub(super) fn start_use_item(
                     sequence,
                 );
                 world.set_local_using_item_with_hand(using_item, hand);
+                if using_item
+                    && world.open_writable_book_editor(hand, input.client_text_filtering_enabled())
+                {
+                    world.set_local_using_item_with_hand(false, hand);
+                    input.sync_book_screen(world);
+                    release_active_input(input, world, counters, net_commands);
+                }
             }
         }
     }

@@ -195,12 +195,14 @@ pub(crate) fn queue_edit_book_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     command: EditBook,
-) {
+) -> bool {
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::EditBook(command)).is_ok() {
             counters.edit_book_commands_queued += 1;
+            return true;
         }
     }
+    false
 }
 
 pub(crate) fn queue_change_difficulty_command(
