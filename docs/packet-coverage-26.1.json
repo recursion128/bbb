@@ -7466,10 +7466,12 @@
             "crates/bbb-world/src/chunks/store.rs#apply_biome_update",
             "crates/bbb-world/src/chunks/tests.rs#applies_biome_update_to_existing_chunk_sections",
             "crates/bbb-world/src/registries/environment_sampling.rs#environment_position_observes_holder_reorder_and_biome_replacement",
+            "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_observes_chunks_biomes_replacement_on_the_next_tick",
+            "crates/bbb-native/src/environment_animate_runtime.rs#ambient_particles_observe_chunks_biomes_replacement_on_the_next_tick",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunksBiomes"
           ],
-          "gap": "docs/unsupported-features.md#environment",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -7492,11 +7494,16 @@
             "crates/bbb-native/src/terrain_runtime/textures.rs#synchronize_biome_registry",
             "crates/bbb-native/src/particle_runtime.rs#synchronize_terrain_textures",
             "crates/bbb-native/src/runtime.rs#sampled_environment_attributes_at_camera",
+            "crates/bbb-native/src/music_runtime.rs#selected_background_music",
+            "crates/bbb-native/src/runtime.rs#environment_audio.advance_for_ticks",
+            "crates/bbb-native/src/runtime.rs#environment_animate.advance_for_ticks",
             "crates/bbb-native/src/runtime/tests.rs#biome_positional_environment_values_override_custom_dimension_base",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunksBiomes"
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunksBiomes",
+            "vanilla:net/minecraft/client/resources/sounds/BiomeAmbientSoundsHandler.java#tick",
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#animateTick"
           ],
-          "gap": "docs/unsupported-features.md#environment",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -7504,8 +7511,11 @@
             "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_light_and_biome_updates_to_world",
             "crates/bbb-world/src/chunks/tests.rs#applies_biome_update_to_existing_chunk_sections",
+            "crates/bbb-world/src/registries/environment_sampling.rs#environment_position_observes_holder_reorder_and_biome_replacement",
             "crates/bbb-native/src/terrain_runtime/textures/tests.rs#biome_colors_follow_active_registry_resource_order_after_finish",
             "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_tint_snapshot_accepts_session_biome_remap",
+            "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_observes_chunks_biomes_replacement_on_the_next_tick",
+            "crates/bbb-native/src/environment_animate_runtime.rs#ambient_particles_observe_chunks_biomes_replacement_on_the_next_tick",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
           ],
           "gap": null,

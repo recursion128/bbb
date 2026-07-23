@@ -760,12 +760,6 @@ Attachment and spawner presentation:
 - Implement the ominous-item-spawner about-to-spawn and spawn sounds.
 Environment:
 
-- Build the remaining `EnvironmentAttributeSystem` consumers over the
-  position-sampled world projection: the 667-pair ambient-particle animate
-  loop, general delayed `MusicManager` scheduling and playback, biome ambient
-  loop/mood/additions, firefly-bush sounds, and creaking activation. These
-  consumers must observe `ChunksBiomes` replacement through the existing
-  direct/Gaussian sampling API.
 - Preserve complete `ParticleOptions` payloads when a custom dimension selects
   a complex default dripstone particle. The current level-event bridge carries
   the synchronized particle type but does not project block/item/color/vibration

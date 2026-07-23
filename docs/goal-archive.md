@@ -307,3 +307,7 @@
 - **2026-07-23（环境位置采样 foundation）**：生成的 48 项属性目录与 world-owned
   `EnvironmentAttributeMap` 完成维度→直接/高斯生物群系→timeline 顺序，并迁移全部既有
   位置消费者；合同见 `docs/archive/environment-position-sampling-foundation-design.md`。
+- **2026-07-23（环境效果消费者闭环）**：通用音乐调度、群系 ambient loop/mood/additions
+  与 667 对 animate 粒子/萤火虫/嘎枝之心效果完成原版采样、随机链和音频/粒子桥；
+  `CLIENTBOUND_CHUNKS_BIOMES` 全部 coverage complete，合同见
+  `docs/archive/environment-effect-consumers-design.md`。

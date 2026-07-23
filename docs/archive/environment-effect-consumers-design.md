@@ -1,4 +1,4 @@
-# Environment effect consumers closure
+# Environment effect consumers closure contract
 
 ## Goal and completion contract
 
