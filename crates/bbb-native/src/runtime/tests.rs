@@ -1777,22 +1777,25 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let hotbar_icons_extract = source
         .find("let hud_hotbar_item_icons = if ordinary_hotbar {")
         .expect("pump should extract hotbar item icons");
+    let game_event_screen_extract = source
+        .find("let hud_game_event_screen = hud_game_event_screen(")
+        .expect("pump should extract game event screen HUD state");
     let debug_options_screen_extract = source
-        .find(
-            "let hud_debug_options_screen = hud_debug_options_screen(input, world, surface_size);",
-        )
+        .find("let hud_debug_options_screen = if hud_game_event_screen.is_some()")
         .expect("pump should extract debug options screen HUD state");
     let pause_screen_extract = source
-        .find("let hud_pause_screen = if hud_debug_options_screen.is_some()")
+        .find(
+            "let hud_pause_screen = if hud_game_event_screen.is_some() || hud_debug_options_screen.is_some()",
+        )
         .expect("pump should extract pause screen HUD state");
     let stats_screen_extract = source
-        .find("let hud_stats_screen = if hud_debug_options_screen.is_some()")
+        .find("let hud_stats_screen = if hud_game_event_screen.is_some()")
         .expect("pump should extract stats screen HUD state");
     let sign_editor_extract = source
-        .find("let hud_sign_editor_screen = if hud_debug_options_screen.is_some()")
+        .find("let hud_sign_editor_screen = if hud_game_event_screen.is_some()")
         .expect("pump should extract sign editor HUD state");
     let inventory_screen_extract = source
-        .find("hud_inventory_screen_with_local_state(")
+        .find("let hud_inventory_screen = if hud_game_event_screen.is_some()")
         .expect("pump should extract inventory screen HUD state");
 
     for advance in [input_advance, destroy_advance, use_advance, using_item_tick] {
@@ -1805,6 +1808,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         selected_slot_extract,
         hotbar_mode_extract,
         hotbar_icons_extract,
+        game_event_screen_extract,
         debug_options_screen_extract,
         pause_screen_extract,
         stats_screen_extract,
