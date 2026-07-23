@@ -1830,6 +1830,101 @@ fn rabbit_jump_event_emits_sprint_block_particle_state() {
 }
 
 #[test]
+fn animate_player_wake_flows_from_network_event_to_sleep_overlay_projection() {
+    let player = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    let player_uuid = player.uuid;
+    let entity_accessors =
+        vanilla_entity_metadata_entity_accessors().expect("base entity metadata accessors");
+    let living_accessors =
+        bbb_world::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        )
+        .expect("player living metadata accessors");
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
+        99,
+    ))))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerInfoUpdate(
+        bbb_protocol::packets::PlayerInfoUpdate {
+            actions: vec![bbb_protocol::packets::PlayerInfoAction::AddPlayer],
+            entries: vec![bbb_protocol::packets::PlayerInfoEntry {
+                profile_id: player_uuid,
+                profile: Some(bbb_protocol::packets::GameProfile {
+                    uuid: player_uuid,
+                    name: "sleeping-player".to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: bbb_protocol::game_types::GameType::default(),
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(player)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 99,
+            values: vec![
+                EntityDataValue {
+                    data_id: entity_accessors.pose_data_id,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                    value: EntityDataValueKind::Pose(
+                        bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID,
+                    ),
+                },
+                EntityDataValue {
+                    data_id: living_accessors.sleeping_pos_data_id,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                    value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
+                        x: 33,
+                        y: 70,
+                        z: -17,
+                    })),
+                },
+            ],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityAnimation(
+        EntityAnimation { id: 99, action: 2 },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        5
+    );
+
+    assert_eq!(world.local_player_sleep_counter(), 100);
+    assert_eq!(
+        crate::runtime::hud_sleep_overlay_from_world(&world),
+        Some(bbb_renderer::HudSleepOverlay { alpha: 220 })
+    );
+    let entity = world.probe_entity(99).expect("local player entity");
+    assert_eq!(entity.player_sleep_counter, Some(100));
+    assert!(entity.data_values.iter().any(|value| {
+        value.data_id == entity_accessors.pose_data_id
+            && value.value
+                == EntityDataValueKind::Pose(
+                    bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_STANDING_ID,
+                )
+    }));
+    assert!(entity.data_values.iter().any(|value| {
+        value.data_id == living_accessors.sleeping_pos_data_id
+            && value.value == EntityDataValueKind::OptionalBlockPos(None)
+    }));
+}
+
+#[test]
 fn entity_animation_emits_crit_tracking_emitter_particles() {
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(

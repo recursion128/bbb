@@ -965,6 +965,14 @@ pub struct HudPlayerHealth {
     pub tick_count: u64,
 }
 
+/// Vanilla `Gui.extractSleepOverlay` full-screen fill. The RGB is fixed to
+/// `0x101020`; native supplies the integer alpha derived from
+/// `Player.sleepCounter`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudSleepOverlay {
+    pub alpha: u8,
+}
+
 /// Vanilla `BossEvent.BossBarColor` (BossEvent.java:90-97): selects the
 /// `boss_bar/{name}_background` / `boss_bar/{name}_progress` sprite pair.
 /// Declaration order is the vanilla ordinal (the sprite-array index,
@@ -4620,6 +4628,10 @@ impl Renderer {
         });
     }
 
+    pub fn set_hud_sleep_overlay(&mut self, overlay: Option<HudSleepOverlay>) {
+        self.hud_sleep_overlay = sanitize_hud_sleep_overlay(overlay);
+    }
+
     pub fn set_hud_food(&mut self, food: Option<i32>) {
         self.hud_food = food;
     }
@@ -5522,6 +5534,19 @@ impl Renderer {
                     &draw.name,
                 );
             }
+        }
+
+        // `Gui.extractSleepOverlay` sits outside the hide-GUI branch and
+        // advances to a new stratum after boss bars, before overlay
+        // message/title/chat/player-list extraction (Gui.java:203-219).
+        if let Some(sleep_overlay) = self.hud_sleep_overlay {
+            push_hud_sleep_overlay(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                surface_size,
+                sleep_overlay,
+            );
         }
 
         // Vanilla `Gui.extractRenderState` submits the overlay message and the
@@ -7066,6 +7091,45 @@ fn push_hud_draw_with_uv_and_tint<'a>(
     vertices.extend_from_slice(&hud_quad_vertices(surface_size, rect, uv, tint));
     let end = vertices.len() as u32;
     commands.push(HudDrawCommand::Sprite { sprite, start, end });
+}
+
+fn push_hud_sleep_overlay<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    overlay: HudSleepOverlay,
+) {
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        absolute_hud_rect(
+            0.0,
+            0.0,
+            surface_size.width.max(1),
+            surface_size.height.max(1),
+        ),
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        hud_sleep_overlay_tint(overlay.alpha),
+    );
+}
+
+fn hud_sleep_overlay_tint(alpha: u8) -> [f32; 4] {
+    [
+        16.0 / 255.0,
+        16.0 / 255.0,
+        32.0 / 255.0,
+        f32::from(alpha) / 255.0,
+    ]
+}
+
+fn sanitize_hud_sleep_overlay(overlay: Option<HudSleepOverlay>) -> Option<HudSleepOverlay> {
+    overlay.filter(|overlay| overlay.alpha > 0)
 }
 
 fn inventory_floating_item_hud_rect(
@@ -21142,6 +21206,45 @@ mod tests {
             ..base.clone()
         };
         assert_eq!(hud_title_alpha(&fresh), 0);
+    }
+
+    #[test]
+    fn sleep_overlay_uses_vanilla_color_and_rejects_zero_alpha() {
+        assert_eq!(
+            hud_sleep_overlay_tint(220),
+            [16.0 / 255.0, 16.0 / 255.0, 32.0 / 255.0, 220.0 / 255.0,]
+        );
+        assert_eq!(sanitize_hud_sleep_overlay(None), None);
+        assert_eq!(
+            sanitize_hud_sleep_overlay(Some(HudSleepOverlay { alpha: 0 })),
+            None
+        );
+        assert_eq!(
+            sanitize_hud_sleep_overlay(Some(HudSleepOverlay { alpha: 22 })),
+            Some(HudSleepOverlay { alpha: 22 })
+        );
+    }
+
+    #[test]
+    fn sleep_overlay_submits_after_boss_bars_and_before_later_hud_content() {
+        let source = include_str!("hud.rs");
+        let collect_start = source
+            .find("fn collect_hud_draws(")
+            .expect("collect_hud_draws is defined");
+        let collect_source = &source[collect_start..];
+        let boss = collect_source
+            .find("hud_boss_bar_draws(")
+            .expect("boss bars draw first");
+        let sleep = collect_source
+            .find("if let Some(sleep_overlay) = self.hud_sleep_overlay")
+            .expect("sleep overlay draw follows");
+        let overlay_message = collect_source
+            .find("hud_action_bar_text_draw(")
+            .expect("overlay message draw follows");
+        assert!(
+            boss < sleep && sleep < overlay_message,
+            "sleep overlay must submit after boss bars and before overlay message/title/chat"
+        );
     }
 
     #[test]

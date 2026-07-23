@@ -1383,6 +1383,67 @@ fn hud_text_timers_tick_before_projection_like_gui_tick() {
 }
 
 #[test]
+fn animate_player_wake_sleep_overlay_alpha_matches_vanilla_boundaries() {
+    use bbb_renderer::HudSleepOverlay;
+
+    assert_eq!(hud_sleep_overlay_from_counter(-1), None);
+    assert_eq!(hud_sleep_overlay_from_counter(0), None);
+    assert_eq!(
+        hud_sleep_overlay_from_counter(1),
+        Some(HudSleepOverlay { alpha: 2 })
+    );
+    assert_eq!(
+        hud_sleep_overlay_from_counter(50),
+        Some(HudSleepOverlay { alpha: 110 })
+    );
+    assert_eq!(
+        hud_sleep_overlay_from_counter(99),
+        Some(HudSleepOverlay { alpha: 217 })
+    );
+    assert_eq!(
+        hud_sleep_overlay_from_counter(100),
+        Some(HudSleepOverlay { alpha: 220 })
+    );
+    assert_eq!(
+        hud_sleep_overlay_from_counter(101),
+        Some(HudSleepOverlay { alpha: 198 })
+    );
+    assert_eq!(
+        hud_sleep_overlay_from_counter(109),
+        Some(HudSleepOverlay { alpha: 22 })
+    );
+    assert_eq!(hud_sleep_overlay_from_counter(110), None);
+}
+
+#[test]
+fn animate_player_wake_sleep_overlay_frame_wiring_is_hide_gui_independent() {
+    let runtime = include_str!("../runtime.rs");
+    let extraction = runtime
+        .find("let hud_sleep_overlay = hud_sleep_overlay_from_world(world);")
+        .expect("runtime extracts canonical sleep overlay");
+    let hide_gui = runtime
+        .find("let hud_advancement_toasts = if input.hide_gui()")
+        .expect("ordinary hide-GUI branch remains later");
+    let frame = extraction
+        + runtime[extraction..]
+            .find("hud_sleep_overlay,")
+            .expect("renderer frame carries the overlay");
+    assert!(
+        extraction < hide_gui && hide_gui < frame,
+        "sleep overlay extraction stays outside hide-GUI and still reaches the later frame"
+    );
+
+    let frame_source = include_str!("render_extract.rs");
+    let field = frame_source
+        .find("pub(crate) hud_sleep_overlay: Option<HudSleepOverlay>")
+        .expect("renderer frame owns the projected overlay");
+    let setter = frame_source
+        .find("renderer.set_hud_sleep_overlay(frame.hud_sleep_overlay);")
+        .expect("frame apply forwards the overlay");
+    assert!(field < setter);
+}
+
+#[test]
 fn chat_deletion_timer_uses_raw_gui_ticks() {
     // Vanilla `Minecraft.tick` advances `Gui.tick` even while the level tick
     // rate is frozen. Deleted-chat replacement therefore follows raw client

@@ -16,9 +16,9 @@ use bbb_renderer::{
     HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions, HudDebugOptionsScreen,
     HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJigsawBlockEditorScreen, HudJumpBar,
     HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen,
-    HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast,
-    HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText,
-    HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    HudSleepOverlay, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
+    HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
+    HudTitleText, HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, SelectionOutline,
     SignTextSurface, WorldBorderRenderState,
@@ -874,6 +874,26 @@ pub(crate) fn hud_action_bar_text_from_world(
     })
 }
 
+/// Projects Vanilla's integer `Gui.extractSleepOverlay` alpha from the
+/// canonical local `Player.sleepCounter`. The GUI does not interpolate this
+/// value with the frame partial tick.
+pub(crate) fn hud_sleep_overlay_from_world(world: &WorldStore) -> Option<HudSleepOverlay> {
+    hud_sleep_overlay_from_counter(world.local_player_sleep_counter())
+}
+
+pub(crate) fn hud_sleep_overlay_from_counter(counter: i32) -> Option<HudSleepOverlay> {
+    if counter <= 0 {
+        return None;
+    }
+    let sleep_timer = counter as f32;
+    let mut amount = sleep_timer / 100.0;
+    if amount > 1.0 {
+        amount = 1.0 - (sleep_timer - 100.0) / 10.0;
+    }
+    let alpha = (220.0 * amount) as u8;
+    (alpha > 0).then_some(HudSleepOverlay { alpha })
+}
+
 /// Projects the world's title/subtitle overlay state, mirroring
 /// `Gui.extractTitle`'s inputs (Gui.java:339): present only while a title is
 /// set and `titleTime > 0`. The subtitle rides along only while a title is
@@ -1426,6 +1446,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) sky_environment: SkyEnvironment,
     pub(crate) cloud_environment: CloudEnvironment,
     pub(crate) hud_player_health: Option<HudPlayerHealth>,
+    pub(crate) hud_sleep_overlay: Option<HudSleepOverlay>,
     pub(crate) hud_food: Option<i32>,
     pub(crate) hud_food_effect: HudFoodEffect,
     pub(crate) hud_armor: Option<i32>,
@@ -1680,6 +1701,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_sky_environment(frame.sky_environment);
     renderer.set_cloud_environment(frame.cloud_environment);
     renderer.set_hud_player_health(frame.hud_player_health);
+    renderer.set_hud_sleep_overlay(frame.hud_sleep_overlay);
     renderer.set_hud_food(frame.hud_food);
     renderer.set_hud_food_effect(frame.hud_food_effect);
     renderer.set_hud_armor(frame.hud_armor);

@@ -2751,6 +2751,9 @@ pub(crate) fn update_renderer_from_publication(
         regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
         tick_count: publication.client_tick_index,
     });
+    // Unlike ordinary HUD content, Vanilla extracts the sleep overlay outside
+    // the `Options.hideGui` branch and does not partial-tick interpolate it.
+    let hud_sleep_overlay = hud_sleep_overlay_from_world(world);
     let hud_food = local_player.health.map(|health| health.food);
     // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
     // the floor of the ARMOR attribute; the renderer gates the row on `armor > 0`.
@@ -3495,6 +3498,7 @@ pub(crate) fn update_renderer_from_publication(
             sky_environment,
             cloud_environment,
             hud_player_health,
+            hud_sleep_overlay,
             hud_food,
             hud_food_effect,
             hud_armor,
