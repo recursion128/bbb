@@ -5683,7 +5683,7 @@
             "crates/bbb-control/src/server/tests.rs#net_set_held_slot_queues_request",
             "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_sets_held_slot_and_queues_command",
             "crates/bbb-native/src/input/tests.rs#digit_key_selects_hotbar_slot_updates_world_and_queues_command",
-            "crates/bbb-native/src/input/tests.rs#spectator_digit_key_does_not_queue_held_slot",
+            "crates/bbb-native/src/input/tests.rs#spectator_digit_key_opens_menu_without_queuing_held_slot",
             "crates/bbb-native/src/input/mouse.rs#mouse_wheel_selects_hotbar_slot_updates_world_and_queues_command",
             "crates/bbb-world/src/client/local_player.rs#local_hotbar_selection_updates_without_counting_server_packet",
             "crates/bbb-native/src/runtime/events/client_state/tests.rs#held_slot_updates_world_counters"
