@@ -937,6 +937,7 @@ impl WorldStore {
     fn clear_level_bound_state(&mut self) {
         self.clear_death_screen();
         self.clear_game_event_screen();
+        self.clear_social_interactions_screen();
         self.close_game_rules_screen();
         self.close_command_block_editor();
         self.close_minecart_command_block_editor();

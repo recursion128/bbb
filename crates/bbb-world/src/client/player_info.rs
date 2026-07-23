@@ -99,10 +99,12 @@ impl WorldStore {
                 let Some(profile) = &entry.profile else {
                     continue;
                 };
-                self.player_info
-                    .entries
-                    .entry(entry.profile_id)
-                    .or_insert_with(|| PlayerInfoEntryState::new(profile));
+                if !self.player_info.entries.contains_key(&entry.profile_id) {
+                    self.record_social_player_profile(profile);
+                    self.player_info
+                        .entries
+                        .insert(entry.profile_id, PlayerInfoEntryState::new(profile));
+                }
             }
         }
 

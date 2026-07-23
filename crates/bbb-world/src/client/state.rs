@@ -88,6 +88,9 @@ pub use crate::client::server_presentation::{
     ResourcePackRuntimePhase, ResourcePackRuntimeState, ResourcePackState, ServerCookieState,
     ServerDataState, ServerLinkState, ServerPresentationState, TransferTargetState,
 };
+pub use crate::client::social::{
+    PlayerSocialState, SocialInteractionsPage, SocialInteractionsScreenState, SocialPlayerState,
+};
 pub use crate::client::stats::{
     ClientStatsState, StatIdentityState, StatValueState, StatsUpdateState,
 };

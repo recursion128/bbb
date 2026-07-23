@@ -104,6 +104,10 @@ pub struct ClientUiState {
     #[serde(default)]
     pub stats_screen_loading: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_social_interactions_screen: Option<crate::SocialInteractionsScreenState>,
+    #[serde(default)]
+    pub social_interactions_screen_generation: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_game_rules_screen: Option<crate::GameRulesScreenState>,
     #[serde(default)]
     pub game_rules_screen_generation: u64,
@@ -132,9 +136,14 @@ pub struct ClientUiState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DialogPreviousScreenState {
-    Book { screen: BookScreenState },
+    Book {
+        screen: BookScreenState,
+    },
     Advancements,
     Stats,
+    SocialInteractions {
+        screen: crate::SocialInteractionsScreenState,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -236,6 +245,8 @@ impl ClientUiState {
                 Some(DialogPreviousScreenState::Advancements)
             } else if std::mem::take(&mut self.current_stats_screen) {
                 Some(DialogPreviousScreenState::Stats)
+            } else if let Some(screen) = self.current_social_interactions_screen.take() {
+                Some(DialogPreviousScreenState::SocialInteractions { screen })
             } else {
                 None
             };
@@ -336,6 +347,9 @@ impl ClientUiState {
             Some(DialogPreviousScreenState::Stats) => {
                 self.current_stats_screen = true;
             }
+            Some(DialogPreviousScreenState::SocialInteractions { screen }) => {
+                self.current_social_interactions_screen = Some(screen);
+            }
             None => {}
         }
     }
@@ -428,6 +442,7 @@ impl ClientUiState {
         self.current_book = None;
         self.current_advancements_screen = false;
         self.current_stats_screen = false;
+        self.current_social_interactions_screen = None;
         self.current_game_rules_screen = None;
         self.current_game_event_screen = None;
         self.current_death_screen = None;

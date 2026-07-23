@@ -13,9 +13,10 @@ use crate::{
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
     LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState, LocalPlayerState,
-    MapItemState, PlayerInfoState, ProjectilePowerUpdateState, PublicationShared, RegistrySet,
-    ScoreboardState, ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState,
-    WorldCounters, WorldDimension, WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
+    MapItemState, PlayerInfoState, PlayerSocialState, ProjectilePowerUpdateState,
+    PublicationShared, RegistrySet, ScoreboardState, ServerPresentationState,
+    WorldApplyDiagnosticsState, WorldBorderState, WorldCounters, WorldDimension,
+    WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -145,6 +146,8 @@ pub struct WorldStore {
     pub(crate) known_pack_data_error: Option<String>,
     #[serde(default)]
     pub(crate) player_info: PlayerInfoState,
+    #[serde(default)]
+    pub(crate) player_social: PlayerSocialState,
     #[serde(default)]
     pub(crate) presentation: ServerPresentationState,
     #[serde(default)]

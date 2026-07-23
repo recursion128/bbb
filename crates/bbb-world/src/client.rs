@@ -21,6 +21,7 @@ mod player_info;
 mod scoreboard;
 pub(crate) use scoreboard::scoreboard_team_formatting_style;
 mod server_presentation;
+mod social;
 pub(crate) mod state;
 mod stats;
 mod ui;
