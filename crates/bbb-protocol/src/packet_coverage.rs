@@ -2329,7 +2329,7 @@ mod tests {
     }
 
     #[test]
-    fn play_chunks_biomes_keeps_registry_and_neighbor_rerender_open() {
+    fn play_chunks_biomes_environment_consumers_are_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2338,17 +2338,22 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_CHUNKS_BIOMES"
             })
             .expect("play chunks biomes coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .any(|evidence| evidence.contains("environment_audio.advance_for_ticks")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("environment_animate.advance_for_ticks")));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("ambient_particles_observe_chunks_biomes")));
     }
 
     #[test]
