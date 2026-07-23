@@ -3988,7 +3988,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_spectate_entity_keeps_spectator_menu_open() {
+    fn play_serverbound_spectate_entity_closes_crosshair_action() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3997,20 +3997,19 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_SPECTATE_ENTITY"
             })
             .expect("play serverbound spectate entity coverage row");
-        for dimension in ["ack_response", "encoder", "state_guard"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        for dimension in ["command_surface", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["command_surface"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("handle_mouse_input_at_partial_tick")));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence
+                .contains("spectator_left_mouse_press_on_entity_queues_spectate_only")));
     }
 
     #[test]
@@ -4042,7 +4041,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_teleport_to_entity_keeps_spectator_menu_and_response_open() {
+    fn play_serverbound_teleport_to_entity_closes_spectator_menu_action() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -4051,17 +4050,17 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_TELEPORT_TO_ENTITY"
             })
             .expect("play serverbound teleport to entity coverage row");
-        assert_eq!(
-            entry.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        for dimension in ["ack_response", "command_surface", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["command_surface"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("handle_spectator_hotbar_selected")));
+        assert!(entry.coverage["tests"].evidence.iter().any(|evidence| {
+            evidence.contains("repeated_hotbar_selection_opens_selects_activates_and_queues_uuid")
+        }));
     }
 
     #[test]

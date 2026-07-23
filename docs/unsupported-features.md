@@ -1008,9 +1008,6 @@ back into a todo. Do not delete these.
 - **Mount (`MountScreenOpen`) entity preview rendering.** Horse/Nautilus type
   gating, menu ownership and native inventory layouts are covered; restart with
   entity-in-UI presentation work for the remaining preview drawing.
-- **Full Spectator GUI selection/menu behavior.** The wheel currently adjusts
-  local flying speed while the Spectator GUI menu is inactive.
-
 ## Fonts and text
 
 - **`unihex` / CJK.** The consumed assets tree ships no `font/unifont*.zip`

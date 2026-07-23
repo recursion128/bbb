@@ -346,3 +346,7 @@
   canonical 富 Component/队伍/number-format 状态驱动右侧 sidebar 与 Tab LIST
   整数/红心目标；UUID 延迟血量与闪烁由 renderer 独占，全部 coverage 单元 complete，
   合同见 `docs/archive/scoreboard-client-presentation-design.md`。
+- **2026-07-23（多人观战菜单闭环）**：数字键、中键与滚轮驱动 root/player/team
+  菜单、分页/淡出和 UUID 传送；原生 HUD 复现 pack-backed 图标、玩家/队伍头像与
+  热栏替换，两行 serverbound coverage 全单元 complete，合同见
+  `docs/archive/spectator-gui-menu-design.md`。

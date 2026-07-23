@@ -1,6 +1,6 @@
 # Multiplayer SpectatorGui menu closure
 
-Status: active engineering contract.
+Status: completed engineering contract.
 
 ## Goal and completion
 

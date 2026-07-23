@@ -6243,11 +6243,12 @@
           "evidence": [
             "crates/bbb-control/src/server.rs#net.spectate_entity",
             "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::SpectateEntity",
-            "crates/bbb-native/src/input/mouse.rs#handle_mouse_input",
-            "crates/bbb-native/src/input/commands.rs#queue_spectate_entity_command"
+            "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick",
+            "crates/bbb-native/src/input/commands.rs#queue_spectate_entity_command",
+            "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#spectate"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -6279,8 +6280,8 @@
             "crates/bbb-native/src/input/mouse.rs#spectator_left_mouse_press_on_entity_queues_spectate_only",
             "crates/bbb-world/src/client/local_player.rs#camera_updates_only_for_local_or_known_entities"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -6356,18 +6357,20 @@
             "crates/bbb-world/src/level.rs#apply_respawn",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTeleportToEntityPacket"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
             "crates/bbb-control/src/server.rs#net.teleport_to_entity",
             "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::TeleportToEntity",
+            "crates/bbb-native/src/input/spectator_menu.rs#handle_spectator_hotbar_selected",
+            "crates/bbb-native/src/input/spectator_menu.rs#handle_spectator_hotbar_action",
             "crates/bbb-native/src/input/commands.rs#queue_teleport_to_entity_command",
             "vanilla:net/minecraft/client/gui/spectator/PlayerMenuItem.java#selectItem"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -6381,13 +6384,14 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-control/src/server.rs#net.teleport_to_entity",
-            "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::TeleportToEntity",
+            "crates/bbb-native/src/input/spectator_menu.rs#handle_spectator_hotbar_selected",
+            "crates/bbb-native/src/input/spectator_menu.rs#handle_spectator_hotbar_action",
+            "crates/bbb-native/src/input/spectator_menu.rs#apply_spectator_menu_outcome",
             "vanilla:net/minecraft/client/gui/spectator/PlayerMenuItem.java#selectItem",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTeleportToEntityPacket"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -6396,10 +6400,13 @@
             "crates/bbb-net/src/driver.rs#drive_connection_sends_spectator_entity_net_commands_in_play",
             "crates/bbb-control/src/server/tests.rs#net_teleport_to_entity_queues_request",
             "crates/bbb-control/src/server/tests.rs#net_teleport_to_entity_rejects_missing_non_string_or_invalid_uuid",
-            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_spectator_entity_commands"
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_spectator_entity_commands",
+            "crates/bbb-native/src/input/spectator_menu.rs#repeated_hotbar_selection_opens_selects_activates_and_queues_uuid",
+            "crates/bbb-native/src/input/mouse.rs#spectator_middle_mouse_opens_menu_instead_of_picking_target",
+            "crates/bbb-native/src/runtime/tests.rs#hud_spectator_projection_substitutes_root_and_player_pages"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
