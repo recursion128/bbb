@@ -2525,7 +2525,7 @@ mod tests {
     }
 
     #[test]
-    fn play_game_test_highlight_keeps_marker_gizmo_runtime_open() {
+    fn play_game_test_highlight_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2535,17 +2535,22 @@ mod tests {
                     && entry.constant_name == "CLIENTBOUND_GAME_TEST_HIGHLIGHT_POS"
             })
             .expect("play game test highlight coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .any(|item| item.contains("expire_game_test_highlight_markers_at")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|item| item.contains("debug_always_on_top_text_pass")));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|item| item.contains("game_test_highlight_gizmos_match_vanilla")));
     }
 
     #[test]

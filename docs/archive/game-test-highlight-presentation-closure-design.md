@@ -1,6 +1,6 @@
 # GameTest Highlight Presentation Closure Design
 
-Status: active engineering contract.
+Status: closed engineering contract.
 
 ## Goal and completion standard
 

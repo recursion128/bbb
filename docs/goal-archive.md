@@ -331,3 +331,7 @@
   边界静态/移动 warning 阈值驱动原版 tint；selected-pack vignette、精确 destination
   multiply blend 和事务 reload 完成像素级闭环，六行 coverage 全部 complete，合同见
   `docs/archive/world-border-vignette-closure-design.md`。
+- **2026-07-23（GameTest highlight 包闭环）**：绝对位置 map 复现同键刷新、严格
+  10 秒到期与 level reset；0.02 膨胀绿盒和相对坐标标签经透明合成后的独立深度清除
+  pass 呈现，五类 coverage 全部 complete，合同见
+  `docs/archive/game-test-highlight-presentation-closure-design.md`。

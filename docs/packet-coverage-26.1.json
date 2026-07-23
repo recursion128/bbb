@@ -9020,11 +9020,15 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#apply_game_test_highlight_pos",
-            "vanilla:net/minecraft/client/renderer/debug/GameTestBlockHighlightRenderer.java#highlightPos"
+            "crates/bbb-world/src/client/debug_game.rs#apply_game_test_highlight_pos_at",
+            "crates/bbb-world/src/client/debug_game.rs#expire_game_test_highlight_markers_at",
+            "crates/bbb-world/src/client/debug_game.rs#clear_game_test_highlight_markers",
+            "vanilla:net/minecraft/client/renderer/debug/GameTestBlockHighlightRenderer.java#highlightPos",
+            "vanilla:net/minecraft/client/renderer/debug/GameTestBlockHighlightRenderer.java#emitGizmos",
+            "vanilla:net/minecraft/client/renderer/LevelRenderer.java#setLevel"
           ],
-          "gap": "docs/unsupported-features.md#renderer-scene-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -9043,19 +9047,27 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/debug_game.rs#last_game_test_highlight_pos",
-            "vanilla:net/minecraft/client/renderer/debug/GameTestBlockHighlightRenderer.java#emitGizmos"
+            "crates/bbb-native/src/runtime.rs#expire_game_test_highlight_markers_at",
+            "crates/bbb-native/src/game_test_highlights.rs#game_test_highlight_gizmos",
+            "crates/bbb-renderer/src/render.rs#debug_text_pass",
+            "crates/bbb-renderer/src/render.rs#debug_always_on_top_text_pass",
+            "vanilla:net/minecraft/client/renderer/debug/GameTestBlockHighlightRenderer.java#emitGizmos",
+            "vanilla:net/minecraft/client/renderer/LevelRenderer.java#addLateDebugPass"
           ],
-          "gap": "docs/unsupported-features.md#renderer-scene-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_game_test_highlight_positions",
             "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
-            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
-            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+            "crates/bbb-world/src/client/debug_game.rs#game_test_highlight_markers_refresh_expire_strictly_and_clear_with_level",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#game_test_highlight_network_apply_uses_monotonic_deadline",
+            "crates/bbb-native/src/game_test_highlights.rs#game_test_highlight_gizmos_match_vanilla_geometry_color_and_text",
+            "crates/bbb-renderer/src/debug_text_billboards.rs#debug_text_mesh_separates_standard_and_always_on_top_layers",
+            "crates/bbb-renderer/src/debug_text_billboards.rs#debug_text_billboard_draws_through_full_frame_readback",
+            "crates/bbb-renderer/src/render.rs#always_on_top_debug_text_runs_after_composition_with_cleared_depth"
           ],
           "gap": null,
           "status": "complete"
