@@ -14592,11 +14592,15 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters",
-            "vanilla:net/minecraft/client/gui/contextualbar/LocatorBarRenderer.java#render"
+            "crates/bbb-world/src/client/waypoints.rs#probe_waypoint_entity_eye_position_at_partial_tick",
+            "crates/bbb-native/src/runtime/waypoint_locator.rs#hud_locator_bar_from_world",
+            "crates/bbb-native/src/runtime/waypoint_locator.rs#HudContextualRuntime",
+            "crates/bbb-renderer/src/hud.rs#HudLocatorStyle",
+            "crates/bbb-renderer/src/hud.rs#set_hud_contextual_bar",
+            "vanilla:net/minecraft/client/gui/contextualbar/LocatorBarRenderer.java#extractRenderState"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -14604,7 +14608,10 @@
             "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
             "crates/bbb-net/src/probe/play.rs#probe_applies_waypoint_to_world",
             "crates/bbb-world/src/client/waypoints.rs#tracks_updates_and_untracks_waypoints",
-            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters"
+            "crates/bbb-world/src/client/waypoints.rs#waypoint_entity_eye_query_applies_uuid_and_manhattan_gate",
+            "crates/bbb-native/src/runtime/waypoint_locator.rs#waypoint_locator_projects_all_renderable_data_forms_far_first",
+            "crates/bbb-native/src/runtime/waypoint_locator.rs#contextual_bar_uses_vanilla_idle_and_jump_priority",
+            "crates/bbb-renderer/src/hud.rs#locator_bar_offscreen_frame_tints_dot_but_not_pitch_arrow"
           ],
           "gap": null,
           "status": "complete"

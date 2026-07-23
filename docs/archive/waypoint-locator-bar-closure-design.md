@@ -1,6 +1,6 @@
 # Waypoint locator-bar closure
 
-Status: active engineering contract.
+Status: closed and archived after `CLIENTBOUND_WAYPOINT` reached complete coverage.
 
 ## Goal and completion contract
 

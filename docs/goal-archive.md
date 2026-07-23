@@ -323,3 +323,7 @@
   `SystemChat(overlay=true)` 共用 exact world Component、本地化样式投影及逐 run 字体簿
   测量/混淆/绘制；四行 packet coverage 全单元 complete，合同见
   `docs/archive/action-bar-title-component-closure-design.md`。
+- **2026-07-23（Waypoint locator bar 包闭环）**：四类 waypoint 数据按 active camera
+  复现距离/yaw/pitch、UUID entity follow、Java tint 与 far-first overlap；selected-pack
+  style/sprite、missingno、contextual priority 和事务 reload 完成像素级闭环，五类 coverage
+  全部 complete，合同见 `docs/archive/waypoint-locator-bar-closure-design.md`。
