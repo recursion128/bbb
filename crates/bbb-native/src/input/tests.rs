@@ -24990,7 +24990,6 @@ fn item_model_keybind_context_tracks_non_debug_default_keymappings() {
     let mut counters = NetCounters::default();
 
     for (code, keybind) in [
-        (KeyCode::KeyP, "key.socialInteractions"),
         (KeyCode::F2, "key.screenshot"),
         (KeyCode::F5, "key.togglePerspective"),
         (KeyCode::F11, "key.fullscreen"),
@@ -25017,6 +25016,17 @@ fn item_model_keybind_context_tracks_non_debug_default_keymappings() {
         );
         assert!(!input.item_model_keybind_context().keybind_down(keybind));
     }
+
+    // Screen-opening bindings release all active input after their key press,
+    // so exercise their raw keymapping projection without opening the screen.
+    input.set_key_down(KeyCode::KeyP, true);
+    assert!(input
+        .item_model_keybind_context()
+        .keybind_down("key.socialInteractions"));
+    input.set_key_down(KeyCode::KeyP, false);
+    assert!(!input
+        .item_model_keybind_context()
+        .keybind_down("key.socialInteractions"));
 
     input.set_key_down(KeyCode::KeyL, true);
     assert!(input
