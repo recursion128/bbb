@@ -1,4 +1,5 @@
 mod audio;
+mod book;
 mod chat;
 mod combat;
 mod command_suggestions;

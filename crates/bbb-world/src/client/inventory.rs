@@ -5,6 +5,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
     VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
 };
 use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_BODY_SLOT, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
@@ -537,6 +538,47 @@ impl InventoryState {
             );
         }
         self.update_inventory_slot_count(counters);
+        true
+    }
+
+    pub(crate) fn predict_writable_book_pages(&mut self, slot_id: i32, pages: Vec<String>) -> bool {
+        let Some(mut item) = self.local_player_inventory_item(slot_id).cloned() else {
+            return false;
+        };
+        let patch = &mut item.component_patch;
+        patch.removed_type_ids.retain(|component_id| {
+            *component_id != VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID
+        });
+        if !patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
+        {
+            patch
+                .added_type_ids
+                .push(VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID);
+        }
+        patch.added = patch.added_type_ids.len();
+        patch.writable_book_page_filters = vec![None; pages.len()];
+        patch.writable_book_pages = pages;
+        let menu_slot = inventory_slot_to_inventory_menu_slot(slot_id);
+        set_inventory_slot(
+            &mut self.player_slots,
+            InventorySlot {
+                slot: slot_id,
+                item: item.clone(),
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+            },
+        );
+        if let Some(menu_slot) = menu_slot {
+            set_container_slot(
+                &mut self.inventory_menu.slots,
+                ContainerSlot {
+                    slot: menu_slot,
+                    item,
+                    local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+                },
+            );
+        }
         true
     }
 
@@ -2120,8 +2162,13 @@ macro_rules! inventory_ctx {
 /// cross-domain borrows explicitly.
 impl WorldStore {
     pub fn apply_set_player_inventory(&mut self, packet: ProtocolSetPlayerInventory) -> bool {
-        self.inventory
-            .apply_set_player_inventory(&mut self.counters, packet)
+        let applied = self
+            .inventory
+            .apply_set_player_inventory(&mut self.counters, packet);
+        if applied {
+            self.close_invalid_writable_book_screen();
+        }
+        applied
     }
 
     pub fn apply_set_cursor_item(&mut self, packet: ProtocolSetCursorItem) {

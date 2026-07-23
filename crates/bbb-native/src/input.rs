@@ -10568,13 +10568,13 @@ fn book_screen_click_target_at_position(
     {
         return None;
     }
-    if book.current_page > 0
+    if book.current_page() > 0
         && x >= f64::from(BOOK_PAGE_BACK_BUTTON_X)
         && x < f64::from(BOOK_PAGE_BACK_BUTTON_X + BOOK_PAGE_BUTTON_WIDTH)
     {
         return Some(BookScreenClickTarget::PreviousPage);
     }
-    if book.current_page + 1 < book.pages.len()
+    if book.current_page() + 1 < book.page_count()
         && x >= f64::from(BOOK_PAGE_FORWARD_BUTTON_X)
         && x < f64::from(BOOK_PAGE_FORWARD_BUTTON_X + BOOK_PAGE_BUTTON_WIDTH)
     {

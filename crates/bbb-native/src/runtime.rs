@@ -11647,7 +11647,7 @@ fn book_screen_background_layers(book: &BookScreenState) -> Vec<HudInventoryBack
         [0.0, 0.0],
         [192.0 / 256.0, 192.0 / 256.0],
     )];
-    if book.current_page > 0 {
+    if book.current_page() > 0 {
         layers.push(hud_inventory_background_layer(
             HudInventoryBackgroundTexture::PageBackward,
             43,
@@ -11658,7 +11658,7 @@ fn book_screen_background_layers(book: &BookScreenState) -> Vec<HudInventoryBack
             [1.0, 1.0],
         ));
     }
-    if book.current_page + 1 < book.pages.len() {
+    if book.current_page() + 1 < book.page_count() {
         layers.push(hud_inventory_background_layer(
             HudInventoryBackgroundTexture::PageForward,
             116,
@@ -11673,7 +11673,7 @@ fn book_screen_background_layers(book: &BookScreenState) -> Vec<HudInventoryBack
 }
 
 fn book_screen_text_labels(book: &BookScreenState) -> Vec<HudInventoryTextLabel> {
-    book_page_text_labels(&book.pages, book.current_page)
+    book_page_text_labels(&book.plain_pages_for_filter(false), book.current_page())
 }
 
 fn hud_inventory_text_labels(

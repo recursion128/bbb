@@ -6,6 +6,10 @@ pub use crate::client::audio::{
     SoundEntityEventState, SoundEventState, SoundHolderState, SoundSeedRandomState,
     StopSoundEventState, TickableEntitySoundState, WorldBlockSoundProfile,
 };
+pub use crate::client::book::{
+    BookEditScreenState, BookEditSubmission, BookScreenState, BookSignScreenState,
+    BookViewPageState, BookViewScreenState, OpenBookState,
+};
 pub use crate::client::chat::{
     ChatDecorationArgumentState, ChatDecorationState, ChatDisconnectReason, ChatMessageKind,
     ChatMessageSourceState, ChatMessageState, ChatMessageTagState, ChatNarrationKind,
@@ -83,10 +87,10 @@ pub use crate::client::stats::{
     ClientStatsState, StatIdentityState, StatValueState, StatsUpdateState,
 };
 pub use crate::client::ui::{
-    code_of_conduct_text_hash, java_string_hash_code, BookScreenState, ClientUiState,
-    CodeOfConductState, DialogBodyFocusPartState, DialogFocusState, DialogInputValueState,
-    DialogLinkConfirmationState, DialogPreviousScreenState, DialogTextEditState, GhostRecipeState,
-    MountScreenState, OpenBookState, OpenSignEditorState, PongResponseState,
+    code_of_conduct_text_hash, java_string_hash_code, ClientUiState, CodeOfConductState,
+    DialogBodyFocusPartState, DialogFocusState, DialogInputValueState, DialogLinkConfirmationState,
+    DialogPreviousScreenState, DialogTextEditState, GhostRecipeState, MountScreenState,
+    OpenSignEditorState, PongResponseState,
 };
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,

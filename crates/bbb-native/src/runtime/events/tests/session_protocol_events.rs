@@ -668,14 +668,14 @@ fn open_book_event_uses_held_written_book_for_active_screen() {
             hand: "off_hand".to_string(),
         })
     );
+    let book = world.current_book().unwrap();
+    assert!(book.is_view());
+    assert_eq!(book.hand(), InteractionHand::OffHand);
     assert_eq!(
-        world.current_book(),
-        Some(&bbb_world::BookScreenState {
-            hand: "off_hand".to_string(),
-            pages: vec!["Native first".to_string(), "Native second".to_string()],
-            current_page: 0,
-        })
+        book.plain_pages_for_filter(false),
+        vec!["Native first".to_string(), "Native second".to_string()]
     );
+    assert_eq!(book.current_page(), 0);
 }
 
 #[test]

@@ -406,6 +406,7 @@ impl WorldStore {
         }
         self.local_player.selected_hotbar_slot = packet.slot as u8;
         self.counters.held_slot_updates_applied += 1;
+        self.close_invalid_writable_book_screen();
         true
     }
 
@@ -414,6 +415,7 @@ impl WorldStore {
             return false;
         }
         self.local_player.selected_hotbar_slot = slot;
+        self.close_invalid_writable_book_screen();
         true
     }
 

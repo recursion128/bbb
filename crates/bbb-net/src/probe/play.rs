@@ -3444,14 +3444,14 @@ mod tests {
                 hand: "off_hand".to_string(),
             })
         );
+        let book = report.world.current_book().unwrap();
+        assert!(book.is_view());
+        assert_eq!(book.hand(), InteractionHand::OffHand);
         assert_eq!(
-            report.world.current_book(),
-            Some(&bbb_world::BookScreenState {
-                hand: "off_hand".to_string(),
-                pages: vec!["Probe first".to_string(), "Probe second".to_string()],
-                current_page: 0,
-            })
+            book.plain_pages_for_filter(false),
+            vec!["Probe first".to_string(), "Probe second".to_string()]
         );
+        assert_eq!(book.current_page(), 0);
     }
 
     #[tokio::test]

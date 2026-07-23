@@ -21855,7 +21855,7 @@ fn book_screen_keys_turn_pages_close_and_block_gameplay_input() {
         PhysicalKey::Code(KeyCode::PageDown),
         ElementState::Pressed,
     );
-    assert_eq!(world.current_book().unwrap().current_page, 1);
+    assert_eq!(world.current_book().unwrap().current_page(), 1);
 
     handle_key_input(
         &mut input,
@@ -21908,7 +21908,7 @@ fn book_screen_mouse_clicks_turn_pages_and_close() {
         )),
         surface_size,
     ));
-    assert_eq!(world.current_book().unwrap().current_page, 1);
+    assert_eq!(world.current_book().unwrap().current_page(), 1);
 
     assert!(handle_book_screen_mouse_input(
         &mut world,

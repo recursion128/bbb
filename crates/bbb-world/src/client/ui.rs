@@ -1,8 +1,6 @@
 use bbb_protocol::{
-    data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     packets::{
-        DialogHolder, InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
-        MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
+        DialogHolder, MountScreenOpen as ProtocolMountScreenOpen,
         OpenSignEditor as ProtocolOpenSignEditor, PlaceGhostRecipe as ProtocolPlaceGhostRecipe,
         PongResponse as ProtocolPongResponse, RecipeDisplaySummary as ProtocolRecipeDisplaySummary,
         ShowDialog as ProtocolShowDialog,
@@ -12,6 +10,7 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    client::book::{BookScreenState, OpenBookState},
     client::dialog::{
         decode_component_click_dialog, decode_dialog_registry_entry, CommonDialogDataState,
         DialogBodyState, DialogDataState, DialogInputControlState, DialogState,
@@ -96,6 +95,8 @@ pub struct ClientUiState {
     pub dialog_waiting_ticks: Option<u32>,
     #[serde(default)]
     pub current_book: Option<BookScreenState>,
+    #[serde(default)]
+    pub book_screen_generation: u64,
     #[serde(default)]
     pub current_advancements_screen: bool,
     #[serde(default)]
@@ -480,20 +481,6 @@ pub struct MountScreenState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct OpenBookState {
-    pub hand: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BookScreenState {
-    pub hand: String,
-    #[serde(default)]
-    pub pages: Vec<String>,
-    #[serde(default)]
-    pub current_page: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpenSignEditorState {
     pub pos: BlockPos,
     pub is_front_text: bool,
@@ -746,20 +733,6 @@ impl WorldStore {
         };
         self.client_ui.last_mount_screen = Some(mount);
         self.apply_mount_screen_open_container(mount);
-    }
-
-    pub fn apply_open_book(&mut self, packet: ProtocolOpenBook) {
-        self.counters.open_book_packets += 1;
-        let hand = interaction_hand_name(packet.hand).to_string();
-        self.client_ui.last_open_book = Some(OpenBookState { hand: hand.clone() });
-        if let Some(pages) = self.open_book_pages_from_hand(packet.hand) {
-            self.client_ui.replace_screen();
-            self.client_ui.current_book = Some(BookScreenState {
-                hand,
-                pages,
-                current_page: 0,
-            });
-        }
     }
 
     pub fn apply_open_sign_editor(&mut self, packet: ProtocolOpenSignEditor) {
@@ -1423,10 +1396,6 @@ impl WorldStore {
             .is_some_and(|ticks| ticks >= DIALOG_WAITING_CLOSE_ACTIVE_TICKS)
     }
 
-    pub fn current_book(&self) -> Option<&BookScreenState> {
-        self.client_ui.current_book.as_ref()
-    }
-
     pub fn advancements_screen_is_open(&self) -> bool {
         self.client_ui.current_advancements_screen
     }
@@ -1466,33 +1435,6 @@ impl WorldStore {
         self.client_ui.current_stats_screen && self.client_ui.stats_screen_loading
     }
 
-    pub fn close_current_book(&mut self) -> bool {
-        self.client_ui.current_book.take().is_some()
-    }
-
-    pub fn set_current_book_page(&mut self, page: usize) -> bool {
-        let Some(book) = &mut self.client_ui.current_book else {
-            return false;
-        };
-        let max_page = book.pages.len().saturating_sub(1);
-        let page = page.min(max_page);
-        if page == book.current_page {
-            return false;
-        }
-        book.current_page = page;
-        true
-    }
-
-    pub fn turn_current_book_page(&mut self, delta: i32) -> bool {
-        let Some(book) = &self.client_ui.current_book else {
-            return false;
-        };
-        let current = book.current_page as i32;
-        let max_page = book.pages.len().saturating_sub(1) as i32;
-        let page = current.saturating_add(delta).clamp(0, max_page);
-        self.set_current_book_page(page as usize)
-    }
-
     pub fn last_code_of_conduct(&self) -> Option<&CodeOfConductState> {
         self.client_ui.last_code_of_conduct.as_ref()
     }
@@ -1505,10 +1447,6 @@ impl WorldStore {
         self.client_ui.last_mount_screen.as_ref()
     }
 
-    pub fn last_open_book(&self) -> Option<&OpenBookState> {
-        self.client_ui.last_open_book.as_ref()
-    }
-
     pub fn last_open_sign_editor(&self) -> Option<&OpenSignEditorState> {
         self.client_ui.last_open_sign_editor.as_ref()
     }
@@ -1519,10 +1457,6 @@ impl WorldStore {
 
     pub fn last_pong_response(&self) -> Option<&PongResponseState> {
         self.client_ui.last_pong_response.as_ref()
-    }
-
-    fn open_book_pages_from_hand(&self, hand: InteractionHand) -> Option<Vec<String>> {
-        self.local_item_in_hand(hand).and_then(book_pages_from_item)
     }
 
     fn dialog_state_from_packet(&self, packet: ProtocolShowDialog) -> DialogState {
@@ -1556,28 +1490,6 @@ impl WorldStore {
     }
 }
 
-fn interaction_hand_name(hand: InteractionHand) -> &'static str {
-    match hand {
-        InteractionHand::MainHand => "main_hand",
-        InteractionHand::OffHand => "off_hand",
-    }
-}
-
-fn book_pages_from_item(item: &ProtocolItemStackSummary) -> Option<Vec<String>> {
-    if let Some(written) = &item.component_patch.written_book {
-        return Some(written.pages.clone());
-    }
-    if item
-        .component_patch
-        .added_type_ids
-        .contains(&VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
-        || !item.component_patch.writable_book_pages.is_empty()
-    {
-        return Some(item.component_patch.writable_book_pages.clone());
-    }
-    None
-}
-
 pub fn code_of_conduct_text_hash(text: &str) -> i32 {
     java_string_hash_code(text)
 }
@@ -1592,13 +1504,14 @@ pub fn java_string_hash_code(text: &str) -> i32 {
 mod tests {
     use super::*;
     use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID;
+    use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID;
     use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID};
     use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X1_ID;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DataComponentPatchSummary,
-        DialogHolder, InteractionHand, ItemStackSummary, OpenScreen as ProtocolOpenScreen,
-        SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
-        WrittenBookContentSummary,
+        DialogHolder, InteractionHand, ItemStackSummary, OpenBook as ProtocolOpenBook,
+        OpenScreen as ProtocolOpenScreen, SetPlayerInventory as ProtocolSetPlayerInventory,
+        Vec3d as ProtocolVec3d, WrittenBookContentSummary,
     };
     use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID;
     use bbb_protocol::NbtSummaryEntry;
@@ -2323,11 +2236,21 @@ mod tests {
 
     #[test]
     fn dialog_clear_restores_world_owned_previous_screen() {
-        let previous_book = BookScreenState {
-            hand: "main_hand".to_string(),
-            pages: vec!["First".to_string(), "Second".to_string()],
+        let previous_book = BookScreenState::View(crate::BookViewScreenState {
+            generation: 1,
+            hand: InteractionHand::MainHand,
+            pages: vec![
+                crate::BookViewPageState {
+                    raw: bbb_protocol::RichTextComponent::plain("First"),
+                    filtered: None,
+                },
+                crate::BookViewPageState {
+                    raw: bbb_protocol::RichTextComponent::plain("Second"),
+                    filtered: None,
+                },
+            ],
             current_page: 1,
-        };
+        });
         let mut book_store = WorldStore::new();
         book_store.client_ui.current_book = Some(previous_book.clone());
         book_store.apply_show_dialog(ProtocolShowDialog {
@@ -2779,18 +2702,19 @@ mod tests {
             hand: InteractionHand::MainHand,
         });
 
+        let book = store.current_book().unwrap();
+        assert!(book.is_view());
+        assert_eq!(book.generation(), 1);
+        assert_eq!(book.hand(), InteractionHand::MainHand);
         assert_eq!(
-            store.current_book(),
-            Some(&BookScreenState {
-                hand: "main_hand".to_string(),
-                pages: vec!["First".to_string(), "Second".to_string()],
-                current_page: 0,
-            })
+            book.plain_pages_for_filter(false),
+            vec!["First".to_string(), "Second".to_string()]
         );
+        assert_eq!(book.current_page(), 0);
         assert!(store.turn_current_book_page(1));
-        assert_eq!(store.current_book().unwrap().current_page, 1);
+        assert_eq!(store.current_book().unwrap().current_page(), 1);
         assert!(!store.turn_current_book_page(1));
-        assert_eq!(store.current_book().unwrap().current_page, 1);
+        assert_eq!(store.current_book().unwrap().current_page(), 1);
         assert!(store.close_current_book());
         assert_eq!(store.current_book(), None);
     }
@@ -2807,14 +2731,14 @@ mod tests {
             hand: InteractionHand::OffHand,
         });
 
+        let book = store.current_book().unwrap();
+        assert!(book.is_view());
+        assert_eq!(book.hand(), InteractionHand::OffHand);
         assert_eq!(
-            store.current_book(),
-            Some(&BookScreenState {
-                hand: "off_hand".to_string(),
-                pages: vec!["Draft page".to_string()],
-                current_page: 0,
-            })
+            book.plain_pages_for_filter(false),
+            vec!["Draft page".to_string()]
         );
+        assert_eq!(book.current_page(), 0);
     }
 
     #[test]
