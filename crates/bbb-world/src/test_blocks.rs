@@ -130,7 +130,7 @@ mod tests {
     };
 
     #[test]
-    fn decodes_modes_defaults_and_malformed_field_fallbacks() {
+    fn decodes_modes_defaults_and_malformed_fields() {
         for (name, expected) in [
             ("start", TestBlockMode::Start),
             ("log", TestBlockMode::Log),
