@@ -10257,6 +10257,7 @@ mod tests {
             VanillaEntityMetadataDefault::Int(variant_default),
             rabbit.own_fields[0].default
         );
+        assert_eq!(VANILLA_RABBIT_VARIANT_EVIL_ID, 99);
         let abstract_villager =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractVillager);
         assert_eq!(

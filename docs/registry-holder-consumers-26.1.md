@@ -76,8 +76,11 @@ The synchronized `damage_type` reference holder is `complete`: DamageEvent and
 component values retain the current server order, custom network elements are
 strictly projected across the five direct-codec fields, and generated known-pack
 effects plus custom reordered effects select the six vanilla player hurt sounds
-through the native audio command path. Persistent codec and holder-set calls
-remain separate classified rows.
+through the native audio command path. The same source id controls wolf-armor
+bypass tags, while generated runtime-class policies cover every fixed living
+EntityType's hurt sound and volume without requiring a projected effect for
+non-player sounds. Persistent codec and holder-set calls remain separate
+classified rows.
 The `map_decoration_type` reference holder is `complete` against its immutable
 client built-in registry: MapItemData keeps the numeric holder, the generated
 35-entry order supplies sprite and item-frame visibility, and both first-person

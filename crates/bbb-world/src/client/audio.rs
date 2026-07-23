@@ -20,12 +20,23 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{
-    is_vanilla_minecart_type, vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
+    is_vanilla_minecart_type, vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
+    vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
+    vanilla_entity_metadata_copper_golem_accessors_for_entity_type,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
-    vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
+    vanilla_entity_metadata_goat_accessors_for_entity_type,
+    vanilla_entity_metadata_shulker_accessors_for_entity_type,
+    vanilla_entity_metadata_slime_size_accessor_for_entity_type,
+    vanilla_entity_metadata_type_hurt_sound_policy, vanilla_entity_metadata_type_sound_source_kind,
+    vanilla_entity_metadata_type_sound_volume_policy, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, EntityClientMovementSoundKind,
     EntityClientMovementSoundState, LivingEntityItemBreakState, PigSoundVariantIdentity,
-    VanillaEntityEventKind, VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
+    VanillaEntityEventKind, VanillaEntityHurtSoundCondition, VanillaEntityHurtSoundPolicy,
+    VanillaEntitySoundSourceKind, VanillaEntitySoundVariantFamily, VanillaEntitySoundVolumePolicy,
+    WolfSoundVariantIdentity, VANILLA_ARMADILLO_STATE_IDLE_ID,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID, VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
 };
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, RegistrySoundKind, CAT_SOUND_VARIANT_REGISTRY,
@@ -78,7 +89,6 @@ const PLAYER_HURT_ON_FIRE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_on_f
 const PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT: &str =
     "minecraft:entity.player.hurt_sweet_berry_bush";
 const PLAYER_HURT_FREEZE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_freeze";
-const WOLF_ARMOR_DAMAGE_SOUND_EVENT: &str = "minecraft:entity.wolf_armor.damage";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
@@ -808,100 +818,83 @@ impl WorldStore {
         entity_id: i32,
         source_type_id: i32,
         effects: DamageTypeEffects,
+        next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        self.living_damage_hurt_sound_for_entity_with_optional_effects(
+            entity_id,
+            source_type_id,
+            Some(effects),
+            next_float,
+        )
+    }
+
+    pub(crate) fn living_damage_hurt_sound_for_entity_with_optional_effects(
+        &mut self,
+        entity_id: i32,
+        source_type_id: i32,
+        effects: Option<DamageTypeEffects>,
         mut next_float: impl FnMut() -> f32,
     ) -> Option<SoundEventState> {
         let transform = self.entities.transform_state(entity_id)?;
         if self.entities.is_silent(entity_id)? {
             return None;
         }
-        let (sound, volume) = match transform.entity_type_id {
-            VANILLA_ENTITY_TYPE_PLAYER_ID => {
-                let sound = match effects {
-                    DamageTypeEffects::Hurt | DamageTypeEffects::Thorns => PLAYER_HURT_SOUND_EVENT,
-                    DamageTypeEffects::Drowning => PLAYER_HURT_DROWN_SOUND_EVENT,
-                    DamageTypeEffects::Burning => PLAYER_HURT_ON_FIRE_SOUND_EVENT,
-                    DamageTypeEffects::Poking => PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT,
-                    DamageTypeEffects::Freezing => PLAYER_HURT_FREEZE_SOUND_EVENT,
-                };
-                (direct_sound_holder(sound), 1.0)
-            }
-            VANILLA_ENTITY_TYPE_CAT_ID => {
+        let policy = vanilla_entity_metadata_type_hurt_sound_policy(transform.entity_type_id)?;
+        let sound = match policy {
+            VanillaEntityHurtSoundPolicy::NonLiving => return None,
+            VanillaEntityHurtSoundPolicy::Fixed(sound) => direct_sound_holder(sound),
+            VanillaEntityHurtSoundPolicy::Conditional {
+                condition,
+                when_true,
+                when_false,
+            } => direct_sound_holder(
+                if self.living_damage_hurt_sound_condition(entity_id, condition)? {
+                    when_true
+                } else {
+                    when_false
+                },
+            ),
+            VanillaEntityHurtSoundPolicy::NautilusAgeWater {
+                baby_underwater,
+                baby_land,
+                adult_underwater,
+                adult_land,
+            } => {
                 let baby = self.entities.is_baby(entity_id)?;
-                let accessors =
-                    vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
-                        transform.entity_type_id,
-                    )?;
-                let sound = self.sound_variant_sound(
-                    entity_id,
-                    CAT_SOUND_VARIANT_REGISTRY,
-                    accessors.sound_variant_data_id,
-                    EntityDataRegistryHolder::CatSoundVariant,
-                    accessors.sound_variant_default_resource_id,
-                    CatSoundVariantIdentity::for_resource_id,
-                    CatSoundVariantIdentity::builtin_hurt_sound_event,
-                    baby,
-                    RegistrySoundKind::Hurt,
-                )?;
-                (sound, 1.0)
+                let underwater = self.living_damage_fluid_state(entity_id).1;
+                direct_sound_holder(match (baby, underwater) {
+                    (true, true) => baby_underwater,
+                    (true, false) => baby_land,
+                    (false, true) => adult_underwater,
+                    (false, false) => adult_land,
+                })
             }
-            VANILLA_ENTITY_TYPE_CHICKEN_ID => {
-                let baby = self.entities.is_baby(entity_id)?;
-                let accessors =
-                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
-                        transform.entity_type_id,
-                    )?;
-                let sound = self.sound_variant_sound(
-                    entity_id,
-                    CHICKEN_SOUND_VARIANT_REGISTRY,
-                    accessors.sound_variant_data_id,
-                    EntityDataRegistryHolder::ChickenSoundVariant,
-                    accessors.sound_variant_default_resource_id,
-                    ChickenSoundVariantIdentity::for_resource_id,
-                    ChickenSoundVariantIdentity::builtin_hurt_sound_event,
-                    baby,
-                    RegistrySoundKind::Hurt,
+            VanillaEntityHurtSoundPolicy::CopperGolemOxidation {
+                unaffected,
+                exposed,
+                weathered,
+                oxidized,
+            } => {
+                let accessors = vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+                    transform.entity_type_id,
                 )?;
-                (sound, 1.0)
-            }
-            VANILLA_ENTITY_TYPE_COW_ID => {
-                let baby = self.entities.is_baby(entity_id)?;
-                let accessors =
-                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
-                        transform.entity_type_id,
-                    )?;
-                let sound = self.sound_variant_sound(
+                let state = self.entities.metadata_int_for_entity(
                     entity_id,
-                    COW_SOUND_VARIANT_REGISTRY,
-                    accessors.sound_variant_data_id,
-                    EntityDataRegistryHolder::CowSoundVariant,
-                    accessors.sound_variant_default_resource_id,
-                    CowSoundVariantIdentity::for_resource_id,
-                    CowSoundVariantIdentity::builtin_hurt_sound_event,
-                    baby,
-                    RegistrySoundKind::Hurt,
+                    accessors.weather_state_data_id,
+                    accessors.weather_state_default,
                 )?;
-                (sound, 0.4)
+                direct_sound_holder(match state {
+                    VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID => unaffected,
+                    VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID => exposed,
+                    VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID => weathered,
+                    VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID => oxidized,
+                    _ => return None,
+                })
             }
-            VANILLA_ENTITY_TYPE_PIG_ID => {
-                let baby = self.entities.is_baby(entity_id)?;
-                let accessors =
-                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
-                        transform.entity_type_id,
-                    )?;
-                let sound = self.sound_variant_sound(
-                    entity_id,
-                    PIG_SOUND_VARIANT_REGISTRY,
-                    accessors.sound_variant_data_id,
-                    EntityDataRegistryHolder::PigSoundVariant,
-                    accessors.sound_variant_default_resource_id,
-                    PigSoundVariantIdentity::for_resource_id,
-                    PigSoundVariantIdentity::builtin_hurt_sound_event,
-                    baby,
-                    RegistrySoundKind::Hurt,
-                )?;
-                (sound, 1.0)
+            VanillaEntityHurtSoundPolicy::SoundVariant(family) => {
+                self.living_damage_sound_variant(entity_id, transform.entity_type_id, family)?
             }
-            VANILLA_ENTITY_TYPE_WOLF_ID => {
+            VanillaEntityHurtSoundPolicy::WolfVariant { armor_damage } => {
                 if self
                     .equipment_item(entity_id, EquipmentSlot::Body)
                     .and_then(|item| item.item_id)
@@ -912,32 +905,48 @@ impl WorldStore {
                         source_type_id,
                     )
                 {
-                    (direct_sound_holder(WOLF_ARMOR_DAMAGE_SOUND_EVENT), 0.4)
+                    direct_sound_holder(armor_damage)
                 } else {
-                    let baby = self.entities.is_baby(entity_id)?;
-                    let accessors =
-                        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
-                            transform.entity_type_id,
-                        )?;
-                    let sound = self.sound_variant_sound(
-                        entity_id,
-                        WOLF_SOUND_VARIANT_REGISTRY,
-                        accessors.sound_variant_data_id,
-                        EntityDataRegistryHolder::WolfSoundVariant,
-                        accessors.sound_variant_default_resource_id,
-                        WolfSoundVariantIdentity::for_resource_id,
-                        WolfSoundVariantIdentity::builtin_hurt_sound_event,
-                        baby,
-                        RegistrySoundKind::Hurt,
-                    )?;
-                    (sound, 0.4)
+                    self.living_damage_wolf_sound_variant(entity_id, transform.entity_type_id)?
                 }
             }
-            _ => return None,
+            VanillaEntityHurtSoundPolicy::PlayerDamageType => {
+                let sound = match effects? {
+                    DamageTypeEffects::Hurt | DamageTypeEffects::Thorns => PLAYER_HURT_SOUND_EVENT,
+                    DamageTypeEffects::Drowning => PLAYER_HURT_DROWN_SOUND_EVENT,
+                    DamageTypeEffects::Burning => PLAYER_HURT_ON_FIRE_SOUND_EVENT,
+                    DamageTypeEffects::Poking => PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT,
+                    DamageTypeEffects::Freezing => PLAYER_HURT_FREEZE_SOUND_EVENT,
+                };
+                direct_sound_holder(sound)
+            }
         };
+        let volume =
+            match vanilla_entity_metadata_type_sound_volume_policy(transform.entity_type_id)? {
+                VanillaEntitySoundVolumePolicy::NonLiving => return None,
+                VanillaEntitySoundVolumePolicy::Fixed(bits) => f32::from_bits(bits),
+                VanillaEntitySoundVolumePolicy::SlimeSize => {
+                    let (data_id, default) =
+                        vanilla_entity_metadata_slime_size_accessor_for_entity_type(
+                            transform.entity_type_id,
+                        )?;
+                    0.4 * self
+                        .entities
+                        .metadata_int_for_entity(entity_id, data_id, default)?
+                        as f32
+                }
+                VanillaEntitySoundVolumePolicy::HappyGhastAge => {
+                    if self.entities.is_baby(entity_id)? {
+                        1.0
+                    } else {
+                        4.0
+                    }
+                }
+            };
         let state = SoundEventState {
             sound,
-            source: vanilla_entity_sound_source(transform.entity_type_id)
+            source: self
+                .living_damage_sound_source(entity_id, transform.entity_type_id)?
                 .as_str()
                 .to_string(),
             position: ProtocolVec3d {
@@ -951,6 +960,208 @@ impl WorldStore {
             distance_delay: false,
         };
         Some(self.record_positioned_sound(state))
+    }
+
+    fn living_damage_sound_variant(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        family: VanillaEntitySoundVariantFamily,
+    ) -> Option<SoundHolderState> {
+        let baby = self.entities.is_baby(entity_id)?;
+        match family {
+            VanillaEntitySoundVariantFamily::Cat => {
+                let accessors =
+                    vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+                        entity_type_id,
+                    )?;
+                self.sound_variant_sound(
+                    entity_id,
+                    CAT_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::CatSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    CatSoundVariantIdentity::for_resource_id,
+                    CatSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )
+            }
+            VanillaEntitySoundVariantFamily::Chicken => {
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                    )?;
+                self.sound_variant_sound(
+                    entity_id,
+                    CHICKEN_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::ChickenSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    ChickenSoundVariantIdentity::for_resource_id,
+                    ChickenSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )
+            }
+            VanillaEntitySoundVariantFamily::Cow => {
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        VANILLA_ENTITY_TYPE_COW_ID,
+                    )?;
+                self.sound_variant_sound(
+                    entity_id,
+                    COW_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::CowSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    CowSoundVariantIdentity::for_resource_id,
+                    CowSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )
+            }
+            VanillaEntitySoundVariantFamily::Pig => {
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        VANILLA_ENTITY_TYPE_PIG_ID,
+                    )?;
+                self.sound_variant_sound(
+                    entity_id,
+                    PIG_SOUND_VARIANT_REGISTRY,
+                    accessors.sound_variant_data_id,
+                    EntityDataRegistryHolder::PigSoundVariant,
+                    accessors.sound_variant_default_resource_id,
+                    PigSoundVariantIdentity::for_resource_id,
+                    PigSoundVariantIdentity::builtin_hurt_sound_event,
+                    baby,
+                    RegistrySoundKind::Hurt,
+                )
+            }
+        }
+    }
+
+    fn living_damage_wolf_sound_variant(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+    ) -> Option<SoundHolderState> {
+        let baby = self.entities.is_baby(entity_id)?;
+        let accessors =
+            vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)?;
+        self.sound_variant_sound(
+            entity_id,
+            WOLF_SOUND_VARIANT_REGISTRY,
+            accessors.sound_variant_data_id,
+            EntityDataRegistryHolder::WolfSoundVariant,
+            accessors.sound_variant_default_resource_id,
+            WolfSoundVariantIdentity::for_resource_id,
+            WolfSoundVariantIdentity::builtin_hurt_sound_event,
+            baby,
+            RegistrySoundKind::Hurt,
+        )
+    }
+
+    fn living_damage_hurt_sound_condition(
+        &self,
+        entity_id: i32,
+        condition: VanillaEntityHurtSoundCondition,
+    ) -> Option<bool> {
+        let entity_type_id = self.entities.entity_type_id(entity_id)?;
+        match condition {
+            VanillaEntityHurtSoundCondition::ArmadilloScared => {
+                let (data_id, default) =
+                    vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+                        entity_type_id,
+                    )?;
+                Some(
+                    self.entities
+                        .metadata_int_for_entity(entity_id, data_id, default)?
+                        != VANILLA_ARMADILLO_STATE_IDLE_ID,
+                )
+            }
+            VanillaEntityHurtSoundCondition::InWater => {
+                Some(self.living_damage_fluid_state(entity_id).0)
+            }
+            VanillaEntityHurtSoundCondition::UnderWater => {
+                Some(self.living_damage_fluid_state(entity_id).1)
+            }
+            VanillaEntityHurtSoundCondition::Baby => self.entities.is_baby(entity_id),
+            VanillaEntityHurtSoundCondition::GoatScreaming => {
+                let accessors =
+                    vanilla_entity_metadata_goat_accessors_for_entity_type(entity_type_id)?;
+                self.entities.metadata_bool_for_entity(
+                    entity_id,
+                    accessors.screaming_data_id,
+                    accessors.screaming_default,
+                )
+            }
+            VanillaEntityHurtSoundCondition::Tiny => {
+                let (data_id, default) =
+                    vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)?;
+                Some(
+                    self.entities
+                        .metadata_int_for_entity(entity_id, data_id, default)?
+                        <= 1,
+                )
+            }
+            VanillaEntityHurtSoundCondition::ShulkerClosed => {
+                let accessors =
+                    vanilla_entity_metadata_shulker_accessors_for_entity_type(entity_type_id)?;
+                Some(
+                    self.entities.metadata_byte_for_entity(
+                        entity_id,
+                        accessors.peek_data_id,
+                        accessors.peek_default,
+                    )? == 0,
+                )
+            }
+            VanillaEntityHurtSoundCondition::CreakingHeartBound => {
+                self.entities.creaking_is_heart_bound(entity_id)
+            }
+        }
+    }
+
+    fn living_damage_fluid_state(&self, entity_id: i32) -> (bool, bool) {
+        let Some(input) = self.entities.fluid_contact_input(entity_id) else {
+            return (false, false);
+        };
+        let contact = crate::client::entity_fluid_contact(
+            self,
+            input.aabb_min,
+            input.aabb_max,
+            input.position.y,
+            input.eye_position,
+        );
+        let in_water = contact.in_water();
+        (in_water, in_water && contact.eye_in_water)
+    }
+
+    fn living_damage_sound_source(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+    ) -> Option<SoundSource> {
+        if vanilla_entity_metadata_type_sound_source_kind(entity_type_id)
+            != Some(VanillaEntitySoundSourceKind::Dynamic)
+        {
+            return Some(vanilla_entity_sound_source(entity_type_id));
+        }
+        let (data_id, default) =
+            crate::entities::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(
+                entity_type_id,
+            )?;
+        Some(
+            if self
+                .entities
+                .metadata_int_for_entity(entity_id, data_id, default)?
+                == VANILLA_RABBIT_VARIANT_EVIL_ID
+            {
+                SoundSource::Hostile
+            } else {
+                SoundSource::Neutral
+            },
+        )
     }
 
     pub fn entity_attack_event_sound_for_entity(
@@ -2507,11 +2718,15 @@ mod tests {
     use super::*;
     use crate::entities::vanilla_entity_metadata_entity_accessors;
     use bbb_protocol::entity_data_serializers::{
+        VANILLA_ENTITY_DATA_SERIALIZER_ARMADILLO_STATE_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
-        VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
     };
     use bbb_protocol::packets::{
@@ -2738,6 +2953,250 @@ mod tests {
     }
 
     #[test]
+    fn generated_damage_audio_policies_resolve_all_fixed_living_entity_types() {
+        let mut store = WorldStore::new();
+        let mut living_count = 0;
+        for entry in bbb_protocol::entity_types::VANILLA_ENTITY_TYPES {
+            if matches!(
+                vanilla_entity_metadata_type_hurt_sound_policy(entry.id),
+                Some(VanillaEntityHurtSoundPolicy::NonLiving)
+            ) {
+                continue;
+            }
+            living_count += 1;
+            let entity_id = 10_000 + entry.id;
+            store.apply_add_entity(protocol_add_entity_of_type(entity_id, entry.id));
+            let mut samples = [0.75, 0.25].into_iter();
+            let sound = store
+                .living_damage_hurt_sound_for_entity(entity_id, 0, DamageTypeEffects::Hurt, || {
+                    samples.next().unwrap()
+                })
+                .unwrap_or_else(|| panic!("{} damage policy did not resolve", entry.resource_id));
+            assert!(sound.sound.location.is_some(), "{}", entry.resource_id);
+            assert_close(sound.pitch, 1.1);
+
+            let expected_volume = match vanilla_entity_metadata_type_sound_volume_policy(entry.id)
+                .expect("every fixed type has a generated volume policy")
+            {
+                VanillaEntitySoundVolumePolicy::Fixed(bits) => f32::from_bits(bits),
+                VanillaEntitySoundVolumePolicy::SlimeSize => 0.4,
+                VanillaEntitySoundVolumePolicy::HappyGhastAge => 4.0,
+                VanillaEntitySoundVolumePolicy::NonLiving => {
+                    panic!("{} living row has non-living volume", entry.resource_id)
+                }
+            };
+            assert_close(sound.volume, expected_volume);
+        }
+        assert_eq!(living_count, 92);
+    }
+
+    #[test]
+    fn dynamic_damage_audio_policies_read_canonical_metadata_and_fluid_state() {
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        let assert_sound = |store: &mut WorldStore,
+                            entity_id: i32,
+                            expected: &str,
+                            expected_volume: f32| {
+            let sound = store
+                .living_damage_hurt_sound_for_entity(entity_id, 0, DamageTypeEffects::Hurt, || 0.5)
+                .unwrap();
+            assert_eq!(sound.sound.location.as_deref(), Some(expected));
+            assert_close(sound.volume, expected_volume);
+        };
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            201,
+            VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+        ));
+        let (armadillo_data_id, _) =
+            vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+            )
+            .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 201,
+            values: vec![EntityDataValue {
+                data_id: armadillo_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ARMADILLO_STATE_ID,
+                value: EntityDataValueKind::Int(
+                    crate::entities::VANILLA_ARMADILLO_STATE_ROLLING_ID,
+                ),
+            }],
+        }));
+        assert_sound(
+            &mut store,
+            201,
+            "minecraft:entity.armadillo.hurt_reduced",
+            1.0,
+        );
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            202,
+            VANILLA_ENTITY_TYPE_GOAT_ID,
+        ));
+        let goat =
+            vanilla_entity_metadata_goat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_GOAT_ID)
+                .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 202,
+            values: vec![EntityDataValue {
+                data_id: goat.screaming_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert_sound(&mut store, 202, "minecraft:entity.goat.screaming.hurt", 1.0);
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            203,
+            VANILLA_ENTITY_TYPE_SLIME_ID,
+        ));
+        let (slime_data_id, _) = vanilla_entity_metadata_slime_size_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_SLIME_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 203,
+            values: vec![EntityDataValue {
+                data_id: slime_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                value: EntityDataValueKind::Int(4),
+            }],
+        }));
+        assert_sound(&mut store, 203, "minecraft:entity.slime.hurt", 1.6);
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            204,
+            VANILLA_ENTITY_TYPE_SHULKER_ID,
+        ));
+        let shulker = vanilla_entity_metadata_shulker_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_SHULKER_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 204,
+            values: vec![EntityDataValue {
+                data_id: shulker.peek_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(1),
+            }],
+        }));
+        assert_sound(&mut store, 204, "minecraft:entity.shulker.hurt", 1.0);
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            205,
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+        ));
+        let copper = vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 205,
+            values: vec![EntityDataValue {
+                data_id: copper.weather_state_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
+                value: EntityDataValueKind::Int(VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID),
+            }],
+        }));
+        assert_sound(
+            &mut store,
+            205,
+            "minecraft:entity.copper_golem_oxidized.hurt",
+            1.0,
+        );
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            206,
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+        ));
+        let home_data_id =
+            crate::entities::vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+            )
+            .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 206,
+            values: vec![EntityDataValue {
+                data_id: home_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
+                    x: 1,
+                    y: 2,
+                    z: 3,
+                })),
+            }],
+        }));
+        assert_sound(&mut store, 206, "minecraft:entity.creaking.sway", 1.0);
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            207,
+            VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        ));
+        assert_sound(&mut store, 207, "minecraft:entity.happy_ghast.hurt", 4.0);
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 207,
+            values: vec![baby_entity_data(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID)],
+        }));
+        assert_sound(&mut store, 207, "minecraft:entity.ghastling.hurt", 1.0);
+
+        store.apply_add_entity(protocol_add_entity_of_type(
+            210,
+            VANILLA_ENTITY_TYPE_RABBIT_ID,
+        ));
+        let (rabbit_data_id, _) =
+            crate::entities::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_RABBIT_ID,
+            )
+            .unwrap();
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 210,
+            values: vec![EntityDataValue {
+                data_id: rabbit_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                value: EntityDataValueKind::Int(VANILLA_RABBIT_VARIANT_EVIL_ID),
+            }],
+        }));
+        let rabbit_sound = store
+            .living_damage_hurt_sound_for_entity(210, 0, DamageTypeEffects::Hurt, || 0.5)
+            .unwrap();
+        assert_eq!(
+            rabbit_sound.sound.location.as_deref(),
+            Some("minecraft:entity.rabbit.hurt")
+        );
+        assert_eq!(rabbit_sound.source, "hostile");
+
+        store.insert_decoded_chunk(single_block_state_chunk(vanilla_block_state_id(
+            "minecraft:water",
+            [("level", "0")],
+        )));
+        for (entity_id, entity_type_id, expected) in [
+            (
+                208,
+                VANILLA_ENTITY_TYPE_DROWNED_ID,
+                "minecraft:entity.drowned.hurt_water",
+            ),
+            (
+                209,
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                "minecraft:entity.zombie_nautilus.hurt",
+            ),
+        ] {
+            let mut packet = protocol_add_entity_of_type(entity_id, entity_type_id);
+            packet.position = ProtocolVec3d {
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+            };
+            store.apply_add_entity(packet);
+            assert_sound(&mut store, entity_id, expected, 1.0);
+        }
+    }
+
+    #[test]
     fn wolf_body_armor_overrides_variant_hurt_unless_damage_bypasses_it() {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity_of_type(91, VANILLA_ENTITY_TYPE_WOLF_ID));
@@ -2763,7 +3222,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             armored.sound.location.as_deref(),
-            Some("minecraft:entity.wolf_armor.damage")
+            Some("minecraft:item.wolf_armor.damage")
         );
         assert_eq!(armored.volume, 0.4);
 
@@ -4109,6 +4568,30 @@ mod tests {
             y_rot: 0.0,
             y_head_rot: 0.0,
             data: 0,
+        }
+    }
+
+    fn single_block_state_chunk(block_state_id: i32) -> crate::ChunkColumn {
+        let single_value = |domain, entry_count, global_id| crate::PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: crate::PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        };
+        crate::ChunkColumn {
+            pos: crate::ChunkPos { x: 0, z: 0 },
+            state: crate::ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![crate::ChunkSection {
+                non_empty_block_count: 4096,
+                fluid_count: 4096,
+                block_states: single_value(crate::PaletteDomain::BlockStates, 4096, block_state_id),
+                biomes: single_value(crate::PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: Vec::new(),
+            light: crate::LightData::default(),
         }
     }
 

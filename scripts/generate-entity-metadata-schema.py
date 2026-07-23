@@ -1249,6 +1249,7 @@ ENUM_FIELD_ID_DEFAULT_RESOLVERS = (
 
 
 ENUM_CONSTRUCTOR_ID_ALIASES = {
+    "VANILLA_RABBIT_VARIANT_EVIL_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit.Variant", "EVIL", 0),
     "VANILLA_ARMADILLO_STATE_IDLE_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "IDLE", 3),
     "VANILLA_ARMADILLO_STATE_ROLLING_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "ROLLING", 3),
     "VANILLA_ARMADILLO_STATE_SCARED_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "SCARED", 3),
@@ -1296,6 +1297,7 @@ STATIC_FACTORY_ORDINAL_ID_ALIASES = {
 
 
 ENUM_CONSTRUCTOR_ID_CODEC_EXPRESSIONS = {
+    "net.minecraft.world.entity.animal.rabbit.Rabbit.Variant": "ByteBufCodecs.idMapper (BY_ID, Rabbit.Variant::id)",
     "net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState": "ByteBufCodecs.idMapper (BY_ID, Armadillo.ArmadilloState::id)",
     "net.minecraft.world.entity.animal.golem.CopperGolemState": "ByteBufCodecs.idMapper (BY_ID, CopperGolemState::id)",
     "net.minecraft.world.entity.animal.fish.TropicalFish.Pattern": "ByteBufCodecs.idMapper (BY_ID, TropicalFish.Pattern::getPackedId)",

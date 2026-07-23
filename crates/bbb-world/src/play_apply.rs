@@ -321,10 +321,10 @@ impl WorldStore {
                 if self.apply_damage_event(update) {
                     let damage = self.entity_last_damage(entity_id);
                     if let Some(state) = damage.and_then(|damage| {
-                        self.living_damage_hurt_sound_for_entity(
+                        self.living_damage_hurt_sound_for_entity_with_optional_effects(
                             entity_id,
                             damage.source_type_id,
-                            damage.source_effects?,
+                            damage.source_effects,
                             || random.next_float(),
                         )
                     }) {

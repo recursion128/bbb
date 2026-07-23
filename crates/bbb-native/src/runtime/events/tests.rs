@@ -1021,6 +1021,9 @@ fn test_sound_catalog() -> SoundCatalog {
             "entity.cow.hurt": {
                 "sounds": ["mob/cow/hurt1"]
             },
+            "entity.zombie.hurt": {
+                "sounds": ["mob/zombie/hurt1"]
+            },
             "block.grass.break": {
                 "sounds": ["dig/grass1"]
             },

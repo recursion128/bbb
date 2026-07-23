@@ -645,7 +645,7 @@ Prefer small semantic components:
 - `EntityMount`: vehicle/passenger graph state.
 - `EntityLeash`: leash holder.
 - `EntityMobEffects`: active effects.
-- `EntityDamage`: last damage event state.
+- `EntityDamage`: last damage source/stamp and client invulnerability timer.
 - `EntityMinecartLerp`: minecart interpolation steps.
 - `EntityHurtingProjectile`: acceleration power and other projectile-specific
   state.

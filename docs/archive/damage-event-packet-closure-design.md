@@ -1,4 +1,4 @@
-# Damage Event Packet Closure Engineering Contract
+# Damage Event Packet Closure Engineering Contract (Archived)
 
 This document freezes the high-risk engineering slice that closes
 `CLIENTBOUND_DAMAGE_EVENT` for Vanilla 26.1. Decode, session `DamageType`

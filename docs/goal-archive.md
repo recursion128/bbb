@@ -280,3 +280,7 @@
   统一到递归 controlling-passenger 权威、loaded-section/4096 插值、碰撞目标 carry、旧姿态
   partial-tick 及乘客/车辆回显路径；五行 packet coverage 全单元 complete，沿用
   `docs/archive/entity-transform-interpolation-design.md` 工程合同。
+- **2026-07-22（DamageEvent 包闭环）**：生成的 92 种 living EntityType 伤害声音/音量
+  策略驱动 canonical walk、hurt/invulnerability 与 40-tick source 生命周期，并在状态
+  写入后下发 native 音频；五类 packet coverage 全部 complete，合同见
+  `docs/archive/damage-event-packet-closure-design.md`。

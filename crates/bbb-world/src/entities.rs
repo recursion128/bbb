@@ -132,6 +132,7 @@ pub use schema::VanillaVehicleMetadataAccessors;
 pub use schema::VanillaZombieMetadataAccessors;
 pub use schema::VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID;
 pub use schema::VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED;
+pub use schema::VANILLA_RABBIT_VARIANT_EVIL_ID;
 pub use schema::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,

@@ -8095,10 +8095,12 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/entities/status.rs#apply_damage_event",
+            "crates/bbb-world/src/entities/store.rs#apply_living_damage_event_presentation",
+            "crates/bbb-world/src/entities/status.rs#damage_event_timers_last_source_expiry_and_recreation_are_canonical",
             "vanilla:net/minecraft/world/entity/LivingEntity.java#handleDamageEvent"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -8118,17 +8120,22 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/entities/status.rs#apply_damage_event",
+            "crates/bbb-world/src/client/audio.rs#living_damage_hurt_sound_for_entity_with_optional_effects",
+            "crates/bbb-world/src/client/audio.rs#generated_damage_audio_policies_resolve_all_fixed_living_entity_types",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#damage_event_mutates_living_state_before_generated_fixed_hurt_audio",
             "vanilla:net/minecraft/world/entity/LivingEntity.java#handleDamageEvent"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_damage_event_with_source_position_wire_order",
             "crates/bbb-world/src/entities/status.rs#damage_events_store_on_known_entities_only",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#entity_status_events_update_world_and_world_counters"
+            "crates/bbb-world/src/entities/status.rs#damage_event_timers_last_source_expiry_and_recreation_are_canonical",
+            "crates/bbb-world/src/client/audio.rs#generated_damage_audio_policies_resolve_all_fixed_living_entity_types",
+            "crates/bbb-world/src/client/audio.rs#dynamic_damage_audio_policies_read_canonical_metadata_and_fluid_state",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#damage_event_mutates_living_state_before_generated_fixed_hurt_audio"
           ],
           "gap": null,
           "status": "complete"

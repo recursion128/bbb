@@ -647,11 +647,6 @@ Movement:
   gate it on Player, clear the bed's local occupied state, resolve the safe
   stand-up position/yaw, move to that position, set standing pose, clear
   sleepingPos, and preserve `sleepCounter = 100` semantics.
-- Complete the remaining DamageEvent client presentation state: LivingEntity
-  walk-animation speed and invulnerability timing, the non-player hurt-sound
-  matrix, and last-source timestamp. Session DamageType identity, strict custom
-  projection, player effect-selected hurt audio, and the 10-tick overlay are
-  implemented. Never infer health loss, death, or authoritative combat results.
 - Complete the remaining vanilla boat physics after the direct local root-boat
   status/buoyancy/block/entity/world-border collision/control foundation: remote
   persistent status, passenger push and block inside/emission callbacks. The

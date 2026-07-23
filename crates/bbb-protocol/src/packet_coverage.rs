@@ -977,7 +977,7 @@ mod tests {
     }
 
     #[test]
-    fn play_damage_event_keeps_living_presentation_and_registry_open() {
+    fn play_damage_event_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -986,17 +986,15 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_DAMAGE_EVENT"
             })
             .expect("damage event coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        for dimension in ["canonical_apply", "runtime_side_effect", "tests"] {
+            assert!(entry.coverage[dimension].evidence.iter().any(|evidence| {
+                evidence.contains("damage_event") || evidence.contains("DamageEvent")
+            }));
+        }
     }
 
     #[test]

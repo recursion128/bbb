@@ -1682,6 +1682,10 @@ impl EntityStore {
         self.metadata_int(id, data_id, default)
     }
 
+    pub(crate) fn metadata_byte_for_entity(&self, id: i32, data_id: u8, default: i8) -> Option<i8> {
+        self.metadata_byte(id, data_id, default)
+    }
+
     pub(crate) fn metadata_bool_for_entity(
         &self,
         id: i32,
@@ -5974,6 +5978,93 @@ impl EntityStore {
         inputs
     }
 
+    fn fluid_contact_input_from_components(
+        identity: &EntityIdentity,
+        transform: &EntityTransform,
+        metadata: &EntityMetadata,
+        attributes: &EntityAttributes,
+        animations: &EntityClientAnimations,
+    ) -> Option<EntityInWaterTickInput> {
+        let bounds = vanilla_pick_bounds_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(animations.animations),
+            metadata.painting_variant_projection.as_ref(),
+        )?;
+        let aabb_min = [
+            transform.position.x + f64::from(bounds.min[0]),
+            transform.position.y + f64::from(bounds.min[1]),
+            transform.position.z + f64::from(bounds.min[2]),
+        ];
+        let aabb_max = [
+            transform.position.x + f64::from(bounds.max[0]),
+            transform.position.y + f64::from(bounds.max[1]),
+            transform.position.z + f64::from(bounds.max[2]),
+        ];
+        let eye_height = if is_vanilla_abstract_nautilus_type(identity.entity_type_id) {
+            vanilla_eye_height_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            )
+            .unwrap_or(bounds.max[1])
+        } else {
+            0.0
+        };
+        let guardian_below_pos =
+            (vanilla_entity_metadata_type_is_guardian(identity.entity_type_id)
+                && transform.delta_movement.y < 0.0)
+                .then_some(crate::BlockPos {
+                    x: transform.position.x.floor() as i32,
+                    y: transform.position.y.floor() as i32 - 1,
+                    z: transform.position.z.floor() as i32,
+                });
+        let guardian_attack_target_id =
+            if vanilla_entity_metadata_type_is_guardian(identity.entity_type_id) {
+                guardian_attack_target_id(identity.entity_type_id, &metadata.data_values)
+            } else {
+                0
+            };
+        Some(EntityInWaterTickInput {
+            entity_id: identity.id,
+            entity_type_id: identity.entity_type_id,
+            aabb_min,
+            aabb_max,
+            position: transform.position,
+            eye_position: [
+                transform.position.x,
+                transform.position.y + f64::from(eye_height),
+                transform.position.z,
+            ],
+            guardian_below_pos,
+            guardian_attack_target_id,
+        })
+    }
+
+    /// Resolves one entity through the same canonical bounds and eye-height
+    /// projection used by batched client fluid facts. Packet-time consumers do
+    /// not widen the per-tick animation filter just to sample one entity.
+    pub(crate) fn fluid_contact_input(&self, id: i32) -> Option<EntityInWaterTickInput> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Self::fluid_contact_input_from_components(
+            &identity,
+            &transform,
+            &metadata,
+            &attributes,
+            &animations,
+        )
+    }
+
     /// Gathers the world AABBs the per-entity `in_water` map is built from, for the
     /// entity types whose client-tick animation reads `isInWater()`
     /// ([`entity_animation_uses_in_water`]). Each input carries the entity id,
@@ -5997,67 +6088,11 @@ impl EntityStore {
             {
                 continue;
             }
-            let Some(bounds) = vanilla_pick_bounds_for_entity_data(
-                identity.entity_type_id,
-                identity.data,
-                &metadata.data_values,
-                &attributes.attributes,
-                Some(animations.animations),
-                metadata.painting_variant_projection.as_ref(),
-            ) else {
-                continue;
-            };
-            let aabb_min = [
-                transform.position.x + f64::from(bounds.min[0]),
-                transform.position.y + f64::from(bounds.min[1]),
-                transform.position.z + f64::from(bounds.min[2]),
-            ];
-            let aabb_max = [
-                transform.position.x + f64::from(bounds.max[0]),
-                transform.position.y + f64::from(bounds.max[1]),
-                transform.position.z + f64::from(bounds.max[2]),
-            ];
-            let eye_height = if is_vanilla_abstract_nautilus_type(identity.entity_type_id) {
-                vanilla_eye_height_for_entity_data(
-                    identity.entity_type_id,
-                    identity.data,
-                    &metadata.data_values,
-                    &attributes.attributes,
-                    Some(animations.animations),
-                    metadata.painting_variant_projection.as_ref(),
-                )
-                .unwrap_or(bounds.max[1])
-            } else {
-                0.0
-            };
-            let guardian_below_pos =
-                (vanilla_entity_metadata_type_is_guardian(identity.entity_type_id)
-                    && transform.delta_movement.y < 0.0)
-                    .then_some(crate::BlockPos {
-                        x: transform.position.x.floor() as i32,
-                        y: transform.position.y.floor() as i32 - 1,
-                        z: transform.position.z.floor() as i32,
-                    });
-            let guardian_attack_target_id =
-                if vanilla_entity_metadata_type_is_guardian(identity.entity_type_id) {
-                    guardian_attack_target_id(identity.entity_type_id, &metadata.data_values)
-                } else {
-                    0
-                };
-            inputs.push(EntityInWaterTickInput {
-                entity_id: identity.id,
-                entity_type_id: identity.entity_type_id,
-                aabb_min,
-                aabb_max,
-                position: transform.position,
-                eye_position: [
-                    transform.position.x,
-                    transform.position.y + f64::from(eye_height),
-                    transform.position.z,
-                ],
-                guardian_below_pos,
-                guardian_attack_target_id,
-            });
+            if let Some(input) = Self::fluid_contact_input_from_components(
+                identity, transform, metadata, attributes, animations,
+            ) {
+                inputs.push(input);
+            }
         }
         inputs
     }

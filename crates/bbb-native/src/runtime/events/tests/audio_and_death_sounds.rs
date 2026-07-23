@@ -182,6 +182,55 @@ fn damage_event_drives_runtime_animal_variant_hurt_audio() {
 }
 
 #[test]
+fn damage_event_mutates_living_state_before_generated_fixed_hurt_audio() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(168, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::DamageEvent(
+        bbb_protocol::packets::DamageEvent {
+            entity_id: 168,
+            source_type_id: 77,
+            source_cause_id: -1,
+            source_direct_id: -1,
+            source_position: None,
+        },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    let damage = world.entity_last_damage(168).unwrap();
+    assert_eq!(damage.source_type_id, 77);
+    assert_eq!(damage.source_effects, None);
+    assert_eq!(world.entity_damage_invulnerable_time(168), Some(20));
+    let animations = world.probe_entity(168).unwrap().client_animations;
+    assert_eq!(animations.walk_animation.unwrap().speed, 1.5);
+    assert!(animations.has_red_overlay());
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.category, AudioCategory::Hostile);
+            assert_eq!(command.position, [1.0, 64.0, -2.0]);
+            assert_eq!(command.packet_volume, 1.0);
+            assert_eq!(command.seed, 0);
+            assert_eq!(command.sound.event_id, "minecraft:entity.zombie.hurt");
+            assert_eq!(command.sound.sound_name, "minecraft:mob/zombie/hurt1");
+        }
+        other => panic!("expected positioned sound command, got {other:?}"),
+    }
+}
+
+#[test]
 fn client_audio_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {
