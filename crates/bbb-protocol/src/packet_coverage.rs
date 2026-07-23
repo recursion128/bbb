@@ -2220,7 +2220,7 @@ mod tests {
     }
 
     #[test]
-    fn play_block_entity_data_keeps_typed_codec_and_runtime_open() {
+    fn play_block_entity_data_identity_and_presentation_are_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2229,17 +2229,26 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_BLOCK_ENTITY_DATA"
             })
             .expect("play block entity data coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["decode"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
-        );
+            .any(|evidence| evidence
+                .contains("block_entity_data_requires_known_type_and_terminal_compound_nbt")));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains(
+                "block_entity_data_updates_every_known_matching_type_and_ignores_mismatches"
+            )));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence
+                .contains("block_entity_data_sign_text_updates_world_through_event_dispatcher")));
     }
 
     #[test]
