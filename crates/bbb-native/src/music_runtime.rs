@@ -1,8 +1,8 @@
 use bbb_control::AudioCounters;
 use bbb_world::{
     ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMusic, ClientSoundEventHolder,
-    EnvironmentBiomeSampling, LocalSoundEventState, SoundHolderState, WorldStore,
-    DIMENSION_TYPE_REGISTRY,
+    EnvironmentBiomeSampling, LevelEventSoundRandomState, LocalSoundEventState, SoundHolderState,
+    WorldStore, DIMENSION_TYPE_REGISTRY,
 };
 
 use crate::{audio_runtime::AudioEventSink, camera_pose::camera_pose_from_world};
@@ -10,18 +10,22 @@ use crate::{audio_runtime::AudioEventSink, camera_pose::camera_pose_from_world};
 const END_DIMENSION: &str = "minecraft:the_end";
 const END_MUSIC_EVENT: &str = "minecraft:music.end";
 const DRAGON_MUSIC_EVENT: &str = "minecraft:music.dragon";
+const STARTING_DELAY_TICKS: i32 = 100;
+const DEFAULT_MAX_FREQUENCY_TICKS: i32 = 20 * 1_200;
+const MIN_GAIN_STEP: f32 = 0.0005;
+const MAX_GAIN_STEP: f32 = 0.005;
+const STOP_GAIN_THRESHOLD: f32 = 0.0001;
 
-/// Non-serializable owner of Vanilla `MusicManager`'s End boss-music edge.
-///
-/// The general delayed background-music scheduler remains out of scope. This
-/// runtime only selects the zero-delay `Musics.END_BOSS`, waits for render-owned
-/// backend telemetry before retrying, and applies the ordinary selected
-/// background entry's replacement policy when the boss flag clears.
-#[derive(Debug, Default)]
-pub(crate) struct BossMusicRuntime {
+/// Non-serializable owner of Vanilla `MusicManager` state.
+#[derive(Debug)]
+pub(crate) struct MusicRuntime {
     connection_generation: Option<u64>,
-    owns_dragon_music: bool,
+    current_music: Option<String>,
+    current_gain: f32,
+    next_song_delay: i32,
+    random: LevelEventSoundRandomState,
     pending_start: Option<AudioCommandObservation>,
+    pending_stop: Option<AudioCommandObservation>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,12 +36,28 @@ struct AudioCommandObservation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SelectedBackgroundMusic {
+struct SelectedMusic {
     event_id: String,
+    min_delay: i32,
+    max_delay: i32,
     replace_current_music: bool,
 }
 
-impl BossMusicRuntime {
+impl Default for MusicRuntime {
+    fn default() -> Self {
+        Self {
+            connection_generation: None,
+            current_music: None,
+            current_gain: 1.0,
+            next_song_delay: STARTING_DELAY_TICKS,
+            random: LevelEventSoundRandomState::default(),
+            pending_start: None,
+            pending_stop: None,
+        }
+    }
+}
+
+impl MusicRuntime {
     pub(crate) fn advance_for_ticks(
         &mut self,
         world: &mut WorldStore,
@@ -47,8 +67,12 @@ impl BossMusicRuntime {
     ) {
         if self.connection_generation != Some(connection_generation) {
             self.connection_generation = Some(connection_generation);
-            self.owns_dragon_music = false;
+            self.current_music = audio.counters().active_music_event_id;
             self.pending_start = None;
+            self.pending_stop = None;
+            if self.current_music.is_none() {
+                self.next_song_delay = self.next_song_delay.max(STARTING_DELAY_TICKS);
+            }
         }
         for _ in 0..raw_client_ticks {
             self.tick(world, audio);
@@ -59,54 +83,137 @@ impl BossMusicRuntime {
         let counters = audio.counters();
         let observation = AudioCommandObservation::from(&counters);
         let active_music = counters.active_music_event_id.as_deref();
-        let wants_dragon = world
-            .level_info()
-            .is_some_and(|level| level.dimension == END_DIMENSION)
-            && world.boss_overlay_should_play_music();
+        let backend_ended = self.observe_backend(active_music, observation);
 
-        if wants_dragon {
-            if active_music == Some(DRAGON_MUSIC_EVENT) {
-                self.owns_dragon_music = true;
-                self.pending_start = None;
+        let target_gain = music_volume(world);
+        if self.current_music.is_some() && self.current_gain != target_gain {
+            if !self.fade_playing(target_gain, observation, audio) {
                 return;
             }
-            if self.pending_start == Some(observation) {
-                return;
-            }
-
-            if active_music.is_some() {
-                audio.stop_music();
-            }
-            audio.play_local_sound(&dragon_music_sound(world));
-            self.owns_dragon_music = true;
-            self.pending_start = Some(observation);
-            return;
         }
 
-        let ordinary_music = selected_background_music(world);
-        let replaces_dragon = ordinary_music.is_some_and(|music| {
-            music.replace_current_music && music.event_id != DRAGON_MUSIC_EVENT
-        });
-        if self.owns_dragon_music && replaces_dragon {
-            // The previous start may still be waiting in an older render
-            // effect batch. Appending stop now preserves FIFO semantics: if
-            // start has not reached Kira yet, it is still stopped immediately
-            // after it does, without waiting for a telemetry round trip.
-            audio.stop_music();
-            self.owns_dragon_music = false;
-            self.pending_start = None;
+        let selected = situational_music(world);
+        let Some(selected) = selected else {
+            self.next_song_delay = self.next_song_delay.max(STARTING_DELAY_TICKS);
             return;
+        };
+
+        if backend_ended {
+            self.next_song_delay = self
+                .next_song_delay
+                .min(next_song_delay(&selected, &mut self.random));
+        }
+
+        if let Some(current_music) = self.current_music.as_deref() {
+            if can_replace(&selected, current_music) {
+                self.stop_current(observation, audio);
+                self.next_song_delay =
+                    next_int_inclusive(&mut self.random, 0, selected.min_delay / 2);
+            }
+        }
+
+        self.next_song_delay = self
+            .next_song_delay
+            .min(next_song_delay(&selected, &mut self.random));
+        if self.current_music.is_none() {
+            let should_start = self.next_song_delay <= 0;
+            self.next_song_delay = self.next_song_delay.saturating_sub(1);
+            if should_start {
+                self.start_playing(world, selected, observation, audio);
+            }
+        }
+    }
+
+    fn observe_backend(
+        &mut self,
+        active_music: Option<&str>,
+        observation: AudioCommandObservation,
+    ) -> bool {
+        let stop_is_pending = self.pending_stop == Some(observation);
+        if self.pending_stop.is_some() && !stop_is_pending {
+            self.pending_stop = None;
         }
 
         if let Some(pending) = self.pending_start {
             if pending == observation {
-                return;
+                return false;
             }
             self.pending_start = None;
-            self.owns_dragon_music = active_music == Some(DRAGON_MUSIC_EVENT);
-        } else if active_music != Some(DRAGON_MUSIC_EVENT) {
-            self.owns_dragon_music = false;
+            if active_music == self.current_music.as_deref() {
+                return false;
+            }
+            self.current_music = None;
+            return true;
         }
+
+        if stop_is_pending {
+            return false;
+        }
+
+        match (self.current_music.as_deref(), active_music) {
+            (Some(current), Some(active)) if current == active => false,
+            (Some(_), None) => {
+                self.current_music = None;
+                true
+            }
+            (_, Some(active)) => {
+                self.current_music = Some(active.to_string());
+                false
+            }
+            (None, None) => false,
+        }
+    }
+
+    fn fade_playing(
+        &mut self,
+        target_gain: f32,
+        observation: AudioCommandObservation,
+        audio: &mut dyn AudioEventSink,
+    ) -> bool {
+        if self.current_gain < target_gain {
+            self.current_gain += self.current_gain.clamp(MIN_GAIN_STEP, MAX_GAIN_STEP);
+            self.current_gain = self.current_gain.min(target_gain);
+        } else {
+            self.current_gain = 0.03 * target_gain + 0.97 * self.current_gain;
+            if (self.current_gain - target_gain).abs() < STOP_GAIN_THRESHOLD
+                || self.current_gain < target_gain
+            {
+                self.current_gain = target_gain;
+            }
+        }
+        self.current_gain = self.current_gain.clamp(0.0, 1.0);
+        if self.current_gain <= STOP_GAIN_THRESHOLD {
+            self.stop_current(observation, audio);
+            self.next_song_delay = self.next_song_delay.saturating_add(STARTING_DELAY_TICKS);
+            false
+        } else {
+            audio.set_music_gain(self.current_gain);
+            true
+        }
+    }
+
+    fn stop_current(
+        &mut self,
+        observation: AudioCommandObservation,
+        audio: &mut dyn AudioEventSink,
+    ) {
+        audio.stop_music();
+        self.current_music = None;
+        self.pending_start = None;
+        self.pending_stop = Some(observation);
+    }
+
+    fn start_playing(
+        &mut self,
+        world: &mut WorldStore,
+        selected: SelectedMusic,
+        observation: AudioCommandObservation,
+        audio: &mut dyn AudioEventSink,
+    ) {
+        audio.play_local_sound(&music_sound(world, &selected.event_id));
+        self.current_music = Some(selected.event_id);
+        self.pending_start = Some(observation);
+        self.next_song_delay = i32::MAX;
     }
 }
 
@@ -120,27 +227,50 @@ impl From<&AudioCounters> for AudioCommandObservation {
     }
 }
 
-fn dragon_music_sound(world: &mut WorldStore) -> LocalSoundEventState {
-    let volume = camera_environment_attributes(world)
+fn situational_music(world: &WorldStore) -> Option<SelectedMusic> {
+    let wants_dragon = world
+        .level_info()
+        .is_some_and(|level| level.dimension == END_DIMENSION)
+        && world.boss_overlay_should_play_music();
+    if wants_dragon {
+        return Some(SelectedMusic {
+            event_id: DRAGON_MUSIC_EVENT.to_string(),
+            min_delay: 0,
+            max_delay: 0,
+            replace_current_music: true,
+        });
+    }
+    selected_background_music(world)
+}
+
+fn can_replace(selected: &SelectedMusic, current_music: &str) -> bool {
+    selected.replace_current_music && selected.event_id != current_music
+}
+
+fn music_volume(world: &WorldStore) -> f32 {
+    camera_environment_attributes(world)
         .and_then(|attributes| attributes.music_volume)
         .filter(|volume| volume.is_finite())
         .unwrap_or(1.0)
-        .clamp(0.0, 1.0);
+        .clamp(0.0, 1.0)
+}
+
+fn music_sound(world: &mut WorldStore, event_id: &str) -> LocalSoundEventState {
     LocalSoundEventState {
         sound: SoundHolderState {
             kind: "direct".to_string(),
             registry_id: None,
-            location: Some(DRAGON_MUSIC_EVENT.to_string()),
+            location: Some(event_id.to_string()),
             fixed_range: None,
         },
         source: "music".to_string(),
-        volume,
+        volume: 1.0,
         pitch: 1.0,
         seed: world.next_sound_seed(),
     }
 }
 
-fn selected_background_music(world: &WorldStore) -> Option<SelectedBackgroundMusic> {
+fn selected_background_music(world: &WorldStore) -> Option<SelectedMusic> {
     let attributes = camera_environment_attributes(world);
     if let Some(background) = attributes
         .as_ref()
@@ -163,8 +293,10 @@ fn selected_background_music(world: &WorldStore) -> Option<SelectedBackgroundMus
         .level_info()
         .is_some_and(|level| level.dimension == END_DIMENSION)
         && world.registry_content(DIMENSION_TYPE_REGISTRY).is_none())
-    .then(|| SelectedBackgroundMusic {
+    .then(|| SelectedMusic {
         event_id: END_MUSIC_EVENT.to_string(),
+        min_delay: 6_000,
+        max_delay: 24_000,
         replace_current_music: true,
     })
 }
@@ -194,7 +326,7 @@ fn selected_background_music_from(
     background: &ClientBackgroundMusic,
     creative: bool,
     underwater: bool,
-) -> Option<SelectedBackgroundMusic> {
+) -> Option<SelectedMusic> {
     let music = if underwater {
         background.underwater.as_ref()
     } else {
@@ -205,14 +337,36 @@ fn selected_background_music_from(
     Some(selected_music(music))
 }
 
-fn selected_music(music: &ClientMusic) -> SelectedBackgroundMusic {
+fn selected_music(music: &ClientMusic) -> SelectedMusic {
     let event_id = match &music.sound {
         ClientSoundEventHolder::Reference { resource_id } => resource_id.clone(),
         ClientSoundEventHolder::Direct { sound_id, .. } => sound_id.clone(),
     };
-    SelectedBackgroundMusic {
+    SelectedMusic {
         event_id,
+        min_delay: music.min_delay,
+        max_delay: music.max_delay,
         replace_current_music: music.replace_current_music,
+    }
+}
+
+fn next_song_delay(selected: &SelectedMusic, random: &mut LevelEventSoundRandomState) -> i32 {
+    next_int_inclusive(
+        random,
+        selected.min_delay.min(DEFAULT_MAX_FREQUENCY_TICKS),
+        selected.max_delay.min(DEFAULT_MAX_FREQUENCY_TICKS),
+    )
+}
+
+fn next_int_inclusive(
+    random: &mut LevelEventSoundRandomState,
+    min_inclusive: i32,
+    max_inclusive: i32,
+) -> i32 {
+    if min_inclusive >= max_inclusive {
+        min_inclusive
+    } else {
+        random.next_int_bound(max_inclusive - min_inclusive + 1) + min_inclusive
     }
 }
 
@@ -234,6 +388,7 @@ mod tests {
     #[derive(Debug, Clone, PartialEq)]
     enum RecordedAudioEffect {
         StopMusic,
+        SetMusicGain(f32),
         PlayLocal(LocalSoundEventState),
     }
 
@@ -276,7 +431,9 @@ mod tests {
             self.effects.push(RecordedAudioEffect::StopMusic);
         }
 
-        fn set_music_gain(&mut self, _gain: f32) {}
+        fn set_music_gain(&mut self, gain: f32) {
+            self.effects.push(RecordedAudioEffect::SetMusicGain(gain));
+        }
 
         fn sync_ambient_loops(&mut self, _loops: &[bbb_world::AmbientLoopSoundState]) {}
 
@@ -292,7 +449,7 @@ mod tests {
     fn non_end_boss_music_flag_is_a_noop() {
         let mut world = world_in_dimension("minecraft:overworld", 0);
         add_music_boss_bar(&mut world);
-        let mut runtime = BossMusicRuntime::default();
+        let mut runtime = MusicRuntime::default();
         let mut audio = RecordingAudio::default();
 
         runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
@@ -306,7 +463,7 @@ mod tests {
         add_music_boss_bar(&mut world);
         let mut expected_world = world.clone();
         let expected_seed = expected_world.next_sound_seed();
-        let mut runtime = BossMusicRuntime::default();
+        let mut runtime = MusicRuntime::default();
         let mut audio = RecordingAudio {
             counters: AudioCounters {
                 active_music_event_id: Some(END_MUSIC_EVENT.to_string()),
@@ -344,7 +501,7 @@ mod tests {
     fn end_boss_music_restarts_after_backend_reports_natural_completion() {
         let mut world = world_in_dimension(END_DIMENSION, 2);
         add_music_boss_bar(&mut world);
-        let mut runtime = BossMusicRuntime::default();
+        let mut runtime = MusicRuntime::default();
         let mut audio = RecordingAudio::default();
 
         runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
@@ -367,7 +524,7 @@ mod tests {
     fn clearing_boss_flag_uses_selected_background_replacement_policy() {
         let mut world = world_in_dimension(END_DIMENSION, 2);
         add_music_boss_bar(&mut world);
-        let mut runtime = BossMusicRuntime::default();
+        let mut runtime = MusicRuntime::default();
         let mut audio = RecordingAudio::default();
         runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
         audio.counters.active_music_event_id = Some(DRAGON_MUSIC_EVENT.to_string());
@@ -392,8 +549,10 @@ mod tests {
         };
         assert_eq!(
             selected_background_music_from(&non_replacing, false, false),
-            Some(SelectedBackgroundMusic {
+            Some(SelectedMusic {
                 event_id: "example:ambient".to_string(),
+                min_delay: 0,
+                max_delay: 0,
                 replace_current_music: false,
             })
         );
@@ -403,7 +562,7 @@ mod tests {
     fn clearing_boss_flag_orders_stop_after_an_unobserved_pending_start() {
         let mut world = world_in_dimension(END_DIMENSION, 2);
         add_music_boss_bar(&mut world);
-        let mut runtime = BossMusicRuntime::default();
+        let mut runtime = MusicRuntime::default();
         let mut audio = RecordingAudio::default();
 
         runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
@@ -457,7 +616,116 @@ mod tests {
     }
 
     #[test]
-    fn boss_music_effects_enter_fifo_before_entity_sound_position_tick() {
+    fn ordinary_end_music_waits_the_initial_hundred_tick_delay() {
+        let mut world = world_in_dimension(END_DIMENSION, 2);
+        let mut runtime = MusicRuntime::default();
+        let mut audio = RecordingAudio::default();
+
+        runtime.advance_for_ticks(&mut world, 1, 100, &mut audio);
+        assert!(audio.effects.is_empty());
+
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        let [RecordedAudioEffect::PlayLocal(sound)] = audio.effects.as_slice() else {
+            panic!("ordinary End music must start after the initial delay");
+        };
+        assert_eq!(sound.sound.location.as_deref(), Some(END_MUSIC_EVENT));
+        assert_eq!(runtime.next_song_delay, i32::MAX);
+    }
+
+    #[test]
+    fn backend_start_failure_reenters_the_zero_delay_boss_schedule() {
+        let mut world = world_in_dimension(END_DIMENSION, 2);
+        add_music_boss_bar(&mut world);
+        let mut runtime = MusicRuntime::default();
+        let mut audio = RecordingAudio::default();
+
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        audio.counters.resolve_failures = 1;
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+
+        assert_eq!(
+            audio
+                .effects
+                .iter()
+                .filter(|effect| matches!(effect, RecordedAudioEffect::PlayLocal(_)))
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules() {
+        let mut runtime = MusicRuntime {
+            current_music: Some("example:music".to_string()),
+            ..MusicRuntime::default()
+        };
+        let mut audio = RecordingAudio::default();
+        let observation = AudioCommandObservation::from(&audio.counters);
+
+        assert!(runtime.fade_playing(0.0, observation, &mut audio));
+        assert!((runtime.current_gain - 0.97).abs() < 0.0001);
+        assert_eq!(
+            audio.effects.last(),
+            Some(&RecordedAudioEffect::SetMusicGain(0.97))
+        );
+
+        runtime.current_gain = 0.001;
+        assert!(runtime.fade_playing(1.0, observation, &mut audio));
+        assert!((runtime.current_gain - 0.002).abs() < 0.0001);
+
+        runtime.current_gain = 0.0001;
+        assert!(!runtime.fade_playing(0.0, observation, &mut audio));
+        assert_eq!(runtime.current_music, None);
+        assert_eq!(audio.effects.last(), Some(&RecordedAudioEffect::StopMusic));
+    }
+
+    #[test]
+    fn default_frequency_clamps_ranges_and_mth_inclusive_order() {
+        let mut random = LevelEventSoundRandomState::default();
+        let bounded = SelectedMusic {
+            event_id: "example:bounded".to_string(),
+            min_delay: 10,
+            max_delay: 20,
+            replace_current_music: false,
+        };
+        let delay = next_song_delay(&bounded, &mut random);
+        assert!((10..=20).contains(&delay));
+
+        let clamped = SelectedMusic {
+            event_id: "example:clamped".to_string(),
+            min_delay: 30_000,
+            max_delay: 40_000,
+            replace_current_music: false,
+        };
+        assert_eq!(
+            next_song_delay(&clamped, &mut random),
+            DEFAULT_MAX_FREQUENCY_TICKS
+        );
+        assert_eq!(next_int_inclusive(&mut random, 9, 3), 9);
+    }
+
+    #[test]
+    fn connection_change_discards_pending_start_and_restarts_current_selection() {
+        let mut world = world_in_dimension(END_DIMENSION, 2);
+        add_music_boss_bar(&mut world);
+        let mut runtime = MusicRuntime::default();
+        let mut audio = RecordingAudio::default();
+
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        runtime.advance_for_ticks(&mut world, 2, 1, &mut audio);
+
+        assert_eq!(
+            audio
+                .effects
+                .iter()
+                .filter(|effect| matches!(effect, RecordedAudioEffect::PlayLocal(_)))
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn music_effects_enter_fifo_before_entity_sound_position_tick() {
         let runtime = include_str!("runtime.rs");
         let advance = runtime
             .split_once("pub(crate) fn advance_simulation(")
@@ -466,14 +734,14 @@ mod tests {
             .split_once("pub(crate) fn update_renderer_from_publication(")
             .expect("advance_simulation end")
             .0;
-        let boss_music = advance
-            .find("boss_music.advance_for_ticks(")
-            .expect("boss music tick");
+        let music = advance
+            .find("music.advance_for_ticks(")
+            .expect("music tick");
         let entity_positions = advance
             .find("audio_events.tick_entity_sound_positions(")
             .expect("entity sound position tick");
 
-        assert!(boss_music < entity_positions);
+        assert!(music < entity_positions);
     }
 
     fn world_in_dimension(dimension: &str, dimension_type_id: i32) -> WorldStore {

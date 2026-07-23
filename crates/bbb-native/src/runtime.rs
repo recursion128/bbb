@@ -169,7 +169,7 @@ use crate::{
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
-    music_runtime::BossMusicRuntime,
+    music_runtime::MusicRuntime,
     narrator_runtime::{NarratedElementKind, ScreenNarrationFrame, SystemNarrator},
     particle_runtime::{LocalPlayerActionParticleState, NativeParticleRuntime, ParticleEventSink},
     recipe_book_ui::{
@@ -2317,7 +2317,7 @@ pub(crate) fn advance_simulation(
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
-    boss_music: &mut BossMusicRuntime,
+    music: &mut MusicRuntime,
     terrain_textures: &mut TerrainTextureState,
     item_runtime: &mut Option<NativeItemRuntime>,
     code_of_conduct: &mut CodeOfConductAcceptance,
@@ -2441,7 +2441,7 @@ pub(crate) fn advance_simulation(
     if let Some(audio_events) = audio_events.as_deref_mut() {
         // `Minecraft.tick` advances `MusicManager` once per raw client tick,
         // after `GameRenderer.tick` and before level/particle sound ticks.
-        boss_music.advance_for_ticks(
+        music.advance_for_ticks(
             world,
             net_counters.connection_generation,
             advanced_ticks,

@@ -73,7 +73,7 @@ use entity_variant_textures::NativeEntityVariantTextureRuntime;
 use hud_assets::load_hud_textures;
 use input::{ClientInputState, DebugClipboard};
 use level_load_runtime::LevelLoadRuntime;
-use music_runtime::BossMusicRuntime;
+use music_runtime::MusicRuntime;
 use narrator_runtime::{
     NarratorStatus, NativeNarratorRuntime, ScreenNarrationInput, ScreenNarrationRuntime,
 };
@@ -672,7 +672,7 @@ fn main() -> Result<()> {
         hud_debug_tps_sampler,
         lightmap_ticks,
         level_event_sound_random,
-        boss_music: BossMusicRuntime::default(),
+        music: MusicRuntime::default(),
         particle_runtime,
         terrain_textures: terrain_textures.clone(),
         item_runtime: simulation_item_runtime,
