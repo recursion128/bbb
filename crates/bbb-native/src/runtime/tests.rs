@@ -55,7 +55,7 @@ use bbb_protocol::packets::{
     DataComponentPatchSummary, DialogHolder, EntityEvent as ProtocolEntityEvent,
     GameEvent as ProtocolGameEvent, InitializeBorder as ProtocolInitializeBorder, InteractionHand,
     MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
-    RemoveMobEffect, SetBorderLerpSize as ProtocolSetBorderLerpSize,
+    PlayerCombatKill, RemoveMobEffect, SetBorderLerpSize as ProtocolSetBorderLerpSize,
     SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
     ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
@@ -167,6 +167,59 @@ fn hud_win_screen_reuses_resource_lines_and_sanitizes_vanilla_realtime_delta() {
             start + Duration::from_millis(450),
         ),
         Some((screen.generation, 0.5))
+    );
+}
+
+#[test]
+fn death_screen_narration_tracks_main_and_quit_confirmation_focus() {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id: 7,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    world.apply_player_combat_kill(PlayerCombatKill {
+        player_id: 7,
+        message: bbb_protocol::RichTextComponent::plain("You died"),
+    });
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    input.sync_death_screen(&mut world, &mut counters, &None);
+
+    assert_eq!(
+        death_screen_narration_frame(&input, &world, None)
+            .expect("death narration")
+            .all_text_for_test(),
+        "You Died!. Respawn button. Screen element 1 out of 2. Press Tab to navigate to the next element. Press Enter to activate"
+    );
+
+    input.advance_death_screen_ticks(20);
+    input.handle_death_screen_key(&mut counters, &mut world, &None, KeyCode::Tab, true);
+    input.handle_death_screen_key(&mut counters, &mut world, &None, KeyCode::Enter, true);
+    assert_eq!(
+        death_screen_narration_frame(&input, &world, None)
+            .expect("quit confirmation narration")
+            .all_text_for_test(),
+        "Are you sure you want to quit?. Title Screen button. Screen element 1 out of 2. Press Tab to navigate to the next element. Press Enter to activate"
     );
 }
 use tokio::sync::mpsc;

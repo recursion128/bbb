@@ -15,6 +15,7 @@ use crate::item_models::{
 use crate::Renderer;
 
 mod book;
+mod death_screen;
 mod game_event;
 mod game_rules;
 mod gpu;
@@ -29,6 +30,9 @@ pub use self::book::{
     HUD_BOOK_PAGE_BUTTON_HEIGHT, HUD_BOOK_PAGE_BUTTON_WIDTH, HUD_BOOK_PAGE_BUTTON_Y,
     HUD_BOOK_PAGE_FORWARD_X, HUD_BOOK_PAGE_INDICATOR_RIGHT, HUD_BOOK_PAGE_INDICATOR_Y,
     HUD_BOOK_TEXT_WIDTH, HUD_BOOK_TEXT_X, HUD_BOOK_TEXT_Y, HUD_BOOK_TOP, HUD_BOOK_WIDTH,
+};
+pub use self::death_screen::{
+    HudDeathScreenButton, HudDeathScreenHitTarget, HudDeathScreenHitTargetKind,
 };
 pub use self::game_event::{
     HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudGameEventButton, HudGameEventHitTarget,

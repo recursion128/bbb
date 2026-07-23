@@ -28,6 +28,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
+        death_screen::DeathScreenPlatformRequest,
         game_event_screen::GameEventScreenPlatformRequest, handle_advancements_screen_cursor_moved,
         handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
         handle_focus_change, handle_inventory_cursor_moved,
@@ -220,6 +221,7 @@ impl SimulationInputRuntime {
             }
             SimulationCommand::CursorLeft => {
                 self.cursor_position = None;
+                context.input.handle_death_screen_hover(None);
                 context.input.handle_game_event_screen_hover(None);
                 context.input.update_screen_cursor_position(None);
                 context.input.handle_sign_editor_cursor_moved(None);
@@ -318,6 +320,16 @@ impl SimulationInputRuntime {
             .input
             .handle_debug_pause_screen_cursor_moved(self.cursor_position)
         {
+            return;
+        }
+        if context.world.death_screen().is_some() {
+            context.input.handle_death_screen_hover(None);
+            context.platform.submit(PlatformEffect::DeathScreenInput(
+                ScreenNarrationScheduleInput::MouseMove,
+            ));
+            context
+                .input
+                .update_screen_cursor_position(self.cursor_position);
             return;
         }
         if context.world.game_event_screen().is_some() {
@@ -441,6 +453,30 @@ impl SimulationInputRuntime {
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
             self.request_cursor_capture(false, context.platform);
+            return;
+        }
+
+        if context.world.death_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            handle_key_input_with_item_runtime(
+                context.input,
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                context.item_runtime.as_ref(),
+                physical_key,
+                state,
+                self.surface_size,
+                &self.text_measurements,
+                None,
+            );
+            collect_death_screen_platform_effects(context.input, context.platform);
+            context.platform.submit(PlatformEffect::DeathScreenInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+            if context.world.death_screen().is_none() {
+                self.request_cursor_capture(true, context.platform);
+            }
             return;
         }
 
@@ -967,6 +1003,25 @@ impl SimulationInputRuntime {
             }
             return;
         }
+        if context.world.death_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_death_screen_mouse_input(
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                button,
+                state,
+                None,
+            );
+            collect_death_screen_platform_effects(context.input, context.platform);
+            context.platform.submit(PlatformEffect::DeathScreenInput(
+                ScreenNarrationScheduleInput::MouseAction,
+            ));
+            if context.world.death_screen().is_none() {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
         if context.world.game_event_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
             context.input.handle_game_event_screen_mouse_input(
@@ -1356,7 +1411,7 @@ impl SimulationInputRuntime {
                 .handle_debug_options_screen_mouse_wheel(delta, self.surface_size);
             return;
         }
-        if context.world.game_event_screen().is_some() {
+        if context.world.death_screen().is_some() || context.world.game_event_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
             return;
         }
@@ -1625,6 +1680,7 @@ fn apply_resource_reload_ack(
 
 fn world_wants_cursor(world: &WorldStore) -> bool {
     world.open_container_id().is_some()
+        || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.dialog_screen_is_open()
         || world.current_book().is_some()
@@ -1730,6 +1786,20 @@ fn collect_game_event_screen_platform_effects(
         platform.submit(match request {
             GameEventScreenPlatformRequest::OpenUri(url) => PlatformEffect::OpenUri(url),
             GameEventScreenPlatformRequest::ClipboardWrite(text) => {
+                PlatformEffect::ClipboardWrite(text)
+            }
+        });
+    }
+}
+
+fn collect_death_screen_platform_effects(
+    input: &mut crate::input::ClientInputState,
+    platform: &mut PlatformEffectCollector<'_>,
+) {
+    for request in input.take_death_screen_platform_requests() {
+        platform.submit(match request {
+            DeathScreenPlatformRequest::OpenUri(url) => PlatformEffect::OpenUri(url),
+            DeathScreenPlatformRequest::ClipboardWrite(text) => {
                 PlatformEffect::ClipboardWrite(text)
             }
         });

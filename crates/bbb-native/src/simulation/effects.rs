@@ -40,6 +40,7 @@ pub(crate) enum PlatformEffect {
     },
     StatsScreenInput(ScreenNarrationScheduleInput),
     GameEventScreenInput(ScreenNarrationScheduleInput),
+    DeathScreenInput(ScreenNarrationScheduleInput),
     ChatNarration {
         kind: bbb_world::ChatNarrationKind,
         text: String,

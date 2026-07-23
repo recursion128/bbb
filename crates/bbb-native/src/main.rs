@@ -206,6 +206,7 @@ struct NativeRenderEffectSink<'a> {
     terrain_upload: &'a mut TerrainUploadState,
     debug_profiler: &'a mut DebugProfiler,
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
+    death_screen_narration: &'a mut ScreenNarrationRuntime,
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
     control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
@@ -314,6 +315,17 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     }
                 };
                 self.game_event_screen_narration
+                    .after_input(input, Instant::now());
+            }
+            PlatformEffect::DeathScreenInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.death_screen_narration
                     .after_input(input, Instant::now());
             }
             PlatformEffect::ChatNarration { kind, text } => {
@@ -653,6 +665,7 @@ fn main() -> Result<()> {
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
+    let mut death_screen_narration = ScreenNarrationRuntime::default();
     let mut game_event_screen_narration = ScreenNarrationRuntime::default();
     let mut pending_control_screenshots = std::collections::VecDeque::new();
     let mut platform_exit_requested = false;
@@ -762,6 +775,7 @@ fn main() -> Result<()> {
                     terrain_upload: &mut terrain_upload,
                     debug_profiler: &mut debug_profiler,
                     stats_screen_narration: &mut stats_screen_narration,
+                    death_screen_narration: &mut death_screen_narration,
                     game_event_screen_narration: &mut game_event_screen_narration,
                     narrator: narrator_runtime
                         .as_mut()
@@ -930,6 +944,18 @@ fn main() -> Result<()> {
                             .game_event_screen()
                             .is_some()
                             .then(|| hud_render_runtime.game_event_screen_narration())
+                            .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
+                    death_screen_narration.tick(
+                        render_publication
+                            .world
+                            .death_screen()
+                            .is_some()
+                            .then(|| hud_render_runtime.death_screen_narration())
                             .flatten(),
                         Instant::now(),
                         narrator_runtime
@@ -1249,6 +1275,7 @@ fn enqueue_simulation_window_event(
 
 fn world_wants_cursor(world: &WorldStore) -> bool {
     world.open_container_id().is_some()
+        || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.dialog_screen_is_open()
         || world.current_book().is_some()

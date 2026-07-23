@@ -65,6 +65,7 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
 ) {
     if !input.focused
         || input.sign_editor_is_active_or_pending(world)
+        || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
@@ -220,6 +221,7 @@ pub(crate) fn advance_using_item_at_partial_tick(
 ) {
     if !input.focused
         || input.sign_editor_is_active_or_pending(world)
+        || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.current_book().is_some()
         || !input.use_item_held
@@ -448,6 +450,7 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     let mut audio_events = audio_events;
     if !input.focused
         || input.sign_editor_is_active_or_pending(world)
+        || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.current_book().is_some()
         || !input.destroy_block_held

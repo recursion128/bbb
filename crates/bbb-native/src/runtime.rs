@@ -122,6 +122,7 @@ use crate::{
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick,
+        death_screen::DeathScreenRuntime,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
         pause_screen_advancements_button_contains, pause_screen_disconnect_button_contains,
@@ -694,6 +695,7 @@ pub(crate) struct HudRenderRuntime {
     low_disk_space_toast: SystemToastAnimationState,
     advancement_toasts: AdvancementToastRuntime,
     stats_screen_narration: Option<ScreenNarrationFrame>,
+    death_screen_narration: Option<ScreenNarrationFrame>,
     game_event_screen_narration: Option<ScreenNarrationFrame>,
     win_screen_resource_owner: Option<Arc<crate::win_screen_resources::WinScreenResources>>,
     win_screen_lines: Arc<[HudWinScreenLine]>,
@@ -736,6 +738,10 @@ impl HudRenderRuntime {
 
     pub(crate) fn game_event_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.game_event_screen_narration.as_ref()
+    }
+
+    pub(crate) fn death_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.death_screen_narration.as_ref()
     }
 
     fn win_screen_lines(
@@ -2341,6 +2347,7 @@ pub(crate) fn advance_simulation(
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_game_event_screen(world, net_counters, net_commands);
+    input.sync_death_screen(world, net_counters, net_commands);
     input.sync_sign_editor(world, net_counters, net_commands);
     input.sync_book_screen(world);
     input.sync_command_block_editor(world, net_counters, net_commands);
@@ -2512,6 +2519,7 @@ pub(crate) fn advance_simulation(
     // the previous/current progress pair at the frame partial tick.
     world.advance_moving_piston_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
+    input.advance_death_screen_ticks(advanced_ticks);
     advance_player_input_for_client_ticks(
         input,
         world,
@@ -2920,6 +2928,8 @@ pub(crate) fn update_renderer_from_publication(
         &publication.win_screen_resources,
         item_runtime,
     );
+    hud_render_runtime.death_screen_narration =
+        death_screen_narration_frame(input, world, item_runtime);
     let hud_debug_options_screen = if hud_game_event_screen.is_some() {
         None
     } else {
@@ -4296,6 +4306,7 @@ fn release_input_if_screen_opened(
 
 fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
     world.open_container_id().is_some()
+        || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.dialog_screen_is_open()
         || world.current_book().is_some()
@@ -4989,6 +5000,115 @@ fn localized_gui_text(
         .filter(|text| *text != translation_key)
         .unwrap_or(fallback)
         .to_string()
+}
+
+fn death_screen_narration_frame(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<ScreenNarrationFrame> {
+    let screen = world.death_screen()?;
+    let runtime = input
+        .death_screen_runtime()
+        .filter(|runtime| runtime.generation() == screen.generation)?;
+    let mut frame = ScreenNarrationFrame::default();
+    match runtime {
+        DeathScreenRuntime::Main(state) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                localized_gui_text(
+                    item_runtime,
+                    if screen.hardcore {
+                        "deathScreen.title.hardcore"
+                    } else {
+                        "deathScreen.title"
+                    },
+                    if screen.hardcore {
+                        "Game Over!"
+                    } else {
+                        "You Died!"
+                    },
+                ),
+            );
+            let (label, position) = match state.focus {
+                bbb_renderer::HudDeathScreenButton::Respawn => (
+                    localized_gui_text(
+                        item_runtime,
+                        if screen.hardcore {
+                            "deathScreen.spectate"
+                        } else {
+                            "deathScreen.respawn"
+                        },
+                        if screen.hardcore {
+                            "Spectate World"
+                        } else {
+                            "Respawn"
+                        },
+                    ),
+                    1,
+                ),
+                bbb_renderer::HudDeathScreenButton::TitleScreen => (
+                    localized_gui_text(item_runtime, "deathScreen.titleScreen", "Title Screen"),
+                    2,
+                ),
+                _ => return Some(frame),
+            };
+            add_game_event_button_narration(&mut frame, item_runtime, &label, position, 2);
+        }
+        DeathScreenRuntime::QuitConfirmation(state) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                localized_gui_text(
+                    item_runtime,
+                    "deathScreen.quit.confirm",
+                    "Are you sure you want to quit?",
+                ),
+            );
+            let (label, position) = match state.focus {
+                bbb_renderer::HudDeathScreenButton::QuitTitleScreen => (
+                    localized_gui_text(item_runtime, "deathScreen.titleScreen", "Title Screen"),
+                    1,
+                ),
+                bbb_renderer::HudDeathScreenButton::QuitRespawn => (
+                    localized_gui_text(item_runtime, "deathScreen.respawn", "Respawn"),
+                    2,
+                ),
+                _ => return Some(frame),
+            };
+            add_game_event_button_narration(&mut frame, item_runtime, &label, position, 2);
+        }
+        DeathScreenRuntime::LinkConfirmation(state) => {
+            let confirmation = world.dialog_link_confirmation()?;
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                [
+                    localized_gui_text(
+                        item_runtime,
+                        "chat.link.confirmTrusted",
+                        "Do you want to open this link or copy it to your clipboard?",
+                    ),
+                    confirmation.url.clone(),
+                ]
+                .join(". "),
+            );
+            let (key, fallback, position) = match state.focus {
+                bbb_renderer::HudDeathScreenButton::LinkOpen => {
+                    ("chat.link.open", "Open in Browser", 1)
+                }
+                bbb_renderer::HudDeathScreenButton::LinkCopy => {
+                    ("chat.copy", "Copy to Clipboard", 2)
+                }
+                bbb_renderer::HudDeathScreenButton::LinkCancel => ("gui.cancel", "Cancel", 3),
+                _ => return Some(frame),
+            };
+            let label = localized_gui_text(item_runtime, key, fallback);
+            add_game_event_button_narration(&mut frame, item_runtime, &label, position, 3);
+        }
+    }
+    Some(frame)
 }
 
 fn hud_game_event_screen(

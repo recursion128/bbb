@@ -175,6 +175,7 @@ mod book;
 mod bundle;
 mod commands;
 mod component_patch;
+pub(crate) mod death_screen;
 pub(crate) mod game_event_screen;
 mod game_rules;
 mod inventory;
@@ -696,6 +697,7 @@ pub(crate) struct ClientInputState {
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
     spectator_gui: spectator_menu::SpectatorGuiInputState,
+    death_screen: death_screen::DeathScreenInputState,
     game_event_screen: game_event_screen::GameEventScreenInputState,
 }
 
@@ -1122,6 +1124,7 @@ impl ClientInputState {
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
             || world.game_rules_screen().is_some()
+            || world.death_screen().is_some()
             || world.game_event_screen().is_some()
             || world.command_block_editor().is_some()
             || world.minecart_command_block_editor().is_some()
@@ -1261,6 +1264,7 @@ impl ClientInputState {
             test_instance_block_editor: self.test_instance_block_editor.clone(),
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
             spectator_gui: self.spectator_gui.clone(),
+            death_screen: self.death_screen.clone(),
             game_event_screen: self.game_event_screen.clone(),
             ..Self::default()
         })
@@ -2226,6 +2230,7 @@ impl ClientInputState {
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
             || world.game_rules_screen().is_some()
+            || world.death_screen().is_some()
             || world.game_event_screen().is_some()
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open()
@@ -10547,6 +10552,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
+    if input.handle_death_screen_key(counters, world, net_commands, code, just_pressed) {
+        return;
+    }
+
     if input.handle_game_event_screen_key(
         counters,
         world,
@@ -10976,6 +10985,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
     }
 
     if world.dialog_screen_is_open()
+        || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
