@@ -643,10 +643,6 @@ Movement:
   inside-block snowflake particle and extinguish effects are wired through the
   block-effect evaluator and particle resolver).
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
-- Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`):
-  gate it on Player, clear the bed's local occupied state, resolve the safe
-  stand-up position/yaw, move to that position, set standing pose, clear
-  sleepingPos, and preserve `sleepCounter = 100` semantics.
 - Complete the remaining vanilla boat physics after the direct local root-boat
   status/buoyancy/block/entity/world-border collision/control foundation: remote
   persistent status, passenger push and block inside/emission callbacks. The

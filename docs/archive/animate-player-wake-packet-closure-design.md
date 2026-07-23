@@ -122,3 +122,7 @@ failures stop before coverage closeout. The final closeout is the fourth commit
 including this contract and therefore forces a full gate. A failed full gate
 is localized from the pre-start checkpoint only when focused tests do not
 identify it. Failures are fixed forward without rewriting history.
+
+Closeout completed all five packet-coverage cells after canonical player wake,
+sleep-counter lifecycle, ordered network-to-HUD projection, and renderer
+overlay regressions passed.

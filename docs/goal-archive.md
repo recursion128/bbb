@@ -296,3 +296,7 @@
   CompoundTag 严格解码；已有同类型 canonical record 原子替换并按类型投影到编辑器和
   原生场景，五类 coverage 全部 complete，合同见
   `docs/archive/block-entity-data-packet-closure-design.md`。
+- **2026-07-23（Animate 包闭环）**：action 2 按 Player 门控复用床边安全落点，原子更新
+  standing/sleepingPos、本地姿态与 player-only sleepCounter；100～109 计时驱动
+  `0x101020` 原版 HUD 淡出，actions 0/3/4/5 保持既有行为，五类 coverage 全部
+  complete，合同见 `docs/archive/animate-player-wake-packet-closure-design.md`。

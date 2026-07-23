@@ -6777,10 +6777,15 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/entities/updates.rs#apply_entity_animation",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAnimate"
+            "crates/bbb-world/src/entities/store.rs#apply_client_player_wake_animation",
+            "crates/bbb-world/src/entities/tests/player_wake.rs#player_wake_uses_safe_bed_position_and_updates_local_pose",
+            "crates/bbb-world/src/entities/tests/player_wake.rs#player_wake_counter_ticks_and_survives_snapshots_but_not_readd",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAnimate",
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#stopSleeping",
+            "vanilla:net/minecraft/world/entity/player/Player.java#stopSleepInBed"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -6800,16 +6805,25 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/play_apply.rs#tracking_emitter_for_entity_animation",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAnimate"
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_sleep_overlay_from_world",
+            "crates/bbb-renderer/src/hud.rs#push_hud_sleep_overlay",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAnimate",
+            "vanilla:net/minecraft/client/gui/Gui.java#extractSleepOverlay"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
             "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_project_attack_swing_ramp",
-            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_animation_emits_crit_tracking_emitter_particles"
+            "crates/bbb-world/src/entities/tests/player_wake.rs#player_wake_uses_safe_bed_position_and_updates_local_pose",
+            "crates/bbb-world/src/entities/tests/player_wake.rs#player_wake_uses_vanilla_fallback_when_no_safe_dismount_exists",
+            "crates/bbb-world/src/entities/tests/player_wake.rs#player_wake_counter_ticks_and_survives_snapshots_but_not_readd",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_animation_emits_crit_tracking_emitter_particles",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#animate_player_wake_flows_from_network_event_to_sleep_overlay_projection",
+            "crates/bbb-native/src/runtime/tests.rs#animate_player_wake_sleep_overlay_alpha_matches_vanilla_boundaries",
+            "crates/bbb-renderer/src/hud.rs#sleep_overlay_submits_after_boss_bars_and_before_later_hud_content"
           ],
           "gap": null,
           "status": "complete"
