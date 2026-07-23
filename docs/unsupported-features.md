@@ -827,11 +827,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   component, submit unsigned/signed edits, and project the server-confirmed
   writable/written item. The current `net.edit_book` maintenance command is not
   an interactive editor or a held-item authority check.
-- Implement the game-master `TestBlockEditScreen` owner and typed
-  `ServerboundSetTestBlockPacket`: preload mode/message from the canonical
-  block entity, expose all TestBlockMode values, enforce the 128-character
-  message limit and START visibility rule, and retain server permission,
-  block-entity mutation and block-update authority.
 - Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
   gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
   support clipboard/IME preedit, and close when the sign is removed or the

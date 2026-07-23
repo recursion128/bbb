@@ -265,3 +265,8 @@
   command/last-output metadata 与本地 track-output 状态驱动原生编辑器；右键开屏仍发送
   Interact，Done/Enter 精确发送 typed packet，Cancel/Escape 零发送，五类 packet
   coverage 全部 complete，合同见 `docs/archive/minecart-command-block-editor-packet-closure-design.md`。
+- **2026-07-22（TestBlockEditScreen 包闭环）**：typed mode/message/powered block-entity
+  投影驱动原生四态编辑器；START 隐藏但保留消息，Done 精确发送 typed packet，Enter、
+  Cancel 与 Escape 零发送，普通 UseItemOn 和服务端 mutation/block-update 权威保持不变；
+  五类 packet coverage 全部 complete，合同见
+  `docs/archive/test-block-editor-packet-closure-design.md`。

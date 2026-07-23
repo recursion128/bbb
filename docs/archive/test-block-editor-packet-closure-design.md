@@ -26,8 +26,8 @@ applicable playable gate pass at the milestone head.
   tests.
 - `bbb-net` owns the `NetCommand` transport arm and unique play-driver send
   path.
-- `bbb-world` owns typed NBT projection, permission/type guards, editor
-  snapshot/revision, authoritative refresh, and level reset.
+- `bbb-world` owns typed NBT projection, permission/type guards, the copied
+  editor snapshot, authoritative world refresh, and level reset.
 - `bbb-native` owns local use-to-open, message text editing, mode cycle, Done,
   Cancel/Escape, screen replacement, localization, and world-to-HUD
   projection.
@@ -109,8 +109,9 @@ source tree, plus `assets/minecraft/lang/en_us.json` for fallback text.
 1. Add the typed protocol encoder and net transport, then typed world
    block-entity/editor state. Focused protocol/net/world tests cover all four
    mode ids, exact wire order, packed signed position, UTF-16 boundary,
-   NBT defaults and malformed fallback, permission/type guards, matching
-   authoritative refresh, block-state acknowledgement, and level reset.
+   NBT defaults and malformed fallback, permission/type guards, authoritative
+   world refresh without editor-copy replacement, block-state acknowledgement,
+   and level reset.
 2. Add the native input owner and renderer HUD. Focused native/renderer tests
    cover local open plus ordinary UseItemOn, preload, unsent-edit preservation,
    START visibility with retained message, the 128-unit bound, full mode cycle,
