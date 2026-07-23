@@ -1,6 +1,6 @@
 # Action-bar and title Component closure
 
-Status: active engineering contract.
+Status: closed and archived after all four affected packet coverage rows reached complete.
 
 ## Goal and completion contract
 

@@ -11726,14 +11726,16 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/hud.rs#apply_action_bar_text",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setActionBarText"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#title_text_packets_preserve_exact_trusted_components",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSetActionBarTextPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -11748,16 +11750,21 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/runtime.rs#hud_action_bar_text_from_world",
-            "crates/bbb-renderer/src/hud.rs#hud_action_bar_text_draw"
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_action_bar_text_from_world",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
+            "crates/bbb-renderer/src/hud.rs#hud_action_bar_text_draw",
+            "crates/bbb-renderer/src/hud.rs#action_bar_collect_draws_uses_the_full_font_book_for_both_text_passes"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
-            "crates/bbb-renderer/src/hud.rs#action_bar_draw_centers_above_the_hotbar_and_fades_out"
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#title_text_packets_preserve_exact_trusted_components",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
+            "crates/bbb-renderer/src/hud.rs#action_bar_draw_centers_above_the_hotbar_and_fades_out",
+            "crates/bbb-renderer/src/hud.rs#action_bar_component_runs_select_custom_font_for_width_geometry_and_obfuscation"
           ],
           "gap": null,
           "status": "complete"
@@ -13087,14 +13094,16 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/hud.rs#apply_subtitle_text",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setSubtitleText"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#title_text_packets_preserve_exact_trusted_components",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSetSubtitleTextPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -13109,15 +13118,20 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/runtime.rs#hud_title_text_from_world",
-            "crates/bbb-renderer/src/hud.rs#hud_title_text_draws"
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_title_text_from_world",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
+            "crates/bbb-renderer/src/hud.rs#hud_title_text_draws",
+            "crates/bbb-renderer/src/hud.rs#title_custom_font_controls_scaled_centering_and_unknown_font_falls_back"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#title_text_packets_preserve_exact_trusted_components",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
             "crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
             "crates/bbb-renderer/src/hud.rs#title_draws_center_and_scale_title_4x_and_subtitle_2x"
           ],
           "gap": null,
@@ -13188,14 +13202,16 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/hud.rs#apply_title_text",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setTitleText"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#title_text_packets_preserve_exact_trusted_components",
             "vanilla:net/minecraft/network/protocol/game/ClientboundSetTitleTextPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -13210,16 +13226,22 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/runtime.rs#hud_title_text_from_world",
-            "crates/bbb-renderer/src/hud.rs#hud_title_text_draws"
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_title_text_from_world",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
+            "crates/bbb-renderer/src/hud.rs#hud_title_text_draws",
+            "crates/bbb-renderer/src/hud.rs#title_custom_font_controls_scaled_centering_and_unknown_font_falls_back"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#title_text_packets_preserve_exact_trusted_components",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
             "crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",
-            "crates/bbb-renderer/src/hud.rs#title_alpha_follows_the_fade_in_stay_fade_out_windows"
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
+            "crates/bbb-renderer/src/hud.rs#title_alpha_follows_the_fade_in_stay_fade_out_windows",
+            "crates/bbb-renderer/src/hud.rs#title_custom_font_controls_scaled_centering_and_unknown_font_falls_back"
           ],
           "gap": null,
           "status": "complete"
@@ -13609,24 +13631,29 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_action_bar_text_from_world",
             "crates/bbb-native/src/runtime/render_extract.rs#hud_chat_messages_from_world",
             "crates/bbb-native/src/runtime.rs#take_pending_chat_narrations",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
+            "crates/bbb-renderer/src/hud.rs#action_bar_collect_draws_uses_the_full_font_book_for_both_text_passes",
             "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSystemChat"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_rich_system_chat_component",
             "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_hud_text_packets_to_world",
-            "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
+            "crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",
             "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters",
             "crates/bbb-native/src/runtime/tests.rs#rich_chat_projection_retains_click_hover_and_revalidates_canonical_target",
-            "crates/bbb-native/src/runtime/tests.rs#chat_narration_text_uses_styled_content_without_duplicate_projection"
+            "crates/bbb-native/src/runtime/tests.rs#chat_narration_text_uses_styled_content_without_duplicate_projection",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions",
+            "crates/bbb-renderer/src/hud.rs#action_bar_component_runs_select_custom_font_for_width_geometry_and_obfuscation"
           ],
           "gap": null,
           "status": "complete"

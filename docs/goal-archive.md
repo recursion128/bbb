@@ -319,3 +319,7 @@
   过滤 Component，普通 UseItem 预测打开编辑器并由 held-slot authority 守卫提交；
   native 富文本书页、悬浮/点击令牌及签名 UI 闭环，两行 packet coverage 全部适用单元
   complete，合同见 `docs/archive/book-screens-closure-design.md`。
+- **2026-07-23（Action-bar/title 富 Component 四包闭环）**：三类 title text 包与
+  `SystemChat(overlay=true)` 共用 exact world Component、本地化样式投影及逐 run 字体簿
+  测量/混淆/绘制；四行 packet coverage 全单元 complete，合同见
+  `docs/archive/action-bar-title-component-closure-design.md`。

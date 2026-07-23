@@ -784,12 +784,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   close behavior. Spectator crosshair-click + `ServerboundSpectateEntityPacket`
   and server-confirmed SetCamera handling are covered, but that shortcut and a
   maintenance command do not replace the vanilla spectator menu.
-- Preserve and render full trusted Components for action-bar, title, and
-  subtitle packets, including translation, siblings, style/color/font and text
-  effects. Their wire is consumed and the vanilla timers/fades/scales are
-  implemented, but canonical state currently projects only a readable String.
-  Restart by sharing the repo-native rich Component/text layout path rather than
-  adding packet-specific style fields.
 - Preserve full trusted Components in the TabList header/footer and complete
   remaining player-list presentation parity: encrypted-session player heads,
   LIST objective scores/hearts, narrator visibility announcements, and vanilla
@@ -1124,11 +1118,6 @@ back into a todo. Do not delete these.
   `warningBlocks`, `warningTime`, lerp speed and lerp target/size delta, matching
   `Gui.extractVignette`. Canonical border fields, tick lerp and forcefield render
   extraction are covered; storing warning fields alone is not their HUD consumer.
-- **SystemChat overlay rich Component presentation.** Overlay=false now retains
-  and renders inherited style/click/hover runs through canonical server-system
-  chat. Overlay=true retains the exact packet Component in `SystemChatLineState`
-  and uses the correct system narration gate, but its action-bar draw state is
-  still a plain-text projection; rich action-bar styles remain open.
 - **Heart damage/heal blink flash.** Needs the untracked
   `player.invulnerableTime` (no client-side sync) and the wall-clock
   `displayHealth` / `lastHealthTime` hold, neither reproducible

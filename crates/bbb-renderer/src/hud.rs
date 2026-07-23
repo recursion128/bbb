@@ -5613,25 +5613,24 @@ impl Renderer {
             if let Some(action_bar) = &self.hud_action_bar_text {
                 screen_text_draws.extend(hud_action_bar_text_draw(
                     action_bar,
-                    &self.hud_font_glyphs,
+                    &self.hud_font_book,
                     surface_size,
                 ));
             }
             if let Some(title) = &self.hud_title_text {
                 screen_text_draws.extend(hud_title_text_draws(
                     title,
-                    &self.hud_font_glyphs,
+                    &self.hud_font_book,
                     surface_size,
                 ));
             }
             for draw in &screen_text_draws {
-                push_hud_component_screen_text_draw_with_default_font(
+                push_hud_component_screen_text_draw(
                     &mut vertices,
                     &mut commands,
                     &self.hud_white_pixel,
                     font_atlas,
-                    &self.hud_font_glyphs,
-                    &self.hud_obfuscated_glyph_pool,
+                    &self.hud_font_book,
                     self.counters.frame_index,
                     surface_size,
                     draw,
@@ -12750,8 +12749,6 @@ struct HudScreenTextDraw<'a> {
 }
 
 /// One action-bar/title draw whose runs retain exact Component font identity.
-/// Stage 3 resolves the font book directly; the active Stage 2 handoff keeps a
-/// separate type so no caller can accidentally erase the font id.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct HudComponentScreenTextDraw<'a> {
     runs: &'a [HudComponentTextRun],
@@ -13033,7 +13030,7 @@ fn push_hud_chat<'a>(
 /// jukebox rainbow colour) at the fade alpha.
 fn hud_action_bar_text_draw<'a>(
     state: &'a HudActionBarText,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
     surface_size: PhysicalSize<u32>,
 ) -> Option<HudComponentScreenTextDraw<'a>> {
     if state.remaining_ticks <= 0 {
@@ -13049,7 +13046,7 @@ fn hud_action_bar_text_draw<'a>(
     } else {
         [1.0, 1.0, 1.0]
     };
-    let width = hud_component_runs_width_with_default_font(&state.runs, glyphs).unwrap_or(0);
+    let width = hud_component_runs_width(&state.runs, fonts).unwrap_or(0);
     Some(HudComponentScreenTextDraw {
         runs: &state.runs,
         origin: hud_overlay_message_text_origin(surface_size, width),
@@ -13285,7 +13282,7 @@ fn hud_wrap_plain_text(text: &str, max_width: u32, glyphs: &HudFontGlyphMap) -> 
 /// matching vanilla's non-null check).
 fn hud_title_text_draws<'a>(
     state: &'a HudTitleText,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
     surface_size: PhysicalSize<u32>,
 ) -> Vec<HudComponentScreenTextDraw<'a>> {
     let mut draws = Vec::new();
@@ -13297,8 +13294,7 @@ fn hud_title_text_draws<'a>(
         return draws;
     }
     let tint = [1.0, 1.0, 1.0, alpha as f32 / 255.0];
-    let title_width =
-        hud_component_runs_width_with_default_font(&state.title_runs, glyphs).unwrap_or(0);
+    let title_width = hud_component_runs_width(&state.title_runs, fonts).unwrap_or(0);
     draws.push(HudComponentScreenTextDraw {
         runs: &state.title_runs,
         origin: hud_title_text_origin(surface_size, title_width),
@@ -13306,8 +13302,7 @@ fn hud_title_text_draws<'a>(
         tint,
     });
     if !state.subtitle_runs.is_empty() {
-        let subtitle_width =
-            hud_component_runs_width_with_default_font(&state.subtitle_runs, glyphs).unwrap_or(0);
+        let subtitle_width = hud_component_runs_width(&state.subtitle_runs, fonts).unwrap_or(0);
         draws.push(HudComponentScreenTextDraw {
             runs: &state.subtitle_runs,
             origin: hud_subtitle_text_origin(surface_size, subtitle_width),
@@ -13536,38 +13531,37 @@ fn push_hud_screen_text_draw<'a>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn push_hud_component_screen_text_draw_with_default_font<'a>(
+fn push_hud_component_screen_text_draw<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
     font_atlas: &'a HudSpriteGpu,
-    glyphs: &HudFontGlyphMap,
-    obfuscated_pool: &HudObfuscatedGlyphPool,
+    fonts: &HudFontGlyphBook,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     draw: &HudComponentScreenTextDraw<'_>,
 ) {
-    let visual_runs = draw
-        .runs
-        .iter()
-        .map(|run| run.visual.clone())
-        .collect::<Vec<_>>();
-    push_hud_screen_text_draw(
-        vertices,
-        commands,
-        white_pixel,
-        font_atlas,
-        glyphs,
-        obfuscated_pool,
-        frame_index,
-        surface_size,
-        &HudScreenTextDraw {
-            runs: &visual_runs,
-            origin: draw.origin,
-            scale: draw.scale,
-            tint: draw.tint,
-        },
-    );
+    for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
+        let geometry = hud_component_text_pass_geometry(
+            draw.runs,
+            fonts,
+            frame_index,
+            draw.origin,
+            shadow_offset,
+            is_shadow,
+            draw.tint,
+            None,
+            draw.scale,
+        );
+        push_hud_styled_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            &geometry,
+        );
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -15857,10 +15851,20 @@ struct HudStyledTextPassGeometry {
     effect_rects: Vec<(HudEffectRect, [f32; 4])>,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct HudResolvedTextRun<'a> {
+    visual: &'a HudStyledTextRun,
+    glyphs: &'a HudFontGlyphMap,
+    obfuscated_pool: &'a HudObfuscatedGlyphPool,
+}
+
 /// Computes one pass of a styled line at `origin` (line top-left in HUD
-/// pixels). `width_limit` reproduces the label budget semantics: the walk
-/// stops once the pen reaches the limit and a glyph/effect is only emitted
-/// when its cell/advance still fits (the limit is in font pixels, pre-scale).
+/// pixels). Each resolved run supplies its selected font glyphs and matching
+/// obfuscation pool; plain HUD text maps every run to the default font while
+/// trusted-Component surfaces may switch fonts without forking the geometry
+/// walk. `width_limit` reproduces the label budget semantics: the walk stops
+/// once the pen reaches the limit and a glyph/effect is only emitted when its
+/// cell/advance still fits (the limit is in font pixels, pre-scale).
 ///
 /// `scale` mirrors a vanilla pose scale around `origin`
 /// (`PoseStack.scale` before the draw, as `Gui.extractTitle` does for the
@@ -15871,15 +15875,71 @@ struct HudStyledTextPassGeometry {
 /// Italic runs are sheared through the locked `styled_quads` primitive (top
 /// edge `1-0.25*up`, bottom `1-0.25*down`). Obfuscated (`§k`) non-space glyphs
 /// draw a random equal-advance substitute (`FontSet.getRandomGlyph`) picked
-/// from `obfuscated_pool`; `obfuscated_seed` (the render frame counter) seeds a
-/// deterministic per-pass LCG so the jitter is reproducible and the shadow pass
-/// picks the same substitutes as the main pass. The pen advance always follows
-/// the original glyph, so obfuscation and italic never shift layout.
+/// from that run's selected pool; `obfuscated_seed` (the render frame counter)
+/// seeds one deterministic per-pass LCG so the jitter is reproducible across
+/// font changes and the shadow pass picks the same substitutes as the main
+/// pass. The pen advance always follows the original glyph, so obfuscation and
+/// italic never shift layout.
 #[allow(clippy::too_many_arguments)]
 fn hud_styled_text_pass_geometry(
     runs: &[HudStyledTextRun],
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    origin: (f32, f32),
+    shadow_offset: f32,
+    is_shadow: bool,
+    base_tint: [f32; 4],
+    width_limit: Option<u32>,
+    scale: f32,
+) -> HudStyledTextPassGeometry {
+    hud_resolved_text_pass_geometry(
+        runs.iter().map(|visual| HudResolvedTextRun {
+            visual,
+            glyphs,
+            obfuscated_pool,
+        }),
+        obfuscated_seed,
+        origin,
+        shadow_offset,
+        is_shadow,
+        base_tint,
+        width_limit,
+        scale,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn hud_component_text_pass_geometry(
+    runs: &[HudComponentTextRun],
+    fonts: &HudFontGlyphBook,
+    obfuscated_seed: u64,
+    origin: (f32, f32),
+    shadow_offset: f32,
+    is_shadow: bool,
+    base_tint: [f32; 4],
+    width_limit: Option<u32>,
+    scale: f32,
+) -> HudStyledTextPassGeometry {
+    hud_resolved_text_pass_geometry(
+        runs.iter().map(|run| HudResolvedTextRun {
+            visual: &run.visual,
+            glyphs: fonts.glyphs(run.font.as_deref()),
+            obfuscated_pool: fonts.obfuscated_pool(run.font.as_deref()),
+        }),
+        obfuscated_seed,
+        origin,
+        shadow_offset,
+        is_shadow,
+        base_tint,
+        width_limit,
+        scale,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn hud_resolved_text_pass_geometry<'a>(
+    runs: impl IntoIterator<Item = HudResolvedTextRun<'a>>,
     obfuscated_seed: u64,
     origin: (f32, f32),
     shadow_offset: f32,
@@ -15899,7 +15959,8 @@ fn hud_styled_text_pass_geometry(
     // advances only when an obfuscated glyph is actually substituted, matching
     // vanilla `Font.random` (touched once per `getRandomGlyph`).
     let mut obfuscated_random = HudObfuscatedRandom::with_seed(obfuscated_seed);
-    'runs: for run in runs {
+    'runs: for resolved in runs {
+        let run = resolved.visual;
         let run_tint = hud_run_color_tint(run, base_tint);
         let tint = if is_shadow {
             hud_text_shadow_tint(run_tint)
@@ -15910,14 +15971,15 @@ fn hud_styled_text_pass_geometry(
             if width_limit.is_some_and(|limit| pen_x >= limit) {
                 break 'runs;
             }
-            let base_glyph = hud_font_glyph(ch, glyphs);
+            let base_glyph = hud_font_glyph(ch, resolved.glyphs);
             // Layout stays on the original glyph's advance (equal for the
             // substitute, but this keeps the pen frame-stable regardless).
             let advance = base_glyph.styled_advance(run.style);
             // Vanilla `Font.getGlyph`: obfuscated non-space codepoints draw a
             // random equal-advance glyph; everything else draws its own glyph.
             let glyph = if run.style.obfuscated && ch != ' ' {
-                obfuscated_pool
+                resolved
+                    .obfuscated_pool
                     .random_glyph(base_glyph.advance, &mut obfuscated_random)
                     .unwrap_or(base_glyph)
             } else {
@@ -16217,12 +16279,10 @@ fn hud_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> O
     (width > 0).then_some(width)
 }
 
-fn hud_component_runs_width_with_default_font(
-    runs: &[HudComponentTextRun],
-    glyphs: &HudFontGlyphMap,
-) -> Option<u32> {
+fn hud_component_runs_width(runs: &[HudComponentTextRun], fonts: &HudFontGlyphBook) -> Option<u32> {
     let mut width = 0u32;
     for run in runs {
+        let glyphs = fonts.glyphs(run.font.as_deref());
         for ch in run.visual.text.chars() {
             width =
                 width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.visual.style))?;
@@ -20749,6 +20809,32 @@ mod tests {
         glyphs
     }
 
+    fn component_test_font_book() -> HudFontGlyphBook {
+        let glyph = |advance, width, min_x| HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [min_x, 0.0],
+                max: [min_x + 0.05, 1.0],
+            },
+            advance,
+            width,
+            height: 8,
+            ..HudAsciiGlyph::default()
+        };
+        let mut default = HudFontGlyphMap::new();
+        default.insert_first_wins('a', glyph(6, 5, 0.1));
+        default.insert_first_wins('b', glyph(6, 5, 0.2));
+        let mut custom = HudFontGlyphMap::new();
+        custom.insert_first_wins('a', glyph(10, 7, 0.6));
+        custom.insert_first_wins('b', glyph(10, 7, 0.7));
+        HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            std::collections::BTreeMap::from([
+                ("example:wide".to_string(), custom),
+                ("minecraft:default".to_string(), default),
+            ]),
+        )
+    }
+
     #[test]
     fn player_list_grid_matches_vanilla_twenty_row_columns_and_eighty_cap() {
         assert_eq!(hud_player_list_grid(1), (1, 1));
@@ -21221,7 +21307,7 @@ mod tests {
 
     #[test]
     fn action_bar_draw_centers_above_the_hotbar_and_fades_out() {
-        let glyphs = styled_test_glyphs();
+        let fonts = HudFontGlyphBook::from(styled_test_glyphs());
         let surface = PhysicalSize::new(320, 240);
         let state = HudActionBarText {
             runs: vec![HudComponentTextRun::plain("ab")],
@@ -21229,7 +21315,7 @@ mod tests {
             partial_tick: 0.5,
             animate_color: false,
         };
-        let draw = hud_action_bar_text_draw(&state, &glyphs, surface).expect("visible");
+        let draw = hud_action_bar_text_draw(&state, &fonts, surface).expect("visible");
         // (guiWidth/2 - width/2, guiHeight - 68 - 4) = (160 - 6, 240 - 72).
         assert_eq!(draw.origin, (154.0, 168.0));
         assert_eq!(draw.scale, 1.0);
@@ -21243,7 +21329,7 @@ mod tests {
             ..state.clone()
         };
         assert_eq!(
-            hud_action_bar_text_draw(&fading, &glyphs, surface)
+            hud_action_bar_text_draw(&fading, &fonts, surface)
                 .expect("fading")
                 .tint,
             [1.0, 1.0, 1.0, 127.0 / 255.0]
@@ -21255,17 +21341,14 @@ mod tests {
             partial_tick: 0.999,
             ..state.clone()
         };
-        assert_eq!(
-            hud_action_bar_text_draw(&nearly_out, &glyphs, surface),
-            None
-        );
+        assert_eq!(hud_action_bar_text_draw(&nearly_out, &fonts, surface), None);
         // An expired timer never draws.
         let expired = HudActionBarText {
             remaining_ticks: 0,
             partial_tick: 0.0,
             ..state.clone()
         };
-        assert_eq!(hud_action_bar_text_draw(&expired, &glyphs, surface), None);
+        assert_eq!(hud_action_bar_text_draw(&expired, &fonts, surface), None);
 
         // Jukebox rainbow: hue from remaining time, fade alpha kept.
         let rainbow = HudActionBarText {
@@ -21275,7 +21358,7 @@ mod tests {
             ..state.clone()
         };
         assert_eq!(
-            hud_action_bar_text_draw(&rainbow, &glyphs, surface)
+            hud_action_bar_text_draw(&rainbow, &fonts, surface)
                 .expect("rainbow")
                 .tint,
             [45.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0, 1.0]
@@ -21283,8 +21366,112 @@ mod tests {
     }
 
     #[test]
+    fn action_bar_component_runs_select_custom_font_for_width_geometry_and_obfuscation() {
+        let fonts = component_test_font_book();
+        let runs = vec![
+            HudComponentTextRun::plain("a"),
+            HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: "a".to_string(),
+                    style: HudTextStyle {
+                        obfuscated: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0x12_34_56),
+                },
+                font: Some("example:wide".to_string()),
+            },
+            HudComponentTextRun {
+                visual: HudStyledTextRun::plain("a"),
+                font: Some("example:missing".to_string()),
+            },
+        ];
+        assert_eq!(hud_component_runs_width(&runs, &fonts), Some(22));
+        let state = HudActionBarText {
+            runs: runs.clone(),
+            remaining_ticks: 60,
+            partial_tick: 0.0,
+            animate_color: false,
+        };
+        assert_eq!(
+            hud_action_bar_text_draw(&state, &fonts, PhysicalSize::new(320, 240))
+                .expect("visible")
+                .origin,
+            (149.0, 168.0)
+        );
+
+        let geometry = hud_component_text_pass_geometry(
+            &runs,
+            &fonts,
+            7,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        assert_eq!(geometry.glyph_quads.len(), 3);
+        assert_eq!(geometry.glyph_quads[0].0.uv.min[0], 0.1);
+        assert_eq!(geometry.glyph_quads[0].0.corners[0][0], 0.0);
+        assert!(
+            geometry.glyph_quads[1].0.uv.min[0] >= 0.6,
+            "obfuscated glyph must come from the selected custom font"
+        );
+        assert_eq!(geometry.glyph_quads[1].0.corners[0][0], 6.0);
+        assert_eq!(
+            geometry.glyph_quads[1].1,
+            [
+                0x12 as f32 / 255.0,
+                0x34 as f32 / 255.0,
+                0x56 as f32 / 255.0,
+                1.0
+            ]
+        );
+        assert_eq!(
+            geometry.glyph_quads[2].0.uv.min[0], 0.1,
+            "unknown font id must use the selected default font"
+        );
+        assert_eq!(geometry.glyph_quads[2].0.corners[0][0], 16.0);
+    }
+
+    #[test]
+    fn action_bar_collect_draws_uses_the_full_font_book_for_both_text_passes() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], component_test_font_book())
+            .expect("font atlas");
+        renderer.set_hud_action_bar_text(Some(HudActionBarText {
+            runs: vec![
+                HudComponentTextRun::plain("a"),
+                HudComponentTextRun {
+                    visual: HudStyledTextRun::plain("a"),
+                    font: Some("example:wide".to_string()),
+                },
+                HudComponentTextRun {
+                    visual: HudStyledTextRun::plain("a"),
+                    font: Some("example:missing".to_string()),
+                },
+            ],
+            remaining_ticks: 60,
+            partial_tick: 0.0,
+            animate_color: false,
+        }));
+
+        let draws = renderer.collect_hud_draws();
+        let first_u = draws
+            .vertices
+            .chunks_exact(6)
+            .map(|quad| quad[0].uv[0])
+            .collect::<Vec<_>>();
+        assert_eq!(first_u, [0.1, 0.6, 0.1, 0.1, 0.6, 0.1]);
+    }
+
+    #[test]
     fn title_draws_center_and_scale_title_4x_and_subtitle_2x() {
-        let glyphs = styled_test_glyphs();
+        let fonts = HudFontGlyphBook::from(styled_test_glyphs());
         let surface = PhysicalSize::new(320, 240);
         let state = HudTitleText {
             title_runs: vec![HudComponentTextRun::plain("ab")],
@@ -21295,7 +21482,7 @@ mod tests {
             fade_out: 20,
             partial_tick: 0.25,
         };
-        let draws = hud_title_text_draws(&state, &glyphs, surface);
+        let draws = hud_title_text_draws(&state, &fonts, surface);
         assert_eq!(draws.len(), 2);
         // Title: center (160, 120) + 4 * (-12/2, -10) = (136, 80).
         assert_eq!(draws[0].origin, (136.0, 80.0));
@@ -21312,14 +21499,14 @@ mod tests {
             subtitle_runs: Vec::new(),
             ..state.clone()
         };
-        assert_eq!(hud_title_text_draws(&title_only, &glyphs, surface).len(), 1);
+        assert_eq!(hud_title_text_draws(&title_only, &fonts, surface).len(), 1);
 
         // Expired timer -> nothing.
         let expired = HudTitleText {
             remaining_ticks: 0,
             ..state.clone()
         };
-        assert!(hud_title_text_draws(&expired, &glyphs, surface).is_empty());
+        assert!(hud_title_text_draws(&expired, &fonts, surface).is_empty());
 
         // The very first frame after SetTitleText (t == fadeIn+stay+fadeOut at
         // partial 0) computes fade-in alpha 0 and is dropped, like vanilla.
@@ -21328,7 +21515,35 @@ mod tests {
             partial_tick: 0.0,
             ..state.clone()
         };
-        assert!(hud_title_text_draws(&first_frame, &glyphs, surface).is_empty());
+        assert!(hud_title_text_draws(&first_frame, &fonts, surface).is_empty());
+    }
+
+    #[test]
+    fn title_custom_font_controls_scaled_centering_and_unknown_font_falls_back() {
+        let fonts = component_test_font_book();
+        let state = HudTitleText {
+            title_runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun::plain("a"),
+                font: Some("example:wide".to_string()),
+            }],
+            subtitle_runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun::plain("a"),
+                font: Some("example:missing".to_string()),
+            }],
+            remaining_ticks: 50,
+            fade_in: 10,
+            stay: 70,
+            fade_out: 20,
+            partial_tick: 0.0,
+        };
+
+        let draws = hud_title_text_draws(&state, &fonts, PhysicalSize::new(320, 240));
+        assert_eq!(draws.len(), 2);
+        // Custom width 10: center + 4 * (-10/2, -10).
+        assert_eq!(draws[0].origin, (140.0, 80.0));
+        // Unknown font falls back to default width 6:
+        // center + 2 * (-6/2, 5).
+        assert_eq!(draws[1].origin, (154.0, 130.0));
     }
 
     #[test]
