@@ -1023,10 +1023,6 @@ fn block_tint_uses_loaded_biome_color_profiles() {
         foliage_color: Some([4, 5, 6]),
         dry_foliage_color: Some([7, 8, 9]),
         water_color: Some([10, 11, 12]),
-        fog_color: None,
-        sky_color: None,
-        water_fog_color: None,
-        water_fog_end_distance: None,
         grass_color_modifier: GrassColorModifier::None,
     }]));
 
@@ -1091,10 +1087,6 @@ fn biome_climate_changes_colormap_sample() {
         foliage_color: None,
         dry_foliage_color: None,
         water_color: None,
-        fog_color: None,
-        sky_color: None,
-        water_fog_color: None,
-        water_fog_end_distance: None,
         grass_color_modifier: GrassColorModifier::None,
     }]));
 
@@ -1163,10 +1155,6 @@ fn particle_tint_catalog_samples_biome_profiles() {
             foliage_color: Some([36, 45, 54]),
             dry_foliage_color: Some([63, 72, 81]),
             water_color: Some([90, 99, 108]),
-            fog_color: None,
-            sky_color: None,
-            water_fog_color: None,
-            water_fog_end_distance: None,
             grass_color_modifier: GrassColorModifier::None,
         },
     ]));
@@ -1207,10 +1195,6 @@ fn blend_biome_profile(id: i32, water: [u8; 3], modifier: GrassColorModifier) ->
         foliage_color: Some([40, 50, 60]),
         dry_foliage_color: Some([70, 80, 90]),
         water_color: Some(water),
-        fog_color: None,
-        sky_color: None,
-        water_fog_color: None,
-        water_fog_end_distance: None,
         grass_color_modifier: modifier,
     }
 }
@@ -1219,15 +1203,15 @@ fn blend_biome_profile(id: i32, water: [u8; 3], modifier: GrassColorModifier) ->
 fn biome_colors_follow_active_registry_resource_order_after_finish() {
     let mut plains = blend_biome_profile(10, [1, 2, 3], GrassColorModifier::None);
     plains.name = "minecraft:plains".to_string();
-    plains.sky_color = Some([10, 20, 30]);
+    plains.temperature = 0.2;
     let mut desert = blend_biome_profile(20, [4, 5, 6], GrassColorModifier::None);
     desert.name = "minecraft:desert".to_string();
-    desert.sky_color = Some([40, 50, 60]);
+    desert.temperature = 0.8;
     let mut textures =
         TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([plains, desert]));
     let mut world = bbb_world::WorldStore::new();
 
-    assert_eq!(textures.biome_sky_color(Some(10)), Some([10, 20, 30]));
+    assert_eq!(textures.biome_temperature(Some(10)), Some(0.2));
     world.begin_registry_configuration();
     world.record_registry_entries(
         "minecraft:worldgen/biome",
@@ -1245,9 +1229,9 @@ fn biome_colors_follow_active_registry_resource_order_after_finish() {
 
     world.finish_registry_configuration().unwrap();
     assert!(textures.synchronize_biome_registry(&world));
-    assert_eq!(textures.biome_sky_color(Some(0)), None);
-    assert_eq!(textures.biome_sky_color(Some(1)), Some([40, 50, 60]));
-    assert_eq!(textures.biome_sky_color(Some(2)), Some([10, 20, 30]));
+    assert_eq!(textures.biome_temperature(Some(0)), None);
+    assert_eq!(textures.biome_temperature(Some(1)), Some(0.8));
+    assert_eq!(textures.biome_temperature(Some(2)), Some(0.2));
     assert_eq!(
         textures.block_tint(
             "minecraft:water",
@@ -1270,17 +1254,15 @@ fn biome_colors_follow_active_registry_resource_order_after_finish() {
     assert!(!textures.synchronize_biome_registry(&world));
 
     assert!(textures.synchronize_biome_registry(&bbb_world::WorldStore::new()));
-    assert_eq!(textures.biome_sky_color(Some(10)), Some([10, 20, 30]));
+    assert_eq!(textures.biome_temperature(Some(10)), Some(0.2));
 }
 
 #[test]
 fn synchronized_biome_data_overrides_pack_fallback_without_guessing_malformed_entries() {
     let mut plains = blend_biome_profile(10, [1, 2, 3], GrassColorModifier::None);
     plains.name = "minecraft:plains".to_string();
-    plains.sky_color = Some([10, 20, 30]);
     let mut desert = blend_biome_profile(20, [4, 5, 6], GrassColorModifier::None);
     desert.name = "minecraft:desert".to_string();
-    desert.sky_color = Some([40, 50, 60]);
     let mut textures =
         TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([plains, desert]));
     let mut world = bbb_world::WorldStore::new();
@@ -1302,20 +1284,10 @@ fn synchronized_biome_data_overrides_pack_fallback_without_guessing_malformed_en
     );
 
     assert!(textures.synchronize_biome_registry(&world));
-    assert_eq!(textures.biome_sky_color(Some(0)), Some([0x55, 0x77, 0x99]));
-    assert_eq!(textures.biome_fog_color(Some(0)), Some([0x44, 0x66, 0x88]));
-    assert_eq!(
-        textures.biome_water_fog_color(Some(0)),
-        Some([0x66, 0x88, 0xaa])
-    );
-    assert_eq!(
-        textures.biome_water_fog_end_distance(Some(0), 96.0),
-        Some(48.0)
-    );
     assert_eq!(textures.biome_temperature(Some(0)), Some(0.35));
     assert_eq!(textures.biome_has_precipitation(Some(0)), Some(true));
-    assert_eq!(textures.biome_sky_color(Some(1)), Some([40, 50, 60]));
-    assert_eq!(textures.biome_sky_color(Some(2)), None);
+    assert_eq!(textures.biome_temperature(Some(1)), Some(0.5));
+    assert_eq!(textures.biome_temperature(Some(2)), None);
 }
 
 fn synchronized_biome_nbt(include_effects: bool) -> Vec<u8> {

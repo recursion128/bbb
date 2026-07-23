@@ -507,11 +507,21 @@ pub(super) fn entity_model_instance(
     };
     let net_head_yaw = wrap_degrees(source.y_head_rot - projected_body_yaw) * head_sign;
     let head_pitch = source.x_rot * head_sign;
+    let zombification_position = world
+        .probe_entity_transform(source.entity_id)
+        .map(|transform| {
+            [
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            ]
+        })
+        .unwrap_or([source.position.x, source.position.y, source.position.z]);
     let is_shaking = entity_shaking(
         source.entity_type_id,
         &source.data_values,
         source.is_fully_frozen,
-        world_piglins_zombify(world),
+        world_piglins_zombify(world, zombification_position),
     );
     let body_rot = projected_body_yaw + entity_body_shake_degrees(source.age_ticks, is_shaking);
     // Vanilla LivingEntityRenderer.setupRotations riptide branch reads the lerped
@@ -1084,7 +1094,7 @@ pub(super) fn entity_body_shake_degrees(age_ticks: u32, is_shaking: bool) -> f32
 /// (synced `DATA_SUFFOCATING`, id 19), the same flag that selects the cold
 /// texture. `PiglinRenderer` / `HoglinRenderer` OR in `isConverting()`, which is
 /// true when the entity is not immune to zombification and the dimension's
-/// `EnvironmentAttributes.PIGLINS_ZOMBIFY` value is true. `NoAI` is not synced to
+/// position's `EnvironmentAttributes.PIGLINS_ZOMBIFY` value is true. `NoAI` is not synced to
 /// this client projection, matching the rest of the network-visible entity state.
 /// `AbstractSkeletonRenderer` also projects the base skeleton's synced freeze-conversion boolean;
 /// the server-only countdown is not needed for the client shake.
@@ -1147,9 +1157,12 @@ pub(super) fn entity_shaking(
     piglins_zombify && !entity_data_bool(data_values, data_id, default)
 }
 
-pub(super) fn world_piglins_zombify(world: &WorldStore) -> bool {
+pub(super) fn world_piglins_zombify(world: &WorldStore, position: [f64; 3]) -> bool {
     if let Some(value) = world
-        .sampled_client_environment_attributes()
+        .sampled_client_environment_attributes_at(
+            position,
+            bbb_world::EnvironmentBiomeSampling::Direct,
+        )
         .ok()
         .and_then(|attributes| attributes.piglins_zombify)
     {

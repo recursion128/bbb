@@ -72,12 +72,13 @@ use bbb_renderer::{
 };
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
-    ContainerState, EntityClientMovementEffectState, EntityClientTickWork,
-    EvokerFangsCritParticleState, ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState,
-    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
-    OminousItemSpawnerParticleState, PrimedTntSmokeParticleState, RavagerStunParticleState,
-    SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState,
-    TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
+    ClientEnvironmentAttributes, ContainerState, EntityClientMovementEffectState,
+    EntityClientTickWork, EnvironmentBiomeSampling, EvokerFangsCritParticleState,
+    ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState, MerchantOffersState,
+    MobEffectState, MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
+    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
+    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -285,7 +286,6 @@ const VANILLA_RAIN_FOG_SKY_LIGHT_RANGE: f32 = 7.0;
 const VANILLA_RAIN_FOG_START_OFFSET: f32 = -160.0;
 const VANILLA_RAIN_FOG_END_OFFSET: f32 = -256.0;
 const VANILLA_RAIN_FOG_SMOOTHING_PER_TICK: f32 = 0.2;
-const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
 const VANILLA_PARTICLE_MISSING_CHUNK_LIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
@@ -2473,7 +2473,6 @@ pub(crate) fn advance_simulation(
     let lightmap_environment = lightmap_ticks.environment_for_world(world);
     let clear_color = clear_color_for_world_at_camera_with_water_vision(
         world,
-        terrain_textures,
         camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
         render_distance_chunks,
         water_vision,
@@ -2482,7 +2481,6 @@ pub(crate) fn advance_simulation(
     let fog_environment = if input.debug_fog_enabled() {
         fog_environment_for_world_at_camera(
             world,
-            terrain_textures,
             camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
             render_distance_chunks,
             water_vision,
@@ -2494,7 +2492,6 @@ pub(crate) fn advance_simulation(
     };
     let sky_environment = sky_environment_for_world_at_camera(
         world,
-        terrain_textures,
         camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
         hide_lightning_flash,
     );
@@ -14304,7 +14301,18 @@ fn hud_item_icon_for_stack(
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_entity_type = Some("minecraft:player");
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
-    let environment_attributes = world.sampled_client_environment_attributes().ok();
+    let environment_attributes = world
+        .local_player_pose()
+        .map_or_else(
+            || world.sampled_client_environment_attributes(),
+            |pose| {
+                world.sampled_client_environment_attributes_at(
+                    [pose.position.x, pose.position.y, pose.position.z],
+                    EnvironmentBiomeSampling::Direct,
+                )
+            },
+        )
+        .ok();
     let has_authoritative_dimension_type = world
         .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
         .is_some();
@@ -14635,6 +14643,12 @@ pub(crate) fn world_client_tick_interval(world: &WorldStore) -> Duration {
 pub(crate) struct CameraEnvironmentColors {
     sky_color: Option<[u8; 3]>,
     fog_color: Option<[u8; 3]>,
+    sunrise_sunset_color: Option<[u8; 4]>,
+    sun_angle_degrees: Option<f32>,
+    moon_angle_degrees: Option<f32>,
+    moon_phase: Option<bbb_world::ClientMoonPhase>,
+    star_angle_degrees: Option<f32>,
+    star_brightness: Option<f32>,
     fog_start_distance: Option<f32>,
     fog_end_distance: Option<f32>,
     sky_fog_end_distance: Option<f32>,
@@ -14651,18 +14665,6 @@ enum CameraFogType {
     #[default]
     Atmospheric,
     Water,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BiomeRgbAttribute {
-    Sky,
-    Fog,
-    WaterFog,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BiomeFloatAttribute {
-    WaterFogEndDistance,
 }
 
 fn apply_weather_cloud_color_layers(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
@@ -15297,83 +15299,31 @@ fn argb_scale_rgb(color: i32, red: f32, green: f32, blue: f32) -> i32 {
     )
 }
 
-#[cfg(test)]
-fn camera_biome_sky_color(
-    world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
-    camera_pose: Option<CameraPose>,
-) -> Option<[u8; 3]> {
-    camera_biome_rgb_color(world, terrain_textures, camera_pose, BiomeRgbAttribute::Sky)
-}
-
-#[cfg(test)]
-fn camera_biome_fog_color(
-    world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
-    camera_pose: Option<CameraPose>,
-) -> Option<[u8; 3]> {
-    camera_biome_rgb_color(world, terrain_textures, camera_pose, BiomeRgbAttribute::Fog)
-}
-
-#[cfg(test)]
-fn camera_biome_water_fog_color(
-    world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
-    camera_pose: Option<CameraPose>,
-) -> Option<[u8; 3]> {
-    camera_biome_rgb_color(
-        world,
-        terrain_textures,
-        camera_pose,
-        BiomeRgbAttribute::WaterFog,
-    )
-}
-
 fn camera_environment_colors(
     world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
 ) -> CameraEnvironmentColors {
     let Some(camera) = camera_pose else {
         return CameraEnvironmentColors::default();
     };
     let eye = camera_eye_position(camera);
-    let dimension_attributes = world
-        .sampled_client_environment_attributes()
-        .unwrap_or_else(|_| {
-            world
-                .level_info()
-                .map(WorldLevelInfo::environment_attributes)
-                .unwrap_or_default()
-        });
-    let water_fog_end_base = dimension_attributes
-        .water_fog_end_distance
-        .unwrap_or(VANILLA_DEFAULT_WATER_FOG_END_DISTANCE);
+    let attributes = sampled_environment_attributes_at_camera(world, Some(camera));
     CameraEnvironmentColors {
-        sky_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Sky)
-            .or(dimension_attributes.sky_color),
-        fog_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Fog)
-            .or(dimension_attributes.fog_color),
-        fog_start_distance: dimension_attributes.fog_start_distance,
-        fog_end_distance: dimension_attributes.fog_end_distance,
-        sky_fog_end_distance: dimension_attributes.sky_fog_end_distance,
-        cloud_fog_end_distance: dimension_attributes.cloud_fog_end_distance,
-        water_fog_color: gaussian_biome_rgb_color(
-            world,
-            terrain_textures,
-            eye,
-            BiomeRgbAttribute::WaterFog,
-        )
-        .or(dimension_attributes.water_fog_color),
-        water_fog_start_distance: dimension_attributes.water_fog_start_distance,
-        water_fog_end_distance: gaussian_biome_float_attribute(
-            world,
-            terrain_textures,
-            eye,
-            BiomeFloatAttribute::WaterFogEndDistance,
-            water_fog_end_base,
-        )
-        .or(dimension_attributes.water_fog_end_distance),
+        sky_color: attributes.sky_color,
+        fog_color: attributes.fog_color,
+        sunrise_sunset_color: attributes.sunrise_sunset_color,
+        sun_angle_degrees: attributes.sun_angle_degrees,
+        moon_angle_degrees: attributes.moon_angle_degrees,
+        moon_phase: attributes.moon_phase,
+        star_angle_degrees: attributes.star_angle_degrees,
+        star_brightness: attributes.star_brightness,
+        fog_start_distance: attributes.fog_start_distance,
+        fog_end_distance: attributes.fog_end_distance,
+        sky_fog_end_distance: attributes.sky_fog_end_distance,
+        cloud_fog_end_distance: attributes.cloud_fog_end_distance,
+        water_fog_color: attributes.water_fog_color,
+        water_fog_start_distance: attributes.water_fog_start_distance,
+        water_fog_end_distance: attributes.water_fog_end_distance,
         camera_forward: Some(camera_forward_vector(camera)),
         fog_type: if camera_eye_in_water(world, eye) {
             CameraFogType::Water
@@ -15383,19 +15333,25 @@ fn camera_environment_colors(
     }
 }
 
-#[cfg(test)]
-fn camera_biome_rgb_color(
+fn sampled_environment_attributes_at_camera(
     world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
-    attribute: BiomeRgbAttribute,
-) -> Option<[u8; 3]> {
-    gaussian_biome_rgb_color(
-        world,
-        terrain_textures,
-        camera_eye_position(camera_pose?),
-        attribute,
-    )
+) -> ClientEnvironmentAttributes {
+    let sampled = camera_pose.map(camera_eye_position).map_or_else(
+        || world.sampled_client_environment_attributes(),
+        |eye| {
+            world.sampled_client_environment_attributes_at(
+                eye.map(f64::from),
+                EnvironmentBiomeSampling::Gaussian,
+            )
+        },
+    );
+    sampled.unwrap_or_else(|_| {
+        world
+            .level_info()
+            .map(WorldLevelInfo::environment_attributes)
+            .unwrap_or_default()
+    })
 }
 
 fn camera_eye_position(camera: CameraPose) -> [f32; 3] {
@@ -15540,203 +15496,6 @@ fn camera_biome_has_precipitation(
         .unwrap_or(true)
 }
 
-fn gaussian_biome_rgb_color(
-    world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
-    eye: [f32; 3],
-    attribute: BiomeRgbAttribute,
-) -> Option<[u8; 3]> {
-    if !eye.into_iter().all(f32::is_finite) {
-        return None;
-    }
-
-    let position = [
-        f64::from(eye[0]) * 0.25 - 0.5,
-        f64::from(eye[1]) * 0.25 - 0.5,
-        f64::from(eye[2]) * 0.25 - 0.5,
-    ];
-    let integral = [
-        position[0].floor() as i32,
-        position[1].floor() as i32,
-        position[2].floor() as i32,
-    ];
-    let relative = [
-        position[0] - f64::from(integral[0]),
-        position[1] - f64::from(integral[1]),
-        position[2] - f64::from(integral[2]),
-    ];
-    let mut samples: Vec<([u8; 3], f64)> = Vec::new();
-
-    for z in 0..6 {
-        let weight_z = gaussian_axis_weight(z, relative[2]);
-        let sample_z = integral[2] - 2 + z as i32;
-        for x in 0..6 {
-            let weight_x = gaussian_axis_weight(x, relative[0]);
-            let sample_x = integral[0] - 2 + x as i32;
-            for y in 0..6 {
-                let weight_y = gaussian_axis_weight(y, relative[1]);
-                let sample_y = integral[1] - 2 + y as i32;
-                let weight = weight_x * weight_y * weight_z;
-                if weight <= 0.0 {
-                    continue;
-                }
-                let Some(color) = biome_rgb_color_at_quart(
-                    world,
-                    terrain_textures,
-                    sample_x,
-                    sample_y,
-                    sample_z,
-                    attribute,
-                ) else {
-                    continue;
-                };
-                accumulate_weighted_rgb_color(&mut samples, color, weight);
-            }
-        }
-    }
-
-    lerp_weighted_rgb_colors(&samples)
-}
-
-fn gaussian_biome_float_attribute(
-    world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
-    eye: [f32; 3],
-    attribute: BiomeFloatAttribute,
-    base_value: f32,
-) -> Option<f32> {
-    if !eye.into_iter().all(f32::is_finite) {
-        return None;
-    }
-
-    let position = [
-        f64::from(eye[0]) * 0.25 - 0.5,
-        f64::from(eye[1]) * 0.25 - 0.5,
-        f64::from(eye[2]) * 0.25 - 0.5,
-    ];
-    let integral = [
-        position[0].floor() as i32,
-        position[1].floor() as i32,
-        position[2].floor() as i32,
-    ];
-    let relative = [
-        position[0] - f64::from(integral[0]),
-        position[1] - f64::from(integral[1]),
-        position[2] - f64::from(integral[2]),
-    ];
-    let mut weighted_sum = 0.0;
-    let mut total_weight = 0.0;
-
-    for z in 0..6 {
-        let weight_z = gaussian_axis_weight(z, relative[2]);
-        let sample_z = integral[2] - 2 + z as i32;
-        for x in 0..6 {
-            let weight_x = gaussian_axis_weight(x, relative[0]);
-            let sample_x = integral[0] - 2 + x as i32;
-            for y in 0..6 {
-                let weight_y = gaussian_axis_weight(y, relative[1]);
-                let sample_y = integral[1] - 2 + y as i32;
-                let weight = weight_x * weight_y * weight_z;
-                if weight <= 0.0 {
-                    continue;
-                }
-                let Some(value) = biome_float_attribute_at_quart(
-                    world,
-                    terrain_textures,
-                    sample_x,
-                    sample_y,
-                    sample_z,
-                    attribute,
-                    base_value,
-                ) else {
-                    continue;
-                };
-                weighted_sum += f64::from(value) * weight;
-                total_weight += weight;
-            }
-        }
-    }
-
-    (total_weight > 0.0).then_some((weighted_sum / total_weight) as f32)
-}
-
-fn gaussian_axis_weight(index: usize, relative: f64) -> f64 {
-    let start = VANILLA_GAUSSIAN_SAMPLE_KERNEL[index + 1];
-    let end = VANILLA_GAUSSIAN_SAMPLE_KERNEL[index];
-    start + relative * (end - start)
-}
-
-fn biome_rgb_color_at_quart(
-    world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
-    quart_x: i32,
-    quart_y: i32,
-    quart_z: i32,
-    attribute: BiomeRgbAttribute,
-) -> Option<[u8; 3]> {
-    let pos = BlockPos {
-        x: quart_x.saturating_mul(4),
-        y: quart_y.saturating_mul(4),
-        z: quart_z.saturating_mul(4),
-    };
-    let biome_id = world.probe_block(pos)?.biome_id;
-    match attribute {
-        BiomeRgbAttribute::Sky => terrain_textures.biome_sky_color(biome_id),
-        BiomeRgbAttribute::Fog => terrain_textures.biome_fog_color(biome_id),
-        BiomeRgbAttribute::WaterFog => terrain_textures.biome_water_fog_color(biome_id),
-    }
-}
-
-fn biome_float_attribute_at_quart(
-    world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
-    quart_x: i32,
-    quart_y: i32,
-    quart_z: i32,
-    attribute: BiomeFloatAttribute,
-    base_value: f32,
-) -> Option<f32> {
-    let pos = BlockPos {
-        x: quart_x.saturating_mul(4),
-        y: quart_y.saturating_mul(4),
-        z: quart_z.saturating_mul(4),
-    };
-    let biome_id = world.probe_block(pos)?.biome_id;
-    match attribute {
-        BiomeFloatAttribute::WaterFogEndDistance => {
-            terrain_textures.biome_water_fog_end_distance(biome_id, base_value)
-        }
-    }
-}
-
-fn accumulate_weighted_rgb_color(samples: &mut Vec<([u8; 3], f64)>, color: [u8; 3], weight: f64) {
-    if let Some((_, sample_weight)) = samples
-        .iter_mut()
-        .find(|(sample_color, _)| *sample_color == color)
-    {
-        *sample_weight += weight;
-    } else {
-        samples.push((color, weight));
-    }
-}
-
-fn lerp_weighted_rgb_colors(samples: &[([u8; 3], f64)]) -> Option<[u8; 3]> {
-    let mut total_weight = 0.0;
-    let mut result = None;
-    for (color, weight) in samples {
-        if *weight <= 0.0 {
-            continue;
-        }
-        total_weight += weight;
-        let color = rgb_u8_to_argb(*color);
-        result = Some(match result {
-            Some(result) => argb_srgb_lerp((*weight / total_weight) as f32, result, color),
-            None => color,
-        });
-    }
-    result.map(rgb_u8_from_argb)
-}
-
 fn camera_eye_in_water(world: &WorldStore, eye: [f32; 3]) -> bool {
     if !eye.into_iter().all(f32::is_finite) {
         return false;
@@ -15778,14 +15537,6 @@ fn rgb_u8_to_argb(color: [u8; 3]) -> i32 {
         i32::from(color[1]),
         i32::from(color[2]),
     )
-}
-
-fn rgb_u8_from_argb(color: i32) -> [u8; 3] {
-    [
-        argb_red(color) as u8,
-        argb_green(color) as u8,
-        argb_blue(color) as u8,
-    ]
 }
 
 fn clear_color_with_sky_flash(clear: ClearColor) -> ClearColor {

@@ -1344,9 +1344,6 @@ mod tests {
         assert_eq!(plains.downfall, 0.4);
         assert!(plains.has_precipitation);
         assert_eq!(plains.water_color, Some([0x12, 0x34, 0x56]));
-        assert_eq!(plains.fog_color, Some([0xc0, 0xd8, 0xff]));
-        assert_eq!(plains.sky_color, Some([0x78, 0xa7, 0xff]));
-        assert_eq!(plains.water_fog_color, Some([0x05, 0x05, 0x33]));
 
         let swamp = catalog.profile(6).unwrap();
         assert_eq!(swamp.name, "minecraft:swamp");
@@ -1357,11 +1354,6 @@ mod tests {
         assert_eq!(swamp.foliage_color, Some([0x6a, 0x70, 0x39]));
         assert_eq!(swamp.dry_foliage_color, Some([0x7b, 0x53, 0x34]));
         assert_eq!(swamp.water_color, Some([0x61, 0x7b, 0x64]));
-        let swamp_water_fog_end = swamp
-            .water_fog_end_distance
-            .map(|modifier| modifier.apply(96.0))
-            .unwrap();
-        assert!((swamp_water_fog_end - 81.6).abs() < 1e-5);
         assert_eq!(swamp.grass_color_modifier, GrassColorModifier::Swamp);
         assert!(catalog.profile(0).is_none());
 

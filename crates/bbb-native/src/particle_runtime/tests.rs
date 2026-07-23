@@ -10342,10 +10342,6 @@ fn test_biome_color_profile(
         foliage_color: Some(foliage_color),
         dry_foliage_color: Some(dry_foliage_color),
         water_color: Some(water_color),
-        fog_color: None,
-        sky_color: None,
-        water_fog_color: None,
-        water_fog_end_distance: None,
         grass_color_modifier: GrassColorModifier::None,
     }
 }

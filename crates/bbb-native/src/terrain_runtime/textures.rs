@@ -8,8 +8,7 @@ use anyhow::Result;
 use bbb_pack::{
     AtlasLayout, AtlasMipImage, AtlasPacker, BiomeColorCatalog, BiomeColorProfile,
     BiomeTemperatureModifier, BlockFaceTextures, BlockModelCatalog, BlockModelFace,
-    BlockModelShape, FloatAttributeModifier, GrassColorModifier, PackRoots, SpriteImage,
-    TerrainColorMaps,
+    BlockModelShape, GrassColorModifier, PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_renderer::{
     terrain::{
@@ -489,33 +488,6 @@ impl TerrainTextureState {
             TerrainFluidKind::Water => Some(self.texture_index("minecraft:block/water_overlay")),
             TerrainFluidKind::Lava => None,
         }
-    }
-
-    pub(crate) fn biome_sky_color(&self, biome_id: Option<i32>) -> Option<[u8; 3]> {
-        self.biome_profile(biome_id)?.sky_color
-    }
-
-    pub(crate) fn biome_fog_color(&self, biome_id: Option<i32>) -> Option<[u8; 3]> {
-        self.biome_profile(biome_id)?.fog_color
-    }
-
-    pub(crate) fn biome_water_fog_color(&self, biome_id: Option<i32>) -> Option<[u8; 3]> {
-        self.biome_profile(biome_id)?.water_fog_color
-    }
-
-    pub(crate) fn biome_water_fog_end_distance(
-        &self,
-        biome_id: Option<i32>,
-        base_distance: f32,
-    ) -> Option<f32> {
-        let profile = self.biome_profile(biome_id)?;
-        Some(
-            profile
-                .water_fog_end_distance
-                .map(|modifier| modifier.apply(base_distance))
-                .unwrap_or(base_distance)
-                .max(0.0),
-        )
     }
 
     pub(crate) fn biome_has_precipitation(&self, biome_id: Option<i32>) -> Option<bool> {
@@ -1450,12 +1422,6 @@ fn biome_profile_from_projection(
         foliage_color: projection.foliage_color,
         dry_foliage_color: projection.dry_foliage_color,
         water_color: Some(projection.water_color),
-        fog_color: projection.fog_color,
-        sky_color: projection.sky_color,
-        water_fog_color: projection.water_fog_color,
-        water_fog_end_distance: projection
-            .water_fog_end_distance
-            .map(FloatAttributeModifier::override_value),
         grass_color_modifier: match projection.grass_color_modifier {
             bbb_world::BiomeGrassColorModifier::None => GrassColorModifier::None,
             bbb_world::BiomeGrassColorModifier::DarkForest => GrassColorModifier::DarkForest,

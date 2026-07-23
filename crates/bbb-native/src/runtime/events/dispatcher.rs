@@ -1613,14 +1613,16 @@ fn dripstone_drip_particle_context(
     let above_root_pos = block_pos_above(root_pos)?;
     let above_root = world.probe_block(above_root_pos)?;
 
-    if above_root.block_name.as_deref() == Some("minecraft:mud") && !level_water_evaporates(world) {
+    if above_root.block_name.as_deref() == Some("minecraft:mud")
+        && !level_water_evaporates(world, above_root_pos)
+    {
         return Some(LevelEventDripstoneDripParticle::Water);
     }
 
     match above_root.fluid.map(|fluid| fluid.kind) {
         Some(TerrainFluidKind::Lava) => Some(LevelEventDripstoneDripParticle::Lava),
         Some(TerrainFluidKind::Water) => Some(LevelEventDripstoneDripParticle::Water),
-        None => Some(default_dripstone_drip_particle(world)),
+        None => Some(default_dripstone_drip_particle(world, above_root_pos)),
     }
 }
 
@@ -1672,9 +1674,19 @@ fn block_pos_above(pos: bbb_world::BlockPos) -> Option<bbb_world::BlockPos> {
     })
 }
 
-fn default_dripstone_drip_particle(world: &WorldStore) -> LevelEventDripstoneDripParticle {
+fn default_dripstone_drip_particle(
+    world: &WorldStore,
+    position: bbb_world::BlockPos,
+) -> LevelEventDripstoneDripParticle {
     if let Some(particle) = world
-        .sampled_client_environment_attributes()
+        .sampled_client_environment_attributes_at(
+            [
+                f64::from(position.x),
+                f64::from(position.y),
+                f64::from(position.z),
+            ],
+            bbb_world::EnvironmentBiomeSampling::Direct,
+        )
         .ok()
         .and_then(|attributes| attributes.default_dripstone_particle)
     {
@@ -1698,16 +1710,23 @@ fn default_dripstone_drip_particle(world: &WorldStore) -> LevelEventDripstoneDri
     {
         return LevelEventDripstoneDripParticle::Water;
     }
-    if level_water_evaporates(world) {
+    if level_water_evaporates(world, position) {
         LevelEventDripstoneDripParticle::Lava
     } else {
         LevelEventDripstoneDripParticle::Water
     }
 }
 
-fn level_water_evaporates(world: &WorldStore) -> bool {
+fn level_water_evaporates(world: &WorldStore, position: bbb_world::BlockPos) -> bool {
     if let Some(value) = world
-        .sampled_client_environment_attributes()
+        .sampled_client_environment_attributes_at(
+            [
+                f64::from(position.x),
+                f64::from(position.y),
+                f64::from(position.z),
+            ],
+            bbb_world::EnvironmentBiomeSampling::Direct,
+        )
         .ok()
         .and_then(|attributes| attributes.water_evaporates)
     {

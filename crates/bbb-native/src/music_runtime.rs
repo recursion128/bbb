@@ -1,10 +1,11 @@
 use bbb_control::AudioCounters;
 use bbb_world::{
-    ClientBackgroundMusic, ClientMusic, ClientSoundEventHolder, LocalSoundEventState,
-    SoundHolderState, WorldStore, DIMENSION_TYPE_REGISTRY,
+    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMusic, ClientSoundEventHolder,
+    EnvironmentBiomeSampling, LocalSoundEventState, SoundHolderState, WorldStore,
+    DIMENSION_TYPE_REGISTRY,
 };
 
-use crate::audio_runtime::AudioEventSink;
+use crate::{audio_runtime::AudioEventSink, camera_pose::camera_pose_from_world};
 
 const END_DIMENSION: &str = "minecraft:the_end";
 const END_MUSIC_EVENT: &str = "minecraft:music.end";
@@ -120,9 +121,7 @@ impl From<&AudioCounters> for AudioCommandObservation {
 }
 
 fn dragon_music_sound(world: &mut WorldStore) -> LocalSoundEventState {
-    let volume = world
-        .sampled_client_environment_attributes()
-        .ok()
+    let volume = camera_environment_attributes(world)
         .and_then(|attributes| attributes.music_volume)
         .filter(|volume| volume.is_finite())
         .unwrap_or(1.0)
@@ -142,14 +141,7 @@ fn dragon_music_sound(world: &mut WorldStore) -> LocalSoundEventState {
 }
 
 fn selected_background_music(world: &WorldStore) -> Option<SelectedBackgroundMusic> {
-    let attributes = world
-        .sampled_client_environment_attributes()
-        .ok()
-        .or_else(|| {
-            world
-                .level_info()
-                .map(|level| level.environment_attributes())
-        });
+    let attributes = camera_environment_attributes(world);
     if let Some(background) = attributes
         .as_ref()
         .and_then(|attributes| attributes.background_music.as_ref())
@@ -174,6 +166,27 @@ fn selected_background_music(world: &WorldStore) -> Option<SelectedBackgroundMus
     .then(|| SelectedBackgroundMusic {
         event_id: END_MUSIC_EVENT.to_string(),
         replace_current_music: true,
+    })
+}
+
+fn camera_environment_attributes(world: &WorldStore) -> Option<ClientEnvironmentAttributes> {
+    let sampled = camera_pose_from_world(world).map_or_else(
+        || world.sampled_client_environment_attributes(),
+        |camera| {
+            world.sampled_client_environment_attributes_at(
+                [
+                    f64::from(camera.position[0]),
+                    f64::from(camera.position[1] + camera.eye_height),
+                    f64::from(camera.position[2]),
+                ],
+                EnvironmentBiomeSampling::Gaussian,
+            )
+        },
+    );
+    sampled.ok().or_else(|| {
+        world
+            .level_info()
+            .map(|level| level.environment_attributes())
     })
 }
 

@@ -29,87 +29,6 @@ fn parse_hex_rgb(color: &str) -> Result<[u8; 3]> {
     ])
 }
 
-fn raw_rgb_attribute(
-    attributes: &BTreeMap<String, serde_json::Value>,
-    key: &str,
-) -> Result<Option<[u8; 3]>> {
-    attributes
-        .get(key)
-        .and_then(serde_json::Value::as_str)
-        .map(parse_hex_rgb)
-        .transpose()
-}
-
-fn raw_float_attribute_modifier(
-    attributes: &BTreeMap<String, serde_json::Value>,
-    key: &str,
-) -> Result<Option<FloatAttributeModifier>> {
-    let Some(value) = attributes.get(key) else {
-        return Ok(None);
-    };
-    if let Some(argument) = value.as_f64() {
-        return Ok(Some(FloatAttributeModifier::override_value(finite_f32(
-            argument, key,
-        )?)));
-    }
-    let raw: RawFloatAttributeModifier = serde_json::from_value(value.clone())
-        .with_context(|| format!("parse float environment attribute {key}"))?;
-    Ok(Some(FloatAttributeModifier {
-        modifier: raw.modifier,
-        argument: finite_f32(f64::from(raw.argument), key)?,
-    }))
-}
-
-fn finite_f32(value: f64, key: &str) -> Result<f32> {
-    if !value.is_finite() || value < f64::from(f32::MIN) || value > f64::from(f32::MAX) {
-        bail!("float environment attribute {key} must be finite f32");
-    }
-    Ok(value as f32)
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct FloatAttributeModifier {
-    pub modifier: FloatAttributeModifierKind,
-    pub argument: f32,
-}
-
-impl FloatAttributeModifier {
-    pub fn override_value(argument: f32) -> Self {
-        Self {
-            modifier: FloatAttributeModifierKind::Override,
-            argument,
-        }
-    }
-
-    pub fn apply(self, base: f32) -> f32 {
-        match self.modifier {
-            FloatAttributeModifierKind::Override => self.argument,
-            FloatAttributeModifierKind::Add => base + self.argument,
-            FloatAttributeModifierKind::Subtract => base - self.argument,
-            FloatAttributeModifierKind::Multiply => base * self.argument,
-            FloatAttributeModifierKind::Minimum => base.min(self.argument),
-            FloatAttributeModifierKind::Maximum => base.max(self.argument),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FloatAttributeModifierKind {
-    Override,
-    Add,
-    Subtract,
-    Multiply,
-    Minimum,
-    Maximum,
-}
-
-#[derive(Debug, Deserialize)]
-struct RawFloatAttributeModifier {
-    modifier: FloatAttributeModifierKind,
-    argument: f32,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColorMapImage {
     pub width: u32,
@@ -265,10 +184,6 @@ pub struct BiomeColorProfile {
     pub foliage_color: Option<[u8; 3]>,
     pub dry_foliage_color: Option<[u8; 3]>,
     pub water_color: Option<[u8; 3]>,
-    pub fog_color: Option<[u8; 3]>,
-    pub sky_color: Option<[u8; 3]>,
-    pub water_fog_color: Option<[u8; 3]>,
-    pub water_fog_end_distance: Option<FloatAttributeModifier>,
     pub grass_color_modifier: GrassColorModifier,
 }
 
@@ -305,16 +220,6 @@ impl BiomeColorProfile {
                 .as_deref()
                 .map(parse_hex_rgb)
                 .transpose()?,
-            fog_color: raw_rgb_attribute(&raw.attributes, "minecraft:visual/fog_color")?,
-            sky_color: raw_rgb_attribute(&raw.attributes, "minecraft:visual/sky_color")?,
-            water_fog_color: raw_rgb_attribute(
-                &raw.attributes,
-                "minecraft:visual/water_fog_color",
-            )?,
-            water_fog_end_distance: raw_float_attribute_modifier(
-                &raw.attributes,
-                "minecraft:visual/water_fog_end_distance",
-            )?,
             grass_color_modifier: raw.effects.grass_color_modifier.unwrap_or_default(),
         })
     }
@@ -343,8 +248,6 @@ struct RawBiomeColorProfile {
     temperature_modifier: Option<BiomeTemperatureModifier>,
     downfall: f32,
     has_precipitation: bool,
-    #[serde(default)]
-    attributes: BTreeMap<String, serde_json::Value>,
     #[serde(default)]
     effects: RawBiomeColorEffects,
 }
@@ -383,8 +286,8 @@ mod tests {
     #[test]
     fn biome_catalog_remaps_profiles_by_resource_identity() {
         let source = BiomeColorCatalog::new([
-            biome_profile(10, "minecraft:plains", [1, 2, 3]),
-            biome_profile(20, "minecraft:desert", [4, 5, 6]),
+            biome_profile(10, "minecraft:plains"),
+            biome_profile(20, "minecraft:desert"),
         ]);
         let remapped = source.remapped_to_resource_order([
             "example:custom",
@@ -394,12 +297,12 @@ mod tests {
 
         assert!(remapped.profile(0).is_none());
         assert_eq!(remapped.profile(1).unwrap().name, "minecraft:desert");
-        assert_eq!(remapped.profile(1).unwrap().sky_color, Some([4, 5, 6]));
+        assert_eq!(remapped.profile(1).unwrap().id, 1);
         assert_eq!(remapped.profile(2).unwrap().name, "minecraft:plains");
-        assert_eq!(remapped.profile(2).unwrap().sky_color, Some([1, 2, 3]));
+        assert_eq!(remapped.profile(2).unwrap().id, 2);
     }
 
-    fn biome_profile(id: i32, name: &str, sky_color: [u8; 3]) -> BiomeColorProfile {
+    fn biome_profile(id: i32, name: &str) -> BiomeColorProfile {
         BiomeColorProfile {
             id,
             name: name.to_string(),
@@ -411,10 +314,6 @@ mod tests {
             foliage_color: None,
             dry_foliage_color: None,
             water_color: None,
-            fog_color: None,
-            sky_color: Some(sky_color),
-            water_fog_color: None,
-            water_fog_end_distance: None,
             grass_color_modifier: GrassColorModifier::None,
         }
     }

@@ -15,7 +15,7 @@ pub use crate::block_piston_profiles::{
 pub use crate::block_sound_profiles::{BlockSoundProfile, BlockSoundProfileCatalog};
 pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, ColorMapImage,
-    FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, TerrainColorMaps,
+    GrassColorModifier, TerrainColorMaps,
 };
 pub use crate::equipment_assets::{
     EquipmentAsset, EquipmentAssetCatalog, EquipmentDyeable, EquipmentLayer, EquipmentLayerType,

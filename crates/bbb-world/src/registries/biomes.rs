@@ -30,10 +30,6 @@ pub struct BiomeClientProjection {
     pub dry_foliage_color: Option<[u8; 3]>,
     pub grass_color: Option<[u8; 3]>,
     pub grass_color_modifier: BiomeGrassColorModifier,
-    pub fog_color: Option<[u8; 3]>,
-    pub sky_color: Option<[u8; 3]>,
-    pub water_fog_color: Option<[u8; 3]>,
-    pub water_fog_end_distance: Option<f32>,
     pub(crate) environment_attribute_modifiers: ClientEnvironmentAttributeMap,
 }
 
@@ -99,10 +95,6 @@ fn decode_biome_client_projection_value(
         dry_foliage_color,
         grass_color,
         grass_color_modifier,
-        fog_color: attributes.fog_color,
-        sky_color: attributes.sky_color,
-        water_fog_color: attributes.water_fog_color,
-        water_fog_end_distance: attributes.water_fog_end_distance,
         environment_attribute_modifiers,
     })
 }
@@ -264,10 +256,15 @@ mod tests {
             projection.grass_color_modifier,
             BiomeGrassColorModifier::Swamp
         );
-        assert_eq!(projection.fog_color, Some([0x44, 0x66, 0x88]));
-        assert_eq!(projection.sky_color, Some([0x55, 0x77, 0x99]));
-        assert_eq!(projection.water_fog_color, Some([0x66, 0x88, 0xaa]));
-        assert_eq!(projection.water_fog_end_distance, Some(48.0));
+        let mut attributes = ClientEnvironmentAttributes::default();
+        projection
+            .environment_attribute_modifiers
+            .apply_to(&mut attributes)
+            .unwrap();
+        assert_eq!(attributes.fog_color, Some([0x44, 0x66, 0x88]));
+        assert_eq!(attributes.sky_color, Some([0x55, 0x77, 0x99]));
+        assert_eq!(attributes.water_fog_color, Some([0x66, 0x88, 0xaa]));
+        assert_eq!(attributes.water_fog_end_distance, Some(48.0));
     }
 
     #[test]
@@ -292,8 +289,6 @@ mod tests {
         let projection = decode_biome_client_projection_value(&data.value).unwrap();
         assert!(projection.has_precipitation);
         assert_eq!(projection.water_color, [0x11, 0x22, 0x33]);
-        assert_eq!(projection.fog_color, Some([0x44, 0x66, 0x88]));
-        assert!((projection.water_fog_end_distance.unwrap() - 81.6).abs() < 0.0001);
         let mut dimension_attributes = ClientEnvironmentAttributes {
             water_fog_end_distance: Some(200.0),
             ..ClientEnvironmentAttributes::default()
@@ -309,7 +304,12 @@ mod tests {
     fn decodes_relevant_attribute_modifier_through_the_shared_codec() {
         let entry = RegistryPacketEntry::with_raw_data("example:custom", biome_nbt(true));
         let projection = decode_biome_client_projection(&entry).unwrap().unwrap();
-        assert!((projection.water_fog_end_distance.unwrap() - 81.6).abs() < 0.0001);
+        let mut attributes = ClientEnvironmentAttributes::default();
+        projection
+            .environment_attribute_modifiers
+            .apply_to(&mut attributes)
+            .unwrap();
+        assert!((attributes.water_fog_end_distance.unwrap() - 81.6).abs() < 0.0001);
         assert_eq!(
             decode_biome_client_projection(&RegistryPacketEntry::stub("example:stub")).unwrap(),
             None

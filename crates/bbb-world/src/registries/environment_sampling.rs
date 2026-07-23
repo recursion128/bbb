@@ -485,10 +485,6 @@ mod tests {
             dry_foliage_color: None,
             grass_color: None,
             grass_color_modifier: BiomeGrassColorModifier::None,
-            fog_color: None,
-            sky_color: None,
-            water_fog_color: None,
-            water_fog_end_distance: None,
             environment_attribute_modifiers,
         }
     }

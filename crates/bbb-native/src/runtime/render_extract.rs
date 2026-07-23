@@ -113,9 +113,8 @@ pub(crate) fn lightmap_environment_attributes_for_world(world: &WorldStore) -> L
         return LightmapEnvironment::default();
     };
 
-    let sampled_attributes = world
-        .sampled_client_environment_attributes()
-        .unwrap_or_else(|_| level.environment_attributes());
+    let sampled_attributes =
+        sampled_environment_attributes_at_camera(world, camera_pose_from_world(world));
     let mut environment = dimension_lightmap_environment(level, sampled_attributes);
     let is_overworld =
         vanilla_lightmap_dimension_kind(level) == VanillaLightmapDimensionKind::Overworld;
@@ -158,13 +157,11 @@ pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bo
 #[cfg(test)]
 pub(crate) fn clear_color_for_world_at_camera(
     world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
     hide_lightning_flash: bool,
 ) -> ClearColor {
     clear_color_for_world_at_camera_with_render_distance(
         world,
-        terrain_textures,
         camera_pose,
         VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS as u32,
         hide_lightning_flash,
@@ -174,14 +171,13 @@ pub(crate) fn clear_color_for_world_at_camera(
 #[cfg(test)]
 pub(crate) fn clear_color_for_world_at_camera_with_render_distance(
     world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
     render_distance_chunks: u32,
     hide_lightning_flash: bool,
 ) -> ClearColor {
     clear_color_for_world_with_environment_colors(
         world,
-        camera_environment_colors(world, terrain_textures, camera_pose),
+        camera_environment_colors(world, camera_pose),
         render_distance_chunks,
         hide_lightning_flash,
     )
@@ -189,7 +185,6 @@ pub(crate) fn clear_color_for_world_at_camera_with_render_distance(
 
 pub(crate) fn clear_color_for_world_at_camera_with_water_vision(
     world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
     render_distance_chunks: u32,
     water_vision: f32,
@@ -197,7 +192,7 @@ pub(crate) fn clear_color_for_world_at_camera_with_water_vision(
 ) -> ClearColor {
     clear_color_for_world_with_environment_colors_and_water_vision(
         world,
-        camera_environment_colors(world, terrain_textures, camera_pose),
+        camera_environment_colors(world, camera_pose),
         render_distance_chunks,
         water_vision,
         hide_lightning_flash,
@@ -282,13 +277,12 @@ pub(crate) fn clear_color_for_world_with_environment_colors_and_water_vision(
 
 pub(crate) fn sky_environment_for_world_at_camera(
     world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
     hide_lightning_flash: bool,
 ) -> SkyEnvironment {
     sky_environment_for_world_with_environment_colors(
         world,
-        camera_environment_colors(world, terrain_textures, camera_pose),
+        camera_environment_colors(world, camera_pose),
         hide_lightning_flash,
     )
 }
@@ -323,14 +317,6 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     let uses_builtin_dimension_fallback = world
         .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
         .is_none();
-    let attributes = world
-        .sampled_client_environment_attributes()
-        .unwrap_or_else(|_| {
-            world
-                .level_info()
-                .map(WorldLevelInfo::environment_attributes)
-                .unwrap_or_default()
-        });
     let weather = world.weather();
     let can_have_weather = world
         .level_info()
@@ -346,7 +332,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
         0.0
     };
     let sunrise_sunset_color = apply_weather_sunrise_sunset_color_layers(
-        attributes
+        colors
             .sunrise_sunset_color
             .map(rgba_u8_to_argb)
             .unwrap_or_else(|| {
@@ -363,16 +349,13 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
         rain,
         thunder,
     );
-    let moon_phase = attributes
-        .moon_phase
-        .map(client_moon_phase)
-        .unwrap_or_else(|| {
-            if uses_builtin_dimension_fallback {
-                overworld_moon_phase(day_time)
-            } else {
-                SkyMoonPhase::FullMoon
-            }
-        });
+    let moon_phase = colors.moon_phase.map(client_moon_phase).unwrap_or_else(|| {
+        if uses_builtin_dimension_fallback {
+            overworld_moon_phase(day_time)
+        } else {
+            SkyMoonPhase::FullMoon
+        }
+    });
 
     SkyEnvironment::from_rgb(rgb24(sky_disc_color_for_world_with_environment_colors(
         world,
@@ -382,7 +365,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     )))
     .with_sunrise_sunset(
         rgba32(sunrise_sunset_color),
-        attributes
+        colors
             .sun_angle_degrees
             .unwrap_or_else(|| {
                 uses_builtin_dimension_fallback
@@ -392,7 +375,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
             .to_radians(),
     )
     .with_celestial_state(
-        attributes
+        colors
             .moon_angle_degrees
             .unwrap_or_else(|| {
                 uses_builtin_dimension_fallback
@@ -404,7 +387,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
         moon_phase,
     )
     .with_star_state(
-        attributes
+        colors
             .star_angle_degrees
             .unwrap_or_else(|| {
                 uses_builtin_dimension_fallback
@@ -413,7 +396,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
             })
             .to_radians(),
         apply_weather_star_brightness_layers(
-            attributes.star_brightness.unwrap_or_else(|| {
+            colors.star_brightness.unwrap_or_else(|| {
                 if uses_builtin_dimension_fallback {
                     sample_periodic_float_keyframes(
                         day_time,
@@ -435,14 +418,7 @@ pub(crate) fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironmen
         .level_info()
         .map(vanilla_lightmap_dimension_kind)
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
-    let attributes = world
-        .sampled_client_environment_attributes()
-        .unwrap_or_else(|_| {
-            world
-                .level_info()
-                .map(WorldLevelInfo::environment_attributes)
-                .unwrap_or_default()
-        });
+    let attributes = sampled_environment_attributes_at_camera(world, camera_pose_from_world(world));
     let uses_builtin_dimension_fallback = world
         .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
         .is_none();
@@ -759,7 +735,6 @@ pub(crate) fn sky_disc_color_for_world_with_environment_colors(
 
 pub(crate) fn fog_environment_for_world_at_camera(
     world: &WorldStore,
-    terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
     render_distance_chunks: u32,
     water_vision: f32,
@@ -768,7 +743,7 @@ pub(crate) fn fog_environment_for_world_at_camera(
 ) -> FogEnvironment {
     fog_environment_for_world_with_environment_colors(
         world,
-        camera_environment_colors(world, terrain_textures, camera_pose),
+        camera_environment_colors(world, camera_pose),
         render_distance_chunks,
         water_vision,
         rain_fog_multiplier,
