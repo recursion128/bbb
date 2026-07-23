@@ -1,6 +1,6 @@
 use super::{
-    sample_terrain_light, BlockEntityRecord, ChunkState, LightData, NbtPayloadSummary, PaletteKind,
-    LIGHT_ARRAY_BYTES,
+    decode_block_entity_data_record, sample_terrain_light, BlockEntityRecord, ChunkState,
+    LightData, NbtPayloadSummary, PaletteKind, LIGHT_ARRAY_BYTES,
 };
 use crate::{
     section_block_index, BlockPos, ChunkPos, TerrainFluidKind, TerrainFluidState, TerrainLight,
@@ -1953,6 +1953,10 @@ fn block_updates_follow_vanilla_block_entity_lifecycle() {
         "minecraft:oak_sign",
         &[("rotation", "0"), ("waterlogged", "false")],
     );
+    let moving_piston = test_block_state_id(
+        "minecraft:moving_piston",
+        &[("facing", "north"), ("type", "normal")],
+    );
     let chest_north = test_block_state_id(
         "minecraft:chest",
         &[
@@ -2077,6 +2081,7 @@ fn block_updates_follow_vanilla_block_entity_lifecycle() {
         y: 2,
         z: -46,
     };
+    update(&mut store, mismatched, moving_piston);
     apply_data(
         &mut store,
         mismatched,
@@ -2302,15 +2307,20 @@ fn applies_block_entity_data_update() {
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
         .unwrap();
+    let pos = ProtocolBlockPos {
+        x: 33,
+        y: 7,
+        z: -46,
+    };
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos,
+        block_state_id: test_block_state_id("minecraft:spawner", &[]),
+    }));
 
     let raw_nbt = nbt_compound_with_string("id", "minecraft:chest");
     let applied = store
         .apply_block_entity_data(ProtocolBlockEntityData {
-            pos: ProtocolBlockPos {
-                x: 33,
-                y: 7,
-                z: -46,
-            },
+            pos,
             block_entity_type_id:
                 bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
             raw_nbt: raw_nbt.clone(),
@@ -2330,7 +2340,7 @@ fn applies_block_entity_data_update() {
             local_x: 1,
             y: 7,
             local_z: 2,
-            type_id: 9,
+            type_id: bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
             raw_nbt: raw_nbt.clone(),
             nbt: Some(NbtPayloadSummary {
                 root_type: 10,
@@ -2375,29 +2385,27 @@ fn applies_block_entity_data_update() {
         None
     );
 
-    let replacement_nbt = nbt_compound_with_string("id", "minecraft:furnace");
-    assert!(store
+    assert!(!store
         .apply_block_entity_data(ProtocolBlockEntityData {
-            pos: ProtocolBlockPos {
-                x: 33,
-                y: 7,
-                z: -46,
-            },
+            pos,
             block_entity_type_id:
                 bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_PISTON_ID,
-            raw_nbt: replacement_nbt.clone(),
+            raw_nbt: vec![0],
         })
         .unwrap());
     let chunk = store.probe_chunk(ChunkPos { x: 2, z: -3 }).unwrap();
     assert_eq!(chunk.block_entities.len(), 1);
-    assert_eq!(chunk.block_entities[0].type_id, 11);
+    assert_eq!(
+        chunk.block_entities[0].type_id,
+        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID
+    );
     assert_eq!(
         store.block_entity_raw_nbt_at(BlockPos {
             x: 33,
             y: 7,
             z: -46,
         }),
-        Some(replacement_nbt.as_slice())
+        Some(raw_nbt.as_slice())
     );
     assert_eq!(
         store.block_entity_type_id_at(BlockPos {
@@ -2405,7 +2413,7 @@ fn applies_block_entity_data_update() {
             y: 7,
             z: -46,
         }),
-        Some(11)
+        Some(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID)
     );
 
     let missing_chunk_applied = store
@@ -2422,8 +2430,188 @@ fn applies_block_entity_data_update() {
         .unwrap();
     assert!(!missing_chunk_applied);
     assert_eq!(store.counters().block_entity_updates_received, 3);
-    assert_eq!(store.counters().block_entity_updates_applied, 2);
-    assert_eq!(store.counters().block_entity_updates_ignored, 1);
+    assert_eq!(store.counters().block_entity_updates_applied, 1);
+    assert_eq!(store.counters().block_entity_updates_ignored, 2);
+}
+
+#[test]
+fn block_entity_data_updates_every_known_matching_type_and_ignores_mismatches_before_decode() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    for block_entity_type in bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES {
+        let local_x = block_entity_type.id.rem_euclid(16) as u8;
+        let local_z = block_entity_type.id.div_euclid(16) as u8;
+        store.chunks[0]
+            .block_entities
+            .push(BlockEntityRecord::empty(
+                local_x,
+                7,
+                local_z,
+                block_entity_type.id,
+            ));
+    }
+
+    for block_entity_type in bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES {
+        let pos = block_entity_matrix_pos(block_entity_type.id);
+        assert!(store
+            .apply_block_entity_data(ProtocolBlockEntityData {
+                pos,
+                block_entity_type_id: block_entity_type.id,
+                raw_nbt: vec![10, 0],
+            })
+            .unwrap());
+        assert_eq!(
+            store.block_entity_raw_nbt_at(BlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            }),
+            Some(&[10, 0][..])
+        );
+    }
+
+    let type_count =
+        i32::try_from(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES.len()).unwrap();
+    for block_entity_type in bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES {
+        let pos = block_entity_matrix_pos(block_entity_type.id);
+        let mismatched_type_id = (block_entity_type.id + 1).rem_euclid(type_count);
+        assert!(!store
+            .apply_block_entity_data(ProtocolBlockEntityData {
+                pos,
+                block_entity_type_id: mismatched_type_id,
+                // Invalid for BlockEntityData, but the handler must not touch
+                // it after the existing-type identity check fails.
+                raw_nbt: vec![0],
+            })
+            .unwrap());
+        assert_eq!(
+            store.block_entity_type_id_at(BlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            }),
+            Some(block_entity_type.id)
+        );
+    }
+
+    let first_type = bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES[0];
+    let first_pos = block_entity_matrix_pos(first_type.id);
+    assert!(store
+        .apply_block_entity_data(ProtocolBlockEntityData {
+            pos: first_pos,
+            block_entity_type_id: first_type.id,
+            raw_nbt: vec![10, 1, 0, 0],
+        })
+        .is_err());
+    assert_eq!(
+        store.block_entity_raw_nbt_at(BlockPos {
+            x: first_pos.x,
+            y: first_pos.y,
+            z: first_pos.z,
+        }),
+        Some(&[10, 0][..])
+    );
+
+    let counters = store.counters();
+    assert_eq!(
+        counters.block_entity_updates_received,
+        2 * type_count as usize + 1
+    );
+    assert_eq!(counters.block_entity_updates_applied, type_count as usize);
+    assert_eq!(counters.block_entity_updates_ignored, type_count as usize);
+    assert_eq!(counters.world_apply_errors, 1);
+}
+
+#[test]
+fn typed_block_entity_projections_are_selected_only_by_generated_type_identity() {
+    use bbb_protocol::block_entity_types::{
+        VANILLA_BLOCK_ENTITY_TYPE_BANNER_ID, VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID, VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
+    };
+
+    let sign_nbt = sign_text_nbt(["front", "", "", ""], ["back", "", "", ""]);
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID, sign_nbt.clone())
+            .sign_text
+            .is_some()
+    );
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID, sign_nbt)
+            .sign_text
+            .is_none()
+    );
+
+    let vault_nbt = vault_shared_data_nbt(&[Uuid::nil()], Some(3.0));
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID, vault_nbt.clone())
+            .vault_shared_data
+            .is_some()
+    );
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID, vault_nbt)
+            .vault_shared_data
+            .is_none()
+    );
+
+    let pot_nbt = nbt_compound_with_empty_list("sherds", 8);
+    assert!(decode_test_block_entity_record(
+        VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+        pot_nbt.clone()
+    )
+    .decorated_pot_sherds
+    .is_some());
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID, pot_nbt)
+            .decorated_pot_sherds
+            .is_none()
+    );
+
+    let banner_nbt = nbt_compound_with_empty_list("patterns", 10);
+    assert!(decode_test_block_entity_record(
+        VANILLA_BLOCK_ENTITY_TYPE_BANNER_ID,
+        banner_nbt.clone()
+    )
+    .banner_patterns
+    .is_some());
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID, banner_nbt)
+            .banner_patterns
+            .is_none()
+    );
+
+    let gateway_nbt = nbt_compound_with_long("Age", 42);
+    assert!(decode_test_block_entity_record(
+        VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID,
+        gateway_nbt.clone()
+    )
+    .end_gateway
+    .is_some());
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID, gateway_nbt)
+            .end_gateway
+            .is_none()
+    );
+
+    let spawner_nbt = nbt_compound_with_short("Delay", 12);
+    assert!(decode_test_block_entity_record(
+        VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+        spawner_nbt.clone()
+    )
+    .spawner
+    .is_some());
+    assert!(
+        decode_test_block_entity_record(VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID, spawner_nbt)
+            .spawner
+            .is_none()
+    );
 }
 
 #[test]
@@ -2435,6 +2623,18 @@ fn applies_sign_block_entity_text_update() {
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
         .unwrap();
+    let pos = ProtocolBlockPos {
+        x: 33,
+        y: 7,
+        z: -46,
+    };
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos,
+        block_state_id: test_block_state_id(
+            "minecraft:oak_sign",
+            &[("rotation", "0"), ("waterlogged", "false")],
+        ),
+    }));
 
     let raw_nbt = sign_text_nbt(
         ["Front 1", "Front 2", "Front 3", "Front 4"],
@@ -2442,11 +2642,7 @@ fn applies_sign_block_entity_text_update() {
     );
     assert!(store
         .apply_block_entity_data(ProtocolBlockEntityData {
-            pos: ProtocolBlockPos {
-                x: 33,
-                y: 7,
-                z: -46,
-            },
+            pos,
             block_entity_type_id:
                 bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
             raw_nbt,
@@ -2505,6 +2701,10 @@ fn applies_vault_shared_data_and_projects_connection_particles() {
     let distant_uuid = Uuid::from_u128(0xffee_ddcc_bbaa_9988_7766_5544_3322_1100);
     let raw_nbt = vault_shared_data_nbt(&[connected_uuid, distant_uuid], Some(3.0));
 
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: vault_pos,
+        block_state_id: vault_block_state_id("east"),
+    }));
     assert!(store
         .apply_block_entity_data(ProtocolBlockEntityData {
             pos: vault_pos,
@@ -2513,10 +2713,6 @@ fn applies_vault_shared_data_and_projects_connection_particles() {
             raw_nbt,
         })
         .unwrap());
-    assert!(store.apply_block_update(ProtocolBlockUpdate {
-        pos: vault_pos,
-        block_state_id: vault_block_state_id("east"),
-    }));
     store.apply_add_entity(vault_test_player(
         10,
         connected_uuid,
@@ -2760,6 +2956,54 @@ fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
     payload.extend_from_slice(value.as_bytes());
     payload.push(0);
     payload
+}
+
+fn nbt_compound_with_empty_list(name: &str, element_type: u8) -> Vec<u8> {
+    let mut payload = vec![10, 9];
+    write_nbt_string(&mut payload, name);
+    payload.push(element_type);
+    payload.extend_from_slice(&0i32.to_be_bytes());
+    payload.push(0);
+    payload
+}
+
+fn nbt_compound_with_long(name: &str, value: i64) -> Vec<u8> {
+    let mut payload = vec![10, 4];
+    write_nbt_string(&mut payload, name);
+    payload.extend_from_slice(&value.to_be_bytes());
+    payload.push(0);
+    payload
+}
+
+fn nbt_compound_with_short(name: &str, value: i16) -> Vec<u8> {
+    let mut payload = vec![10, 2];
+    write_nbt_string(&mut payload, name);
+    payload.extend_from_slice(&value.to_be_bytes());
+    payload.push(0);
+    payload
+}
+
+fn decode_test_block_entity_record(
+    block_entity_type_id: i32,
+    raw_nbt: Vec<u8>,
+) -> BlockEntityRecord {
+    decode_block_entity_data_record(
+        0,
+        0,
+        0,
+        block_entity_type_id,
+        raw_nbt,
+        bbb_protocol::packets::JigsawJoint::Rollable,
+    )
+    .unwrap()
+}
+
+fn block_entity_matrix_pos(block_entity_type_id: i32) -> ProtocolBlockPos {
+    ProtocolBlockPos {
+        x: 32 + block_entity_type_id.rem_euclid(16),
+        y: 7,
+        z: -48 + block_entity_type_id.div_euclid(16),
+    }
 }
 
 fn sign_text_nbt(front: [&str; 4], back: [&str; 4]) -> Vec<u8> {

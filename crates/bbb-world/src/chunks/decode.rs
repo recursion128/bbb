@@ -1,7 +1,19 @@
-use bbb_protocol::codec::Decoder;
 use bbb_protocol::packets::{
     LevelChunkBlockEntity as ProtocolLevelChunkBlockEntity,
     LevelChunkData as ProtocolLevelChunkData, LightUpdateData as ProtocolLightUpdateData,
+};
+use bbb_protocol::{
+    block_entity_types::{
+        VANILLA_BLOCK_ENTITY_TYPE_BANNER_ID, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID, VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
+    },
+    codec::{Decoder, ProtocolError},
+    packets::JigsawJoint,
 };
 
 use crate::{ChunkPos, Result, WorldDecodeError, WorldDimension};
@@ -97,6 +109,38 @@ pub(crate) fn decode_nbt_payload_summary(bytes: &[u8]) -> Result<Option<NbtPaylo
     Ok(nbt)
 }
 
+pub(crate) fn decode_block_entity_data_record(
+    local_x: u8,
+    y: i16,
+    local_z: u8,
+    block_entity_type_id: i32,
+    raw_nbt: Vec<u8>,
+    jigsaw_default_joint: JigsawJoint,
+) -> Result<BlockEntityRecord> {
+    let Some(nbt) = decode_nbt_payload_summary(&raw_nbt)? else {
+        return Err(ProtocolError::InvalidData(
+            "block entity data nbt root must be a non-null compound tag".to_string(),
+        )
+        .into());
+    };
+    if nbt.root_type != 10 {
+        return Err(ProtocolError::InvalidData(format!(
+            "block entity data nbt root must be a compound tag, got tag id {}",
+            nbt.root_type
+        ))
+        .into());
+    }
+    decode_block_entity_record(
+        local_x,
+        y,
+        local_z,
+        block_entity_type_id,
+        raw_nbt,
+        Some(nbt),
+        jigsaw_default_joint,
+    )
+}
+
 fn decode_sections(bytes: &[u8]) -> Result<Vec<ChunkSection>> {
     let mut decoder = Decoder::new(bytes);
     let mut sections = Vec::new();
@@ -170,85 +214,122 @@ fn decode_block_entities(
                 remaining: decoder.remaining_len(),
             });
         }
-        let sign_text = decode_sign_block_entity_text(&raw_nbt)?;
-        let vault_shared_data = crate::chunks::decode_vault_shared_data(&raw_nbt)?;
-        let decorated_pot_sherds = crate::chunks::decode_decorated_pot_sherds(&raw_nbt)?;
-        let banner_patterns = crate::chunks::decode_banner_patterns(&raw_nbt)?;
-        let end_gateway = crate::chunks::decode_end_gateway_block_entity_data(&raw_nbt)?;
-        let spawner = crate::chunks::decode_spawner_block_entity_data(&raw_nbt)?;
-        let command_block = if block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID
-        {
-            Some(crate::command_blocks::decode_command_block_entity_data(
-                &raw_nbt,
-            )?)
-        } else {
-            None
-        };
-        let structure_block = if block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID
-        {
-            Some(crate::structure_blocks::decode_structure_block_entity_data(
-                &raw_nbt,
-            )?)
-        } else {
-            None
-        };
-        let jigsaw_block = if block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID
-        {
-            let default_joint =
-                jigsaw_default_joint_for_chunk_block(sections, dimension, packed_xz, y);
-            Some(crate::jigsaw_blocks::decode_jigsaw_block_entity_data(
-                &raw_nbt,
-                default_joint,
-            )?)
-        } else {
-            None
-        };
-        let test_block = if block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID
-        {
-            Some(crate::test_blocks::decode_test_block_entity_data(&raw_nbt)?)
-        } else {
-            None
-        };
-        let test_instance_block = if block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
-        {
+        let jigsaw_default_joint =
+            jigsaw_default_joint_for_chunk_block(sections, dimension, packed_xz, y);
+        out.push(decode_block_entity_record(
+            packed_xz >> 4,
+            y,
+            packed_xz & 0x0f,
+            block_entity_type_id,
+            raw_nbt,
+            nbt,
+            jigsaw_default_joint,
+        )?);
+    }
+    Ok(out)
+}
+
+fn decode_block_entity_record(
+    local_x: u8,
+    y: i16,
+    local_z: u8,
+    block_entity_type_id: i32,
+    raw_nbt: Vec<u8>,
+    nbt: Option<NbtPayloadSummary>,
+    jigsaw_default_joint: JigsawJoint,
+) -> Result<BlockEntityRecord> {
+    let sign_text = if matches!(
+        block_entity_type_id,
+        VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID | VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID
+    ) {
+        decode_sign_block_entity_text(&raw_nbt)?
+    } else {
+        None
+    };
+    let vault_shared_data = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID {
+        crate::chunks::decode_vault_shared_data(&raw_nbt)?
+    } else {
+        None
+    };
+    let decorated_pot_sherds = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID
+    {
+        crate::chunks::decode_decorated_pot_sherds(&raw_nbt)?
+    } else {
+        None
+    };
+    let banner_patterns = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_BANNER_ID {
+        crate::chunks::decode_banner_patterns(&raw_nbt)?
+    } else {
+        None
+    };
+    let end_gateway = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID {
+        crate::chunks::decode_end_gateway_block_entity_data(&raw_nbt)?
+    } else {
+        None
+    };
+    let spawner = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID {
+        crate::chunks::decode_spawner_block_entity_data(&raw_nbt)?
+    } else {
+        None
+    };
+    let command_block = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID {
+        Some(crate::command_blocks::decode_command_block_entity_data(
+            &raw_nbt,
+        )?)
+    } else {
+        None
+    };
+    let structure_block = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID {
+        Some(crate::structure_blocks::decode_structure_block_entity_data(
+            &raw_nbt,
+        )?)
+    } else {
+        None
+    };
+    let jigsaw_block = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID {
+        Some(crate::jigsaw_blocks::decode_jigsaw_block_entity_data(
+            &raw_nbt,
+            jigsaw_default_joint,
+        )?)
+    } else {
+        None
+    };
+    let test_block = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID {
+        Some(crate::test_blocks::decode_test_block_entity_data(&raw_nbt)?)
+    } else {
+        None
+    };
+    let test_instance_block =
+        if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID {
             Some(crate::test_instance_blocks::decode_test_instance_block_entity_data(&raw_nbt)?)
         } else {
             None
         };
-        let note_block_sound = if block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
-        {
-            crate::chunks::decode_skull_note_block_sound(&raw_nbt)?
-        } else {
-            None
-        };
-        out.push(BlockEntityRecord {
-            local_x: packed_xz >> 4,
-            y,
-            local_z: packed_xz & 0x0f,
-            type_id: block_entity_type_id,
-            raw_nbt,
-            nbt,
-            sign_text,
-            vault_shared_data,
-            decorated_pot_sherds,
-            banner_patterns,
-            end_gateway,
-            spawner,
-            command_block,
-            structure_block,
-            jigsaw_block,
-            test_block,
-            test_instance_block,
-            note_block_sound,
-        });
-    }
-    Ok(out)
+    let note_block_sound = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID {
+        crate::chunks::decode_skull_note_block_sound(&raw_nbt)?
+    } else {
+        None
+    };
+    Ok(BlockEntityRecord {
+        local_x,
+        y,
+        local_z,
+        type_id: block_entity_type_id,
+        raw_nbt,
+        nbt,
+        sign_text,
+        vault_shared_data,
+        decorated_pot_sherds,
+        banner_patterns,
+        end_gateway,
+        spawner,
+        command_block,
+        structure_block,
+        jigsaw_block,
+        test_block,
+        test_instance_block,
+        note_block_sound,
+    })
 }
 
 fn jigsaw_default_joint_for_chunk_block(

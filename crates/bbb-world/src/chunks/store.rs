@@ -30,14 +30,13 @@ use crate::{
 };
 
 use super::{
-    decode_biome_sections, decode_level_chunk_with_light, decode_nbt_payload_summary,
+    decode_biome_sections, decode_block_entity_data_record, decode_level_chunk_with_light,
     heightmap::{
         chunk_heightmap_first_available, heightmap_index,
         update_motion_blocking_heightmaps_for_block, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
     },
-    merge_light_data, sample_terrain_light,
-    sign_text::decode_sign_block_entity_text,
-    updated_light_section_indices, validate_light_data, QueuedLightUpdate,
+    merge_light_data, sample_terrain_light, updated_light_section_indices, validate_light_data,
+    QueuedLightUpdate,
 };
 
 impl WorldStore {
@@ -141,178 +140,50 @@ impl WorldStore {
                 return Err(err);
             }
         };
-        let nbt = match decode_nbt_payload_summary(&packet.raw_nbt) {
-            Ok(nbt) => nbt,
-            Err(err) => {
-                self.record_apply_error("block_entity_data", &err);
-                return Err(err);
-            }
-        };
-        let sign_text = match decode_sign_block_entity_text(&packet.raw_nbt) {
-            Ok(text) => text,
-            Err(err) => {
-                self.record_apply_error("block_entity_data", &err);
-                return Err(err);
-            }
-        };
-        let vault_shared_data = match crate::chunks::decode_vault_shared_data(&packet.raw_nbt) {
-            Ok(shared_data) => shared_data,
-            Err(err) => {
-                self.record_apply_error("block_entity_data", &err);
-                return Err(err);
-            }
-        };
-        let decorated_pot_sherds = match crate::chunks::decode_decorated_pot_sherds(&packet.raw_nbt)
-        {
-            Ok(sherds) => sherds,
-            Err(err) => {
-                self.record_apply_error("block_entity_data", &err);
-                return Err(err);
-            }
-        };
-        let banner_patterns = match crate::chunks::decode_banner_patterns(&packet.raw_nbt) {
-            Ok(patterns) => patterns,
-            Err(err) => {
-                self.record_apply_error("block_entity_data", &err);
-                return Err(err);
-            }
-        };
-        let end_gateway = match crate::chunks::decode_end_gateway_block_entity_data(&packet.raw_nbt)
-        {
-            Ok(end_gateway) => end_gateway,
-            Err(err) => {
-                self.record_apply_error("block_entity_data", &err);
-                return Err(err);
-            }
-        };
-        let spawner = match crate::chunks::decode_spawner_block_entity_data(&packet.raw_nbt) {
-            Ok(spawner) => spawner,
-            Err(err) => {
-                self.record_apply_error("block_entity_data", &err);
-                return Err(err);
-            }
-        };
-        let command_block = if packet.block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID
-        {
-            match crate::command_blocks::decode_command_block_entity_data(&packet.raw_nbt) {
-                Ok(command_block) => Some(command_block),
-                Err(err) => {
-                    self.record_apply_error("block_entity_data", &err);
-                    return Err(err);
-                }
-            }
-        } else {
-            None
-        };
-        let structure_block = if packet.block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID
-        {
-            match crate::structure_blocks::decode_structure_block_entity_data(&packet.raw_nbt) {
-                Ok(data) => Some(data),
-                Err(err) => {
-                    self.record_apply_error("block_entity_data", &err);
-                    return Err(err);
-                }
-            }
-        } else {
-            None
-        };
-        let jigsaw_block = if packet.block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID
-        {
-            let default_joint = self.jigsaw_default_joint_at(pos);
-            match crate::jigsaw_blocks::decode_jigsaw_block_entity_data(
-                &packet.raw_nbt,
-                default_joint,
-            ) {
-                Ok(data) => Some(data),
-                Err(err) => {
-                    self.record_apply_error("block_entity_data", &err);
-                    return Err(err);
-                }
-            }
-        } else {
-            None
-        };
-        let test_block = if packet.block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID
-        {
-            match crate::test_blocks::decode_test_block_entity_data(&packet.raw_nbt) {
-                Ok(data) => Some(data),
-                Err(err) => {
-                    self.record_apply_error("block_entity_data", &err);
-                    return Err(err);
-                }
-            }
-        } else {
-            None
-        };
-        let test_instance_block = if packet.block_entity_type_id
-            == bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
-        {
-            match crate::test_instance_blocks::decode_test_instance_block_entity_data(
-                &packet.raw_nbt,
-            ) {
-                Ok(data) => Some(data),
-                Err(err) => {
-                    self.record_apply_error("block_entity_data", &err);
-                    return Err(err);
-                }
-            }
-        } else {
-            None
-        };
-        let note_block_sound = if packet.block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID
-        {
-            match crate::chunks::decode_skull_note_block_sound(&packet.raw_nbt) {
-                Ok(sound) => sound,
-                Err(err) => {
-                    self.record_apply_error("block_entity_data", &err);
-                    return Err(err);
-                }
-            }
-        } else {
-            None
-        };
-
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
             z: pos.z.div_euclid(16),
         };
-        let record = BlockEntityRecord {
-            local_x: pos.x.rem_euclid(16) as u8,
-            y,
-            local_z: pos.z.rem_euclid(16) as u8,
-            type_id: packet.block_entity_type_id,
-            raw_nbt: packet.raw_nbt,
-            nbt,
-            sign_text,
-            vault_shared_data,
-            decorated_pot_sherds,
-            banner_patterns,
-            end_gateway,
-            spawner,
-            command_block,
-            structure_block,
-            jigsaw_block,
-            test_block,
-            test_instance_block,
-            note_block_sound,
-        };
-        let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
+        let local_x = pos.x.rem_euclid(16) as u8;
+        let local_z = pos.z.rem_euclid(16) as u8;
+        let Some(chunk_index) = self.chunks.iter().position(|chunk| chunk.pos == chunk_pos) else {
             self.counters.block_entity_updates_ignored += 1;
             return Ok(false);
         };
-        if let Some(existing) = chunk.block_entities.iter_mut().find(|entity| {
-            entity.local_x == record.local_x
-                && entity.y == record.y
-                && entity.local_z == record.local_z
-        }) {
-            *existing = record;
-        } else {
-            chunk.block_entities.push(record);
+        let Some(record_index) =
+            self.chunks[chunk_index]
+                .block_entities
+                .iter()
+                .position(|entity| {
+                    entity.local_x == local_x && entity.y == y && entity.local_z == local_z
+                })
+        else {
+            self.counters.block_entity_updates_ignored += 1;
+            return Ok(false);
+        };
+        if self.chunks[chunk_index].block_entities[record_index].type_id
+            != packet.block_entity_type_id
+        {
+            self.counters.block_entity_updates_ignored += 1;
+            return Ok(false);
         }
+
+        let jigsaw_default_joint = self.jigsaw_default_joint_at(pos);
+        let record = match decode_block_entity_data_record(
+            local_x,
+            y,
+            local_z,
+            packet.block_entity_type_id,
+            packet.raw_nbt,
+            jigsaw_default_joint,
+        ) {
+            Ok(record) => record,
+            Err(err) => {
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
+        self.chunks[chunk_index].block_entities[record_index] = record;
         self.counters.block_entity_updates_applied += 1;
         self.refresh_command_block_editor_from_authoritative_data(pos);
         self.refresh_structure_block_editor_from_authoritative_data(pos);

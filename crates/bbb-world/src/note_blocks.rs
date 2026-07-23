@@ -336,12 +336,25 @@ mod tests {
         assert_eq!(random.next_long(), expected_random.next_long());
         assert!(effects.order.is_empty());
 
+        let head_pos = BlockPos {
+            y: pos.y + 1,
+            ..pos
+        };
+        let head_properties = BTreeMap::from([
+            ("powered".to_string(), "false".to_string()),
+            ("rotation".to_string(), "0".to_string()),
+        ]);
+        let head_state_id = world
+            .registries
+            .block_state_id_by_name_and_properties("minecraft:player_head", &head_properties)
+            .unwrap();
+        assert!(world.apply_block_update(ProtocolBlockUpdate {
+            pos: protocol_pos(head_pos),
+            block_state_id: head_state_id,
+        }));
         assert!(world
             .apply_block_entity_data(BlockEntityData {
-                pos: protocol_pos(BlockPos {
-                    y: pos.y + 1,
-                    ..pos
-                }),
+                pos: protocol_pos(head_pos),
                 block_entity_type_id: VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
                 raw_nbt: string_nbt("note_block_sound", "bbb:custom/chime"),
             })
