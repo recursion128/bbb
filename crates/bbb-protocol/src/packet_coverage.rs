@@ -2634,7 +2634,7 @@ mod tests {
     }
 
     #[test]
-    fn play_player_info_remove_keeps_social_manager_cleanup_open() {
+    fn play_player_info_remove_closes_social_manager_and_native_presentation() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2643,14 +2643,26 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_PLAYER_INFO_REMOVE"
             })
             .expect("play player info remove coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect", "tests"]));
+            .any(|evidence| evidence.contains("sync_social_interactions_screen")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("push_hud_social_interactions_screen")));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("player_info_remove_marks_retained_social_row")));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("offscreen_social_interactions_draws_shared_rows")));
     }
 
     #[test]
