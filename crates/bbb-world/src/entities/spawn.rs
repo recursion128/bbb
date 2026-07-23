@@ -97,6 +97,7 @@ impl WorldStore {
         // A successful same-id replacement must retire client-owned sound
         // state from the old entity before the new canonical owner is visible.
         self.remove_tickable_entity_sounds(&[packet.id]);
+        self.close_minecart_command_block_editor_for_replaced_entity(packet.id);
         let packet_position = entity_vec3(packet.position);
         let identity = EntityIdentity {
             id: packet.id,

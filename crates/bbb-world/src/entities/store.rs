@@ -102,24 +102,26 @@ use super::{
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
-    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
-    EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
-    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FishingHookRenderSourceState, FoxEatParticleState, GuardianAmbientParticleState,
-    GuardianAttackParticleState, HappyGhastHarnessColor, ItemEntityStackState,
-    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
-    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
-    PowderSnowFlakeParticleState, RavagerRoarParticleState, RavagerStunParticleState,
-    SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
-    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
+    EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp, EntityMobEffects,
+    EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
+    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
+    EntityVec3, EvokerFangsCritParticleState, FallingBlockModelState,
+    FireworkRocketExplosionParticleState, FireworkRocketItemState, FishingHookRenderSourceState,
+    FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
+    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
+    RavagerStunParticleState, SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy,
+    WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+    VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -700,6 +702,9 @@ impl EntityStore {
             .then(|| super::client_movement::experience_orb_movement_from_uuid(uuid));
         let fresh_boat_movement =
             is_vanilla_boat_type(entity_type_id).then(EntityBoatMovement::default);
+        let fresh_minecart_command_block = (entity_type_id
+            == VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID)
+            .then(EntityMinecartCommandBlock::default);
         let fresh_fishing_hook_movement = (entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
             .then(|| {
                 super::client_movement::fishing_hook_movement_from_uuid(uuid, spawn_owner_uuid)
@@ -773,6 +778,18 @@ impl EntityStore {
                 }
             } else {
                 let _ = self.ecs.remove_one::<EntityMinecartLerp>(entity);
+            }
+            if let Some(command_block) = fresh_minecart_command_block {
+                let updated = self
+                    .ecs
+                    .get::<&mut EntityMinecartCommandBlock>(entity)
+                    .map(|mut existing| *existing = command_block.clone())
+                    .is_ok();
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, command_block);
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityMinecartCommandBlock>(entity);
             }
             if let Some(projectile) = fresh_projectile {
                 let updated = {
@@ -890,6 +907,9 @@ impl EntityStore {
         if is_vanilla_minecart_type(entity_type_id) {
             let _ = self.ecs.insert_one(entity, EntityMinecartLerp::default());
         }
+        if let Some(command_block) = fresh_minecart_command_block {
+            let _ = self.ecs.insert_one(entity, command_block);
+        }
         if let Some(projectile) = fresh_projectile {
             let _ = self.ecs.insert_one(entity, projectile);
         }
@@ -953,6 +973,11 @@ impl EntityStore {
             let _ = self
                 .ecs
                 .insert_one(entity, EntityMinecartLerp::from(&state));
+        }
+        if state.entity_type_id == VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID {
+            let _ = self
+                .ecs
+                .insert_one(entity, EntityMinecartCommandBlock::from(&state));
         }
         if let Some(projectile) =
             entity_hurting_projectile_from_state(state.entity_type_id, state.hurting_projectile)
@@ -1035,6 +1060,82 @@ impl EntityStore {
             .get::<&EntityIdentity>(entity)
             .ok()
             .map(|identity| identity.entity_type_id)
+    }
+
+    pub(crate) fn incarnation(&self, id: i32) -> Option<u64> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityIdentity>(entity)
+            .ok()
+            .map(|identity| identity.incarnation.0)
+    }
+
+    pub(crate) fn minecart_command_block(&self, id: i32) -> Option<EntityMinecartCommandBlock> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityMinecartCommandBlock>(entity)
+            .ok()
+            .map(|command_block| (*command_block).clone())
+    }
+
+    pub(crate) fn sync_minecart_command_block_from_metadata_update(
+        &mut self,
+        id: i32,
+        values: &[ProtocolEntityDataValue],
+    ) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        let Ok(mut command_block) = self.ecs.get::<&mut EntityMinecartCommandBlock>(entity) else {
+            return false;
+        };
+        let mut updated = false;
+        for value in values {
+            match (value.data_id, &value.value) {
+                (
+                    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+                    EntityDataValueKind::String(command),
+                ) => {
+                    command_block.command.clone_from(command);
+                    updated = true;
+                }
+                (
+                    VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID,
+                    EntityDataValueKind::Component(output),
+                ) => {
+                    command_block.last_output = Some(output.clone());
+                    updated = true;
+                }
+                _ => {}
+            }
+        }
+        updated
+    }
+
+    pub(crate) fn clear_minecart_command_block_last_output(&mut self, id: i32) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        let Ok(mut command_block) = self.ecs.get::<&mut EntityMinecartCommandBlock>(entity) else {
+            return false;
+        };
+        command_block.last_output = None;
+        true
+    }
+
+    pub(crate) fn set_minecart_command_block_track_output(
+        &mut self,
+        id: i32,
+        track_output: bool,
+    ) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        let Ok(mut command_block) = self.ecs.get::<&mut EntityMinecartCommandBlock>(entity) else {
+            return false;
+        };
+        command_block.track_output = track_output;
+        true
     }
 
     pub(crate) fn uuid_for_protocol_id(&self, id: i32) -> Option<Uuid> {
@@ -7593,6 +7694,19 @@ impl EntityStore {
         } else {
             let _ = self.ecs.remove_one::<EntityMinecartLerp>(entity);
         }
+        if state.entity_type_id == VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID {
+            let command_block = EntityMinecartCommandBlock::from(state);
+            let updated = self
+                .ecs
+                .get::<&mut EntityMinecartCommandBlock>(entity)
+                .map(|mut existing| *existing = command_block.clone())
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, command_block);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityMinecartCommandBlock>(entity);
+        }
         self.sync_hurting_projectile_from_state(entity, state);
         self.sync_projectile_lifecycle_from_state(entity, state);
         if state.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
@@ -7716,6 +7830,7 @@ impl EntityStore {
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
         let supporting_block = self.ecs.get::<&EntitySupportingBlock>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
+        let minecart_command_block = self.ecs.get::<&EntityMinecartCommandBlock>(entity).ok();
         let hurting_projectile = self.ecs.get::<&EntityHurtingProjectile>(entity).ok();
         let projectile_lifecycle = self.ecs.get::<&EntityProjectileLifecycle>(entity).ok();
 
@@ -7751,6 +7866,7 @@ impl EntityStore {
             minecart_lerp_steps: Vec::new(),
             minecart_lerp_old_step: None,
             minecart_lerp_delay: 0,
+            minecart_command_block_track_output: None,
             hurting_projectile: None,
             projectile_lifecycle: None,
         };
@@ -7767,6 +7883,9 @@ impl EntityStore {
         (*supporting_block).write_to_state(&mut state);
         if let Some(minecart_lerp) = minecart_lerp {
             (*minecart_lerp).clone().write_to_state(&mut state);
+        }
+        if let Some(command_block) = minecart_command_block {
+            (*command_block).clone().write_to_state(&mut state);
         }
         if let Some(projectile) = hurting_projectile {
             (*projectile).write_to_state(&mut state);
@@ -7853,6 +7972,9 @@ impl Clone for EntityStore {
             let entity_type_id = identity.entity_type_id;
             if let Ok(lerp) = self.ecs.get::<&EntityMinecartLerp>(entity) {
                 let _ = store.ecs.insert_one(cloned, (*lerp).clone());
+            }
+            if let Ok(command_block) = self.ecs.get::<&EntityMinecartCommandBlock>(entity) {
+                let _ = store.ecs.insert_one(cloned, (*command_block).clone());
             }
             if let Ok(projectile) = self.ecs.get::<&EntityHurtingProjectile>(entity) {
                 let _ = store.ecs.insert_one(cloned, *projectile);

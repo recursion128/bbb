@@ -9,8 +9,8 @@ use bbb_protocol::packets::{
     PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
     RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
     SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-    SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity,
-    TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
+    SetCommandMinecart, SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate,
+    SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
 };
 use uuid::Uuid;
 
@@ -320,6 +320,14 @@ pub(crate) async fn send_set_command_block(
     packet: SetCommandBlock,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_set_command_block(&packet)?;
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_set_command_minecart(
+    conn: &mut RawConnection,
+    packet: SetCommandMinecart,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_set_command_minecart(&packet)?;
     conn.send_packet(id, &payload).await
 }
 

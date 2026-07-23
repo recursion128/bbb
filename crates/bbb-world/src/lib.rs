@@ -25,6 +25,7 @@ mod jigsaw_blocks;
 mod lectern_books;
 mod level;
 mod maps;
+mod minecart_command_blocks;
 mod note_blocks;
 mod painting_variants;
 mod piston_blocks;

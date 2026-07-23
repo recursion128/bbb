@@ -144,6 +144,12 @@ impl WorldStore {
             .entities
             .sync_fishing_hook_from_metadata_update(id, &updated_values);
         let _ = self.entities.refresh_client_position_from_entity_data(id);
+        let minecart_command_block_updated = self
+            .entities
+            .sync_minecart_command_block_from_metadata_update(id, &updated_values);
+        if minecart_command_block_updated {
+            self.refresh_minecart_command_block_editor_from_authoritative_data(id);
+        }
         if let Some((flags, accessors)) = local_living_entity_flags {
             self.sync_local_using_item_from_living_entity_flags(flags, accessors);
         }

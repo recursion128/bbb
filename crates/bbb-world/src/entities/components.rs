@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::packets::{
     AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
-    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, MinecartStep as ProtocolMinecartStep,
-    Vec3d as ProtocolVec3d,
+    EntityDataValueKind, EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+    MinecartStep as ProtocolMinecartStep, Vec3d as ProtocolVec3d,
 };
+use bbb_protocol::RichTextComponent;
 use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
@@ -12,6 +13,8 @@ use super::{
     EntityBlockEffectMovements, EntityBlockEffects, EntityClientAnimationState,
     EntityInterpolationState, EntityPickBoundsState, EntityState, EntityVec3,
     HurtingProjectileState, ProjectileLifecycleState,
+    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID,
 };
 use crate::{BlockPos, PaintingVariantClientProjection, PublicationShared};
 
@@ -136,6 +139,27 @@ pub(crate) struct EntityMinecartLerp {
     pub(crate) steps: PublicationShared<Vec<ProtocolMinecartStep>>,
     pub(crate) old_step: Option<ProtocolMinecartStep>,
     pub(crate) delay: i32,
+}
+
+/// Client `MinecartCommandBlock.MinecartCommandBase` projection. `command`
+/// and `last_output` change only when their SynchedEntityData accessors do;
+/// `track_output` is not synced, starts true for each concrete incarnation,
+/// and is mutated directly by the editor before the server confirms anything.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EntityMinecartCommandBlock {
+    pub(crate) command: String,
+    pub(crate) last_output: Option<RichTextComponent>,
+    pub(crate) track_output: bool,
+}
+
+impl Default for EntityMinecartCommandBlock {
+    fn default() -> Self {
+        Self {
+            command: String::new(),
+            last_output: None,
+            track_output: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -369,6 +393,33 @@ impl From<&EntityState> for EntityMinecartLerp {
     }
 }
 
+impl From<&EntityState> for EntityMinecartCommandBlock {
+    fn from(state: &EntityState) -> Self {
+        let command = state
+            .data_values
+            .iter()
+            .find(|value| value.data_id == VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::String(command) => Some(command.clone()),
+                _ => None,
+            })
+            .unwrap_or_default();
+        let last_output = state
+            .data_values
+            .iter()
+            .find(|value| value.data_id == VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::Component(output) => Some(output.clone()),
+                _ => None,
+            });
+        Self {
+            command,
+            last_output,
+            track_output: state.minecart_command_block_track_output.unwrap_or(true),
+        }
+    }
+}
+
 impl EntityMinecartLerp {
     pub(crate) fn queue(&mut self, steps: Vec<ProtocolMinecartStep>) -> bool {
         if self
@@ -457,6 +508,12 @@ impl EntityMinecartLerp {
             index: self.steps.len() - 1,
             alpha: 1.0,
         })
+    }
+}
+
+impl EntityMinecartCommandBlock {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.minecart_command_block_track_output = Some(self.track_output);
     }
 }
 

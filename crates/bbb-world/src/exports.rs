@@ -488,6 +488,7 @@ pub use crate::entities::{
 pub use crate::item_profiles::FurnaceFuelRule;
 pub use crate::jigsaw_blocks::*;
 pub use crate::maps::*;
+pub use crate::minecart_command_blocks::*;
 pub use crate::painting_variants::*;
 pub use crate::play_apply::{
     advance_dragon_fireball_explode_level_event_particle_randoms,

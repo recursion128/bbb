@@ -905,6 +905,8 @@ impl WorldStore {
     }
 
     fn clear_level_bound_state(&mut self) {
+        self.close_command_block_editor();
+        self.close_minecart_command_block_editor();
         self.close_structure_block_editor();
         self.close_jigsaw_block_editor();
         self.clear_debug_subscriber_values();

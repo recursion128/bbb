@@ -11,10 +11,10 @@ use super::{
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
     send_select_bundle_item, send_select_trade, send_set_beacon, send_set_command_block,
-    send_set_creative_mode_slot, send_set_held_slot_command, send_set_jigsaw_block,
-    send_set_structure_block, send_sign_update, send_spectate_entity, send_swing_command,
-    send_teleport_to_entity, send_test_instance_block_action, send_use_item, send_use_item_on,
-    send_vehicle_move_command,
+    send_set_command_minecart, send_set_creative_mode_slot, send_set_held_slot_command,
+    send_set_jigsaw_block, send_set_structure_block, send_sign_update, send_spectate_entity,
+    send_swing_command, send_teleport_to_entity, send_test_instance_block_action, send_use_item,
+    send_use_item_on, send_vehicle_move_command,
 };
 use crate::{
     connection::RawConnection,
@@ -35,10 +35,10 @@ use bbb_protocol::{
         PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
         RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements,
         SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-        SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity,
-        StructureBlockMirror, StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind,
-        TeleportToEntity, TestInstanceBlockAction, TestInstanceBlockActionKind,
-        TestInstanceBlockRotation, Vec3d, Vec3i,
+        SetCommandMinecart, SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate,
+        SpectateEntity, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+        StructureBlockUpdateKind, TeleportToEntity, TestInstanceBlockAction,
+        TestInstanceBlockActionKind, TestInstanceBlockRotation, Vec3d, Vec3i,
     },
 };
 use std::{
@@ -1715,6 +1715,42 @@ async fn send_set_command_block_encodes_command_block_packet() {
             track_output: true,
             conditional: true,
             automatic: true,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_set_command_minecart_encodes_minecart_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection::from_stream(stream, None);
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("set command minecart command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_COMMAND_MINECART);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 300);
+        assert_eq!(decoder.read_string(32_767).unwrap(), "say rails");
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_set_command_minecart(
+        &mut conn,
+        SetCommandMinecart {
+            entity_id: 300,
+            command: "say rails".to_string(),
+            track_output: false,
         },
     )
     .await

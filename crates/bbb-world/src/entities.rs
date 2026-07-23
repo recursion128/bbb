@@ -61,8 +61,8 @@ pub(crate) use client_movement::calculate_view_vector;
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount, EntityProjectileLifecycle,
-    EntitySupportingBlock, EntityTransform, EntityTransientEvents,
+    EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp, EntityMobEffects, EntityMount,
+    EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform, EntityTransientEvents,
 };
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
@@ -973,6 +973,10 @@ pub struct EntityState {
     pub minecart_lerp_old_step: Option<ProtocolMinecartStep>,
     #[serde(default)]
     pub minecart_lerp_delay: i32,
+    /// Client-local `BaseCommandBlock.trackOutput` for command-block
+    /// minecarts. `None` identifies every other entity family.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minecart_command_block_track_output: Option<bool>,
     #[serde(default)]
     pub hurting_projectile: Option<HurtingProjectileState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3088,6 +3092,7 @@ impl WorldStore {
 
     fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
         self.remove_tickable_entity_sounds(removed_ids);
+        self.close_minecart_command_block_editor_for_removed_entities(removed_ids);
         let removed_uuids = removed_ids
             .iter()
             .filter_map(|id| self.entities.uuid_for_protocol_id(*id))
