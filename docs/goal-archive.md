@@ -311,3 +311,7 @@
   与 667 对 animate 粒子/萤火虫/嘎枝之心效果完成原版采样、随机链和音频/粒子桥；
   `CLIENTBOUND_CHUNKS_BIOMES` 全部 coverage complete，合同见
   `docs/archive/environment-effect-consumers-design.md`。
+- **2026-07-23（游戏规则屏幕双包闭环）**：生成的 59 项 typed 规则目录驱动首响应、
+  权限、编辑、搜索、校验与 changed-only 提交；native 输入和 renderer 复现加载列表及
+  放弃确认，两行 packet coverage 全单元 complete，合同见
+  `docs/archive/game-rules-screen-closure-design.md`。

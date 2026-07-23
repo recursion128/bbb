@@ -2536,7 +2536,7 @@ mod tests {
     }
 
     #[test]
-    fn play_game_rule_values_keeps_typed_screen_apply_open() {
+    fn play_game_rule_values_closes_typed_screen_apply() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2545,16 +2545,16 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_GAME_RULE_VALUES"
             })
             .expect("play game rule values coverage row");
-        let partial: BTreeSet<_> = entry
+        let incomplete: BTreeSet<_> = entry
             .coverage
             .iter()
             .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                (cell.status != PacketCoverageStatus::Complete).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
+        assert!(
+            incomplete.is_empty(),
+            "incomplete game-rule values coverage: {incomplete:?}"
         );
     }
 
@@ -4004,7 +4004,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_set_game_rule_keeps_typed_screen_and_submit_open() {
+    fn play_serverbound_set_game_rule_closes_typed_screen_and_submit() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -4016,7 +4016,7 @@ mod tests {
         assert!(entry
             .coverage
             .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

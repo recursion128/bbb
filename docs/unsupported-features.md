@@ -1022,11 +1022,6 @@ back into a todo. Do not delete these.
   WinScreen and send PerformRespawn on completion, and implement demo intro/hints
   with chat+narration. The other fixed 26.1 event types have canonical/runtime
   owners; neither remaining presentation branch requires an IntegratedServer.
-- Implement the in-world GameRules screen request/response lifecycle: apply only
-  the first GameRuleValues response while that screen is active, resolve keys
-  through the built-in game-rule catalog, typed-deserialize valid values, ignore
-  unknown/invalid entries, remove loading state, and submit changed rules. The
-  current unconditional key/string diagnostic snapshot is not rule state.
 - **Server-data MOTD/icon parity.** Preserve the full trusted MOTD Component,
   validate optional icon bytes like `ServerData.validateIcon`, and update the
   persisted multiplayer server-list entry when that owner exists. The current

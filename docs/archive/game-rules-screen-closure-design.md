@@ -127,7 +127,7 @@ Authoritative sources are under
 ### Canonical world/UI state
 
 - `crates/bbb-world/src/client/game_rules.rs` owns
-  `GameRulesScreenState`, `GameRuleScreenEntryState`, the typed initial/current
+  `GameRulesScreenState`, `GameRuleEditState`, the typed initial/current
   values, packet application, screen lifecycle, edits, pending-change queries,
   and change collection.
 - `ClientUiState` owns
