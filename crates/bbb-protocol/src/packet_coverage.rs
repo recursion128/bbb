@@ -1853,91 +1853,28 @@ mod tests {
     }
 
     #[test]
-    fn play_reset_score_is_closed() {
+    fn play_scoreboard_packet_family_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
-        let entry = ledger
-            .entries
-            .iter()
-            .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_RESET_SCORE")
-            .expect("play reset score coverage row");
-        assert!(entry
-            .coverage
-            .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Complete));
-    }
-
-    #[test]
-    fn play_set_display_objective_is_closed() {
-        let ledger = vanilla_packet_coverage_26_1().unwrap();
-        let entry = ledger
-            .entries
-            .iter()
-            .find(|entry| {
-                entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_DISPLAY_OBJECTIVE"
-            })
-            .expect("play set display objective coverage row");
-        assert!(entry
-            .coverage
-            .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Complete));
-    }
-
-    #[test]
-    fn play_set_objective_keeps_only_runtime_presentation_open() {
-        let ledger = vanilla_packet_coverage_26_1().unwrap();
-        let entry = ledger
-            .entries
-            .iter()
-            .find(|entry| {
-                entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_OBJECTIVE"
-            })
-            .expect("play set objective coverage row");
-        let partial: BTreeSet<_> = entry
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
-    }
-
-    #[test]
-    fn play_set_score_keeps_only_runtime_presentation_open() {
-        let ledger = vanilla_packet_coverage_26_1().unwrap();
-        let entry = ledger
-            .entries
-            .iter()
-            .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_SCORE")
-            .expect("play set score coverage row");
-        let partial: BTreeSet<_> = entry
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
-    }
-
-    #[test]
-    fn play_set_player_team_keeps_only_runtime_presentation_open() {
-        let ledger = vanilla_packet_coverage_26_1().unwrap();
-        let entry = ledger
-            .entries
-            .iter()
-            .find(|entry| {
-                entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_PLAYER_TEAM"
-            })
-            .expect("play set player team coverage row");
-        let partial: BTreeSet<_> = entry
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+        for constant_name in [
+            "CLIENTBOUND_RESET_SCORE",
+            "CLIENTBOUND_SET_DISPLAY_OBJECTIVE",
+            "CLIENTBOUND_SET_OBJECTIVE",
+            "CLIENTBOUND_SET_SCORE",
+            "CLIENTBOUND_SET_PLAYER_TEAM",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == constant_name)
+                .unwrap_or_else(|| panic!("play {constant_name} coverage row"));
+            assert!(
+                entry
+                    .coverage
+                    .values()
+                    .all(|cell| cell.status == PacketCoverageStatus::Complete),
+                "{constant_name} must have complete coverage"
+            );
+        }
     }
 
     #[test]

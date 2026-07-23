@@ -11320,6 +11320,12 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores",
+            "crates/bbb-world/src/client/scoreboard.rs#sidebar_state",
+            "crates/bbb-world/src/client/scoreboard.rs#player_list_score",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_scoreboard_sidebar_from_world",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_from_world",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#push_hud_scoreboard_sidebar",
+            "crates/bbb-renderer/src/hud/player_list.rs#push_hud_player_list",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleResetScore"
           ],
           "gap": null,
@@ -11331,7 +11337,13 @@
             "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sidebar_prefers_team_slot_and_filters_sorts_and_limits_scores",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_player_list_formats_missing_override_and_heart_scores",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/tests.rs#hud_scoreboard_projection_localizes_rich_team_and_score_runs",
+            "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#scoreboard_layout_matches_vanilla_right_edge_and_vertical_formula",
+            "crates/bbb-renderer/src/hud/player_list.rs#heart_draw_order_layers_blink_history_and_absorption_like_vanilla"
           ],
           "gap": null,
           "status": "complete"
@@ -12389,6 +12401,12 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_display_objective_can_be_cleared_by_empty_name",
+            "crates/bbb-world/src/client/scoreboard.rs#sidebar_state",
+            "crates/bbb-world/src/client/scoreboard.rs#player_list_score",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_scoreboard_sidebar_from_world",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_from_world",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#push_hud_scoreboard_sidebar",
+            "crates/bbb-renderer/src/hud/player_list.rs#push_hud_player_list",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetDisplayObjective"
           ],
           "gap": null,
@@ -12400,7 +12418,13 @@
             "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_display_objective_can_be_cleared_by_empty_name",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sidebar_prefers_team_slot_and_filters_sorts_and_limits_scores",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_player_list_formats_missing_override_and_heart_scores",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/tests.rs#hud_scoreboard_projection_localizes_rich_team_and_score_runs",
+            "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#scoreboard_layout_matches_vanilla_right_edge_and_vertical_formula",
+            "crates/bbb-renderer/src/hud/player_list.rs#heart_draw_order_layers_blink_history_and_absorption_like_vanilla"
           ],
           "gap": null,
           "status": "complete"
@@ -12839,10 +12863,18 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_objective_lifecycle_clears_display_and_scores",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddObjective"
+            "crates/bbb-world/src/client/scoreboard.rs#sidebar_state",
+            "crates/bbb-world/src/client/scoreboard.rs#player_list_score",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_scoreboard_sidebar_from_world",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_from_world",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#push_hud_scoreboard_sidebar",
+            "crates/bbb-renderer/src/hud/player_list.rs#push_hud_player_list",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddObjective",
+            "vanilla:net/minecraft/client/gui/Gui.java#extractScoreboardSidebar",
+            "vanilla:net/minecraft/client/gui/components/PlayerTabOverlay.java#extractRenderState"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -12850,7 +12882,13 @@
             "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_objective_lifecycle_clears_display_and_scores",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sidebar_prefers_team_slot_and_filters_sorts_and_limits_scores",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_player_list_formats_missing_override_and_heart_scores",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/tests.rs#hud_scoreboard_projection_localizes_rich_team_and_score_runs",
+            "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#scoreboard_layout_matches_vanilla_right_edge_and_vertical_formula",
+            "crates/bbb-renderer/src/hud/player_list.rs#heart_draw_order_layers_blink_history_and_absorption_like_vanilla"
           ],
           "gap": null,
           "status": "complete"
@@ -13004,11 +13042,19 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_teams_add_change_join_leave_and_remove",
+            "crates/bbb-world/src/client/scoreboard.rs#sidebar_state",
+            "crates/bbb-world/src/client/scoreboard.rs#team_formatted_literal_name",
             "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_same_team_friendly_invisible_visibility",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetPlayerTeamPacket"
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_scoreboard_sidebar_from_world",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_from_world",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#push_hud_scoreboard_sidebar",
+            "crates/bbb-renderer/src/hud/player_list.rs#push_hud_player_list",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetPlayerTeamPacket",
+            "vanilla:net/minecraft/client/gui/Gui.java#extractScoreboardSidebar",
+            "vanilla:net/minecraft/client/gui/components/PlayerTabOverlay.java#getNameForDisplay"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -13016,7 +13062,13 @@
             "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_teams_add_change_join_leave_and_remove",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sidebar_prefers_team_slot_and_filters_sorts_and_limits_scores",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_player_list_formats_missing_override_and_heart_scores",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/tests.rs#hud_scoreboard_projection_localizes_rich_team_and_score_runs",
+            "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#scoreboard_layout_matches_vanilla_right_edge_and_vertical_formula",
+            "crates/bbb-renderer/src/hud/player_list.rs#heart_draw_order_layers_blink_history_and_absorption_like_vanilla"
           ],
           "gap": null,
           "status": "complete"
@@ -13060,10 +13112,18 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetScore"
+            "crates/bbb-world/src/client/scoreboard.rs#sidebar_state",
+            "crates/bbb-world/src/client/scoreboard.rs#player_list_score",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_scoreboard_sidebar_from_world",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_from_world",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#push_hud_scoreboard_sidebar",
+            "crates/bbb-renderer/src/hud/player_list.rs#push_hud_player_list",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetScore",
+            "vanilla:net/minecraft/client/gui/Gui.java#extractScoreboardSidebar",
+            "vanilla:net/minecraft/client/gui/components/PlayerTabOverlay.java#extractRenderState"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -13073,7 +13133,13 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_preserves_rich_components_and_formats_below_name_scores",
             "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sidebar_prefers_team_slot_and_filters_sorts_and_limits_scores",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_player_list_formats_missing_override_and_heart_scores",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/tests.rs#hud_scoreboard_projection_localizes_rich_team_and_score_runs",
+            "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
+            "crates/bbb-renderer/src/hud/scoreboard.rs#scoreboard_layout_matches_vanilla_right_edge_and_vertical_formula",
+            "crates/bbb-renderer/src/hud/player_list.rs#heart_draw_order_layers_blink_history_and_absorption_like_vanilla"
           ],
           "gap": null,
           "status": "complete"
@@ -13756,9 +13822,9 @@
             "crates/bbb-protocol/src/packets/server_presentation.rs#decodes_tab_list_header_footer",
             "crates/bbb-world/src/client/hud.rs#tab_list_empty_components_clear_header_and_footer",
             "crates/bbb-net/src/probe/play.rs#probe_applies_hud_session_packets_to_world",
-            "crates/bbb-native/src/runtime/tests.rs#player_list_projection_uses_tab_visibility_and_vanilla_entry_order",
-            "crates/bbb-renderer/src/hud.rs#player_list_grid_matches_vanilla_twenty_row_columns_and_eighty_cap",
-            "crates/bbb-renderer/src/hud.rs#player_list_ping_thresholds_and_plain_wrapping_match_projection_contract"
+            "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
+            "crates/bbb-renderer/src/hud/player_list.rs#grid_and_ping_thresholds_match_vanilla",
+            "crates/bbb-renderer/src/hud.rs#player_list_plain_wrapping_matches_projection_contract"
           ],
           "gap": null,
           "status": "complete"

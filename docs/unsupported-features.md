@@ -776,9 +776,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   maintenance command do not replace the vanilla spectator menu.
 - Preserve full trusted Components in the TabList header/footer and complete
   remaining player-list presentation parity: encrypted-session player heads,
-  LIST objective scores/hearts, narrator visibility announcements, and vanilla
-  ping sprites. The current overlay covers Tab visibility, vanilla ordering,
-  80-entry/20-row columns, plain header/footer wrapping and ping thresholds.
+  narrator visibility announcements, and vanilla ping sprites.
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred`: stable per-section CPU/GPU
   residency now exists, but a repo-native `SectionOcclusionGraph`/octree and
@@ -1075,16 +1073,6 @@ back into a todo. Do not delete these.
   remain diagnostic but does not establish a client combat-mode transition.
 - PlayerCombatKill still needs the local-player identity gate, DeathScreen versus
   respawn branch, and full rich death-message Component preservation.
-- ResetScore owner/nullable-objective decode and all/single-score removal semantics
-  are covered; remaining scoreboard gaps are presentation specific.
-- SetDisplayObjective slot selection and clear/unknown-objective behavior are covered;
-  remaining sidebar/list presentation is tracked below.
-- Consume SetObjective display name, render type, and number format in the
-  remaining sidebar/list presentation.
-- SetScore's optional display Component is retained as styled canonical state but still
-  needs consumption by the remaining sidebar/list presentation.
-- Consume SetPlayerTeam's retained styled prefix/suffix in the remaining
-  sidebar/list name presentation.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

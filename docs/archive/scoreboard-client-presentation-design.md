@@ -1,6 +1,6 @@
 # Scoreboard client presentation closure
 
-Status: active engineering contract.
+Status: completed engineering contract.
 
 ## Goal and completion
 

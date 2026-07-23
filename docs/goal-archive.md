@@ -342,3 +342,7 @@
 - **2026-07-23（Mob-effect 客户端行为闭环）**：生成的 40 项目录驱动 canonical
   duration/blend tick、移动/光照/雾/天空/恶心投影和 HUD/背包效果面板；Update/Remove
   两行 coverage 全单元 complete，合同见 `docs/archive/mob-effect-client-behavior-design.md`。
+- **2026-07-23（记分板客户端呈现闭环）**：五包族保留任意 signed method byte，
+  canonical 富 Component/队伍/number-format 状态驱动右侧 sidebar 与 Tab LIST
+  整数/红心目标；UUID 延迟血量与闪烁由 renderer 独占，全部 coverage 单元 complete，
+  合同见 `docs/archive/scoreboard-client-presentation-design.md`。
