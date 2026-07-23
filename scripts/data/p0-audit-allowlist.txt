@@ -43,6 +43,13 @@
 # The synchronized environment codec rejects any future syncable attribute until
 # its value type and modifier semantics have an owned typed projection.
 ^crates/bbb-world/src/registries/environment_attributes[.]rs$	unsupported syncable attribute
+# Environment ambient particles keep one explicit diagnostic for complex
+# ParticleOptions codec shapes that are dropped at the renderer bridge. Simple
+# options render normally, and the complex-shape closure remains a concrete ledger
+# item rather than a generic packet/runtime fallback.
+^crates/bbb-renderer/src/(counters|particles|particles/render)[.]rs$	particle_unsupported_options|unsupported_particle_option_count
+^crates/bbb-control/src/types/renderer[.]rs$	particle_unsupported_options
+^crates/bbb-native/src/(particle_runtime|particle_runtime/environment|runtime)[.]rs$	particle_unsupported_options|unsupported_particle_option_count
 
 # goal.md explicitly classifies tests as non-P0 evidence/fixtures.
 ^crates/.*/tests[.]rs$	residual|fallback|unsupported
