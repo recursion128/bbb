@@ -460,6 +460,52 @@ fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
 }
 
 #[test]
+fn damage_invulnerability_ticks_only_with_client_level_entity_membership() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(999));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        401,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_damage_event(ProtocolDamageEvent {
+        entity_id: 401,
+        source_type_id: 0,
+        source_cause_id: -1,
+        source_direct_id: -1,
+        source_position: None,
+    }));
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.entity_damage_invulnerable_time(401), Some(20));
+    assert_eq!(
+        store
+            .probe_entity(401)
+            .unwrap()
+            .client_animations
+            .hurt
+            .unwrap()
+            .hurt_time,
+        10
+    );
+
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.entity_damage_invulnerable_time(401), Some(19));
+    assert_eq!(
+        store
+            .probe_entity(401)
+            .unwrap()
+            .client_animations
+            .hurt
+            .unwrap()
+            .hurt_time,
+        9
+    );
+}
+
+#[test]
 fn living_camera_hurt_state_projects_packet_yaw_only_for_players() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

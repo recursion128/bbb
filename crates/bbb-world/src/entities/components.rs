@@ -131,6 +131,7 @@ pub(crate) struct EntityClientAnimations {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityDamage {
     pub(crate) last_damage: PublicationShared<Option<EntityDamageEventState>>,
+    pub(crate) invulnerable_time: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -378,6 +379,7 @@ impl From<&EntityState> for EntityDamage {
     fn from(state: &EntityState) -> Self {
         Self {
             last_damage: state.last_damage.clone().into(),
+            invulnerable_time: state.damage_invulnerable_time,
         }
     }
 }
@@ -886,6 +888,7 @@ impl EntityClientAnimations {
 impl EntityDamage {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.last_damage = self.last_damage.into_value();
+        state.damage_invulnerable_time = self.invulnerable_time;
     }
 }
 

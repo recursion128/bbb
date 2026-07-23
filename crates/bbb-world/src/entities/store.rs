@@ -100,7 +100,7 @@ use super::{
     EntityBlockEffectQuery, EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
     EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
-    EntityClientMovementSimpleParticleState, EntityDamage, EntityEquipment,
+    EntityClientMovementSimpleParticleState, EntityDamage, EntityDamageEventState, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
     EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp, EntityMobEffects,
     EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
@@ -5550,15 +5550,24 @@ impl EntityStore {
         Some(result)
     }
 
-    pub(crate) fn with_damage_mut<R>(
+    /// Apply the client-observable body of Vanilla
+    /// `LivingEntity.handleDamageEvent` in declaration order. Admission has
+    /// already proved this is a living entity.
+    pub(crate) fn apply_living_damage_event_presentation(
         &mut self,
         id: i32,
-        update: impl FnOnce(&mut EntityDamage) -> R,
-    ) -> Option<R> {
+        event: EntityDamageEventState,
+    ) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
-        let mut damage = self.ecs.get::<&mut EntityDamage>(entity).ok()?;
-        let result = update(&mut damage);
-        Some(result)
+        let (damage, animations) = self
+            .ecs
+            .query_one_mut::<(&mut EntityDamage, &mut EntityClientAnimations)>(entity)
+            .ok()?;
+        animations.animations.set_damage_event_walk_speed();
+        damage.invulnerable_time = 20;
+        animations.animations.trigger_hurt();
+        *damage.last_damage = Some(event);
+        Some(())
     }
 
     pub(crate) fn supporting_block(&self, id: i32) -> Option<EntitySupportingBlock> {
@@ -5861,13 +5870,6 @@ impl EntityStore {
             let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
             transform.y_head_rot = target_y_head_rot;
         }
-        Some(())
-    }
-
-    pub(crate) fn trigger_client_animation_hurt(&mut self, id: i32) -> Option<()> {
-        let entity = self.by_protocol_id.get(&id).copied()?;
-        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
-        animations.animations.trigger_hurt();
         Some(())
     }
 
@@ -6921,16 +6923,25 @@ impl EntityStore {
                         .block_effect_callbacks_applied
                         .saturating_add(effect_callbacks);
                 }
-                let Ok((identity, transform, mount, metadata, attributes, equipment, animations)) =
-                    self.ecs.query_one_mut::<(
-                        &EntityIdentity,
-                        &mut EntityTransform,
-                        &EntityMount,
-                        &EntityMetadata,
-                        &EntityAttributes,
-                        Option<&EntityEquipment>,
-                        &mut EntityClientAnimations,
-                    )>(entity)
+                let Ok((
+                    identity,
+                    transform,
+                    mount,
+                    metadata,
+                    attributes,
+                    equipment,
+                    damage,
+                    animations,
+                )) = self.ecs.query_one_mut::<(
+                    &EntityIdentity,
+                    &mut EntityTransform,
+                    &EntityMount,
+                    &EntityMetadata,
+                    &EntityAttributes,
+                    Option<&EntityEquipment>,
+                    &mut EntityDamage,
+                    &mut EntityClientAnimations,
+                )>(entity)
                 else {
                     continue;
                 };
@@ -6956,6 +6967,11 @@ impl EntityStore {
                     transform.delta_movement.y *= 0.6;
                 }
                 let is_living = vanilla_entity_metadata_type_is_living(entity_type_id);
+                if is_living && damage.invulnerable_time > 0 {
+                    // Vanilla `LivingEntity.baseTick` decrements this for every
+                    // client living instance (`ServerPlayer` is server-only).
+                    damage.invulnerable_time -= 1;
+                }
                 let is_baby = is_living && vanilla_is_baby(entity_type_id, &metadata.data_values);
                 let pose = is_living.then(|| entity_data_pose(&metadata.data_values));
                 let is_fall_flying = is_living && entity_is_fall_flying(&metadata.data_values);
@@ -7862,6 +7878,7 @@ impl EntityStore {
             mob_effects: BTreeMap::new(),
             client_animations: Default::default(),
             last_damage: None,
+            damage_invulnerable_time: 0,
             minecart_lerp_pending_steps: Vec::new(),
             minecart_lerp_steps: Vec::new(),
             minecart_lerp_old_step: None,

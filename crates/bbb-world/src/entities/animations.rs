@@ -3282,6 +3282,12 @@ impl Default for WalkAnimationState {
 }
 
 impl WalkAnimationState {
+    /// Vanilla `WalkAnimationState.setSpeed`: replace only the current sample.
+    /// `speedOld`, position, scale, and the previous feet position are retained.
+    fn set_speed(&mut self, speed: f32) {
+        self.speed = speed;
+    }
+
     /// Vanilla `WalkAnimationState.update`: `speedOld = speed; speed += (target -
     /// speed) * factor; position += speed; positionScale = positionScale`.
     fn update(&mut self, target_speed: f32, factor: f32, position_scale: f32) {
@@ -5969,6 +5975,15 @@ impl EntityClientAnimationState {
         self.hurt = Some(HurtAnimationState {
             hurt_time: HURT_ANIMATION_DURATION,
         });
+    }
+
+    /// Vanilla `LivingEntity.handleDamageEvent` starts by applying an immediate
+    /// `1.5F` walk-animation speed impulse, before the ordinary next-tick
+    /// low-pass update.
+    pub(crate) fn set_damage_event_walk_speed(&mut self) {
+        self.walk_animation
+            .get_or_insert_with(WalkAnimationState::default)
+            .set_speed(1.5);
     }
 
     /// Vanilla `AbstractBoat.animateHurt` / `AbstractMinecart.animateHurt`: flip the shared

@@ -968,6 +968,10 @@ pub struct EntityState {
     pub client_animations: EntityClientAnimationState,
     #[serde(default)]
     pub last_damage: Option<EntityDamageEventState>,
+    /// Vanilla client-side `LivingEntity.invulnerableTime`, reset by
+    /// DamageEvent and decremented by scheduled living client ticks.
+    #[serde(default)]
+    pub damage_invulnerable_time: i32,
     #[serde(default)]
     pub minecart_lerp_pending_steps: Vec<ProtocolMinecartStep>,
     #[serde(default)]
@@ -1283,6 +1287,8 @@ pub struct EntityStatusProbeState {
     pub last_hurt_yaw: Option<f32>,
     pub mob_effects: BTreeMap<i32, MobEffectState>,
     pub last_damage: Option<EntityDamageEventState>,
+    #[serde(default)]
+    pub damage_invulnerable_time: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -3238,6 +3244,7 @@ impl WorldStore {
     }
 
     pub fn probe_entity_status(&self, id: i32) -> Option<EntityStatusProbeState> {
+        let last_damage = self.entity_last_damage(id);
         let entity = self.probe_entity(id)?;
         Some(EntityStatusProbeState {
             id: entity.id,
@@ -3246,7 +3253,8 @@ impl WorldStore {
             last_event_id: entity.last_event_id,
             last_hurt_yaw: entity.last_hurt_yaw,
             mob_effects: entity.mob_effects,
-            last_damage: entity.last_damage,
+            last_damage,
+            damage_invulnerable_time: entity.damage_invulnerable_time,
         })
     }
 

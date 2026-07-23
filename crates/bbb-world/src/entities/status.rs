@@ -64,6 +64,10 @@ pub struct EntityDamageEventState {
     pub source_cause_id: i32,
     pub source_direct_id: i32,
     pub source_position: Option<ProtocolVec3d>,
+    /// Vanilla `LivingEntity.lastDamageStamp`, sampled from level game time
+    /// after handling this source.
+    #[serde(default)]
+    pub last_damage_stamp: i64,
 }
 
 impl EntityDamageEventState {
@@ -71,6 +75,7 @@ impl EntityDamageEventState {
         packet: ProtocolDamageEvent,
         source_type_resource_id: Option<String>,
         source_effects: Option<DamageTypeEffects>,
+        last_damage_stamp: i64,
     ) -> Self {
         Self {
             source_type_id: packet.source_type_id,
@@ -79,6 +84,7 @@ impl EntityDamageEventState {
             source_cause_id: packet.source_cause_id,
             source_direct_id: packet.source_direct_id,
             source_position: packet.source_position,
+            last_damage_stamp,
         }
     }
 }
@@ -171,7 +177,11 @@ impl WorldStore {
     pub fn apply_damage_event(&mut self, packet: ProtocolDamageEvent) -> bool {
         self.counters.damage_event_packets += 1;
         let entity_id = packet.entity_id;
-        if self.entities.damage(entity_id).is_none() {
+        let Some(entity_type_id) = self.entities.entity_type_id(entity_id) else {
+            self.counters.damage_events_ignored += 1;
+            return false;
+        };
+        if !vanilla_living_entity_type(entity_type_id) {
             self.counters.damage_events_ignored += 1;
             return false;
         }
@@ -185,17 +195,20 @@ impl WorldStore {
                 None
             }
         };
-        let damage_event =
-            EntityDamageEventState::from_packet(packet, source_type_resource_id, source_effects);
-        let Some(()) = self.entities.with_damage_mut(entity_id, |damage| {
-            *damage.last_damage = Some(damage_event);
-        }) else {
+        let last_damage_stamp = self.world_time().map_or(0, |time| time.game_time);
+        let damage_event = EntityDamageEventState::from_packet(
+            packet,
+            source_type_resource_id,
+            source_effects,
+            last_damage_stamp,
+        );
+        let Some(()) = self
+            .entities
+            .apply_living_damage_event_presentation(entity_id, damage_event)
+        else {
             self.counters.damage_events_ignored += 1;
             return false;
         };
-        // Vanilla `LivingEntity.handleDamageEvent`: a damage event sets
-        // `hurtTime = hurtDuration`, driving the red damage overlay.
-        let _ = self.entities.trigger_client_animation_hurt(entity_id);
         self.counters.damage_events_applied += 1;
         true
     }
@@ -229,7 +242,15 @@ impl WorldStore {
     }
 
     pub fn entity_last_damage(&self, entity_id: i32) -> Option<EntityDamageEventState> {
-        self.entities.damage(entity_id)?.last_damage.into_value()
+        let damage = self.entities.damage(entity_id)?.last_damage.into_value()?;
+        let game_time = self.world_time().map_or(0, |time| time.game_time);
+        (game_time.saturating_sub(damage.last_damage_stamp) <= 40).then_some(damage)
+    }
+
+    pub fn entity_damage_invulnerable_time(&self, entity_id: i32) -> Option<i32> {
+        self.entities
+            .damage(entity_id)
+            .map(|damage| damage.invulnerable_time)
     }
 
     fn update_cooldown_count(&mut self) {
@@ -250,8 +271,8 @@ mod tests {
     };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, Cooldown as ProtocolCooldown,
-        DamageEvent as ProtocolDamageEvent, MobEffectFlags, RemoveMobEffect, UpdateMobEffect,
-        Vec3d as ProtocolVec3d,
+        DamageEvent as ProtocolDamageEvent, MobEffectFlags, PlayTime as ProtocolPlayTime,
+        RemoveMobEffect, UpdateMobEffect, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -424,7 +445,15 @@ mod tests {
     #[test]
     fn damage_events_store_on_known_entities_only() {
         let mut store = WorldStore::new();
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 100,
+            clock_updates: Vec::new(),
+        });
         store.apply_add_entity(protocol_add_entity(7));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            8,
+            super::super::VANILLA_ENTITY_TYPE_ITEM_ID,
+        ));
 
         assert!(store.apply_damage_event(ProtocolDamageEvent {
             entity_id: 7,
@@ -447,6 +476,7 @@ mod tests {
         assert_eq!(damage.source_effects, Some(DamageTypeEffects::Burning));
         assert_eq!(damage.source_cause_id, -1);
         assert_eq!(damage.source_direct_id, 42);
+        assert_eq!(damage.last_damage_stamp, 100);
         assert_eq!(
             damage.source_position,
             Some(ProtocolVec3d {
@@ -461,6 +491,23 @@ mod tests {
         );
         assert_eq!(store.counters().damage_event_packets, 1);
         assert_eq!(store.counters().damage_events_applied, 1);
+        assert_eq!(store.entity_damage_invulnerable_time(7), Some(20));
+        let animations = store.probe_entity(7).unwrap().client_animations;
+        let walk = animations.walk_animation.unwrap();
+        assert_eq!(walk.speed_old, 0.0);
+        assert_eq!(walk.speed, 1.5);
+        assert_eq!(walk.position, 0.0);
+        assert!(animations.has_red_overlay());
+
+        assert!(!store.apply_damage_event(ProtocolDamageEvent {
+            entity_id: 8,
+            source_type_id: 5,
+            source_cause_id: -1,
+            source_direct_id: -1,
+            source_position: None,
+        }));
+        assert_eq!(store.entity_damage_invulnerable_time(8), Some(0));
+        assert_eq!(store.probe_entity(8).unwrap().last_damage, None);
 
         assert!(!store.apply_damage_event(ProtocolDamageEvent {
             entity_id: 99,
@@ -469,9 +516,69 @@ mod tests {
             source_direct_id: -1,
             source_position: None,
         }));
-        assert_eq!(store.counters().damage_event_packets, 2);
+        assert_eq!(store.counters().damage_event_packets, 3);
         assert_eq!(store.counters().damage_events_applied, 1);
-        assert_eq!(store.counters().damage_events_ignored, 1);
+        assert_eq!(store.counters().damage_events_ignored, 2);
+    }
+
+    #[test]
+    fn damage_event_timers_last_source_expiry_and_recreation_are_canonical() {
+        let mut store = WorldStore::new();
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 200,
+            clock_updates: Vec::new(),
+        });
+        store.apply_add_entity(protocol_add_entity(27));
+        assert!(store.apply_damage_event(ProtocolDamageEvent {
+            entity_id: 27,
+            source_type_id: 0,
+            source_cause_id: -1,
+            source_direct_id: -1,
+            source_position: None,
+        }));
+        let retained = store.publication_snapshot();
+
+        store.advance_entity_client_animations(1);
+        assert_eq!(store.entity_damage_invulnerable_time(27), Some(19));
+        assert_eq!(
+            retained.entity_damage_invulnerable_time(27),
+            Some(20),
+            "retained publication keeps the pre-tick component"
+        );
+        assert_eq!(
+            retained
+                .probe_entity(27)
+                .unwrap()
+                .client_animations
+                .walk_animation
+                .unwrap()
+                .speed,
+            1.5
+        );
+
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 240,
+            clock_updates: Vec::new(),
+        });
+        assert!(store.entity_last_damage(27).is_some());
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 241,
+            clock_updates: Vec::new(),
+        });
+        assert!(store.entity_last_damage(27).is_none());
+        assert!(store.probe_entity_status(27).unwrap().last_damage.is_none());
+        assert!(
+            store.probe_entity(27).unwrap().last_damage.is_some(),
+            "Vanilla expires the getter without eagerly clearing the field"
+        );
+
+        store.apply_add_entity(protocol_add_entity(27));
+        let recreated = store.probe_entity(27).unwrap();
+        assert_eq!(recreated.last_damage, None);
+        assert_eq!(recreated.damage_invulnerable_time, 0);
+        assert!(recreated.client_animations.walk_animation.is_none());
+        assert!(retained.entity_last_damage(27).is_some());
+        assert_eq!(retained.entity_damage_invulnerable_time(27), Some(20));
     }
 
     #[test]
