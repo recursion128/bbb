@@ -8,7 +8,7 @@ use bbb_control::{
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
-use bbb_renderer::{HudChatHitTarget, HudChatHitTargetKind, HudFontGlyphMap};
+use bbb_renderer::{HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudFontGlyphMap};
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::{
@@ -179,8 +179,9 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 chat_target,
+                book_target,
             } => {
-                self.apply_mouse_button(button, state, chat_target, context);
+                self.apply_mouse_button(button, state, chat_target, book_target, context);
             }
             SimulationCommand::MouseMotion { delta } => self.apply_mouse_motion(delta, context),
             SimulationCommand::MouseWheel { delta } => self.apply_mouse_wheel(delta, context),
@@ -189,6 +190,7 @@ impl SimulationInputRuntime {
             }
             SimulationCommand::CursorLeft => {
                 self.cursor_position = None;
+                context.input.update_screen_cursor_position(None);
                 context.input.handle_sign_editor_cursor_moved(None);
                 context
                     .input
@@ -331,12 +333,16 @@ impl SimulationInputRuntime {
                 .handle_sign_editor_cursor_moved(self.cursor_position);
             return;
         }
-        if context.input.handle_book_screen_cursor_moved(
-            context.world,
-            self.cursor_position,
-            self.surface_size,
-            &self.text_measurements,
-        ) {
+        if context.world.current_book().is_some() {
+            context
+                .input
+                .update_screen_cursor_position(self.cursor_position);
+            context.input.handle_book_screen_cursor_moved(
+                context.world,
+                self.cursor_position,
+                self.surface_size,
+                &self.text_measurements,
+            );
             return;
         }
         if context
@@ -822,6 +828,7 @@ impl SimulationInputRuntime {
         button: MouseButton,
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
+        book_target: Option<HudBookHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
@@ -1085,6 +1092,11 @@ impl SimulationInputRuntime {
         }
         if context.world.current_book().is_some() {
             self.request_cursor_capture(false, context.platform);
+            if matches!((button, state), (MouseButton::Left, ElementState::Pressed))
+                && self.apply_book_hit_target(book_target, context)
+            {
+                return;
+            }
             context.input.handle_book_screen_mouse_input(
                 context.net_counters,
                 context.world,
@@ -1191,7 +1203,7 @@ impl SimulationInputRuntime {
                 ) else {
                     return false;
                 };
-                run_chat_component_click_event(
+                run_component_click_event(
                     event,
                     context.input,
                     context.world,
@@ -1200,6 +1212,39 @@ impl SimulationInputRuntime {
                     context.platform,
                 )
             }
+        }
+    }
+
+    fn apply_book_hit_target(
+        &mut self,
+        target: Option<HudBookHitTarget>,
+        context: &mut SimulationInputContext<'_, '_>,
+    ) -> bool {
+        let Some(target) = target else {
+            return false;
+        };
+        let Some(event) = crate::runtime::hud_book_component_click_event(
+            context.world,
+            context.input,
+            context.item_runtime.as_ref(),
+            target,
+        ) else {
+            return false;
+        };
+        match event {
+            ComponentClickEvent::ChangePage { page } => {
+                let page = usize::try_from(page.saturating_sub(1).max(0)).unwrap_or_default();
+                context.world.set_current_book_page(page);
+                true
+            }
+            event => run_component_click_event(
+                event,
+                context.input,
+                context.world,
+                context.net_counters,
+                context.net_commands,
+                context.platform,
+            ),
         }
     }
 
@@ -1514,7 +1559,7 @@ fn chat_hit_target_is_current(
         && target.resources_loaded == item_runtime.is_some()
 }
 
-fn run_chat_component_click_event(
+fn run_component_click_event(
     event: ComponentClickEvent,
     input: &mut crate::input::ClientInputState,
     world: &mut WorldStore,
@@ -1782,7 +1827,7 @@ mod tests {
         );
         let mut platform = effects.platform();
 
-        assert!(run_chat_component_click_event(
+        assert!(run_component_click_event(
             ComponentClickEvent::RunCommand {
                 command: "/seed".to_string(),
             },
@@ -1796,7 +1841,7 @@ mod tests {
             rx.try_recv(),
             Ok(NetCommand::ChatCommand(command)) if command.command == "seed"
         ));
-        assert!(run_chat_component_click_event(
+        assert!(run_component_click_event(
             ComponentClickEvent::Custom {
                 id: "example:chat".to_string(),
                 payload: None,
@@ -1812,7 +1857,7 @@ mod tests {
             Ok(NetCommand::CustomClickAction(CustomClickAction { id, .. }))
                 if id == "example:chat"
         ));
-        assert!(run_chat_component_click_event(
+        assert!(run_component_click_event(
             ComponentClickEvent::CopyToClipboard {
                 value: "copy me".to_string(),
             },
@@ -1822,7 +1867,7 @@ mod tests {
             &commands,
             &mut platform,
         ));
-        assert!(!run_chat_component_click_event(
+        assert!(!run_component_click_event(
             ComponentClickEvent::OpenFile {
                 path: "/tmp/server-controlled".to_string(),
             },

@@ -71,7 +71,7 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
+    java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, ChunkPos,
     ClientEnvironmentAttributes, ContainerState, EntityClientMovementEffectState,
     EntityClientTickWork, EnvironmentBiomeSampling, EvokerFangsCritParticleState,
     ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState, MerchantOffersState,
@@ -217,6 +217,8 @@ use bbb_protocol::mob_effect_types::{
 use crate::terrain_runtime::TerrainUploadState;
 
 mod advancement_toast;
+mod book_screen;
+pub(crate) use book_screen::hud_book_component_click_event;
 mod control_requests;
 mod debug_light_sections;
 mod dialog_screen;
@@ -228,6 +230,7 @@ mod events;
 pub(crate) use events::minimal_non_empty_synchronized_registry_data;
 pub(crate) use events::queue_chat_acknowledgement;
 
+use book_screen::hud_book_screen;
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 pub(crate) use dialog_screen::{
     dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
@@ -3031,6 +3034,22 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_test_instance_block_editor_screen(input, item_runtime, surface_size)
     };
+    let hud_book_screen = if world.dialog_screen_is_open()
+        || hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || hud_game_rules_screen.is_some()
+        || hud_stats_screen.is_some()
+        || hud_sign_editor_screen.is_some()
+        || hud_command_block_editor_screen.is_some()
+        || hud_structure_block_editor_screen.is_some()
+        || hud_jigsaw_block_editor_screen.is_some()
+        || hud_test_block_editor_screen.is_some()
+        || hud_test_instance_block_editor_screen.is_some()
+    {
+        None
+    } else {
+        hud_book_screen(input, world, item_runtime)
+    };
     let hud_inventory_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -3041,6 +3060,7 @@ pub(crate) fn update_renderer_from_publication(
         || hud_jigsaw_block_editor_screen.is_some()
         || hud_test_block_editor_screen.is_some()
         || hud_test_instance_block_editor_screen.is_some()
+        || hud_book_screen.is_some()
     {
         None
     } else {
@@ -3556,6 +3576,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_hotbar_item_icons,
             hud_hotbar_block_item_models,
             hud_inventory_screen,
+            hud_book_screen,
             hud_screen_blur,
             hud_sign_editor_screen,
             hud_command_block_editor_screen,
@@ -8169,10 +8190,6 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         ));
     }
 
-    if let Some(book) = world.current_book() {
-        return Some(hud_book_screen(book));
-    }
-
     if world.advancements_screen_is_open() {
         return Some(hud_advancements_screen(
             world,
@@ -10028,26 +10045,6 @@ fn quaternion_mul(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
     ]
 }
 
-fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
-    HudInventoryScreen {
-        width: 192,
-        height: 192,
-        background_layers: book_screen_background_layers(book),
-        foreground_layers: Vec::new(),
-        fill_layers: Vec::new(),
-        slots: Vec::new(),
-        floating_items: Vec::new(),
-        foreground_items: Vec::new(),
-        ghost_items: Vec::new(),
-        entity_previews: Vec::new(),
-        text_labels: book_screen_text_labels(book),
-        scroll_area: None,
-        preedit_overlay: None,
-        hovered_slot_id: None,
-        tooltip: None,
-    }
-}
-
 fn hud_advancements_screen(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -11636,45 +11633,6 @@ fn push_centered_advancements_label(
         shadow: false,
         runs: Vec::new(),
     });
-}
-
-fn book_screen_background_layers(book: &BookScreenState) -> Vec<HudInventoryBackgroundLayer> {
-    let mut layers = vec![hud_inventory_background_layer(
-        HudInventoryBackgroundTexture::Book,
-        0,
-        0,
-        192,
-        192,
-        [0.0, 0.0],
-        [192.0 / 256.0, 192.0 / 256.0],
-    )];
-    if book.current_page() > 0 {
-        layers.push(hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::PageBackward,
-            43,
-            157,
-            23,
-            13,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ));
-    }
-    if book.current_page() + 1 < book.page_count() {
-        layers.push(hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::PageForward,
-            116,
-            157,
-            23,
-            13,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ));
-    }
-    layers
-}
-
-fn book_screen_text_labels(book: &BookScreenState) -> Vec<HudInventoryTextLabel> {
-    book_page_text_labels(&book.plain_pages_for_filter(false), book.current_page())
 }
 
 fn hud_inventory_text_labels(

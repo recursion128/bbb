@@ -1008,11 +1008,23 @@ pub(crate) fn try_load_hud_textures(
         page_backward.height,
         &page_backward.rgba,
     )?;
+    let page_backward_highlighted = hud_sprite(&sprites, "widget/page_backward_highlighted")?;
+    renderer.upload_hud_page_backward_highlighted(
+        page_backward_highlighted.width,
+        page_backward_highlighted.height,
+        &page_backward_highlighted.rgba,
+    )?;
     let page_forward = hud_sprite(&sprites, "widget/page_forward")?;
     renderer.upload_hud_page_forward(
         page_forward.width,
         page_forward.height,
         &page_forward.rgba,
+    )?;
+    let page_forward_highlighted = hud_sprite(&sprites, "widget/page_forward_highlighted")?;
+    renderer.upload_hud_page_forward_highlighted(
+        page_forward_highlighted.width,
+        page_forward_highlighted.height,
+        &page_forward_highlighted.rgba,
     )?;
     load_hanging_sign_backgrounds(renderer, roots)?;
     let shulker_box = gui_texture(

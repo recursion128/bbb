@@ -16021,7 +16021,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
 }
 
 #[test]
-fn hud_inventory_screen_projects_current_book_screen() {
+fn dedicated_hud_book_screen_replaces_inventory_projection() {
     let mut world = WorldStore::new();
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
@@ -16031,62 +16031,19 @@ fn hud_inventory_screen_projects_current_book_screen() {
         hand: InteractionHand::MainHand,
     });
 
-    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
-
-    assert_eq!(screen.width, 192);
-    assert_eq!(screen.height, 192);
-    assert!(screen.slots.is_empty());
+    assert!(hud_inventory_screen(&world, None, None, 0.0).is_none());
+    let screen = hud_book_screen(&ClientInputState::default(), &world, None).unwrap();
+    assert_eq!(screen.mode, bbb_renderer::HudBookMode::View);
+    assert_eq!(screen.page, 0);
+    assert_eq!(screen.page_count, 2);
+    assert_eq!(screen.page_indicator, "Page 1 of 2");
     assert_eq!(
-        screen.background_layers,
-        vec![
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::Book,
-                0,
-                0,
-                192,
-                192,
-                [0.0, 0.0],
-                [192.0 / 256.0, 192.0 / 256.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::PageForward,
-                116,
-                157,
-                23,
-                13,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-        ]
-    );
-    assert_eq!(
-        screen.text_labels,
-        vec![
-            HudInventoryTextLabel {
-                x: 88,
-                y: BOOK_PAGE_INDICATOR_Y,
-                width: 60,
-                text: "Page 1 of 2".to_string(),
-                tint: BOOK_TEXT_COLOR,
-                background: None,
-                input: None,
-                scrolling: None,
-                shadow: false,
-                runs: Vec::new(),
-            },
-            HudInventoryTextLabel {
-                x: BOOK_PAGE_TEXT_X,
-                y: BOOK_PAGE_TEXT_Y,
-                width: BOOK_PAGE_TEXT_WIDTH,
-                text: "First page".to_string(),
-                tint: BOOK_TEXT_COLOR,
-                background: None,
-                input: None,
-                scrolling: None,
-                shadow: false,
-                runs: Vec::new(),
-            },
-        ]
+        screen.runs,
+        vec![HudStyledTextRun {
+            text: "First page".to_string(),
+            style: HudTextStyle::default(),
+            color: Some(0),
+        }]
     );
 }
 

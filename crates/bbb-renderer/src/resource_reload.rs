@@ -350,7 +350,9 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_mount_chest_slots);
         $take_owner!(hud_book_background);
         $take_owner!(hud_page_backward);
+        $take_owner!(hud_page_backward_highlighted);
         $take_owner!(hud_page_forward);
+        $take_owner!(hud_page_forward_highlighted);
         $take_owner!(hud_hanging_sign_backgrounds);
         $take_owner!(hud_shulker_box_background);
         $take_owner!(hud_stonecutter_background);

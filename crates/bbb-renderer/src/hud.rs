@@ -14,10 +14,18 @@ use crate::item_models::{
 };
 use crate::Renderer;
 
+mod book;
 mod game_rules;
 mod gpu;
 mod layout;
 
+pub use self::book::{
+    hud_book_layout, HudBookHitTarget, HudBookInteraction, HudBookLayout, HudBookMode,
+    HudBookScreen, HUD_BOOK_HEIGHT, HUD_BOOK_LINE_HEIGHT, HUD_BOOK_MAX_LINES, HUD_BOOK_PAGE_BACK_X,
+    HUD_BOOK_PAGE_BUTTON_HEIGHT, HUD_BOOK_PAGE_BUTTON_WIDTH, HUD_BOOK_PAGE_BUTTON_Y,
+    HUD_BOOK_PAGE_FORWARD_X, HUD_BOOK_PAGE_INDICATOR_RIGHT, HUD_BOOK_PAGE_INDICATOR_Y,
+    HUD_BOOK_TEXT_WIDTH, HUD_BOOK_TEXT_X, HUD_BOOK_TEXT_Y, HUD_BOOK_TOP, HUD_BOOK_WIDTH,
+};
 pub use self::game_rules::{
     hud_game_rules_confirmation_buttons, hud_game_rules_layout, HudGameRulesDiscardConfirmation,
     HudGameRulesLayout, HudGameRulesRect, HudGameRulesRow, HudGameRulesScreen,
@@ -4137,8 +4145,28 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_page_backward_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_page_backward_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_page_forward(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         self.hud_page_forward = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_page_forward_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_page_forward_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -4781,6 +4809,10 @@ impl Renderer {
         self.hud_game_rules_screen = screen.and_then(game_rules::sanitize_hud_game_rules_screen);
     }
 
+    pub fn set_hud_book_screen(&mut self, screen: Option<HudBookScreen>) {
+        self.hud_book_screen = screen.and_then(book::sanitize_hud_book_screen);
+    }
+
     pub fn set_hud_system_toast(&mut self, toast: Option<HudSystemToast>) {
         self.hud_system_toast = toast.and_then(sanitize_hud_system_toast);
     }
@@ -4848,6 +4880,15 @@ impl Renderer {
         hud_chat_hit_target_at(
             &self.hud_chat_lines,
             &self.hud_chat_context,
+            self.surface_size(),
+            position,
+        )
+    }
+
+    pub fn hud_book_hit_target_at(&self, position: (f64, f64)) -> Option<HudBookHitTarget> {
+        book::hud_book_hit_target_at(
+            self.hud_book_screen.as_ref()?,
+            &self.hud_font_glyphs,
             self.surface_size(),
             position,
         )
@@ -6293,6 +6334,27 @@ impl Renderer {
                     disabled: self.hud_widget_button_disabled.as_ref(),
                     highlighted: self.hud_widget_button_highlighted.as_ref(),
                 },
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
+        if let Some(screen) = &self.hud_book_screen {
+            book::push_hud_book_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_book_background.as_ref(),
+                self.hud_page_backward.as_ref(),
+                self.hud_page_backward_highlighted.as_ref(),
+                self.hud_page_forward.as_ref(),
+                self.hud_page_forward_highlighted.as_ref(),
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),

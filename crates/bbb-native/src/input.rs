@@ -205,12 +205,12 @@ use bbb_world::{
     PigSoundVariantIdentity, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
     VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, WolfSoundVariantIdentity,
 };
-pub(crate) use book::BookInputState;
 #[cfg(test)]
 pub(crate) use book::{
     handle_book_screen_mouse_input, BOOK_MENU_BUTTON_Y, BOOK_MENU_DONE_BUTTON_X,
     BOOK_PAGE_BUTTON_Y, BOOK_PAGE_FORWARD_BUTTON_X, BOOK_SCREEN_WIDTH,
 };
+pub(crate) use book::{BookInputMode, BookInputState};
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{

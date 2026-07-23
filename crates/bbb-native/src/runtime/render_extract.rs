@@ -12,9 +12,9 @@ use bbb_renderer::{
     DisplayTextSurface, EntityFlameSurface, EntityModelInstance, EntityNameTagSurface,
     EntityShadowSurface, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
-    HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatInteraction,
-    HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions, HudDebugOptionsScreen,
-    HudDebugOverlay, HudFoodEffect, HudGameRulesScreen, HudInventoryScreen,
+    HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
+    HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
+    HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen, HudInventoryScreen,
     HudJigsawBlockEditorScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
     HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
     HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
@@ -1434,6 +1434,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(crate) hud_hotbar_block_item_models: RendererFrameUpdate<Vec<Option<HudBlockItemModel>>>,
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
+    pub(crate) hud_book_screen: Option<HudBookScreen>,
     pub(crate) hud_screen_blur: bool,
     pub(crate) hud_sign_editor_screen: Option<HudSignEditorScreen>,
     pub(crate) hud_command_block_editor_screen: Option<HudCommandBlockEditorScreen>,
@@ -1692,6 +1693,7 @@ pub(crate) fn apply_renderer_frame(
         renderer.set_hud_hotbar_block_item_models(models);
     }
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
+    renderer.set_hud_book_screen(frame.hud_book_screen);
     renderer.set_hud_screen_blur(frame.hud_screen_blur);
     renderer.set_hud_sign_editor_screen(frame.hud_sign_editor_screen);
     renderer.set_hud_command_block_editor_screen(frame.hud_command_block_editor_screen);

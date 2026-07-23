@@ -7,7 +7,7 @@ use std::{
 };
 
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
-use bbb_renderer::{HudChatHitTarget, HudFontGlyphMap};
+use bbb_renderer::{HudBookHitTarget, HudChatHitTarget, HudFontGlyphMap};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton, MouseScrollDelta},
@@ -29,6 +29,7 @@ pub(crate) enum SimulationCommand {
         button: MouseButton,
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
+        book_target: Option<HudBookHitTarget>,
     },
     MouseMotion {
         delta: (f64, f64),
@@ -431,6 +432,7 @@ mod tests {
             button: MouseButton::Left,
             state: ElementState::Released,
             chat_target: None,
+            book_target: None,
         });
         ControlRequestSink::submit(
             &mailbox,

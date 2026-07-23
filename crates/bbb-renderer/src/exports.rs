@@ -88,13 +88,15 @@ pub use crate::entity_models::{
     villager_crossed_arms_item_transform, witch_held_item_transform,
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
+pub use crate::hud::{hud_book_layout, hud_game_rules_confirmation_buttons, hud_game_rules_layout};
 pub use crate::hud::{
     hud_command_block_editor_layout, hud_jigsaw_block_editor_layout,
     hud_minecart_command_block_editor_layout, hud_sign_editor_done_button_rect,
     hud_structure_block_editor_layout, hud_test_block_editor_layout,
     hud_test_instance_block_editor_layout, HudActionBarText, HudAdvancementBackgroundTexture,
     HudAdvancementHoverBoxSprite, HudAdvancementLineTexture, HudAdvancementTabSprite,
-    HudAdvancementToast, HudAdvancementWidgetFrameSprite, HudAirSupply, HudAsciiGlyph, HudBossBar,
+    HudAdvancementToast, HudAdvancementWidgetFrameSprite, HudAirSupply, HudAsciiGlyph,
+    HudBookHitTarget, HudBookInteraction, HudBookLayout, HudBookMode, HudBookScreen, HudBossBar,
     HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatHitTarget, HudChatHitTargetKind,
     HudChatInteraction, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorKind,
     HudCommandBlockEditorLayout, HudCommandBlockEditorRect, HudCommandBlockEditorScreen,
@@ -122,12 +124,15 @@ pub use crate::hud::{
     HudTestBlockEditorLayout, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
     HudTestInstanceBlockEditorLayout, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudTitleText, HudUvRect, HudVehicleHealth,
-    HUD_ADVANCEMENT_TOAST_SLOTS, HUD_FONT_BASELINE, HUD_GAME_RULES_FOOTER_HEIGHT,
-    HUD_GAME_RULES_HEADER_HEIGHT, HUD_GAME_RULES_LIST_WIDTH, HUD_GAME_RULES_ROW_HEIGHT,
-    HUD_GAME_RULES_SEARCH_HEIGHT, HUD_GAME_RULES_SEARCH_WIDTH, HUD_GAME_RULES_VALUE_HEIGHT,
-    HUD_GAME_RULES_VALUE_WIDTH, HUD_HOTBAR_SLOTS,
+    HUD_ADVANCEMENT_TOAST_SLOTS, HUD_BOOK_HEIGHT, HUD_BOOK_LINE_HEIGHT, HUD_BOOK_MAX_LINES,
+    HUD_BOOK_PAGE_BACK_X, HUD_BOOK_PAGE_BUTTON_HEIGHT, HUD_BOOK_PAGE_BUTTON_WIDTH,
+    HUD_BOOK_PAGE_BUTTON_Y, HUD_BOOK_PAGE_FORWARD_X, HUD_BOOK_PAGE_INDICATOR_RIGHT,
+    HUD_BOOK_PAGE_INDICATOR_Y, HUD_BOOK_TEXT_WIDTH, HUD_BOOK_TEXT_X, HUD_BOOK_TEXT_Y, HUD_BOOK_TOP,
+    HUD_BOOK_WIDTH, HUD_FONT_BASELINE, HUD_GAME_RULES_FOOTER_HEIGHT, HUD_GAME_RULES_HEADER_HEIGHT,
+    HUD_GAME_RULES_LIST_WIDTH, HUD_GAME_RULES_ROW_HEIGHT, HUD_GAME_RULES_SEARCH_HEIGHT,
+    HUD_GAME_RULES_SEARCH_WIDTH, HUD_GAME_RULES_VALUE_HEIGHT, HUD_GAME_RULES_VALUE_WIDTH,
+    HUD_HOTBAR_SLOTS,
 };
-pub use crate::hud::{hud_game_rules_confirmation_buttons, hud_game_rules_layout};
 pub use crate::item_entities::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
 };

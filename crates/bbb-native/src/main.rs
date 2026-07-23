@@ -6,7 +6,7 @@ use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
     keyboard::{KeyCode, PhysicalKey},
-    window::{CursorGrabMode, Window},
+    window::{CursorGrabMode, CursorIcon, Window},
 };
 
 mod audio_runtime;
@@ -820,6 +820,7 @@ fn main() -> Result<()> {
                         &simulation_mailbox,
                         &mut debug_clipboard,
                         &renderer,
+                        &window,
                         &mut event_cursor_position,
                     ) => {}
                 WindowEvent::RedrawRequested => {
@@ -1113,18 +1114,30 @@ fn enqueue_simulation_window_event(
     mailbox: &SimulationMailbox,
     clipboard: &mut NativeDebugClipboard,
     renderer: &bbb_renderer::Renderer,
+    window: &Window,
     cursor_position: &mut Option<winit::dpi::PhysicalPosition<f64>>,
 ) -> bool {
     let command = match event {
         WindowEvent::CloseRequested => SimulationCommand::Shutdown,
         WindowEvent::CursorMoved { position, .. } => {
             *cursor_position = Some(*position);
+            window.set_cursor_icon(
+                if renderer
+                    .hud_book_hit_target_at((position.x, position.y))
+                    .is_some()
+                {
+                    CursorIcon::Pointer
+                } else {
+                    CursorIcon::Default
+                },
+            );
             SimulationCommand::CursorMoved {
                 position: *position,
             }
         }
         WindowEvent::CursorLeft { .. } => {
             *cursor_position = None;
+            window.set_cursor_icon(CursorIcon::Default);
             SimulationCommand::CursorLeft
         }
         WindowEvent::Focused(focused) => SimulationCommand::FocusChanged(*focused),
@@ -1155,6 +1168,15 @@ fn enqueue_simulation_window_event(
             .then(|| {
                 (*cursor_position)
                     .and_then(|position| renderer.hud_chat_hit_target_at((position.x, position.y)))
+            })
+            .flatten(),
+            book_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position)
+                    .and_then(|position| renderer.hud_book_hit_target_at((position.x, position.y)))
             })
             .flatten(),
         },

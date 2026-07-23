@@ -73,6 +73,10 @@ enum BookClickTarget {
 }
 
 impl ClientInputState {
+    pub(crate) fn book_input_state(&self) -> Option<&BookInputState> {
+        self.book_input.as_ref()
+    }
+
     pub(crate) fn sync_book_screen(&mut self, world: &WorldStore) {
         let Some(book) = world.current_book() else {
             self.book_input = None;
@@ -663,7 +667,8 @@ impl ClientInputState {
                 false,
             ),
             BookInputMode::Sign => (
-                origin_x + f64::from(BOOK_SIGN_TITLE_X),
+                origin_x + f64::from(BOOK_SCREEN_WIDTH) * 0.5
+                    - f64::from(measurer.command_suggestion_text_width(text)) * 0.5,
                 f64::from(BOOK_SIGN_TITLE_Y),
                 true,
             ),
