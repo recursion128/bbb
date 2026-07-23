@@ -785,6 +785,97 @@ fn armor_stand_death_event_emits_positioned_audio_command() {
 }
 
 #[test]
+fn all_generated_living_death_sounds_reach_native_audio_commands() {
+    let mut probe = WorldStore::new();
+    let mut event_ids = Vec::new();
+    let mut catalog_entries = serde_json::Map::new();
+    for entry in bbb_protocol::entity_types::VANILLA_ENTITY_TYPES {
+        if matches!(
+            bbb_world::vanilla_entity_metadata_type_death_sound_policy(entry.id),
+            Some(bbb_world::VanillaEntityDeathSoundPolicy::NonLiving)
+        ) {
+            continue;
+        }
+        let entity_id = 40_000 + entry.id;
+        probe.apply_add_entity(protocol_add_entity_with_type(entity_id, entry.id));
+        let sound = probe
+            .living_death_sound_for_entity(entity_id, || 0.5)
+            .unwrap_or_else(|| panic!("{} death sound did not resolve", entry.resource_id));
+        let event_id = sound
+            .sound
+            .location
+            .unwrap_or_else(|| panic!("{} death sound was not direct", entry.resource_id));
+        let position = [sound.position.x, sound.position.y, sound.position.z];
+        let catalog_id = event_id
+            .strip_prefix("minecraft:")
+            .unwrap_or_else(|| panic!("unexpected non-vanilla death sound {event_id}"));
+        catalog_entries.insert(
+            catalog_id.to_string(),
+            serde_json::json!({"sounds": ["test/generated_death"]}),
+        );
+        event_ids.push((entity_id, entry.id, event_id, position));
+    }
+    // Bee recreation starts a separate tickable loop before its death event.
+    catalog_entries.insert(
+        "entity.bee.loop".to_string(),
+        serde_json::json!({"sounds": ["test/bee_loop"]}),
+    );
+    let catalog_json = serde_json::to_vec(&serde_json::Value::Object(catalog_entries)).unwrap();
+    let assets_dir = std::env::temp_dir().join("bbb-native-generated-death-audio-test-assets");
+    let catalog = SoundCatalog::from_json_bytes("minecraft", &assets_dir, &catalog_json).unwrap();
+
+    let (tx, mut rx) = mpsc::channel(event_ids.len() * 2);
+    let mut world = WorldStore::new();
+    for (entity_id, entity_type_id, _, _) in &event_ids {
+        let packet = protocol_add_entity_with_type(*entity_id, *entity_type_id);
+        if *entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            record_test_player_info(&mut world, packet.uuid);
+        }
+        tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(packet)))
+            .unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+            entity_id: *entity_id,
+            event_id: 3,
+        })))
+        .unwrap();
+    }
+
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(catalog, SoundEventRegistry::default());
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        event_ids.len() * 2
+    );
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    let positioned: Vec<_> = audio
+        .commands
+        .iter()
+        .filter_map(|command| match command {
+            AudioCommand::PlayPositionedSound(command) => Some(command),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(positioned.len(), 92);
+    assert_eq!(event_ids.len(), 92);
+    for (command, (entity_id, entity_type_id, expected_event_id, expected_position)) in
+        positioned.iter().zip(&event_ids)
+    {
+        assert_eq!(
+            command.sound.event_id, *expected_event_id,
+            "entity type {entity_type_id}"
+        );
+        assert_eq!(command.position, *expected_position);
+        assert_eq!(command.seed, 0);
+        let entity = world.probe_entity(*entity_id).unwrap();
+        assert_eq!(
+            entity.living_dead,
+            *entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID,
+            "entity type {entity_type_id}"
+        );
+    }
+}
+
+#[test]
 fn zombie_death_event_emits_positioned_audio_command() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(

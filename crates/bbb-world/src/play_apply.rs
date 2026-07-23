@@ -585,6 +585,16 @@ impl WorldStore {
                 if let Some(state) = rabbit_sprint_particles {
                     effects.rabbit_sprint_particles(self, state);
                 }
+                // `LivingEntity.handleEntityEvent(3)` resolves and submits the death sound before
+                // the non-Player health/die transition. Resolve it against the pre-death state and
+                // consume its two pitch samples before mutating the canonical entity.
+                if event_kind == Some(VanillaEntityEventKind::LivingDeath) {
+                    if let Some(state) =
+                        self.living_death_sound_for_entity(update.entity_id, || random.next_float())
+                    {
+                        effects.positioned_sound(&state);
+                    }
+                }
                 let applied = self.apply_entity_event(update);
                 if applied && event_kind == Some(VanillaEntityEventKind::FishingHookPull) {
                     let _ = self.apply_fishing_hook_pull(update.entity_id);
@@ -722,13 +732,6 @@ impl WorldStore {
                             || random.next_float(),
                         )
                     }) {
-                        effects.positioned_sound(&state);
-                    }
-                }
-                if applied && event_kind == Some(VanillaEntityEventKind::LivingDeath) {
-                    if let Some(state) =
-                        self.living_death_sound_for_entity(update.entity_id, || random.next_float())
-                    {
                         effects.positioned_sound(&state);
                     }
                 }
@@ -1699,6 +1702,11 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
+    use crate::entities::{
+        vanilla_entity_metadata_entity_accessors,
+        vanilla_entity_metadata_living_entity_accessors_for_entity_type,
+        vanilla_entity_metadata_type_death_sound_policy, VanillaEntityDeathSoundPolicy,
+    };
     use crate::{
         DamageTypeEffects, ExplosionEventState, LocalPlayerPoseState, RegistryPacketEntry,
         DAMAGE_TYPE_REGISTRY,
@@ -1707,17 +1715,18 @@ mod tests {
     use bbb_protocol::entity_data_serializers::{
         VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
-        VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID, VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
     };
+    use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
         VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
@@ -3966,6 +3975,246 @@ mod tests {
     }
 
     #[test]
+    fn all_generated_living_death_policies_cross_the_play_effect_boundary() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let mut living_count = 0;
+
+        for entry in bbb_protocol::entity_types::VANILLA_ENTITY_TYPES {
+            if matches!(
+                vanilla_entity_metadata_type_death_sound_policy(entry.id),
+                Some(VanillaEntityDeathSoundPolicy::NonLiving)
+            ) {
+                continue;
+            }
+            living_count += 1;
+            let entity_id = 30_000 + entry.id;
+            let position = Vec3d {
+                x: f64::from(entry.id),
+                y: 64.0,
+                z: -f64::from(entry.id),
+            };
+            if entry.id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                record_packet_player_info(&mut store, entity_id);
+            }
+            assert!(store
+                .apply_play_packet(
+                    PlayClientbound::AddEntity(add_entity(entity_id, entry.id, position)),
+                    &mut random,
+                    &mut effects,
+                )
+                .is_none());
+            let canonical_position = store
+                .probe_entity_transform(entity_id)
+                .unwrap_or_else(|| panic!("{} was not added", entry.resource_id))
+                .position;
+            let expected_pitch =
+                (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+            assert!(store
+                .apply_play_packet(
+                    PlayClientbound::EntityEvent(EntityEvent {
+                        entity_id,
+                        event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+                    }),
+                    &mut random,
+                    &mut effects,
+                )
+                .is_none());
+
+            let sound = effects
+                .positioned_sounds
+                .last()
+                .unwrap_or_else(|| panic!("{} emitted no death sound", entry.resource_id));
+            assert_eq!(
+                sound.position,
+                Vec3d {
+                    x: canonical_position.x,
+                    y: canonical_position.y,
+                    z: canonical_position.z,
+                },
+                "{}",
+                entry.resource_id
+            );
+            assert!(
+                (sound.pitch - expected_pitch).abs() < 1.0e-6,
+                "{}",
+                entry.resource_id
+            );
+            assert_eq!(sound.seed, 0, "{}", entry.resource_id);
+            assert!(!sound.distance_delay, "{}", entry.resource_id);
+            if entry.id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                assert_eq!(
+                    store.entities.living_entity_health(entity_id),
+                    Some(1.0),
+                    "{}",
+                    entry.resource_id
+                );
+                assert_eq!(
+                    store.entities.living_entity_dead(entity_id),
+                    Some(false),
+                    "{}",
+                    entry.resource_id
+                );
+            } else {
+                assert_eq!(
+                    store.entities.living_entity_health(entity_id),
+                    Some(0.0),
+                    "{}",
+                    entry.resource_id
+                );
+                assert_eq!(
+                    store.entities.living_entity_dead(entity_id),
+                    Some(true),
+                    "{}",
+                    entry.resource_id
+                );
+            }
+        }
+        assert_eq!(living_count, 92);
+        assert_eq!(effects.positioned_sounds.len(), living_count);
+
+        // Silent, non-living, and missing owners resolve no sound and consume no pitch samples.
+        let silent_id = 31_000;
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                silent_id,
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+                Vec3d::default(),
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: silent_id,
+                values: vec![silent_entity_data(true)],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: silent_id,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                silent_id + 1,
+                VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+                Vec3d::default(),
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: silent_id + 1,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: i32::MAX,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+        ] {
+            assert!(store
+                .apply_play_packet(packet, &mut random, &mut effects)
+                .is_none());
+        }
+        assert_eq!(effects.positioned_sounds.len(), living_count);
+        assert_eq!(random.next_float(), expected_random.next_float());
+    }
+
+    #[test]
+    fn living_death_sound_uses_the_pre_wake_position() {
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        store.insert_decoded_chunk(single_block_state_chunk(crate::vanilla_air_block_state_id()));
+        let registry = crate::BlockStateRegistry::vanilla_26_1();
+        let bed_pos = ProtocolBlockPos { x: 2, y: 1, z: 2 };
+        let bed_state_id = registry
+            .find_by_name_and_properties(
+                "minecraft:white_bed",
+                &BTreeMap::from([
+                    ("facing".to_string(), "north".to_string()),
+                    ("occupied".to_string(), "true".to_string()),
+                    ("part".to_string(), "foot".to_string()),
+                ]),
+            )
+            .unwrap()
+            .id;
+        let stone_state_id = registry
+            .find_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+            .unwrap()
+            .id;
+        assert!(store.apply_block_update(BlockUpdate {
+            pos: bed_pos,
+            block_state_id: bed_state_id,
+        }));
+        assert!(store.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 3, y: 0, z: 2 },
+            block_state_id: stone_state_id,
+        }));
+
+        let entity_id = 31_100;
+        let old_position = Vec3d {
+            x: 1.25,
+            y: 4.0,
+            z: 1.25,
+        };
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::AddEntity(add_entity(
+                    entity_id,
+                    VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                    old_position,
+                )),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        let entity_accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+        let living_accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        )
+        .unwrap();
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::SetEntityData(SetEntityData {
+                    id: entity_id,
+                    values: vec![
+                        EntityDataValue {
+                            data_id: entity_accessors.pose_data_id,
+                            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                            value: EntityDataValueKind::Pose(VANILLA_ENTITY_POSE_SLEEPING_ID),
+                        },
+                        EntityDataValue {
+                            data_id: living_accessors.sleeping_pos_data_id,
+                            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                            value: EntityDataValueKind::OptionalBlockPos(Some(bed_pos)),
+                        },
+                    ],
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::EntityEvent(EntityEvent {
+                    entity_id,
+                    event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        assert_eq!(effects.positioned_sounds[0].position, old_position);
+        assert_eq!(
+            store.probe_entity(entity_id).unwrap().position,
+            crate::EntityVec3 {
+                x: 3.5,
+                y: 1.0,
+                z: 2.5,
+            }
+        );
+    }
+
+    #[test]
     fn zombie_death_event_forwards_randomized_positioned_sound() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
@@ -4027,7 +4276,7 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 1);
+        assert_eq!(effects.positioned_sounds.len(), 2);
         let sound = &effects.positioned_sounds[0];
         assert_eq!(
             sound.sound.location.as_deref(),
@@ -4046,7 +4295,7 @@ mod tests {
         assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
         assert_eq!(sound.seed, 0);
         assert_eq!(sound.distance_delay, false);
-        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
         assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
@@ -4113,7 +4362,7 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 1);
+        assert_eq!(effects.positioned_sounds.len(), 2);
         let sound = &effects.positioned_sounds[0];
         assert_eq!(
             sound.sound.location.as_deref(),
@@ -4132,7 +4381,7 @@ mod tests {
         assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
         assert_eq!(sound.seed, 0);
         assert_eq!(sound.distance_delay, false);
-        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
         assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
@@ -4214,7 +4463,7 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 2);
+        assert_eq!(effects.positioned_sounds.len(), 3);
         let ravager = &effects.positioned_sounds[0];
         assert_eq!(
             ravager.sound.location.as_deref(),
@@ -4252,7 +4501,7 @@ mod tests {
             assert_eq!(sound.seed, 0);
             assert_eq!(sound.distance_delay, false);
         }
-        assert_eq!(store.last_sound(), Some(golem));
+        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
         assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
@@ -4334,7 +4583,7 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 2);
+        assert_eq!(effects.positioned_sounds.len(), 3);
         let witch = &effects.positioned_sounds[0];
         assert_eq!(
             witch.sound.location.as_deref(),
@@ -4372,7 +4621,7 @@ mod tests {
             assert_eq!(sound.seed, 0);
             assert_eq!(sound.distance_delay, false);
         }
-        assert_eq!(store.last_sound(), Some(villager));
+        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
         assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
@@ -4469,7 +4718,7 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 3);
+        assert_eq!(effects.positioned_sounds.len(), 4);
         let skeleton = &effects.positioned_sounds[0];
         assert_eq!(
             skeleton.sound.location.as_deref(),
@@ -4524,7 +4773,7 @@ mod tests {
             assert_eq!(sound.seed, 0);
             assert_eq!(sound.distance_delay, false);
         }
-        assert_eq!(store.last_sound(), Some(bogged));
+        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
         assert_eq!(store.counters().entity_events_applied, 5);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }

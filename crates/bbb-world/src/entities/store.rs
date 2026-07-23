@@ -768,7 +768,7 @@ impl EntityStore {
             sync_derived_marker::<EntityLivingLifecycle>(
                 &mut self.ecs,
                 entity,
-                vanilla_living_entity_type(entity_type_id),
+                vanilla_entity_metadata_type_is_living(entity_type_id),
             );
             if let Ok(mut lifecycle) = self.ecs.get::<&mut EntityLivingLifecycle>(entity) {
                 *lifecycle = EntityLivingLifecycle::default();
@@ -939,7 +939,7 @@ impl EntityStore {
         sync_derived_marker::<EntityLivingLifecycle>(
             &mut self.ecs,
             entity,
-            vanilla_living_entity_type(entity_type_id),
+            vanilla_entity_metadata_type_is_living(entity_type_id),
         );
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
@@ -1022,7 +1022,7 @@ impl EntityStore {
                 super::client_movement::fishing_hook_movement_from_uuid(uuid, spawn_owner_uuid),
             );
         }
-        if vanilla_living_entity_type(entity_type_id) {
+        if vanilla_entity_metadata_type_is_living(entity_type_id) {
             let _ = self
                 .ecs
                 .insert_one(entity, EntityLivingLifecycle::from(&state));
@@ -7827,7 +7827,7 @@ impl EntityStore {
         if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
             *damage = EntityDamage::from(state);
         }
-        if vanilla_living_entity_type(state.entity_type_id) {
+        if vanilla_entity_metadata_type_is_living(state.entity_type_id) {
             let lifecycle = EntityLivingLifecycle::from(state);
             let updated = self
                 .ecs

@@ -284,3 +284,7 @@
   策略驱动 canonical walk、hurt/invulnerability 与 40-tick source 生命周期，并在状态
   写入后下发 native 音频；五类 packet coverage 全部 complete，合同见
   `docs/archive/damage-event-packet-closure-design.md`。
+- **2026-07-23（EntityEvent 包闭环）**：生成 92 个 living death sound policy
+  与 88 个声明 owner，补齐 sound-before-state、first-death lifecycle/睡眠起身及
+  92 类型 native 音频穷举；五类 packet coverage 全部 complete，合同见
+  `docs/archive/entity-event-packet-closure-design.md`。

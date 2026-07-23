@@ -1,4 +1,4 @@
-# Entity Event Packet Closure Engineering Contract
+# Entity Event Packet Closure Engineering Contract (Archived)
 
 This document freezes the high-risk engineering slice that closes
 `CLIENTBOUND_ENTITY_EVENT` for Vanilla 26.1. The generated declaration inventory,

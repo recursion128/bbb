@@ -936,14 +936,6 @@ resolver by adding a value provider. No new selection machinery is required.
 Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 - Validate remaining synthesized/game-event sound mappings against vanilla.
-- Living-entity DamageEvent and event 3 consume the generated built-in
-  cat/chicken/cow/pig/wolf sound-variant adult/baby hurt and death sounds,
-  including cow/wolf volume 0.4, wolf armor damage, and bypass tags.
-  Synchronized registries use their actual holder order and complete typed
-  named/direct sound sets, including selected-known-pack data and direct fixed
-  range; only genuinely data-less built-in stubs use generated payloads by
-  resource identity, while malformed data fails the registry candidate or
-  closes direct-fixture playback.
 - Add the client-owned animal ambient/step/eat and cat/wolf state-trigger loops
   before consuming the remaining already-decoded sound-set fields; do not
   synthesize those events from registry presence alone.
