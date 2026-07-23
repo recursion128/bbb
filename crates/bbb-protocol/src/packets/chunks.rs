@@ -6,6 +6,7 @@ use crate::{
     block_types::vanilla_block_type,
     codec::{Decoder, Encoder, ProtocolError, Result},
     heightmap_types::{vanilla_heightmap_type, VANILLA_HEIGHTMAP_TYPES},
+    nbt_summary::read_modified_utf8,
 };
 
 use super::BlockHitResult;
@@ -23,6 +24,8 @@ const LIGHT_ARRAY_BYTES: usize = 2048;
 // boundary sections, so its four BitSet masks occupy at most four longs.
 const MAX_LIGHT_SECTIONS: usize = 256;
 const MAX_LIGHT_MASK_LONGS: usize = MAX_LIGHT_SECTIONS / 64;
+const MAX_NBT_ARRAY_ITEMS: usize = 4096;
+const MAX_NBT_COMPOUND_ENTRIES: usize = 4096;
 const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_LIST_ITEMS: usize = 4096;
 
@@ -188,11 +191,24 @@ pub(crate) fn decode_block_destruction(decoder: &mut Decoder<'_>) -> Result<Bloc
 }
 
 pub(crate) fn decode_block_entity_data(decoder: &mut Decoder<'_>) -> Result<BlockEntityData> {
-    Ok(BlockEntityData {
-        pos: decode_block_pos(decoder.read_i64()?),
-        block_entity_type_id: decoder.read_var_i32()?,
-        raw_nbt: decoder.remaining().to_vec(),
-    })
+    let pos = decode_block_pos(decoder.read_i64()?);
+    let block_entity_type_id = decoder.read_var_i32()?;
+    if vanilla_block_entity_type(block_entity_type_id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "unknown block entity type id {block_entity_type_id}"
+        )));
+    }
+    let packet = BlockEntityData {
+        pos,
+        block_entity_type_id,
+        raw_nbt: read_raw_required_compound_nbt(decoder)?,
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after block entity data packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_block_event(decoder: &mut Decoder<'_>) -> Result<BlockEvent> {
@@ -397,7 +413,7 @@ fn decode_level_chunk_block_entities(
             packed_xz,
             y,
             block_entity_type_id,
-            raw_nbt: read_raw_nbt(decoder)?,
+            raw_nbt: read_raw_optional_compound_nbt(decoder)?,
         });
     }
     Ok(out)
@@ -500,12 +516,30 @@ fn bit_count(mask: &[i64]) -> usize {
         .sum()
 }
 
-fn read_raw_nbt(decoder: &mut Decoder<'_>) -> Result<Vec<u8>> {
+fn read_raw_optional_compound_nbt(decoder: &mut Decoder<'_>) -> Result<Vec<u8>> {
     let start = decoder.position();
     let tag_id = decoder.read_u8()?;
-    if tag_id != 0 {
-        skip_nbt_payload(decoder, tag_id, 0)?;
+    match tag_id {
+        0 => {}
+        10 => skip_nbt_payload(decoder, tag_id, 0)?,
+        other => {
+            return Err(ProtocolError::InvalidData(format!(
+                "block entity nbt root must be a compound tag or null, got tag id {other}"
+            )));
+        }
     }
+    Ok(decoder.bytes_from(start).to_vec())
+}
+
+fn read_raw_required_compound_nbt(decoder: &mut Decoder<'_>) -> Result<Vec<u8>> {
+    let start = decoder.position();
+    let tag_id = decoder.read_u8()?;
+    if tag_id != 10 {
+        return Err(ProtocolError::InvalidData(format!(
+            "block entity data nbt root must be a non-null compound tag, got tag id {tag_id}"
+        )));
+    }
+    skip_nbt_payload(decoder, tag_id, 0)?;
     Ok(decoder.bytes_from(start).to_vec())
 }
 
@@ -531,6 +565,7 @@ fn skip_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
         }
         7 => {
             let len = read_nbt_len(decoder)?;
+            validate_nbt_collection_len(len, MAX_NBT_ARRAY_ITEMS)?;
             decoder.read_exact(len, "nbt byte array")?;
         }
         8 => {
@@ -539,9 +574,7 @@ fn skip_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
         9 => {
             let element_type = decoder.read_u8()?;
             let len = read_nbt_len(decoder)?;
-            if len > MAX_NBT_LIST_ITEMS {
-                return Err(ProtocolError::PacketTooLarge(len, MAX_NBT_LIST_ITEMS));
-            }
+            validate_nbt_collection_len(len, MAX_NBT_LIST_ITEMS)?;
             if element_type == 0 && len > 0 {
                 return Err(ProtocolError::InvalidData(
                     "non-empty nbt list has end tag element type".to_string(),
@@ -551,16 +584,22 @@ fn skip_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
                 skip_nbt_payload(decoder, element_type, depth + 1)?;
             }
         }
-        10 => loop {
-            let nested_type = decoder.read_u8()?;
-            if nested_type == 0 {
-                break;
+        10 => {
+            let mut entries = 0;
+            loop {
+                let nested_type = decoder.read_u8()?;
+                if nested_type == 0 {
+                    break;
+                }
+                entries += 1;
+                validate_nbt_collection_len(entries, MAX_NBT_COMPOUND_ENTRIES)?;
+                read_nbt_string(decoder)?;
+                skip_nbt_payload(decoder, nested_type, depth + 1)?;
             }
-            read_nbt_string(decoder)?;
-            skip_nbt_payload(decoder, nested_type, depth + 1)?;
-        },
+        }
         11 => {
             let len = read_nbt_len(decoder)?;
+            validate_nbt_collection_len(len, MAX_NBT_ARRAY_ITEMS)?;
             let byte_len = len.checked_mul(4).ok_or_else(|| {
                 ProtocolError::InvalidData("nbt int array length overflow".to_string())
             })?;
@@ -568,6 +607,7 @@ fn skip_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
         }
         12 => {
             let len = read_nbt_len(decoder)?;
+            validate_nbt_collection_len(len, MAX_NBT_ARRAY_ITEMS)?;
             let byte_len = len.checked_mul(8).ok_or_else(|| {
                 ProtocolError::InvalidData("nbt long array length overflow".to_string())
             })?;
@@ -582,6 +622,13 @@ fn skip_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
     Ok(())
 }
 
+fn validate_nbt_collection_len(len: usize, max: usize) -> Result<()> {
+    if len > max {
+        return Err(ProtocolError::PacketTooLarge(len, max));
+    }
+    Ok(())
+}
+
 fn read_nbt_len(decoder: &mut Decoder<'_>) -> Result<usize> {
     let len = decoder.read_i32()?;
     if len < 0 {
@@ -591,8 +638,7 @@ fn read_nbt_len(decoder: &mut Decoder<'_>) -> Result<usize> {
 }
 
 fn read_nbt_string(decoder: &mut Decoder<'_>) -> Result<()> {
-    let len = decoder.read_u16()? as usize;
-    decoder.read_exact(len, "nbt string")?;
+    read_modified_utf8(decoder)?;
     Ok(())
 }
 

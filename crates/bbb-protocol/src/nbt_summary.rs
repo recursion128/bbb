@@ -161,7 +161,7 @@ fn read_nbt_len(decoder: &mut Decoder<'_>) -> Result<usize> {
     Ok(len as usize)
 }
 
-fn read_modified_utf8(decoder: &mut Decoder<'_>) -> Result<String> {
+pub(crate) fn read_modified_utf8(decoder: &mut Decoder<'_>) -> Result<String> {
     let len = decoder.read_u16()? as usize;
     let bytes = decoder.read_exact(len, "nbt string")?;
     let mut units = Vec::with_capacity(len);

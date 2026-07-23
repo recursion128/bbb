@@ -502,7 +502,7 @@ fn decodes_block_entity_data_update() {
     let raw_nbt = nbt_compound_with_string("id", "minecraft:chest");
     let mut payload = Encoder::new();
     payload.write_i64(pack_block_pos(34, 64, -45));
-    payload.write_var_i32(5);
+    payload.write_var_i32(crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID);
     payload.write_bytes(&raw_nbt);
 
     let packet = decode_play_clientbound(
@@ -518,9 +518,148 @@ fn decodes_block_entity_data_update() {
                 y: 64,
                 z: -45,
             },
-            block_entity_type_id: 5,
+            block_entity_type_id: crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
             raw_nbt,
         })
+    );
+}
+
+#[test]
+fn block_entity_data_requires_known_type_and_terminal_compound_nbt() {
+    for block_entity_type in crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES {
+        let payload = block_entity_data_payload(block_entity_type.id, &[10, 0]);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA, &payload).unwrap();
+        let PlayClientbound::BlockEntityData(packet) = packet else {
+            panic!("expected block entity data");
+        };
+        assert_eq!(packet.block_entity_type_id, block_entity_type.id);
+        assert_eq!(packet.raw_nbt, vec![10, 0]);
+    }
+
+    for invalid_type_id in [
+        -1,
+        i32::try_from(crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES.len()).unwrap(),
+    ] {
+        let error = decode_play_clientbound(
+            ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA,
+            &block_entity_data_payload(invalid_type_id, &[10, 0]),
+        )
+        .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains(&format!("unknown block entity type id {invalid_type_id}")),
+            "{error}"
+        );
+    }
+
+    for invalid_root in [vec![0], vec![1, 0], vec![9, 0, 0, 0, 0, 0]] {
+        let error = decode_play_clientbound(
+            ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA,
+            &block_entity_data_payload(
+                crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+                &invalid_root,
+            ),
+        )
+        .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("must be a non-null compound tag"),
+            "{error}"
+        );
+    }
+
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA,
+        &block_entity_data_payload(
+            crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+            &[10, 0, 0],
+        ),
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("trailing bytes after block entity data packet"),
+        "{error}"
+    );
+}
+
+#[test]
+fn block_entity_nbt_rejects_malformed_and_oversized_structures() {
+    let decode = |nbt: &[u8]| {
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA,
+            &block_entity_data_payload(
+                crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+                nbt,
+            ),
+        )
+    };
+
+    let mut legal_depth = nested_compound_nbt(MAX_NBT_DEPTH);
+    decode(&legal_depth).unwrap();
+    legal_depth = nested_compound_nbt(MAX_NBT_DEPTH + 1);
+    assert!(decode(&legal_depth)
+        .unwrap_err()
+        .to_string()
+        .contains("exceeded max depth"));
+
+    let legal_entries = compound_with_byte_entries(MAX_NBT_COMPOUND_ENTRIES);
+    decode(&legal_entries).unwrap();
+    let oversized_entries = compound_with_byte_entries(MAX_NBT_COMPOUND_ENTRIES + 1);
+    assert!(matches!(
+        decode(&oversized_entries),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_NBT_COMPOUND_ENTRIES + 1 && max == MAX_NBT_COMPOUND_ENTRIES
+    ));
+
+    for tag_id in [7, 11, 12] {
+        let oversized_array = compound_with_sized_collection(tag_id, MAX_NBT_ARRAY_ITEMS + 1);
+        assert!(matches!(
+            decode(&oversized_array),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_NBT_ARRAY_ITEMS + 1 && max == MAX_NBT_ARRAY_ITEMS
+        ));
+    }
+    let oversized_list = compound_with_sized_collection(9, MAX_NBT_LIST_ITEMS + 1);
+    assert!(matches!(
+        decode(&oversized_list),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_NBT_LIST_ITEMS + 1 && max == MAX_NBT_LIST_ITEMS
+    ));
+
+    assert!(matches!(
+        decode(&[10, 1, 0, 0]),
+        Err(ProtocolError::UnexpectedEof { .. })
+    ));
+    assert!(decode(&[10, 1, 0, 1, 0xff, 0, 0])
+        .unwrap_err()
+        .to_string()
+        .contains("invalid modified utf-8 leading byte"));
+    assert!(decode(&[10, 8, 0, 0, 0, 1, 0xff, 0])
+        .unwrap_err()
+        .to_string()
+        .contains("invalid modified utf-8 leading byte"));
+}
+
+#[test]
+fn level_chunk_block_entity_nbt_is_nullable_but_other_roots_are_invalid() {
+    let mut payload = Encoder::new();
+    payload.write_i32(12);
+    payload.write_i32(-4);
+    write_level_chunk_data_with_nbt(&mut payload, &[1, 2, 3], &[1, 0]);
+    write_light_data(&mut payload, &[0b10], &[0b100], &[], &[], 1, 1);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(
+        error.to_string().contains("must be a compound tag or null"),
+        "{error}"
     );
 }
 
@@ -657,11 +796,53 @@ fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
     payload
 }
 
+fn block_entity_data_payload(block_entity_type_id: i32, raw_nbt: &[u8]) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_i64(pack_block_pos(34, 64, -45));
+    payload.write_var_i32(block_entity_type_id);
+    payload.write_bytes(raw_nbt);
+    payload.into_inner()
+}
+
+fn nested_compound_nbt(nested_count: usize) -> Vec<u8> {
+    let mut nbt = Vec::with_capacity(1 + nested_count * 3 + nested_count + 1);
+    nbt.push(10);
+    for _ in 0..nested_count {
+        nbt.extend_from_slice(&[10, 0, 0]);
+    }
+    nbt.resize(nbt.len() + nested_count + 1, 0);
+    nbt
+}
+
+fn compound_with_byte_entries(count: usize) -> Vec<u8> {
+    let mut nbt = Vec::with_capacity(2 + count * 4);
+    nbt.push(10);
+    for _ in 0..count {
+        nbt.extend_from_slice(&[1, 0, 0, 0]);
+    }
+    nbt.push(0);
+    nbt
+}
+
+fn compound_with_sized_collection(tag_id: u8, count: usize) -> Vec<u8> {
+    let mut nbt = vec![10, tag_id, 0, 0];
+    if tag_id == 9 {
+        nbt.push(1);
+    }
+    nbt.extend_from_slice(&(count as i32).to_be_bytes());
+    nbt.push(0);
+    nbt
+}
+
 fn section_relative_pos(x: i64, y: i64, z: i64) -> i64 {
     (x << 8) | (z << 4) | y
 }
 
 fn write_level_chunk_data(out: &mut Encoder, section_data: &[u8]) {
+    write_level_chunk_data_with_nbt(out, section_data, &[0]);
+}
+
+fn write_level_chunk_data_with_nbt(out: &mut Encoder, section_data: &[u8], raw_nbt: &[u8]) {
     out.write_var_i32(1);
     out.write_var_i32(1);
     write_long_array(out, &[7, 8]);
@@ -671,7 +852,7 @@ fn write_level_chunk_data(out: &mut Encoder, section_data: &[u8]) {
     out.write_u8(0xab);
     out.write_i16(64);
     out.write_var_i32(5);
-    out.write_u8(0);
+    out.write_bytes(raw_nbt);
 }
 
 fn write_light_data(
