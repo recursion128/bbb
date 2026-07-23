@@ -2922,20 +2922,31 @@ pub(crate) fn update_renderer_from_publication(
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade = input.advancement_hover_fade();
-    let hud_game_event_screen = hud_game_event_screen(
-        hud_render_runtime,
-        input,
-        &publication.win_screen_resources,
-        item_runtime,
-    );
+    let hud_death_screen = hud_death_screen(input, world, item_runtime);
+    if hud_death_screen.is_some() {
+        hud_render_runtime.game_event_screen_narration = None;
+    }
+    let hud_game_event_screen = hud_death_screen
+        .is_none()
+        .then(|| {
+            hud_game_event_screen(
+                hud_render_runtime,
+                input,
+                &publication.win_screen_resources,
+                item_runtime,
+            )
+        })
+        .flatten();
+    let exclusive_game_screen_present =
+        hud_death_screen.is_some() || hud_game_event_screen.is_some();
     hud_render_runtime.death_screen_narration =
         death_screen_narration_frame(input, world, item_runtime);
-    let hud_debug_options_screen = if hud_game_event_screen.is_some() {
+    let hud_debug_options_screen = if exclusive_game_screen_present {
         None
     } else {
         hud_debug_options_screen(input, world, surface_size)
     };
-    let hud_command_suggestions = if hud_game_event_screen.is_none()
+    let hud_command_suggestions = if !exclusive_game_screen_present
         && hud_debug_options_screen.is_none()
         && input.command_suggestions_active()
     {
@@ -2950,13 +2961,12 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         None
     };
-    let hud_pause_screen = if hud_game_event_screen.is_some() || hud_debug_options_screen.is_some()
-    {
+    let hud_pause_screen = if exclusive_game_screen_present || hud_debug_options_screen.is_some() {
         None
     } else {
         hud_pause_screen(input, surface_size)
     };
-    let hud_game_rules_screen = if hud_game_event_screen.is_some()
+    let hud_game_rules_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
     {
@@ -2965,7 +2975,7 @@ pub(crate) fn update_renderer_from_publication(
         let mut game_rules_input = input.clone();
         hud_game_rules_screen(&mut game_rules_input, world, item_runtime, surface_size)
     };
-    let hud_stats_screen = if hud_game_event_screen.is_some()
+    let hud_stats_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -3011,7 +3021,7 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         )
     };
-    let hud_sign_editor_screen = if hud_game_event_screen.is_some()
+    let hud_sign_editor_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -3021,7 +3031,7 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_sign_editor_screen(input, world, surface_size)
     };
-    let hud_command_block_editor_screen = if hud_game_event_screen.is_some()
+    let hud_command_block_editor_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -3031,7 +3041,7 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_command_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_structure_block_editor_screen = if hud_game_event_screen.is_some()
+    let hud_structure_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3042,7 +3052,7 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_structure_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_jigsaw_block_editor_screen = if hud_game_event_screen.is_some()
+    let hud_jigsaw_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3053,7 +3063,7 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_jigsaw_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_test_block_editor_screen = if hud_game_event_screen.is_some()
+    let hud_test_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3064,7 +3074,7 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_test_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_test_instance_block_editor_screen = if hud_game_event_screen.is_some()
+    let hud_test_instance_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3075,7 +3085,7 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_test_instance_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_book_screen = if hud_game_event_screen.is_some()
+    let hud_book_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3092,7 +3102,7 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_book_screen(input, world, item_runtime)
     };
-    let hud_inventory_screen = if hud_game_event_screen.is_some()
+    let hud_inventory_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -3660,6 +3670,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_test_instance_block_editor_screen,
             hud_pause_screen,
             hud_game_rules_screen,
+            hud_death_screen,
             hud_game_event_screen,
             hud_stats_screen,
             hud_system_toast,

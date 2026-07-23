@@ -32,7 +32,8 @@ pub use self::book::{
     HUD_BOOK_TEXT_WIDTH, HUD_BOOK_TEXT_X, HUD_BOOK_TEXT_Y, HUD_BOOK_TOP, HUD_BOOK_WIDTH,
 };
 pub use self::death_screen::{
-    HudDeathScreenButton, HudDeathScreenHitTarget, HudDeathScreenHitTargetKind,
+    HudDeathLinkConfirmationScreen, HudDeathMainScreen, HudDeathQuitConfirmationScreen,
+    HudDeathScreen, HudDeathScreenButton, HudDeathScreenHitTarget, HudDeathScreenHitTargetKind,
 };
 pub use self::game_event::{
     HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudGameEventButton, HudGameEventHitTarget,
@@ -5053,6 +5054,22 @@ impl Renderer {
         self.hud_game_rules_screen = screen.and_then(game_rules::sanitize_hud_game_rules_screen);
     }
 
+    pub fn set_hud_death_screen(&mut self, screen: Option<HudDeathScreen>) {
+        self.hud_death_screen = screen.and_then(death_screen::sanitize_hud_death_screen);
+    }
+
+    pub fn hud_death_screen_hit_target_at(
+        &self,
+        position: (f64, f64),
+    ) -> Option<HudDeathScreenHitTarget> {
+        death_screen::hud_death_screen_hit_target_at(
+            self.hud_death_screen.as_ref()?,
+            &self.hud_font_book,
+            self.surface_size(),
+            position,
+        )
+    }
+
     pub fn set_hud_game_event_screen(&mut self, screen: Option<HudGameEventScreen>) {
         self.hud_game_event_screen = screen.and_then(game_event::sanitize_hud_game_event_screen);
     }
@@ -6866,6 +6883,25 @@ impl Renderer {
                 overlay,
                 surface_size,
                 centered_hud_rect(surface_size, overlay.width, overlay.height),
+            );
+        }
+
+        if let Some(screen) = &self.hud_death_screen {
+            death_screen::push_hud_death_screen(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_book,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
             );
         }
 

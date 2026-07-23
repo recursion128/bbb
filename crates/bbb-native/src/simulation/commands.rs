@@ -7,7 +7,10 @@ use std::{
 };
 
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
-use bbb_renderer::{HudBookHitTarget, HudChatHitTarget, HudFontGlyphMap, HudGameEventHitTarget};
+use bbb_renderer::{
+    HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudFontGlyphMap,
+    HudGameEventHitTarget,
+};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton, MouseScrollDelta},
@@ -30,6 +33,7 @@ pub(crate) enum SimulationCommand {
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
+        death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
     },
     MouseMotion {
@@ -40,6 +44,7 @@ pub(crate) enum SimulationCommand {
     },
     CursorMoved {
         position: PhysicalPosition<f64>,
+        death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
     },
     GameEventScreenRenderDelta {
@@ -340,14 +345,17 @@ fn try_coalesce_tail(
         (
             SimulationCommand::CursorMoved {
                 position,
+                death_screen_target,
                 game_event_target,
             },
             SimulationCommand::CursorMoved {
                 position: incoming_position,
+                death_screen_target: incoming_death_screen_target,
                 game_event_target: incoming_game_event_target,
             },
         ) => {
             *position = *incoming_position;
+            *death_screen_target = *incoming_death_screen_target;
             *game_event_target = *incoming_game_event_target;
             true
         }
@@ -457,6 +465,7 @@ mod tests {
             state: ElementState::Released,
             chat_target: None,
             book_target: None,
+            death_screen_target: None,
             game_event_target: None,
         });
         ControlRequestSink::submit(
@@ -509,6 +518,58 @@ mod tests {
             SimulationCommand::MouseMotion {
                 delta: (12.0, 14.0)
             }
+        ));
+    }
+
+    #[test]
+    fn death_screen_targets_survive_cursor_coalescing_and_mouse_barrier() {
+        use bbb_renderer::{
+            HudDeathScreenButton, HudDeathScreenHitTarget, HudDeathScreenHitTargetKind,
+        };
+
+        let mailbox = SimulationMailbox::with_coalescing_threshold(1);
+        mailbox.enqueue(SimulationCommand::CursorMoved {
+            position: PhysicalPosition::new(10.0, 20.0),
+            death_screen_target: Some(HudDeathScreenHitTarget {
+                generation: 7,
+                kind: HudDeathScreenHitTargetKind::Button(HudDeathScreenButton::Respawn),
+            }),
+            game_event_target: None,
+        });
+        let latest = HudDeathScreenHitTarget {
+            generation: 8,
+            kind: HudDeathScreenHitTargetKind::CauseLink { run_index: 3 },
+        };
+        mailbox.enqueue(SimulationCommand::CursorMoved {
+            position: PhysicalPosition::new(30.0, 40.0),
+            death_screen_target: Some(latest),
+            game_event_target: None,
+        });
+        mailbox.enqueue(SimulationCommand::MouseButton {
+            button: MouseButton::Left,
+            state: ElementState::Pressed,
+            chat_target: None,
+            book_target: None,
+            death_screen_target: Some(latest),
+            game_event_target: None,
+        });
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(drained.len(), 2);
+        assert!(matches!(
+            drained[0].command,
+            SimulationCommand::CursorMoved {
+                position,
+                death_screen_target: Some(target),
+                ..
+            } if position == PhysicalPosition::new(30.0, 40.0) && target == latest
+        ));
+        assert!(matches!(
+            drained[1].command,
+            SimulationCommand::MouseButton {
+                death_screen_target: Some(target),
+                ..
+            } if target == latest
         ));
     }
 

@@ -939,12 +939,10 @@ fn main() -> Result<()> {
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                     );
                     game_event_screen_narration.tick(
-                        render_publication
-                            .world
-                            .game_event_screen()
-                            .is_some()
-                            .then(|| hud_render_runtime.game_event_screen_narration())
-                            .flatten(),
+                        (render_publication.world.death_screen().is_none()
+                            && render_publication.world.game_event_screen().is_some())
+                        .then(|| hud_render_runtime.game_event_screen_narration())
+                        .flatten(),
                         Instant::now(),
                         narrator_runtime
                             .as_mut()
@@ -1195,8 +1193,11 @@ fn enqueue_simulation_window_event(
             *cursor_position = Some(*position);
             window.set_cursor_icon(
                 if renderer
-                    .hud_game_event_hit_target_at((position.x, position.y))
+                    .hud_death_screen_hit_target_at((position.x, position.y))
                     .is_some()
+                    || renderer
+                        .hud_game_event_hit_target_at((position.x, position.y))
+                        .is_some()
                     || renderer
                         .hud_book_hit_target_at((position.x, position.y))
                         .is_some()
@@ -1208,6 +1209,8 @@ fn enqueue_simulation_window_event(
             );
             SimulationCommand::CursorMoved {
                 position: *position,
+                death_screen_target: renderer
+                    .hud_death_screen_hit_target_at((position.x, position.y)),
                 game_event_target: renderer.hud_game_event_hit_target_at((position.x, position.y)),
             }
         }
@@ -1253,6 +1256,16 @@ fn enqueue_simulation_window_event(
             .then(|| {
                 (*cursor_position)
                     .and_then(|position| renderer.hud_book_hit_target_at((position.x, position.y)))
+            })
+            .flatten(),
+            death_screen_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position).and_then(|position| {
+                    renderer.hud_death_screen_hit_target_at((position.x, position.y))
+                })
             })
             .flatten(),
             game_event_target: (matches!(

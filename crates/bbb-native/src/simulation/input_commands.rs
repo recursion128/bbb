@@ -9,8 +9,8 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
 use bbb_renderer::{
-    HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudFontGlyphMap,
-    HudGameEventHitTarget,
+    HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
+    HudFontGlyphMap, HudGameEventHitTarget,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -185,6 +185,7 @@ impl SimulationInputRuntime {
                 state,
                 chat_target,
                 book_target,
+                death_screen_target,
                 game_event_target,
             } => {
                 self.apply_mouse_button(
@@ -192,6 +193,7 @@ impl SimulationInputRuntime {
                     state,
                     chat_target,
                     book_target,
+                    death_screen_target,
                     game_event_target,
                     context,
                 );
@@ -200,9 +202,10 @@ impl SimulationInputRuntime {
             SimulationCommand::MouseWheel { delta } => self.apply_mouse_wheel(delta, context),
             SimulationCommand::CursorMoved {
                 position,
+                death_screen_target,
                 game_event_target,
             } => {
-                self.apply_cursor_moved(position, game_event_target, context);
+                self.apply_cursor_moved(position, death_screen_target, game_event_target, context);
             }
             SimulationCommand::GameEventScreenRenderDelta {
                 generation,
@@ -295,6 +298,7 @@ impl SimulationInputRuntime {
     fn apply_cursor_moved(
         &mut self,
         position: PhysicalPosition<f64>,
+        death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
@@ -323,7 +327,7 @@ impl SimulationInputRuntime {
             return;
         }
         if context.world.death_screen().is_some() {
-            context.input.handle_death_screen_hover(None);
+            context.input.handle_death_screen_hover(death_screen_target);
             context.platform.submit(PlatformEffect::DeathScreenInput(
                 ScreenNarrationScheduleInput::MouseMove,
             ));
@@ -937,6 +941,7 @@ impl SimulationInputRuntime {
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
+        death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
@@ -1011,7 +1016,7 @@ impl SimulationInputRuntime {
                 context.net_commands,
                 button,
                 state,
-                None,
+                death_screen_target,
             );
             collect_death_screen_platform_effects(context.input, context.platform);
             context.platform.submit(PlatformEffect::DeathScreenInput(

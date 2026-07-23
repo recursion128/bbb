@@ -113,9 +113,11 @@ mod tests {
     use std::sync::Arc;
 
     use crate::{
-        ClearColor, EntityModelTextureImage, EntityModelTextureRef, HudDemoPopupScreen,
-        HudGameEventButton, HudGameEventScreen, HudNineSliceScaling, HudVignette, HudWinScreen,
-        Renderer,
+        ClearColor, EntityModelTextureImage, EntityModelTextureRef, HudAsciiGlyph,
+        HudComponentTextRun, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
+        HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen,
+        HudFontGlyphMap, HudGameEventButton, HudGameEventScreen, HudNineSliceScaling,
+        HudStyledTextRun, HudVignette, HudWinScreen, Renderer,
     };
 
     const WIDTH: u32 = 320;
@@ -308,6 +310,191 @@ mod tests {
         assert!(
             renderer.counters.hud_draw_calls >= 2,
             "portal and credits vignette must both be submitted"
+        );
+    }
+
+    #[test]
+    fn offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_crosshair(4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "TCS".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("test font");
+        renderer
+            .upload_hud_widget_button(1, 1, &[0, 255, 0, 255])
+            .expect("enabled button");
+        renderer
+            .upload_hud_widget_button_disabled(1, 1, &[64, 64, 64, 255])
+            .expect("disabled button");
+        renderer
+            .upload_hud_widget_button_highlighted(1, 1, &[255, 255, 0, 255])
+            .expect("highlighted button");
+        renderer.set_hud_screen_blur(false);
+        renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
+            generation: 1,
+            title: "T".to_string(),
+            cause_runs: vec![HudComponentTextRun::plain("C")],
+            cause_link_run_indices: vec![None],
+            score_runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: "S".to_string(),
+                    color: Some(0xFF_FF_55),
+                    ..HudStyledTextRun::default()
+                },
+                font: None,
+            }],
+            respawn_label: String::new(),
+            title_screen_label: String::new(),
+            buttons_active: false,
+            focused: HudDeathScreenButton::TitleScreen,
+            hovered: None,
+        })));
+        assert!(
+            renderer.collect_hud_draws().screen_blur.is_none(),
+            "DeathScreen does not request menu blur"
+        );
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("death screen frame");
+        let top = pixels.pixel(4, 4);
+        let bottom = pixels.pixel(4, HEIGHT - 5);
+        let center = pixels.pixel(WIDTH / 2, HEIGHT / 2);
+        let beside_center = pixels.pixel(WIDTH / 2 + 8, HEIGHT / 2);
+        let title = pixels.pixel(WIDTH / 2, 34);
+        let cause = pixels.pixel(WIDTH / 2, 88);
+        let score = pixels.pixel(WIDTH / 2, 103);
+        let disabled_button = pixels.pixel(WIDTH / 2 - 95, HEIGHT / 4 + 76);
+
+        assert!(
+            bottom[0] > top[0],
+            "death background must retain its red top-to-bottom gradient, top={top:?}, bottom={bottom:?}"
+        );
+        assert!(
+            center[0] > beside_center[0] && center[2] < beside_center[2],
+            "the translucent death gradient must be composited after the ordinary red crosshair, center={center:?}, beside={beside_center:?}"
+        );
+        assert!(
+            title[0] > 220 && title[1] > 220 && title[2] > 220,
+            "2x title glyph must be rendered at y=30, got {title:?}"
+        );
+        assert!(
+            cause[0] > 220 && cause[1] > 220 && cause[2] > 220,
+            "cause glyph must be rendered at y=85, got {cause:?}"
+        );
+        assert!(
+            score[0] > score[2].saturating_add(40) && score[1] > score[2].saturating_add(40),
+            "score argument must use Vanilla yellow at y=100, got {score:?}"
+        );
+        assert!(
+            disabled_button[0].abs_diff(disabled_button[1]) < 8
+                && disabled_button[1].abs_diff(disabled_button[2]) < 8,
+            "the delayed main button must use the disabled sprite, got {disabled_button:?}"
+        );
+
+        renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
+            generation: 1,
+            title: String::new(),
+            cause_runs: Vec::new(),
+            cause_link_run_indices: Vec::new(),
+            score_runs: Vec::new(),
+            respawn_label: String::new(),
+            title_screen_label: String::new(),
+            buttons_active: true,
+            focused: HudDeathScreenButton::TitleScreen,
+            hovered: None,
+        })));
+        let enabled = renderer
+            .render_offscreen_frame()
+            .expect("enabled death buttons")
+            .pixel(WIDTH / 2 - 95, HEIGHT / 4 + 76);
+        assert!(
+            enabled[1] > 220 && enabled[0] < 32,
+            "enabled unfocused button must use the normal sprite, got {enabled:?}"
+        );
+
+        renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
+            generation: 1,
+            title: String::new(),
+            cause_runs: Vec::new(),
+            cause_link_run_indices: Vec::new(),
+            score_runs: Vec::new(),
+            respawn_label: String::new(),
+            title_screen_label: String::new(),
+            buttons_active: true,
+            focused: HudDeathScreenButton::TitleScreen,
+            hovered: Some(HudDeathScreenButton::Respawn),
+        })));
+        let hovered = renderer
+            .render_offscreen_frame()
+            .expect("hovered death button")
+            .pixel(WIDTH / 2 - 95, HEIGHT / 4 + 76);
+        assert!(
+            hovered[0] > 220 && hovered[1] > 220 && hovered[2] < 32,
+            "hovered button must use the highlighted sprite, got {hovered:?}"
+        );
+
+        renderer.set_hud_death_screen(Some(HudDeathScreen::QuitConfirmation(
+            HudDeathQuitConfirmationScreen {
+                generation: 1,
+                title: "T".to_string(),
+                title_screen_label: String::new(),
+                respawn_label: String::new(),
+                buttons_active: true,
+                focused: HudDeathScreenButton::QuitRespawn,
+                hovered: None,
+            },
+        )));
+        let quit = renderer
+            .render_offscreen_frame()
+            .expect("quit confirmation")
+            .pixel(12, 132);
+        assert!(
+            quit[1] > 220 && quit[0] < 32,
+            "quit confirmation must render its 150-wide first button, got {quit:?}"
+        );
+
+        renderer.set_hud_death_screen(Some(HudDeathScreen::LinkConfirmation(
+            HudDeathLinkConfirmationScreen {
+                generation: 1,
+                title: "T".to_string(),
+                message: "C".to_string(),
+                open_label: String::new(),
+                copy_label: String::new(),
+                cancel_label: String::new(),
+                focused: HudDeathScreenButton::LinkCancel,
+                hovered: None,
+            },
+        )));
+        let link = renderer
+            .render_offscreen_frame()
+            .expect("link confirmation")
+            .pixel(12, 138);
+        assert!(
+            link[1] > 220 && link[0] < 32,
+            "link confirmation must render its 100-wide first button, got {link:?}"
         );
     }
 }

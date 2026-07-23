@@ -14,16 +14,18 @@ use bbb_renderer::{
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
-    HudComponentTextRun, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameEventScreen,
-    HudGameRulesScreen, HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen,
-    HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry,
-    HudPlayerListScore, HudScoreboardSidebar, HudScoreboardSidebarEntry, HudSignEditorScreen,
-    HudSleepOverlay, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
-    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudComponentTextRun, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
+    HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen, HudDebugOverlay,
+    HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode, HudInventoryScreen,
+    HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList,
+    HudPlayerListEntry, HudPlayerListScore, HudScoreboardSidebar, HudScoreboardSidebarEntry,
+    HudSignEditorScreen, HudSleepOverlay, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
+    HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast,
+    HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText,
+    HudVehicleHealth, HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, SelectionOutline,
+    SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -45,6 +47,174 @@ pub(crate) fn lightmap_environment_for_world(
         0,
         VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
     )
+}
+
+pub(crate) fn hud_death_screen(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<HudDeathScreen> {
+    let runtime = input.death_screen_runtime()?;
+    let canonical = world
+        .death_screen()
+        .filter(|screen| screen.generation == runtime.generation())?;
+    let screen = match runtime {
+        DeathScreenRuntime::Main(state) => {
+            let localized_cause = localized_component_runs(
+                &canonical.cause_of_death,
+                &bbb_protocol::ComponentStyle::default(),
+                item_runtime,
+            );
+            let cause_link_run_indices = localized_cause
+                .iter()
+                .map(|run| {
+                    let bbb_protocol::ComponentClickEvent::OpenUrl { .. } =
+                        run.style.click_event.as_ref()?
+                    else {
+                        return None;
+                    };
+                    canonical
+                        .cause_of_death
+                        .styled()
+                        .iter()
+                        .position(|canonical_run| {
+                            canonical_run.style.click_event == run.style.click_event
+                        })
+                        .and_then(|index| u16::try_from(index).ok())
+                })
+                .collect();
+            HudDeathScreen::Main(HudDeathMainScreen {
+                generation: state.generation,
+                title: localized_gui_text(
+                    item_runtime,
+                    if canonical.hardcore {
+                        "deathScreen.title.hardcore"
+                    } else {
+                        "deathScreen.title"
+                    },
+                    if canonical.hardcore {
+                        "Game Over!"
+                    } else {
+                        "You Died!"
+                    },
+                ),
+                cause_runs: localized_cause
+                    .iter()
+                    .map(|run| HudComponentTextRun {
+                        visual: hud_chat_run(&run.text, &run.style),
+                        font: run.style.font.clone(),
+                    })
+                    .collect(),
+                cause_link_run_indices,
+                score_runs: death_score_runs(canonical.score, item_runtime),
+                respawn_label: localized_gui_text(
+                    item_runtime,
+                    if canonical.hardcore {
+                        "deathScreen.spectate"
+                    } else {
+                        "deathScreen.respawn"
+                    },
+                    if canonical.hardcore {
+                        "Spectate World"
+                    } else {
+                        "Respawn"
+                    },
+                ),
+                title_screen_label: localized_gui_text(
+                    item_runtime,
+                    "deathScreen.titleScreen",
+                    "Title Screen",
+                ),
+                buttons_active: state.buttons_active(),
+                focused: state.focus,
+                hovered: state.hovered,
+            })
+        }
+        DeathScreenRuntime::QuitConfirmation(state) => {
+            HudDeathScreen::QuitConfirmation(HudDeathQuitConfirmationScreen {
+                generation: state.generation,
+                title: localized_gui_text(
+                    item_runtime,
+                    "deathScreen.quit.confirm",
+                    "Are you sure you want to quit?",
+                ),
+                title_screen_label: localized_gui_text(
+                    item_runtime,
+                    "deathScreen.titleScreen",
+                    "Title Screen",
+                ),
+                respawn_label: localized_gui_text(item_runtime, "deathScreen.respawn", "Respawn"),
+                buttons_active: state.buttons_active(),
+                focused: state.focus,
+                hovered: state.hovered,
+            })
+        }
+        DeathScreenRuntime::LinkConfirmation(state) => {
+            let confirmation = world.dialog_link_confirmation()?;
+            HudDeathScreen::LinkConfirmation(HudDeathLinkConfirmationScreen {
+                generation: state.generation,
+                title: localized_gui_text(
+                    item_runtime,
+                    "chat.link.confirmTrusted",
+                    "Do you want to open this link or copy it to your clipboard?",
+                ),
+                message: confirmation.url.clone(),
+                open_label: localized_gui_text(item_runtime, "chat.link.open", "Open in Browser"),
+                copy_label: localized_gui_text(item_runtime, "chat.copy", "Copy to Clipboard"),
+                cancel_label: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+                focused: state.focus,
+                hovered: state.hovered,
+            })
+        }
+    };
+    Some(screen)
+}
+
+fn death_score_runs(
+    score: i32,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudComponentTextRun> {
+    let template = item_runtime
+        .map(|runtime| runtime.localized_text("deathScreen.score.value"))
+        .filter(|text| *text != "deathScreen.score.value")
+        .unwrap_or("Score: %s");
+    let score = score.to_string();
+    let mut runs = Vec::new();
+    visit_localized_template(template, |part| match part {
+        LocalizedTemplatePart::Literal(text) => {
+            if !text.is_empty() {
+                runs.push(HudComponentTextRun::plain(text));
+            }
+        }
+        LocalizedTemplatePart::Argument { index: 0, .. } => {
+            runs.push(HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: score.clone(),
+                    style: HudTextStyle::default(),
+                    color: Some(0xFF_FF_55),
+                },
+                font: None,
+            });
+        }
+        LocalizedTemplatePart::Argument { raw, .. } => {
+            runs.push(HudComponentTextRun::plain(raw));
+        }
+    });
+    if runs.is_empty() {
+        vec![
+            HudComponentTextRun::plain("Score: "),
+            HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: score,
+                    style: HudTextStyle::default(),
+                    color: Some(0xFF_FF_55),
+                },
+                font: None,
+            },
+        ]
+    } else {
+        runs
+    }
 }
 
 #[cfg(test)]
@@ -1793,6 +1963,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_test_instance_block_editor_screen: Option<HudTestInstanceBlockEditorScreen>,
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
     pub(crate) hud_game_rules_screen: Option<HudGameRulesScreen>,
+    pub(crate) hud_death_screen: Option<HudDeathScreen>,
     pub(crate) hud_game_event_screen: Option<HudGameEventScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_system_toast: Option<HudSystemToast>,
@@ -2057,6 +2228,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_test_instance_block_editor_screen(frame.hud_test_instance_block_editor_screen);
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
     renderer.set_hud_game_rules_screen(frame.hud_game_rules_screen);
+    renderer.set_hud_death_screen(frame.hud_death_screen);
     renderer.set_hud_game_event_screen(frame.hud_game_event_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_system_toast(frame.hud_system_toast);

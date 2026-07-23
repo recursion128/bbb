@@ -171,7 +171,7 @@ fn hud_win_screen_reuses_resource_lines_and_sanitizes_vanilla_realtime_delta() {
 }
 
 #[test]
-fn death_screen_narration_tracks_main_and_quit_confirmation_focus() {
+fn hud_death_screen_projection_and_narration_track_main_and_quit_focus() {
     let mut world = WorldStore::new();
     world.apply_login(&PlayLogin {
         player_id: 7,
@@ -199,11 +199,61 @@ fn death_screen_narration_tracks_main_and_quit_confirmation_focus() {
     });
     world.apply_player_combat_kill(PlayerCombatKill {
         player_id: 7,
-        message: bbb_protocol::RichTextComponent::plain("You died"),
+        message: bbb_protocol::RichTextComponent::try_from_component_nbt(
+            NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: NbtSummaryValue::String("You died".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "font".to_string(),
+                    value: NbtSummaryValue::String("example:wide".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "click_event".to_string(),
+                    value: NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "action".to_string(),
+                            value: NbtSummaryValue::String("open_url".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "url".to_string(),
+                            value: NbtSummaryValue::String(
+                                "https://example.invalid/death".to_string(),
+                            ),
+                        },
+                    ]),
+                },
+            ]),
+        )
+        .expect("rich death cause"),
     });
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     input.sync_death_screen(&mut world, &mut counters, &None);
+
+    let bbb_renderer::HudDeathScreen::Main(screen) =
+        hud_death_screen(&input, &world, None).expect("death HUD")
+    else {
+        panic!("main death screen");
+    };
+    assert_eq!(screen.title, "You Died!");
+    assert_eq!(screen.cause_runs[0].visual.text, "You died");
+    assert_eq!(screen.cause_runs[0].font.as_deref(), Some("example:wide"));
+    assert_eq!(screen.cause_link_run_indices, vec![Some(0)]);
+    assert_eq!(
+        screen
+            .score_runs
+            .iter()
+            .map(|run| run.visual.text.as_str())
+            .collect::<String>(),
+        "Score: 0"
+    );
+    assert_eq!(
+        screen.score_runs.last().and_then(|run| run.visual.color),
+        Some(0xFF_FF_55)
+    );
+    assert!(!screen.buttons_active);
 
     assert_eq!(
         death_screen_narration_frame(&input, &world, None)
@@ -215,6 +265,13 @@ fn death_screen_narration_tracks_main_and_quit_confirmation_focus() {
     input.advance_death_screen_ticks(20);
     input.handle_death_screen_key(&mut counters, &mut world, &None, KeyCode::Tab, true);
     input.handle_death_screen_key(&mut counters, &mut world, &None, KeyCode::Enter, true);
+    let bbb_renderer::HudDeathScreen::QuitConfirmation(screen) =
+        hud_death_screen(&input, &world, None).expect("quit HUD")
+    else {
+        panic!("quit confirmation");
+    };
+    assert_eq!(screen.title, "Are you sure you want to quit?");
+    assert!(!screen.buttons_active);
     assert_eq!(
         death_screen_narration_frame(&input, &world, None)
             .expect("quit confirmation narration")
