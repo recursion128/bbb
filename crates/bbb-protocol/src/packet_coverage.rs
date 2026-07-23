@@ -1653,7 +1653,7 @@ mod tests {
     }
 
     #[test]
-    fn play_open_sign_editor_keeps_filtered_text_and_editor_validity_open() {
+    fn play_open_sign_editor_closes_filtered_text_and_editor_validity() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1662,17 +1662,22 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_OPEN_SIGN_EDITOR"
             })
             .expect("play open sign editor coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .any(|evidence| evidence.contains("OpenSignEditorState")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("sync_sign_editor")));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("done_layout_and_preedit_projection")));
     }
 
     #[test]
@@ -4098,28 +4103,25 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_sign_update_keeps_remaining_editor_parity_open() {
+    fn play_serverbound_sign_update_closes_native_editor_parity() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_SIGN_UPDATE")
             .expect("play serverbound sign update coverage row");
-        assert_eq!(
-            entry.coverage["command_surface"].status,
-            PacketCoverageStatus::Complete
-        );
-        assert_eq!(
-            entry.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        for dimension in ["ack_response", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["state_guard"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("sanitize_sign_clipboard_text")));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("sign_editor_tick_removed_sign_submits_once")));
     }
 
     #[test]

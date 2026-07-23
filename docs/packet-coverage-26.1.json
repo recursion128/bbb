@@ -6135,8 +6135,8 @@
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSignUpdate",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#updateSignText"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
@@ -6161,14 +6161,16 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-world/src/client/ui.rs#apply_open_sign_editor",
-            "crates/bbb-native/src/input.rs#sync_sign_editor_input",
+            "crates/bbb-world/src/sign_blocks.rs#sign_editor_is_valid_at",
+            "crates/bbb-native/src/input.rs#sync_sign_editor",
             "crates/bbb-native/src/input.rs#sign_editor_initial_lines",
+            "crates/bbb-native/src/input.rs#sanitize_sign_clipboard_text",
             "crates/bbb-native/src/input.rs#submit_sign_editor",
             "vanilla:net/minecraft/client/gui/screens/inventory/AbstractSignEditScreen.java#onDone",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#updateSignText"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -6180,10 +6182,14 @@
             "crates/bbb-native/src/input/tests.rs#pending_sign_editor_escape_preserves_existing_sign_text",
             "crates/bbb-native/src/input/tests.rs#sign_editor_text_input_changes_lines_and_queues_sign_update",
             "crates/bbb-native/src/input/tests.rs#sign_editor_text_input_filters_invalid_chars_and_measured_width",
+            "crates/bbb-native/src/input/tests.rs#sign_editor_hanging_block_uses_60_pixel_candidate_limit",
+            "crates/bbb-native/src/input/tests.rs#sign_editor_clipboard_copy_cut_and_sanitized_paste_match_text_field_helper",
+            "crates/bbb-native/src/input/tests.rs#sign_editor_tick_removed_sign_submits_once",
+            "crates/bbb-native/src/input/tests.rs#sign_editor_tick_range_guard_submits_once",
             "crates/bbb-world/src/chunks/tests.rs#applies_sign_block_entity_text_update"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -10083,10 +10089,11 @@
           "evidence": [
             "crates/bbb-world/src/client/ui.rs#apply_open_sign_editor",
             "crates/bbb-world/src/sign_blocks.rs#has_sign_block_entity_at",
+            "crates/bbb-world/src/client/ui.rs#OpenSignEditorState",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenSignEditor"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -10105,20 +10112,28 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/input/tests.rs#sign_editor_text_input_changes_lines_and_queues_sign_update",
+            "crates/bbb-native/src/input.rs#sync_sign_editor",
+            "crates/bbb-native/src/runtime.rs#hud_sign_editor_screen",
+            "crates/bbb-native/src/sign_scene.rs#sign_scene_from_world",
+            "crates/bbb-renderer/src/hud.rs#hud_sign_editor_done_button_rect",
             "crates/bbb-native/src/runtime/tests.rs#hud_sign_editor_screen_projects_standing_sign_preview",
             "vanilla:net/minecraft/client/gui/screens/inventory/AbstractSignEditScreen.java#isValid"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_open_sign_editor_packet",
             "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
+            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_open_requests",
             "crates/bbb-world/src/client/ui.rs#open_sign_editor_ignores_missing_sign_without_replacing_screen",
+            "crates/bbb-world/src/sign_blocks.rs#sign_editor_validity_uses_eye_to_block_aabb_strict_range",
             "crates/bbb-native/src/input/tests.rs#invalid_sign_editor_packet_does_not_reopen_previous_editor",
-            "crates/bbb-native/src/input/tests.rs#pending_sign_editor_escape_preserves_existing_sign_text"
+            "crates/bbb-native/src/input/tests.rs#pending_sign_editor_escape_preserves_existing_sign_text",
+            "crates/bbb-native/src/input/tests.rs#sign_editor_preload_uses_filtered_open_snapshot",
+            "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+            "crates/bbb-renderer/src/hud.rs#sign_editor_done_layout_and_preedit_projection_match_vanilla_geometry"
           ],
           "gap": null,
           "status": "complete"

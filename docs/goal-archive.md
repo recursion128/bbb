@@ -270,3 +270,6 @@
   Cancel 与 Escape 零发送，普通 UseItemOn 和服务端 mutation/block-update 权威保持不变；
   五类 packet coverage 全部 complete，合同见
   `docs/archive/test-block-editor-packet-closure-design.md`。
+- **2026-07-22（SignEditScreen 双向包闭环）**：raw/filtered canonical 快照与启动过滤策略
+  贯穿世界文字和编辑预载；90/60px 实测宽度、选择/剪贴板/IME、Done 与移除/越界单次提交
+  全部闭环，双向 coverage 全单元 complete，合同见 `docs/archive/sign-editor-packet-closure-design.md`。

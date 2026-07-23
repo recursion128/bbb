@@ -701,7 +701,6 @@ Commands:
   holders: preserve sound/range/use-duration values in the ItemStack component,
   play the local records-source sound, start the use pose, and apply the matching
   cooldown without interpreting a custom holder through vanilla bootstrap order.
-- Implement `ServerboundSignUpdatePacket` clipboard copy/cut/paste parity.
 
 Inventory:
 
@@ -827,11 +826,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   component, submit unsigned/signed edits, and project the server-confirmed
   writable/written item. The current `net.edit_book` maintenance command is not
   an interactive editor or a held-item authority check.
-- Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
-  gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
-  support clipboard/IME preedit, and close when the sign is removed or the
-  player is too far away. The current editor has front/back preload, editing,
-  preview and serverbound submit, but retains a defensive character-count cap.
 - Preserve and render full trusted Components for action-bar, title, and
   subtitle packets, including translation, siblings, style/color/font and text
   effects. Their wire is consumed and the vanilla timers/fades/scales are
@@ -1234,7 +1228,6 @@ back into a todo. Do not delete these.
 - **Sign underline/strikethrough effect bars.** They need a white pixel outside
   the single font-atlas draw.
 - **Sign obfuscated glyph cycling.** The face currently draws literal glyphs.
-- **Sign `filtered_messages` decoding.**
 - **Sign POLYGON_OFFSET font display mode**, currently approximated by the fixed
   `TEXT_OFFSET` z gap.
 - **Chest christmas Dec 24-26 texture swap.** There is no wall-clock input;

@@ -1,4 +1,4 @@
-# Sign editor packet coverage closure
+# Sign editor packet coverage closure (archived)
 
 ## Goal and completion contract
 
