@@ -661,10 +661,10 @@ Commands:
 
 - Add focused command-queue and encode tests for inventory, interaction, chat,
   command, and sign editing.
-- Complete local attack input parity from `Minecraft.startAttack` and
-  `MultiPlayerGameMode.attack`: hands-busy/feature/item gates, miss-time,
-  carried-item ordering, client presentation from `Player.attack`, and attack
-  strength reset. Damage and combat outcomes remain server-authoritative.
+- Complete target-specific local attack prediction and presentation from
+  `Player.attack`: synchronized enchantment effects, critical and magic-critical
+  tracking emitters, special `Entity.hurtClient` families, and redirectable
+  projectile deflection. Damage and combat outcomes remain server-authoritative.
 - Complete local entity-use parity from `Minecraft.startUseItem` and
   `MultiPlayerGameMode.interact`: exact main/offhand iteration until a local
   `InteractionResult.Success`, hands-busy and enabled-item gates, carried-item

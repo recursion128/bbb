@@ -1,5 +1,7 @@
 # Local attack preflight packet coverage closure
 
+Status: closed and archived after the applicable packet-coverage cells passed.
+
 ## Goal and completion contract
 
 Close the remaining state-guard and test coverage cells for
@@ -147,3 +149,7 @@ failures stop before coverage closeout. The final closeout is the fourth commit
 including this contract and therefore forces a full gate. A failed full gate is
 localized from the pre-start checkpoint only when focused tests do not identify
 it. Failures are fixed forward without rewriting history.
+
+Closeout completed every applicable serverbound attack packet-coverage cell
+after source-derived item charge, canonical strength-clock, native preflight,
+and carried-slot-before-attack regressions passed.

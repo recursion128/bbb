@@ -2571,8 +2571,9 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-native/src/input/mouse.rs#handle_mouse_input",
+            "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick",
             "crates/bbb-native/src/input/commands.rs#queue_attack_entity_command",
+            "crates/bbb-net/src/types/commands.rs#AttackEntityCommand",
             "crates/bbb-protocol/src/packets/serverbound.rs#AttackEntity",
             "crates/bbb-net/src/driver/commands.rs#send_attack_entity"
           ],
@@ -2590,24 +2591,30 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-native/src/input/mouse.rs#local_player_attack_is_blocked",
+            "crates/bbb-native/src/input/mouse.rs#local_player_hands_are_busy",
             "crates/bbb-native/src/input/mouse.rs#selected_attack_range_allows_entity_hit",
-            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_entity",
+            "crates/bbb-world/src/client/local_player.rs#local_player_cannot_attack_with_selected_item",
+            "crates/bbb-net/src/driver/commands.rs#send_set_held_slot_command",
             "vanilla:net/minecraft/client/Minecraft.java#startAttack",
             "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#attack"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_entity_interaction_packets",
-            "crates/bbb-net/src/driver/commands/tests.rs#send_entity_interaction_commands_encode_packets",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_attack_entity_and_interact_commands_encode_with_carried_slot_repair",
             "crates/bbb-native/src/input/commands.rs#queues_entity_attack_and_interact_commands",
-            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
+            "crates/bbb-native/src/input/mouse.rs#local_attack_entity_carries_selected_slot_and_resets_both_strength_clocks",
+            "crates/bbb-native/src/input/mouse.rs#local_attack_charge_and_feature_gates_emit_no_action_or_swing",
+            "crates/bbb-native/src/input/mouse.rs#local_attack_miss_time_uses_screen_sentinel_and_clears_on_release",
+            "crates/bbb-native/src/input/mouse.rs#local_attack_boat_directional_input_blocks_before_spectator_or_item_routing",
+            "crates/bbb-native/src/input/mouse.rs#local_attack_piercing_weapon_resets_only_attack_strength",
             "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_outside_selected_attack_range_swings_without_attack"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -4112,7 +4119,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_entity_interaction_packets",
-            "crates/bbb-net/src/driver/commands/tests.rs#send_entity_interaction_commands_encode_packets",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_attack_entity_and_interact_commands_encode_with_carried_slot_repair",
             "crates/bbb-native/src/input/commands.rs#queues_entity_attack_and_interact_commands",
             "crates/bbb-native/src/input/mouse.rs#right_mouse_press_on_entity_queues_interact_with_relative_hit_location",
             "crates/bbb-native/src/input/mouse.rs#right_mouse_press_on_ender_dragon_part_queues_interact_with_part_id"

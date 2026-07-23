@@ -300,3 +300,7 @@
   standing/sleepingPos、本地姿态与 player-only sleepCounter；100～109 计时驱动
   `0x101020` 原版 HUD 淡出，actions 0/3/4/5 保持既有行为，五类 coverage 全部
   complete，合同见 `docs/archive/animate-player-wake-packet-closure-design.md`。
+- **2026-07-23（Attack 包前置闭环）**：固定物品原型与 ItemStack patch 驱动攻击蓄力，
+  双强度时钟、missTime、船只忙手及功能门控复现原版输入顺序；连接按选槽修复→攻击发包，
+  全部适用 coverage 单元 complete，合同见
+  `docs/archive/local-attack-preflight-closure-design.md`。

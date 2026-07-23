@@ -792,7 +792,7 @@ async fn send_client_command_encodes_client_command_actions() {
 }
 
 #[tokio::test]
-async fn send_attack_entity_repairs_and_deduplicates_carried_slot_before_packet() {
+async fn send_attack_entity_and_interact_commands_encode_with_carried_slot_repair() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
