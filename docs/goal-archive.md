@@ -261,3 +261,7 @@
 - **2026-07-22（JigsawBlockEditScreen 双包闭环）**：typed jigsaw NBT 与朝向 joint 规则驱动
   原生六字段编辑器、0～20 滑条和 keep-jigsaws；Generate 严格按 Set→Generate 发包，
   两行 packet coverage 的全部适用单元 complete，合同见 `docs/archive/jigsaw-block-editor-packet-closure-design.md`。
+- **2026-07-22（MinecartCommandBlockEditScreen 包闭环）**：命令方块矿车的 generated
+  command/last-output metadata 与本地 track-output 状态驱动原生编辑器；右键开屏仍发送
+  Interact，Done/Enter 精确发送 typed packet，Cancel/Escape 零发送，五类 packet
+  coverage 全部 complete，合同见 `docs/archive/minecart-command-block-editor-packet-closure-design.md`。

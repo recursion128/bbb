@@ -827,12 +827,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   component, submit unsigned/signed edits, and project the server-confirmed
   writable/written item. The current `net.edit_book` maintenance command is not
   an interactive editor or a held-item authority check.
-- Implement the game-master `MinecartCommandBlockEditScreen` owner and typed
-  `ServerboundSetCommandMinecartPacket`: consume the command/last-output synced
-  metadata for the target minecart, preload command and track-output state,
-  encode entity id + bounded command text + track-output, and retain server
-  permission/entity-type/command-block-enabled authority. Generated metadata
-  schema and packet catalog presence are not an interactive editor.
 - Implement the game-master `TestBlockEditScreen` owner and typed
   `ServerboundSetTestBlockPacket`: preload mode/message from the canonical
   block entity, expose all TestBlockMode values, enforce the 128-character

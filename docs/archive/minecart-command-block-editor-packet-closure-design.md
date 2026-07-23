@@ -129,4 +129,4 @@ source tree.
 The fully gated `6840743e8` is the pre-start checkpoint. Each stage is a clean,
 buildable commit. Protocol/world failures stop before native UI work;
 input/HUD failures stop before coverage closeout. Failures are fixed forward
-without history rewrites.
+without rewriting history.

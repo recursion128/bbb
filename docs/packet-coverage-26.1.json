@@ -5750,44 +5750,67 @@
       "coverage": {
         "ack_response": {
           "evidence": [
+            "crates/bbb-world/src/minecart_command_blocks.rs#refresh_minecart_command_block_editor_from_authoritative_data",
+            "crates/bbb-world/src/entities/metadata.rs#apply_set_entity_data",
+            "crates/bbb-native/src/input/minecart_command_block.rs#sync_minecart_command_block_editor",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetCommandMinecart",
             "vanilla:net/minecraft/world/entity/vehicle/minecart/MinecartCommandBlock.java#DATA_ID_LAST_OUTPUT"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_COMMAND_MINECART",
+            "crates/bbb-native/src/input/mouse.rs#start_use_item",
+            "crates/bbb-native/src/input/minecart_command_block.rs#handle_minecart_command_block_editor_mouse_input",
+            "crates/bbb-native/src/input.rs#submit_chat_entry",
+            "crates/bbb-native/src/runtime.rs#hud_minecart_command_block_editor_screen",
+            "crates/bbb-renderer/src/hud.rs#HudCommandBlockEditorScreen",
+            "crates/bbb-net/src/types/commands.rs#SetCommandMinecart",
             "vanilla:net/minecraft/client/player/LocalPlayer.java#openMinecartCommandBlock",
             "vanilla:net/minecraft/client/gui/screens/inventory/MinecartCommandBlockEditScreen.java#populateAndSendPacket"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_COMMAND_MINECART",
+            "crates/bbb-protocol/src/packets/command_blocks.rs#encode_play_set_command_minecart",
+            "crates/bbb-net/src/driver/commands.rs#send_set_command_minecart",
             "vanilla:net/minecraft/network/protocol/game/ServerboundSetCommandMinecartPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
           "evidence": [
-            "vanilla:net/minecraft/client/gui/screens/inventory/MinecartCommandBlockEditScreen.java#init",
+            "crates/bbb-world/src/minecart_command_blocks.rs#try_open_minecart_command_block_editor",
+            "crates/bbb-world/src/minecart_command_blocks.rs#close_minecart_command_block_editor_for_removed_entities",
+            "crates/bbb-native/src/input/minecart_command_block.rs#sync_minecart_command_block_editor",
+            "crates/bbb-native/src/input/minecart_command_block.rs#handle_minecart_command_block_editor_mouse_input",
+            "vanilla:net/minecraft/client/gui/screens/inventory/AbstractCommandBlockEditScreen.java#isValid",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetCommandMinecart"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
-            "scripts/generate-packet-catalog.py#extract_catalogs"
+            "crates/bbb-protocol/src/packets/command_blocks.rs#encodes_set_command_minecart_wire_order_and_multibyte_entity_id",
+            "crates/bbb-protocol/src/packets/command_blocks.rs#set_command_minecart_enforces_editor_utf16_boundary",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_set_command_minecart_encodes_minecart_packet",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_set_command_minecart_net_command_in_play",
+            "crates/bbb-world/src/minecart_command_blocks.rs#metadata_refreshes_command_and_output_but_preserves_local_track_output",
+            "crates/bbb-world/src/minecart_command_blocks.rs#removal_and_same_id_replacement_close_editor_and_reset_local_state",
+            "crates/bbb-native/src/input/tests.rs#minecart_command_block_editor_preserves_unsent_command_and_done_sends_exact_state_once",
+            "crates/bbb-native/src/input/tests.rs#minecart_command_block_editor_cancel_escape_and_removal_close_without_sending",
+            "crates/bbb-native/src/input/tests.rs#minecart_command_block_editor_enter_sends_once",
+            "crates/bbb-native/src/input/tests.rs#minecart_command_block_editor_uses_commands_only_suggestions_and_utf16_limit",
+            "crates/bbb-native/src/input/mouse.rs#right_mouse_press_on_permitted_command_minecart_opens_editor_and_still_interacts",
+            "crates/bbb-renderer/src/hud.rs#minecart_command_block_editor_layout_matches_vanilla_absolute_geometry"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
