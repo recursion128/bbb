@@ -224,6 +224,7 @@ mod debug_light_sections;
 mod dialog_screen;
 mod game_rules_screen;
 mod render_extract;
+mod vignette;
 pub(crate) use render_extract::*;
 mod events;
 mod waypoint_locator;
@@ -691,6 +692,7 @@ pub(crate) struct HudRenderRuntime {
     boss_connection_generation: Option<u64>,
     boss_progress: BTreeMap<uuid::Uuid, BossBarProgressPresentation>,
     contextual: waypoint_locator::HudContextualRuntime,
+    vignette: vignette::VignetteRuntime,
 }
 
 #[derive(Debug)]
@@ -3127,6 +3129,16 @@ pub(crate) fn update_renderer_from_publication(
     let enchantment_keys = item_registry_keys.enchantments;
     let attribute_keys = item_registry_keys.attributes;
     let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
+    hud_render_runtime.vignette.advance(
+        advanced_ticks,
+        world,
+        camera_pose_from_world(world).map(camera_eye_position),
+    );
+    let hud_vignette = hud_render_runtime.vignette.extract(
+        world,
+        camera_pose.map(camera_eye_position),
+        input.hide_gui(),
+    );
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
     let camera_fov_degrees = camera_fov_ticks.fov_degrees(entity_partial_tick);
@@ -3583,6 +3595,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_armor,
             hud_air,
             hud_vehicle_health,
+            hud_vignette,
             hud_contextual_bar,
             hud_experience_level,
             hud_selected_slot,

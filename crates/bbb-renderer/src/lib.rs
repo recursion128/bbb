@@ -29,6 +29,7 @@ mod selection;
 mod sheeted_decal;
 mod sky;
 mod transparency;
+mod vignette;
 mod weather;
 mod world_border;
 

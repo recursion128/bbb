@@ -18,7 +18,7 @@ use bbb_renderer::{
     HudInventoryScreen, HudJigsawBlockEditorScreen, HudPauseScreen, HudPlayerHealth, HudPlayerList,
     HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
     HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth,
+    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
     ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
@@ -1448,6 +1448,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_armor: Option<i32>,
     pub(crate) hud_air: Option<HudAirSupply>,
     pub(crate) hud_vehicle_health: Option<HudVehicleHealth>,
+    pub(crate) hud_vignette: Option<HudVignette>,
     pub(crate) hud_contextual_bar: HudContextualBar,
     pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_selected_slot: u8,
@@ -1704,6 +1705,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_armor(frame.hud_armor);
     renderer.set_hud_air(frame.hud_air);
     renderer.set_hud_vehicle_health(frame.hud_vehicle_health);
+    renderer.set_hud_vignette(frame.hud_vignette);
     renderer.set_hud_contextual_bar(frame.hud_contextual_bar);
     renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);

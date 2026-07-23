@@ -194,6 +194,7 @@ pub use crate::selection::{
 pub use crate::sky::{
     CelestialTextureImage, CelestialTextureKind, SkyEnvironment, SkyMoonPhase, SkyboxKind,
 };
+pub use crate::vignette::HudVignette;
 pub use crate::weather::{
     LightningBoltRenderState, WeatherColumn, WeatherFrame, WeatherRenderState, WeatherTextureImage,
     WeatherTextureKind, WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
