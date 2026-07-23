@@ -239,6 +239,62 @@ pub enum VanillaEntitySoundSourceKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntitySoundVariantFamily {
+    Cat,
+    Chicken,
+    Cow,
+    Pig,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityHurtSoundCondition {
+    ArmadilloScared,
+    InWater,
+    UnderWater,
+    Baby,
+    GoatScreaming,
+    Tiny,
+    ShulkerClosed,
+    CreakingHeartBound,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityHurtSoundPolicy {
+    NonLiving,
+    Fixed(&'static str),
+    Conditional {
+        condition: VanillaEntityHurtSoundCondition,
+        when_true: &'static str,
+        when_false: &'static str,
+    },
+    NautilusAgeWater {
+        baby_underwater: &'static str,
+        baby_land: &'static str,
+        adult_underwater: &'static str,
+        adult_land: &'static str,
+    },
+    CopperGolemOxidation {
+        unaffected: &'static str,
+        exposed: &'static str,
+        weathered: &'static str,
+        oxidized: &'static str,
+    },
+    SoundVariant(VanillaEntitySoundVariantFamily),
+    WolfVariant {
+        armor_damage: &'static str,
+    },
+    PlayerDamageType,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntitySoundVolumePolicy {
+    NonLiving,
+    Fixed(u32),
+    SlimeSize,
+    HappyGhastAge,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaEntityPushabilityKind {
     Never,
     Always,
@@ -753,6 +809,13 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub baby_age_scale_bits: u32,
     pub is_pickable_by_class: bool,
     pub sound_source_kind: VanillaEntitySoundSourceKind,
+    /// Nearest Vanilla declarations and their source-interpreted
+    /// `LivingEntity.handleDamageEvent` audio policies. Non-living rows have no
+    /// owner and carry the explicit `NonLiving` policy.
+    pub hurt_sound_owner: Option<&'static str>,
+    pub hurt_sound_policy: VanillaEntityHurtSoundPolicy,
+    pub sound_volume_owner: Option<&'static str>,
+    pub sound_volume_policy: VanillaEntitySoundVolumePolicy,
     pub pushability_kind: VanillaEntityPushabilityKind,
     pub collidability_kind: VanillaEntityCollidabilityKind,
     pub is_living: bool,
@@ -4385,6 +4448,24 @@ pub fn vanilla_entity_metadata_type_sound_source_kind(
         .map(|entry| entry.sound_source_kind)
 }
 
+/// Returns the generated nearest-`getHurtSound` policy for one fixed EntityType.
+pub fn vanilla_entity_metadata_type_hurt_sound_policy(
+    entity_type_id: i32,
+) -> Option<VanillaEntityHurtSoundPolicy> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .map(|entry| entry.hurt_sound_policy)
+}
+
+/// Returns the generated nearest-`getSoundVolume` policy for one fixed EntityType.
+pub fn vanilla_entity_metadata_type_sound_volume_policy(
+    entity_type_id: i32,
+) -> Option<VanillaEntitySoundVolumePolicy> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .map(|entry| entry.sound_volume_policy)
+}
+
 /// Returns the nearest generated `Entity.isPushable()` class behavior.
 ///
 /// Dynamic variants retain only the class-level predicate shape here. Health, spectator,
@@ -6171,6 +6252,108 @@ mod tests {
             .expect("flying-animal membership query source");
         assert!(!flying_animal_query.contains("matches!"));
         assert!(!animations_source.contains("fn is_vanilla_arrow_type"));
+    }
+
+    #[test]
+    fn generated_damage_audio_policies_cover_exact_living_class_inventory() {
+        let mut hurt_owners = HashSet::new();
+        let mut volume_owners = HashSet::new();
+        let mut fixed_resources = Vec::new();
+        for entry in VANILLA_ENTITY_TYPE_METADATA_26_1 {
+            assert_eq!(
+                vanilla_entity_metadata_type_hurt_sound_policy(entry.entity_type_id),
+                Some(entry.hurt_sound_policy)
+            );
+            assert_eq!(
+                vanilla_entity_metadata_type_sound_volume_policy(entry.entity_type_id),
+                Some(entry.sound_volume_policy)
+            );
+            if entry.is_living {
+                hurt_owners.insert(entry.hurt_sound_owner.expect("living hurt-sound owner"));
+                volume_owners.insert(entry.sound_volume_owner.expect("living sound-volume owner"));
+                assert_ne!(
+                    entry.hurt_sound_policy,
+                    VanillaEntityHurtSoundPolicy::NonLiving,
+                    "{}",
+                    entry.resource_id
+                );
+                assert_ne!(
+                    entry.sound_volume_policy,
+                    VanillaEntitySoundVolumePolicy::NonLiving,
+                    "{}",
+                    entry.resource_id
+                );
+            } else {
+                assert_eq!(entry.hurt_sound_owner, None, "{}", entry.resource_id);
+                assert_eq!(entry.sound_volume_owner, None, "{}", entry.resource_id);
+                assert_eq!(
+                    entry.hurt_sound_policy,
+                    VanillaEntityHurtSoundPolicy::NonLiving,
+                    "{}",
+                    entry.resource_id
+                );
+                assert_eq!(
+                    entry.sound_volume_policy,
+                    VanillaEntitySoundVolumePolicy::NonLiving,
+                    "{}",
+                    entry.resource_id
+                );
+            }
+            match entry.hurt_sound_policy {
+                VanillaEntityHurtSoundPolicy::Fixed(resource_id) => {
+                    fixed_resources.push(resource_id);
+                }
+                VanillaEntityHurtSoundPolicy::Conditional {
+                    when_true,
+                    when_false,
+                    ..
+                } => fixed_resources.extend([when_true, when_false]),
+                VanillaEntityHurtSoundPolicy::NautilusAgeWater {
+                    baby_underwater,
+                    baby_land,
+                    adult_underwater,
+                    adult_land,
+                } => fixed_resources.extend([
+                    baby_underwater,
+                    baby_land,
+                    adult_underwater,
+                    adult_land,
+                ]),
+                VanillaEntityHurtSoundPolicy::CopperGolemOxidation {
+                    unaffected,
+                    exposed,
+                    weathered,
+                    oxidized,
+                } => fixed_resources.extend([unaffected, exposed, weathered, oxidized]),
+                VanillaEntityHurtSoundPolicy::WolfVariant { armor_damage } => {
+                    fixed_resources.push(armor_damage);
+                }
+                VanillaEntityHurtSoundPolicy::NonLiving
+                | VanillaEntityHurtSoundPolicy::SoundVariant(_)
+                | VanillaEntityHurtSoundPolicy::PlayerDamageType => {}
+            }
+        }
+        assert_eq!(hurt_owners.len(), 89);
+        assert_eq!(volume_owners.len(), 13);
+        assert!(fixed_resources.iter().all(|resource_id| {
+            bbb_protocol::sound_event_types::vanilla_sound_event_registry_id(resource_id).is_some()
+        }));
+        assert_eq!(
+            vanilla_entity_metadata_type_hurt_sound_policy(VANILLA_ENTITY_TYPE_PLAYER_ID),
+            Some(VanillaEntityHurtSoundPolicy::PlayerDamageType)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_hurt_sound_policy(VANILLA_ENTITY_TYPE_CAT_ID),
+            Some(VanillaEntityHurtSoundPolicy::SoundVariant(
+                VanillaEntitySoundVariantFamily::Cat
+            ))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_sound_volume_policy(VANILLA_ENTITY_TYPE_SLIME_ID),
+            Some(VanillaEntitySoundVolumePolicy::SlimeSize)
+        );
+        assert_eq!(vanilla_entity_metadata_type_hurt_sound_policy(-1), None);
+        assert_eq!(vanilla_entity_metadata_type_sound_volume_policy(157), None);
     }
 
     #[test]

@@ -21,6 +21,7 @@ from entity_metadata_extractor import (
     evaluate_integer_expression,
     extract,
 )
+from sound_event_catalog_extractor import direct_sound_event_entries
 from vanilla_java_source import (
     JavaField,
     JavaMethod,
@@ -3251,6 +3252,338 @@ def class_sound_source_kind(
     return value
 
 
+def sound_event_resources_by_constant(result: ExtractionResult) -> dict[str, str]:
+    source = source_for_owner(result, "net.minecraft.sounds.SoundEvents")
+    return {
+        entry.constant_name: entry.resource_id
+        for entry in direct_sound_event_entries(source)
+    }
+
+
+def class_hurt_sound_policy(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    sound_events: dict[str, str],
+    method_owner_cache: dict[str, str],
+    policy_cache: dict[str, str],
+) -> str:
+    """Interpret the nearest Vanilla ``LivingEntity.getHurtSound`` body.
+
+    Fixed ``SoundEvents`` returns are open-ended and source-derived. The finite
+    dynamic bodies are deliberately exact: a changed condition, branch order,
+    or constant fails generation instead of silently retaining stale runtime
+    behavior.
+    """
+    if owner in policy_cache:
+        return policy_cache[owner]
+    method_owner = class_nearest_method_owner(
+        result, class_map, owner, "getHurtSound", 1, method_owner_cache
+    )
+    source, method = method_for(result, method_owner, "getHurtSound", 1)
+    body = method.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{method_owner}.getHurtSound: method lacks body")
+    canonical = source.expression(body).canonical
+
+    def sound(constant_name: str) -> str:
+        resource_id = sound_events.get(constant_name)
+        if resource_id is None:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unknown SoundEvents.{constant_name}"
+            )
+        return rust_string(resource_id)
+
+    fixed = re.fullmatch(r"\{return SoundEvents\.([A-Z0-9_]+);\}", canonical)
+    if fixed is not None:
+        value = f"VanillaEntityHurtSoundPolicy::Fixed({sound(fixed.group(1))})"
+        policy_cache[owner] = value
+        return value
+
+    variant_owners = {
+        "net.minecraft.world.entity.animal.feline.Cat": "Cat",
+        "net.minecraft.world.entity.animal.chicken.Chicken": "Chicken",
+        "net.minecraft.world.entity.animal.cow.AbstractCow": "Cow",
+        "net.minecraft.world.entity.animal.pig.Pig": "Pig",
+    }
+    variant_body = "{return this.getSoundSet ().hurtSound ().value ();}"
+    if method_owner in variant_owners and canonical == variant_body:
+        value = (
+            "VanillaEntityHurtSoundPolicy::SoundVariant("
+            f"VanillaEntitySoundVariantFamily::{variant_owners[method_owner]})"
+        )
+        policy_cache[owner] = value
+        return value
+
+    conditional_specs = {
+        "net.minecraft.world.entity.animal.armadillo.Armadillo": (
+            "{return this.isScared () ? SoundEvents.ARMADILLO_HURT_REDUCED : SoundEvents.ARMADILLO_HURT;}",
+            "ArmadilloScared",
+            "ARMADILLO_HURT_REDUCED",
+            "ARMADILLO_HURT",
+        ),
+        "net.minecraft.world.entity.monster.zombie.Drowned": (
+            "{return this.isInWater () ? SoundEvents.DROWNED_HURT_WATER : SoundEvents.DROWNED_HURT;}",
+            "InWater",
+            "DROWNED_HURT_WATER",
+            "DROWNED_HURT",
+        ),
+        "net.minecraft.world.entity.monster.ElderGuardian": (
+            "{return this.isInWater () ? SoundEvents.ELDER_GUARDIAN_HURT : SoundEvents.ELDER_GUARDIAN_HURT_LAND;}",
+            "InWater",
+            "ELDER_GUARDIAN_HURT",
+            "ELDER_GUARDIAN_HURT_LAND",
+        ),
+        "net.minecraft.world.entity.animal.happyghast.HappyGhast": (
+            "{return this.isBaby () ? SoundEvents.GHASTLING_HURT : SoundEvents.HAPPY_GHAST_HURT;}",
+            "Baby",
+            "GHASTLING_HURT",
+            "HAPPY_GHAST_HURT",
+        ),
+        "net.minecraft.world.entity.animal.goat.Goat": (
+            "{return this.isScreamingGoat () ? SoundEvents.GOAT_SCREAMING_HURT : SoundEvents.GOAT_HURT;}",
+            "GoatScreaming",
+            "GOAT_SCREAMING_HURT",
+            "GOAT_HURT",
+        ),
+        "net.minecraft.world.entity.monster.Guardian": (
+            "{return this.isInWater () ? SoundEvents.GUARDIAN_HURT : SoundEvents.GUARDIAN_HURT_LAND;}",
+            "InWater",
+            "GUARDIAN_HURT",
+            "GUARDIAN_HURT_LAND",
+        ),
+        "net.minecraft.world.entity.animal.equine.Horse": (
+            "{return this.isBaby () ? SoundEvents.HORSE_HURT_BABY : SoundEvents.HORSE_HURT;}",
+            "Baby",
+            "HORSE_HURT_BABY",
+            "HORSE_HURT",
+        ),
+        "net.minecraft.world.entity.monster.MagmaCube": (
+            "{return this.isTiny () ? SoundEvents.MAGMA_CUBE_HURT_SMALL : SoundEvents.MAGMA_CUBE_HURT;}",
+            "Tiny",
+            "MAGMA_CUBE_HURT_SMALL",
+            "MAGMA_CUBE_HURT",
+        ),
+        "net.minecraft.world.entity.monster.Shulker": (
+            "{return this.isClosed () ? SoundEvents.SHULKER_HURT_CLOSED : SoundEvents.SHULKER_HURT;}",
+            "ShulkerClosed",
+            "SHULKER_HURT_CLOSED",
+            "SHULKER_HURT",
+        ),
+        "net.minecraft.world.entity.monster.Slime": (
+            "{return this.isTiny () ? SoundEvents.SLIME_HURT_SMALL : SoundEvents.SLIME_HURT;}",
+            "Tiny",
+            "SLIME_HURT_SMALL",
+            "SLIME_HURT",
+        ),
+        "net.minecraft.world.entity.animal.turtle.Turtle": (
+            "{return this.isBaby () ? SoundEvents.TURTLE_HURT_BABY : SoundEvents.TURTLE_HURT;}",
+            "Baby",
+            "TURTLE_HURT_BABY",
+            "TURTLE_HURT",
+        ),
+        "net.minecraft.world.entity.animal.nautilus.ZombieNautilus": (
+            "{return this.isUnderWater () ? SoundEvents.ZOMBIE_NAUTILUS_HURT : SoundEvents.ZOMBIE_NAUTILUS_HURT_ON_LAND;}",
+            "UnderWater",
+            "ZOMBIE_NAUTILUS_HURT",
+            "ZOMBIE_NAUTILUS_HURT_ON_LAND",
+        ),
+    }
+    if method_owner in conditional_specs:
+        expected, condition, when_true, when_false = conditional_specs[method_owner]
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+            )
+        value = (
+            "VanillaEntityHurtSoundPolicy::Conditional { "
+            f"condition: VanillaEntityHurtSoundCondition::{condition}, "
+            f"when_true: {sound(when_true)}, when_false: {sound(when_false)} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    if method_owner == "net.minecraft.world.entity.monster.creaking.Creaking":
+        expected = (
+            "{return this.isHeartBound () ? SoundEvents.CREAKING_SWAY : "
+            "super.getHurtSound (source);}"
+        )
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+            )
+        superclass = class_map[method_owner].superclass
+        if superclass is None:
+            raise ExtractionError(f"{method_owner}.getHurtSound: missing superclass")
+        false_policy = class_hurt_sound_policy(
+            result,
+            class_map,
+            superclass,
+            sound_events,
+            method_owner_cache,
+            policy_cache,
+        )
+        expected_false = (
+            "VanillaEntityHurtSoundPolicy::Fixed("
+            f"{sound('HOSTILE_HURT')})"
+        )
+        if false_policy != expected_false:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unexpected super policy {false_policy}"
+            )
+        value = (
+            "VanillaEntityHurtSoundPolicy::Conditional { "
+            "condition: VanillaEntityHurtSoundCondition::CreakingHeartBound, "
+            f"when_true: {sound('CREAKING_SWAY')}, "
+            f"when_false: {sound('HOSTILE_HURT')} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    if method_owner == "net.minecraft.world.entity.animal.nautilus.Nautilus":
+        expected = (
+            "{if (this.isBaby ()) {return this.isUnderWater () ? "
+            "SoundEvents.BABY_NAUTILUS_HURT : "
+            "SoundEvents.BABY_NAUTILUS_HURT_ON_LAND;} else {return "
+            "this.isUnderWater () ? SoundEvents.NAUTILUS_HURT : "
+            "SoundEvents.NAUTILUS_HURT_ON_LAND;}}"
+        )
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+            )
+        value = (
+            "VanillaEntityHurtSoundPolicy::NautilusAgeWater { "
+            f"baby_underwater: {sound('BABY_NAUTILUS_HURT')}, "
+            f"baby_land: {sound('BABY_NAUTILUS_HURT_ON_LAND')}, "
+            f"adult_underwater: {sound('NAUTILUS_HURT')}, "
+            f"adult_land: {sound('NAUTILUS_HURT_ON_LAND')} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    if method_owner == "net.minecraft.world.entity.animal.wolf.Wolf":
+        expected = (
+            "{return this.canArmorAbsorb (source) ? SoundEvents.WOLF_ARMOR_DAMAGE : "
+            "this.getSoundSet ().hurtSound ().value ();}"
+        )
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+            )
+        value = (
+            "VanillaEntityHurtSoundPolicy::WolfVariant { "
+            f"armor_damage: {sound('WOLF_ARMOR_DAMAGE')} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    if method_owner == "net.minecraft.world.entity.player.Player":
+        expected = "{return source.type ().effects ().sound ();}"
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+            )
+        value = "VanillaEntityHurtSoundPolicy::PlayerDamageType"
+        policy_cache[owner] = value
+        return value
+
+    if method_owner == "net.minecraft.world.entity.animal.golem.CopperGolem":
+        expected = (
+            "{return CopperGolemOxidationLevels.getOxidationLevel "
+            "(this.getWeatherState ()).hurtSound ();}"
+        )
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+            )
+        oxidation_owner = (
+            "net.minecraft.world.entity.animal.golem.CopperGolemOxidationLevels"
+        )
+        oxidation_source = source_for_owner(result, oxidation_owner)
+        resources = []
+        for state in ("UNAFFECTED", "EXPOSED", "WEATHERED", "OXIDIZED"):
+            field = next(
+                (
+                    item
+                    for item in oxidation_source.fields_for(oxidation_owner)
+                    if item.name == state
+                ),
+                None,
+            )
+            if field is None or field.initializer is None:
+                raise ExtractionError(f"{oxidation_owner}.{state}: missing initializer")
+            match = re.fullmatch(
+                r"new CopperGolemOxidationLevel \(SoundEvents\.[A-Z0-9_]+, "
+                r"SoundEvents\.([A-Z0-9_]+), .*\)",
+                field.initializer.canonical,
+            )
+            if match is None:
+                raise ExtractionError(
+                    f"{oxidation_owner}.{state}: unsupported initializer "
+                    f"{field.initializer.canonical!r}"
+                )
+            resources.append(sound(match.group(1)))
+        value = (
+            "VanillaEntityHurtSoundPolicy::CopperGolemOxidation { "
+            f"unaffected: {resources[0]}, exposed: {resources[1]}, "
+            f"weathered: {resources[2]}, oxidized: {resources[3]} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    raise ExtractionError(
+        f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+    )
+
+
+def class_sound_volume_policy(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    method_owner_cache: dict[str, str],
+    policy_cache: dict[str, str],
+) -> str:
+    """Interpret the nearest Vanilla ``LivingEntity.getSoundVolume`` body."""
+    if owner in policy_cache:
+        return policy_cache[owner]
+    method_owner = class_nearest_method_owner(
+        result, class_map, owner, "getSoundVolume", 0, method_owner_cache
+    )
+    source, method = method_for(result, method_owner, "getSoundVolume", 0)
+    body = method.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{method_owner}.getSoundVolume: method lacks body")
+    canonical = source.expression(body).canonical
+    fixed = re.fullmatch(r"\{return ([0-9]+(?:\.[0-9]+)?)F;\}", canonical)
+    if fixed is not None:
+        value = (
+            "VanillaEntitySoundVolumePolicy::Fixed("
+            f"{fixed.group(1)}_f32.to_bits())"
+        )
+    elif (
+        method_owner == "net.minecraft.world.entity.monster.Slime"
+        and canonical == "{return 0.4F * this.getSize ();}"
+    ):
+        value = "VanillaEntitySoundVolumePolicy::SlimeSize"
+    elif (
+        method_owner == "net.minecraft.world.entity.animal.happyghast.HappyGhast"
+        and canonical == "{return this.isBaby () ? 1.0F : 4.0F;}"
+    ):
+        value = "VanillaEntitySoundVolumePolicy::HappyGhastAge"
+    else:
+        raise ExtractionError(
+            f"{method_owner}.getSoundVolume: unsupported body {canonical!r}"
+        )
+    policy_cache[owner] = value
+    return value
+
+
 def class_boat_ride_height_multiplier(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -3592,6 +3925,7 @@ def render(result: ExtractionResult) -> str:
     packed_values = resolve_packed_values(result)
     camera_post_effects = camera_post_effect_specs(result)
     entity_event_handlers = entity_event_handler_specs(result)
+    sound_events = sound_event_resources_by_constant(result)
     flag_by_owner: dict[str, list[ResolvedFlag]] = {}
     for flag in flags:
         flag_by_owner.setdefault(flag.owner, []).append(flag)
@@ -3638,6 +3972,10 @@ def render(result: ExtractionResult) -> str:
     pushability_cache: dict[str, str] = {}
     collidability_cache: dict[str, str] = {}
     sound_source_cache: dict[str, str] = {}
+    hurt_sound_owner_cache: dict[str, str] = {}
+    hurt_sound_policy_cache: dict[str, str] = {}
+    sound_volume_owner_cache: dict[str, str] = {}
+    sound_volume_policy_cache: dict[str, str] = {}
     boat_ride_height_cache: dict[str, str] = {}
     minecart_display_offset_cache: dict[str, int] = {}
     sanitize_scale_behavior_cache: dict[str, str | None] = {}
@@ -4356,6 +4694,10 @@ def render(result: ExtractionResult) -> str:
                 f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
                 f"        sound_source_kind: VanillaEntitySoundSourceKind::{class_sound_source_kind(result, class_map, item.runtime_class, sound_source_cache)},",
+                f"        hurt_sound_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getHurtSound', 1, hurt_sound_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
+                f"        hurt_sound_policy: {class_hurt_sound_policy(result, class_map, item.runtime_class, sound_events, hurt_sound_owner_cache, hurt_sound_policy_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'VanillaEntityHurtSoundPolicy::NonLiving'},",
+                f"        sound_volume_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getSoundVolume', 0, sound_volume_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
+                f"        sound_volume_policy: {class_sound_volume_policy(result, class_map, item.runtime_class, sound_volume_owner_cache, sound_volume_policy_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'VanillaEntitySoundVolumePolicy::NonLiving'},",
                 f"        pushability_kind: VanillaEntityPushabilityKind::{class_pushability_kind(result, class_map, item.runtime_class, pushability_cache)},",
                 f"        collidability_kind: VanillaEntityCollidabilityKind::{class_collidability_kind(result, class_map, item.runtime_class, collidability_cache)},",
                 f"        is_living: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity')).lower()},",

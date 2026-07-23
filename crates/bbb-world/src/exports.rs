@@ -29,6 +29,10 @@ pub use crate::entities::VanillaCopperGolemMetadataAccessors;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaEndermanRenderMetadataAccessors;
 pub use crate::entities::VanillaEntityBlockEffectTickPolicy;
+pub use crate::entities::VanillaEntityHurtSoundCondition;
+pub use crate::entities::VanillaEntityHurtSoundPolicy;
+pub use crate::entities::VanillaEntitySoundVariantFamily;
+pub use crate::entities::VanillaEntitySoundVolumePolicy;
 pub use crate::entities::VanillaFarmAnimalVariantMetadataAccessors;
 pub use crate::entities::VanillaFoxMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
@@ -148,9 +152,11 @@ pub use crate::entities::{
     vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type,
     vanilla_entity_metadata_turtle_accessors_for_entity_type,
     vanilla_entity_metadata_type_block_effect_tick_policy,
+    vanilla_entity_metadata_type_hurt_sound_policy,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_type_is_llama, vanilla_entity_metadata_type_is_slime,
+    vanilla_entity_metadata_type_sound_volume_policy,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,

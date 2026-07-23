@@ -318,9 +318,12 @@ pub use schema::{
     vanilla_entity_metadata_type_block_effect_tick_policy, VanillaEntityBlockEffectTickPolicy,
 };
 pub use schema::{
-    vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
-    vanilla_entity_metadata_type_sound_source_kind, VanillaEntityCollidabilityKind,
-    VanillaEntityPushabilityKind, VanillaEntitySoundSourceKind,
+    vanilla_entity_metadata_type_collidability_kind,
+    vanilla_entity_metadata_type_hurt_sound_policy, vanilla_entity_metadata_type_pushability_kind,
+    vanilla_entity_metadata_type_sound_source_kind,
+    vanilla_entity_metadata_type_sound_volume_policy, VanillaEntityCollidabilityKind,
+    VanillaEntityHurtSoundCondition, VanillaEntityHurtSoundPolicy, VanillaEntityPushabilityKind,
+    VanillaEntitySoundSourceKind, VanillaEntitySoundVariantFamily, VanillaEntitySoundVolumePolicy,
 };
 pub use schema::{
     vanilla_entity_metadata_wolf_accessors_for_entity_type, VanillaWolfMetadataAccessors,
