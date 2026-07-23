@@ -10,6 +10,7 @@ use crate::{
     atlas_sources::load_atlas_texture_entries_with_budget,
     block_destroy_profiles::BlockDestroyProfileCatalog,
     block_models::BlockModelCatalog,
+    block_occlusion_profiles::BlockOcclusionProfileCatalog,
     block_sound_profiles::BlockSoundProfileCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
     equipment_assets::EquipmentAssetCatalog,
@@ -413,6 +414,10 @@ impl PackRoots {
 
     pub fn load_block_destroy_profile_catalog(&self) -> Result<BlockDestroyProfileCatalog> {
         BlockDestroyProfileCatalog::load(self)
+    }
+
+    pub fn load_block_occlusion_profile_catalog(&self) -> Result<BlockOcclusionProfileCatalog> {
+        BlockOcclusionProfileCatalog::load(self)
     }
 
     pub fn load_block_piston_profile_catalog(&self) -> Result<crate::BlockPistonProfileCatalog> {

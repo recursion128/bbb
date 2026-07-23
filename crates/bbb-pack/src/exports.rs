@@ -7,6 +7,7 @@ pub use crate::block_models::{
     BlockModelDisplayTransform, BlockModelDisplayTransforms, BlockModelFace, BlockModelGuiLight,
     BlockModelQuad, BlockModelShape, BlockRenderModel,
 };
+pub use crate::block_occlusion_profiles::{BlockOcclusionProfile, BlockOcclusionProfileCatalog};
 pub use crate::block_piston_profiles::{
     builtin_block_piston_profiles, BlockPistonProfile, BlockPistonProfileCatalog,
     BlockPistonPushReaction,
