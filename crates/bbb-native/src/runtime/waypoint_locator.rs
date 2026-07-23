@@ -1,15 +1,136 @@
-use bbb_renderer::{CameraPose, HudLocatorBar, HudLocatorMarker, HudLocatorPitch};
+use bbb_renderer::{
+    CameraPose, HudContextualBar, HudJumpBar, HudLocatorBar, HudLocatorMarker, HudLocatorPitch,
+};
 use bbb_world::{java_string_hash_code, EntityVec3, WaypointState, WaypointVec3iState, WorldStore};
 use glam::Vec3;
 use uuid::Uuid;
 
 const VISIBLE_DEGREE_RANGE: f32 = 60.0;
 const DEFAULT_COLOR_BRIGHTNESS: f32 = 0.9;
+const EXPERIENCE_PRIORITY_TICKS: u64 = 100;
 
 #[derive(Debug, Clone, Copy)]
 struct CameraEntityProjection {
     uuid: Option<Uuid>,
     position: EntityVec3,
+}
+
+#[derive(Debug, Default)]
+pub(super) struct HudContextualRuntime {
+    level_generation: Option<u64>,
+    observed_experience: bool,
+    last_experience_progress: f32,
+    experience_display_start_tick: Option<u64>,
+    last_priority_screen: Option<(i32, i32)>,
+}
+
+impl HudContextualRuntime {
+    pub(super) fn select(
+        &mut self,
+        world: &WorldStore,
+        level_generation: u64,
+        client_tick: u64,
+        locator: Option<HudLocatorBar>,
+        jump: Option<HudJumpBar>,
+        experience_progress: Option<f32>,
+    ) -> HudContextualBar {
+        self.synchronize_presentation_clock(
+            world,
+            level_generation,
+            client_tick,
+            experience_progress,
+        );
+
+        let jump = jump.and_then(sanitize_jump_bar);
+        let experience_progress = experience_progress
+            .filter(|progress| progress.is_finite())
+            .unwrap_or(0.0)
+            .clamp(0.0, 1.0);
+        let can_show_experience =
+            !world.local_player_is_creative() && !world.local_player_is_spectator();
+        let prioritize_experience = self
+            .experience_display_start_tick
+            .is_some_and(|start| start.saturating_add(EXPERIENCE_PRIORITY_TICKS) > client_tick);
+        let prioritize_jump = jump.is_some_and(|jump| jump.progress > 0.0 || jump.cooldown);
+
+        if let Some(locator) = locator {
+            if prioritize_jump {
+                return HudContextualBar::Jump(jump.expect("prioritized jump exists"));
+            }
+            if can_show_experience && prioritize_experience {
+                return HudContextualBar::Experience {
+                    progress: experience_progress,
+                };
+            }
+            return HudContextualBar::Locator(locator);
+        }
+        if let Some(jump) = jump {
+            return HudContextualBar::Jump(jump);
+        }
+        if can_show_experience {
+            return HudContextualBar::Experience {
+                progress: experience_progress,
+            };
+        }
+        HudContextualBar::Empty
+    }
+
+    fn synchronize_presentation_clock(
+        &mut self,
+        world: &WorldStore,
+        level_generation: u64,
+        client_tick: u64,
+        experience_progress: Option<f32>,
+    ) {
+        if self.level_generation != Some(level_generation) {
+            *self = Self {
+                level_generation: Some(level_generation),
+                ..Self::default()
+            };
+        }
+
+        if let Some(progress) = experience_progress.filter(|progress| progress.is_finite()) {
+            if self.observed_experience {
+                if progress != self.last_experience_progress {
+                    self.experience_display_start_tick = Some(client_tick);
+                    self.last_experience_progress = progress;
+                }
+            } else {
+                // LocalPlayer starts at progress zero and MIN_VALUE. Its first
+                // synchronization changes MIN_VALUE to MIN_VALUE+1 rather than
+                // opening the 100-tick contextual priority window.
+                self.observed_experience = true;
+                self.last_experience_progress = progress;
+            }
+        }
+
+        let priority_screen = world
+            .inventory()
+            .open_container
+            .as_ref()
+            .and_then(|container| {
+                let menu_type = container.menu_type_id?;
+                matches!(
+                    menu_type,
+                    bbb_protocol::menu_types::VANILLA_MENU_TYPE_ANVIL_ID
+                        | bbb_protocol::menu_types::VANILLA_MENU_TYPE_ENCHANTMENT_ID
+                )
+                .then_some((container.container_id, menu_type))
+            });
+        if priority_screen != self.last_priority_screen {
+            if priority_screen.is_some() {
+                self.experience_display_start_tick = Some(client_tick);
+            }
+            self.last_priority_screen = priority_screen;
+        }
+    }
+}
+
+fn sanitize_jump_bar(jump: HudJumpBar) -> Option<HudJumpBar> {
+    jump.progress.is_finite().then_some(HudJumpBar {
+        progress: jump.progress.clamp(0.0, 1.0),
+        cooldown: jump.cooldown,
+    })
 }
 
 pub(super) fn hud_locator_bar_from_world(
@@ -370,13 +491,17 @@ fn argb_set_brightness(color: u32, brightness: f32) -> u32 {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        CommonPlayerSpawnInfo, PlayLogin, TrackedWaypoint as ProtocolTrackedWaypoint,
-        TrackedWaypointPacket, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        CommonPlayerSpawnInfo, OpenScreen, PlayLogin, PlayerExperience,
+        TrackedWaypoint as ProtocolTrackedWaypoint, TrackedWaypointPacket, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::LocalPlayerPoseState;
 
     fn world_with_local_player(profile_id: Uuid) -> WorldStore {
+        world_with_game_type(profile_id, 0)
+    }
+
+    fn world_with_game_type(profile_id: Uuid, game_type: i8) -> WorldStore {
         let mut world = WorldStore::new();
         world.set_local_player_profile_id(profile_id);
         world.apply_login(&PlayLogin {
@@ -393,7 +518,7 @@ mod tests {
                 dimension_type_id: 0,
                 dimension: "minecraft:overworld".to_string(),
                 seed: 0,
-                game_type: 0,
+                game_type,
                 previous_game_type: -1,
                 is_debug: false,
                 is_flat: false,
@@ -414,6 +539,10 @@ mod tests {
             ..LocalPlayerPoseState::default()
         });
         world
+    }
+
+    fn locator_bar() -> Option<HudLocatorBar> {
+        Some(HudLocatorBar::default())
     }
 
     fn track(
@@ -601,5 +730,164 @@ mod tests {
             hud_locator_bar_from_world(&WorldStore::new(), None, 70.0, 0.5),
             None
         );
+    }
+
+    #[test]
+    fn contextual_bar_uses_vanilla_idle_and_jump_priority() {
+        let world = world_with_local_player(Uuid::from_u128(7));
+        let mut runtime = HudContextualRuntime::default();
+        assert_eq!(
+            runtime.select(&world, 1, 0, None, None, None),
+            HudContextualBar::Experience { progress: 0.0 }
+        );
+        assert_eq!(
+            runtime.select(&world, 1, 1, locator_bar(), None, None),
+            HudContextualBar::Locator(HudLocatorBar::default())
+        );
+        assert_eq!(
+            runtime.select(
+                &world,
+                1,
+                2,
+                locator_bar(),
+                Some(HudJumpBar {
+                    progress: 0.0,
+                    cooldown: false,
+                }),
+                None,
+            ),
+            HudContextualBar::Locator(HudLocatorBar::default())
+        );
+        assert_eq!(
+            runtime.select(
+                &world,
+                1,
+                3,
+                locator_bar(),
+                Some(HudJumpBar {
+                    progress: 0.25,
+                    cooldown: false,
+                }),
+                None,
+            ),
+            HudContextualBar::Jump(HudJumpBar {
+                progress: 0.25,
+                cooldown: false,
+            })
+        );
+        assert_eq!(
+            runtime.select(
+                &world,
+                1,
+                4,
+                locator_bar(),
+                Some(HudJumpBar {
+                    progress: 0.0,
+                    cooldown: true,
+                }),
+                None,
+            ),
+            HudContextualBar::Jump(HudJumpBar {
+                progress: 0.0,
+                cooldown: true,
+            })
+        );
+    }
+
+    #[test]
+    fn contextual_bar_prioritizes_only_subsequent_experience_changes_for_one_hundred_ticks() {
+        let mut world = world_with_local_player(Uuid::from_u128(7));
+        let mut runtime = HudContextualRuntime::default();
+        world.apply_player_experience(PlayerExperience {
+            progress: 0.5,
+            level: 1,
+            total: 1,
+        });
+        assert_eq!(
+            runtime.select(&world, 1, 5, locator_bar(), None, Some(0.5)),
+            HudContextualBar::Locator(HudLocatorBar::default())
+        );
+
+        world.apply_player_experience(PlayerExperience {
+            progress: 0.75,
+            level: 1,
+            total: 2,
+        });
+        assert_eq!(
+            runtime.select(&world, 1, 10, locator_bar(), None, Some(0.75)),
+            HudContextualBar::Experience { progress: 0.75 }
+        );
+        assert_eq!(
+            runtime.select(&world, 1, 109, locator_bar(), None, Some(0.75)),
+            HudContextualBar::Experience { progress: 0.75 }
+        );
+        assert_eq!(
+            runtime.select(&world, 1, 110, locator_bar(), None, Some(0.75)),
+            HudContextualBar::Locator(HudLocatorBar::default())
+        );
+
+        // Respawn/level replacement resets the presentation clock. The
+        // current progress becomes the new first observation without priority.
+        assert_eq!(
+            runtime.select(&world, 2, 111, locator_bar(), None, Some(0.75)),
+            HudContextualBar::Locator(HudLocatorBar::default())
+        );
+    }
+
+    #[test]
+    fn contextual_bar_anvil_opening_restarts_but_does_not_extend_experience_priority() {
+        let mut world = world_with_local_player(Uuid::from_u128(7));
+        let mut runtime = HudContextualRuntime::default();
+        assert_eq!(
+            runtime.select(&world, 1, 0, locator_bar(), None, None),
+            HudContextualBar::Locator(HudLocatorBar::default())
+        );
+        world.apply_open_screen(OpenScreen {
+            container_id: 2,
+            menu_type_id: bbb_protocol::menu_types::VANILLA_MENU_TYPE_ANVIL_ID,
+            title: "Anvil".to_string(),
+            title_styled: Vec::new(),
+        });
+        assert_eq!(
+            runtime.select(&world, 1, 10, locator_bar(), None, None),
+            HudContextualBar::Experience { progress: 0.0 }
+        );
+        assert_eq!(
+            runtime.select(&world, 1, 109, locator_bar(), None, None),
+            HudContextualBar::Experience { progress: 0.0 }
+        );
+        assert_eq!(
+            runtime.select(&world, 1, 110, locator_bar(), None, None),
+            HudContextualBar::Locator(HudLocatorBar::default())
+        );
+
+        assert!(world.close_local_container(2));
+        let _ = runtime.select(&world, 1, 111, locator_bar(), None, None);
+        world.apply_open_screen(OpenScreen {
+            container_id: 2,
+            menu_type_id: bbb_protocol::menu_types::VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+            title: "Enchant".to_string(),
+            title_styled: Vec::new(),
+        });
+        assert_eq!(
+            runtime.select(&world, 1, 112, locator_bar(), None, None),
+            HudContextualBar::Experience { progress: 0.0 }
+        );
+    }
+
+    #[test]
+    fn contextual_bar_never_falls_back_to_experience_in_creative_or_spectator() {
+        for game_type in [1, 3] {
+            let world = world_with_game_type(Uuid::from_u128(7), game_type);
+            let mut runtime = HudContextualRuntime::default();
+            assert_eq!(
+                runtime.select(&world, 1, 0, None, None, Some(0.5)),
+                HudContextualBar::Empty
+            );
+            assert_eq!(
+                runtime.select(&world, 1, 1, locator_bar(), None, Some(0.75)),
+                HudContextualBar::Locator(HudLocatorBar::default())
+            );
+        }
     }
 }

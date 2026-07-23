@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{bail, Result};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -48,15 +48,15 @@ use self::layout::{
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
-    hud_overlay_message_text_origin, hud_player_heart_instances, hud_quad_vertices,
-    hud_rect_bounds, hud_rect_intersection_uv_span, hud_styled_quad_vertices,
-    hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
-    hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
-    inventory_slot_item_hud_rect, nine_slice_segments, vehicle_heart_hud_rect, HudAirBubbleIcon,
-    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW,
-    HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE,
-    HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
-    HUD_VEHICLE_HEARTS_PER_ROW,
+    hud_locator_arrow_rect, hud_locator_marker_rect, hud_overlay_message_text_origin,
+    hud_player_heart_instances, hud_quad_vertices, hud_rect_bounds, hud_rect_intersection_uv_span,
+    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
+    hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
+    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, nine_slice_segments,
+    vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer,
+    HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
+    HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
+    HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
 
 pub use bbb_render_types::{
@@ -924,6 +924,61 @@ pub struct HudLocatorMarker {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct HudLocatorBar {
     pub markers: Vec<HudLocatorMarker>,
+}
+
+/// Renderer-owned projection of one accepted waypoint-style JSON resource.
+/// Sprite ids are the GUI-atlas locations selected by Vanilla's distance
+/// thresholds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudLocatorStyle {
+    pub near_distance: u32,
+    pub far_distance: u32,
+    pub sprite_ids: Vec<String>,
+}
+
+impl HudLocatorStyle {
+    pub fn sprite_id_for_distance(&self, distance: f32) -> Option<&str> {
+        let first = self.sprite_ids.first()?;
+        if distance < self.near_distance as f32 {
+            return Some(first);
+        }
+        let last = self.sprite_ids.last()?;
+        if distance >= self.far_distance as f32 {
+            return Some(last);
+        }
+        if self.sprite_ids.len() == 1 {
+            return Some(first);
+        }
+        if self.sprite_ids.len() == 3 {
+            return self.sprite_ids.get(1).map(String::as_str);
+        }
+        let range = self.far_distance.saturating_sub(self.near_distance);
+        if range == 0 {
+            return Some(last);
+        }
+        let alpha = (distance - self.near_distance as f32) / range as f32;
+        let index = 1
+            + (alpha * (self.sprite_ids.len() as f32 - 2.0))
+                .floor()
+                .max(0.0) as usize;
+        self.sprite_ids
+            .get(index.min(self.sprite_ids.len() - 1))
+            .map(String::as_str)
+    }
+}
+
+/// The single contextual information bar selected by
+/// `Gui.nextContextualInfoState`. Experience-level text is deliberately
+/// separate because Vanilla extracts it independently.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum HudContextualBar {
+    #[default]
+    Empty,
+    Experience {
+        progress: f32,
+    },
+    Locator(HudLocatorBar),
+    Jump(HudJumpBar),
 }
 
 /// Vanilla `Gui.HeartType` (Gui.java:1333-1452): the heart sprite family a
@@ -4458,6 +4513,52 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_locator_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_locator_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_locator_arrow_up(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_locator_arrow_up = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_locator_arrow_down(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_locator_arrow_down = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_locator_marker_sprite(
+        &mut self,
+        sprite_id: String,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        let sprite = self.upload_hud_sprite(width, height, rgba)?;
+        self.hud_locator_marker_sprites.insert(sprite_id, sprite);
+        Ok(())
+    }
+
+    pub fn set_hud_locator_styles(&mut self, styles: BTreeMap<String, HudLocatorStyle>) {
+        self.hud_locator_styles = styles;
+    }
+
     /// Uploads one player-heart sprite (vanilla `hud/heart/*`) into the
     /// per-kind slot keyed by `(kind, hardcore, half)`. The asset loader walks
     /// [`HudHeartKind::ALL`] × hardcore × half and resolves each PNG name with
@@ -4727,36 +4828,16 @@ impl Renderer {
             vehicle.filter(|vehicle| vehicle.health.is_finite() && vehicle.max_health.is_finite());
     }
 
-    /// Retains the native camera projection for the locator contextual bar.
-    /// Stage-two contextual selection and resource-backed drawing consume this
-    /// same farthest-first value; canonical waypoint state remains in world.
-    pub fn set_hud_locator_bar(&mut self, locator_bar: Option<HudLocatorBar>) {
-        self.hud_locator_bar = locator_bar;
-    }
-
-    /// Projects `JumpableVehicleBarRenderer`'s state. A present value selects
-    /// the jumpable-vehicle contextual bar over the experience bar; the
-    /// experience level text remains independent, matching vanilla
-    /// `Gui.extractRenderState`.
-    pub fn set_hud_jump_bar(&mut self, jump_bar: Option<HudJumpBar>) {
-        self.hud_jump_bar = jump_bar
-            .filter(|jump_bar| jump_bar.progress.is_finite())
-            .map(|jump_bar| HudJumpBar {
-                progress: jump_bar.progress.clamp(0.0, 1.0),
-                cooldown: jump_bar.cooldown,
-            });
+    /// Installs the one bar selected by native `Gui.nextContextualInfoState`
+    /// projection. Experience-level text remains an independent field.
+    pub fn set_hud_contextual_bar(&mut self, contextual_bar: HudContextualBar) {
+        self.hud_contextual_bar = sanitize_hud_contextual_bar(contextual_bar);
     }
 
     /// Projects this frame's food-bar effect state (starvation-shake gate and
     /// hunger potion sprite swap); the food level is set by `set_hud_food`.
     pub fn set_hud_food_effect(&mut self, effect: HudFoodEffect) {
         self.hud_food_effect = effect;
-    }
-
-    pub fn set_hud_experience_progress(&mut self, progress: Option<f32>) {
-        self.hud_experience_progress_value = progress
-            .filter(|progress| progress.is_finite())
-            .map(|progress| progress.clamp(0.0, 1.0));
     }
 
     /// Projects the experience level to render as centered text above the bar.
@@ -5270,86 +5351,144 @@ impl Renderer {
             }
         }
 
-        if let Some(jump_bar) = self.hud_jump_bar {
-            if let Some(background) = &self.hud_jump_bar_background {
-                push_hud_draw(
-                    &mut vertices,
-                    &mut commands,
-                    background,
-                    surface_size,
-                    experience_bar_hud_rect(surface_size, background.width, background.height),
-                );
-            }
-            if jump_bar.cooldown {
-                if let Some(cooldown) = &self.hud_jump_bar_cooldown {
+        match &self.hud_contextual_bar {
+            HudContextualBar::Empty => {}
+            HudContextualBar::Jump(jump_bar) => {
+                if let Some(background) = &self.hud_jump_bar_background {
                     push_hud_draw(
                         &mut vertices,
                         &mut commands,
-                        cooldown,
+                        background,
                         surface_size,
-                        experience_bar_hud_rect(surface_size, cooldown.width, cooldown.height),
+                        experience_bar_hud_rect(surface_size, background.width, background.height),
                     );
                 }
-            } else {
-                let progress_width = hud_contextual_bar_progress_width(jump_bar.progress);
-                if progress_width > 0 {
-                    if let Some(progress_sprite) = &self.hud_jump_bar_progress {
-                        push_hud_draw_with_uv(
+                if jump_bar.cooldown {
+                    if let Some(cooldown) = &self.hud_jump_bar_cooldown {
+                        push_hud_draw(
                             &mut vertices,
                             &mut commands,
-                            progress_sprite,
+                            cooldown,
                             surface_size,
-                            experience_bar_hud_rect(
-                                surface_size,
-                                progress_width,
-                                progress_sprite.height,
-                            ),
-                            HudUvRect {
-                                min: [0.0, 0.0],
-                                max: [
-                                    (progress_width as f32 / progress_sprite.width.max(1) as f32)
-                                        .clamp(0.0, 1.0),
-                                    1.0,
-                                ],
-                            },
+                            experience_bar_hud_rect(surface_size, cooldown.width, cooldown.height),
                         );
+                    }
+                } else {
+                    let progress_width = hud_contextual_bar_progress_width(jump_bar.progress);
+                    if progress_width > 0 {
+                        if let Some(progress_sprite) = &self.hud_jump_bar_progress {
+                            push_hud_draw_with_uv(
+                                &mut vertices,
+                                &mut commands,
+                                progress_sprite,
+                                surface_size,
+                                experience_bar_hud_rect(
+                                    surface_size,
+                                    progress_width,
+                                    progress_sprite.height,
+                                ),
+                                HudUvRect {
+                                    min: [0.0, 0.0],
+                                    max: [
+                                        (progress_width as f32
+                                            / progress_sprite.width.max(1) as f32)
+                                            .clamp(0.0, 1.0),
+                                        1.0,
+                                    ],
+                                },
+                            );
+                        }
                     }
                 }
             }
-        } else if let (Some(progress), Some(background)) = (
-            self.hud_experience_progress_value,
-            &self.hud_experience_background,
-        ) {
-            push_hud_draw(
-                &mut vertices,
-                &mut commands,
-                background,
-                surface_size,
-                experience_bar_hud_rect(surface_size, background.width, background.height),
-            );
-
-            let progress_width = hud_contextual_bar_progress_width(progress);
-            if progress_width > 0 {
-                if let Some(progress_sprite) = &self.hud_experience_progress {
-                    push_hud_draw_with_uv(
+            HudContextualBar::Experience { progress } => {
+                if let Some(background) = &self.hud_experience_background {
+                    push_hud_draw(
                         &mut vertices,
                         &mut commands,
-                        progress_sprite,
+                        background,
                         surface_size,
-                        experience_bar_hud_rect(
-                            surface_size,
-                            progress_width,
-                            progress_sprite.height,
-                        ),
-                        HudUvRect {
-                            min: [0.0, 0.0],
-                            max: [
-                                (progress_width as f32 / progress_sprite.width.max(1) as f32)
-                                    .clamp(0.0, 1.0),
-                                1.0,
-                            ],
-                        },
+                        experience_bar_hud_rect(surface_size, background.width, background.height),
                     );
+
+                    let progress_width = hud_contextual_bar_progress_width(*progress);
+                    if progress_width > 0 {
+                        if let Some(progress_sprite) = &self.hud_experience_progress {
+                            push_hud_draw_with_uv(
+                                &mut vertices,
+                                &mut commands,
+                                progress_sprite,
+                                surface_size,
+                                experience_bar_hud_rect(
+                                    surface_size,
+                                    progress_width,
+                                    progress_sprite.height,
+                                ),
+                                HudUvRect {
+                                    min: [0.0, 0.0],
+                                    max: [
+                                        (progress_width as f32
+                                            / progress_sprite.width.max(1) as f32)
+                                            .clamp(0.0, 1.0),
+                                        1.0,
+                                    ],
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+            HudContextualBar::Locator(locator) => {
+                if let Some(background) = &self.hud_locator_background {
+                    push_hud_draw(
+                        &mut vertices,
+                        &mut commands,
+                        background,
+                        surface_size,
+                        experience_bar_hud_rect(surface_size, background.width, background.height),
+                    );
+                }
+                for marker in &locator.markers {
+                    let sprite_id = self
+                        .hud_locator_styles
+                        .get(&marker.style_id)
+                        .and_then(|style| style.sprite_id_for_distance(marker.distance));
+                    let marker_sprite = sprite_id
+                        .and_then(|sprite_id| self.hud_locator_marker_sprites.get(sprite_id))
+                        .or_else(|| self.hud_locator_marker_sprites.get("minecraft:missingno"));
+                    if let Some(marker_sprite) = marker_sprite {
+                        push_hud_draw_with_uv_and_tint(
+                            &mut vertices,
+                            &mut commands,
+                            marker_sprite,
+                            surface_size,
+                            hud_locator_marker_rect(surface_size, marker.angle_degrees),
+                            HudUvRect {
+                                min: [0.0, 0.0],
+                                max: [1.0, 1.0],
+                            },
+                            hud_argb_to_tint(marker.color_argb),
+                        );
+                    }
+
+                    let arrow = match marker.pitch {
+                        HudLocatorPitch::None => None,
+                        HudLocatorPitch::Up => self.hud_locator_arrow_up.as_ref(),
+                        HudLocatorPitch::Down => self.hud_locator_arrow_down.as_ref(),
+                    };
+                    if let Some(arrow) = arrow {
+                        push_hud_draw(
+                            &mut vertices,
+                            &mut commands,
+                            arrow,
+                            surface_size,
+                            hud_locator_arrow_rect(
+                                surface_size,
+                                marker.angle_degrees,
+                                matches!(marker.pitch, HudLocatorPitch::Up),
+                            ),
+                        );
+                    }
                 }
             }
         }
@@ -7262,6 +7401,38 @@ fn hud_sleep_overlay_tint(alpha: u8) -> [f32; 4] {
 
 fn sanitize_hud_sleep_overlay(overlay: Option<HudSleepOverlay>) -> Option<HudSleepOverlay> {
     overlay.filter(|overlay| overlay.alpha > 0)
+}
+
+fn sanitize_hud_contextual_bar(contextual_bar: HudContextualBar) -> HudContextualBar {
+    match contextual_bar {
+        HudContextualBar::Empty => HudContextualBar::Empty,
+        HudContextualBar::Experience { progress } if progress.is_finite() => {
+            HudContextualBar::Experience {
+                progress: progress.clamp(0.0, 1.0),
+            }
+        }
+        HudContextualBar::Experience { .. } => HudContextualBar::Empty,
+        HudContextualBar::Jump(jump) if jump.progress.is_finite() => {
+            HudContextualBar::Jump(HudJumpBar {
+                progress: jump.progress.clamp(0.0, 1.0),
+                cooldown: jump.cooldown,
+            })
+        }
+        HudContextualBar::Jump(_) => HudContextualBar::Empty,
+        HudContextualBar::Locator(mut locator) => {
+            locator.markers.retain(|marker| {
+                marker.angle_degrees.is_finite()
+                    && marker.angle_degrees > -60.0
+                    && marker.angle_degrees <= 60.0
+                    && !marker.distance.is_nan()
+                    && !marker.distance.is_sign_negative()
+            });
+            for marker in &mut locator.markers {
+                marker.color_argb |= 0xFF00_0000;
+            }
+            HudContextualBar::Locator(locator)
+        }
+    }
 }
 
 fn inventory_floating_item_hud_rect(
@@ -18938,7 +19109,7 @@ mod tests {
     }
 
     #[test]
-    fn jump_bar_offscreen_frame_replaces_experience_bar_and_uses_cooldown_overlay() {
+    fn contextual_bar_jump_replaces_experience_and_uses_cooldown_overlay() {
         use crate::camera::ClearColor;
 
         const WIDTH: u32 = 320;
@@ -18981,7 +19152,7 @@ mod tests {
         let right_px = WIDTH / 2 + 91 - 4;
         let bar_py = HEIGHT - 24 - 5 + 2;
 
-        renderer.set_hud_experience_progress(Some(1.0));
+        renderer.set_hud_contextual_bar(HudContextualBar::Experience { progress: 1.0 });
         let pixels = renderer.render_offscreen_frame().expect("experience frame");
         let left = pixels.pixel(left_px, bar_py);
         assert!(
@@ -18989,7 +19160,7 @@ mod tests {
             "experience bar should draw the red sprite before a jump bar is projected, got {left:?}"
         );
 
-        renderer.set_hud_jump_bar(Some(HudJumpBar {
+        renderer.set_hud_contextual_bar(HudContextualBar::Jump(HudJumpBar {
             progress: 0.5,
             cooldown: false,
         }));
@@ -19005,7 +19176,7 @@ mod tests {
             "jump background should remain visible past the clipped progress, got {right:?}"
         );
 
-        renderer.set_hud_jump_bar(Some(HudJumpBar {
+        renderer.set_hud_contextual_bar(HudContextualBar::Jump(HudJumpBar {
             progress: 0.5,
             cooldown: true,
         }));
@@ -19020,6 +19191,144 @@ mod tests {
             right[1] > 128 && right[2] > 128 && right[0] < 128,
             "cooldown overlay should cover the whole bar, got {right:?}"
         );
+    }
+
+    #[test]
+    fn locator_style_selects_vanilla_distance_buckets() {
+        let style = HudLocatorStyle {
+            near_distance: 128,
+            far_distance: 332,
+            sprite_ids: (0..4).map(|index| format!("dot/{index}")).collect(),
+        };
+        assert_eq!(style.sprite_id_for_distance(127.99), Some("dot/0"));
+        assert_eq!(style.sprite_id_for_distance(128.0), Some("dot/1"));
+        assert_eq!(style.sprite_id_for_distance(230.0), Some("dot/2"));
+        assert_eq!(style.sprite_id_for_distance(332.0), Some("dot/3"));
+        assert_eq!(
+            HudLocatorStyle {
+                near_distance: 64,
+                far_distance: 65,
+                sprite_ids: vec!["bowtie".to_string()],
+            }
+            .sprite_id_for_distance(f32::INFINITY),
+            Some("bowtie")
+        );
+    }
+
+    #[test]
+    fn locator_bar_offscreen_frame_tints_dot_but_not_pitch_arrow() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        let solid =
+            |count: usize, rgba: [u8; 4]| -> Vec<u8> { (0..count).flat_map(|_| rgba).collect() };
+        renderer
+            .upload_hud_locator_background(182, 5, &solid(182 * 5, [0, 255, 0, 255]))
+            .expect("locator background");
+        renderer
+            .upload_hud_locator_arrow_up(7, 5, &solid(7 * 5, [0, 0, 255, 255]))
+            .expect("locator arrow up");
+        renderer
+            .upload_hud_locator_marker_sprite(
+                "minecraft:hud/locator_bar_dot/test".to_string(),
+                9,
+                9,
+                &solid(9 * 9, [255, 255, 255, 255]),
+            )
+            .expect("locator marker");
+        renderer
+            .upload_hud_locator_marker_sprite(
+                "minecraft:missingno".to_string(),
+                16,
+                16,
+                &solid(16 * 16, [255, 0, 255, 255]),
+            )
+            .expect("missing marker");
+        renderer.set_hud_locator_styles(BTreeMap::from([
+            (
+                "minecraft:test".to_string(),
+                HudLocatorStyle {
+                    near_distance: 10,
+                    far_distance: 20,
+                    sprite_ids: vec!["minecraft:hud/locator_bar_dot/test".to_string()],
+                },
+            ),
+            (
+                "minecraft:broken".to_string(),
+                HudLocatorStyle {
+                    near_distance: 10,
+                    far_distance: 20,
+                    sprite_ids: vec!["minecraft:hud/locator_bar_dot/absent".to_string()],
+                },
+            ),
+        ]));
+        renderer.set_hud_contextual_bar(HudContextualBar::Locator(HudLocatorBar {
+            markers: vec![HudLocatorMarker {
+                angle_degrees: 0.0,
+                pitch: HudLocatorPitch::Up,
+                distance: 5.0,
+                style_id: "minecraft:test".to_string(),
+                color_argb: 0xFFFF0000,
+            }],
+        }));
+
+        let pixels = renderer.render_offscreen_frame().expect("locator frame");
+        let background = pixels.pixel(WIDTH / 2 - 91 + 4, HEIGHT - 24 - 5 + 2);
+        assert!(
+            background[1] > 128 && background[0] < 128 && background[2] < 128,
+            "locator background should use the green bar sprite, got {background:?}"
+        );
+        let dot = pixels.pixel(160, 214);
+        assert!(
+            dot[0] > 128 && dot[1] < 128 && dot[2] < 128,
+            "locator dot should receive its red marker tint, got {dot:?}"
+        );
+        let arrow = pixels.pixel(158, 206);
+        assert!(
+            arrow[2] > 128 && arrow[0] < 128 && arrow[1] < 128,
+            "pitch arrow should remain untinted blue, got {arrow:?}"
+        );
+
+        renderer.set_hud_contextual_bar(HudContextualBar::Locator(HudLocatorBar {
+            markers: vec![
+                HudLocatorMarker {
+                    angle_degrees: -20.0,
+                    pitch: HudLocatorPitch::None,
+                    distance: 5.0,
+                    style_id: "example:unknown".to_string(),
+                    color_argb: 0xFFFF_FFFF,
+                },
+                HudLocatorMarker {
+                    angle_degrees: 20.0,
+                    pitch: HudLocatorPitch::None,
+                    distance: 5.0,
+                    style_id: "minecraft:broken".to_string(),
+                    color_argb: 0xFFFF_FFFF,
+                },
+            ],
+        }));
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("missing locator frame");
+        for x in [131, 188] {
+            let marker = pixels.pixel(x, 214);
+            assert!(
+                marker[0] > 128 && marker[2] > 128 && marker[1] < 128,
+                "unknown styles and absent sprites should use missingno, got {marker:?} at {x}"
+            );
+        }
     }
 
     #[test]

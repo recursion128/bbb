@@ -379,6 +379,11 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_jump_bar_background);
         $take_owner!(hud_jump_bar_progress);
         $take_owner!(hud_jump_bar_cooldown);
+        $take_owner!(hud_locator_background);
+        $take_owner!(hud_locator_arrow_up);
+        $take_owner!(hud_locator_arrow_down);
+        $take_owner!(hud_locator_marker_sprites);
+        $take_owner!(hud_locator_styles);
         $take_owner!(hud_heart_sprites);
         $take_owner!(hud_food_empty);
         $take_owner!(hud_food_full);
@@ -579,6 +584,84 @@ mod tests {
         assert_eq!(error.to_string(), "injected font failure");
         assert_eq!(renderer.hud_chat_lines, previous_lines);
         assert_eq!(renderer.hud_font_book, previous_fonts);
+    }
+
+    #[test]
+    fn failed_waypoint_locator_reload_restores_background_style_and_marker_sprite() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let solid =
+            |count: usize, rgba: [u8; 4]| -> Vec<u8> { (0..count).flat_map(|_| rgba).collect() };
+        renderer
+            .upload_hud_locator_background(182, 5, &solid(182 * 5, [255, 0, 0, 255]))
+            .expect("old background");
+        renderer
+            .upload_hud_locator_marker_sprite(
+                "old".to_string(),
+                9,
+                9,
+                &solid(9 * 9, [0, 255, 0, 255]),
+            )
+            .expect("old marker");
+        renderer.set_hud_locator_styles(std::collections::BTreeMap::from([(
+            "test".to_string(),
+            crate::HudLocatorStyle {
+                near_distance: 1,
+                far_distance: 2,
+                sprite_ids: vec!["old".to_string()],
+            },
+        )]));
+        renderer.set_hud_contextual_bar(crate::HudContextualBar::Locator(crate::HudLocatorBar {
+            markers: vec![crate::HudLocatorMarker {
+                angle_degrees: 0.0,
+                pitch: crate::HudLocatorPitch::None,
+                distance: 0.0,
+                style_id: "test".to_string(),
+                color_argb: 0xFFFF_FFFF,
+            }],
+        }));
+
+        renderer
+            .transactional_resource_reload(|renderer| -> Result<()> {
+                renderer.upload_hud_locator_background(
+                    182,
+                    5,
+                    &solid(182 * 5, [0, 0, 255, 255]),
+                )?;
+                renderer.upload_hud_locator_marker_sprite(
+                    "new".to_string(),
+                    9,
+                    9,
+                    &solid(9 * 9, [255, 0, 255, 255]),
+                )?;
+                renderer.set_hud_locator_styles(std::collections::BTreeMap::from([(
+                    "test".to_string(),
+                    crate::HudLocatorStyle {
+                        near_distance: 1,
+                        far_distance: 2,
+                        sprite_ids: vec!["new".to_string()],
+                    },
+                )]));
+                Err(anyhow!("injected locator failure"))
+            })
+            .expect_err("locator reload should fail");
+
+        assert!(renderer.hud_locator_marker_sprites.contains_key("old"));
+        assert!(!renderer.hud_locator_marker_sprites.contains_key("new"));
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("frame after rollback");
+        let background = pixels.pixel(73, 213);
+        assert!(
+            background[0] > 128 && background[1] < 128 && background[2] < 128,
+            "rollback should restore the old red locator background, got {background:?}"
+        );
+        let marker = pixels.pixel(160, 214);
+        assert!(
+            marker[1] > 128 && marker[0] < 128 && marker[2] < 128,
+            "rollback should restore the old green locator marker/style, got {marker:?}"
+        );
     }
 
     #[test]

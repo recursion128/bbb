@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind,
-    HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite,
+    HudLocatorStyle, HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite,
 };
 use bbb_world::vanilla_sign_wood_kinds;
 
@@ -1187,6 +1187,66 @@ pub(crate) fn try_load_hud_textures(
         jump_bar_cooldown.height,
         &jump_bar_cooldown.rgba,
     )?;
+    let locator_background = hud_sprite(&sprites, "hud/locator_bar_background")?;
+    renderer.upload_hud_locator_background(
+        locator_background.width,
+        locator_background.height,
+        &locator_background.rgba,
+    )?;
+    let locator_arrow_up = hud_sprite(&sprites, "hud/locator_bar_arrow_up")?;
+    renderer.upload_hud_locator_arrow_up(
+        locator_arrow_up.width,
+        locator_arrow_up.height,
+        &locator_arrow_up.rgba,
+    )?;
+    let locator_arrow_down = hud_sprite(&sprites, "hud/locator_bar_arrow_down")?;
+    renderer.upload_hud_locator_arrow_down(
+        locator_arrow_down.width,
+        locator_arrow_down.height,
+        &locator_arrow_down.rgba,
+    )?;
+
+    let waypoint_styles = roots.load_waypoint_style_catalog()?;
+    let mut locator_styles = BTreeMap::new();
+    let mut locator_sprite_ids = BTreeSet::new();
+    for (style_id, style) in waypoint_styles.styles() {
+        locator_sprite_ids.extend(style.sprite_locations.iter().cloned());
+        locator_styles.insert(
+            style_id.clone(),
+            HudLocatorStyle {
+                near_distance: style.near_distance,
+                far_distance: style.far_distance,
+                sprite_ids: style.sprite_locations.clone(),
+            },
+        );
+    }
+    if let Some(missing) = sprites.get("minecraft:missingno") {
+        renderer.upload_hud_locator_marker_sprite(
+            missing.id.clone(),
+            missing.width,
+            missing.height,
+            &missing.rgba,
+        )?;
+    } else {
+        renderer.upload_hud_locator_marker_sprite(
+            "minecraft:missingno".to_string(),
+            16,
+            16,
+            &missing_texture_rgba(16, 16),
+        )?;
+    }
+    for sprite_id in locator_sprite_ids {
+        let Some(sprite) = sprites.get(&sprite_id) else {
+            continue;
+        };
+        renderer.upload_hud_locator_marker_sprite(
+            sprite_id,
+            sprite.width,
+            sprite.height,
+            &sprite.rgba,
+        )?;
+    }
+    renderer.set_hud_locator_styles(locator_styles);
     // Player heart sprites: every `HudHeartKind` × hardcore × half combination
     // (vanilla `hud/heart/*`, Gui.java:1334-1393). Blink variants are skipped
     // (blink is deferred). `Container` has no distinct half sprite, so its half

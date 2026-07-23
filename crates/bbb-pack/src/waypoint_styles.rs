@@ -113,26 +113,6 @@ impl WaypointStyle {
             sprite_locations: vec!["minecraft:hud/locator_bar_dot/missingno".to_string()],
         }
     }
-
-    pub fn sprite_location_for_distance(&self, distance: f32) -> &str {
-        if distance < self.near_distance as f32 {
-            return self.sprite_locations.first().expect("style has sprites");
-        }
-        if distance >= self.far_distance as f32 {
-            return self.sprite_locations.last().expect("style has sprites");
-        }
-        if self.sprite_locations.len() == 1 {
-            return self.sprite_locations.first().expect("style has sprites");
-        }
-        if self.sprite_locations.len() == 3 {
-            return &self.sprite_locations[1];
-        }
-
-        let alpha = (distance - self.near_distance as f32)
-            / (self.far_distance - self.near_distance) as f32;
-        let index = 1 + (alpha * (self.sprite_locations.len() as f32 - 2.0)).floor() as usize;
-        &self.sprite_locations[index]
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -228,23 +208,6 @@ mod tests {
                 "minecraft:hud/locator_bar_dot/default_3".to_string(),
             ]
         );
-        assert_eq!(
-            style.sprite_location_for_distance(50.0),
-            "minecraft:hud/locator_bar_dot/default_0"
-        );
-        assert_eq!(
-            style.sprite_location_for_distance(200.0),
-            "minecraft:hud/locator_bar_dot/default_1"
-        );
-        assert_eq!(
-            style.sprite_location_for_distance(331.0),
-            "minecraft:hud/locator_bar_dot/default_2"
-        );
-        assert_eq!(
-            style.sprite_location_for_distance(332.0),
-            "minecraft:hud/locator_bar_dot/default_3"
-        );
-
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -289,8 +252,12 @@ mod tests {
         assert_eq!(style.near_distance, 32);
         assert_eq!(style.far_distance, 96);
         assert_eq!(
-            style.sprite_location_for_distance(80.0),
-            "custom:hud/locator_bar_dot/middle"
+            style.sprite_locations,
+            vec![
+                "custom:hud/locator_bar_dot/near".to_string(),
+                "custom:hud/locator_bar_dot/middle".to_string(),
+                "custom:hud/locator_bar_dot/far".to_string(),
+            ]
         );
         assert_eq!(
             catalog.style_or_missing("missing").sprite_locations,

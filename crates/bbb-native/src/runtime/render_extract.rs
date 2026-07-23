@@ -15,8 +15,8 @@ use bbb_renderer::{
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
     HudComponentTextRun, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen,
-    HudInventoryScreen, HudJigsawBlockEditorScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth,
-    HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
+    HudInventoryScreen, HudJigsawBlockEditorScreen, HudPauseScreen, HudPlayerHealth, HudPlayerList,
+    HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
     HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
     HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
@@ -1448,9 +1448,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_armor: Option<i32>,
     pub(crate) hud_air: Option<HudAirSupply>,
     pub(crate) hud_vehicle_health: Option<HudVehicleHealth>,
-    pub(crate) hud_locator_bar: Option<HudLocatorBar>,
-    pub(crate) hud_jump_bar: Option<HudJumpBar>,
-    pub(crate) hud_experience_progress: Option<f32>,
+    pub(crate) hud_contextual_bar: HudContextualBar,
     pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_selected_slot: u8,
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
@@ -1706,9 +1704,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_armor(frame.hud_armor);
     renderer.set_hud_air(frame.hud_air);
     renderer.set_hud_vehicle_health(frame.hud_vehicle_health);
-    renderer.set_hud_locator_bar(frame.hud_locator_bar);
-    renderer.set_hud_jump_bar(frame.hud_jump_bar);
-    renderer.set_hud_experience_progress(frame.hud_experience_progress);
+    renderer.set_hud_contextual_bar(frame.hud_contextual_bar);
     renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);

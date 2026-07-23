@@ -14,6 +14,12 @@ const HUD_HOTBAR_ITEM_SIZE: u32 = 16;
 const HUD_EXPERIENCE_BAR_WIDTH: u32 = 182;
 const HUD_EXPERIENCE_BAR_HEIGHT: u32 = 5;
 const HUD_EXPERIENCE_MARGIN_BOTTOM: f32 = 24.0;
+const HUD_LOCATOR_MARKER_WIDTH: u32 = 9;
+const HUD_LOCATOR_MARKER_HEIGHT: u32 = 9;
+const HUD_LOCATOR_ARROW_WIDTH: u32 = 7;
+const HUD_LOCATOR_ARROW_HEIGHT: u32 = 5;
+const HUD_LOCATOR_ANGLE_PIXEL_SPAN: f32 = 173.0;
+const HUD_LOCATOR_VISIBLE_DEGREES: f32 = 60.0;
 const HUD_HEART_SPACING: f32 = 8.0;
 pub(super) const HUD_FOOD_ICONS_PER_ROW: u32 = 10;
 const HUD_FOOD_SPACING: f32 = 8.0;
@@ -178,10 +184,10 @@ pub(super) fn experience_bar_hud_rect(
     width: u32,
     height: u32,
 ) -> HudRect {
-    let surface_width = surface_size.width.max(1) as f32;
     let surface_height = surface_size.height.max(1) as f32;
+    let left = (i64::from(surface_size.width.max(1)) - i64::from(HUD_EXPERIENCE_BAR_WIDTH)) / 2;
     HudRect {
-        x: (surface_width - HUD_EXPERIENCE_BAR_WIDTH as f32) * 0.5,
+        x: left as f32,
         y: surface_height - HUD_EXPERIENCE_MARGIN_BOTTOM - HUD_EXPERIENCE_BAR_HEIGHT as f32,
         width,
         height,
@@ -190,6 +196,53 @@ pub(super) fn experience_bar_hud_rect(
 
 pub(super) fn hud_contextual_bar_progress_width(progress: f32) -> u32 {
     ((progress.clamp(0.0, 1.0) * 183.0).floor() as u32).min(HUD_EXPERIENCE_BAR_WIDTH)
+}
+
+/// Vanilla `LocatorBarRenderer` marker placement: the center reference is
+/// `ceil((guiWidth - 9) / 2)`, the accepted ±60° interval spans 173 pixels,
+/// and the 9x9 dot starts two pixels above the 182x5 contextual bar.
+pub(super) fn hud_locator_marker_rect(
+    surface_size: PhysicalSize<u32>,
+    angle_degrees: f32,
+) -> HudRect {
+    let bar = experience_bar_hud_rect(
+        surface_size,
+        HUD_EXPERIENCE_BAR_WIDTH,
+        HUD_EXPERIENCE_BAR_HEIGHT,
+    );
+    let screen_middle =
+        ((surface_size.width.max(1) as f32 - HUD_LOCATOR_MARKER_WIDTH as f32) * 0.5).ceil();
+    let pixel_offset = (angle_degrees * HUD_LOCATOR_ANGLE_PIXEL_SPAN
+        / (2.0 * HUD_LOCATOR_VISIBLE_DEGREES))
+        .floor();
+    HudRect {
+        x: screen_middle + pixel_offset,
+        y: bar.y - 2.0,
+        width: HUD_LOCATOR_MARKER_WIDTH,
+        height: HUD_LOCATOR_MARKER_HEIGHT,
+    }
+}
+
+/// Vanilla pitch cue placement relative to a locator dot. `up == true`
+/// seats the 7x5 arrow six pixels above the contextual bar; down seats it six
+/// pixels below.
+pub(super) fn hud_locator_arrow_rect(
+    surface_size: PhysicalSize<u32>,
+    angle_degrees: f32,
+    up: bool,
+) -> HudRect {
+    let marker = hud_locator_marker_rect(surface_size, angle_degrees);
+    let bar = experience_bar_hud_rect(
+        surface_size,
+        HUD_EXPERIENCE_BAR_WIDTH,
+        HUD_EXPERIENCE_BAR_HEIGHT,
+    );
+    HudRect {
+        x: marker.x + 1.0,
+        y: if up { bar.y - 6.0 } else { bar.y + 6.0 },
+        width: HUD_LOCATOR_ARROW_WIDTH,
+        height: HUD_LOCATOR_ARROW_HEIGHT,
+    }
 }
 
 /// One boss-bar sprite row: `x = guiWidth / 2 - 91` (Java int division,
@@ -1480,10 +1533,39 @@ mod tests {
         assert_eq!(bar.y, 691.0);
         assert_eq!(bar.width, 182);
         assert_eq!(bar.height, 5);
+        assert_eq!(
+            experience_bar_hud_rect(PhysicalSize::new(321, 240), 182, 5).x,
+            69.0
+        );
 
         assert_eq!(hud_contextual_bar_progress_width(0.0), 0);
         assert_eq!(hud_contextual_bar_progress_width(0.5), 91);
         assert_eq!(hud_contextual_bar_progress_width(1.0), 182);
+    }
+
+    #[test]
+    fn hud_locator_layout_matches_vanilla_dot_and_arrow_positions() {
+        let surface_size = PhysicalSize::new(320, 240);
+        assert_eq!(
+            hud_locator_marker_rect(surface_size, 0.0),
+            HudRect {
+                x: 156.0,
+                y: 209.0,
+                width: 9,
+                height: 9,
+            }
+        );
+        assert_eq!(hud_locator_marker_rect(surface_size, 60.0).x, 242.0);
+        assert_eq!(
+            hud_locator_arrow_rect(surface_size, 0.0, true),
+            HudRect {
+                x: 157.0,
+                y: 205.0,
+                width: 7,
+                height: 5,
+            }
+        );
+        assert_eq!(hud_locator_arrow_rect(surface_size, 0.0, false).y, 217.0);
     }
 
     #[test]
