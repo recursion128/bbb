@@ -1,6 +1,6 @@
 # Player Social Manager and Social Interactions Closure
 
-This document freezes the engineering contract for closing Vanilla 26.1
+This document records the engineering contract that closed Vanilla 26.1
 `PlayerSocialManager`, `SocialInteractionsScreen`, and the remaining runtime/test
 cells of `CLIENTBOUND_PLAYER_INFO_REMOVE` from the fully gated baseline
 `f404fb1b3`.

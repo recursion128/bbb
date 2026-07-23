@@ -10789,12 +10789,16 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/client/social.rs#social_players",
+            "crates/bbb-native/src/input/social.rs#sync_social_interactions_screen",
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_social_interactions_screen",
+            "crates/bbb-renderer/src/hud/social.rs#push_hud_social_interactions_screen",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#player_info_events_update_world_and_world_counters",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerInfoRemove",
             "vanilla:net/minecraft/client/gui/screens/social/PlayerSocialManager.java#removePlayer"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -10802,10 +10806,15 @@
             "crates/bbb-net/src/event_stream.rs#play_session_and_player_info_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_player_info_packets_to_world",
             "crates/bbb-world/src/client/player_info.rs#player_info_remove_clears_entry_and_listed_tracking",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#player_info_events_update_world_and_world_counters"
+            "crates/bbb-world/src/client/social.rs#player_info_remove_preserves_seen_and_recent_social_rows_as_removed",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#player_info_events_update_world_and_world_counters",
+            "crates/bbb-native/src/input/social.rs#player_info_remove_marks_retained_social_row_and_readd_restores_it",
+            "crates/bbb-native/src/runtime/tests.rs#hud_social_interactions_projection_tracks_faces_removed_status_links_and_narration",
+            "crates/bbb-renderer/src/hud/social.rs#hud_social_interactions_hit_testing_uses_visible_rows_and_generation",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_social_interactions_draws_shared_rows_faces_scroll_empty_and_link_surfaces"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

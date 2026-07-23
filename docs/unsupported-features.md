@@ -766,9 +766,6 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
-- Implement `PlayerSocialManager` state and the Social Interactions screen,
-  including add/remove cleanup driven by PlayerInfo packets and blocked/hidden
-  player filtering. Current player-info/listed state is not a social manager.
 - Preserve full trusted Components in the TabList header/footer and complete
   remaining player-list presentation parity: encrypted-session player heads,
   narrator visibility announcements, and vanilla ping sprites.

@@ -360,3 +360,7 @@
   native，普通 HUD 后的红色渐变、富文本字体/链接命中及离屏像素完成 renderer
   呈现；五类 coverage 全部 complete，合同见
   `docs/archive/player-combat-kill-death-screen-design.md`。
+- **2026-07-23（PlayerSocialManager 与 Social Interactions 闭环）**：PlayerInfo
+  Add/Remove 驱动 canonical 发现/移除状态及原生保留行；P 键、暂停入口、搜索/分页/
+  隐藏/屏蔽、可信链接、旁白和 pack-backed renderer 全链闭合，`CLIENTBOUND_PLAYER_INFO_REMOVE`
+  五类 coverage 全部 complete，合同见 `docs/archive/player-social-interactions-design.md`。
