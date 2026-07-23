@@ -77,7 +77,8 @@ pub(crate) use gpu::{
     create_entity_model_textured_cull_pipeline, create_entity_model_textured_pipeline,
     create_entity_model_translucent_cull_pipeline,
     create_entity_model_translucent_emissive_pipeline, create_entity_model_translucent_pipeline,
-    create_entity_model_water_mask_pipeline, upload_elder_guardian_particle_textured_mesh,
+    create_entity_model_water_mask_pipeline, create_win_screen_end_portal_pipeline,
+    upload_elder_guardian_particle_textured_mesh,
     upload_experience_orb_pickup_particle_textured_mesh,
     upload_projectile_pickup_particle_textured_mesh,
 };

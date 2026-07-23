@@ -128,6 +128,7 @@ impl Renderer {
         take_owner!(entity_model_dragon_rays_depth_mesh);
         take_owner!(entity_model_end_portal_mesh);
         take_owner!(entity_model_end_gateway_mesh);
+        take_owner!(hud_win_portal_mesh);
         take_owner!(entity_model_outline_mesh);
         take_owner!(entity_model_outline_cull_mesh);
         take_owner!(entity_model_entity_glint_mesh);

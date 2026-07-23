@@ -15,6 +15,7 @@ use crate::item_models::{
 use crate::Renderer;
 
 mod book;
+mod game_event;
 mod game_rules;
 mod gpu;
 mod layout;
@@ -28,6 +29,10 @@ pub use self::book::{
     HUD_BOOK_PAGE_BUTTON_HEIGHT, HUD_BOOK_PAGE_BUTTON_WIDTH, HUD_BOOK_PAGE_BUTTON_Y,
     HUD_BOOK_PAGE_FORWARD_X, HUD_BOOK_PAGE_INDICATOR_RIGHT, HUD_BOOK_PAGE_INDICATOR_Y,
     HUD_BOOK_TEXT_WIDTH, HUD_BOOK_TEXT_X, HUD_BOOK_TEXT_Y, HUD_BOOK_TOP, HUD_BOOK_WIDTH,
+};
+pub use self::game_event::{
+    HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudGameEventButton, HudGameEventHitTarget,
+    HudGameEventScreen, HudWinScreen, HudWinScreenLine,
 };
 pub use self::game_rules::{
     hud_game_rules_confirmation_buttons, hud_game_rules_layout, HudGameRulesDiscardConfirmation,
@@ -5044,6 +5049,22 @@ impl Renderer {
         self.hud_game_rules_screen = screen.and_then(game_rules::sanitize_hud_game_rules_screen);
     }
 
+    pub fn set_hud_game_event_screen(&mut self, screen: Option<HudGameEventScreen>) {
+        self.hud_game_event_screen = screen.and_then(game_event::sanitize_hud_game_event_screen);
+    }
+
+    pub fn hud_game_event_hit_target_at(
+        &self,
+        position: (f64, f64),
+    ) -> Option<HudGameEventHitTarget> {
+        game_event::hud_game_event_hit_target_at(
+            self.hud_game_event_screen.as_ref()?,
+            &self.hud_font_glyphs,
+            self.surface_size(),
+            position,
+        )
+    }
+
     pub fn set_hud_book_screen(&mut self, screen: Option<HudBookScreen>) {
         self.hud_book_screen = screen.and_then(book::sanitize_hud_book_screen);
     }
@@ -5387,6 +5408,36 @@ impl Renderer {
         let mut commands = Vec::new();
         let mut post_gui_item_commands = Vec::new();
         let surface_size = self.surface_size();
+        if let Some(screen @ HudGameEventScreen::Win(_)) = &self.hud_game_event_screen {
+            game_event::push_hud_game_event_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_inworld_menu_background.as_ref(),
+                self.hud_demo_popup_background.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                self.hud_win_logo.as_ref(),
+                self.hud_win_easter_egg_logo.as_ref(),
+                self.hud_win_edition.as_ref(),
+                screen,
+            );
+            let post_gui_item_start = commands.len();
+            return HudDraws {
+                vertices,
+                commands,
+                post_gui_item_start,
+                screen_blur: None,
+            };
+        }
         let debug_crosshair = self
             .hud_debug_overlay
             .as_ref()
@@ -6811,6 +6862,41 @@ impl Renderer {
                 overlay,
                 surface_size,
                 centered_hud_rect(surface_size, overlay.width, overlay.height),
+            );
+        }
+
+        if let Some(
+            screen @ (HudGameEventScreen::DemoPopup(_)
+            | HudGameEventScreen::DemoLinkConfirmation(_)),
+        ) = &self.hud_game_event_screen
+        {
+            if self.hud_screen_blur && self.menu_background_blurriness >= 1.0 {
+                screen_blur = Some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: post_gui_item_commands.len(),
+                });
+            }
+            game_event::push_hud_game_event_screen(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_inworld_menu_background.as_ref(),
+                self.hud_demo_popup_background.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                self.hud_win_logo.as_ref(),
+                self.hud_win_easter_egg_logo.as_ref(),
+                self.hud_win_edition.as_ref(),
+                screen,
             );
         }
 

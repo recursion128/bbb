@@ -4,7 +4,10 @@
 //! gives it owned simulation resource projections and moves this same core to
 //! the dedicated thread without introducing a second mutation path.
 
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use bbb_control::{AudioCounters, NetCounters, RendererCounters};
 use bbb_item_model::NativeItemRuntime;
@@ -67,7 +70,7 @@ pub(crate) struct SimulationCore {
     pub(crate) environment_audio: EnvironmentAudioRuntime,
     pub(crate) environment_animate: EnvironmentAnimateRuntime,
     pub(crate) music: MusicRuntime,
-    pub(crate) win_screen_resources: crate::win_screen_resources::WinScreenResources,
+    pub(crate) win_screen_resources: Arc<crate::win_screen_resources::WinScreenResources>,
     pub(crate) particle_runtime: Option<NativeParticleRuntime>,
     pub(crate) terrain_textures: TerrainTextureState,
     pub(crate) item_runtime: Option<NativeItemRuntime>,
@@ -232,6 +235,7 @@ impl SimulationCore {
             effect_sequence,
             world: &self.world,
             input: &self.input,
+            win_screen_resources: Arc::clone(&self.win_screen_resources),
             input_runtime: self.input_runtime.publication(),
             frame: Some(frame),
             client_tick_index: self.lightmap_ticks.client_tick_count(),

@@ -1261,6 +1261,7 @@ impl ClientInputState {
             test_instance_block_editor: self.test_instance_block_editor.clone(),
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
             spectator_gui: self.spectator_gui.clone(),
+            game_event_screen: self.game_event_screen.clone(),
             ..Self::default()
         })
     }

@@ -6,6 +6,7 @@ use std::{
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
+use bbb_renderer::{HudGameEventButton, HudGameEventHitTarget};
 use bbb_world::{ClientGameEventScreenState, WorldStore};
 use tokio::sync::mpsc;
 use winit::keyboard::KeyCode;
@@ -77,7 +78,6 @@ impl WinScreenInputState {
         };
     }
 
-    #[cfg(test)]
     fn advance(&mut self, delta_ticks: f32) {
         if !delta_ticks.is_finite() || delta_ticks <= 0.0 {
             return;
@@ -97,6 +97,7 @@ pub(crate) enum DemoHelpFocus {
 pub(crate) struct DemoHelpInputState {
     pub(crate) generation: u64,
     pub(crate) focus: DemoHelpFocus,
+    pub(crate) hovered: Option<DemoHelpFocus>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -111,6 +112,7 @@ pub(crate) enum DemoLinkConfirmationFocus {
 pub(crate) struct DemoLinkConfirmationInputState {
     pub(crate) generation: u64,
     pub(crate) focus: DemoLinkConfirmationFocus,
+    pub(crate) hovered: Option<DemoLinkConfirmationFocus>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,7 +128,6 @@ pub(crate) struct GameEventScreenInputState {
 }
 
 impl GameEventScreenInputState {
-    #[cfg(test)]
     pub(crate) fn active(&self) -> Option<&GameEventScreenRuntime> {
         self.active.as_ref()
     }
@@ -150,6 +151,7 @@ impl GameEventScreenInputState {
                 GameEventScreenRuntime::DemoHelp(DemoHelpInputState {
                     generation,
                     focus: DemoHelpFocus::Buy,
+                    hovered: None,
                 })
             }
         });
@@ -162,7 +164,6 @@ impl GameEventScreenInputState {
 }
 
 impl ClientInputState {
-    #[cfg(test)]
     pub(crate) fn game_event_screen_runtime(&self) -> Option<&GameEventScreenRuntime> {
         self.game_event_screen.active()
     }
@@ -259,6 +260,7 @@ impl ClientInputState {
                                     DemoLinkConfirmationInputState {
                                         generation,
                                         focus: DemoLinkConfirmationFocus::Open,
+                                        hovered: None,
                                     },
                                 ));
                         }
@@ -323,7 +325,6 @@ impl ClientInputState {
         true
     }
 
-    #[cfg(test)]
     pub(crate) fn advance_win_screen(
         &mut self,
         counters: &mut NetCounters,
@@ -349,6 +350,126 @@ impl ClientInputState {
                 net_commands,
                 generation,
             );
+        }
+        true
+    }
+
+    pub(crate) fn advance_win_screen_for_generation(
+        &mut self,
+        counters: &mut NetCounters,
+        world: &mut WorldStore,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        generation: u64,
+        delta_ticks: f32,
+        total_scroll_length: i32,
+        screen_height: i32,
+    ) -> bool {
+        if self
+            .game_event_screen
+            .active()
+            .map(GameEventScreenRuntime::generation)
+            != Some(generation)
+        {
+            return false;
+        }
+        self.advance_win_screen(
+            counters,
+            world,
+            net_commands,
+            delta_ticks,
+            total_scroll_length,
+            screen_height,
+        )
+    }
+
+    pub(crate) fn handle_game_event_screen_hover(
+        &mut self,
+        target: Option<HudGameEventHitTarget>,
+    ) -> bool {
+        let Some(active) = self.game_event_screen.active.as_mut() else {
+            return false;
+        };
+        let target = target.filter(|target| target.generation == active.generation());
+        match active {
+            GameEventScreenRuntime::Win(_) => {}
+            GameEventScreenRuntime::DemoHelp(state) => {
+                state.hovered = target.and_then(|target| match target.button {
+                    HudGameEventButton::DemoBuy => Some(DemoHelpFocus::Buy),
+                    HudGameEventButton::DemoLater => Some(DemoHelpFocus::Later),
+                    _ => None,
+                });
+            }
+            GameEventScreenRuntime::DemoLinkConfirmation(state) => {
+                state.hovered = target.and_then(|target| match target.button {
+                    HudGameEventButton::LinkOpen => Some(DemoLinkConfirmationFocus::Open),
+                    HudGameEventButton::LinkCopy => Some(DemoLinkConfirmationFocus::Copy),
+                    HudGameEventButton::LinkCancel => Some(DemoLinkConfirmationFocus::Cancel),
+                    _ => None,
+                });
+            }
+        }
+        true
+    }
+
+    pub(crate) fn handle_game_event_screen_mouse_input(
+        &mut self,
+        world: &mut WorldStore,
+        button: winit::event::MouseButton,
+        state: winit::event::ElementState,
+        target: Option<HudGameEventHitTarget>,
+    ) -> bool {
+        if button != winit::event::MouseButton::Left || state != winit::event::ElementState::Pressed
+        {
+            return self.game_event_screen.active.is_some();
+        }
+        let Some(active) = self.game_event_screen.active.as_ref() else {
+            return false;
+        };
+        let generation = active.generation();
+        let Some(target) = target.filter(|target| target.generation == generation) else {
+            return true;
+        };
+        match target.button {
+            HudGameEventButton::DemoBuy
+                if matches!(active, GameEventScreenRuntime::DemoHelp(_)) =>
+            {
+                self.game_event_screen.active = Some(GameEventScreenRuntime::DemoLinkConfirmation(
+                    DemoLinkConfirmationInputState {
+                        generation,
+                        focus: DemoLinkConfirmationFocus::Open,
+                        hovered: None,
+                    },
+                ));
+            }
+            HudGameEventButton::DemoLater
+                if matches!(active, GameEventScreenRuntime::DemoHelp(_)) =>
+            {
+                close_game_event_screen(&mut self.game_event_screen, world, generation);
+            }
+            HudGameEventButton::LinkOpen
+                if matches!(active, GameEventScreenRuntime::DemoLinkConfirmation(_)) =>
+            {
+                self.game_event_screen.platform_requests.push(
+                    GameEventScreenPlatformRequest::OpenUri(BUY_MINECRAFT_JAVA_URL.to_string()),
+                );
+                close_game_event_screen(&mut self.game_event_screen, world, generation);
+            }
+            HudGameEventButton::LinkCopy
+                if matches!(active, GameEventScreenRuntime::DemoLinkConfirmation(_)) =>
+            {
+                self.game_event_screen.platform_requests.push(
+                    GameEventScreenPlatformRequest::ClipboardWrite(
+                        BUY_MINECRAFT_JAVA_URL.to_string(),
+                    ),
+                );
+                close_game_event_screen(&mut self.game_event_screen, world, generation);
+            }
+            HudGameEventButton::LinkCancel
+                if matches!(active, GameEventScreenRuntime::DemoLinkConfirmation(_)) =>
+            {
+                close_game_event_screen(&mut self.game_event_screen, world, generation);
+            }
+            _ => {}
         }
         true
     }
@@ -556,6 +677,48 @@ mod tests {
         );
         assert_eq!(world.game_event_screen(), None);
         assert!(input.take_game_event_screen_platform_requests().is_empty());
+    }
+
+    #[test]
+    fn demo_pointer_targets_are_generation_bound_and_share_keyboard_actions() {
+        let mut world = WorldStore::new();
+        open_event(&mut world, VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID);
+        let mut input = ClientInputState::new(true);
+        input.sync_game_event_screen_with_logo_sample(&world, false);
+        let generation = world.game_event_screen().unwrap().generation();
+
+        assert!(
+            input.handle_game_event_screen_hover(Some(HudGameEventHitTarget {
+                generation,
+                button: HudGameEventButton::DemoLater,
+            }))
+        );
+        let Some(GameEventScreenRuntime::DemoHelp(screen)) = input.game_event_screen_runtime()
+        else {
+            panic!("demo help");
+        };
+        assert_eq!(screen.hovered, Some(DemoHelpFocus::Later));
+
+        input.handle_game_event_screen_mouse_input(
+            &mut world,
+            winit::event::MouseButton::Left,
+            winit::event::ElementState::Pressed,
+            Some(HudGameEventHitTarget {
+                generation: generation.saturating_add(1),
+                button: HudGameEventButton::DemoLater,
+            }),
+        );
+        assert!(world.game_event_screen().is_some());
+        input.handle_game_event_screen_mouse_input(
+            &mut world,
+            winit::event::MouseButton::Left,
+            winit::event::ElementState::Pressed,
+            Some(HudGameEventHitTarget {
+                generation,
+                button: HudGameEventButton::DemoLater,
+            }),
+        );
+        assert_eq!(world.game_event_screen(), None);
     }
 
     #[test]

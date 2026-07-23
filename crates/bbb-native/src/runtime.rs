@@ -45,8 +45,9 @@ use bbb_renderer::{
     HudDebugFrameTimeChart, HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot,
     HudDebugNetworkCharts, HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen,
     HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
-    HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
+    HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFoodEffect, HudGameEventButton, HudGameEventScreen,
     HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
@@ -58,13 +59,13 @@ use bbb_renderer::{
     HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
     HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
     HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
-    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth,
-    ItemModelAssetIdentity, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
-    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
-    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
+    HudWinScreenLine, ItemModelAssetIdentity, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -120,10 +121,12 @@ use crate::{
     game_test_highlights::game_test_highlight_gizmos,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
-        advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
-        inventory_screen_selected_hotbar_slot_id, pause_screen_advancements_button_contains,
-        pause_screen_disconnect_button_contains, pause_screen_options_button_contains,
-        pause_screen_options_button_enabled, pause_screen_player_reporting_button_contains,
+        advance_using_item_at_partial_tick,
+        game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
+        inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
+        pause_screen_advancements_button_contains, pause_screen_disconnect_button_contains,
+        pause_screen_options_button_contains, pause_screen_options_button_enabled,
+        pause_screen_player_reporting_button_contains,
         pause_screen_player_reporting_button_enabled, pause_screen_report_bugs_button_contains,
         pause_screen_report_bugs_button_enabled, pause_screen_return_to_game_button_contains,
         pause_screen_send_feedback_button_contains, pause_screen_stats_button_contains,
@@ -691,6 +694,10 @@ pub(crate) struct HudRenderRuntime {
     low_disk_space_toast: SystemToastAnimationState,
     advancement_toasts: AdvancementToastRuntime,
     stats_screen_narration: Option<ScreenNarrationFrame>,
+    game_event_screen_narration: Option<ScreenNarrationFrame>,
+    win_screen_resource_owner: Option<Arc<crate::win_screen_resources::WinScreenResources>>,
+    win_screen_lines: Arc<[HudWinScreenLine]>,
+    last_ui_frame_at: Option<Instant>,
     chat_cache_key: Option<HudChatCacheKey>,
     boss_connection_generation: Option<u64>,
     boss_progress: BTreeMap<uuid::Uuid, BossBarProgressPresentation>,
@@ -725,6 +732,51 @@ impl ClientAnimationTickState {
 impl HudRenderRuntime {
     pub(crate) fn stats_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.stats_screen_narration.as_ref()
+    }
+
+    pub(crate) fn game_event_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.game_event_screen_narration.as_ref()
+    }
+
+    fn win_screen_lines(
+        &mut self,
+        resources: &Arc<crate::win_screen_resources::WinScreenResources>,
+    ) -> Arc<[HudWinScreenLine]> {
+        let unchanged = self
+            .win_screen_resource_owner
+            .as_ref()
+            .is_some_and(|previous| Arc::ptr_eq(previous, resources));
+        if !unchanged {
+            self.win_screen_resource_owner = Some(Arc::clone(resources));
+            self.win_screen_lines = resources
+                .lines
+                .iter()
+                .map(|line| HudWinScreenLine {
+                    runs: line.runs.clone(),
+                    centered: line.centered,
+                })
+                .collect::<Vec<_>>()
+                .into();
+        }
+        Arc::clone(&self.win_screen_lines)
+    }
+
+    fn win_screen_realtime_delta_ticks(
+        &mut self,
+        generation: Option<u64>,
+        now: Instant,
+    ) -> Option<(u64, f32)> {
+        let previous = self.last_ui_frame_at.replace(now)?;
+        let generation = generation?;
+        let elapsed_ticks = now.saturating_duration_since(previous).as_secs_f32() * 20.0;
+        let delta_ticks = if !elapsed_ticks.is_finite() || elapsed_ticks <= 0.0 {
+            return None;
+        } else if elapsed_ticks > 7.0 {
+            0.5
+        } else {
+            elapsed_ticks
+        };
+        Some((generation, delta_ticks))
     }
 
     fn chat_messages_update(
@@ -2245,7 +2297,7 @@ pub(crate) fn advance_simulation(
     environment_audio: &mut crate::environment_audio_runtime::EnvironmentAudioRuntime,
     environment_animate: &mut crate::environment_animate_runtime::EnvironmentAnimateRuntime,
     music: &mut MusicRuntime,
-    win_screen_resources: &mut crate::win_screen_resources::WinScreenResources,
+    win_screen_resources: &mut Arc<crate::win_screen_resources::WinScreenResources>,
     terrain_textures: &mut TerrainTextureState,
     item_runtime: &mut Option<NativeItemRuntime>,
     code_of_conduct: &mut CodeOfConductAcceptance,
@@ -2661,6 +2713,20 @@ pub(crate) fn update_renderer_from_publication(
     let hud_debug_tps_sampler = &publication.hud_debug_tps_sampler;
     let render_started_at = Instant::now();
     let entity_partial_tick = publication.partial_tick_at(render_started_at);
+    let win_generation = match input.game_event_screen_runtime() {
+        Some(GameEventScreenRuntime::Win(screen)) => Some(screen.generation),
+        _ => None,
+    };
+    if let Some((generation, delta_ticks)) =
+        hud_render_runtime.win_screen_realtime_delta_ticks(win_generation, render_started_at)
+    {
+        mailbox.enqueue(
+            crate::simulation::commands::SimulationCommand::GameEventScreenRenderDelta {
+                generation,
+                delta_ticks,
+            },
+        );
+    }
     hud_debug_fps_sampler.record_frame(render_started_at);
     let mut audio_events = audio_events;
     entity_variant_textures
@@ -2848,33 +2914,49 @@ pub(crate) fn update_renderer_from_publication(
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade = input.advancement_hover_fade();
-    let hud_debug_options_screen = hud_debug_options_screen(input, world, surface_size);
-    let hud_command_suggestions =
-        if hud_debug_options_screen.is_none() && input.command_suggestions_active() {
-            let mut suggestion_input = input.clone();
-            hud_command_suggestions(
-                &mut suggestion_input,
-                world,
-                renderer,
-                item_runtime,
-                surface_size,
-            )
-        } else {
-            None
-        };
-    let hud_pause_screen = if hud_debug_options_screen.is_some() {
+    let hud_game_event_screen = hud_game_event_screen(
+        hud_render_runtime,
+        input,
+        &publication.win_screen_resources,
+        item_runtime,
+    );
+    let hud_debug_options_screen = if hud_game_event_screen.is_some() {
+        None
+    } else {
+        hud_debug_options_screen(input, world, surface_size)
+    };
+    let hud_command_suggestions = if hud_game_event_screen.is_none()
+        && hud_debug_options_screen.is_none()
+        && input.command_suggestions_active()
+    {
+        let mut suggestion_input = input.clone();
+        hud_command_suggestions(
+            &mut suggestion_input,
+            world,
+            renderer,
+            item_runtime,
+            surface_size,
+        )
+    } else {
+        None
+    };
+    let hud_pause_screen = if hud_game_event_screen.is_some() || hud_debug_options_screen.is_some()
+    {
         None
     } else {
         hud_pause_screen(input, surface_size)
     };
-    let hud_game_rules_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some()
+    let hud_game_rules_screen = if hud_game_event_screen.is_some()
+        || hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
     {
         None
     } else {
         let mut game_rules_input = input.clone();
         hud_game_rules_screen(&mut game_rules_input, world, item_runtime, surface_size)
     };
-    let hud_stats_screen = if hud_debug_options_screen.is_some()
+    let hud_stats_screen = if hud_game_event_screen.is_some()
+        || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
         || !world.stats_screen_is_open()
@@ -2919,7 +3001,8 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         )
     };
-    let hud_sign_editor_screen = if hud_debug_options_screen.is_some()
+    let hud_sign_editor_screen = if hud_game_event_screen.is_some()
+        || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
@@ -2928,7 +3011,8 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_sign_editor_screen(input, world, surface_size)
     };
-    let hud_command_block_editor_screen = if hud_debug_options_screen.is_some()
+    let hud_command_block_editor_screen = if hud_game_event_screen.is_some()
+        || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
@@ -2937,7 +3021,8 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_command_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_structure_block_editor_screen = if world.dialog_screen_is_open()
+    let hud_structure_block_editor_screen = if hud_game_event_screen.is_some()
+        || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -2947,7 +3032,8 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_structure_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_jigsaw_block_editor_screen = if world.dialog_screen_is_open()
+    let hud_jigsaw_block_editor_screen = if hud_game_event_screen.is_some()
+        || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -2957,7 +3043,8 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_jigsaw_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_test_block_editor_screen = if world.dialog_screen_is_open()
+    let hud_test_block_editor_screen = if hud_game_event_screen.is_some()
+        || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -2967,7 +3054,8 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_test_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_test_instance_block_editor_screen = if world.dialog_screen_is_open()
+    let hud_test_instance_block_editor_screen = if hud_game_event_screen.is_some()
+        || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -2977,7 +3065,8 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_test_instance_block_editor_screen(input, item_runtime, surface_size)
     };
-    let hud_book_screen = if world.dialog_screen_is_open()
+    let hud_book_screen = if hud_game_event_screen.is_some()
+        || world.dialog_screen_is_open()
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
@@ -2993,7 +3082,8 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         hud_book_screen(input, world, item_runtime)
     };
-    let hud_inventory_screen = if hud_debug_options_screen.is_some()
+    let hud_inventory_screen = if hud_game_event_screen.is_some()
+        || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_game_rules_screen.is_some()
         || hud_stats_screen.is_some()
@@ -3038,11 +3128,14 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         )
     };
-    // Dialog and in-world game-rules screens inherit `Screen.extractBlurredBackground`;
-    // container/book/advancement/stats screens remain vanilla in-game UI.
+    // Dialog, in-world game-rules, and demo popup/confirmation screens inherit
+    // `Screen.extractBlurredBackground`; container/book/advancement/stats screens
+    // remain vanilla in-game UI, while poem `WinScreen` owns its portal background.
     let hud_screen_blur = hud_screen_blur_for_world(
         world,
-        hud_inventory_screen.is_some() || hud_game_rules_screen.is_some(),
+        hud_inventory_screen.is_some()
+            || hud_game_rules_screen.is_some()
+            || hud_game_event_screen.is_some(),
     );
     let hud_duration = hud_started_at.elapsed();
     let item_pre_started_at = Instant::now();
@@ -3557,6 +3650,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_test_instance_block_editor_screen,
             hud_pause_screen,
             hud_game_rules_screen,
+            hud_game_event_screen,
             hud_stats_screen,
             hud_system_toast,
             hud_advancement_toasts,
@@ -4895,6 +4989,220 @@ fn localized_gui_text(
         .filter(|text| *text != translation_key)
         .unwrap_or(fallback)
         .to_string()
+}
+
+fn hud_game_event_screen(
+    state: &mut HudRenderRuntime,
+    input: &ClientInputState,
+    resources: &Arc<crate::win_screen_resources::WinScreenResources>,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<HudGameEventScreen> {
+    state.game_event_screen_narration = None;
+    let screen = match input.game_event_screen_runtime()? {
+        GameEventScreenRuntime::Win(screen) => HudGameEventScreen::Win(HudWinScreen {
+            generation: screen.generation,
+            scroll: screen.scroll,
+            show_easter_egg_logo: screen.show_easter_egg_logo,
+            lines: state.win_screen_lines(resources),
+        }),
+        GameEventScreenRuntime::DemoHelp(screen) => {
+            let movement = localized_gui_text_with_args(
+                item_runtime,
+                "demo.help.movementShort",
+                "Move by pressing the %1$s, %2$s, %3$s, %4$s keys",
+                &["W", "A", "S", "D"],
+            );
+            let mouse = localized_gui_text(
+                item_runtime,
+                "demo.help.movementMouse",
+                "Look around using the mouse",
+            );
+            let jump = localized_gui_text_with_args(
+                item_runtime,
+                "demo.help.jump",
+                "Jump by pressing the %1$s key",
+                &["Space"],
+            );
+            let inventory = localized_gui_text_with_args(
+                item_runtime,
+                "demo.help.inventory",
+                "Use the %1$s key to open your inventory",
+                &["E"],
+            );
+            HudGameEventScreen::DemoPopup(HudDemoPopupScreen {
+                generation: screen.generation,
+                title: localized_gui_text(
+                    item_runtime,
+                    "demo.help.title",
+                    "Minecraft Demo Mode",
+                ),
+                controls_message: [movement, mouse, jump, inventory].join("\n"),
+                duration_message: localized_gui_text(
+                    item_runtime,
+                    "demo.help.fullWrapped",
+                    "This demo will last 5 in-game days (about 1 hour and 40 minutes of real time). Check the advancements for hints! Have fun!",
+                ),
+                buy_label: localized_gui_text(
+                    item_runtime,
+                    "demo.help.buy",
+                    "Purchase Now!",
+                ),
+                later_label: localized_gui_text(
+                    item_runtime,
+                    "demo.help.later",
+                    "Continue Playing!",
+                ),
+                focused: match screen.focus {
+                    DemoHelpFocus::Buy => HudGameEventButton::DemoBuy,
+                    DemoHelpFocus::Later => HudGameEventButton::DemoLater,
+                },
+                hovered: screen.hovered.map(|hovered| match hovered {
+                    DemoHelpFocus::Buy => HudGameEventButton::DemoBuy,
+                    DemoHelpFocus::Later => HudGameEventButton::DemoLater,
+                }),
+            })
+        }
+        GameEventScreenRuntime::DemoLinkConfirmation(screen) => {
+            HudGameEventScreen::DemoLinkConfirmation(HudDemoLinkConfirmationScreen {
+                generation: screen.generation,
+                title: localized_gui_text(
+                    item_runtime,
+                    "chat.link.confirmTrusted",
+                    "Do you want to open this link or copy it to your clipboard?",
+                ),
+                message: crate::input::game_event_screen::BUY_MINECRAFT_JAVA_URL.to_string(),
+                open_label: localized_gui_text(item_runtime, "chat.link.open", "Open in Browser"),
+                copy_label: localized_gui_text(item_runtime, "chat.copy", "Copy to Clipboard"),
+                cancel_label: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+                focused: match screen.focus {
+                    DemoLinkConfirmationFocus::Open => HudGameEventButton::LinkOpen,
+                    DemoLinkConfirmationFocus::Copy => HudGameEventButton::LinkCopy,
+                    DemoLinkConfirmationFocus::Cancel => HudGameEventButton::LinkCancel,
+                },
+                hovered: screen.hovered.map(|hovered| match hovered {
+                    DemoLinkConfirmationFocus::Open => HudGameEventButton::LinkOpen,
+                    DemoLinkConfirmationFocus::Copy => HudGameEventButton::LinkCopy,
+                    DemoLinkConfirmationFocus::Cancel => HudGameEventButton::LinkCancel,
+                }),
+            })
+        }
+    };
+    state.game_event_screen_narration = Some(game_event_screen_narration_frame(
+        &screen,
+        resources,
+        item_runtime,
+    ));
+    Some(screen)
+}
+
+fn game_event_screen_narration_frame(
+    screen: &HudGameEventScreen,
+    resources: &crate::win_screen_resources::WinScreenResources,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> ScreenNarrationFrame {
+    let mut frame = ScreenNarrationFrame::default();
+    match screen {
+        HudGameEventScreen::Win(_) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                resources.narration_components.join(". "),
+            );
+            frame.add(
+                NarratedElementKind::Usage,
+                0,
+                localized_gui_text(
+                    item_runtime,
+                    "narrator.screen.usage",
+                    "Use mouse cursor or Tab button to select element",
+                ),
+            );
+        }
+        HudGameEventScreen::DemoPopup(screen) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                [
+                    screen.title.as_str(),
+                    screen.controls_message.as_str(),
+                    screen.duration_message.as_str(),
+                ]
+                .join(". "),
+            );
+            add_game_event_button_narration(
+                &mut frame,
+                item_runtime,
+                match screen.focused {
+                    HudGameEventButton::DemoBuy => &screen.buy_label,
+                    HudGameEventButton::DemoLater => &screen.later_label,
+                    _ => return frame,
+                },
+                match screen.focused {
+                    HudGameEventButton::DemoBuy => 4,
+                    HudGameEventButton::DemoLater => 5,
+                    _ => return frame,
+                },
+                5,
+            );
+        }
+        HudGameEventScreen::DemoLinkConfirmation(screen) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                [screen.title.as_str(), screen.message.as_str()].join(". "),
+            );
+            let (label, position) = match screen.focused {
+                HudGameEventButton::LinkOpen => (&screen.open_label, 3),
+                HudGameEventButton::LinkCopy => (&screen.copy_label, 4),
+                HudGameEventButton::LinkCancel => (&screen.cancel_label, 5),
+                _ => return frame,
+            };
+            add_game_event_button_narration(&mut frame, item_runtime, label, position, 5);
+        }
+    }
+    frame
+}
+
+fn add_game_event_button_narration(
+    frame: &mut ScreenNarrationFrame,
+    item_runtime: Option<&NativeItemRuntime>,
+    label: &str,
+    position: usize,
+    total: usize,
+) {
+    frame.add(
+        NarratedElementKind::Position,
+        0,
+        localized_gui_text_with_args(
+            item_runtime,
+            "narrator.position.screen",
+            "Screen element %1$s out of %2$s",
+            &[&position.to_string(), &total.to_string()],
+        ),
+    );
+    frame.add(
+        NarratedElementKind::Usage,
+        0,
+        localized_gui_text(
+            item_runtime,
+            "narration.component_list.usage",
+            "Press Tab to navigate to the next element",
+        ),
+    );
+    frame.add(
+        NarratedElementKind::Title,
+        1,
+        localized_gui_text_with_args(item_runtime, "gui.narrate.button", "%1$s button", &[label]),
+    );
+    frame.add(
+        NarratedElementKind::Usage,
+        1,
+        localized_gui_text(
+            item_runtime,
+            "narration.button.usage.focused",
+            "Press Enter to activate",
+        ),
+    );
 }
 
 fn hud_mob_effects_from_world(
@@ -8577,7 +8885,11 @@ pub(crate) fn hud_screen_blur_for_world(world: &WorldStore, screen_present: bool
         && (world.dialog_warning_is_open()
             || world.current_dialog().is_some()
             || world.dialog_waiting_ticks().is_some()
-            || world.game_rules_screen().is_some())
+            || world.game_rules_screen().is_some()
+            || matches!(
+                world.game_event_screen(),
+                Some(bbb_world::ClientGameEventScreenState::DemoHelp { .. })
+            ))
 }
 
 fn hud_recipe_book_background_layer() -> HudInventoryBackgroundLayer {

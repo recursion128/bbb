@@ -110,7 +110,13 @@ impl Renderer {
 }
 
 mod tests {
-    use crate::{ClearColor, HudVignette, Renderer};
+    use std::sync::Arc;
+
+    use crate::{
+        ClearColor, EntityModelTextureImage, EntityModelTextureRef, HudDemoPopupScreen,
+        HudGameEventButton, HudGameEventScreen, HudNineSliceScaling, HudVignette, HudWinScreen,
+        Renderer,
+    };
 
     const WIDTH: u32 = 320;
     const HEIGHT: u32 = 240;
@@ -199,5 +205,109 @@ mod tests {
         );
         assert_eq!(corner[3], 255, "vignette must preserve destination alpha");
         assert_eq!(renderer.counters.hud_draw_calls, 1);
+    }
+
+    #[test]
+    fn hud_demo_popup_offscreen_readback_covers_ordinary_hud_with_popup_background() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_crosshair(4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        renderer
+            .upload_hud_inworld_menu_background(1, 1, &[16, 32, 64, 255])
+            .expect("in-world menu background");
+        renderer
+            .upload_hud_demo_popup_background(
+                1,
+                1,
+                &[0, 255, 0, 255],
+                HudNineSliceScaling {
+                    sprite_width: 1,
+                    sprite_height: 1,
+                    border_left: 0,
+                    border_top: 0,
+                    border_right: 0,
+                    border_bottom: 0,
+                    stretch_inner: true,
+                },
+            )
+            .expect("popup background");
+        renderer.set_hud_game_event_screen(Some(HudGameEventScreen::DemoPopup(
+            HudDemoPopupScreen {
+                generation: 1,
+                title: "Demo".to_string(),
+                controls_message: "Controls".to_string(),
+                duration_message: "Duration".to_string(),
+                buy_label: "Buy".to_string(),
+                later_label: "Later".to_string(),
+                focused: HudGameEventButton::DemoBuy,
+                hovered: None,
+            },
+        )));
+
+        let pixels = renderer.render_offscreen_frame().expect("demo popup frame");
+        let center = pixels.pixel(160, 120);
+        let corner = pixels.pixel(4, 4);
+        assert!(
+            center[1] > 128 && center[0] < 128,
+            "popup center should be green instead of the ordinary red crosshair, got {center:?}"
+        );
+        assert!(
+            corner[0] < corner[1] && corner[1] < corner[2] && corner[2] < 128,
+            "popup screen should replace the ordinary HUD with the in-world menu background at the corner, got {corner:?}"
+        );
+    }
+
+    #[test]
+    fn hud_win_screen_offscreen_readback_orders_portal_then_credits_vignette() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        let sky = EntityModelTextureRef {
+            path: "textures/environment/end_sky.png",
+            size: [128, 128],
+        };
+        let portal = EntityModelTextureRef {
+            path: "textures/entity/end_portal/end_portal.png",
+            size: [256, 256],
+        };
+        renderer
+            .upload_entity_model_textures(&[
+                EntityModelTextureImage::with_physical_size(sky, [1, 1], vec![255, 255, 255, 255]),
+                EntityModelTextureImage::with_physical_size(
+                    portal,
+                    [1, 1],
+                    vec![255, 255, 255, 255],
+                ),
+            ])
+            .expect("portal textures");
+        renderer
+            .upload_hud_win_credits_vignette(1, 1, &[128, 0, 0, 255], true, false)
+            .expect("credits vignette");
+        renderer.set_hud_game_event_screen(Some(HudGameEventScreen::Win(HudWinScreen {
+            generation: 2,
+            scroll: 0.0,
+            show_easter_egg_logo: false,
+            lines: Arc::from([]),
+        })));
+
+        let pixels = renderer.render_offscreen_frame().expect("win frame");
+        let center = pixels.pixel(16, 16);
+        assert!(
+            center[0] < center[1] && center[1] == center[2],
+            "red credits-vignette channel should destination-multiply the portal after HUD, got {center:?}"
+        );
+        assert!(
+            renderer.counters.hud_draw_calls >= 2,
+            "portal and credits vignette must both be submitted"
+        );
     }
 }

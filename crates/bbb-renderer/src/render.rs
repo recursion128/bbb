@@ -68,6 +68,8 @@ const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const FIRST_PERSON_ITEM_PASS_LABEL: &str = "bbb-native-first-person-item-pass";
 const VIGNETTE_PASS_LABEL: &str = "bbb-native-vignette-pass";
+const WIN_SCREEN_PORTAL_PASS_LABEL: &str = "bbb-native-win-screen-portal-pass";
+const WIN_SCREEN_VIGNETTE_PASS_LABEL: &str = "bbb-native-win-screen-vignette-pass";
 const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 const TRANSPARENCY_BLIT_PASS_LABEL: &str = "bbb-native-transparency-blit-pass";
@@ -150,7 +152,9 @@ impl Renderer {
         self.first_person_item_pass(&frame, &mut encoder, &mut stats);
         self.entity_preview_pip_passes(&mut encoder, &mut stats);
         self.vignette_pass(&frame, &mut encoder, &mut stats);
+        self.win_screen_portal_pass(&frame, &mut encoder, &mut stats);
         self.hud_passes(&frame, &mut encoder, &mut stats);
+        self.win_screen_vignette_pass(&frame, &mut encoder, &mut stats);
         self.finish_frame(encoder, frame, screenshot, stats)
     }
 
@@ -2703,6 +2707,50 @@ impl Renderer {
         stats.hud_draw_calls += 1;
     }
 
+    fn win_screen_portal_pass(
+        &self,
+        frame: &FrameTarget,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        if !matches!(
+            self.hud_game_event_screen.as_ref(),
+            Some(crate::hud::HudGameEventScreen::Win(_))
+        ) {
+            return;
+        }
+        let (Some(mesh), Some(atlas)) = (
+            self.hud_win_portal_mesh.as_ref(),
+            self.entity_model_texture_atlas.as_ref(),
+        ) else {
+            return;
+        };
+        let surface_view = frame
+            .texture()
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(WIN_SCREEN_PORTAL_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.hud_win_portal_pipeline);
+        pass.set_bind_group(0, &atlas.bind_group, &[]);
+        pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+        stats.pipeline_switches += 1;
+        stats.hud_draw_calls += 1;
+    }
+
     fn hud_passes(
         &mut self,
         frame: &FrameTarget,
@@ -2835,6 +2883,52 @@ impl Renderer {
         }
         drop(hud_draws);
         self.frame_hud_vertices = frame_hud_vertices;
+    }
+
+    fn win_screen_vignette_pass(
+        &self,
+        frame: &FrameTarget,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        if !matches!(
+            self.hud_game_event_screen.as_ref(),
+            Some(crate::hud::HudGameEventScreen::Win(_))
+        ) {
+            return;
+        }
+        let Some(texture) = self.hud_win_credits_vignette.as_ref() else {
+            return;
+        };
+        self.queue.write_buffer(
+            &texture.uniform_buffer,
+            0,
+            bytemuck::bytes_of(&VignetteUniform {
+                color: [1.0, 1.0, 1.0, 1.0],
+            }),
+        );
+        let surface_view = frame
+            .texture()
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(WIN_SCREEN_VIGNETTE_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.vignette_pipeline);
+        pass.set_bind_group(0, &texture.bind_group, &[]);
+        pass.draw(0..3, 0..1);
+        stats.pipeline_switches += 1;
+        stats.hud_draw_calls += 1;
     }
 
     fn clear_hud_depth(&self, encoder: &mut wgpu::CommandEncoder, label: &str) {
@@ -4410,7 +4504,9 @@ mod tests {
         "first_person_item_pass",
         "entity_preview_pip_passes",
         "vignette_pass",
+        "win_screen_portal_pass",
         "hud_passes",
+        "win_screen_vignette_pass",
         "finish_frame",
     ];
 

@@ -38,7 +38,8 @@ pub(crate) enum PlatformEffect {
     NavigateProfiler {
         digits: Vec<u8>,
     },
-    StatsScreenInput(StatsScreenInput),
+    StatsScreenInput(ScreenNarrationScheduleInput),
+    GameEventScreenInput(ScreenNarrationScheduleInput),
     ChatNarration {
         kind: bbb_world::ChatNarrationKind,
         text: String,
@@ -47,7 +48,7 @@ pub(crate) enum PlatformEffect {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum StatsScreenInput {
+pub(crate) enum ScreenNarrationScheduleInput {
     MouseMove,
     MouseAction,
     KeyboardAction,

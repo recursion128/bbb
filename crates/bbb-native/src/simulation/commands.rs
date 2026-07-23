@@ -7,7 +7,7 @@ use std::{
 };
 
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
-use bbb_renderer::{HudBookHitTarget, HudChatHitTarget, HudFontGlyphMap};
+use bbb_renderer::{HudBookHitTarget, HudChatHitTarget, HudFontGlyphMap, HudGameEventHitTarget};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton, MouseScrollDelta},
@@ -30,6 +30,7 @@ pub(crate) enum SimulationCommand {
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
+        game_event_target: Option<HudGameEventHitTarget>,
     },
     MouseMotion {
         delta: (f64, f64),
@@ -39,6 +40,11 @@ pub(crate) enum SimulationCommand {
     },
     CursorMoved {
         position: PhysicalPosition<f64>,
+        game_event_target: Option<HudGameEventHitTarget>,
+    },
+    GameEventScreenRenderDelta {
+        generation: u64,
+        delta_ticks: f32,
     },
     CursorLeft,
     ImePreedit {
@@ -332,12 +338,30 @@ fn try_coalesce_tail(
             },
         ) => coalesce_wheel_delta(delta, incoming_delta),
         (
-            SimulationCommand::CursorMoved { position },
+            SimulationCommand::CursorMoved {
+                position,
+                game_event_target,
+            },
             SimulationCommand::CursorMoved {
                 position: incoming_position,
+                game_event_target: incoming_game_event_target,
             },
         ) => {
             *position = *incoming_position;
+            *game_event_target = *incoming_game_event_target;
+            true
+        }
+        (
+            SimulationCommand::GameEventScreenRenderDelta {
+                generation,
+                delta_ticks,
+            },
+            SimulationCommand::GameEventScreenRenderDelta {
+                generation: incoming_generation,
+                delta_ticks: incoming_delta,
+            },
+        ) if generation == incoming_generation => {
+            *delta_ticks += incoming_delta;
             true
         }
         (
@@ -433,6 +457,7 @@ mod tests {
             state: ElementState::Released,
             chat_target: None,
             book_target: None,
+            game_event_target: None,
         });
         ControlRequestSink::submit(
             &mailbox,
@@ -483,6 +508,40 @@ mod tests {
             drained[2].command,
             SimulationCommand::MouseMotion {
                 delta: (12.0, 14.0)
+            }
+        ));
+    }
+
+    #[test]
+    fn win_screen_render_deltas_coalesce_only_within_one_generation() {
+        let mailbox = SimulationMailbox::with_coalescing_threshold(1);
+        mailbox.enqueue(SimulationCommand::GameEventScreenRenderDelta {
+            generation: 7,
+            delta_ticks: 0.25,
+        });
+        mailbox.enqueue(SimulationCommand::GameEventScreenRenderDelta {
+            generation: 7,
+            delta_ticks: 0.75,
+        });
+        mailbox.enqueue(SimulationCommand::GameEventScreenRenderDelta {
+            generation: 8,
+            delta_ticks: 0.5,
+        });
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(drained.len(), 2);
+        assert!(matches!(
+            drained[0].command,
+            SimulationCommand::GameEventScreenRenderDelta {
+                generation: 7,
+                delta_ticks: 1.0,
+            }
+        ));
+        assert!(matches!(
+            drained[1].command,
+            SimulationCommand::GameEventScreenRenderDelta {
+                generation: 8,
+                delta_ticks: 0.5,
             }
         ));
     }

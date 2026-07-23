@@ -100,7 +100,7 @@ use simulation::{
     commands::{SimulationCommand, SimulationMailbox},
     effects::{
         ParticleBatchSink, PlatformEffect, PlatformEffectSink, RenderEffectConsumer,
-        StatsScreenInput,
+        ScreenNarrationScheduleInput,
     },
     publication::{SimulationPublicationInput, SimulationPublisher},
     thread::SimulationThread,
@@ -206,6 +206,7 @@ struct NativeRenderEffectSink<'a> {
     terrain_upload: &'a mut TerrainUploadState,
     debug_profiler: &'a mut DebugProfiler,
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
+    game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
     control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
     exit_requested: &'a mut bool,
@@ -295,11 +296,24 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
             }
             PlatformEffect::StatsScreenInput(input) => {
                 let input = match input {
-                    StatsScreenInput::MouseMove => ScreenNarrationInput::MouseMove,
-                    StatsScreenInput::MouseAction => ScreenNarrationInput::MouseAction,
-                    StatsScreenInput::KeyboardAction => ScreenNarrationInput::KeyboardAction,
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
                 };
                 self.stats_screen_narration
+                    .after_input(input, Instant::now());
+            }
+            PlatformEffect::GameEventScreenInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.game_event_screen_narration
                     .after_input(input, Instant::now());
             }
             PlatformEffect::ChatNarration { kind, text } => {
@@ -571,13 +585,15 @@ fn main() -> Result<()> {
         }
     }
     load_hud_textures(&mut renderer, pack_roots.as_ref());
-    let win_screen_resources = pack_roots
-        .as_ref()
-        .map(|roots| {
-            WinScreenResources::load(roots, &args.username, &renderer.hud_text_measurements())
-        })
-        .transpose()?
-        .unwrap_or_default();
+    let win_screen_resources = std::sync::Arc::new(
+        pack_roots
+            .as_ref()
+            .map(|roots| {
+                WinScreenResources::load(roots, &args.username, &renderer.hud_text_measurements())
+            })
+            .transpose()?
+            .unwrap_or_default(),
+    );
     simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
         renderer.hud_text_measurements(),
     ));
@@ -637,6 +653,7 @@ fn main() -> Result<()> {
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
+    let mut game_event_screen_narration = ScreenNarrationRuntime::default();
     let mut pending_control_screenshots = std::collections::VecDeque::new();
     let mut platform_exit_requested = false;
     let mut render_effect_consumer = RenderEffectConsumer::default();
@@ -651,6 +668,7 @@ fn main() -> Result<()> {
             effect_sequence: 0,
             world: &world,
             input: &input,
+            win_screen_resources: std::sync::Arc::clone(&win_screen_resources),
             input_runtime: simulation_input_runtime.publication(),
             frame: None,
             client_tick_index: lightmap_ticks.client_tick_count(),
@@ -744,6 +762,7 @@ fn main() -> Result<()> {
                     terrain_upload: &mut terrain_upload,
                     debug_profiler: &mut debug_profiler,
                     stats_screen_narration: &mut stats_screen_narration,
+                    game_event_screen_narration: &mut game_event_screen_narration,
                     narrator: narrator_runtime
                         .as_mut()
                         .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -899,6 +918,18 @@ fn main() -> Result<()> {
                             .world
                             .stats_screen_is_open()
                             .then(|| hud_render_runtime.stats_screen_narration())
+                            .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
+                    game_event_screen_narration.tick(
+                        render_publication
+                            .world
+                            .game_event_screen()
+                            .is_some()
+                            .then(|| hud_render_runtime.game_event_screen_narration())
                             .flatten(),
                         Instant::now(),
                         narrator_runtime
@@ -1138,8 +1169,11 @@ fn enqueue_simulation_window_event(
             *cursor_position = Some(*position);
             window.set_cursor_icon(
                 if renderer
-                    .hud_book_hit_target_at((position.x, position.y))
+                    .hud_game_event_hit_target_at((position.x, position.y))
                     .is_some()
+                    || renderer
+                        .hud_book_hit_target_at((position.x, position.y))
+                        .is_some()
                 {
                     CursorIcon::Pointer
                 } else {
@@ -1148,6 +1182,7 @@ fn enqueue_simulation_window_event(
             );
             SimulationCommand::CursorMoved {
                 position: *position,
+                game_event_target: renderer.hud_game_event_hit_target_at((position.x, position.y)),
             }
         }
         WindowEvent::CursorLeft { .. } => {
@@ -1192,6 +1227,16 @@ fn enqueue_simulation_window_event(
             .then(|| {
                 (*cursor_position)
                     .and_then(|position| renderer.hud_book_hit_target_at((position.x, position.y)))
+            })
+            .flatten(),
+            game_event_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position).and_then(|position| {
+                    renderer.hud_game_event_hit_target_at((position.x, position.y))
+                })
             })
             .flatten(),
         },

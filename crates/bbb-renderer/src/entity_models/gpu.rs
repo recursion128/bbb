@@ -80,6 +80,20 @@ impl EntityModelTextureAtlasGpu {
     ) -> (&wgpu::TextureView, &wgpu::Sampler) {
         (&self._view, &self._sampler)
     }
+
+    fn end_portal_texture_rects(&self) -> Option<(EntityModelUvRect, EntityModelUvRect)> {
+        let find = |path: &str| {
+            self.layout
+                .entries
+                .iter()
+                .find(|entry| entry.texture.path == path)
+                .map(|entry| entry.uv)
+        };
+        Some((
+            find("textures/environment/end_sky.png")?,
+            find("textures/entity/end_portal/end_portal.png")?,
+        ))
+    }
 }
 
 pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
@@ -2048,6 +2062,68 @@ pub(crate) fn create_entity_model_end_portal_pipeline(
     )
 }
 
+/// Full-screen `WinScreen.extractBackground` variant of the same 15-layer
+/// End Portal program. It shares the exact atlas, time uniform, sample
+/// transforms, and colour constants with block-entity portals.
+pub(crate) fn create_win_screen_end_portal_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = win_screen_end_portal_shader();
+    RenderPipelineBuilder::new(device, "bbb-win-screen-end-portal-pipeline")
+        .shader("bbb-win-screen-end-portal-shader", &shader)
+        .layout(
+            "bbb-win-screen-end-portal-pipeline-layout",
+            &[bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_portal_vertex_layout()])
+        .color_target(format, None)
+        .cull_mode(None)
+        .build()
+}
+
+fn win_screen_end_portal_shader() -> String {
+    entity_model_portal_shader(ENTITY_MODEL_END_PORTAL_LAYERS)
+        .replace(
+            "out.position = camera.view_proj * vec4<f32>(input.position, 1.0);\n    out.tex_proj = projection_from_position(out.position);",
+            "out.position = vec4<f32>(input.position.xy, 0.0, 1.0);\n    out.tex_proj = vec4<f32>(input.position.xy * 0.5 + vec2<f32>(0.5), 0.0, 1.0);",
+        )
+        .replace(
+            "return apply_fog(vec4<f32>(color, 1.0), input.spherical_distance, input.cylindrical_distance);",
+            "return vec4<f32>(color, 1.0);",
+        )
+}
+
+pub(crate) fn create_win_screen_end_portal_mesh(
+    device: &wgpu::Device,
+    atlas: &EntityModelTextureAtlasGpu,
+) -> Option<EntityModelPortalMeshGpu> {
+    let (sky, portal) = atlas.end_portal_texture_rects()?;
+    let rect_size =
+        |rect: EntityModelUvRect| [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
+    let vertex = |position| EntityModelPortalVertex {
+        position,
+        sky_rect_min: sky.min,
+        sky_rect_size: rect_size(sky),
+        portal_rect_min: portal.min,
+        portal_rect_size: rect_size(portal),
+    };
+    create_entity_model_portal_mesh_gpu_from_mesh(
+        device,
+        EntityModelPortalMesh {
+            vertices: vec![
+                vertex([-1.0, -1.0, 0.0]),
+                vertex([1.0, -1.0, 0.0]),
+                vertex([1.0, 1.0, 0.0]),
+                vertex([-1.0, 1.0, 0.0]),
+            ],
+            indices: vec![0, 1, 2, 0, 2, 3],
+        },
+        "bbb-win-screen-end-portal",
+    )
+}
+
 pub(crate) fn create_entity_model_end_gateway_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2488,6 +2564,10 @@ impl Renderer {
             images,
         )?;
         self.entity_model_texture_atlas = Some(atlas);
+        self.hud_win_portal_mesh = self
+            .entity_model_texture_atlas
+            .as_ref()
+            .and_then(|atlas| create_win_screen_end_portal_mesh(&self.device, atlas));
         self.hud_default_player_faces = default_faces;
         self.hud_dynamic_player_faces = dynamic_faces;
         self.rebuild_entity_model_meshes();
@@ -3994,8 +4074,8 @@ fn create_entity_model_portal_mesh_gpu_from_mesh(
 mod tests {
     use super::{
         entity_model_cutout_z_offset_shader, entity_model_glint_shader, entity_model_portal_shader,
-        entity_model_solid_z_offset_forward_shader, ENTITY_MODEL_ADDITIVE_BLEND,
-        ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+        entity_model_solid_z_offset_forward_shader, win_screen_end_portal_shader,
+        ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
         ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE, ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
         ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DISSOLVE_SHADER,
@@ -4526,6 +4606,20 @@ mod tests {
         assert!(portal.contains("atlas_repeat_sample("));
         assert!(portal.contains("input.sky_rect_min"));
         assert!(portal.contains("input.portal_rect_min"));
+    }
+
+    #[test]
+    fn hud_win_screen_portal_reuses_fifteen_layers_without_world_fog() {
+        let shader = win_screen_end_portal_shader();
+        assert!(shader.contains("end_portal_layer_uv(input.tex_proj, 15.0)"));
+        assert!(!shader.contains("end_portal_layer_uv(input.tex_proj, 16.0)"));
+        assert!(shader.contains(
+            "out.tex_proj = vec4<f32>(input.position.xy * 0.5 + vec2<f32>(0.5), 0.0, 1.0)"
+        ));
+        assert!(shader.contains("return vec4<f32>(color, 1.0);"));
+        assert!(
+            !shader.contains("return apply_fog(vec4<f32>(color, 1.0), input.spherical_distance")
+        );
     }
 
     #[test]

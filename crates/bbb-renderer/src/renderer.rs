@@ -50,11 +50,12 @@ use crate::{
         create_entity_model_translucent_cull_pipeline,
         create_entity_model_translucent_emissive_pipeline,
         create_entity_model_translucent_pipeline, create_entity_model_water_mask_pipeline,
-        EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityFlameSurface,
-        EntityModelMeshGpu, EntityModelPortalMeshGpu, EntityModelScrollMeshGpu,
-        EntityModelTextureAtlasGpu, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
-        EntityModelTranslucentDrawRange, EntityShadowSurface, EntityShadowTextureGpu,
-        FirstPersonPlayerArm, HudEntityPreviewPipTarget,
+        create_win_screen_end_portal_pipeline, EntityDynamicPlayerSkinAtlasGpu,
+        EntityDynamicPlayerTextureAtlasGpu, EntityFlameSurface, EntityModelMeshGpu,
+        EntityModelPortalMeshGpu, EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu,
+        EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
+        EntityShadowSurface, EntityShadowTextureGpu, FirstPersonPlayerArm,
+        HudEntityPreviewPipTarget,
     },
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
@@ -272,6 +273,7 @@ pub struct Renderer {
     pub(super) entity_model_leash_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_end_portal_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_end_gateway_pipeline: wgpu::RenderPipeline,
+    pub(super) hud_win_portal_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_water_mask_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_cull_pipeline: wgpu::RenderPipeline,
@@ -424,6 +426,7 @@ pub struct Renderer {
     pub(super) entity_model_leash_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_end_portal_mesh: Option<EntityModelPortalMeshGpu>,
     pub(super) entity_model_end_gateway_mesh: Option<EntityModelPortalMeshGpu>,
+    pub(super) hud_win_portal_mesh: Option<EntityModelPortalMeshGpu>,
     pub(super) entity_model_outline_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_outline_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
@@ -732,6 +735,7 @@ pub struct Renderer {
     pub(super) hud_pause_screen: Option<crate::hud::HudPauseScreen>,
     pub(super) hud_stats_screen: Option<crate::hud::HudStatsScreen>,
     pub(super) hud_game_rules_screen: Option<crate::hud::HudGameRulesScreen>,
+    pub(super) hud_game_event_screen: Option<crate::hud::HudGameEventScreen>,
     pub(super) hud_book_screen: Option<crate::hud::HudBookScreen>,
     pub(super) hud_debug_options_screen: Option<crate::hud::HudDebugOptionsScreen>,
     /// One persistent PIP target per sanitized `hud_inventory_screen` entity preview, indexed by
@@ -1254,6 +1258,8 @@ impl Renderer {
             create_entity_model_end_portal_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_end_gateway_pipeline =
             create_entity_model_end_gateway_pipeline(&device, format, &terrain_bind_group_layout);
+        let hud_win_portal_pipeline =
+            create_win_screen_end_portal_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_water_mask_pipeline =
             create_entity_model_water_mask_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_outline_pipeline =
@@ -1586,6 +1592,7 @@ impl Renderer {
             entity_model_leash_pipeline,
             entity_model_end_portal_pipeline,
             entity_model_end_gateway_pipeline,
+            hud_win_portal_pipeline,
             entity_model_water_mask_pipeline,
             entity_model_outline_pipeline,
             entity_model_outline_cull_pipeline,
@@ -1766,6 +1773,7 @@ impl Renderer {
             entity_model_dragon_rays_depth_mesh: None,
             entity_model_end_portal_mesh: None,
             entity_model_end_gateway_mesh: None,
+            hud_win_portal_mesh: None,
             entity_model_outline_mesh: None,
             entity_model_outline_cull_mesh: None,
             entity_model_entity_glint_mesh: None,
@@ -2056,6 +2064,7 @@ impl Renderer {
             hud_pause_screen: None,
             hud_stats_screen: None,
             hud_game_rules_screen: None,
+            hud_game_event_screen: None,
             hud_book_screen: None,
             hud_debug_options_screen: None,
             hud_entity_preview_pip_targets: Vec::new(),

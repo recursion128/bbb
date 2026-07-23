@@ -79,6 +79,96 @@ use bbb_world::{
     LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
     WorldBlockDestroyProfile, WorldDimension, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
 };
+
+#[test]
+fn hud_demo_popup_projects_exact_fallback_copy_and_initial_focus() {
+    let mut world = WorldStore::new();
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID,
+        param: 0.0,
+    });
+    let mut input = ClientInputState::new(true);
+    input.sync_game_event_screen_with_logo_sample(&world, false);
+    assert!(hud_screen_blur_for_world(&world, true));
+    let resources = Arc::new(crate::win_screen_resources::WinScreenResources::default());
+    let mut state = HudRenderRuntime::default();
+    let screen = hud_game_event_screen(&mut state, &input, &resources, None).expect("demo HUD");
+    let HudGameEventScreen::DemoPopup(screen) = screen else {
+        panic!("demo popup");
+    };
+    assert_eq!(screen.title, "Minecraft Demo Mode");
+    assert_eq!(
+        screen.controls_message,
+        "Move by pressing the W, A, S, D keys\nLook around using the mouse\nJump by pressing the Space key\nUse the E key to open your inventory"
+    );
+    assert!(screen
+        .duration_message
+        .starts_with("This demo will last 5 in-game days"));
+    assert_eq!(screen.focused, HudGameEventButton::DemoBuy);
+    assert_eq!(screen.hovered, None);
+    assert_eq!(
+        state
+            .game_event_screen_narration()
+            .expect("demo narration")
+            .all_text_for_test(),
+        "Minecraft Demo Mode. Move by pressing the W, A, S, D keys\nLook around using the mouse\nJump by pressing the Space key\nUse the E key to open your inventory. This demo will last 5 in-game days (about 1 hour and 40 minutes of real time). Check the advancements for hints! Have fun!. Purchase Now! button. Screen element 4 out of 5. Press Tab to navigate to the next element. Press Enter to activate"
+    );
+}
+
+#[test]
+fn hud_win_screen_reuses_resource_lines_and_sanitizes_vanilla_realtime_delta() {
+    let mut world = WorldStore::new();
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_WIN_GAME_ID,
+        param: 0.0,
+    });
+    let mut input = ClientInputState::new(true);
+    input.sync_game_event_screen_with_logo_sample(&world, true);
+    assert!(!hud_screen_blur_for_world(&world, true));
+    let resources = Arc::new(crate::win_screen_resources::WinScreenResources {
+        lines: vec![crate::win_screen_resources::WinScreenLine {
+            runs: vec![HudStyledTextRun::plain("line")],
+            centered: true,
+        }],
+        narration_components: vec!["line".to_string()],
+        total_scroll_length: 12,
+    });
+    let mut state = HudRenderRuntime::default();
+    let screen = hud_game_event_screen(&mut state, &input, &resources, None).expect("win HUD");
+    let HudGameEventScreen::Win(screen) = screen else {
+        panic!("win screen");
+    };
+    assert!(screen.show_easter_egg_logo);
+    assert_eq!(screen.lines[0].runs[0].text, "line");
+    assert!(Arc::ptr_eq(&screen.lines, &state.win_screen_lines));
+    assert_eq!(
+        state
+            .game_event_screen_narration()
+            .expect("win narration")
+            .all_text_for_test(),
+        "line. Use mouse cursor or Tab button to select element"
+    );
+
+    let start = Instant::now();
+    assert_eq!(
+        state.win_screen_realtime_delta_ticks(Some(screen.generation), start),
+        None
+    );
+    assert_eq!(
+        state.win_screen_realtime_delta_ticks(
+            Some(screen.generation),
+            start + Duration::from_millis(50),
+        ),
+        Some((screen.generation, 1.0))
+    );
+    assert_eq!(
+        state.win_screen_realtime_delta_ticks(
+            Some(screen.generation),
+            start + Duration::from_millis(450),
+        ),
+        Some((screen.generation, 0.5))
+    );
+}
 use tokio::sync::mpsc;
 use winit::{
     event::{ElementState, MouseButton},

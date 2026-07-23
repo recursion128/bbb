@@ -8,7 +8,10 @@ use bbb_control::{
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
-use bbb_renderer::{HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudFontGlyphMap};
+use bbb_renderer::{
+    HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudFontGlyphMap,
+    HudGameEventHitTarget,
+};
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::{
@@ -19,7 +22,7 @@ use winit::{
 
 use super::{
     commands::{SequencedSimulationCommand, SimulationCommand},
-    effects::{PlatformEffect, PlatformEffectCollector, StatsScreenInput},
+    effects::{PlatformEffect, PlatformEffectCollector, ScreenNarrationScheduleInput},
 };
 use crate::{
     code_of_conduct::CodeOfConductAcceptance,
@@ -181,16 +184,43 @@ impl SimulationInputRuntime {
                 state,
                 chat_target,
                 book_target,
+                game_event_target,
             } => {
-                self.apply_mouse_button(button, state, chat_target, book_target, context);
+                self.apply_mouse_button(
+                    button,
+                    state,
+                    chat_target,
+                    book_target,
+                    game_event_target,
+                    context,
+                );
             }
             SimulationCommand::MouseMotion { delta } => self.apply_mouse_motion(delta, context),
             SimulationCommand::MouseWheel { delta } => self.apply_mouse_wheel(delta, context),
-            SimulationCommand::CursorMoved { position } => {
-                self.apply_cursor_moved(position, context);
+            SimulationCommand::CursorMoved {
+                position,
+                game_event_target,
+            } => {
+                self.apply_cursor_moved(position, game_event_target, context);
+            }
+            SimulationCommand::GameEventScreenRenderDelta {
+                generation,
+                delta_ticks,
+            } => {
+                context.input.advance_win_screen_for_generation(
+                    context.net_counters,
+                    context.world,
+                    context.net_commands,
+                    generation,
+                    delta_ticks,
+                    i32::try_from(context.win_screen_resources.total_scroll_length)
+                        .unwrap_or(i32::MAX),
+                    i32::try_from(self.surface_size.height).unwrap_or(i32::MAX),
+                );
             }
             SimulationCommand::CursorLeft => {
                 self.cursor_position = None;
+                context.input.handle_game_event_screen_hover(None);
                 context.input.update_screen_cursor_position(None);
                 context.input.handle_sign_editor_cursor_moved(None);
                 context
@@ -263,6 +293,7 @@ impl SimulationInputRuntime {
     fn apply_cursor_moved(
         &mut self,
         position: PhysicalPosition<f64>,
+        game_event_target: Option<HudGameEventHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
         let previous_cursor_position = self.cursor_position;
@@ -290,6 +321,14 @@ impl SimulationInputRuntime {
             return;
         }
         if context.world.game_event_screen().is_some() {
+            context
+                .input
+                .handle_game_event_screen_hover(game_event_target);
+            context
+                .platform
+                .submit(PlatformEffect::GameEventScreenInput(
+                    ScreenNarrationScheduleInput::MouseMove,
+                ));
             context
                 .input
                 .update_screen_cursor_position(self.cursor_position);
@@ -371,7 +410,7 @@ impl SimulationInputRuntime {
             self.surface_size,
         ) {
             context.platform.submit(PlatformEffect::StatsScreenInput(
-                StatsScreenInput::MouseMove,
+                ScreenNarrationScheduleInput::MouseMove,
             ));
             return;
         }
@@ -420,6 +459,11 @@ impl SimulationInputRuntime {
                 None,
             );
             collect_game_event_screen_platform_effects(context.input, context.platform);
+            context
+                .platform
+                .submit(PlatformEffect::GameEventScreenInput(
+                    ScreenNarrationScheduleInput::KeyboardAction,
+                ));
             if context.world.game_event_screen().is_none() {
                 self.request_cursor_capture(true, context.platform);
             }
@@ -559,7 +603,7 @@ impl SimulationInputRuntime {
         }
         if stats_open && matches!(state, ElementState::Pressed) {
             context.platform.submit(PlatformEffect::StatsScreenInput(
-                StatsScreenInput::KeyboardAction,
+                ScreenNarrationScheduleInput::KeyboardAction,
             ));
         }
         if !self.cursor_captured
@@ -857,6 +901,7 @@ impl SimulationInputRuntime {
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
+        game_event_target: Option<HudGameEventHitTarget>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
@@ -924,6 +969,21 @@ impl SimulationInputRuntime {
         }
         if context.world.game_event_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
+            context.input.handle_game_event_screen_mouse_input(
+                context.world,
+                button,
+                state,
+                game_event_target,
+            );
+            collect_game_event_screen_platform_effects(context.input, context.platform);
+            context
+                .platform
+                .submit(PlatformEffect::GameEventScreenInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            if context.world.game_event_screen().is_none() {
+                self.request_cursor_capture(true, context.platform);
+            }
             return;
         }
         if context.world.game_rules_screen().is_some() {
@@ -945,7 +1005,7 @@ impl SimulationInputRuntime {
         if context.world.stats_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             context.platform.submit(PlatformEffect::StatsScreenInput(
-                StatsScreenInput::MouseAction,
+                ScreenNarrationScheduleInput::MouseAction,
             ));
             context.input.handle_stats_screen_mouse_input(
                 context.net_counters,
@@ -1350,7 +1410,7 @@ impl SimulationInputRuntime {
         if context.world.stats_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             context.platform.submit(PlatformEffect::StatsScreenInput(
-                StatsScreenInput::MouseAction,
+                ScreenNarrationScheduleInput::MouseAction,
             ));
             context
                 .input
@@ -1509,7 +1569,8 @@ pub(crate) struct SimulationInputContext<'a, 'collector> {
     pub(crate) item_runtime: &'a mut Option<NativeItemRuntime>,
     pub(crate) terrain_textures: &'a mut crate::terrain_runtime::TerrainTextureState,
     pub(crate) code_of_conduct: Option<&'a mut CodeOfConductAcceptance>,
-    pub(crate) win_screen_resources: &'a mut crate::win_screen_resources::WinScreenResources,
+    pub(crate) win_screen_resources:
+        &'a mut std::sync::Arc<crate::win_screen_resources::WinScreenResources>,
     pub(crate) entity_partial_tick: f32,
     pub(crate) platform: &'a mut PlatformEffectCollector<'collector>,
 }
@@ -1545,7 +1606,7 @@ fn apply_resource_reload_ack(
             *context.particle_runtime = Some(commit.particle_runtime);
             *context.item_runtime = Some(commit.item_runtime);
             *context.terrain_textures = commit.terrain_textures;
-            *context.win_screen_resources = commit.win_screen_resources;
+            *context.win_screen_resources = std::sync::Arc::new(commit.win_screen_resources);
             tracing::info!(
                 generation = ack.generation,
                 "applied server resource pack reload"
