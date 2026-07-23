@@ -60,8 +60,8 @@ use self::layout::{
 };
 
 pub use bbb_render_types::{
-    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudObfuscatedGlyphPool, HudStyledTextRun,
-    HudTextStyle, HudUvRect, HUD_FONT_BASELINE,
+    HudAsciiGlyph, HudComponentTextRun, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap,
+    HudObfuscatedGlyphPool, HudStyledTextRun, HudTextStyle, HudUvRect, HUD_FONT_BASELINE,
 };
 
 use bbb_render_types::{HudEffectRect, HudGlyphQuad, HudObfuscatedRandom};
@@ -255,7 +255,7 @@ pub(crate) struct HudNineSliceSprite {
 /// position per frame; it keeps no countdown state of its own.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudActionBarText {
-    pub runs: Vec<HudStyledTextRun>,
+    pub runs: Vec<HudComponentTextRun>,
     /// Vanilla `overlayMessageTime` after `Gui.tick` (starts at 60).
     pub remaining_ticks: i32,
     pub partial_tick: f32,
@@ -267,8 +267,8 @@ pub struct HudActionBarText {
 /// the frame partial tick. An empty `subtitle_runs` means no subtitle is set.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudTitleText {
-    pub title_runs: Vec<HudStyledTextRun>,
-    pub subtitle_runs: Vec<HudStyledTextRun>,
+    pub title_runs: Vec<HudComponentTextRun>,
+    pub subtitle_runs: Vec<HudComponentTextRun>,
     /// Vanilla `titleTime` after `Gui.tick` (starts at fade_in+stay+fade_out).
     pub remaining_ticks: i32,
     pub fade_in: i32,
@@ -2656,12 +2656,15 @@ impl Renderer {
         width: u32,
         height: u32,
         rgba: &[u8],
-        glyphs: HudFontGlyphMap,
+        fonts: impl Into<HudFontGlyphBook>,
     ) -> Result<()> {
+        let fonts = fonts.into();
+        let glyphs = fonts.glyphs(None).clone();
         self.hud_font_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
         // Rebuild the advance-grouped obfuscated pool once here, not per frame.
         self.hud_obfuscated_glyph_pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
         self.hud_font_glyphs = glyphs;
+        self.hud_font_book = fonts;
         self.rebuild_chat_lines();
         Ok(())
     }
@@ -5622,7 +5625,7 @@ impl Renderer {
                 ));
             }
             for draw in &screen_text_draws {
-                push_hud_screen_text_draw(
+                push_hud_component_screen_text_draw_with_default_font(
                     &mut vertices,
                     &mut commands,
                     &self.hud_white_pixel,
@@ -12746,6 +12749,17 @@ struct HudScreenTextDraw<'a> {
     tint: [f32; 4],
 }
 
+/// One action-bar/title draw whose runs retain exact Component font identity.
+/// Stage 3 resolves the font book directly; the active Stage 2 handoff keeps a
+/// separate type so no caller can accidentally erase the font id.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct HudComponentScreenTextDraw<'a> {
+    runs: &'a [HudComponentTextRun],
+    origin: (f32, f32),
+    scale: f32,
+    tint: [f32; 4],
+}
+
 /// Vanilla `Gui.extractOverlayMessage` fade (Gui.java:312-316):
 /// `alpha = (int)(t * 255 / 20)` capped at 255; the draw is dropped when the
 /// result is not `> 0` (:318). `t` is `overlayMessageTime - partialTick`.
@@ -13021,7 +13035,7 @@ fn hud_action_bar_text_draw<'a>(
     state: &'a HudActionBarText,
     glyphs: &HudFontGlyphMap,
     surface_size: PhysicalSize<u32>,
-) -> Option<HudScreenTextDraw<'a>> {
+) -> Option<HudComponentScreenTextDraw<'a>> {
     if state.remaining_ticks <= 0 {
         return None;
     }
@@ -13035,8 +13049,8 @@ fn hud_action_bar_text_draw<'a>(
     } else {
         [1.0, 1.0, 1.0]
     };
-    let width = hud_font_runs_width(&state.runs, glyphs).unwrap_or(0);
-    Some(HudScreenTextDraw {
+    let width = hud_component_runs_width_with_default_font(&state.runs, glyphs).unwrap_or(0);
+    Some(HudComponentScreenTextDraw {
         runs: &state.runs,
         origin: hud_overlay_message_text_origin(surface_size, width),
         scale: 1.0,
@@ -13273,7 +13287,7 @@ fn hud_title_text_draws<'a>(
     state: &'a HudTitleText,
     glyphs: &HudFontGlyphMap,
     surface_size: PhysicalSize<u32>,
-) -> Vec<HudScreenTextDraw<'a>> {
+) -> Vec<HudComponentScreenTextDraw<'a>> {
     let mut draws = Vec::new();
     if state.remaining_ticks <= 0 {
         return draws;
@@ -13283,16 +13297,18 @@ fn hud_title_text_draws<'a>(
         return draws;
     }
     let tint = [1.0, 1.0, 1.0, alpha as f32 / 255.0];
-    let title_width = hud_font_runs_width(&state.title_runs, glyphs).unwrap_or(0);
-    draws.push(HudScreenTextDraw {
+    let title_width =
+        hud_component_runs_width_with_default_font(&state.title_runs, glyphs).unwrap_or(0);
+    draws.push(HudComponentScreenTextDraw {
         runs: &state.title_runs,
         origin: hud_title_text_origin(surface_size, title_width),
         scale: HUD_TITLE_TEXT_SCALE,
         tint,
     });
     if !state.subtitle_runs.is_empty() {
-        let subtitle_width = hud_font_runs_width(&state.subtitle_runs, glyphs).unwrap_or(0);
-        draws.push(HudScreenTextDraw {
+        let subtitle_width =
+            hud_component_runs_width_with_default_font(&state.subtitle_runs, glyphs).unwrap_or(0);
+        draws.push(HudComponentScreenTextDraw {
             runs: &state.subtitle_runs,
             origin: hud_subtitle_text_origin(surface_size, subtitle_width),
             scale: HUD_SUBTITLE_TEXT_SCALE,
@@ -13517,6 +13533,41 @@ fn push_hud_screen_text_draw<'a>(
             &geometry,
         );
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_component_screen_text_draw_with_default_font<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    draw: &HudComponentScreenTextDraw<'_>,
+) {
+    let visual_runs = draw
+        .runs
+        .iter()
+        .map(|run| run.visual.clone())
+        .collect::<Vec<_>>();
+    push_hud_screen_text_draw(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &HudScreenTextDraw {
+            runs: &visual_runs,
+            origin: draw.origin,
+            scale: draw.scale,
+            tint: draw.tint,
+        },
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -16161,6 +16212,20 @@ fn hud_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> O
     for run in runs {
         for ch in run.text.chars() {
             width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.style))?;
+        }
+    }
+    (width > 0).then_some(width)
+}
+
+fn hud_component_runs_width_with_default_font(
+    runs: &[HudComponentTextRun],
+    glyphs: &HudFontGlyphMap,
+) -> Option<u32> {
+    let mut width = 0u32;
+    for run in runs {
+        for ch in run.visual.text.chars() {
+            width =
+                width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.visual.style))?;
         }
     }
     (width > 0).then_some(width)
@@ -21159,7 +21224,7 @@ mod tests {
         let glyphs = styled_test_glyphs();
         let surface = PhysicalSize::new(320, 240);
         let state = HudActionBarText {
-            runs: vec![HudStyledTextRun::plain("ab")],
+            runs: vec![HudComponentTextRun::plain("ab")],
             remaining_ticks: 60,
             partial_tick: 0.5,
             animate_color: false,
@@ -21222,8 +21287,8 @@ mod tests {
         let glyphs = styled_test_glyphs();
         let surface = PhysicalSize::new(320, 240);
         let state = HudTitleText {
-            title_runs: vec![HudStyledTextRun::plain("ab")],
-            subtitle_runs: vec![HudStyledTextRun::plain("a")],
+            title_runs: vec![HudComponentTextRun::plain("ab")],
+            subtitle_runs: vec![HudComponentTextRun::plain("a")],
             remaining_ticks: 50,
             fade_in: 10,
             stay: 70,
@@ -21269,7 +21334,7 @@ mod tests {
     #[test]
     fn title_alpha_follows_the_fade_in_stay_fade_out_windows() {
         let base = HudTitleText {
-            title_runs: vec![HudStyledTextRun::plain("ab")],
+            title_runs: vec![HudComponentTextRun::plain("ab")],
             subtitle_runs: Vec::new(),
             remaining_ticks: 50,
             fade_in: 10,

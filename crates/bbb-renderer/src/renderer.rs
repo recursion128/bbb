@@ -65,9 +65,9 @@ use crate::{
         create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
         create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
         HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudChatContext, HudChatLine,
-        HudChatMessage, HudDigitGlyph, HudFontGlyphMap, HudInventoryScreen, HudItemIcon,
-        HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu, HudStatsScrollbarSprite,
-        HudStatsSprite, HUD_HOTBAR_SLOTS,
+        HudChatMessage, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap, HudInventoryScreen,
+        HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu,
+        HudStatsScrollbarSprite, HudStatsSprite, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -531,6 +531,7 @@ pub struct Renderer {
     pub(super) hud_digit_glyphs: [HudDigitGlyph; 10],
     pub(super) hud_font_atlas: Option<HudSpriteGpu>,
     pub(super) hud_font_glyphs: HudFontGlyphMap,
+    pub(super) hud_font_book: HudFontGlyphBook,
     /// Advance-grouped glyph pool for obfuscated (`§k`) text, rebuilt once when
     /// `hud_font_glyphs` is uploaded so per-frame draws never rescan the table.
     pub(super) hud_obfuscated_glyph_pool: HudObfuscatedGlyphPool,
@@ -1827,6 +1828,7 @@ impl Renderer {
             hud_digit_glyphs: [HudDigitGlyph::default(); 10],
             hud_font_atlas: None,
             hud_font_glyphs: HudFontGlyphMap::default(),
+            hud_font_book: HudFontGlyphBook::default(),
             hud_obfuscated_glyph_pool: HudObfuscatedGlyphPool::default(),
             hud_chat_modified_icon: None,
             hud_hotbar_item_icons: std::array::from_fn(|_| None),

@@ -1328,7 +1328,7 @@ pub(crate) fn try_load_hud_textures(
         font_atlas.width,
         font_atlas.height,
         &font_atlas.rgba,
-        font_atlas.glyphs,
+        font_atlas.fonts,
     )?;
     renderer.upload_item_frame_map_text_font(font_atlas.width, font_atlas.height, &font_atlas.rgba);
     tracing::info!(

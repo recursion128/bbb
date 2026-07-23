@@ -1368,12 +1368,10 @@ fn hud_text_timers_tick_before_projection_like_gui_tick() {
         .find("world.advance_hud_text_ticks(advanced_ticks);")
         .expect("pump should tick the HUD text timers like Gui.tick");
     let action_bar_extract = source
-        .find(
-            "let hud_action_bar_text = hud_action_bar_text_from_world(world, entity_partial_tick);",
-        )
+        .find("hud_action_bar_text_from_world(world, item_runtime, entity_partial_tick);")
         .expect("pump should project the action bar state");
     let title_extract = source
-        .find("let hud_title_text = hud_title_text_from_world(world, entity_partial_tick);")
+        .find("hud_title_text_from_world(world, item_runtime, entity_partial_tick);")
         .expect("pump should project the title state");
     assert!(
         gui_tick < action_bar_extract && action_bar_extract < title_extract,
@@ -1490,8 +1488,8 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
 #[test]
 fn hud_action_bar_and_title_projection_matches_world_state() {
     let mut world = WorldStore::new();
-    assert_eq!(hud_action_bar_text_from_world(&world, 0.25), None);
-    assert_eq!(hud_title_text_from_world(&world, 0.25), None);
+    assert_eq!(hud_action_bar_text_from_world(&world, None, 0.25), None);
+    assert_eq!(hud_title_text_from_world(&world, None, 0.25), None);
 
     world.apply_action_bar_text(bbb_protocol::packets::SetActionBarText::plain(
         "Action ready",
@@ -1506,10 +1504,11 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
         "Return to camp",
     ));
 
-    let action_bar = hud_action_bar_text_from_world(&world, 0.25).expect("action bar projected");
+    let action_bar =
+        hud_action_bar_text_from_world(&world, None, 0.25).expect("action bar projected");
     assert_eq!(
         action_bar.runs,
-        vec![bbb_renderer::HudStyledTextRun::plain("Action ready")]
+        vec![bbb_renderer::HudComponentTextRun::plain("Action ready")]
     );
     assert_eq!(action_bar.remaining_ticks, 60);
     assert_eq!(action_bar.partial_tick, 0.25);
@@ -1517,14 +1516,14 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
     // only the jukebox now-playing path animates.
     assert!(!action_bar.animate_color);
 
-    let title = hud_title_text_from_world(&world, 0.25).expect("title projected");
+    let title = hud_title_text_from_world(&world, None, 0.25).expect("title projected");
     assert_eq!(
         title.title_runs,
-        vec![bbb_renderer::HudStyledTextRun::plain("Quest complete")]
+        vec![bbb_renderer::HudComponentTextRun::plain("Quest complete")]
     );
     assert_eq!(
         title.subtitle_runs,
-        vec![bbb_renderer::HudStyledTextRun::plain("Return to camp")]
+        vec![bbb_renderer::HudComponentTextRun::plain("Return to camp")]
     );
     assert_eq!(title.remaining_ticks, 60);
     assert_eq!((title.fade_in, title.stay, title.fade_out), (5, 40, 15));
@@ -1533,24 +1532,24 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
     // Post-tick countdowns flow through; expired timers stop projecting.
     world.advance_hud_text_ticks(59);
     assert_eq!(
-        hud_action_bar_text_from_world(&world, 0.0)
+        hud_action_bar_text_from_world(&world, None, 0.0)
             .expect("last action bar tick")
             .remaining_ticks,
         1
     );
     assert_eq!(
-        hud_title_text_from_world(&world, 0.0)
+        hud_title_text_from_world(&world, None, 0.0)
             .expect("last title tick")
             .remaining_ticks,
         1
     );
     world.advance_hud_text_ticks(1);
-    assert_eq!(hud_action_bar_text_from_world(&world, 0.0), None);
-    assert_eq!(hud_title_text_from_world(&world, 0.0), None);
+    assert_eq!(hud_action_bar_text_from_world(&world, None, 0.0), None);
+    assert_eq!(hud_title_text_from_world(&world, None, 0.0), None);
 
     // A re-set title without a subtitle projects an empty subtitle line.
     world.apply_title_text(bbb_protocol::packets::SetTitleText::plain("Solo"));
-    let solo = hud_title_text_from_world(&world, 0.5).expect("title without subtitle");
+    let solo = hud_title_text_from_world(&world, None, 0.5).expect("title without subtitle");
     assert!(solo.subtitle_runs.is_empty());
     assert_eq!(solo.remaining_ticks, 60);
 
@@ -1558,7 +1557,114 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
     // subtitle only inside the title branch, Gui.java:364).
     world.apply_clear_titles(bbb_protocol::packets::ClearTitles { reset_times: false });
     world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText::plain("Orphan"));
-    assert_eq!(hud_title_text_from_world(&world, 0.0), None);
+    assert_eq!(hud_title_text_from_world(&world, None, 0.0), None);
+}
+
+#[test]
+fn hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions() {
+    let component =
+        bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: NbtSummaryValue::String("missing.action".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "fallback".to_string(),
+                value: NbtSummaryValue::String("Ready, %s".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "with".to_string(),
+                value: NbtSummaryValue::List(vec![NbtSummaryValue::String("Alex".to_string())]),
+            },
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "italic".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "underlined".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "strikethrough".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "obfuscated".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String("#123456".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "font".to_string(),
+                value: NbtSummaryValue::String("example:title".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "click_event".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: NbtSummaryValue::String("run_command".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "command".to_string(),
+                        value: NbtSummaryValue::String("/spawn".to_string()),
+                    },
+                ]),
+            },
+            NbtSummaryEntry {
+                name: "hover_event".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: NbtSummaryValue::String("show_text".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "value".to_string(),
+                        value: NbtSummaryValue::String("Details".to_string()),
+                    },
+                ]),
+            },
+        ]))
+        .unwrap();
+    let expected = bbb_renderer::HudComponentTextRun {
+        visual: HudStyledTextRun {
+            text: "Ready, Alex".to_string(),
+            style: HudTextStyle {
+                bold: true,
+                italic: true,
+                underlined: true,
+                strikethrough: true,
+                obfuscated: true,
+            },
+            color: Some(0x12_34_56),
+        },
+        font: Some("example:title".to_string()),
+    };
+    let mut world = WorldStore::new();
+    world.apply_system_chat(bbb_protocol::packets::SystemChat {
+        content: Box::new(component.clone()),
+        overlay: true,
+    });
+    world.apply_title_text(bbb_protocol::packets::SetTitleText {
+        content: component.clone(),
+    });
+    world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText { content: component });
+
+    assert_eq!(
+        hud_action_bar_text_from_world(&world, None, 0.0)
+            .expect("overlay SystemChat projected")
+            .runs,
+        vec![expected.clone()]
+    );
+    let title = hud_title_text_from_world(&world, None, 0.0).expect("title projected");
+    assert_eq!(title.title_runs, vec![expected.clone()]);
+    assert_eq!(title.subtitle_runs, vec![expected]);
 }
 
 #[test]

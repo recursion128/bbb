@@ -108,6 +108,25 @@ impl HudStyledTextRun {
     }
 }
 
+/// One localized trusted-Component run for HUD surfaces that honor per-style
+/// font selection. `visual` owns the resolved text/style/color vocabulary used
+/// by the common glyph geometry, while `font` retains the exact Component font
+/// id so layout and obfuscation can select the matching resource-pack glyphs.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct HudComponentTextRun {
+    pub visual: HudStyledTextRun,
+    pub font: Option<String>,
+}
+
+impl HudComponentTextRun {
+    pub fn plain(text: impl Into<String>) -> Self {
+        Self {
+            visual: HudStyledTextRun::plain(text),
+            font: None,
+        }
+    }
+}
+
 /// One glyph-quad draw pass in font-pixel space, mirroring a single
 /// `BakedSheetGlyph.render` call. `corners` are `[top_left, bottom_left,
 /// bottom_right, top_right]` (vanilla vertex winding); `shadow` marks the passes
@@ -347,6 +366,15 @@ impl HudFontGlyphBook {
 
     pub fn font_count(&self) -> usize {
         self.fonts.len()
+    }
+}
+
+impl From<HudFontGlyphMap> for HudFontGlyphBook {
+    fn from(glyphs: HudFontGlyphMap) -> Self {
+        Self::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([("minecraft:default".to_string(), glyphs)]),
+        )
     }
 }
 

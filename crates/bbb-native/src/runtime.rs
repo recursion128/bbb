@@ -2844,8 +2844,9 @@ pub(crate) fn update_renderer_from_publication(
     // Vanilla `Gui.extractOverlayMessage` / `extractTitle` read the post-tick
     // countdowns with the frame partial tick; the renderer resolves fade
     // alpha per frame from these projected timers.
-    let hud_action_bar_text = hud_action_bar_text_from_world(world, entity_partial_tick);
-    let hud_title_text = hud_title_text_from_world(world, entity_partial_tick);
+    let hud_action_bar_text =
+        hud_action_bar_text_from_world(world, item_runtime, entity_partial_tick);
+    let hud_title_text = hud_title_text_from_world(world, item_runtime, entity_partial_tick);
     let hud_player_list = hud_player_list_from_world(input, world);
     let hud_chat_messages = hud_render_runtime.chat_messages_update(world, item_runtime);
     let queued_chat_messages = world.client_chat().delayed_messages.len();

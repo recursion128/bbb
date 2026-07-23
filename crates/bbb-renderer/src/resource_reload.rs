@@ -206,6 +206,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_digit_glyphs);
         $take_owner!(hud_font_atlas);
         $take_owner!(hud_font_glyphs);
+        $take_owner!(hud_font_book);
         $take_owner!(hud_obfuscated_glyph_pool);
         $take_owner!(hud_chat_modified_icon);
         $take_owner!(hud_inworld_menu_background);
@@ -409,7 +410,8 @@ mod tests {
 
     use crate::{
         entity_model_texture_refs, EntityModelTextureImage, HudAsciiGlyph, HudChatMessage,
-        HudFontGlyphMap, HudStyledTextRun, ParticleSpriteUv, ParticleUvRect, Renderer,
+        HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun, ParticleSpriteUv, ParticleUvRect,
+        Renderer,
     };
 
     #[test]
@@ -510,7 +512,7 @@ mod tests {
     }
 
     #[test]
-    fn failed_font_reload_restores_exact_wrapped_chat_cache() {
+    fn failed_hud_font_reload_restores_exact_book_and_wrapped_chat_cache() {
         let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
             return;
         };
@@ -522,8 +524,23 @@ mod tests {
                 ..HudAsciiGlyph::default()
             },
         );
+        let mut old_custom_glyphs = HudFontGlyphMap::new();
+        old_custom_glyphs.insert_first_wins(
+            'a',
+            HudAsciiGlyph {
+                advance: 9,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        let old_fonts = HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            std::collections::BTreeMap::from([
+                ("example:old".to_string(), old_custom_glyphs),
+                ("minecraft:default".to_string(), old_glyphs),
+            ]),
+        );
         renderer
-            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], old_glyphs)
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], old_fonts)
             .expect("old font");
         renderer.set_hud_chat_messages(vec![HudChatMessage {
             display_sequence: 1,
@@ -533,6 +550,7 @@ mod tests {
             tag: None,
         }]);
         let previous_lines = renderer.hud_chat_lines.clone();
+        let previous_fonts = renderer.hud_font_book.clone();
 
         let error = renderer
             .transactional_resource_reload(|renderer| -> Result<()> {
@@ -544,14 +562,23 @@ mod tests {
                         ..HudAsciiGlyph::default()
                     },
                 );
-                renderer.upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], new_glyphs)?;
+                let new_fonts = HudFontGlyphBook::from_fonts(
+                    "minecraft:default",
+                    std::collections::BTreeMap::from([(
+                        "minecraft:default".to_string(),
+                        new_glyphs,
+                    )]),
+                );
+                renderer.upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], new_fonts)?;
                 assert_ne!(renderer.hud_chat_lines, previous_lines);
+                assert_ne!(renderer.hud_font_book, previous_fonts);
                 Err(anyhow!("injected font failure"))
             })
             .expect_err("font reload failure");
 
         assert_eq!(error.to_string(), "injected font failure");
         assert_eq!(renderer.hud_chat_lines, previous_lines);
+        assert_eq!(renderer.hud_font_book, previous_fonts);
     }
 
     #[test]

@@ -24,10 +24,10 @@ pub use entity_textures::{
     EntityPlayerSkinModel,
 };
 pub use hud_glyphs::{
-    HudAsciiGlyph, HudDigitGlyph, HudEffectKind, HudEffectRect, HudFontGlyphBook, HudFontGlyphMap,
-    HudGlyphQuad, HudObfuscatedGlyphPool, HudObfuscatedRandom, HudStyledTextRun, HudTextStyle,
-    HudUvRect, HUD_FONT_BASELINE, HUD_FONT_BOLD_EXTRA_THICKNESS, HUD_FONT_BOLD_OFFSET,
-    HUD_FONT_SHADOW_OFFSET,
+    HudAsciiGlyph, HudComponentTextRun, HudDigitGlyph, HudEffectKind, HudEffectRect,
+    HudFontGlyphBook, HudFontGlyphMap, HudGlyphQuad, HudObfuscatedGlyphPool, HudObfuscatedRandom,
+    HudStyledTextRun, HudTextStyle, HudUvRect, HUD_FONT_BASELINE, HUD_FONT_BOLD_EXTRA_THICKNESS,
+    HUD_FONT_BOLD_OFFSET, HUD_FONT_SHADOW_OFFSET,
 };
 pub use map_backgrounds::{FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture};
 pub use map_decorations::{

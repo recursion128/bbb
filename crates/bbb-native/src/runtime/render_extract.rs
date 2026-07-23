@@ -14,9 +14,9 @@ use bbb_renderer::{
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
-    HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen, HudInventoryScreen,
-    HudJigsawBlockEditorScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
-    HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
+    HudComponentTextRun, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen,
+    HudInventoryScreen, HudJigsawBlockEditorScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth,
+    HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
     HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
     HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
@@ -24,7 +24,9 @@ use bbb_renderer::{
     ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
-use crate::component_text::{visit_localized_template, LocalizedTemplatePart};
+use crate::component_text::{
+    localized_component_runs, visit_localized_template, LocalizedTemplatePart,
+};
 
 use super::*;
 
@@ -830,12 +832,12 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
 /// Projects the world's action-bar overlay state into the renderer's frame
 /// vocabulary, mirroring `Gui.extractOverlayMessage`'s inputs (Gui.java:310):
 /// present only while `overlayMessageTime > 0`. The world keeps the exact
-/// Component; this stage still uses its plain projection until the shared
-/// localized run/font handoff in the active rich-title closure. The fade alpha
-/// itself is resolved by the renderer from `remaining_ticks` and
-/// `partial_tick`.
+/// Component and native resolves its localized runs against the selected
+/// resource generation. The fade alpha itself is resolved by the renderer from
+/// `remaining_ticks` and `partial_tick`.
 pub(crate) fn hud_action_bar_text_from_world(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     partial_tick: f32,
 ) -> Option<HudActionBarText> {
     let action_bar = world.action_bar()?;
@@ -843,7 +845,7 @@ pub(crate) fn hud_action_bar_text_from_world(
         return None;
     }
     Some(HudActionBarText {
-        runs: vec![HudStyledTextRun::plain(action_bar.content.text())],
+        runs: hud_component_text_runs(&action_bar.content, item_runtime),
         remaining_ticks: action_bar.display_ticks,
         partial_tick,
         animate_color: action_bar.animate_color,
@@ -877,6 +879,7 @@ pub(crate) fn hud_sleep_overlay_from_counter(counter: i32) -> Option<HudSleepOve
 /// through so the renderer computes the vanilla alpha ramp per frame.
 pub(crate) fn hud_title_text_from_world(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     partial_tick: f32,
 ) -> Option<HudTitleText> {
     let title = world.title();
@@ -885,11 +888,11 @@ pub(crate) fn hud_title_text_from_world(
         return None;
     }
     Some(HudTitleText {
-        title_runs: vec![HudStyledTextRun::plain(title_text.text())],
+        title_runs: hud_component_text_runs(title_text, item_runtime),
         subtitle_runs: title
             .subtitle
             .as_ref()
-            .map(|subtitle| vec![HudStyledTextRun::plain(subtitle.text())])
+            .map(|subtitle| hud_component_text_runs(subtitle, item_runtime))
             .unwrap_or_default(),
         remaining_ticks: title.title_time,
         fade_in: title.fade_in,
@@ -897,6 +900,23 @@ pub(crate) fn hud_title_text_from_world(
         fade_out: title.fade_out,
         partial_tick,
     })
+}
+
+fn hud_component_text_runs(
+    component: &bbb_protocol::RichTextComponent,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudComponentTextRun> {
+    localized_component_runs(
+        component,
+        &bbb_protocol::ComponentStyle::default(),
+        item_runtime,
+    )
+    .into_iter()
+    .map(|run| HudComponentTextRun {
+        visual: hud_chat_run(&run.text, &run.style),
+        font: run.style.font,
+    })
+    .collect()
 }
 
 pub(crate) fn hud_chat_messages_from_world(
