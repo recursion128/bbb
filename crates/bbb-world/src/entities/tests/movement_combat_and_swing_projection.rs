@@ -640,9 +640,9 @@ fn local_player_attack_swing_samples_local_entity() {
         })
     );
 
-    // Vanilla `renderHandsWithItems` samples `LocalPlayer.getAttackAnim(partialTick)` and
-    // `swingingArm`; action 3 selects the off hand while the usual 6-tick WHACK ramp lerps by partial.
-    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 61, action: 3 }));
+    // LocalPlayer.swing arms the same local animation before its ServerboundSwing packet;
+    // off hand selects the left arm while the usual 6-tick WHACK ramp lerps by partial.
+    assert!(store.trigger_local_player_swing(bbb_protocol::packets::InteractionHand::OffHand));
     store.advance_entity_client_animations(2);
     let swing = store.local_player_attack_swing(0.5).unwrap();
     assert!(swing.off_hand);

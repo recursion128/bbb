@@ -12,8 +12,8 @@ use bbb_pack::{
 use bbb_protocol::item_types::{VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_SPLASH_POTION_ID};
 use bbb_protocol::packets::{
     decode_data_component_patch_summary, BlockPos, ClientParticleStatus,
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemStackSummary, LevelEvent,
-    LevelParticles, Vec3d,
+    Direction as ProtocolDirection, FireworkExplosionShapeSummary, FireworkExplosionSummary,
+    ItemStackSummary, LevelEvent, LevelParticles, Vec3d,
 };
 use bbb_protocol::{codec::Decoder, particle_types::*};
 use bbb_renderer::{
@@ -34,7 +34,7 @@ use bbb_world::{
     GuardianAmbientParticleState, GuardianAttackParticleState, HoneyBlockParticleState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LlamaSpitRecreationParticleState, OminousItemSpawnerParticleState,
+    LlamaSpitRecreationParticleState, LocalBlockAttackEffect, OminousItemSpawnerParticleState,
     PowderSnowFlakeParticleState, RabbitSprintParticleState, RavagerRoarParticleState,
     ShulkerBulletTrailParticleState, SlimeLandingParticleKind, SlimeLandingParticleState,
     SnowballHitParticleState, TakeItemEntityPickupParticleState,
@@ -59,6 +59,22 @@ const FIREWORK_ROCKET_LARGE_BLAST_FAR_SOUND_EVENT_ID: &str =
 const FIREWORK_ROCKET_TWINKLE_SOUND_EVENT_ID: &str = "minecraft:entity.firework_rocket.twinkle";
 const FIREWORK_ROCKET_TWINKLE_FAR_SOUND_EVENT_ID: &str =
     "minecraft:entity.firework_rocket.twinkle_far";
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct LocalDestroyHitParticleState {
+    pos: WorldBlockPos,
+    face: ProtocolDirection,
+    block_state_id: i32,
+    shape_min: [f64; 3],
+    shape_max: [f64; 3],
+    biome_id: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum LocalPlayerActionParticleState {
+    BlockAttack(LocalBlockAttackEffect),
+    DestroyHit(LocalDestroyHitParticleState),
+}
 
 pub(crate) trait ParticleEventSink {
     fn synchronize_terrain_textures(&mut self, _textures: &TerrainTextureState) {}
@@ -381,6 +397,22 @@ impl NativeParticleRuntime {
 
     pub(crate) fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
         self.resolver.set_default_item_particle_sprite_ids(items);
+    }
+
+    pub(crate) fn local_destroy_hit_particle_batch(
+        &mut self,
+        state: LocalDestroyHitParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.local_destroy_hit_particle_batch(state)
+    }
+
+    pub(crate) fn local_block_attack_particle_batch(
+        &mut self,
+        world: &WorldStore,
+        effect: LocalBlockAttackEffect,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .local_block_attack_particle_batch(world, effect)
     }
 
     pub(crate) fn tick_explosion_particles(
@@ -1535,12 +1567,14 @@ mod resolver_block_events;
 mod resolver_core;
 mod resolver_entity_events;
 mod resolver_firework;
+mod resolver_player_actions;
 mod resolver_trial_vault;
 
 use atlas::*;
 use block_map_color::*;
 use explosion::*;
 use ids::*;
+pub(crate) use resolver_player_actions::local_destroy_hit_particle_state;
 
 #[cfg(test)]
 mod tests;

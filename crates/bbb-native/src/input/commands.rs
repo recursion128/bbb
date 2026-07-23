@@ -724,10 +724,12 @@ pub(super) fn queue_zero_pos_player_action_command(
 }
 
 pub(super) fn queue_swing_command(
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     hand: InteractionHand,
 ) {
+    world.trigger_local_player_swing(hand);
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::Swing(hand)).is_ok() {
             counters.swing_commands_queued += 1;

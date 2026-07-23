@@ -2256,6 +2256,17 @@ impl WorldStore {
             .unwrap_or(ATTACK_SWING_DURATION)
     }
 
+    pub fn trigger_local_player_swing(&mut self, hand: InteractionHand) -> bool {
+        let Some(id) = self.local_player_id else {
+            return false;
+        };
+        let off_hand = hand == InteractionHand::OffHand;
+        let duration = self.entity_held_item_swing_duration(id, off_hand);
+        self.entities
+            .trigger_client_animation_swing(id, off_hand, duration)
+            .is_some()
+    }
+
     pub(crate) fn refresh_entity_active_swing_duration(&mut self, id: i32) {
         let Some(off_hand) = self.entities.active_swing_off_hand(id) else {
             return;

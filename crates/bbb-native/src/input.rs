@@ -141,8 +141,9 @@ use bbb_world::{
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos,
     CommandSuggestionState, CommandSuggestionsResultState, EntityState, EntityVec3,
-    LocalPlayerInputState, LocalPlayerPoseState, SignBlockForm, TagQueryResponseState,
-    VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
+    LocalBlockAttackEffect, LocalPlayerInputState, LocalPlayerPoseState, SignBlockForm,
+    TagQueryResponseState, VanillaArmorStandMetadataAccessors,
+    VanillaFireworkRocketMetadataAccessors, WorldStore,
 };
 use bbb_world::{
     vanilla_painting_variant_resource_id,
@@ -168,6 +169,7 @@ use winit::{
 use crate::debug_entries::{
     DebugScreenEntryId, DebugScreenEntryList, DebugScreenEntryStatus, DebugScreenProfile,
 };
+use crate::particle_runtime::{LocalDestroyHitParticleState, LocalPlayerActionParticleState};
 
 mod bundle;
 mod commands;
@@ -554,6 +556,7 @@ pub(crate) struct ClientInputState {
     sprint: bool,
     destroy_block_held: bool,
     use_item_held: bool,
+    pending_local_player_action_particles: Vec<LocalPlayerActionParticleState>,
     shift_left_down: bool,
     shift_right_down: bool,
     control_left_down: bool,
@@ -1105,6 +1108,22 @@ impl ClientInputState {
             debug_query_transaction_id: -1,
             ..Self::default()
         }
+    }
+
+    fn queue_local_block_attack_effect(&mut self, effect: LocalBlockAttackEffect) {
+        self.pending_local_player_action_particles
+            .push(LocalPlayerActionParticleState::BlockAttack(effect));
+    }
+
+    fn queue_local_destroy_hit_particles(&mut self, state: LocalDestroyHitParticleState) {
+        self.pending_local_player_action_particles
+            .push(LocalPlayerActionParticleState::DestroyHit(state));
+    }
+
+    pub(crate) fn take_pending_local_player_action_particles(
+        &mut self,
+    ) -> Vec<LocalPlayerActionParticleState> {
+        std::mem::take(&mut self.pending_local_player_action_particles)
     }
 
     pub(crate) fn set_client_text_filtering_enabled(&mut self, enabled: bool) {
@@ -10733,7 +10752,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
                 let dropped_item = world.drop_local_selected_hotbar_item(drop_all);
                 queue_zero_pos_player_action_command(counters, net_commands, action);
                 if dropped_item {
-                    queue_swing_command(counters, net_commands, InteractionHand::MainHand);
+                    queue_swing_command(world, counters, net_commands, InteractionHand::MainHand);
                 }
                 return;
             }

@@ -5524,6 +5524,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let destroy_advance = source
         .find("advance_destroying_block_at_partial_tick(")
         .expect("pump should advance destroy input before particle tick");
+    let local_player_action_particles = source
+        .find("submit_local_player_action_particles(")
+        .expect("pump should submit local player-action particles before particle tick");
     let use_advance = source
         .find("advance_using_item_at_partial_tick(")
         .expect("pump should advance use-item input before particle tick");
@@ -5591,6 +5594,11 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
             "vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`"
         );
     }
+    assert!(
+        destroy_advance < local_player_action_particles
+            && local_player_action_particles < particle_tick,
+        "held-destroy effects should submit after input advances and before ParticleEngine.tick"
+    );
     assert!(
         using_item_tick < particle_scope_context && particle_scope_context < particle_tick,
         "SpellParticle.tick samples post-input local scoping state during particle tick"

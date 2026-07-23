@@ -29,6 +29,215 @@ fn legacy_random_float_matches_java_samples() {
 }
 
 #[test]
+fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
+    let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
+    let slab = test_block_state_id(
+        "minecraft:oak_slab",
+        [("type", "bottom"), ("waterlogged", "false")],
+    );
+    let mut world = player_action_particle_world();
+    set_player_action_test_block(&mut world, pos, slab);
+    let mut resolver = test_resolver(0);
+    resolver
+        .terrain_particle_sprite_ids
+        .insert(slab, "minecraft:test_slab".to_string());
+    resolver
+        .terrain_particle_tint_colors
+        .insert(slab, [0.25, 0.5, 0.75, 1.0]);
+
+    let state = local_destroy_hit_particle_state(&world, pos, ProtocolDirection::North)
+        .expect("slab hit particle snapshot");
+    let batch = resolver.local_destroy_hit_particle_batch(state);
+
+    assert_eq!(batch.commands.len(), 1);
+    let mut expected_random = LegacyRandom::new(0);
+    let expected_position = [
+        expected_random.next_f64() * (1.0 - f64::from(0.2_f32)) + f64::from(0.1_f32),
+        8.0 + expected_random.next_f64() * (0.5 - f64::from(0.2_f32)) + f64::from(0.1_f32),
+        -f64::from(0.1_f32),
+    ];
+    let command = &batch.commands[0];
+    for (actual, expected) in command.position.iter().zip(expected_position) {
+        assert_close(*actual, expected);
+    }
+    assert_eq!(command.velocity, [0.0; 3]);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_BLOCK_ID);
+    assert_eq!(command.particle_id, "minecraft:block");
+    assert_eq!(command.sprite_ids, ["minecraft:test_slab".to_string()]);
+    assert_eq!(command.raw_options_len, positive_var_i32_len(slab));
+    assert_eq!(command.option_power, Some(0.2));
+    assert_eq!(command.option_scale, Some(0.6));
+    assert_eq!(command.option_color, Some([0.25, 0.5, 0.75, 1.0]));
+    assert_eq!(
+        command.option_block,
+        Some(ParticleBlockOptionState {
+            block_state_id: slab,
+        })
+    );
+
+    let barrier = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
+    set_player_action_test_block(&mut world, pos, barrier);
+    assert!(local_destroy_hit_particle_state(&world, pos, ProtocolDirection::Up).is_none());
+}
+
+#[test]
+fn redstone_attack_particles_follow_direction_order_random_draws_and_occlusion_shape() {
+    let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
+    let stone = test_block_state_id("minecraft:stone", []);
+    let glass = test_block_state_id("minecraft:glass", []);
+    let shrieker = test_block_state_id(
+        "minecraft:sculk_shrieker",
+        [
+            ("can_summon", "false"),
+            ("shrieking", "false"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let mut world = player_action_particle_world();
+    set_player_action_test_block(
+        &mut world,
+        WorldBlockPos {
+            y: pos.y - 1,
+            ..pos
+        },
+        stone,
+    );
+    set_player_action_test_block(
+        &mut world,
+        WorldBlockPos {
+            y: pos.y + 1,
+            ..pos
+        },
+        glass,
+    );
+    set_player_action_test_block(
+        &mut world,
+        WorldBlockPos {
+            z: pos.z - 1,
+            ..pos
+        },
+        shrieker,
+    );
+    let mut resolver = test_resolver(0);
+    resolver.block_can_occlude.extend([
+        ("minecraft:stone".to_string(), true),
+        ("minecraft:glass".to_string(), false),
+        ("minecraft:sculk_shrieker".to_string(), true),
+        ("minecraft:air".to_string(), false),
+    ]);
+
+    let batch = resolver
+        .local_block_attack_particle_batch(&world, LocalBlockAttackEffect::RedstoneOre { pos });
+
+    assert_eq!(
+        batch.commands.len(),
+        5,
+        "only the full stone face is hidden"
+    );
+    let mut expected_random = LegacyRandom::new(0);
+    let expected_positions = [
+        [
+            f64::from(expected_random.next_float()),
+            9.0625,
+            f64::from(expected_random.next_float()),
+        ],
+        [
+            f64::from(expected_random.next_float()),
+            8.0 + f64::from(expected_random.next_float()),
+            -0.0625,
+        ],
+        [
+            f64::from(expected_random.next_float()),
+            8.0 + f64::from(expected_random.next_float()),
+            1.0625,
+        ],
+        [
+            -0.0625,
+            8.0 + f64::from(expected_random.next_float()),
+            f64::from(expected_random.next_float()),
+        ],
+        [
+            1.0625,
+            8.0 + f64::from(expected_random.next_float()),
+            f64::from(expected_random.next_float()),
+        ],
+    ];
+    for (command, expected_position) in batch.commands.iter().zip(expected_positions) {
+        for (actual, expected) in command.position.iter().zip(expected_position) {
+            assert_close(*actual, expected);
+        }
+        assert_eq!(command.velocity, [0.0; 3]);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_DUST_ID);
+        assert_eq!(command.particle_id, "minecraft:dust");
+        assert_eq!(command.raw_options_len, 8);
+        assert_eq!(command.option_color, Some([1.0, 0.0, 0.0, 1.0]));
+        assert_eq!(command.option_scale, Some(1.0));
+    }
+}
+
+#[test]
+fn dragon_egg_attack_uses_first_valid_candidate_and_exact_portal_random_sequence() {
+    let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
+    let mut expected_random = LegacyRandom::new(0);
+    let target = WorldBlockPos {
+        x: pos.x + expected_random.next_i32(16) - expected_random.next_i32(16),
+        y: pos.y + expected_random.next_i32(8) - expected_random.next_i32(8),
+        z: pos.z + expected_random.next_i32(16) - expected_random.next_i32(16),
+    };
+    assert_ne!(target, pos);
+    let support = WorldBlockPos {
+        y: target.y - 1,
+        ..target
+    };
+    assert_ne!(support, pos);
+    let dragon_egg = test_block_state_id("minecraft:dragon_egg", []);
+    let mut world = player_action_particle_world();
+    set_player_action_test_block(&mut world, pos, dragon_egg);
+    set_player_action_test_block(
+        &mut world,
+        support,
+        test_block_state_id("minecraft:stone", []),
+    );
+    let mut resolver = test_resolver(0);
+
+    let batch = resolver
+        .local_block_attack_particle_batch(&world, LocalBlockAttackEffect::DragonEgg { pos });
+
+    assert_eq!(batch.commands.len(), 128);
+    for command in &batch.commands {
+        let alpha = expected_random.next_f64();
+        let velocity = [
+            f64::from((expected_random.next_float() - 0.5) * 0.2),
+            f64::from((expected_random.next_float() - 0.5) * 0.2),
+            f64::from((expected_random.next_float() - 0.5) * 0.2),
+        ];
+        let position = [
+            lerp_f64(alpha, f64::from(target.x), f64::from(pos.x))
+                + (expected_random.next_f64() - 0.5)
+                + 0.5,
+            lerp_f64(alpha, f64::from(target.y), f64::from(pos.y)) + expected_random.next_f64()
+                - 0.5,
+            lerp_f64(alpha, f64::from(target.z), f64::from(pos.z))
+                + (expected_random.next_f64() - 0.5)
+                + 0.5,
+        ];
+        assert_particle_command(
+            command,
+            VANILLA_PARTICLE_TYPE_PORTAL_ID,
+            "minecraft:portal",
+            position,
+            velocity,
+            false,
+        );
+    }
+    assert_eq!(world.probe_block(pos).unwrap().block_state_id, dragon_egg);
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        vanilla_air_block_state_id()
+    );
+}
+
+#[test]
 fn firework_rocket_trail_batch_matches_vanilla_client_tick_particle() {
     let mut resolver = test_resolver(0);
     let batch = resolver.firework_rocket_trail_particle_batch(FireworkRocketTrailParticleState {
@@ -9739,6 +9948,58 @@ fn level_event_packet(event_type: i32) -> LevelEvent {
         data: 0,
         global: false,
     }
+}
+
+fn player_action_particle_world() -> WorldStore {
+    let mut world = WorldStore::with_dimension(bbb_world::WorldDimension {
+        min_y: -16,
+        height: 48,
+    });
+    let single_value = |domain, entry_count, global_id| bbb_world::PalettedContainerData {
+        domain,
+        bits_per_entry: 0,
+        palette_kind: bbb_world::PaletteKind::SingleValue,
+        palette_global_ids: vec![global_id],
+        packed_data: Vec::new(),
+        entry_count,
+    };
+    for z in -1..=1 {
+        for x in -1..=1 {
+            world.insert_decoded_chunk(bbb_world::ChunkColumn {
+                pos: bbb_world::ChunkPos { x, z },
+                state: bbb_world::ChunkState::Decoded,
+                heightmaps: Vec::new(),
+                sections: (0..3)
+                    .map(|_| bbb_world::ChunkSection {
+                        non_empty_block_count: 0,
+                        fluid_count: 0,
+                        block_states: single_value(
+                            bbb_world::PaletteDomain::BlockStates,
+                            4096,
+                            vanilla_air_block_state_id(),
+                        ),
+                        biomes: single_value(bbb_world::PaletteDomain::Biomes, 64, 0),
+                    })
+                    .collect(),
+                block_entities: Vec::new(),
+                light: bbb_world::LightData::default(),
+            });
+        }
+    }
+    world
+}
+
+fn set_player_action_test_block(world: &mut WorldStore, pos: WorldBlockPos, block_state_id: i32) {
+    assert!(
+        world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+            pos: BlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_state_id,
+        })
+    );
 }
 
 fn test_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {

@@ -174,7 +174,7 @@ use crate::{
     level_load_runtime::LevelLoadRuntime,
     music_runtime::BossMusicRuntime,
     narrator_runtime::{NarratedElementKind, ScreenNarrationFrame, SystemNarrator},
-    particle_runtime::{NativeParticleRuntime, ParticleEventSink},
+    particle_runtime::{LocalPlayerActionParticleState, NativeParticleRuntime, ParticleEventSink},
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
         crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
@@ -2562,6 +2562,7 @@ pub(crate) fn advance_simulation(
         entity_partial_tick,
         advanced_ticks,
     );
+    submit_local_player_action_particles(particle_batches, world, input, particle_runtime.as_mut());
     advance_using_item_at_partial_tick(
         input,
         world,
@@ -3679,6 +3680,29 @@ fn emit_particle_sound_events(
     for event in sound_events {
         let state = particle_sound_event_state(event);
         audio_events.play_positioned_sound(&state);
+    }
+}
+
+fn submit_local_player_action_particles(
+    batches: &mut dyn ParticleBatchSink,
+    world: &WorldStore,
+    input: &mut ClientInputState,
+    particle_runtime: Option<&mut NativeParticleRuntime>,
+) {
+    let particles = input.take_pending_local_player_action_particles();
+    let Some(particle_runtime) = particle_runtime else {
+        return;
+    };
+    for state in particles {
+        let batch = match state {
+            LocalPlayerActionParticleState::BlockAttack(effect) => {
+                particle_runtime.local_block_attack_particle_batch(world, effect)
+            }
+            LocalPlayerActionParticleState::DestroyHit(state) => {
+                particle_runtime.local_destroy_hit_particle_batch(state)
+            }
+        };
+        batches.submit_particle_batch(batch);
     }
 }
 
