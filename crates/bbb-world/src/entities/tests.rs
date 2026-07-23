@@ -49,6 +49,7 @@ mod movement_combat_and_swing_projection;
 mod name_tag_projection;
 mod passenger_and_vehicle_movement;
 mod player_pose_and_sleeping_projection;
+mod player_wake;
 mod shadows_projection;
 mod small_mob_and_walk_animation;
 mod spawn_defaults;

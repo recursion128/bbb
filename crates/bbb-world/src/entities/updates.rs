@@ -22,10 +22,13 @@ use super::schema::{
 };
 use super::{
     vanilla_entity_event_kind, EntityVec3, LivingDeathWakeTransition, VanillaEntityEventKind,
+    VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
 
 /// Vanilla `ClientboundAnimatePacket.SWING_MAIN_HAND` action id: the entity swings its main hand.
 const SWING_MAIN_HAND_ACTION: u8 = 0;
+/// Vanilla `ClientboundAnimatePacket.WAKE_UP` action id.
+const PLAYER_WAKE_UP_ACTION: u8 = 2;
 /// Vanilla `ClientboundAnimatePacket.SWING_OFF_HAND` action id: the entity swings its off hand.
 const SWING_OFF_HAND_ACTION: u8 = 3;
 impl WorldStore {
@@ -53,6 +56,32 @@ impl WorldStore {
                 let _ = self
                     .entities
                     .trigger_client_animation_swing(packet.id, off_hand, duration);
+            }
+        } else if packet.action == PLAYER_WAKE_UP_ACTION
+            && self.entities.entity_type_id(packet.id) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
+        {
+            let wake = self.sleeping_bed_wake_transition(packet.id);
+            if self
+                .entities
+                .apply_client_player_wake_animation(packet.id, wake)
+                .is_some()
+                && self.local_player_id() == Some(packet.id)
+            {
+                if let (Some(transform), Some(mut pose)) =
+                    (self.entities.transform(packet.id), self.local_player.pose)
+                {
+                    pose.position = bbb_protocol::packets::Vec3d {
+                        x: transform.position.x,
+                        y: transform.position.y,
+                        z: transform.position.z,
+                    };
+                    pose.y_rot = transform.y_rot;
+                    pose.x_rot = transform.x_rot;
+                    pose.sneaking = false;
+                    pose.swimming = false;
+                    self.local_player.pose = Some(pose);
+                    self.local_player_old_pose = Some(pose);
+                }
             }
         }
         self.counters.entity_animation_updates_applied += 1;
@@ -136,6 +165,14 @@ impl WorldStore {
         if vanilla_entity_metadata_type_uses_player_entity_event_handler(entity_type_id) {
             return None;
         }
+        self.sleeping_bed_wake_transition(entity_id)
+    }
+
+    fn sleeping_bed_wake_transition(
+        &mut self,
+        entity_id: i32,
+    ) -> Option<LivingDeathWakeTransition> {
+        let entity_type_id = self.entities.entity_type_id(entity_id)?;
         let bed_pos = self.entities.sleeping_pos(entity_id)?;
         let state = self.entities.get(entity_id)?;
         let bed = self.probe_block(bed_pos)?;

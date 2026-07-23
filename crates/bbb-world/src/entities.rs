@@ -62,8 +62,8 @@ pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
     EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
-    EntityMobEffects, EntityMount, EntityProjectileLifecycle, EntitySupportingBlock,
-    EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
+    EntityMobEffects, EntityMount, EntityPlayerSleep, EntityProjectileLifecycle,
+    EntitySupportingBlock, EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
@@ -980,6 +980,10 @@ pub struct EntityState {
     /// true only after the guarded base `die` transition has run.
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub living_dead: bool,
+    /// Client-owned `Player.sleepCounter`. `None` identifies every non-player
+    /// entity; player incarnations always project `Some(0..=109)`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_sleep_counter: Option<i32>,
     #[serde(default)]
     pub minecart_lerp_pending_steps: Vec<ProtocolMinecartStep>,
     #[serde(default)]
@@ -3268,6 +3272,19 @@ impl WorldStore {
 
     pub fn probe_entity_transform(&self, id: i32) -> Option<EntityTransformState> {
         self.entities.transform_state(id)
+    }
+
+    /// Vanilla client-owned `Player.sleepCounter` for one exact player entity.
+    /// Non-player and absent ids return `None`.
+    pub fn player_sleep_counter(&self, id: i32) -> Option<i32> {
+        self.entities.player_sleep_counter(id)
+    }
+
+    /// The local player's sleep counter used by `Gui.extractSleepOverlay`.
+    pub fn local_player_sleep_counter(&self) -> i32 {
+        self.local_player_id
+            .and_then(|id| self.entities.player_sleep_counter(id))
+            .unwrap_or_default()
     }
 
     pub fn llama_spit_recreation_particle_state(

@@ -144,6 +144,14 @@ pub(crate) struct EntityLivingLifecycle {
     pub(crate) dead: bool,
 }
 
+/// Client-owned `Player.sleepCounter`, scoped to one concrete player entity
+/// incarnation. Vanilla advances it in `Player.tick` and action 2 of
+/// `ClientboundAnimatePacket` starts the ten-tick wake overlay at 100.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct EntityPlayerSleep {
+    pub(crate) counter: i32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct LivingDeathWakeTransition {
     pub(crate) position: EntityVec3,
@@ -404,6 +412,14 @@ impl From<&EntityState> for EntityLivingLifecycle {
     fn from(state: &EntityState) -> Self {
         Self {
             dead: state.living_dead,
+        }
+    }
+}
+
+impl From<&EntityState> for EntityPlayerSleep {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            counter: state.player_sleep_counter.unwrap_or_default().clamp(0, 109),
         }
     }
 }
@@ -919,6 +935,12 @@ impl EntityDamage {
 impl EntityLivingLifecycle {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.living_dead = self.dead;
+    }
+}
+
+impl EntityPlayerSleep {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.player_sleep_counter = Some(self.counter);
     }
 }
 

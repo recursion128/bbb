@@ -104,18 +104,18 @@ use super::{
     EntityClientMovementSimpleParticleState, EntityDamage, EntityDamageEventState, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
     EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
-    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
-    EntityVec3, EvokerFangsCritParticleState, FallingBlockModelState,
-    FireworkRocketExplosionParticleState, FireworkRocketItemState, FishingHookRenderSourceState,
-    FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
-    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LivingDeathWakeTransition,
-    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
-    OminousItemSpawnerItemState, OminousItemSpawnerParticleState, PowderSnowFlakeParticleState,
-    RavagerRoarParticleState, RavagerStunParticleState, SlimeLandingParticleState,
-    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
-    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
-    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityPlayerSleep,
+    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
+    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    FishingHookRenderSourceState, FoxEatParticleState, GuardianAmbientParticleState,
+    GuardianAttackParticleState, HappyGhastHarnessColor, ItemEntityStackState,
+    ItemFrameRenderState, LivingDeathWakeTransition, LlamaBodyDecorColor,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
+    RavagerStunParticleState, SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy,
+    WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+    VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
     VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
@@ -773,6 +773,14 @@ impl EntityStore {
             if let Ok(mut lifecycle) = self.ecs.get::<&mut EntityLivingLifecycle>(entity) {
                 *lifecycle = EntityLivingLifecycle::default();
             }
+            sync_derived_marker::<EntityPlayerSleep>(
+                &mut self.ecs,
+                entity,
+                entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID,
+            );
+            if let Ok(mut sleep) = self.ecs.get::<&mut EntityPlayerSleep>(entity) {
+                *sleep = EntityPlayerSleep::default();
+            }
             reset::<EntitySupportingBlock>(&mut self.ecs, entity);
             reset::<EntityClientMovementCollisionFacts>(&mut self.ecs, entity);
             if is_vanilla_minecart_type(entity_type_id) {
@@ -941,6 +949,11 @@ impl EntityStore {
             entity,
             vanilla_entity_metadata_type_is_living(entity_type_id),
         );
+        sync_derived_marker::<EntityPlayerSleep>(
+            &mut self.ecs,
+            entity,
+            entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID,
+        );
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
             entity,
@@ -1026,6 +1039,9 @@ impl EntityStore {
             let _ = self
                 .ecs
                 .insert_one(entity, EntityLivingLifecycle::from(&state));
+        }
+        if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            let _ = self.ecs.insert_one(entity, EntityPlayerSleep::from(&state));
         }
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
@@ -1662,6 +1678,14 @@ impl EntityStore {
             .get::<&EntityLivingLifecycle>(entity)
             .ok()
             .map(|lifecycle| lifecycle.dead)
+    }
+
+    pub(crate) fn player_sleep_counter(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityPlayerSleep>(entity)
+            .ok()
+            .map(|sleep| sleep.counter)
     }
 
     pub(crate) fn is_baby(&self, id: i32) -> Option<bool> {
@@ -5945,6 +5969,83 @@ impl EntityStore {
         Some(())
     }
 
+    /// Applies `Player.stopSleepInBed(false, false)` for animate action 2.
+    ///
+    /// The caller resolves the loaded-bed stand-up transition before this
+    /// mutation. Standing pose, sleeping-position removal, and counter 100 are
+    /// unconditional for a known Player, even when no valid bed was resolved.
+    pub(crate) fn apply_client_player_wake_animation(
+        &mut self,
+        id: i32,
+        wake: Option<LivingDeathWakeTransition>,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return None;
+        }
+        let living_accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            identity.entity_type_id,
+        )?;
+        drop(identity);
+
+        if let Some(wake) = wake {
+            let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
+            transform.position = wake.position;
+            transform.set_y_rot(wake.y_rot);
+            transform.set_x_rot(0.0);
+        }
+
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+        let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+        upsert_metadata_value(
+            &mut metadata,
+            ProtocolEntityDataValue {
+                data_id: entity_accessors.pose_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                value: EntityDataValueKind::Pose(VANILLA_ENTITY_POSE_STANDING_ID),
+            },
+        );
+        upsert_metadata_value(
+            &mut metadata,
+            ProtocolEntityDataValue {
+                data_id: living_accessors.sleeping_pos_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                value: EntityDataValueKind::OptionalBlockPos(None),
+            },
+        );
+        drop(metadata);
+
+        self.ecs.get::<&mut EntityPlayerSleep>(entity).ok()?.counter = 100;
+        Some(())
+    }
+
+    fn advance_player_sleep_counter(&mut self, entity: Entity) {
+        let Ok((metadata, sleep)) = self
+            .ecs
+            .query_one_mut::<(&EntityMetadata, &mut EntityPlayerSleep)>(entity)
+        else {
+            return;
+        };
+        let Some(accessors) = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        ) else {
+            return;
+        };
+        let sleeping = metadata.data_values.iter().any(|value| {
+            value.data_id == accessors.sleeping_pos_data_id
+                && matches!(value.value, EntityDataValueKind::OptionalBlockPos(Some(_)))
+        });
+        if sleeping {
+            sleep.counter = sleep.counter.saturating_add(1).min(100);
+        } else if sleep.counter > 0 {
+            sleep.counter = sleep.counter.saturating_add(1);
+            if sleep.counter >= 110 {
+                sleep.counter = 0;
+            }
+        }
+    }
+
     pub(crate) fn apply_client_animation_hurt(&mut self, id: i32) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
@@ -6988,6 +7089,9 @@ impl EntityStore {
                 let Some((entity_id, entity_type_id)) = identity else {
                     continue;
                 };
+                if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                    self.advance_player_sleep_counter(entity);
+                }
                 // `AbstractMinecart.tick` runs `NewMinecartBehavior.tick`
                 // before any concrete minecart subclass work. TNT smoke and
                 // every later animation therefore observe the post-lerp pose.
@@ -7840,6 +7944,19 @@ impl EntityStore {
         } else {
             let _ = self.ecs.remove_one::<EntityLivingLifecycle>(entity);
         }
+        if state.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            let sleep = EntityPlayerSleep::from(state);
+            let updated = self
+                .ecs
+                .get::<&mut EntityPlayerSleep>(entity)
+                .map(|mut existing| *existing = sleep)
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, sleep);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityPlayerSleep>(entity);
+        }
         if let Ok(mut support) = self.ecs.get::<&mut EntitySupportingBlock>(entity) {
             *support = EntitySupportingBlock::from(state);
         }
@@ -7996,6 +8113,7 @@ impl EntityStore {
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
         let living_lifecycle = self.ecs.get::<&EntityLivingLifecycle>(entity).ok();
+        let player_sleep = self.ecs.get::<&EntityPlayerSleep>(entity).ok();
         let supporting_block = self.ecs.get::<&EntitySupportingBlock>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
         let minecart_command_block = self.ecs.get::<&EntityMinecartCommandBlock>(entity).ok();
@@ -8032,6 +8150,7 @@ impl EntityStore {
             last_damage: None,
             damage_invulnerable_time: 0,
             living_dead: false,
+            player_sleep_counter: None,
             minecart_lerp_pending_steps: Vec::new(),
             minecart_lerp_steps: Vec::new(),
             minecart_lerp_old_step: None,
@@ -8052,6 +8171,9 @@ impl EntityStore {
         (*damage).clone().write_to_state(&mut state);
         if let Some(lifecycle) = living_lifecycle {
             (*lifecycle).write_to_state(&mut state);
+        }
+        if let Some(sleep) = player_sleep {
+            (*sleep).write_to_state(&mut state);
         }
         (*supporting_block).write_to_state(&mut state);
         if let Some(minecart_lerp) = minecart_lerp {
