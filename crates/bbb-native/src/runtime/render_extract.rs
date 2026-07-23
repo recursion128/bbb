@@ -16,12 +16,13 @@ use bbb_renderer::{
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
     HudComponentTextRun, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen,
     HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth,
-    HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
-    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudPlayerList, HudPlayerListEntry, HudScoreboardSidebar, HudScoreboardSidebarEntry,
+    HudSignEditorScreen, HudSleepOverlay, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen,
+    HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette, ItemEntityBillboard,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
+    SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -1523,6 +1524,50 @@ pub(crate) fn hud_player_list_from_world(
     })
 }
 
+pub(crate) fn hud_scoreboard_sidebar_from_world(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<HudScoreboardSidebar> {
+    if input.hide_gui() {
+        return None;
+    }
+    let sidebar = world.scoreboard_sidebar()?;
+    Some(HudScoreboardSidebar {
+        title_runs: hud_scoreboard_text_runs(&sidebar.title, item_runtime),
+        entries: sidebar
+            .entries
+            .iter()
+            .map(|entry| HudScoreboardSidebarEntry {
+                name_runs: hud_scoreboard_text_runs(&entry.name, item_runtime),
+                score_runs: hud_scoreboard_text_runs(&entry.score, item_runtime),
+            })
+            .collect(),
+    })
+}
+
+fn hud_scoreboard_text_runs(
+    text: &bbb_world::ScoreboardTextState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudStyledTextRun> {
+    text.segments
+        .iter()
+        .flat_map(|segment| match segment {
+            bbb_world::ScoreboardTextSegmentState::Rich(component) => {
+                localized_component_runs(component, &text.inherited_style, item_runtime)
+            }
+            bbb_world::ScoreboardTextSegmentState::Styled(runs) => runs
+                .iter()
+                .map(|run| bbb_protocol::StyledTextRun {
+                    text: run.text.clone(),
+                    style: run.style.apply_to(&text.inherited_style),
+                })
+                .collect(),
+        })
+        .map(|run| hud_chat_run(&run.text, &run.style))
+        .collect()
+}
+
 /// One frame's worth of world->renderer state.
 ///
 /// `pump_network_and_terrain` extracts each field at a vanilla-verified
@@ -1572,6 +1617,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
+    pub(crate) hud_scoreboard_sidebar: Option<HudScoreboardSidebar>,
     pub(crate) hud_player_list: Option<HudPlayerList>,
     pub(crate) hud_chat_messages: RendererFrameUpdate<Vec<HudChatMessage>>,
     pub(crate) hud_chat_context: HudChatContext,
@@ -1833,6 +1879,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);
+    renderer.set_hud_scoreboard_sidebar(frame.hud_scoreboard_sidebar);
     if let RendererFrameUpdate::Replace(messages) = frame.hud_chat_messages {
         renderer.set_hud_chat_messages(messages);
     }

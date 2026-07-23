@@ -18,6 +18,7 @@ mod book;
 mod game_rules;
 mod gpu;
 mod layout;
+mod scoreboard;
 
 pub use self::book::{
     hud_book_layout, HudBookHitTarget, HudBookInteraction, HudBookLayout, HudBookMode,
@@ -58,6 +59,7 @@ use self::layout::{
     HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
     HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
+pub use self::scoreboard::{HudScoreboardSidebar, HudScoreboardSidebarEntry};
 
 pub use bbb_render_types::{
     HudAsciiGlyph, HudComponentTextRun, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap,
@@ -4992,6 +4994,10 @@ impl Renderer {
         self.hud_title_text = title.filter(|state| state.partial_tick.is_finite());
     }
 
+    pub fn set_hud_scoreboard_sidebar(&mut self, sidebar: Option<HudScoreboardSidebar>) {
+        self.hud_scoreboard_sidebar = sidebar.map(scoreboard::sanitize_hud_scoreboard_sidebar);
+    }
+
     pub fn set_hud_player_list(&mut self, player_list: Option<HudPlayerList>) {
         self.hud_player_list = player_list.filter(|list| {
             !list.entries.is_empty() || list.header.is_some() || list.footer.is_some()
@@ -5835,6 +5841,19 @@ impl Renderer {
         // title/subtitle after the hotbar decorations (Gui.java:215-217); open
         // screens render in a later pass, so their draws stay above these.
         if let Some(font_atlas) = &self.hud_font_atlas {
+            if let Some(sidebar) = &self.hud_scoreboard_sidebar {
+                scoreboard::push_hud_scoreboard_sidebar(
+                    &mut vertices,
+                    &mut commands,
+                    &self.hud_white_pixel,
+                    font_atlas,
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    sidebar,
+                );
+            }
             let mut screen_text_draws = Vec::new();
             if let Some(action_bar) = &self.hud_action_bar_text {
                 screen_text_draws.extend(hud_action_bar_text_draw(

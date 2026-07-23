@@ -2773,6 +2773,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_action_bar_text =
         hud_action_bar_text_from_world(world, item_runtime, entity_partial_tick);
     let hud_title_text = hud_title_text_from_world(world, item_runtime, entity_partial_tick);
+    let hud_scoreboard_sidebar = hud_scoreboard_sidebar_from_world(input, world, item_runtime);
     let hud_player_list = hud_player_list_from_world(input, world);
     let hud_chat_messages = hud_render_runtime.chat_messages_update(world, item_runtime);
     let queued_chat_messages = world.client_chat().delayed_messages.len();
@@ -3546,6 +3547,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,
+            hud_scoreboard_sidebar,
             hud_player_list,
             hud_chat_messages,
             hud_chat_context,

@@ -77,7 +77,9 @@ pub use crate::client::player_info::{
     PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState,
 };
 pub use crate::client::scoreboard::{
-    ScoreboardObjective, ScoreboardScore, ScoreboardState, ScoreboardTeam, ScoreboardTeamParameters,
+    ScoreboardObjective, ScoreboardPlayerListScoreState, ScoreboardScore,
+    ScoreboardSidebarEntryState, ScoreboardSidebarState, ScoreboardState, ScoreboardTeam,
+    ScoreboardTeamParameters, ScoreboardTextSegmentState, ScoreboardTextState,
 };
 pub use crate::client::server_presentation::{
     CustomPayloadState, ResourcePackFailureStage, ResourcePackRuntimeFailure,

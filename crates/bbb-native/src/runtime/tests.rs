@@ -703,6 +703,106 @@ fn player_list_projection_uses_tab_visibility_and_vanilla_entry_order() {
 }
 
 #[test]
+fn hud_scoreboard_projection_localizes_rich_team_and_score_runs() {
+    use bbb_protocol::packets::{
+        ChatFormatting, NumberFormatSummary, ObjectiveRenderType, PlayerTeamMethod,
+        PlayerTeamParameters, ScoreboardDisplaySlot, SetDisplayObjective, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPlayerTeam, SetScore, TeamCollisionRule,
+        TeamVisibility,
+    };
+
+    let styled = |text: &str, color: Option<&str>, bold: bool| {
+        let mut entries = vec![NbtSummaryEntry {
+            name: "text".to_string(),
+            value: NbtSummaryValue::String(text.to_string()),
+        }];
+        if let Some(color) = color {
+            entries.push(NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String(color.to_string()),
+            });
+        }
+        if bold {
+            entries.push(NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            });
+        }
+        bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(entries))
+            .unwrap()
+    };
+    let mut world = WorldStore::new();
+    assert!(world.apply_set_objective(SetObjective {
+        objective_name: "kills".to_string(),
+        method: SetObjectiveMethod::Add.into(),
+        parameters: Some(SetObjectiveParameters {
+            display_name: styled("Kills", None, true),
+            render_type: ObjectiveRenderType::Integer,
+            number_format: None,
+        }),
+    }));
+    assert!(world.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::Sidebar,
+        objective_name: Some("kills".to_string()),
+    }));
+    assert!(world.apply_set_player_team(SetPlayerTeam {
+        name: "red".to_string(),
+        method: PlayerTeamMethod::Add.into(),
+        parameters: Some(PlayerTeamParameters {
+            display_name: bbb_protocol::RichTextComponent::plain("Red"),
+            options: 0,
+            nametag_visibility: TeamVisibility::Always,
+            collision_rule: TeamCollisionRule::Always,
+            color: ChatFormatting::Red,
+            player_prefix: bbb_protocol::RichTextComponent::plain("["),
+            player_suffix: bbb_protocol::RichTextComponent::plain("]"),
+        }),
+        players: vec!["Alice".to_string()],
+    }));
+    assert!(world.apply_set_score(SetScore {
+        owner: "Alice".to_string(),
+        objective_name: "kills".to_string(),
+        score: 9,
+        display: Some(styled("Ace", Some("aqua"), false)),
+        number_format: Some(NumberFormatSummary::Styled(
+            bbb_protocol::ComponentStyle::default(),
+        )),
+    }));
+
+    let mut input = ClientInputState::new(true);
+    let sidebar = hud_scoreboard_sidebar_from_world(&input, &world, None)
+        .expect("scoreboard sidebar projection");
+    assert_eq!(sidebar.title_runs[0].text, "Kills");
+    assert!(sidebar.title_runs[0].style.bold);
+    assert_eq!(
+        sidebar.entries[0]
+            .name_runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<Vec<_>>(),
+        ["[", "Ace", "]"]
+    );
+    assert_eq!(sidebar.entries[0].name_runs[0].color, Some(0xFF5555));
+    assert_eq!(sidebar.entries[0].name_runs[1].color, Some(0x55FFFF));
+    assert_eq!(sidebar.entries[0].name_runs[2].color, Some(0xFF5555));
+    assert_eq!(sidebar.entries[0].score_runs[0].text, "9");
+    assert_eq!(sidebar.entries[0].score_runs[0].color, None);
+
+    crate::input::handle_key_input(
+        &mut input,
+        &mut NetCounters::default(),
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::F1),
+        ElementState::Pressed,
+    );
+    assert_eq!(
+        hud_scoreboard_sidebar_from_world(&input, &world, None),
+        None
+    );
+}
+
+#[test]
 fn particle_entity_target_contexts_track_world_entity_positions() {
     let mut world = WorldStore::new();
     assert!(particle_entity_target_contexts(&world).is_empty());
