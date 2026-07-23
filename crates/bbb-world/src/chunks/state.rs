@@ -1,3 +1,4 @@
+use bbb_protocol::packets::inventory::ResolvableProfileSummary;
 use bbb_protocol::StyledTextRun;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -109,6 +110,8 @@ pub struct BlockEntityRecord {
     pub test_instance_block: Option<crate::TestInstanceBlockEntityDataState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note_block_sound: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skull_profile: Option<ResolvableProfileSummary>,
 }
 
 impl BlockEntityRecord {
@@ -132,6 +135,7 @@ impl BlockEntityRecord {
             test_block: None,
             test_instance_block: None,
             note_block_sound: None,
+            skull_profile: None,
         }
     }
 }

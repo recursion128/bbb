@@ -35,6 +35,7 @@ mod publication_snapshot;
 mod recipe_book;
 mod recipes;
 mod registries;
+mod resolvable_profile;
 mod shulker_box_blocks;
 mod sign_blocks;
 mod skull_blocks;

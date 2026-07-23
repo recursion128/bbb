@@ -2897,6 +2897,7 @@ mod tests {
                 test_block: None,
                 test_instance_block: None,
                 note_block_sound: None,
+                skull_profile: None,
             }],
             light: crate::LightData::default(),
         });

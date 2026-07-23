@@ -9,6 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use bbb_protocol::packets::inventory::ResolvableProfileSummary;
+
 use crate::terrain::{block_name_is_floor_skull, block_name_is_wall_skull};
 use crate::{
     sign_blocks::sign_rotation_segment_to_degrees, BlockPos, ChunkColumn, PaletteKind, RegistrySet,
@@ -85,12 +87,13 @@ impl SkullBlockState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SkullModelSourceState {
     pub pos: BlockPos,
     pub kind: SkullBlockKind,
     pub attachment: SkullBlockAttachment,
     pub animation_progress: f32,
+    pub owner_profile: Option<ResolvableProfileSummary>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,6 +192,12 @@ impl WorldStore {
                 kind: source.kind,
                 attachment: source.attachment,
                 animation_progress,
+                owner_profile: if source.kind == SkullBlockKind::Player {
+                    self.block_entity_record_at(source.pos)
+                        .and_then(|record| record.skull_profile.clone())
+                } else {
+                    None
+                },
             });
         }
         states.sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));
@@ -308,6 +317,8 @@ mod tests {
         ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PalettedContainerData,
         WorldDimension,
     };
+    use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID;
+    use bbb_protocol::packets::inventory::{PlayerSkinPatchSummary, ResolvableProfileKindSummary};
     use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, BlockUpdate};
     use std::collections::BTreeMap;
 
@@ -349,6 +360,52 @@ mod tests {
             packed_data: Vec::new(),
             entry_count,
         }
+    }
+
+    fn profile(name: &str) -> ResolvableProfileSummary {
+        ResolvableProfileSummary {
+            kind: ResolvableProfileKindSummary::Partial,
+            uuid: None,
+            name: Some(name.to_string()),
+            properties: Vec::new(),
+            profile_textures: None,
+            skin_patch: PlayerSkinPatchSummary::default(),
+        }
+    }
+
+    fn world_with_skull_profile(pos: BlockPos, profile: ResolvableProfileSummary) -> WorldStore {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        let mut block_entity = crate::BlockEntityRecord::empty(
+            pos.x.rem_euclid(16) as u8,
+            i16::try_from(pos.y).unwrap(),
+            pos.z.rem_euclid(16) as u8,
+            VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
+        );
+        block_entity.skull_profile = Some(profile);
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos {
+                x: pos.x.div_euclid(16),
+                z: pos.z.div_euclid(16),
+            },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    crate::vanilla_air_block_state_id(),
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: vec![block_entity],
+            light: LightData::default(),
+        });
+        world
     }
 
     fn set_block(world: &mut WorldStore, pos: BlockPos, name: &str, properties: &[(&str, &str)]) {
@@ -435,6 +492,34 @@ mod tests {
                 facing: SkullWallFacing::East
             }
         );
+    }
+
+    #[test]
+    fn player_skull_source_projects_exact_block_entity_profile() {
+        let pos = BlockPos { x: 2, y: 3, z: 4 };
+        let owner = profile("SkullOwner");
+        let mut world = world_with_skull_profile(pos, owner.clone());
+        set_block(
+            &mut world,
+            pos,
+            "minecraft:player_head",
+            &[("powered", "false"), ("rotation", "0")],
+        );
+
+        let sources = world.skull_model_source_states(0.5);
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].pos, pos);
+        assert_eq!(sources[0].kind, SkullBlockKind::Player);
+        assert_eq!(sources[0].owner_profile.as_ref(), Some(&owner));
+
+        set_block(
+            &mut world,
+            pos,
+            "minecraft:skeleton_skull",
+            &[("powered", "false"), ("rotation", "0")],
+        );
+        assert_eq!(world.skull_model_source_states(0.5)[0].owner_profile, None);
     }
 
     #[test]

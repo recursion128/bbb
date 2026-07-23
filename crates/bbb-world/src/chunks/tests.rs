@@ -102,6 +102,75 @@ fn decodes_skull_note_block_sound_from_initial_chunk_data() {
 }
 
 #[test]
+fn decodes_and_replaces_skull_profile_from_chunk_and_block_entity_data() {
+    let mut packet = synthetic_level_chunk_packet();
+    packet
+        .chunk_data
+        .block_entities
+        .push(LevelChunkBlockEntity {
+            packed_xz: 0x12,
+            y: 7,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
+            raw_nbt: nbt_compound_with_string("profile", "InitialOwner"),
+        });
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_level_chunk_with_light(packet).unwrap();
+    let pos = BlockPos {
+        x: 17,
+        y: 7,
+        z: -30,
+    };
+
+    assert_eq!(
+        store
+            .block_entity_record_at(pos)
+            .and_then(|record| record.skull_profile.as_ref())
+            .and_then(|profile| profile.name.as_deref()),
+        Some("InitialOwner")
+    );
+
+    assert!(store
+        .apply_block_entity_data(ProtocolBlockEntityData {
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
+            raw_nbt: nbt_compound_with_string("profile", "UpdatedOwner"),
+        })
+        .unwrap());
+    assert_eq!(
+        store
+            .block_entity_record_at(pos)
+            .and_then(|record| record.skull_profile.as_ref())
+            .and_then(|profile| profile.name.as_deref()),
+        Some("UpdatedOwner")
+    );
+
+    assert!(store
+        .apply_block_entity_data(ProtocolBlockEntityData {
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
+            raw_nbt: vec![10, 0],
+        })
+        .unwrap());
+    assert!(store
+        .block_entity_record_at(pos)
+        .is_some_and(|record| record.skull_profile.is_none()));
+}
+
+#[test]
 fn terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
@@ -2358,6 +2427,7 @@ fn applies_block_entity_data_update() {
             test_block: None,
             test_instance_block: None,
             note_block_sound: None,
+            skull_profile: None,
         }
     );
     assert_eq!(

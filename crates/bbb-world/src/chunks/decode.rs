@@ -310,6 +310,11 @@ fn decode_block_entity_record(
     } else {
         None
     };
+    let skull_profile = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID {
+        crate::chunks::decode_skull_profile(&raw_nbt)?
+    } else {
+        None
+    };
     Ok(BlockEntityRecord {
         local_x,
         y,
@@ -329,6 +334,7 @@ fn decode_block_entity_record(
         test_block,
         test_instance_block,
         note_block_sound,
+        skull_profile,
     })
 }
 
