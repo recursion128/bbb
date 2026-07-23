@@ -740,10 +740,10 @@ pub struct Renderer {
     pub(super) hud_locator_marker_sprites: BTreeMap<String, HudSpriteGpu>,
     pub(super) hud_locator_styles: BTreeMap<String, crate::hud::HudLocatorStyle>,
     /// Player heart sprites keyed by `[HudHeartKind as usize][variant]`, where
-    /// `variant = (hardcore as usize) * 2 + (half as usize)` (non-blinking
-    /// variants only; blink is deferred). `Container`'s half slots mirror its
-    /// full slot (vanilla routes both to the container sprite).
-    pub(super) hud_heart_sprites: [[Option<HudSpriteGpu>; 4]; crate::hud::HudHeartKind::ALL.len()],
+    /// `variant = (blinking as usize) * 4 + (hardcore as usize) * 2
+    /// + (half as usize)`. `Container`'s half slots mirror its full slot
+    /// (vanilla routes both to the container sprite).
+    pub(super) hud_heart_sprites: [[Option<HudSpriteGpu>; 8]; crate::hud::HudHeartKind::ALL.len()],
     pub(super) hud_food_empty: Option<HudSpriteGpu>,
     pub(super) hud_food_full: Option<HudSpriteGpu>,
     pub(super) hud_food_half: Option<HudSpriteGpu>,
@@ -778,6 +778,7 @@ pub struct Renderer {
     pub(super) hud_title_text: Option<crate::hud::HudTitleText>,
     pub(super) hud_scoreboard_sidebar: Option<crate::hud::HudScoreboardSidebar>,
     pub(super) hud_player_list: Option<crate::hud::HudPlayerList>,
+    pub(super) hud_player_list_runtime: crate::hud::HudPlayerListRuntime,
     pub(super) hud_chat_messages: Vec<HudChatMessage>,
     pub(super) hud_chat_lines: Vec<HudChatLine>,
     pub(super) hud_chat_context: HudChatContext,
@@ -2082,6 +2083,7 @@ impl Renderer {
             hud_title_text: None,
             hud_scoreboard_sidebar: None,
             hud_player_list: None,
+            hud_player_list_runtime: crate::hud::HudPlayerListRuntime::default(),
             hud_chat_messages: Vec::new(),
             hud_chat_lines: Vec::new(),
             hud_chat_context: HudChatContext::default(),

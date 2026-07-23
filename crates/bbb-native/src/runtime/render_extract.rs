@@ -16,13 +16,13 @@ use bbb_renderer::{
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
     HudComponentTextRun, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudGameRulesScreen,
     HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth,
-    HudPlayerList, HudPlayerListEntry, HudScoreboardSidebar, HudScoreboardSidebarEntry,
-    HudSignEditorScreen, HudSleepOverlay, HudStatsScreen, HudStructureBlockEditorScreen,
-    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen,
-    HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
-    SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudScoreboardSidebar,
+    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
+    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudVehicleHealth, HudVignette,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
+    ItemModelResidencyFrame, Renderer, SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -1453,8 +1453,10 @@ pub(crate) fn hud_boss_bar_from_world_state(
 pub(crate) fn hud_player_list_from_world(
     input: &ClientInputState,
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    tick_count: u64,
 ) -> Option<HudPlayerList> {
-    if !input.player_list_key_down() || input_screen_is_open(input, world) {
+    if input.hide_gui() || !input.player_list_key_down() || input_screen_is_open(input, world) {
         return None;
     }
     let scoreboard = world.scoreboard();
@@ -1488,39 +1490,60 @@ pub(crate) fn hud_player_list_from_world(
         .into_iter()
         .take(80)
         .map(|entry| {
-            let name = entry.display_name.clone().unwrap_or_else(|| {
-                let team = scoreboard.team_for_scoreboard_name(&entry.profile.name);
-                format!(
-                    "{}{}{}",
-                    team.and_then(|team| team.parameters.as_ref())
-                        .map(|parameters| parameters.player_prefix.as_str())
-                        .unwrap_or(""),
-                    entry.profile.name,
-                    team.and_then(|team| team.parameters.as_ref())
-                        .map(|parameters| parameters.player_suffix.as_str())
-                        .unwrap_or("")
-                )
-            });
+            let mut name_runs = entry.display_name.as_ref().map_or_else(
+                || {
+                    hud_scoreboard_text_runs(
+                        &scoreboard.team_formatted_literal_name(&entry.profile.name),
+                        item_runtime,
+                    )
+                },
+                |display_name| vec![HudStyledTextRun::plain(display_name)],
+            );
+            if entry.is_spectator() {
+                for run in &mut name_runs {
+                    run.style.italic = true;
+                }
+            }
+            let score =
+                scoreboard
+                    .player_list_score(&entry.profile.name)
+                    .map(|score| match score {
+                        bbb_world::ScoreboardPlayerListScoreState::Integer(text) => {
+                            HudPlayerListScore::Integer(hud_scoreboard_text_runs(
+                                &text,
+                                item_runtime,
+                            ))
+                        }
+                        bbb_world::ScoreboardPlayerListScoreState::Hearts(value) => {
+                            let hearts = bbb_protocol::java_float_to_string(value as f32 / 2.0_f32);
+                            HudPlayerListScore::Hearts {
+                                value,
+                                hp_text: localized_gui_text_with_args(
+                                    item_runtime,
+                                    "multiplayer.player.list.hp",
+                                    "%shp",
+                                    &[&hearts],
+                                ),
+                                compact_text: hearts,
+                            }
+                        }
+                    });
             HudPlayerListEntry {
-                name_runs: vec![HudStyledTextRun {
-                    text: name,
-                    style: HudTextStyle {
-                        italic: entry.is_spectator(),
-                        ..Default::default()
-                    },
-                    color: None,
-                }],
+                profile_id: entry.profile.uuid.as_u128(),
+                name_runs,
                 latency: entry.latency,
                 spectator: entry.is_spectator(),
+                score,
             }
         })
         .collect::<Vec<_>>();
     let header = world.tab_list().header.clone();
     let footer = world.tab_list().footer.clone();
-    (!entries.is_empty() || header.is_some() || footer.is_some()).then_some(HudPlayerList {
+    Some(HudPlayerList {
         header,
         footer,
         entries,
+        tick_count,
     })
 }
 

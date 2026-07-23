@@ -1277,10 +1277,10 @@ pub(crate) fn try_load_hud_textures(
         )?;
     }
     renderer.set_hud_locator_styles(locator_styles);
-    // Player heart sprites: every `HudHeartKind` × hardcore × half combination
-    // (vanilla `hud/heart/*`, Gui.java:1334-1393). Blink variants are skipped
-    // (blink is deferred). `Container` has no distinct half sprite, so its half
-    // slot is not loaded (the renderer normalizes container half -> full).
+    // Player heart sprites: every `HudHeartKind` × hardcore × half × blink
+    // combination (vanilla `hud/heart/*`, Gui.java:1334-1393).
+    // `Container` has no distinct half sprite, so its half slot is not loaded
+    // (the renderer normalizes container half -> full).
     let heart_full = hud_sprite(&sprites, "hud/heart/full")?;
     for kind in HudHeartKind::ALL {
         for hardcore in [false, true] {
@@ -1288,16 +1288,19 @@ pub(crate) fn try_load_hud_textures(
                 if matches!(kind, HudHeartKind::Container) && half {
                     continue;
                 }
-                let name = kind.sprite_name(hardcore, half, false);
-                let sprite = hud_sprite(&sprites, &format!("hud/heart/{name}"))?;
-                renderer.upload_hud_heart_sprite(
-                    kind,
-                    hardcore,
-                    half,
-                    sprite.width,
-                    sprite.height,
-                    &sprite.rgba,
-                )?;
+                for blinking in [false, true] {
+                    let name = kind.sprite_name(hardcore, half, blinking);
+                    let sprite = hud_sprite(&sprites, &format!("hud/heart/{name}"))?;
+                    renderer.upload_hud_heart_sprite(
+                        kind,
+                        hardcore,
+                        half,
+                        blinking,
+                        sprite.width,
+                        sprite.height,
+                        &sprite.rgba,
+                    )?;
+                }
             }
         }
     }
@@ -1675,6 +1678,45 @@ mod tests {
         assert!(resolved
             .iter()
             .all(|(_, sprite)| (sprite.width, sprite.height) == (18, 18)));
+    }
+
+    #[test]
+    fn hud_heart_sprite_catalog_resolves_blinking_variants() {
+        let mut sprites = HashMap::new();
+        for kind in HudHeartKind::ALL {
+            for hardcore in [false, true] {
+                for half in [false, true] {
+                    if matches!(kind, HudHeartKind::Container) && half {
+                        continue;
+                    }
+                    for blinking in [false, true] {
+                        let name = kind.sprite_name(hardcore, half, blinking);
+                        let id = format!("minecraft:hud/heart/{name}");
+                        let image =
+                            SpriteImage::new(id.clone(), 9, 9, vec![255; 9 * 9 * 4]).unwrap();
+                        assert!(sprites.insert(id, image).is_none());
+                    }
+                }
+            }
+        }
+
+        let mut resolved = 0;
+        for kind in HudHeartKind::ALL {
+            for hardcore in [false, true] {
+                for half in [false, true] {
+                    if matches!(kind, HudHeartKind::Container) && half {
+                        continue;
+                    }
+                    for blinking in [false, true] {
+                        let name = kind.sprite_name(hardcore, half, blinking);
+                        let sprite = hud_sprite(&sprites, &format!("hud/heart/{name}")).unwrap();
+                        assert_eq!((sprite.width, sprite.height), (9, 9));
+                        resolved += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(resolved, 44);
     }
 
     #[test]

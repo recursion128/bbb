@@ -624,7 +624,14 @@ fn particle_player_motion_contexts_track_local_and_remote_players() {
 }
 
 #[test]
-fn player_list_projection_uses_tab_visibility_and_vanilla_entry_order() {
+fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
+    use bbb_protocol::packets::{
+        ChatFormatting, ObjectiveRenderType, PlayerTeamMethod, PlayerTeamParameters,
+        ScoreboardDisplaySlot, SetDisplayObjective, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPlayerTeam, SetScore, TeamCollisionRule, TeamVisibility,
+    };
+    use bbb_renderer::HudPlayerListScore;
+
     let mut world = WorldStore::new();
     let entries = [
         (
@@ -676,8 +683,42 @@ fn player_list_projection_uses_tab_visibility_and_vanilla_entry_order() {
         header: Some("Welcome".to_string()),
         footer: Some("Online".to_string()),
     });
+    assert!(world.apply_set_player_team(SetPlayerTeam {
+        name: "aqua".to_string(),
+        method: PlayerTeamMethod::Add.into(),
+        parameters: Some(PlayerTeamParameters {
+            display_name: bbb_protocol::RichTextComponent::plain("Aqua"),
+            options: 0,
+            nametag_visibility: TeamVisibility::Always,
+            collision_rule: TeamCollisionRule::Always,
+            color: ChatFormatting::Aqua,
+            player_prefix: bbb_protocol::RichTextComponent::plain("["),
+            player_suffix: bbb_protocol::RichTextComponent::plain("]"),
+        }),
+        players: vec!["beta".to_string()],
+    }));
+    assert!(world.apply_set_objective(SetObjective {
+        objective_name: "tab".to_string(),
+        method: SetObjectiveMethod::Add.into(),
+        parameters: Some(SetObjectiveParameters {
+            display_name: bbb_protocol::RichTextComponent::plain("Health"),
+            render_type: ObjectiveRenderType::Integer,
+            number_format: None,
+        }),
+    }));
+    assert!(world.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::List,
+        objective_name: Some("tab".to_string()),
+    }));
+    assert!(world.apply_set_score(SetScore {
+        owner: "beta".to_string(),
+        objective_name: "tab".to_string(),
+        score: 7,
+        display: None,
+        number_format: None,
+    }));
     let mut input = ClientInputState::new(true);
-    assert_eq!(hud_player_list_from_world(&input, &world), None);
+    assert_eq!(hud_player_list_from_world(&input, &world, None, 0), None);
     crate::input::handle_key_input(
         &mut input,
         &mut NetCounters::default(),
@@ -687,19 +728,81 @@ fn player_list_projection_uses_tab_visibility_and_vanilla_entry_order() {
         ElementState::Pressed,
     );
 
-    let list = hud_player_list_from_world(&input, &world).expect("Tab list");
+    let list = hud_player_list_from_world(&input, &world, None, 42).expect("Tab list");
     assert_eq!(list.header.as_deref(), Some("Welcome"));
     assert_eq!(list.footer.as_deref(), Some("Online"));
     assert_eq!(
         list.entries
             .iter()
-            .map(|entry| entry.name_runs[0].text.as_str())
+            .map(|entry| {
+                entry
+                    .name_runs
+                    .iter()
+                    .map(|run| run.text.as_str())
+                    .collect::<String>()
+            })
             .collect::<Vec<_>>(),
-        vec!["beta", "Zulu", "alpha"]
+        vec!["[beta]", "Zulu", "alpha"]
     );
     assert!(!list.entries[0].spectator);
     assert!(list.entries[1].spectator);
     assert_eq!(list.entries[0].latency, 120);
+    assert_eq!(list.entries[0].profile_id, 3);
+    assert_eq!(list.entries[0].name_runs[0].color, Some(0x55FFFF));
+    assert!(list.entries[1].name_runs.iter().all(|run| run.style.italic));
+    let HudPlayerListScore::Integer(score_runs) =
+        list.entries[0].score.as_ref().expect("integer score")
+    else {
+        panic!("expected integer player-list score");
+    };
+    assert_eq!(score_runs[0].text, "7");
+    assert_eq!(score_runs[0].color, Some(0xFFFF55));
+    let HudPlayerListScore::Integer(missing_score_runs) = list.entries[2]
+        .score
+        .as_ref()
+        .expect("missing score formats zero")
+    else {
+        panic!("expected integer player-list score");
+    };
+    assert_eq!(missing_score_runs[0].text, "0");
+    assert_eq!(list.tick_count, 42);
+
+    assert!(world.apply_set_objective(SetObjective {
+        objective_name: "tab".to_string(),
+        method: SetObjectiveMethod::Change.into(),
+        parameters: Some(SetObjectiveParameters {
+            display_name: bbb_protocol::RichTextComponent::plain("Health"),
+            render_type: ObjectiveRenderType::Hearts,
+            number_format: None,
+        }),
+    }));
+    let hearts = hud_player_list_from_world(&input, &world, None, 43).expect("heart list");
+    assert_eq!(
+        hearts.entries[0].score,
+        Some(HudPlayerListScore::Hearts {
+            value: 7,
+            hp_text: "3.5hp".to_string(),
+            compact_text: "3.5".to_string(),
+        })
+    );
+    assert_eq!(
+        hearts.entries[2].score,
+        Some(HudPlayerListScore::Hearts {
+            value: 0,
+            hp_text: "0.0hp".to_string(),
+            compact_text: "0.0".to_string(),
+        })
+    );
+
+    crate::input::handle_key_input(
+        &mut input,
+        &mut NetCounters::default(),
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::F1),
+        ElementState::Pressed,
+    );
+    assert_eq!(hud_player_list_from_world(&input, &world, None, 44), None);
 }
 
 #[test]

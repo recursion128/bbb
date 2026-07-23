@@ -18,6 +18,7 @@ mod book;
 mod game_rules;
 mod gpu;
 mod layout;
+mod player_list;
 mod scoreboard;
 
 pub use self::book::{
@@ -59,6 +60,8 @@ use self::layout::{
     HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
     HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
+pub use self::player_list::{HudPlayerList, HudPlayerListEntry, HudPlayerListScore};
+pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
 pub use self::scoreboard::{HudScoreboardSidebar, HudScoreboardSidebarEntry};
 
 pub use bbb_render_types::{
@@ -277,22 +280,6 @@ pub struct HudTitleText {
     pub stay: i32,
     pub fade_out: i32,
     pub partial_tick: f32,
-}
-
-/// One frame's multiplayer player-list overlay. Entries arrive in vanilla
-/// comparator order; the renderer owns font measurement, wrapping and columns.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct HudPlayerList {
-    pub header: Option<String>,
-    pub footer: Option<String>,
-    pub entries: Vec<HudPlayerListEntry>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct HudPlayerListEntry {
-    pub name_runs: Vec<HudStyledTextRun>,
-    pub latency: i32,
-    pub spectator: bool,
 }
 
 /// One accepted chat entry projected from the immutable world generation.
@@ -4586,22 +4573,23 @@ impl Renderer {
     }
 
     /// Uploads one player-heart sprite (vanilla `hud/heart/*`) into the
-    /// per-kind slot keyed by `(kind, hardcore, half)`. The asset loader walks
-    /// [`HudHeartKind::ALL`] × hardcore × half and resolves each PNG name with
-    /// [`HudHeartKind::sprite_name`]; blink variants are not uploaded (blink is
-    /// deferred). `Container`'s half is ignored (its half slot mirrors full).
+    /// per-kind slot keyed by `(kind, hardcore, half, blinking)`. The asset
+    /// loader walks [`HudHeartKind::ALL`] × hardcore × half × blinking and
+    /// resolves each PNG name with [`HudHeartKind::sprite_name`].
+    /// `Container`'s half is ignored (its half slot mirrors full).
     pub fn upload_hud_heart_sprite(
         &mut self,
         kind: HudHeartKind,
         hardcore: bool,
         half: bool,
+        blinking: bool,
         width: u32,
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
         let sprite = self.upload_hud_sprite(width, height, rgba)?;
         let half = half && !matches!(kind, HudHeartKind::Container);
-        let variant = usize::from(hardcore) * 2 + usize::from(half);
+        let variant = usize::from(blinking) * 4 + usize::from(hardcore) * 2 + usize::from(half);
         self.hud_heart_sprites[kind as usize][variant] = Some(sprite);
         Ok(())
     }
@@ -4999,9 +4987,9 @@ impl Renderer {
     }
 
     pub fn set_hud_player_list(&mut self, player_list: Option<HudPlayerList>) {
-        self.hud_player_list = player_list.filter(|list| {
-            !list.entries.is_empty() || list.header.is_some() || list.footer.is_some()
-        });
+        self.hud_player_list = player_list.map(player_list::sanitize_hud_player_list);
+        self.hud_player_list_runtime
+            .synchronize(self.hud_player_list.as_ref());
     }
 
     /// Replaces the stable chat source entries and rebuilds the bounded
@@ -5082,17 +5070,17 @@ impl Renderer {
         hud_food_sprite_variant(hunger, hunger_sprite.as_ref(), base_sprite.as_ref())
     }
 
-    /// One player-heart sprite by `(kind, hardcore, half)` (vanilla
-    /// `HeartType.getSprite`, blink always false). `Container`'s half normalizes
-    /// to full (its half slots mirror the full sprite).
+    /// One player-heart sprite by `(kind, hardcore, half, blinking)` (vanilla
+    /// `HeartType.getSprite`). `Container`'s half normalizes to full.
     fn hud_heart_sprite(
         &self,
         kind: HudHeartKind,
         hardcore: bool,
         half: bool,
+        blinking: bool,
     ) -> Option<&HudSpriteGpu> {
         let half = half && !matches!(kind, HudHeartKind::Container);
-        let variant = usize::from(hardcore) * 2 + usize::from(half);
+        let variant = usize::from(blinking) * 4 + usize::from(hardcore) * 2 + usize::from(half);
         self.hud_heart_sprites[kind as usize][variant].as_ref()
     }
 
@@ -5580,7 +5568,7 @@ impl Renderer {
         if let Some(health) = self.hud_player_health {
             for instance in hud_player_heart_instances(surface_size, health) {
                 if let Some(sprite) =
-                    self.hud_heart_sprite(instance.kind, health.hardcore, instance.half)
+                    self.hud_heart_sprite(instance.kind, health.hardcore, instance.half, false)
                 {
                     push_hud_draw(
                         &mut vertices,
@@ -5897,7 +5885,7 @@ impl Renderer {
                 &self.hud_chat_context,
             );
             if let Some(player_list) = &self.hud_player_list {
-                push_hud_player_list(
+                player_list::push_hud_player_list(
                     &mut vertices,
                     &mut commands,
                     &self.hud_white_pixel,
@@ -5907,6 +5895,47 @@ impl Renderer {
                     self.counters.frame_index,
                     surface_size,
                     player_list,
+                    &self.hud_player_list_runtime,
+                    HudPlayerListHeartSprites {
+                        container: self.hud_heart_sprite(
+                            HudHeartKind::Container,
+                            false,
+                            false,
+                            false,
+                        ),
+                        container_blinking: self.hud_heart_sprite(
+                            HudHeartKind::Container,
+                            false,
+                            false,
+                            true,
+                        ),
+                        full: self.hud_heart_sprite(HudHeartKind::Normal, false, false, false),
+                        half: self.hud_heart_sprite(HudHeartKind::Normal, false, true, false),
+                        full_blinking: self.hud_heart_sprite(
+                            HudHeartKind::Normal,
+                            false,
+                            false,
+                            true,
+                        ),
+                        half_blinking: self.hud_heart_sprite(
+                            HudHeartKind::Normal,
+                            false,
+                            true,
+                            true,
+                        ),
+                        absorbing_full_blinking: self.hud_heart_sprite(
+                            HudHeartKind::Absorbing,
+                            false,
+                            false,
+                            true,
+                        ),
+                        absorbing_half_blinking: self.hud_heart_sprite(
+                            HudHeartKind::Absorbing,
+                            false,
+                            true,
+                            true,
+                        ),
+                    },
                 );
             }
         }
@@ -13679,208 +13708,6 @@ fn hud_action_bar_text_draw<'a>(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
-fn push_hud_player_list<'a>(
-    vertices: &mut Vec<HudVertex>,
-    commands: &mut Vec<HudDrawCommand<'a>>,
-    white_pixel: &'a HudSpriteGpu,
-    font_atlas: &'a HudSpriteGpu,
-    glyphs: &HudFontGlyphMap,
-    obfuscated_pool: &HudObfuscatedGlyphPool,
-    frame_index: u64,
-    surface_size: PhysicalSize<u32>,
-    list: &HudPlayerList,
-) {
-    let entries = &list.entries[..list.entries.len().min(80)];
-    let slots = entries.len();
-    let (columns, rows) = hud_player_list_grid(slots);
-    let max_name_width = entries
-        .iter()
-        .map(|entry| hud_font_runs_width(&entry.name_runs, glyphs).unwrap_or(0))
-        .max()
-        .unwrap_or(0);
-    let screen_width = surface_size.width as i32;
-    let available = screen_width.saturating_sub(50).max(1) as u32;
-    let slot_width = ((columns as u32)
-        .saturating_mul(max_name_width.saturating_add(13))
-        .min(available)
-        / columns as u32)
-        .max(13);
-    let table_width = slot_width
-        .saturating_mul(columns as u32)
-        .saturating_add(5 * columns.saturating_sub(1) as u32);
-    let header_lines = list
-        .header
-        .as_deref()
-        .map(|text| hud_wrap_plain_text(text, available, glyphs))
-        .unwrap_or_default();
-    let footer_lines = list
-        .footer
-        .as_deref()
-        .map(|text| hud_wrap_plain_text(text, available, glyphs))
-        .unwrap_or_default();
-    let max_line_width = header_lines
-        .iter()
-        .chain(&footer_lines)
-        .map(|line| hud_plain_text_width(line, glyphs))
-        .fold(table_width, u32::max);
-    let left = screen_width / 2 - max_line_width as i32 / 2;
-    let mut y = 10i32;
-    let draw_text = |vertices: &mut Vec<HudVertex>,
-                     commands: &mut Vec<HudDrawCommand<'a>>,
-                     runs: &[HudStyledTextRun],
-                     x: i32,
-                     y: i32,
-                     tint: [f32; 4]| {
-        push_hud_screen_text_draw(
-            vertices,
-            commands,
-            white_pixel,
-            font_atlas,
-            glyphs,
-            obfuscated_pool,
-            frame_index,
-            surface_size,
-            &HudScreenTextDraw {
-                runs,
-                origin: (x as f32, y as f32),
-                scale: 1.0,
-                tint,
-            },
-        );
-    };
-    if !header_lines.is_empty() {
-        push_hud_debug_tinted_rect(
-            vertices,
-            commands,
-            white_pixel,
-            surface_size,
-            left - 1,
-            y - 1,
-            max_line_width + 2,
-            header_lines.len() as u32 * 9 + 1,
-            [0.0, 0.0, 0.0, 0.5],
-        );
-        for line in &header_lines {
-            let runs = [HudStyledTextRun::plain(line.clone())];
-            let width = hud_plain_text_width(line, glyphs) as i32;
-            draw_text(
-                vertices,
-                commands,
-                &runs,
-                screen_width / 2 - width / 2,
-                y,
-                HUD_TINT_WHITE,
-            );
-            y += 9;
-        }
-        y += 1;
-    }
-    push_hud_debug_tinted_rect(
-        vertices,
-        commands,
-        white_pixel,
-        surface_size,
-        left - 1,
-        y - 1,
-        max_line_width + 2,
-        rows as u32 * 9 + 1,
-        [0.0, 0.0, 0.0, 0.5],
-    );
-    let table_left = screen_width / 2 - table_width as i32 / 2;
-    for (index, entry) in entries.iter().enumerate() {
-        let column = index / rows;
-        let row = index % rows;
-        let x = table_left + column as i32 * (slot_width as i32 + 5);
-        let row_y = y + row as i32 * 9;
-        push_hud_debug_tinted_rect(
-            vertices,
-            commands,
-            white_pixel,
-            surface_size,
-            x,
-            row_y,
-            slot_width,
-            8,
-            [1.0, 1.0, 1.0, 32.0 / 255.0],
-        );
-        draw_text(
-            vertices,
-            commands,
-            &entry.name_runs,
-            x,
-            row_y,
-            if entry.spectator {
-                [1.0, 1.0, 1.0, 144.0 / 255.0]
-            } else {
-                HUD_TINT_WHITE
-            },
-        );
-        let bars = hud_player_list_ping_bars(entry.latency);
-        for bar in 0..bars {
-            push_hud_debug_tinted_rect(
-                vertices,
-                commands,
-                white_pixel,
-                surface_size,
-                x + slot_width as i32 - 10 + bar * 2,
-                row_y + 7 - bar,
-                1,
-                (bar + 1) as u32,
-                HUD_TINT_WHITE,
-            );
-        }
-    }
-    if !footer_lines.is_empty() {
-        y += rows as i32 * 9 + 1;
-        push_hud_debug_tinted_rect(
-            vertices,
-            commands,
-            white_pixel,
-            surface_size,
-            left - 1,
-            y - 1,
-            max_line_width + 2,
-            footer_lines.len() as u32 * 9 + 1,
-            [0.0, 0.0, 0.0, 0.5],
-        );
-        for line in &footer_lines {
-            let runs = [HudStyledTextRun::plain(line.clone())];
-            let width = hud_plain_text_width(line, glyphs) as i32;
-            draw_text(
-                vertices,
-                commands,
-                &runs,
-                screen_width / 2 - width / 2,
-                y,
-                HUD_TINT_WHITE,
-            );
-            y += 9;
-        }
-    }
-}
-
-fn hud_player_list_grid(slots: usize) -> (usize, usize) {
-    let mut columns = 1usize;
-    let mut rows = slots;
-    while rows > 20 {
-        columns += 1;
-        rows = slots.div_ceil(columns);
-    }
-    (columns, rows)
-}
-
-fn hud_player_list_ping_bars(latency: i32) -> i32 {
-    match latency {
-        latency if latency < 0 => 0,
-        latency if latency < 150 => 5,
-        latency if latency < 300 => 4,
-        latency if latency < 600 => 3,
-        latency if latency < 1000 => 2,
-        _ => 1,
-    }
-}
-
 fn hud_wrap_plain_text(text: &str, max_width: u32, glyphs: &HudFontGlyphMap) -> Vec<String> {
     let mut lines = Vec::new();
     for source_line in text.split('\n') {
@@ -19775,13 +19602,13 @@ mod tests {
         let green: Vec<u8> = (0..81).flat_map(|_| [0u8, 255, 0, 255]).collect();
         let blue: Vec<u8> = (0..81).flat_map(|_| [0u8, 0, 255, 255]).collect();
         renderer
-            .upload_hud_heart_sprite(HudHeartKind::Container, false, false, 9, 9, &blue)
+            .upload_hud_heart_sprite(HudHeartKind::Container, false, false, false, 9, 9, &blue)
             .expect("container");
         renderer
-            .upload_hud_heart_sprite(HudHeartKind::Normal, false, false, 9, 9, &red)
+            .upload_hud_heart_sprite(HudHeartKind::Normal, false, false, false, 9, 9, &red)
             .expect("normal full");
         renderer
-            .upload_hud_heart_sprite(HudHeartKind::Poisoned, false, false, 9, 9, &green)
+            .upload_hud_heart_sprite(HudHeartKind::Poisoned, false, false, false, 9, 9, &green)
             .expect("poisoned full");
 
         // The leftmost heart (container index 0, column 0) at xLeft = W/2 - 91,
@@ -21598,19 +21425,7 @@ mod tests {
     }
 
     #[test]
-    fn player_list_grid_matches_vanilla_twenty_row_columns_and_eighty_cap() {
-        assert_eq!(hud_player_list_grid(1), (1, 1));
-        assert_eq!(hud_player_list_grid(20), (1, 20));
-        assert_eq!(hud_player_list_grid(21), (2, 11));
-        assert_eq!(hud_player_list_grid(80), (4, 20));
-    }
-
-    #[test]
-    fn player_list_ping_thresholds_and_plain_wrapping_match_projection_contract() {
-        assert_eq!(
-            [-1, 0, 149, 150, 299, 300, 599, 600, 999, 1000].map(hud_player_list_ping_bars),
-            [0, 5, 5, 4, 4, 3, 3, 2, 2, 1]
-        );
+    fn player_list_plain_wrapping_matches_projection_contract() {
         let glyphs = styled_test_glyphs();
         assert_eq!(hud_wrap_plain_text("abab", 12, &glyphs), ["ab", "ab"]);
         assert_eq!(hud_wrap_plain_text("ab\nab", 12, &glyphs), ["ab", "ab"]);
