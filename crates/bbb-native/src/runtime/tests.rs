@@ -1493,20 +1493,18 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
     assert_eq!(hud_action_bar_text_from_world(&world, 0.25), None);
     assert_eq!(hud_title_text_from_world(&world, 0.25), None);
 
-    world.apply_action_bar_text(bbb_protocol::packets::SetActionBarText {
-        content: "Action ready".to_string(),
-    });
+    world.apply_action_bar_text(bbb_protocol::packets::SetActionBarText::plain(
+        "Action ready",
+    ));
     world.apply_titles_animation(bbb_protocol::packets::SetTitlesAnimation {
         fade_in: 5,
         stay: 40,
         fade_out: 15,
     });
-    world.apply_title_text(bbb_protocol::packets::SetTitleText {
-        content: "Quest complete".to_string(),
-    });
-    world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText {
-        content: "Return to camp".to_string(),
-    });
+    world.apply_title_text(bbb_protocol::packets::SetTitleText::plain("Quest complete"));
+    world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText::plain(
+        "Return to camp",
+    ));
 
     let action_bar = hud_action_bar_text_from_world(&world, 0.25).expect("action bar projected");
     assert_eq!(
@@ -1551,9 +1549,7 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
     assert_eq!(hud_title_text_from_world(&world, 0.0), None);
 
     // A re-set title without a subtitle projects an empty subtitle line.
-    world.apply_title_text(bbb_protocol::packets::SetTitleText {
-        content: "Solo".to_string(),
-    });
+    world.apply_title_text(bbb_protocol::packets::SetTitleText::plain("Solo"));
     let solo = hud_title_text_from_world(&world, 0.5).expect("title without subtitle");
     assert!(solo.subtitle_runs.is_empty());
     assert_eq!(solo.remaining_ticks, 60);
@@ -1561,9 +1557,7 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
     // A subtitle without an active title never projects (vanilla draws the
     // subtitle only inside the title branch, Gui.java:364).
     world.apply_clear_titles(bbb_protocol::packets::ClearTitles { reset_times: false });
-    world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText {
-        content: "Orphan".to_string(),
-    });
+    world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText::plain("Orphan"));
     assert_eq!(hud_title_text_from_world(&world, 0.0), None);
 }
 

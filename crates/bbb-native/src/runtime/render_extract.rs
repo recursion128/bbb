@@ -829,10 +829,11 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
 
 /// Projects the world's action-bar overlay state into the renderer's frame
 /// vocabulary, mirroring `Gui.extractOverlayMessage`'s inputs (Gui.java:310):
-/// present only while `overlayMessageTime > 0`. The protocol layer flattens
-/// chat components to plain text (`decode_component_summary_from_decoder`),
-/// so the line is a single unstyled run today; the fade alpha itself is
-/// resolved by the renderer from `remaining_ticks` and `partial_tick`.
+/// present only while `overlayMessageTime > 0`. The world keeps the exact
+/// Component; this stage still uses its plain projection until the shared
+/// localized run/font handoff in the active rich-title closure. The fade alpha
+/// itself is resolved by the renderer from `remaining_ticks` and
+/// `partial_tick`.
 pub(crate) fn hud_action_bar_text_from_world(
     world: &WorldStore,
     partial_tick: f32,
@@ -842,7 +843,7 @@ pub(crate) fn hud_action_bar_text_from_world(
         return None;
     }
     Some(HudActionBarText {
-        runs: vec![HudStyledTextRun::plain(action_bar.content.clone())],
+        runs: vec![HudStyledTextRun::plain(action_bar.content.text())],
         remaining_ticks: action_bar.display_ticks,
         partial_tick,
         animate_color: action_bar.animate_color,
@@ -884,11 +885,11 @@ pub(crate) fn hud_title_text_from_world(
         return None;
     }
     Some(HudTitleText {
-        title_runs: vec![HudStyledTextRun::plain(title_text.clone())],
+        title_runs: vec![HudStyledTextRun::plain(title_text.text())],
         subtitle_runs: title
             .subtitle
             .as_ref()
-            .map(|subtitle| vec![HudStyledTextRun::plain(subtitle.clone())])
+            .map(|subtitle| vec![HudStyledTextRun::plain(subtitle.text())])
             .unwrap_or_default(),
         remaining_ticks: title.title_time,
         fade_in: title.fade_in,

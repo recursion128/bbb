@@ -108,7 +108,7 @@ fn first_local_boat_mount_projects_yaw_and_dismount_overlay() {
 
     assert_eq!(world.local_player_pose().unwrap().y_rot, 75.0);
     assert_eq!(
-        world.action_bar().unwrap().content,
+        world.action_bar().unwrap().content.text(),
         "Press Left Shift to Dismount"
     );
     assert_eq!(world.action_bar().unwrap().display_ticks, 60);

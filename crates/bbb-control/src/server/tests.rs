@@ -2278,20 +2278,14 @@ fn client_hud_reads_canonical_world_state() {
     {
         let mut store = WorldStore::new();
         store.apply_system_chat(SystemChat::plain("Server restart soon", false));
-        store.apply_action_bar_text(SetActionBarText {
-            content: "Action ready".to_string(),
-        });
+        store.apply_action_bar_text(SetActionBarText::plain("Action ready"));
         store.apply_titles_animation(SetTitlesAnimation {
             fade_in: 5,
             stay: 40,
             fade_out: 15,
         });
-        store.apply_title_text(SetTitleText {
-            content: "Quest complete".to_string(),
-        });
-        store.apply_subtitle_text(SetSubtitleText {
-            content: "Return to camp".to_string(),
-        });
+        store.apply_title_text(SetTitleText::plain("Quest complete"));
+        store.apply_subtitle_text(SetSubtitleText::plain("Return to camp"));
         publish_test_world(&state, store);
     }
 
@@ -2307,10 +2301,10 @@ fn client_hud_reads_canonical_world_state() {
     let hud = response.result.unwrap();
     assert_eq!(hud["system_chat"]["content"], "Server restart soon");
     assert_eq!(hud["system_chat"]["overlay"], false);
-    assert_eq!(hud["action_bar"]["content"], "Action ready");
+    assert_eq!(hud["action_bar"]["content"]["text"], "Action ready");
     assert_eq!(hud["action_bar"]["display_ticks"], 60);
-    assert_eq!(hud["title"]["title"], "Quest complete");
-    assert_eq!(hud["title"]["subtitle"], "Return to camp");
+    assert_eq!(hud["title"]["title"]["text"], "Quest complete");
+    assert_eq!(hud["title"]["subtitle"]["text"], "Return to camp");
     assert_eq!(hud["title"]["fade_in"], 5);
     assert_eq!(hud["title"]["stay"], 40);
     assert_eq!(hud["title"]["fade_out"], 15);

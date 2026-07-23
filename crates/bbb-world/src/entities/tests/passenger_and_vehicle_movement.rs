@@ -895,7 +895,7 @@ fn first_local_boat_mount_aligns_yaw_and_shows_dismount_overlay_once() {
     assert_eq!(
         store.action_bar(),
         Some(&crate::ActionBarState {
-            content: "Press Left Shift to Dismount".to_string(),
+            content: bbb_protocol::RichTextComponent::plain("Press Left Shift to Dismount"),
             display_ticks: 60,
             animate_color: false,
         })
@@ -942,7 +942,7 @@ fn first_local_non_boat_mount_shows_overlay_without_changing_yaw() {
     }));
     assert_eq!(store.local_player_pose().unwrap().y_rot, 12.0);
     assert_eq!(
-        store.action_bar().unwrap().content,
+        store.action_bar().unwrap().content.text(),
         "Press Left Shift to Dismount"
     );
 }

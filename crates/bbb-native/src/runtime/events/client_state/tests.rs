@@ -254,21 +254,15 @@ fn hud_text_and_ticking_update_world_counters() {
 
     apply_title_text_update(
         &mut world,
-        bbb_protocol::packets::SetTitleText {
-            content: "Quest complete".to_string(),
-        },
+        bbb_protocol::packets::SetTitleText::plain("Quest complete"),
     );
     apply_subtitle_text_update(
         &mut world,
-        bbb_protocol::packets::SetSubtitleText {
-            content: "Return to camp".to_string(),
-        },
+        bbb_protocol::packets::SetSubtitleText::plain("Return to camp"),
     );
     apply_action_bar_update(
         &mut world,
-        bbb_protocol::packets::SetActionBarText {
-            content: "+12 XP".to_string(),
-        },
+        bbb_protocol::packets::SetActionBarText::plain("+12 XP"),
     );
     apply_titles_animation_update(
         &mut world,
@@ -284,14 +278,28 @@ fn hud_text_and_ticking_update_world_counters() {
     });
     world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 7 });
 
-    assert_eq!(world.title().title.as_deref(), Some("Quest complete"));
-    assert_eq!(world.title().subtitle.as_deref(), Some("Return to camp"));
+    assert_eq!(
+        world
+            .title()
+            .title
+            .as_ref()
+            .map(bbb_protocol::RichTextComponent::text),
+        Some("Quest complete")
+    );
+    assert_eq!(
+        world
+            .title()
+            .subtitle
+            .as_ref()
+            .map(bbb_protocol::RichTextComponent::text),
+        Some("Return to camp")
+    );
     assert_eq!(world.title().fade_in, 5);
     assert_eq!(world.title().stay, 40);
     assert_eq!(world.title().fade_out, 15);
     assert_eq!(world.title().title_time, 60);
     let action_bar = world.action_bar().unwrap();
-    assert_eq!(action_bar.content, "+12 XP");
+    assert_eq!(action_bar.content.text(), "+12 XP");
     assert_eq!(action_bar.display_ticks, 60);
     assert_eq!(
         world.ticking(),
@@ -324,23 +332,19 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
     );
     apply_title_text_update(
         &mut world,
-        bbb_protocol::packets::SetTitleText {
-            content: "Quest complete".to_string(),
-        },
+        bbb_protocol::packets::SetTitleText::plain("Quest complete"),
     );
     apply_subtitle_text_update(
         &mut world,
-        bbb_protocol::packets::SetSubtitleText {
-            content: "Return to camp".to_string(),
-        },
+        bbb_protocol::packets::SetSubtitleText::plain("Return to camp"),
     );
 
     apply_clear_titles_update(
         &mut world,
         bbb_protocol::packets::ClearTitles { reset_times: false },
     );
-    assert_eq!(world.title().title.as_deref(), None);
-    assert_eq!(world.title().subtitle.as_deref(), None);
+    assert_eq!(world.title().title, None);
+    assert_eq!(world.title().subtitle, None);
     assert_eq!(world.title().title_time, 0);
     assert_eq!(world.title().fade_in, 5);
     assert_eq!(world.title().stay, 40);
@@ -356,23 +360,19 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
     );
     apply_title_text_update(
         &mut world,
-        bbb_protocol::packets::SetTitleText {
-            content: "Again".to_string(),
-        },
+        bbb_protocol::packets::SetTitleText::plain("Again"),
     );
     apply_subtitle_text_update(
         &mut world,
-        bbb_protocol::packets::SetSubtitleText {
-            content: "Reset timers".to_string(),
-        },
+        bbb_protocol::packets::SetSubtitleText::plain("Reset timers"),
     );
 
     apply_clear_titles_update(
         &mut world,
         bbb_protocol::packets::ClearTitles { reset_times: true },
     );
-    assert_eq!(world.title().title.as_deref(), None);
-    assert_eq!(world.title().subtitle.as_deref(), None);
+    assert_eq!(world.title().title, None);
+    assert_eq!(world.title().subtitle, None);
     assert_eq!(world.title().fade_in, 10);
     assert_eq!(world.title().stay, 70);
     assert_eq!(world.title().fade_out, 20);

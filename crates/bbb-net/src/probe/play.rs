@@ -3474,9 +3474,9 @@ mod tests {
             .await
             .unwrap();
         probe
-            .handle_play_packet(PlayClientbound::SetActionBarText(SetActionBarText {
-                content: "Action ready".to_string(),
-            }))
+            .handle_play_packet(PlayClientbound::SetActionBarText(SetActionBarText::plain(
+                "Action ready",
+            )))
             .await
             .unwrap();
         probe
@@ -3488,15 +3488,15 @@ mod tests {
             .await
             .unwrap();
         probe
-            .handle_play_packet(PlayClientbound::SetTitleText(SetTitleText {
-                content: "Quest complete".to_string(),
-            }))
+            .handle_play_packet(PlayClientbound::SetTitleText(SetTitleText::plain(
+                "Quest complete",
+            )))
             .await
             .unwrap();
         probe
-            .handle_play_packet(PlayClientbound::SetSubtitleText(SetSubtitleText {
-                content: "Return to camp".to_string(),
-            }))
+            .handle_play_packet(PlayClientbound::SetSubtitleText(SetSubtitleText::plain(
+                "Return to camp",
+            )))
             .await
             .unwrap();
 
@@ -3513,11 +3513,24 @@ mod tests {
             "Server restart soon"
         );
         let action_bar = probe.world.action_bar().unwrap();
-        assert_eq!(action_bar.content, "Action ready");
+        assert_eq!(action_bar.content.text(), "Action ready");
         assert_eq!(action_bar.display_ticks, 60);
-        assert_eq!(probe.world.title().title.as_deref(), Some("Quest complete"));
         assert_eq!(
-            probe.world.title().subtitle.as_deref(),
+            probe
+                .world
+                .title()
+                .title
+                .as_ref()
+                .map(bbb_protocol::RichTextComponent::text),
+            Some("Quest complete")
+        );
+        assert_eq!(
+            probe
+                .world
+                .title()
+                .subtitle
+                .as_ref()
+                .map(bbb_protocol::RichTextComponent::text),
             Some("Return to camp")
         );
         assert_eq!(probe.world.title().fade_in, 5);

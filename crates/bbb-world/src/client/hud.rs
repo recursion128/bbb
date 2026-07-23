@@ -95,7 +95,7 @@ pub struct SystemChatLineState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionBarState {
-    pub content: String,
+    pub content: RichTextComponent,
     pub display_ticks: i32,
     /// Vanilla `Gui.animateOverlayMessageColor` (`setOverlayMessage(component,
     /// animate)`): only the jukebox now-playing path (`Gui.setNowPlaying`)
@@ -108,8 +108,8 @@ pub struct ActionBarState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HudTitleState {
-    pub title: Option<String>,
-    pub subtitle: Option<String>,
+    pub title: Option<RichTextComponent>,
+    pub subtitle: Option<RichTextComponent>,
     pub fade_in: i32,
     pub stay: i32,
     pub fade_out: i32,
@@ -271,7 +271,7 @@ impl WorldStore {
             overlay: packet.overlay,
         };
         if line.overlay {
-            self.set_overlay_message(line.content.clone());
+            self.set_overlay_message((*packet.content).clone());
             self.push_overlay_chat_narration(
                 line.content.clone(),
                 if line.styled_content.is_empty() {
@@ -399,7 +399,7 @@ impl WorldStore {
         // sneak binding (`Left Shift`), so keep the localized English projection
         // beside the HUD owner until configurable key bindings/localization exist.
         let content = "Press Left Shift to Dismount".to_string();
-        self.set_overlay_message(content.clone());
+        self.set_overlay_message(RichTextComponent::plain(content.clone()));
         self.push_interrupting_system_narration(
             content.clone(),
             vec![StyledTextRun {
@@ -409,7 +409,7 @@ impl WorldStore {
         );
     }
 
-    fn set_overlay_message(&mut self, content: String) {
+    fn set_overlay_message(&mut self, content: RichTextComponent) {
         self.client_hud.action_bar = Some(ActionBarState {
             content,
             display_ticks: 60,
@@ -499,6 +499,50 @@ mod tests {
             ))
             .unwrap(),
         )
+    }
+
+    fn rich_overlay_component(text: &str) -> RichTextComponent {
+        RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String(text.to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "font".to_string(),
+                value: NbtSummaryValue::String("example:title".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "click_event".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: NbtSummaryValue::String("run_command".to_string()),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "command".to_string(),
+                        value: NbtSummaryValue::String("/spawn".to_string()),
+                    },
+                ]),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "hover_event".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: NbtSummaryValue::String("show_text".to_string()),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "value".to_string(),
+                        value: NbtSummaryValue::String("Details".to_string()),
+                    },
+                ]),
+            },
+        ]))
+        .unwrap()
     }
 
     #[test]
@@ -812,20 +856,18 @@ mod tests {
         assert_eq!(
             store.action_bar(),
             Some(&ActionBarState {
-                content: "Overlay warning".to_string(),
+                content: RichTextComponent::plain("Overlay warning"),
                 display_ticks: 60,
                 animate_color: false,
             })
         );
         assert_eq!(store.client_chat().messages.len(), 1);
 
-        store.apply_action_bar_text(ProtocolSetActionBarText {
-            content: "Action ready".to_string(),
-        });
+        store.apply_action_bar_text(ProtocolSetActionBarText::plain("Action ready"));
         assert_eq!(
             store.action_bar(),
             Some(&ActionBarState {
-                content: "Action ready".to_string(),
+                content: RichTextComponent::plain("Action ready"),
                 display_ticks: 60,
                 animate_color: false,
             })
@@ -834,6 +876,50 @@ mod tests {
         let counters = store.counters();
         assert_eq!(counters.system_chat_packets, 2);
         assert_eq!(counters.action_bar_packets, 1);
+    }
+
+    #[test]
+    fn hud_text_components_remain_exact_across_all_overlay_producers() {
+        let mut store = WorldStore::new();
+        let component = rich_overlay_component("Styled");
+
+        store.apply_system_chat(ProtocolSystemChat {
+            content: Box::new(component.clone()),
+            overlay: true,
+        });
+        assert_eq!(
+            store.action_bar().map(|state| &state.content),
+            Some(&component)
+        );
+
+        store.apply_action_bar_text(ProtocolSetActionBarText {
+            content: component.clone(),
+        });
+        store.apply_title_text(ProtocolSetTitleText {
+            content: component.clone(),
+        });
+        store.apply_subtitle_text(ProtocolSetSubtitleText {
+            content: component.clone(),
+        });
+
+        assert_eq!(
+            store.action_bar().map(|state| &state.content),
+            Some(&component)
+        );
+        assert_eq!(store.title().title.as_ref(), Some(&component));
+        assert_eq!(store.title().subtitle.as_ref(), Some(&component));
+        assert_eq!(
+            store.title().title.as_ref().unwrap().styled()[0]
+                .style
+                .font
+                .as_deref(),
+            Some("example:title")
+        );
+
+        let encoded = serde_json::to_value(&store).unwrap();
+        let restored: WorldStore = serde_json::from_value(encoded).unwrap();
+        assert_eq!(restored.action_bar(), store.action_bar());
+        assert_eq!(restored.title(), store.title());
     }
 
     #[test]
@@ -861,14 +947,16 @@ mod tests {
         assert_eq!(store.title().fade_out, 15);
         assert_eq!(store.title().title_time, 0);
 
-        store.apply_title_text(ProtocolSetTitleText {
-            content: "Quest complete".to_string(),
-        });
-        store.apply_subtitle_text(ProtocolSetSubtitleText {
-            content: "Return to camp".to_string(),
-        });
-        assert_eq!(store.title().title.as_deref(), Some("Quest complete"));
-        assert_eq!(store.title().subtitle.as_deref(), Some("Return to camp"));
+        store.apply_title_text(ProtocolSetTitleText::plain("Quest complete"));
+        store.apply_subtitle_text(ProtocolSetSubtitleText::plain("Return to camp"));
+        assert_eq!(
+            store.title().title.as_ref().map(RichTextComponent::text),
+            Some("Quest complete")
+        );
+        assert_eq!(
+            store.title().subtitle.as_ref().map(RichTextComponent::text),
+            Some("Return to camp")
+        );
         assert_eq!(store.title().title_time, 90);
 
         store.apply_titles_animation(ProtocolSetTitlesAnimation {
@@ -910,15 +998,9 @@ mod tests {
         assert_eq!(store.action_bar(), None);
         assert_eq!(store.title().title_time, 0);
 
-        store.apply_action_bar_text(ProtocolSetActionBarText {
-            content: "Action ready".to_string(),
-        });
-        store.apply_title_text(ProtocolSetTitleText {
-            content: "Quest complete".to_string(),
-        });
-        store.apply_subtitle_text(ProtocolSetSubtitleText {
-            content: "Return to camp".to_string(),
-        });
+        store.apply_action_bar_text(ProtocolSetActionBarText::plain("Action ready"));
+        store.apply_title_text(ProtocolSetTitleText::plain("Quest complete"));
+        store.apply_subtitle_text(ProtocolSetSubtitleText::plain("Return to camp"));
         assert_eq!(store.action_bar().unwrap().display_ticks, 60);
         assert_eq!(store.title().title_time, 100);
 
@@ -932,7 +1014,7 @@ mod tests {
         assert_eq!(
             store.action_bar(),
             Some(&ActionBarState {
-                content: "Action ready".to_string(),
+                content: RichTextComponent::plain("Action ready"),
                 display_ticks: 0,
                 animate_color: false,
             })
@@ -954,15 +1036,16 @@ mod tests {
     #[test]
     fn hud_text_tick_zero_and_partial_advances_keep_title_visible() {
         let mut store = WorldStore::new();
-        store.apply_title_text(ProtocolSetTitleText {
-            content: "Quest complete".to_string(),
-        });
+        store.apply_title_text(ProtocolSetTitleText::plain("Quest complete"));
 
         store.advance_hud_text_ticks(0);
         assert_eq!(store.title().title_time, 100);
 
         store.advance_hud_text_ticks(40);
-        assert_eq!(store.title().title.as_deref(), Some("Quest complete"));
+        assert_eq!(
+            store.title().title.as_ref().map(RichTextComponent::text),
+            Some("Quest complete")
+        );
         assert_eq!(store.title().title_time, 60);
     }
 }

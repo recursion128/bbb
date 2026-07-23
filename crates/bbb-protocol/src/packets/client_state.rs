@@ -8,7 +8,7 @@ use crate::{
     boss_event_operation_types::BossEventOperationType,
     codec::{Decoder, ProtocolError, Result},
     component::{
-        decode_boxed_rich_text_component_from_decoder, decode_component_summary_from_decoder,
+        decode_boxed_rich_text_component_from_decoder, decode_rich_text_component_from_decoder,
     },
     mob_effect_types::vanilla_mob_effect_type,
     RichTextComponent,
@@ -175,18 +175,34 @@ pub struct SetSimulationDistance {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetActionBarText {
-    pub content: String,
+    pub content: RichTextComponent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetTitleText {
-    pub content: String,
+    pub content: RichTextComponent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetSubtitleText {
-    pub content: String,
+    pub content: RichTextComponent,
 }
+
+macro_rules! impl_plain_text_packet {
+    ($packet:ty) => {
+        impl $packet {
+            pub fn plain(content: impl Into<String>) -> Self {
+                Self {
+                    content: RichTextComponent::plain(content),
+                }
+            }
+        }
+    };
+}
+
+impl_plain_text_packet!(SetActionBarText);
+impl_plain_text_packet!(SetTitleText);
+impl_plain_text_packet!(SetSubtitleText);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClearTitles {
@@ -395,7 +411,7 @@ pub(super) fn decode_remove_mob_effect(decoder: &mut Decoder<'_>) -> Result<Remo
 
 pub(super) fn decode_set_action_bar_text(decoder: &mut Decoder<'_>) -> Result<SetActionBarText> {
     let update = SetActionBarText {
-        content: decode_component_summary_from_decoder(decoder)?,
+        content: decode_rich_text_component_from_decoder(decoder)?,
     };
     ensure_client_state_packet_consumed(decoder, "set action bar text")?;
     Ok(update)
@@ -494,7 +510,7 @@ pub(super) fn decode_set_simulation_distance(
 
 pub(super) fn decode_set_subtitle_text(decoder: &mut Decoder<'_>) -> Result<SetSubtitleText> {
     let update = SetSubtitleText {
-        content: decode_component_summary_from_decoder(decoder)?,
+        content: decode_rich_text_component_from_decoder(decoder)?,
     };
     ensure_client_state_packet_consumed(decoder, "set subtitle text")?;
     Ok(update)
@@ -532,7 +548,7 @@ pub(super) fn decode_play_time(decoder: &mut Decoder<'_>) -> Result<PlayTime> {
 
 pub(super) fn decode_set_title_text(decoder: &mut Decoder<'_>) -> Result<SetTitleText> {
     let update = SetTitleText {
-        content: decode_component_summary_from_decoder(decoder)?,
+        content: decode_rich_text_component_from_decoder(decoder)?,
     };
     ensure_client_state_packet_consumed(decoder, "set title text")?;
     Ok(update)

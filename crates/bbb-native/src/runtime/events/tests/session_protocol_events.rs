@@ -986,15 +986,11 @@ fn clear_titles_event_updates_world_counters() {
     )))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::SetTitleText(
-        bbb_protocol::packets::SetTitleText {
-            content: "Quest complete".to_string(),
-        },
+        bbb_protocol::packets::SetTitleText::plain("Quest complete"),
     )))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::SetSubtitleText(
-        bbb_protocol::packets::SetSubtitleText {
-            content: "Return to camp".to_string(),
-        },
+        bbb_protocol::packets::SetSubtitleText::plain("Return to camp"),
     )))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::ClearTitles(
@@ -1013,8 +1009,8 @@ fn clear_titles_event_updates_world_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         5
     );
-    assert_eq!(world.title().title.as_deref(), None);
-    assert_eq!(world.title().subtitle.as_deref(), None);
+    assert_eq!(world.title().title, None);
+    assert_eq!(world.title().subtitle, None);
     assert_eq!(world.title().fade_in, 10);
     assert_eq!(world.title().stay, 70);
     assert_eq!(world.title().fade_out, 20);

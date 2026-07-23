@@ -643,9 +643,7 @@ fn decodes_title_camera_and_ticking_packets() {
     .unwrap();
     assert_eq!(
         packet,
-        PlayClientbound::SetActionBarText(SetActionBarText {
-            content: "Action".to_string(),
-        })
+        PlayClientbound::SetActionBarText(SetActionBarText::plain("Action"))
     );
 
     let packet = decode_play_clientbound(
@@ -655,9 +653,7 @@ fn decodes_title_camera_and_ticking_packets() {
     .unwrap();
     assert_eq!(
         packet,
-        PlayClientbound::SetTitleText(SetTitleText {
-            content: "Title".to_string(),
-        })
+        PlayClientbound::SetTitleText(SetTitleText::plain("Title"))
     );
 
     let packet = decode_play_clientbound(
@@ -667,9 +663,7 @@ fn decodes_title_camera_and_ticking_packets() {
     .unwrap();
     assert_eq!(
         packet,
-        PlayClientbound::SetSubtitleText(SetSubtitleText {
-            content: "Subtitle".to_string(),
-        })
+        PlayClientbound::SetSubtitleText(SetSubtitleText::plain("Subtitle"))
     );
 
     let mut payload = Encoder::new();
@@ -823,6 +817,96 @@ fn decodes_title_camera_and_ticking_packets() {
             .to_string()
             .contains("trailing bytes after set camera packet")
     );
+}
+
+#[test]
+fn title_text_packets_preserve_exact_trusted_components() {
+    let component =
+        crate::RichTextComponent::try_from_component_nbt(crate::NbtSummaryValue::Compound(vec![
+            crate::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: crate::NbtSummaryValue::String("Styled".to_string()),
+            },
+            crate::NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: crate::NbtSummaryValue::Byte(1),
+            },
+            crate::NbtSummaryEntry {
+                name: "color".to_string(),
+                value: crate::NbtSummaryValue::String("red".to_string()),
+            },
+            crate::NbtSummaryEntry {
+                name: "font".to_string(),
+                value: crate::NbtSummaryValue::String("example:title".to_string()),
+            },
+            crate::NbtSummaryEntry {
+                name: "click_event".to_string(),
+                value: crate::NbtSummaryValue::Compound(vec![
+                    crate::NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: crate::NbtSummaryValue::String("run_command".to_string()),
+                    },
+                    crate::NbtSummaryEntry {
+                        name: "command".to_string(),
+                        value: crate::NbtSummaryValue::String("/spawn".to_string()),
+                    },
+                ]),
+            },
+            crate::NbtSummaryEntry {
+                name: "hover_event".to_string(),
+                value: crate::NbtSummaryValue::Compound(vec![
+                    crate::NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: crate::NbtSummaryValue::String("show_text".to_string()),
+                    },
+                    crate::NbtSummaryEntry {
+                        name: "value".to_string(),
+                        value: crate::NbtSummaryValue::String("Details".to_string()),
+                    },
+                ]),
+            },
+        ]))
+        .unwrap();
+
+    for (packet_id, expected) in [
+        (
+            ids::play::CLIENTBOUND_SET_ACTION_BAR_TEXT,
+            PlayClientbound::SetActionBarText(SetActionBarText {
+                content: component.clone(),
+            }),
+        ),
+        (
+            ids::play::CLIENTBOUND_SET_TITLE_TEXT,
+            PlayClientbound::SetTitleText(SetTitleText {
+                content: component.clone(),
+            }),
+        ),
+        (
+            ids::play::CLIENTBOUND_SET_SUBTITLE_TEXT,
+            PlayClientbound::SetSubtitleText(SetSubtitleText {
+                content: component.clone(),
+            }),
+        ),
+    ] {
+        assert_eq!(
+            decode_play_clientbound(packet_id, &rich_title_component_root("Styled")).unwrap(),
+            expected
+        );
+    }
+
+    let style = &component.styled()[0].style;
+    assert_eq!(style.bold, Some(true));
+    assert_eq!(style.color, Some(0xFF_55_55));
+    assert_eq!(style.font.as_deref(), Some("example:title"));
+    assert!(matches!(
+        style.click_event,
+        Some(crate::ComponentClickEvent::RunCommand { ref command }) if command == "/spawn"
+    ));
+    assert!(matches!(
+        style.hover_event,
+        Some(crate::ComponentHoverEvent::ShowText { ref value })
+            if value.iter().map(|run| run.text.as_str()).collect::<String>() == "Details"
+    ));
 }
 
 #[test]
@@ -998,6 +1082,39 @@ fn styled_component_root(text: &str) -> Vec<u8> {
     write_named_nbt_string(&mut payload, "color", "red");
     payload.push(0);
     payload
+}
+
+fn rich_title_component_root(text: &str) -> Vec<u8> {
+    let mut payload = vec![10];
+    write_named_nbt_string(&mut payload, "text", text);
+    payload.push(1);
+    payload.extend_from_slice(&4_u16.to_be_bytes());
+    payload.extend_from_slice(b"bold");
+    payload.push(1);
+    write_named_nbt_string(&mut payload, "color", "red");
+    write_named_nbt_string(&mut payload, "font", "example:title");
+    write_named_nbt_compound(&mut payload, "click_event", |payload| {
+        write_named_nbt_string(payload, "action", "run_command");
+        write_named_nbt_string(payload, "command", "/spawn");
+    });
+    write_named_nbt_compound(&mut payload, "hover_event", |payload| {
+        write_named_nbt_string(payload, "action", "show_text");
+        write_named_nbt_string(payload, "value", "Details");
+    });
+    payload.push(0);
+    payload
+}
+
+fn write_named_nbt_compound(
+    payload: &mut Vec<u8>,
+    name: &str,
+    write_body: impl FnOnce(&mut Vec<u8>),
+) {
+    payload.push(10);
+    payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+    payload.extend_from_slice(name.as_bytes());
+    write_body(payload);
+    payload.push(0);
 }
 
 fn write_named_nbt_string(payload: &mut Vec<u8>, name: &str, value: &str) {

@@ -2259,27 +2259,21 @@ mod tests {
             }};
         }
 
-        let action_bar = packets::SetActionBarText {
-            content: "Action ready".to_string(),
-        };
+        let action_bar = packets::SetActionBarText::plain("Action ready");
         assert_matching_event!(
             PlayClientbound::SetActionBarText(action_bar.clone()),
             "action bar event should be emitted",
             NetEvent::Play(PlayClientbound::SetActionBarText(update)) if update == action_bar
         );
 
-        let title = packets::SetTitleText {
-            content: "Quest complete".to_string(),
-        };
+        let title = packets::SetTitleText::plain("Quest complete");
         assert_matching_event!(
             PlayClientbound::SetTitleText(title.clone()),
             "title text event should be emitted",
             NetEvent::Play(PlayClientbound::SetTitleText(update)) if update == title
         );
 
-        let subtitle = packets::SetSubtitleText {
-            content: "Return to camp".to_string(),
-        };
+        let subtitle = packets::SetSubtitleText::plain("Return to camp");
         assert_matching_event!(
             PlayClientbound::SetSubtitleText(subtitle.clone()),
             "subtitle text event should be emitted",
