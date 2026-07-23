@@ -1981,6 +1981,42 @@ fn encodes_player_action_packet() {
 }
 
 #[test]
+fn encodes_all_player_action_kinds() {
+    let pos = BlockPos {
+        x: -12,
+        y: 319,
+        z: 45,
+    };
+    for entry in crate::player_action_kinds::VANILLA_PLAYER_ACTION_KINDS {
+        let sequence = entry.ordinal + 10;
+        let (id, payload) = encode_play_player_action(PlayerAction {
+            action: entry.kind,
+            pos,
+            direction: Direction::East,
+            sequence,
+        });
+
+        assert_eq!(id, ids::play::SERVERBOUND_PLAYER_ACTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), entry.ordinal);
+        assert_eq!(
+            chunks::decode_block_pos(decoder.read_i64().unwrap()),
+            pos,
+            "{}",
+            entry.constant_name
+        );
+        assert_eq!(decoder.read_u8().unwrap(), 5, "{}", entry.constant_name);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            sequence,
+            "{}",
+            entry.constant_name
+        );
+        assert!(decoder.is_empty(), "{}", entry.constant_name);
+    }
+}
+
+#[test]
 fn encodes_stab_player_action_packet() {
     let (id, payload) = encode_play_player_action(PlayerAction {
         action: PlayerActionKind::Stab,

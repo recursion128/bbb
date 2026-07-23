@@ -674,16 +674,6 @@ Movement:
   interpolation on accepted corrections. Remote vehicles remain
   server-transform/interpolation driven.
 
-Block destroy:
-
-- Close destroy-profile gaps that `Blocks.java` property parsing cannot reach:
-  constructor-level mutations and arbitrary helper/lambda evaluation
-  (`InfestedBlock`, `InfestedRotatedPillarBlock`).
-- Validate exact pose/fluid nuance for player destroy speed (standing-eye water
-  probe).
-- Implement block-specific `state.attack` callbacks and hit particles.
-- Close the remaining `STOP_DESTROY_BLOCK` sequencing gaps.
-
 Commands:
 
 - Add focused command-queue and encode tests for inventory, interaction, chat,

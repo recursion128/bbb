@@ -3712,7 +3712,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_player_action_keeps_prediction_and_response_gaps_open() {
+    fn play_serverbound_player_action_closes_all_action_paths() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3721,17 +3721,16 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_PLAYER_ACTION"
             })
             .expect("play serverbound player action coverage row");
-        for dimension in ["command_surface", "encoder"] {
+        for dimension in [
+            "ack_response",
+            "command_surface",
+            "encoder",
+            "state_guard",
+            "tests",
+        ] {
             assert_eq!(
                 entry.coverage[dimension].status,
                 PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        for dimension in ["ack_response", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
                 "{dimension}"
             );
         }

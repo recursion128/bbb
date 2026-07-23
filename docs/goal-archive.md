@@ -273,3 +273,6 @@
 - **2026-07-22（SignEditScreen 双向包闭环）**：raw/filtered canonical 快照与启动过滤策略
   贯穿世界文字和编辑预载；90/60px 实测宽度、选择/剪贴板/IME、Done 与移除/越界单次提交
   全部闭环，双向 coverage 全单元 complete，合同见 `docs/archive/sign-editor-packet-closure-design.md`。
+- **2026-07-22（PlayerAction 八动作包闭环）**：START/ABORT/STOP 按预测顺序驱动方块替换、
+  本地挥手、轮廓击中粒子及 redstone/dragon-egg attack 回调；drop/release/swap/STAB 保持各自
+  客户端守卫与服务端权威，五类 packet coverage 全部 complete，合同见 `docs/player-action-packet-closure-design.md`。
