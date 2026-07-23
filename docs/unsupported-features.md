@@ -983,11 +983,6 @@ back into a todo. Do not delete these.
 
 ## Screens and presentation
 
-- Complete client game-event types 4/5 presentation: render the typed
-  invalid-respawn-block client-system message already stored by type 0, open
-  WinScreen and send PerformRespawn on completion, and implement demo intro/hints
-  with chat+narration. The other fixed 26.1 event types have canonical/runtime
-  owners; neither remaining presentation branch requires an IntegratedServer.
 - **Server-data MOTD/icon parity.** Preserve the full trusted MOTD Component,
   validate optional icon bytes like `ServerData.validateIcon`, and update the
   persisted multiplayer server-list entry when that owner exists. The current

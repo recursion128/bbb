@@ -350,3 +350,7 @@
   菜单、分页/淡出和 UUID 传送；原生 HUD 复现 pack-backed 图标、玩家/队伍头像与
   热栏替换，两行 serverbound coverage 全单元 complete，合同见
   `docs/archive/spectator-gui-menu-design.md`。
+- **2026-07-23（GameEvent Win/demo 呈现闭环）**：类型 0/4/5 的富系统消息、
+  诗歌 credits、PerformRespawn、demo 提示/可信链接与旁白贯穿 canonical→native；
+  pack 资源、credits 音乐、末地传送门/弹窗/vignette 像素呈现使该包五类 coverage
+  全部 complete，合同见 `docs/archive/game-event-win-demo-presentation-design.md`。
