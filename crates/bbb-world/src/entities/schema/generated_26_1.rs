@@ -31386,7 +31386,7 @@ mod generated_catalog_guards {
         assert!(!small_mob_tests.contains("protocol_pose_data(6"));
         assert!(!small_mob_tests.contains("const POSE_"));
         assert!(!native_scene_tests.contains("const POSE_"));
-        assert_eq!(play_apply.matches("silent_entity_data(true)").count(), 11);
+        assert_eq!(play_apply.matches("silent_entity_data(true)").count(), 12);
         assert!(play_apply.contains("accessors.silent_data_id"));
         assert!(play_apply.contains("assert!(!accessors.silent_default)"));
         assert_eq!(input_tests.matches("entity_pose_data(").count(), 2);
