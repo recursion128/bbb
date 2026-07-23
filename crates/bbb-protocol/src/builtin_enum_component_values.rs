@@ -178,6 +178,11 @@ pub const VANILLA_DYE_COLOR_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         values: VANILLA_DYE_COLOR_VALUES,
     };
 
+pub const VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS: &[u32] = &[
+    0xF9FFFE, 0xF9801D, 0xC74EBD, 0x3AB3DA, 0xFED83D, 0x80C71F, 0xF38BAA, 0x474F52, 0x9D9D97,
+    0x169C9C, 0x8932B8, 0x3C44AA, 0x835432, 0x5E7C16, 0xB02E26, 0x1D1D21,
+];
+
 pub const VANILLA_FOX_VARIANT_RED_ID: i32 = 0;
 pub const VANILLA_FOX_VARIANT_SNOW_ID: i32 = 1;
 
@@ -619,6 +624,11 @@ pub fn normalize_vanilla_dye_color_id(id: i32) -> i32 {
     VANILLA_DYE_COLOR_VALUE_TYPE.normalized_id(id)
 }
 
+pub fn vanilla_dye_color_texture_diffuse_color(id: i32) -> u32 {
+    let normalized = normalize_vanilla_dye_color_id(id);
+    VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS[usize::try_from(normalized).unwrap()]
+}
+
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, fs, path::Path};
@@ -672,6 +682,15 @@ mod tests {
         assert_eq!(vanilla_dye_color_name(14), "red");
         assert_eq!(vanilla_dye_color_name(16), "white");
         assert_eq!(normalize_vanilla_dye_color_id(-1), 0);
+        assert_eq!(
+            vanilla_dye_color_texture_diffuse_color(VANILLA_DYE_COLOR_WHITE_ID),
+            0xF9FFFE
+        );
+        assert_eq!(
+            vanilla_dye_color_texture_diffuse_color(VANILLA_DYE_COLOR_RED_ID),
+            0xB02E26
+        );
+        assert_eq!(vanilla_dye_color_texture_diffuse_color(16), 0xF9FFFE);
         assert_eq!(
             builtin_enum_component_value_name(VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, -1),
             Some("small")

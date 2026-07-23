@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{bail, Context, Result};
 use bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID;
+use bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_VALUES;
 use bbb_protocol::equipment_slots::{
     VANILLA_EQUIPMENT_SLOT_GROUP_BODY_ID, VANILLA_EQUIPMENT_SLOT_GROUP_CHEST_ID,
     VANILLA_EQUIPMENT_SLOT_GROUP_FEET_ID, VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID,
@@ -49,6 +50,7 @@ pub enum RegistryDependentItemComponentInitializer {
     JukeboxPlayable { song: String },
     BlocksAttacks,
     ProvidesBannerPatterns { tag: String },
+    ProvidesTrimMaterial { material: String },
     Instrument { instrument: String },
 }
 
@@ -77,6 +79,8 @@ pub struct ItemRegistryCatalog {
     default_item_name_translation_keys: BTreeMap<String, String>,
     #[serde(default)]
     default_component_type_ids: BTreeMap<String, BTreeSet<i32>>,
+    #[serde(default)]
+    default_dye_color_ids: BTreeMap<String, i32>,
     #[serde(default)]
     registry_dependent_component_initializers:
         BTreeMap<String, Vec<RegistryDependentItemComponentInitializer>>,
@@ -317,6 +321,7 @@ impl ItemRegistryCatalog {
         let mut max_stack_size = BTreeMap::new();
         let mut default_item_name_translation_keys = BTreeMap::new();
         let mut default_component_type_ids = BTreeMap::new();
+        let mut default_dye_color_ids = BTreeMap::new();
         let mut registry_dependent_component_initializers = BTreeMap::new();
         let mut block_items = BTreeSet::new();
         let mut block_item_resource_ids = BTreeMap::new();
@@ -374,6 +379,8 @@ impl ItemRegistryCatalog {
                 default_item_name_for_declaration(kind, expression).with_context(source_context)?;
             let default_components = default_component_type_ids_for_declaration(expression)
                 .with_context(source_context)?;
+            let default_dye_color =
+                default_dye_color_for_declaration(expression).with_context(source_context)?;
             let registry_component_initializers =
                 registry_dependent_component_initializers_for_declaration(expression, &ids)
                     .with_context(source_context)?;
@@ -434,6 +441,9 @@ impl ItemRegistryCatalog {
                     default_item_name.translation_key(resource_id),
                 );
                 default_component_type_ids.insert(resource_id.clone(), default_components.clone());
+                if let Some(dye_color_id) = default_dye_color {
+                    default_dye_color_ids.insert(resource_id.clone(), dye_color_id);
+                }
                 if !registry_component_initializers.is_empty() {
                     registry_dependent_component_initializers
                         .insert(resource_id.clone(), registry_component_initializers.clone());
@@ -577,6 +587,7 @@ impl ItemRegistryCatalog {
             max_stack_size,
             default_item_name_translation_keys,
             default_component_type_ids,
+            default_dye_color_ids,
             registry_dependent_component_initializers,
             block_items,
             block_item_resource_ids,
@@ -668,6 +679,30 @@ impl ItemRegistryCatalog {
     pub fn default_component_type_ids(&self, resource_id: &str) -> Option<&BTreeSet<i32>> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_component_type_ids.get(&resource_id)
+    }
+
+    pub fn default_component_type_ids_by_protocol_id(&self) -> BTreeMap<i32, BTreeSet<i32>> {
+        self.default_component_type_ids
+            .iter()
+            .filter_map(|(resource_id, type_ids)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, type_ids.clone()))
+            })
+            .collect()
+    }
+
+    pub fn default_dye_color_ids_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        self.default_dye_color_ids
+            .iter()
+            .filter_map(|(resource_id, dye_color_id)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, *dye_color_id))
+            })
+            .collect()
     }
 
     /// Fixed item protocol ids paired with the source initializer rules that
@@ -1065,6 +1100,37 @@ fn default_component_type_ids_for_declaration(
     Ok(type_ids)
 }
 
+fn default_dye_color_for_declaration(expression: &GeneratedJavaExpression) -> Result<Option<i32>> {
+    let mut dye_color_id = None;
+    for call in expression
+        .calls()
+        .filter(|call| call.name.as_deref() == Some("component"))
+    {
+        if call
+            .arguments
+            .first()
+            .and_then(|argument| argument.field_constant("DataComponents"))
+            != Some("DYE")
+        {
+            continue;
+        }
+        let constant_name = call
+            .arguments
+            .get(1)
+            .and_then(|argument| argument.field_constant("DyeColor"))
+            .ok_or_else(|| anyhow::anyhow!("DYE component requires a DyeColor constant"))?;
+        let value = VANILLA_DYE_COLOR_VALUES
+            .iter()
+            .find(|value| value.constant_name == constant_name)
+            .ok_or_else(|| anyhow::anyhow!("unknown DyeColor.{constant_name}"))?
+            .id;
+        if dye_color_id.replace(value).is_some() {
+            bail!("item declaration contains duplicate DYE components");
+        }
+    }
+    Ok(dye_color_id)
+}
+
 fn registry_dependent_component_initializers_for_declaration(
     expression: &GeneratedJavaExpression,
     resource_ids: &[String],
@@ -1091,6 +1157,18 @@ fn registry_dependent_component_initializers_for_declaration(
         initializers.push(RegistryDependentItemComponentInitializer::JukeboxPlayable {
             song: format!("minecraft:{song}"),
         });
+    }
+    if let Some(call) = expression.call("trimMaterial") {
+        let material = call
+            .arguments
+            .first()
+            .and_then(|argument| argument.field_constant("TrimMaterials"))
+            .ok_or_else(|| anyhow::anyhow!("trimMaterial requires a TrimMaterials key"))?;
+        initializers.push(
+            RegistryDependentItemComponentInitializer::ProvidesTrimMaterial {
+                material: format!("minecraft:{}", material.to_ascii_lowercase()),
+            },
+        );
     }
 
     for call in expression
@@ -2205,8 +2283,8 @@ mod tests {
     fn extracts_all_registry_dependent_vanilla_item_initializers() {
         let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
         let initializers = catalog.registry_dependent_component_initializers_by_protocol_id();
-        assert_eq!(initializers.len(), 50);
-        assert_eq!(initializers.values().map(Vec::len).sum::<usize>(), 50);
+        assert_eq!(initializers.len(), 60);
+        assert_eq!(initializers.values().map(Vec::len).sum::<usize>(), 61);
 
         let item = |resource_id| catalog.protocol_id(resource_id).unwrap();
         assert_eq!(
@@ -2238,6 +2316,56 @@ mod tests {
             vec![RegistryDependentItemComponentInitializer::Instrument {
                 instrument: "minecraft:ponder_goat_horn".to_string(),
             }]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:diamond")],
+            vec![
+                RegistryDependentItemComponentInitializer::ProvidesTrimMaterial {
+                    material: "minecraft:diamond".to_string(),
+                }
+            ]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:lapis_lazuli")],
+            vec![
+                RegistryDependentItemComponentInitializer::ProvidesTrimMaterial {
+                    material: "minecraft:lapis".to_string(),
+                }
+            ]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:netherite_ingot")],
+            vec![
+                RegistryDependentItemComponentInitializer::DamageResistant {
+                    tag: "minecraft:is_fire".to_string(),
+                },
+                RegistryDependentItemComponentInitializer::ProvidesTrimMaterial {
+                    material: "minecraft:netherite".to_string(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn extracts_complete_component_membership_and_dye_values_by_protocol_id() {
+        let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
+        let components = catalog.default_component_type_ids_by_protocol_id();
+        let dyes = catalog.default_dye_color_ids_by_protocol_id();
+        let item = |resource_id| catalog.protocol_id(resource_id).unwrap();
+
+        assert_eq!(components.len(), 1506);
+        assert_eq!(dyes.len(), 16);
+        assert!(components[&item("minecraft:white_dye")]
+            .contains(&component_id::VANILLA_DATA_COMPONENT_DYE_TYPE_ID));
+        assert!(components[&item("minecraft:diamond")]
+            .contains(&component_id::VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID));
+        assert_eq!(
+            dyes[&item("minecraft:white_dye")],
+            bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID
+        );
+        assert_eq!(
+            dyes[&item("minecraft:red_dye")],
+            bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID
         );
     }
 

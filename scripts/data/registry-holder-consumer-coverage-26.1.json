@@ -673,7 +673,7 @@
       "evidence": [
         "vanilla:net/minecraft/world/item/crafting/display/SlotDisplay.java#record TagSlotDisplay(TagKey<Item> tag)",
         "vanilla:net/minecraft/tags/TagKey.java#public static <T> StreamCodec<ByteBuf, TagKey<T>> streamCodec",
-        "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_slot_display_body",
+        "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_slot_display_value",
         "crates/bbb-protocol/src/packets/client_features/tests.rs#fn decodes_update_recipes_with_tag_slot_display",
         "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
         "crates/bbb-native/src/recipe_book_ui.rs#fn push_slot_display_item_stack_candidates",

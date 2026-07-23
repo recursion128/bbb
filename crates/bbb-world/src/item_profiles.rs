@@ -9,6 +9,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 
 use bbb_pack::RegistryDependentItemComponentInitializer;
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+};
 use bbb_protocol::item_types::{
     VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
 };
@@ -31,6 +38,12 @@ pub struct ItemProfiles {
     #[serde(default)]
     pub(crate) registry_dependent_item_defaults:
         PublicationShared<BTreeMap<i32, DataComponentPatchSummary>>,
+    /// Complete source-derived prototype component membership by item protocol id.
+    #[serde(default, with = "publication_i32_map")]
+    pub(crate) default_component_type_ids: PublicationShared<BTreeMap<i32, BTreeSet<i32>>>,
+    /// Source-derived `DataComponents.DYE` prototype value by item protocol id.
+    #[serde(default, with = "publication_i32_map")]
+    pub(crate) default_dye_color_ids: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
     pub(crate) default_item_max_stack_sizes: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
@@ -113,6 +126,48 @@ pub enum FurnaceFuelRule {
     RemoveTag(String),
 }
 
+mod publication_i32_map {
+    use std::collections::BTreeMap;
+
+    use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+
+    use crate::PublicationShared;
+
+    pub(super) fn serialize<S, V>(
+        values: &PublicationShared<BTreeMap<i32, V>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        V: Serialize,
+    {
+        serializer.collect_map(
+            values
+                .iter()
+                .map(|(item_id, value)| (item_id.to_string(), value)),
+        )
+    }
+
+    pub(super) fn deserialize<'de, D, V>(
+        deserializer: D,
+    ) -> Result<PublicationShared<BTreeMap<i32, V>>, D::Error>
+    where
+        D: Deserializer<'de>,
+        V: Deserialize<'de>,
+    {
+        BTreeMap::<String, V>::deserialize(deserializer)?
+            .into_iter()
+            .map(|(item_id, value)| {
+                item_id
+                    .parse::<i32>()
+                    .map(|item_id| (item_id, value))
+                    .map_err(D::Error::custom)
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()
+            .map(Into::into)
+    }
+}
+
 pub(crate) fn clamp_vanilla_item_max_stack_size(size: i32) -> i32 {
     size.clamp(1, VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE)
 }
@@ -141,46 +196,91 @@ impl ItemProfiles {
         self.registry_dependent_item_defaults.clear();
     }
 
+    pub(crate) fn set_default_component_type_ids(
+        &mut self,
+        defaults: BTreeMap<i32, BTreeSet<i32>>,
+    ) {
+        self.default_component_type_ids = defaults
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect::<BTreeMap<_, _>>()
+            .into();
+    }
+
+    pub(crate) fn set_default_dye_color_ids(&mut self, defaults: BTreeMap<i32, i32>) {
+        self.default_dye_color_ids = defaults
+            .into_iter()
+            .filter(|(item_id, dye_color_id)| {
+                *item_id >= 0
+                    && bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_VALUES
+                        .iter()
+                        .any(|value| value.id == *dye_color_id)
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into();
+    }
+
     pub(crate) fn effective_component_patch(
         &self,
         item_id: i32,
         patch: &DataComponentPatchSummary,
     ) -> Option<DataComponentPatchSummary> {
-        let defaults = self.registry_dependent_item_defaults.get(&item_id)?;
+        let registry_defaults = self.registry_dependent_item_defaults.get(&item_id);
+        let default_dye_color_id = self.default_dye_color_ids.get(&item_id).copied();
+        if registry_defaults.is_none() && default_dye_color_id.is_none() {
+            return None;
+        }
         let mut effective = patch.clone();
         let mut changed = false;
-        for component_id in &defaults.added_type_ids {
-            if patch.removed_type_ids.contains(component_id)
-                || patch.added_type_ids.contains(component_id)
+        if let Some(defaults) = registry_defaults {
+            for component_id in &defaults.added_type_ids {
+                if patch.removed_type_ids.contains(component_id)
+                    || patch.added_type_ids.contains(component_id)
+                {
+                    continue;
+                }
+                effective.added_type_ids.push(*component_id);
+                match *component_id {
+                    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => {
+                        effective.damage_resistant_type_registry_ids =
+                            defaults.damage_resistant_type_registry_ids.clone();
+                        effective.damage_resistant_type_tag =
+                            defaults.damage_resistant_type_tag.clone();
+                    }
+                    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
+                        effective.blocks_attacks = defaults.blocks_attacks.clone();
+                    }
+                    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
+                        effective.instrument_id = defaults.instrument_id;
+                    }
+                    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
+                        effective.jukebox_song_id = defaults.jukebox_song_id;
+                    }
+                    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
+                        effective.provides_banner_pattern_registry_ids =
+                            defaults.provides_banner_pattern_registry_ids.clone();
+                        effective.provides_banner_pattern_tag =
+                            defaults.provides_banner_pattern_tag.clone();
+                    }
+                    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
+                        effective.provides_trim_material_id = defaults.provides_trim_material_id;
+                        effective.provides_trim_material_direct =
+                            defaults.provides_trim_material_direct.clone();
+                    }
+                    _ => continue,
+                }
+                changed = true;
+            }
+        }
+        let dye_component_id = VANILLA_DATA_COMPONENT_DYE_TYPE_ID;
+        if let Some(dye_color_id) = default_dye_color_id {
+            if !patch.removed_type_ids.contains(&dye_component_id)
+                && !patch.added_type_ids.contains(&dye_component_id)
             {
-                continue;
+                effective.added_type_ids.push(dye_component_id);
+                effective.dye_color_id = Some(dye_color_id);
+                changed = true;
             }
-            effective.added_type_ids.push(*component_id);
-            match *component_id {
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => {
-                    effective.damage_resistant_type_registry_ids =
-                        defaults.damage_resistant_type_registry_ids.clone();
-                    effective.damage_resistant_type_tag =
-                        defaults.damage_resistant_type_tag.clone();
-                }
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
-                    effective.blocks_attacks = defaults.blocks_attacks.clone();
-                }
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
-                    effective.instrument_id = defaults.instrument_id;
-                }
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
-                    effective.jukebox_song_id = defaults.jukebox_song_id;
-                }
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
-                    effective.provides_banner_pattern_registry_ids =
-                        defaults.provides_banner_pattern_registry_ids.clone();
-                    effective.provides_banner_pattern_tag =
-                        defaults.provides_banner_pattern_tag.clone();
-                }
-                _ => continue,
-            }
-            changed = true;
         }
         if changed {
             effective.added = effective.added_type_ids.len();

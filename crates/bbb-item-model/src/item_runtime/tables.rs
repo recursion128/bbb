@@ -220,6 +220,22 @@ pub(super) fn world_item_mining_rule(rule: &PackItemMiningRule) -> WorldItemMini
 }
 
 impl NativeItemRuntime {
+    pub fn default_component_type_ids_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, std::collections::BTreeSet<i32>> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::default_component_type_ids_by_protocol_id)
+            .unwrap_or_default()
+    }
+
+    pub fn default_dye_color_ids_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::default_dye_color_ids_by_protocol_id)
+            .unwrap_or_default()
+    }
+
     pub fn registry_dependent_component_initializers_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, Vec<bbb_pack::RegistryDependentItemComponentInitializer>> {

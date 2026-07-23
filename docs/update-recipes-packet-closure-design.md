@@ -105,9 +105,11 @@ Local source root: `/home/zgy/Work/mc-code/sources/26.1`.
   `OnlyWithComponent` filters source stacks by their effective component.
   `WithAnyPotion` clones every source stack for every current potion holder and
   sets `POTION_CONTENTS`.
-- `DyedSlotDemo` combines target and dye candidates in target-major Cartesian
-  order, applies `DyedItemColor.applyDyes` with the dye stack's `DYE` component
-  or white fallback, removes empty results, and limits output to 16.
+- `DyedSlotDemo` passes target as the first display and dye as the second to
+  `applyDemoTransformation`: each dye is therefore the outer group while target
+  candidates cycle inside it. It applies `DyedItemColor.applyDyes` with the dye
+  stack's `DYE` component or white fallback, removes empty results, and limits
+  output to 16.
 - `SmithingTrimDemoSlotDisplay` samples base/material pairs, applies the
   material stack's `PROVIDES_TRIM_MATERIAL` plus the named/direct pattern,
   drops unchanged/invalid results, and limits output to 16.

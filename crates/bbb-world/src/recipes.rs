@@ -9,6 +9,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+mod slot_display;
+
+use slot_display::slot_display_holders_are_resolved;
+pub use slot_display::SlotDisplayResolveError;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientRecipesState {
     pub property_sets: BTreeMap<String, Vec<i32>>,
@@ -20,6 +25,7 @@ impl WorldStore {
         self.counters.update_recipes_packets += 1;
         if !packet.stonecutter_recipes.iter().all(|recipe| {
             ingredient_holder_set_is_resolved(self.frozen_registry_access(), &recipe.input)
+                && slot_display_holders_are_resolved(self, &recipe.option_display)
         }) {
             return;
         }

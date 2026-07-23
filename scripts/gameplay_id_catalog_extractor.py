@@ -381,6 +381,7 @@ class BuiltinEnumValueTypeEntry:
     strategy: str
     default_id: int
     values: tuple[NamedComponentValueEntry, ...]
+    texture_diffuse_colors: tuple[int, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -2574,6 +2575,7 @@ def builtin_enum_component_value_entries(
         name_argument: int,
         nested_enum: str | None = None,
         sparse_default: str | None = None,
+        texture_diffuse_argument: int | None = None,
     ) -> BuiltinEnumValueTypeEntry:
         enum_type = (
             _nested_enum_type(source, nested_enum)
@@ -2586,8 +2588,15 @@ def builtin_enum_component_value_entries(
             else _enum_constants(source)
         )
         values = []
+        texture_diffuse_colors = []
         for name, arguments in constants:
-            required_arguments = max(id_argument, name_argument) + 1
+            required_arguments = max(
+                id_argument,
+                name_argument,
+                texture_diffuse_argument
+                if texture_diffuse_argument is not None
+                else 0,
+            ) + 1
             if len(arguments) < required_arguments:
                 expression = arguments[0] if arguments else source.expression(enum_type.node)
                 _fail(source, expression, f"{constant_name} {name} lacks id/name arguments")
@@ -2598,6 +2607,17 @@ def builtin_enum_component_value_entries(
                     _string(source, arguments[name_argument]),
                 )
             )
+            if texture_diffuse_argument is not None:
+                texture_diffuse_color = _integer(
+                    source, arguments[texture_diffuse_argument]
+                )
+                if not 0 <= texture_diffuse_color <= 0xFF_FFFF:
+                    _fail(
+                        source,
+                        arguments[texture_diffuse_argument],
+                        f"{constant_name} {name} texture diffuse color is not RGB",
+                    )
+                texture_diffuse_colors.append(texture_diffuse_color)
         if [value.constant_name for value in values] != expected_names:
             raise GameplayIdExtractionError(
                 f"{constant_name} values differ from expected declaration order"
@@ -2653,7 +2673,13 @@ def builtin_enum_component_value_entries(
                 if value.constant_name == sparse_default
             )
         return BuiltinEnumValueTypeEntry(
-            constant_name, strategy, default_id, tuple(values)
+            constant_name,
+            strategy,
+            default_id,
+            tuple(values),
+            tuple(texture_diffuse_colors)
+            if texture_diffuse_argument is not None
+            else None,
         )
 
     value_types = [
@@ -2667,6 +2693,7 @@ def builtin_enum_component_value_entries(
             ],
             0,
             1,
+            texture_diffuse_argument=2,
         ),
         extract(fox_source, "FOX_VARIANT", ["RED", "SNOW"], 0, 1, "Variant"),
         extract(salmon_source, "SALMON_VARIANT", ["SMALL", "MEDIUM", "LARGE"], 1, 0, "Variant"),

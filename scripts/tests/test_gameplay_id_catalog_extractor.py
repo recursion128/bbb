@@ -1591,7 +1591,7 @@ public interface ConsumeEffect {
 
         dye = source(
             "fixture/DyeColor.java",
-            """enum DyeColor { WHITE(0, \"white\"), ORANGE(1, \"orange\"), MAGENTA(2, \"magenta\"), LIGHT_BLUE(3, \"light_blue\"), YELLOW(4, \"yellow\"), LIME(5, \"lime\"), PINK(6, \"pink\"), GRAY(7, \"gray\"), LIGHT_GRAY(8, \"light_gray\"), CYAN(9, \"cyan\"), PURPLE(10, \"purple\"), BLUE(11, \"blue\"), BROWN(12, \"brown\"), GREEN(13, \"green\"), RED(14, \"red\"), BLACK(15, \"black\"); static final Object BY_ID = ByIdMap.continuous(DyeColor::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO); DyeColor(int id, String name) {} }""",
+            """enum DyeColor { WHITE(0, \"white\", 0), ORANGE(1, \"orange\", 1), MAGENTA(2, \"magenta\", 2), LIGHT_BLUE(3, \"light_blue\", 3), YELLOW(4, \"yellow\", 4), LIME(5, \"lime\", 5), PINK(6, \"pink\", 6), GRAY(7, \"gray\", 7), LIGHT_GRAY(8, \"light_gray\", 8), CYAN(9, \"cyan\", 9), PURPLE(10, \"purple\", 10), BLUE(11, \"blue\", 11), BROWN(12, \"brown\", 12), GREEN(13, \"green\", 13), RED(14, \"red\", 14), BLACK(15, \"black\", 15); static final Object BY_ID = ByIdMap.continuous(DyeColor::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO); DyeColor(int id, String name, int textureDiffuseColor) {} }""",
         )
 
         def nested(path: str, owner: str, constants: str, strategy: str) -> object:
@@ -1626,6 +1626,7 @@ public interface ConsumeEffect {
             components_source, dye, fox, salmon, parrot, mushroom, rabbit, horse, llama, axolotl
         )
         self.assertEqual([entry.strategy for entry in value_types], ["ZERO", "ZERO", "CLAMP", "CLAMP", "CLAMP", "SPARSE", "WRAP", "CLAMP", "ZERO"])
+        self.assertEqual(value_types[0].texture_diffuse_colors, tuple(range(16)))
         self.assertEqual(value_types[5].values[-1].value_id, 99)
         self.assertEqual(len(components), 16)
         self.assertEqual(components[0].value_type_constant_name, "DYE_COLOR")

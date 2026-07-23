@@ -468,6 +468,8 @@ fn upload_item_atlases(
 }
 
 pub(crate) struct ItemRuntimeWorldDefaults {
+    default_component_type_ids: BTreeMap<i32, BTreeSet<i32>>,
+    default_dye_color_ids: BTreeMap<i32, i32>,
     registry_dependent_component_initializers:
         BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
     max_stack_sizes: BTreeMap<i32, i32>,
@@ -531,6 +533,8 @@ impl ItemRuntimeWorldDefaults {
             }
         };
         Self {
+            default_component_type_ids: items.default_component_type_ids_by_protocol_id(),
+            default_dye_color_ids: items.default_dye_color_ids_by_protocol_id(),
             registry_dependent_component_initializers: items
                 .registry_dependent_component_initializers_by_protocol_id(),
             max_stack_sizes: items.item_max_stack_sizes_by_protocol_id(),
@@ -567,6 +571,8 @@ impl ItemRuntimeWorldDefaults {
     }
 
     pub(crate) fn apply(self, world: &mut WorldStore) {
+        world.set_default_item_component_type_ids(self.default_component_type_ids);
+        world.set_default_item_dye_color_ids(self.default_dye_color_ids);
         world.set_registry_dependent_item_component_initializers(
             self.registry_dependent_component_initializers,
         );
@@ -669,11 +675,62 @@ pub(crate) fn item_particle_sprite_uvs(items: &NativeItemRuntime) -> Vec<Particl
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_pack::RegistryDependentItemComponentInitializer;
+    use bbb_protocol::{
+        builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
+        data_component_types::{
+            VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        },
+        packets::{DataComponentPatchSummary, ItemStackSummary},
+    };
 
     #[test]
     fn resource_reload_ack_is_send() {
         fn assert_send<T: Send>() {}
         assert_send::<ResourceReloadAck>();
+    }
+
+    #[test]
+    fn item_runtime_projects_complete_component_dye_and_trim_defaults_into_world() {
+        let items = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+        let red_dye_id = items.item_protocol_id("minecraft:red_dye").unwrap();
+        let diamond_id = items.item_protocol_id("minecraft:diamond").unwrap();
+        let defaults = ItemRuntimeWorldDefaults::from_runtime(&items);
+
+        assert_eq!(defaults.default_component_type_ids.len(), 1506);
+        assert_eq!(defaults.default_dye_color_ids.len(), 16);
+        assert!(
+            defaults.registry_dependent_component_initializers[&diamond_id].contains(
+                &RegistryDependentItemComponentInitializer::ProvidesTrimMaterial {
+                    material: "minecraft:diamond".to_string(),
+                }
+            )
+        );
+
+        let mut world = WorldStore::new();
+        defaults.apply(&mut world);
+        let red_dye = ItemStackSummary {
+            item_id: Some(red_dye_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let effective_red_dye = world.effective_item_stack(&red_dye);
+        assert_eq!(
+            effective_red_dye.component_patch.dye_color_id,
+            Some(VANILLA_DYE_COLOR_RED_ID)
+        );
+        assert!(
+            world.item_stack_has_effective_component(&red_dye, VANILLA_DATA_COMPONENT_DYE_TYPE_ID)
+        );
+        assert!(world.item_stack_has_effective_component(
+            &ItemStackSummary {
+                item_id: Some(diamond_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID
+        ));
     }
 
     #[test]

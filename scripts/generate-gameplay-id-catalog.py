@@ -6316,6 +6316,16 @@ def render_builtin_enum_component_values(
             "};",
             "",
         ))
+        if value_type.texture_diffuse_colors is not None:
+            colors = ", ".join(
+                f"0x{color:06X}" for color in value_type.texture_diffuse_colors
+            )
+            lines.extend((
+                f"pub const VANILLA_{value_type.constant_name}_TEXTURE_DIFFUSE_COLORS: &[u32] = &[",
+                f"    {colors},",
+                "];",
+                "",
+            ))
     lines.append(
         "pub const VANILLA_BUILTIN_ENUM_VALUE_TYPES: &[&BuiltinEnumValueTypeDescriptor] = &["
     )
@@ -6370,6 +6380,11 @@ def render_builtin_enum_component_values(
         "    VANILLA_DYE_COLOR_VALUE_TYPE.normalized_id(id)",
         "}",
         "",
+        "pub fn vanilla_dye_color_texture_diffuse_color(id: i32) -> u32 {",
+        "    let normalized = normalize_vanilla_dye_color_id(id);",
+        "    VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS[usize::try_from(normalized).unwrap()]",
+        "}",
+        "",
         "#[cfg(test)]",
         "mod tests {",
         "    use std::{collections::HashSet, fs, path::Path};",
@@ -6409,6 +6424,9 @@ def render_builtin_enum_component_values(
         "        assert_eq!(vanilla_dye_color_name(14), \"red\");",
         "        assert_eq!(vanilla_dye_color_name(16), \"white\");",
         "        assert_eq!(normalize_vanilla_dye_color_id(-1), 0);",
+        "        assert_eq!(vanilla_dye_color_texture_diffuse_color(VANILLA_DYE_COLOR_WHITE_ID), 0xF9FFFE);",
+        "        assert_eq!(vanilla_dye_color_texture_diffuse_color(VANILLA_DYE_COLOR_RED_ID), 0xB02E26);",
+        "        assert_eq!(vanilla_dye_color_texture_diffuse_color(16), 0xF9FFFE);",
         "        assert_eq!(builtin_enum_component_value_name(VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, -1), Some(\"small\"));",
         "        assert_eq!(builtin_enum_component_value_name(VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, 3), Some(\"large\"));",
         "        assert_eq!(builtin_enum_component_value_name(VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID, -1), Some(\"dark_brown\"));",

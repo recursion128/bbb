@@ -7,6 +7,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     },
     packets::{
         BlocksAttacksSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
@@ -23,6 +24,7 @@ const BANNER_PATTERN_REGISTRY: &str = "minecraft:banner_pattern";
 const JUKEBOX_SONG_REGISTRY: &str = "minecraft:jukebox_song";
 const INSTRUMENT_REGISTRY: &str = "minecraft:instrument";
 const SOUND_EVENT_REGISTRY: &str = "minecraft:sound_event";
+const TRIM_MATERIAL_REGISTRY: &str = "minecraft:trim_material";
 const BYPASSES_SHIELD_TAG: &str = "minecraft:bypasses_shield";
 
 pub(super) fn build_registry_dependent_item_defaults(
@@ -115,6 +117,18 @@ fn apply_initializer(
                 .collect();
             defaults.provides_banner_pattern_tag = Some(tag.clone());
         }
+        RegistryDependentItemComponentInitializer::ProvidesTrimMaterial { material } => {
+            insert_component(
+                defaults,
+                VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+            )?;
+            defaults.provides_trim_material_id = Some(
+                access
+                    .require_entry_by_resource_id(TRIM_MATERIAL_REGISTRY, material)
+                    .map_err(initializer_error)?
+                    .holder_id,
+            );
+        }
         RegistryDependentItemComponentInitializer::Instrument { instrument } => {
             insert_component(defaults, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID)?;
             defaults.instrument_id = Some(
@@ -168,6 +182,17 @@ fn initializer_error(error: RegistryResolutionError) -> RegistryValidationError 
 }
 
 impl WorldStore {
+    pub fn set_default_item_component_type_ids(
+        &mut self,
+        defaults: BTreeMap<i32, std::collections::BTreeSet<i32>>,
+    ) {
+        self.items.set_default_component_type_ids(defaults);
+    }
+
+    pub fn set_default_item_dye_color_ids(&mut self, defaults: BTreeMap<i32, i32>) {
+        self.items.set_default_dye_color_ids(defaults);
+    }
+
     pub fn set_registry_dependent_item_component_initializers(
         &mut self,
         rules: BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
@@ -222,9 +247,14 @@ impl WorldStore {
         stack.component_patch.added_type_ids.contains(&component_id)
             || stack.item_id.is_some_and(|item_id| {
                 self.items
-                    .registry_dependent_item_defaults
+                    .default_component_type_ids
                     .get(&item_id)
-                    .is_some_and(|defaults| defaults.added_type_ids.contains(&component_id))
+                    .is_some_and(|defaults| defaults.contains(&component_id))
+                    || self
+                        .items
+                        .registry_dependent_item_defaults
+                        .get(&item_id)
+                        .is_some_and(|defaults| defaults.added_type_ids.contains(&component_id))
             })
     }
 }
@@ -235,6 +265,7 @@ mod tests {
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     };
 
     use super::*;
@@ -262,6 +293,11 @@ mod tests {
             &mut world,
             BANNER_PATTERN_REGISTRY,
             &["example:custom", "minecraft:flower"],
+        );
+        insert_registry(
+            &mut world,
+            TRIM_MATERIAL_REGISTRY,
+            &["example:custom", "minecraft:diamond"],
         );
         insert_tag(
             &mut world,
@@ -307,6 +343,12 @@ mod tests {
                     instrument: "minecraft:ponder_goat_horn".to_string(),
                 }],
             ),
+            (
+                6,
+                vec![Initializer::ProvidesTrimMaterial {
+                    material: "minecraft:diamond".to_string(),
+                }],
+            ),
         ]));
 
         world.rebuild_registry_dependent_item_defaults().unwrap();
@@ -327,6 +369,11 @@ mod tests {
         );
         assert_eq!(defaults[&4].provides_banner_pattern_registry_ids, vec![1]);
         assert_eq!(defaults[&5].instrument_id, Some(1));
+        assert_eq!(defaults[&6].provides_trim_material_id, Some(1));
+        assert_eq!(
+            defaults[&6].added_type_ids,
+            vec![VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID]
+        );
     }
 
     #[test]

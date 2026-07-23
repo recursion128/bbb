@@ -398,7 +398,7 @@ mod tests {
             .as_deref()
             .is_some_and(|consumer| consumer.contains("push_slot_display_item_stack_candidates")));
         for required in [
-            "decode_slot_display_body",
+            "decode_slot_display_value",
             "decodes_update_recipes_with_tag_slot_display",
             "hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
         ] {
