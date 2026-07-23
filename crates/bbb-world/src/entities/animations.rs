@@ -7479,6 +7479,7 @@ impl WorldStore {
                     self.advance_entity_client_animation_tick(runs_normally, game_time),
                 );
             }
+            self.advance_local_player_attack_strength_ticks(1);
             if runs_normally {
                 // Vanilla `ClientLevel.tick` advances these owners after
                 // `tickEntities`, in this order, for every catch-up tick.

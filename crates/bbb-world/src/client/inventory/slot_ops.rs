@@ -183,6 +183,36 @@ pub(super) fn item_stack_attack_range(
     default_item_attack_ranges.get(&item_id).copied()
 }
 
+pub(super) fn item_stack_minimum_attack_charge(
+    stack: &ProtocolItemStackSummary,
+    default_item_minimum_attack_charges: &BTreeMap<i32, f32>,
+) -> f32 {
+    if item_stack_is_empty(stack)
+        || stack
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID)
+    {
+        return 0.0;
+    }
+
+    if let Some(charge) = stack
+        .component_patch
+        .minimum_attack_charge_bits
+        .map(f32::from_bits)
+        .filter(|charge| charge.is_finite() && (0.0..=1.0).contains(charge))
+    {
+        return charge;
+    }
+
+    stack
+        .item_id
+        .filter(|item_id| *item_id >= 0)
+        .and_then(|item_id| default_item_minimum_attack_charges.get(&item_id))
+        .copied()
+        .unwrap_or(0.0)
+}
+
 pub(super) fn item_stack_swing_duration(
     stack: &ProtocolItemStackSummary,
     default_item_swing_animation_durations: &BTreeMap<i32, i32>,

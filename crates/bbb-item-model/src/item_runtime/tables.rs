@@ -667,6 +667,24 @@ impl NativeItemRuntime {
         self.item_attack_ranges_by_protocol_id().len()
     }
 
+    pub fn item_minimum_attack_charges_by_protocol_id(&self) -> BTreeMap<i32, f32> {
+        let mut charges = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return charges;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(charge) = registry.default_minimum_attack_charge(resource_id) else {
+                continue;
+            };
+            charges.insert(protocol_id as i32, charge);
+        }
+        charges
+    }
+
+    pub fn item_minimum_attack_charge_count(&self) -> usize {
+        self.item_minimum_attack_charges_by_protocol_id().len()
+    }
+
     pub fn item_swing_animation_durations_by_protocol_id(&self) -> BTreeMap<i32, i32> {
         let mut durations = BTreeMap::new();
         let Some(registry) = &self.registry else {

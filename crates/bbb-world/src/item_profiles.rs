@@ -85,6 +85,8 @@ pub struct ItemProfiles {
     #[serde(default)]
     pub(crate) default_item_attack_ranges: PublicationShared<BTreeMap<i32, ItemAttackRange>>,
     #[serde(default)]
+    pub(crate) default_item_minimum_attack_charges: PublicationShared<BTreeMap<i32, f32>>,
+    #[serde(default)]
     pub(crate) default_item_swing_animation_durations: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
     pub(crate) default_item_use_effects: PublicationShared<BTreeMap<i32, ItemUseEffects>>,
@@ -425,6 +427,16 @@ impl ItemProfiles {
         attack_ranges: BTreeMap<i32, ItemAttackRange>,
     ) {
         self.default_item_attack_ranges = filter_item_id_keys(attack_ranges).into();
+    }
+
+    pub(crate) fn set_default_item_minimum_attack_charges(&mut self, charges: BTreeMap<i32, f32>) {
+        self.default_item_minimum_attack_charges = charges
+            .into_iter()
+            .filter(|(item_id, charge)| {
+                *item_id >= 0 && charge.is_finite() && (0.0..=1.0).contains(charge)
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_item_swing_animation_durations(

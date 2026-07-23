@@ -30,6 +30,21 @@ use std::{
 };
 
 #[test]
+fn minimum_attack_charge_projects_vanilla_spear_defaults_by_protocol_id() {
+    let runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    let wooden_spear_id = runtime.item_protocol_id("minecraft:wooden_spear").unwrap();
+    let diamond_sword_id = runtime.item_protocol_id("minecraft:diamond_sword").unwrap();
+    let charges = runtime.item_minimum_attack_charges_by_protocol_id();
+
+    assert_eq!(
+        charges.get(&wooden_spear_id).map(|value| value.to_bits()),
+        Some(1.0_f32.to_bits())
+    );
+    assert!(!charges.contains_key(&diamond_sword_id));
+    assert_eq!(runtime.item_minimum_attack_charge_count(), 7);
+}
+
+#[test]
 fn independent_simulation_projection_copies_catalogs_without_renderer_async_caches() {
     fn assert_send<T: Send>() {}
 

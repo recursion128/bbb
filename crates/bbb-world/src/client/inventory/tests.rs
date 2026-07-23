@@ -1118,6 +1118,76 @@ fn local_selected_main_hand_attack_range_respects_empty_invalid_and_selected_slo
 }
 
 #[test]
+fn local_attack_minimum_charge_applies_default_patch_and_removal_precedence() {
+    let mut store = WorldStore::new();
+    store.set_default_item_minimum_attack_charges(BTreeMap::from([
+        (-1, 0.75),
+        (42, 1.0),
+        (43, f32::NAN),
+    ]));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+    assert_eq!(
+        store
+            .local_selected_main_hand_minimum_attack_charge()
+            .to_bits(),
+        1.0_f32.to_bits()
+    );
+
+    let mut patched = item_stack(42, 1);
+    patched.component_patch.added = 1;
+    patched.component_patch.added_type_ids =
+        vec![VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID];
+    patched.component_patch.minimum_attack_charge_bits = Some(0.5_f32.to_bits());
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: patched.clone(),
+    });
+    assert_eq!(
+        store
+            .local_selected_main_hand_minimum_attack_charge()
+            .to_bits(),
+        0.5_f32.to_bits()
+    );
+
+    patched.component_patch.removed_type_ids =
+        vec![VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID];
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: patched,
+    });
+    assert_eq!(store.local_selected_main_hand_minimum_attack_charge(), 0.0);
+}
+
+#[test]
+fn local_attack_item_enabled_gate_accepts_empty_and_known_vanilla_stacks_only() {
+    let mut store = WorldStore::new();
+    assert!(store.local_selected_main_hand_is_enabled());
+
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+    assert!(store.local_selected_main_hand_is_enabled());
+
+    store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec!["minecraft:trade_rebalance".to_string()],
+    });
+    assert!(!store.local_selected_main_hand_is_enabled());
+
+    store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec!["minecraft:vanilla".to_string()],
+    });
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(99_999, 1),
+    });
+    assert!(!store.local_selected_main_hand_is_enabled());
+}
+
+#[test]
 fn local_using_item_use_effects_reads_default_and_patch_components() {
     let mut store = WorldStore::new();
     let default_effects = ItemUseEffects {

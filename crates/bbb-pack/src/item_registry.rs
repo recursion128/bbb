@@ -115,6 +115,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_attack_ranges: BTreeMap<String, ItemAttackRange>,
     #[serde(default)]
+    default_minimum_attack_charge_bits: BTreeMap<String, u32>,
+    #[serde(default)]
     default_swing_animation_durations: BTreeMap<String, i32>,
     #[serde(default)]
     default_kinetic_weapons: BTreeMap<String, ItemKineticWeaponDefaults>,
@@ -339,6 +341,7 @@ impl ItemRegistryCatalog {
         let mut mount_body_armor_assets = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
+        let mut default_minimum_attack_charge_bits = BTreeMap::new();
         let mut default_swing_animation_durations = BTreeMap::new();
         let mut default_kinetic_weapons = BTreeMap::new();
         let mut default_attribute_modifiers = BTreeMap::new();
@@ -400,6 +403,9 @@ impl ItemRegistryCatalog {
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range =
                 default_attack_range_for_declaration(expression).with_context(source_context)?;
+            let default_minimum_attack_charge =
+                default_minimum_attack_charge_for_declaration(expression)
+                    .with_context(source_context)?;
             let default_swing_animation_duration =
                 default_swing_animation_duration_for_declaration(expression)
                     .with_context(source_context)?;
@@ -472,6 +478,10 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(default_attack_range) = default_attack_range {
                     default_attack_ranges.insert(resource_id.clone(), default_attack_range);
+                }
+                if let Some(default_minimum_attack_charge) = default_minimum_attack_charge {
+                    default_minimum_attack_charge_bits
+                        .insert(resource_id.clone(), default_minimum_attack_charge.to_bits());
                 }
                 if let Some(default_swing_animation_duration) = default_swing_animation_duration {
                     default_swing_animation_durations
@@ -600,6 +610,7 @@ impl ItemRegistryCatalog {
             mount_body_armor_assets,
             default_piercing_weapon_ids,
             default_attack_ranges,
+            default_minimum_attack_charge_bits,
             default_swing_animation_durations,
             default_kinetic_weapons,
             default_attribute_modifiers,
@@ -785,6 +796,14 @@ impl ItemRegistryCatalog {
     pub fn default_attack_range(&self, resource_id: &str) -> Option<ItemAttackRange> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_attack_ranges.get(&resource_id).copied()
+    }
+
+    pub fn default_minimum_attack_charge(&self, resource_id: &str) -> Option<f32> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_minimum_attack_charge_bits
+            .get(&resource_id)
+            .copied()
+            .map(f32::from_bits)
     }
 
     pub fn default_swing_animation_duration(&self, resource_id: &str) -> Option<i32> {
@@ -1471,6 +1490,23 @@ fn default_attack_range_for_declaration(
         hitbox_margin: parse_java_float_literal(&creation.arguments[4].canonical)?,
         mob_factor: parse_java_float_literal(&creation.arguments[5].canonical)?,
     }))
+}
+
+fn default_minimum_attack_charge_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<Option<f32>> {
+    if expression.call("spear").is_some() {
+        return Ok(Some(1.0));
+    }
+
+    let Some(value) = component_value(expression, "MINIMUM_ATTACK_CHARGE") else {
+        return Ok(None);
+    };
+    let charge = parse_java_float_literal(&value.canonical)?;
+    if !charge.is_finite() || !(0.0..=1.0).contains(&charge) {
+        bail!("MINIMUM_ATTACK_CHARGE must be a finite float in 0..=1");
+    }
+    Ok(Some(charge))
 }
 
 fn default_kinetic_weapon_for_declaration(
@@ -2370,6 +2406,32 @@ mod tests {
     }
 
     #[test]
+    fn minimum_attack_charge_defaults_follow_vanilla_spear_properties() {
+        let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
+        for resource_id in [
+            "minecraft:wooden_spear",
+            "minecraft:stone_spear",
+            "minecraft:copper_spear",
+            "minecraft:iron_spear",
+            "minecraft:golden_spear",
+            "minecraft:diamond_spear",
+            "minecraft:netherite_spear",
+        ] {
+            assert_eq!(
+                catalog
+                    .default_minimum_attack_charge(resource_id)
+                    .map(f32::to_bits),
+                Some(1.0_f32.to_bits()),
+                "{resource_id}"
+            );
+        }
+        assert_eq!(
+            catalog.default_minimum_attack_charge("minecraft:diamond_sword"),
+            None
+        );
+    }
+
+    #[test]
     fn loads_checked_in_vanilla_item_registry() {
         let block_tags = test_block_tags();
         let catalog =
@@ -2429,6 +2491,14 @@ mod tests {
         );
         assert_eq!(
             catalog.default_attack_range("minecraft:diamond_sword"),
+            None
+        );
+        assert_eq!(
+            catalog.default_minimum_attack_charge("minecraft:wooden_spear"),
+            Some(1.0)
+        );
+        assert_eq!(
+            catalog.default_minimum_attack_charge("minecraft:diamond_sword"),
             None
         );
         assert_eq!(

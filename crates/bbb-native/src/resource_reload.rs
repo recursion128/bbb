@@ -486,6 +486,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     horse_body_armor_materials: BTreeMap<i32, ArmorMaterialKind>,
     wolf_body_armor_materials: BTreeMap<i32, ArmorMaterialKind>,
     attack_ranges: BTreeMap<i32, ItemAttackRange>,
+    minimum_attack_charges: BTreeMap<i32, f32>,
     swing_animation_durations: BTreeMap<i32, i32>,
     piercing_weapon_item_ids: BTreeSet<i32>,
     damageable_item_ids: BTreeSet<i32>,
@@ -552,6 +553,7 @@ impl ItemRuntimeWorldDefaults {
             horse_body_armor_materials: items.horse_body_armor_materials_by_protocol_id(),
             wolf_body_armor_materials: items.wolf_body_armor_materials_by_protocol_id(),
             attack_ranges: items.item_attack_ranges_by_protocol_id(),
+            minimum_attack_charges: items.item_minimum_attack_charges_by_protocol_id(),
             swing_animation_durations: items.item_swing_animation_durations_by_protocol_id(),
             piercing_weapon_item_ids: items.default_piercing_weapon_item_ids_by_protocol_id(),
             damageable_item_ids: items.default_damageable_item_ids_by_protocol_id(),
@@ -598,6 +600,7 @@ impl ItemRuntimeWorldDefaults {
         world.set_default_horse_body_armor_materials(self.horse_body_armor_materials);
         world.set_default_wolf_body_armor_materials(self.wolf_body_armor_materials);
         world.set_default_item_attack_ranges(self.attack_ranges);
+        world.set_default_item_minimum_attack_charges(self.minimum_attack_charges);
         world.set_default_item_swing_animation_durations(self.swing_animation_durations);
         world.set_default_piercing_weapon_item_ids(self.piercing_weapon_item_ids);
         world.set_default_damageable_item_ids(self.damageable_item_ids);
@@ -731,6 +734,37 @@ mod tests {
             },
             VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID
         ));
+    }
+
+    #[test]
+    fn minimum_attack_charge_defaults_reload_into_world() {
+        let items = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+        let wooden_spear_id = items.item_protocol_id("minecraft:wooden_spear").unwrap();
+        let defaults = ItemRuntimeWorldDefaults::from_runtime(&items);
+        assert_eq!(
+            defaults
+                .minimum_attack_charges
+                .get(&wooden_spear_id)
+                .map(|charge| charge.to_bits()),
+            Some(1.0_f32.to_bits())
+        );
+
+        let mut world = WorldStore::new();
+        defaults.apply(&mut world);
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(wooden_spear_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        });
+        assert_eq!(
+            world
+                .local_selected_main_hand_minimum_attack_charge()
+                .to_bits(),
+            1.0_f32.to_bits()
+        );
     }
 
     #[test]

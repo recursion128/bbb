@@ -1,4 +1,6 @@
-use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ARMOR_ID;
+use bbb_protocol::attribute_types::{
+    VANILLA_ATTRIBUTE_ARMOR_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+};
 use bbb_protocol::game_types::GameType;
 use bbb_protocol::packets::{
     DataComponentPatchSummary, Direction as ProtocolDirection, EntityAnchor, InteractionHand,
@@ -155,6 +157,18 @@ pub struct LocalPlayerInteractionState {
     /// blocks, but must not move the player back across the teleport.
     #[serde(default)]
     pub last_teleport_prediction_sequence: Option<i32>,
+    #[serde(default)]
+    pub attack: LocalPlayerAttackState,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalPlayerAttackState {
+    #[serde(default)]
+    pub attack_strength_ticks: u32,
+    #[serde(default)]
+    pub item_swap_ticks: u32,
+    #[serde(default)]
+    pub last_main_hand_item: Option<ProtocolItemStackSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -546,6 +560,76 @@ impl WorldStore {
             .and_then(|id| self.entities.attribute_base_value(id, attribute_id))
     }
 
+    /// Returns the modifier-folded value of one local-player attribute.
+    pub fn local_player_attribute_value(&self, attribute_id: i32) -> Option<f64> {
+        self.local_player_id
+            .and_then(|id| self.entities.attribute_value(id, attribute_id))
+    }
+
+    pub fn local_player_attack_strength_ticks(&self) -> u32 {
+        self.local_player.interaction.attack.attack_strength_ticks
+    }
+
+    pub fn local_player_item_swap_ticks(&self) -> u32 {
+        self.local_player.interaction.attack.item_swap_ticks
+    }
+
+    pub fn reset_local_player_attack_strength(&mut self) {
+        let attack = &mut self.local_player.interaction.attack;
+        attack.attack_strength_ticks = 0;
+        attack.item_swap_ticks = 0;
+    }
+
+    pub fn local_player_cannot_attack_with_selected_item(&self) -> bool {
+        let required_strength = self.local_selected_main_hand_minimum_attack_charge();
+        if required_strength <= 0.0 {
+            return false;
+        }
+        let Some(attack_speed) =
+            self.local_player_attribute_value(VANILLA_ATTRIBUTE_ATTACK_SPEED_ID)
+        else {
+            return true;
+        };
+        if !attack_speed.is_finite() || attack_speed <= 0.0 {
+            return true;
+        }
+        let delay = (20.0 / attack_speed) as f32;
+        let optimistic_strength = self.local_player_attack_strength_ticks() as f32 / delay;
+        optimistic_strength < required_strength
+    }
+
+    pub(crate) fn advance_local_player_attack_strength_ticks(&mut self, ticks: u32) {
+        if ticks == 0
+            || !self
+                .local_player_id
+                .is_some_and(|id| self.entities.contains(id))
+        {
+            return;
+        }
+
+        let current_main_hand = self.local_item_in_hand(InteractionHand::MainHand).cloned();
+        let attack = &mut self.local_player.interaction.attack;
+        let stack_changed = attack.last_main_hand_item != current_main_hand;
+        let item_changed = stack_changed
+            && attack
+                .last_main_hand_item
+                .as_ref()
+                .and_then(|item| item.item_id)
+                != current_main_hand.as_ref().and_then(|item| item.item_id);
+
+        if item_changed {
+            let ticks_after_reset = ticks.saturating_sub(1);
+            attack.attack_strength_ticks = ticks_after_reset;
+            attack.item_swap_ticks = ticks_after_reset;
+        } else {
+            attack.attack_strength_ticks = attack.attack_strength_ticks.saturating_add(ticks);
+            attack.item_swap_ticks = attack.item_swap_ticks.saturating_add(ticks);
+        }
+        if stack_changed {
+            attack.last_main_hand_item = current_main_hand;
+        }
+    }
+
     /// Vanilla `player.getAirSupply()` read by `Gui.extractAirBubbles`
     /// (Gui.java:889): the synced `Entity.DATA_AIR_SUPPLY_ID` int (data id 1,
     /// see `entities::VANILLA_ENTITY_AIR_SUPPLY_DATA_ID` for the derivation).
@@ -824,6 +908,8 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::super::local_player_movement::LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
     use super::*;
     use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
@@ -1413,7 +1499,138 @@ mod tests {
                 using_item_ticks: 0,
                 prediction_sequence: 1,
                 last_teleport_prediction_sequence: None,
+                attack: LocalPlayerAttackState::default(),
             }
+        );
+    }
+
+    #[test]
+    fn local_attack_ticks_follow_main_hand_match_and_item_identity_changes() {
+        let mut store = local_attack_player_world();
+        store.advance_local_player_attack_strength_ticks(3);
+        assert_eq!(store.local_player_attack_strength_ticks(), 3);
+        assert_eq!(store.local_player_item_swap_ticks(), 3);
+
+        store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: local_attack_item(42, 1),
+        });
+        store.advance_local_player_attack_strength_ticks(3);
+        assert_eq!(store.local_player_attack_strength_ticks(), 2);
+        assert_eq!(store.local_player_item_swap_ticks(), 2);
+
+        store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: local_attack_item(42, 2),
+        });
+        store.advance_local_player_attack_strength_ticks(2);
+        assert_eq!(store.local_player_attack_strength_ticks(), 4);
+        assert_eq!(store.local_player_item_swap_ticks(), 4);
+        assert_eq!(
+            store
+                .local_player()
+                .interaction
+                .attack
+                .last_main_hand_item
+                .as_ref()
+                .map(|item| item.count),
+            Some(2)
+        );
+
+        let mut patched = local_attack_item(42, 2);
+        patched.component_patch.minimum_attack_charge_bits = Some(0.5_f32.to_bits());
+        store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: patched,
+        });
+        store.advance_local_player_attack_strength_ticks(1);
+        assert_eq!(store.local_player_attack_strength_ticks(), 5);
+
+        store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: local_attack_item(43, 1),
+        });
+        store.advance_local_player_attack_strength_ticks(4);
+        assert_eq!(store.local_player_attack_strength_ticks(), 3);
+        assert_eq!(store.local_player_item_swap_ticks(), 3);
+
+        store.reset_local_player_attack_strength();
+        assert_eq!(store.local_player_attack_strength_ticks(), 0);
+        assert_eq!(store.local_player_item_swap_ticks(), 0);
+    }
+
+    #[test]
+    fn local_attack_charge_uses_actual_attack_speed_and_inclusive_boundary() {
+        let mut store = local_attack_player_world();
+        store.set_default_item_minimum_attack_charges(BTreeMap::from([(42, 1.0)]));
+        store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: local_attack_item(42, 1),
+        });
+        store.advance_local_player_attack_strength_ticks(1);
+        assert_eq!(
+            store.local_player_attribute_value(VANILLA_ATTRIBUTE_ATTACK_SPEED_ID),
+            Some(4.0)
+        );
+        store.advance_local_player_attack_strength_ticks(4);
+        assert!(store.local_player_cannot_attack_with_selected_item());
+        store.advance_local_player_attack_strength_ticks(1);
+        assert!(!store.local_player_cannot_attack_with_selected_item());
+
+        let mut patched = local_attack_item(42, 1);
+        patched.component_patch.minimum_attack_charge_bits = Some(0.5_f32.to_bits());
+        store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: patched,
+        });
+        assert!(
+            store.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+                entity_id: 7,
+                attributes: vec![bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+                    base: 2.0,
+                    modifiers: Vec::new(),
+                }],
+            })
+        );
+        store.reset_local_player_attack_strength();
+        store.advance_local_player_attack_strength_ticks(4);
+        assert!(store.local_player_cannot_attack_with_selected_item());
+        store.advance_local_player_attack_strength_ticks(1);
+        assert!(!store.local_player_cannot_attack_with_selected_item());
+
+        assert!(
+            store.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+                entity_id: 7,
+                attributes: vec![bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+                    base: 0.0,
+                    modifiers: Vec::new(),
+                }],
+            })
+        );
+        assert!(store.local_player_cannot_attack_with_selected_item());
+    }
+
+    #[test]
+    fn local_attack_state_serializes_and_resets_with_the_client_level() {
+        let mut store = local_attack_player_world();
+        store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: local_attack_item(42, 3),
+        });
+        store.advance_local_player_attack_strength_ticks(6);
+        let restored: WorldStore = serde_json::from_value(serde_json::to_value(&store).unwrap())
+            .expect("local attack state should deserialize");
+        assert_eq!(
+            restored.local_player().interaction.attack,
+            store.local_player().interaction.attack
+        );
+
+        store.clear_client_level();
+        assert_eq!(
+            store.local_player().interaction.attack,
+            LocalPlayerAttackState::default()
         );
     }
 
@@ -1690,6 +1907,31 @@ mod tests {
                 z: -2.0,
             },
         )
+    }
+
+    fn local_attack_player_world() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.local_player_id = Some(7);
+        world.apply_add_entity(ProtocolAddEntity {
+            id: 7,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: vec3(0.5, 64.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world
+    }
+
+    fn local_attack_item(item_id: i32, count: i32) -> ProtocolItemStackSummary {
+        ProtocolItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: DataComponentPatchSummary::default(),
+        }
     }
 
     fn protocol_add_entity_at(id: i32, position: ProtocolVec3d) -> ProtocolAddEntity {

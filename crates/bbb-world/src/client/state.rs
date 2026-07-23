@@ -51,9 +51,10 @@ pub use crate::client::inventory::{
     MountEquipmentSlotVisibility, MountInventoryKind,
 };
 pub use crate::client::local_player::{
-    CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerExperienceState,
-    LocalPlayerHealthState, LocalPlayerInputState, LocalPlayerInteractionState,
-    LocalPlayerLookAtState, LocalPlayerPermissionLevel, LocalPlayerPoseState, LocalPlayerState,
+    CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerAttackState,
+    LocalPlayerExperienceState, LocalPlayerHealthState, LocalPlayerInputState,
+    LocalPlayerInteractionState, LocalPlayerLookAtState, LocalPlayerPermissionLevel,
+    LocalPlayerPoseState, LocalPlayerState,
 };
 pub use crate::client::local_player_collision::{
     DebugEntitySupportingBlocks, DebugLocalSupportingBlocks, DebugSupportingBlockHighlight,

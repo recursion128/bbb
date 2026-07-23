@@ -241,11 +241,6 @@ impl WorldStore {
             .or_else(|| fallback_local_block_destroy_profile(block_name))
     }
 
-    fn local_player_attribute_value(&self, attribute_id: i32) -> Option<f64> {
-        self.local_player_id
-            .and_then(|id| self.entities.attribute_value(id, attribute_id))
-    }
-
     fn local_player_mob_effect_amplifier(&self, effect_id: i32) -> Option<i32> {
         self.local_player_id
             .and_then(|id| self.entity_effect(id, effect_id))

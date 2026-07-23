@@ -9,8 +9,8 @@ use bbb_protocol::game_event_types::{
     VANILLA_CLIENT_GAME_EVENT_STOP_RAINING_ID, VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
 };
 use bbb_protocol::game_types::{
-    GameType, VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SPECTATOR_ID,
-    VANILLA_GAME_TYPE_SURVIVAL_ID,
+    GameType, VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_NOT_SET_ID,
+    VANILLA_GAME_TYPE_SPECTATOR_ID, VANILLA_GAME_TYPE_SURVIVAL_ID,
 };
 use bbb_protocol::packets::{
     ClockUpdate as ProtocolClockUpdate, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
@@ -959,6 +959,10 @@ impl WorldStore {
 
     pub fn local_player_is_spectator(&self) -> bool {
         self.gameplay.game_type == VANILLA_GAME_TYPE_SPECTATOR_ID
+    }
+
+    pub fn local_player_is_creative(&self) -> bool {
+        self.gameplay.game_type == VANILLA_GAME_TYPE_CREATIVE_ID
     }
 
     pub fn local_player_has_reduced_debug_info(&self) -> bool {

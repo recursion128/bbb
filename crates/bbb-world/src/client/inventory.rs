@@ -1,8 +1,10 @@
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
 };
 use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_BODY_SLOT, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
@@ -10,7 +12,9 @@ use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_LEGS_SLOT, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
     VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
 };
-use bbb_protocol::item_types::{VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_ELYTRA_ID};
+use bbb_protocol::item_types::{
+    vanilla_item_type, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_ELYTRA_ID,
+};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -1112,6 +1116,32 @@ impl InventoryState {
 
         self.local_player_inventory_item(i32::from(selected_slot))
             .and_then(|item| item_stack_attack_range(item, &ctx.items.default_item_attack_ranges))
+    }
+
+    pub(crate) fn local_selected_main_hand_minimum_attack_charge(
+        &self,
+        ctx: InventoryCtx<'_>,
+    ) -> f32 {
+        self.local_item_in_hand(ctx, InteractionHand::MainHand)
+            .map_or(0.0, |item| {
+                item_stack_minimum_attack_charge(
+                    item,
+                    &ctx.items.default_item_minimum_attack_charges,
+                )
+            })
+    }
+
+    pub(crate) fn local_selected_main_hand_is_enabled(
+        &self,
+        ctx: InventoryCtx<'_>,
+        vanilla_feature_enabled: bool,
+    ) -> bool {
+        let Some(item) = self.local_item_in_hand(ctx, InteractionHand::MainHand) else {
+            return true;
+        };
+        item.item_id
+            .and_then(vanilla_item_type)
+            .is_some_and(|_| vanilla_feature_enabled)
     }
 
     pub(crate) fn local_using_item_use_effects(
@@ -2241,6 +2271,18 @@ impl WorldStore {
             .local_selected_main_hand_attack_range(inventory_ctx!(self))
     }
 
+    pub fn local_selected_main_hand_minimum_attack_charge(&self) -> f32 {
+        self.inventory
+            .local_selected_main_hand_minimum_attack_charge(inventory_ctx!(self))
+    }
+
+    pub fn local_selected_main_hand_is_enabled(&self) -> bool {
+        self.inventory.local_selected_main_hand_is_enabled(
+            inventory_ctx!(self),
+            self.is_feature_enabled("minecraft:vanilla"),
+        )
+    }
+
     pub(crate) fn entity_held_item_swing_duration(&self, id: i32, off_hand: bool) -> i32 {
         self.held_item(id, off_hand)
             .as_ref()
@@ -2386,6 +2428,10 @@ impl WorldStore {
         attack_ranges: BTreeMap<i32, ItemAttackRange>,
     ) {
         self.items.set_default_item_attack_ranges(attack_ranges)
+    }
+
+    pub fn set_default_item_minimum_attack_charges(&mut self, charges: BTreeMap<i32, f32>) {
+        self.items.set_default_item_minimum_attack_charges(charges)
     }
 
     pub fn set_default_item_swing_animation_durations(&mut self, durations: BTreeMap<i32, i32>) {
