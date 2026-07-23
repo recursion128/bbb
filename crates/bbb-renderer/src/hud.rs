@@ -2870,6 +2870,40 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_win_logo(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_win_logo = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_win_easter_egg_logo(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_win_easter_egg_logo = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_win_edition(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_win_edition = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_demo_popup_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_demo_popup_background = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
+        Ok(())
+    }
+
     pub fn upload_hud_tooltip_background(
         &mut self,
         width: u32,

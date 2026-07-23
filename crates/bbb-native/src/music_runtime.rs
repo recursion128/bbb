@@ -1,8 +1,8 @@
 use bbb_control::AudioCounters;
 use bbb_world::{
-    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMusic, ClientSoundEventHolder,
-    EnvironmentBiomeSampling, LevelEventSoundRandomState, LocalSoundEventState, SoundHolderState,
-    WorldStore, DIMENSION_TYPE_REGISTRY,
+    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientGameEventScreenState, ClientMusic,
+    ClientSoundEventHolder, EnvironmentBiomeSampling, LevelEventSoundRandomState,
+    LocalSoundEventState, SoundHolderState, WorldStore, DIMENSION_TYPE_REGISTRY,
 };
 
 use crate::{audio_runtime::AudioEventSink, camera_pose::camera_pose_from_world};
@@ -10,6 +10,7 @@ use crate::{audio_runtime::AudioEventSink, camera_pose::camera_pose_from_world};
 const END_DIMENSION: &str = "minecraft:the_end";
 const END_MUSIC_EVENT: &str = "minecraft:music.end";
 const DRAGON_MUSIC_EVENT: &str = "minecraft:music.dragon";
+const CREDITS_MUSIC_EVENT: &str = "minecraft:music.credits";
 const STARTING_DELAY_TICKS: i32 = 100;
 const DEFAULT_MAX_FREQUENCY_TICKS: i32 = 20 * 1_200;
 const MIN_GAIN_STEP: f32 = 0.0005;
@@ -26,6 +27,7 @@ pub(crate) struct MusicRuntime {
     random: LevelEventSoundRandomState,
     pending_start: Option<AudioCommandObservation>,
     pending_stop: Option<AudioCommandObservation>,
+    active_win_generation: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,6 +55,7 @@ impl Default for MusicRuntime {
             random: LevelEventSoundRandomState::default(),
             pending_start: None,
             pending_stop: None,
+            active_win_generation: None,
         }
     }
 }
@@ -66,16 +69,44 @@ impl MusicRuntime {
         audio: &mut dyn AudioEventSink,
     ) {
         if self.connection_generation != Some(connection_generation) {
+            let previous_win_generation = self.active_win_generation.take();
             self.connection_generation = Some(connection_generation);
             self.current_music = audio.counters().active_music_event_id;
             self.pending_start = None;
             self.pending_stop = None;
+            if previous_win_generation.is_some()
+                && self.current_music.as_deref() == Some(CREDITS_MUSIC_EVENT)
+            {
+                let observation = AudioCommandObservation::from(&audio.counters());
+                self.stop_current(observation, audio);
+            }
             if self.current_music.is_none() {
                 self.next_song_delay = self.next_song_delay.max(STARTING_DELAY_TICKS);
             }
         }
+        self.synchronize_win_screen(world, audio);
         for _ in 0..raw_client_ticks {
             self.tick(world, audio);
+        }
+    }
+
+    fn synchronize_win_screen(&mut self, world: &WorldStore, audio: &mut dyn AudioEventSink) {
+        let generation = match world.game_event_screen() {
+            Some(ClientGameEventScreenState::Win { generation }) => Some(generation),
+            Some(ClientGameEventScreenState::DemoHelp { .. }) | None => None,
+        };
+        if generation == self.active_win_generation {
+            return;
+        }
+        if self.active_win_generation.is_some()
+            && self.current_music.as_deref() == Some(CREDITS_MUSIC_EVENT)
+        {
+            let observation = AudioCommandObservation::from(&audio.counters());
+            self.stop_current(observation, audio);
+        }
+        self.active_win_generation = generation;
+        if generation.is_some() {
+            self.next_song_delay = 0;
         }
     }
 
@@ -228,6 +259,17 @@ impl From<&AudioCounters> for AudioCommandObservation {
 }
 
 fn situational_music(world: &WorldStore) -> Option<SelectedMusic> {
+    if matches!(
+        world.game_event_screen(),
+        Some(ClientGameEventScreenState::Win { .. })
+    ) {
+        return Some(SelectedMusic {
+            event_id: CREDITS_MUSIC_EVENT.to_string(),
+            min_delay: 0,
+            max_delay: 0,
+            replace_current_music: true,
+        });
+    }
     let wants_dragon = world
         .level_info()
         .is_some_and(|level| level.dimension == END_DIMENSION)
@@ -376,7 +418,7 @@ mod tests {
     use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
     use bbb_protocol::packets::{
         BossBarColor, BossBarOverlay, BossEvent, BossEventFlags, BossEventOperation,
-        CommonPlayerSpawnInfo, PlayLogin,
+        CommonPlayerSpawnInfo, GameEvent, PlayLogin,
     };
     use bbb_world::{
         JukeboxLevelEventState, SoundEntityEventState, SoundEventState, StopSoundEventState,
@@ -455,6 +497,45 @@ mod tests {
         runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
 
         assert!(audio.effects.is_empty());
+    }
+
+    #[test]
+    fn win_screen_music_starts_restarts_for_replacement_and_stops_on_removal() {
+        let mut world = world_in_dimension("minecraft:overworld", 0);
+        let mut runtime = MusicRuntime::default();
+        let mut audio = RecordingAudio::default();
+
+        world.apply_game_event(GameEvent {
+            event_id: 4,
+            param: 0.0,
+        });
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        let [RecordedAudioEffect::PlayLocal(first)] = audio.effects.as_slice() else {
+            panic!("opening the win screen must start credits music");
+        };
+        assert_eq!(first.sound.location.as_deref(), Some(CREDITS_MUSIC_EVENT));
+
+        audio.counters.active_music_event_id = Some(CREDITS_MUSIC_EVENT.to_string());
+        audio.counters.commands_submitted = 1;
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        assert_eq!(audio.effects.len(), 1);
+
+        world.apply_game_event(GameEvent {
+            event_id: 4,
+            param: 0.0,
+        });
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        assert!(matches!(
+            &audio.effects[1..],
+            [
+                RecordedAudioEffect::StopMusic,
+                RecordedAudioEffect::PlayLocal(_)
+            ]
+        ));
+
+        world.clear_client_level();
+        runtime.advance_for_ticks(&mut world, 1, 0, &mut audio);
+        assert_eq!(audio.effects.last(), Some(&RecordedAudioEffect::StopMusic));
     }
 
     #[test]

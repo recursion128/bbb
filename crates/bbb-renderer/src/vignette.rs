@@ -138,6 +138,29 @@ impl Renderer {
         )?);
         Ok(())
     }
+
+    /// Uploads the selected pack generation's
+    /// `textures/misc/credits_vignette.png`.
+    pub fn upload_hud_win_credits_vignette(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        blur: bool,
+        clamp: bool,
+    ) -> Result<()> {
+        self.hud_win_credits_vignette = Some(create_vignette_texture_gpu(
+            &self.device,
+            &self.queue,
+            &self.vignette_bind_group_layout,
+            width,
+            height,
+            rgba,
+            blur,
+            clamp,
+        )?);
+        Ok(())
+    }
 }
 
 pub(crate) fn create_vignette_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {

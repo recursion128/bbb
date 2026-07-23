@@ -40,6 +40,40 @@ pub(crate) fn try_load_hud_textures(
         vignette.texture_metadata.blur,
         vignette.texture_metadata.clamp,
     )?;
+    let win_logo = gui_texture(
+        roots,
+        "textures/gui/title/minecraft.png",
+        "minecraft:textures/gui/title/minecraft",
+    )?;
+    renderer.upload_hud_win_logo(win_logo.width, win_logo.height, &win_logo.rgba)?;
+    let win_easter_egg_logo = gui_texture(
+        roots,
+        "textures/gui/title/minceraft.png",
+        "minecraft:textures/gui/title/minceraft",
+    )?;
+    renderer.upload_hud_win_easter_egg_logo(
+        win_easter_egg_logo.width,
+        win_easter_egg_logo.height,
+        &win_easter_egg_logo.rgba,
+    )?;
+    let win_edition = gui_texture(
+        roots,
+        "textures/gui/title/edition.png",
+        "minecraft:textures/gui/title/edition",
+    )?;
+    renderer.upload_hud_win_edition(win_edition.width, win_edition.height, &win_edition.rgba)?;
+    let credits_vignette = gui_texture(
+        roots,
+        "textures/misc/credits_vignette.png",
+        "minecraft:textures/misc/credits_vignette",
+    )?;
+    renderer.upload_hud_win_credits_vignette(
+        credits_vignette.width,
+        credits_vignette.height,
+        &credits_vignette.rgba,
+        credits_vignette.texture_metadata.blur,
+        credits_vignette.texture_metadata.clamp,
+    )?;
     let crosshair = hud_sprite(&sprites, "hud/crosshair")?;
     renderer.upload_hud_crosshair(crosshair.width, crosshair.height, &crosshair.rgba)?;
     let hotbar = hud_sprite(&sprites, "hud/hotbar")?;
@@ -85,6 +119,14 @@ pub(crate) fn try_load_hud_textures(
         chat_modified.width,
         chat_modified.height,
         &chat_modified.rgba,
+    )?;
+    let demo_popup_background = hud_sprite(&sprites, "popup/background")?;
+    let demo_popup_scaling = hud_nine_slice_scaling(demo_popup_background)?;
+    renderer.upload_hud_demo_popup_background(
+        demo_popup_background.width,
+        demo_popup_background.height,
+        &demo_popup_background.rgba,
+        demo_popup_scaling,
     )?;
     let inventory = gui_texture(
         roots,

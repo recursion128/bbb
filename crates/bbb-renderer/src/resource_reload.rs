@@ -199,6 +199,11 @@ impl Renderer {
 macro_rules! take_hud_resource_owners {
     ($take_owner:ident) => {
         $take_owner!(hud_vignette_texture);
+        $take_owner!(hud_win_logo);
+        $take_owner!(hud_win_easter_egg_logo);
+        $take_owner!(hud_win_edition);
+        $take_owner!(hud_win_credits_vignette);
+        $take_owner!(hud_demo_popup_background);
         $take_owner!(hud_crosshair);
         $take_owner!(hud_hotbar);
         $take_owner!(hud_hotbar_selection);
