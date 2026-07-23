@@ -117,9 +117,10 @@ use bbb_protocol::packets::{
     PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerSkinPatchData,
     ProjectilePower as ProtocolProjectilePower, RemoveEntities as ProtocolRemoveEntities,
     RenameItem, ResolvableProfileData, ResolvableProfileKind, SeenAdvancements, SelectBundleItem,
-    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
-    SetEquipment, SetJigsawBlock, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    SetStructureBlock, ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate,
+    SetCommandMinecart, SetCursorItem as ProtocolSetCursorItem,
+    SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetJigsawBlock,
+    SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, SetStructureBlock,
+    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate,
     StructureBlockMirror, StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind,
     TagQuery, TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
     TestInstanceBlockStatus, UpdateAdvancements, Vec3d as ProtocolVec3d, Vec3i,
@@ -1267,6 +1268,53 @@ fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
         light: LightData::default(),
     });
     world
+}
+
+fn world_with_command_minecart(entity_id: i32, command: &str, output: &str) -> WorldStore {
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    world.apply_add_entity(AddEntity {
+        id: entity_id,
+        uuid: Uuid::from_u128(u128::try_from(entity_id).unwrap()),
+        entity_type_id: VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    apply_command_minecart_metadata(&mut world, entity_id, command, output);
+    world
+}
+
+fn apply_command_minecart_metadata(
+    world: &mut WorldStore,
+    entity_id: i32,
+    command: &str,
+    output: &str,
+) {
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: entity_id,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: bbb_world::VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_STRING_ID,
+                value: EntityDataValueKind::String(command.to_string()),
+            },
+            ProtocolEntityDataValue {
+                data_id: bbb_world::VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COMPONENT_ID,
+                value: EntityDataValueKind::Component(RichTextComponent::plain(output)),
+            },
+        ],
+    }));
 }
 
 fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
@@ -19492,6 +19540,260 @@ fn command_block_editor_uses_commands_only_seven_row_suggestions_and_utf16_limit
         MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS
     );
     assert!(input.chat_entry.as_ref().unwrap().text.ends_with("ab"));
+}
+
+#[test]
+fn minecart_command_block_editor_preserves_unsent_command_and_done_sends_exact_state_once() {
+    let entity_id = 300;
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_command_minecart(entity_id, "say initial", "first output");
+    assert!(world.try_open_minecart_command_block_editor(entity_id));
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(input.minecart_command_block_editor_is_active());
+    let hud = input.minecart_command_block_editor_hud_state().unwrap();
+    assert!(hud.track_output);
+    assert_eq!(hud.previous_output, "first output");
+
+    assert!(input.replace_chat_entry_text("say unsent".to_string()));
+    apply_command_minecart_metadata(&mut world, entity_id, "say server", "new output");
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+    assert_eq!(input.chat_entry.as_ref().unwrap().text, "say unsent");
+    assert_eq!(
+        input
+            .minecart_command_block_editor_hud_state()
+            .unwrap()
+            .previous_output,
+        "new output"
+    );
+
+    let surface = PhysicalSize::new(320, 240);
+    let layout = bbb_renderer::hud_minecart_command_block_editor_layout(surface);
+    assert!(input.handle_minecart_command_block_editor_mouse_input(
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(layout.track_output.x + 1),
+            f64::from(layout.track_output.y + 1),
+        )),
+        surface,
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    assert!(input.handle_minecart_command_block_editor_mouse_input(
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(layout.done.x + 1),
+            f64::from(layout.done.y + 1),
+        )),
+        surface,
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+
+    assert_eq!(counters.set_command_minecart_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SetCommandMinecart(SetCommandMinecart {
+            entity_id,
+            command: "say unsent".to_string(),
+            track_output: false,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+    assert!(!input.minecart_command_block_editor_is_active());
+    assert!(world.minecart_command_block_editor().is_none());
+    let data = world.minecart_command_block_data(entity_id).unwrap();
+    assert_eq!(data.command, "say server");
+    assert!(!data.track_output);
+    assert!(data.last_output.is_none());
+}
+
+#[test]
+fn minecart_command_block_editor_cancel_escape_and_removal_close_without_sending() {
+    let entity_id = 300;
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_command_minecart(entity_id, "say initial", "output");
+
+    assert!(world.try_open_minecart_command_block_editor(entity_id));
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+    let surface = PhysicalSize::new(320, 240);
+    let layout = bbb_renderer::hud_minecart_command_block_editor_layout(surface);
+    assert!(input.handle_minecart_command_block_editor_mouse_input(
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(layout.track_output.x + 1),
+            f64::from(layout.track_output.y + 1),
+        )),
+        surface,
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(!input.minecart_command_block_editor_is_active());
+    assert!(world.minecart_command_block_editor().is_none());
+
+    assert!(world.try_open_minecart_command_block_editor(entity_id));
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(
+        !input
+            .minecart_command_block_editor_hud_state()
+            .unwrap()
+            .track_output
+    );
+    let cancel = layout.cancel;
+    assert!(input.handle_minecart_command_block_editor_mouse_input(
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(cancel.x + 1),
+            f64::from(cancel.y + 1),
+        )),
+        surface,
+        &FixedCommandSuggestionTextMeasurer,
+    ));
+    assert!(!input.minecart_command_block_editor_is_active());
+    assert!(world.minecart_command_block_editor().is_none());
+
+    assert!(world.try_open_minecart_command_block_editor(entity_id));
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+    assert_eq!(
+        world.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![entity_id],
+        }),
+        1
+    );
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(!input.minecart_command_block_editor_is_active());
+    assert!(world.minecart_command_block_editor().is_none());
+
+    let mut replacement_world = world_with_command_minecart(entity_id, "say initial", "output");
+    let mut replacement_input = ClientInputState::new(true);
+    assert!(replacement_world.try_open_minecart_command_block_editor(entity_id));
+    replacement_input.sync_minecart_command_block_editor(
+        &mut replacement_world,
+        &mut counters,
+        &commands,
+    );
+    assert!(replacement_world.open_local_inventory());
+    replacement_input.sync_minecart_command_block_editor(
+        &mut replacement_world,
+        &mut counters,
+        &commands,
+    );
+    assert!(!replacement_input.minecart_command_block_editor_is_active());
+    assert!(replacement_world.minecart_command_block_editor().is_none());
+    assert_eq!(counters.set_command_minecart_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn minecart_command_block_editor_enter_sends_once() {
+    let entity_id = 300;
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_command_minecart(entity_id, "say initial", "output");
+    assert!(world.try_open_minecart_command_block_editor(entity_id));
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+    assert!(input.replace_chat_entry_text("say enter".to_string()));
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.set_command_minecart_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SetCommandMinecart(SetCommandMinecart {
+            entity_id,
+            command: "say enter".to_string(),
+            track_output: true,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+    assert!(!input.minecart_command_block_editor_is_active());
+    assert!(world.minecart_command_block_editor().is_none());
+    assert_eq!(
+        world
+            .minecart_command_block_data(entity_id)
+            .unwrap()
+            .command,
+        "say initial"
+    );
+}
+
+#[test]
+fn minecart_command_block_editor_uses_commands_only_suggestions_and_utf16_limit() {
+    let entity_id = 300;
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_command_minecart(entity_id, "c", "");
+    let literals = (0..12)
+        .map(|index| format!("cmd{index:02}"))
+        .collect::<Vec<_>>();
+    world.apply_commands(local_literal_command_tree(
+        &literals.iter().map(String::as_str).collect::<Vec<_>>(),
+    ));
+    assert!(world.try_open_minecart_command_block_editor(entity_id));
+    input.sync_minecart_command_block_editor(&mut world, &mut counters, &commands);
+
+    let hud = input
+        .command_suggestion_hud_state(
+            &world,
+            &FixedCommandSuggestionTextMeasurer,
+            PhysicalSize::new(320, 240),
+        )
+        .unwrap();
+    assert!(hud.command_block_layout);
+    assert_eq!(hud.rect.y, 71);
+    assert_eq!(hud.rect.height, 84);
+    assert_eq!(hud.entries.len(), 7);
+    assert!(hud.has_next);
+
+    assert!(input.replace_chat_entry_text("😀".repeat(16_250)));
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "a");
+    assert_eq!(
+        input
+            .chat_entry
+            .as_ref()
+            .unwrap()
+            .text
+            .encode_utf16()
+            .count(),
+        MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS
+    );
+    assert!(!input.chat_entry.as_ref().unwrap().text.ends_with('a'));
 }
 
 #[test]

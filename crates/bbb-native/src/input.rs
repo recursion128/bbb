@@ -73,8 +73,8 @@ use bbb_protocol::{
         ItemStackSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryValue,
         PlayerActionKind, PlayerCommandAction, PlayerInput, PlayerModelTypeSummary, RecipeBookType,
         ResolvableProfileData, ResolvableProfileKind, ResolvableProfileKindSummary,
-        ResolvableProfileSummary, SeenAdvancements, SetCommandBlock, SignUpdate,
-        MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS,
+        ResolvableProfileSummary, SeenAdvancements, SetCommandBlock, SetCommandMinecart,
+        SignUpdate, MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -172,6 +172,7 @@ mod commands;
 mod component_patch;
 mod inventory;
 mod jigsaw_block;
+mod minecart_command_block;
 mod mouse;
 mod movement;
 mod structure_block;
@@ -248,6 +249,7 @@ pub(crate) use inventory::{
     STONECUTTER_SCROLLER_X, STONECUTTER_SCROLLER_Y, STONECUTTER_SELECTED_RECIPE_DATA_ID,
     STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT,
 };
+use minecart_command_block::MinecartCommandBlockEditorInputState;
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
@@ -747,6 +749,7 @@ enum ChatEntryOwner {
     #[default]
     Chat,
     CommandBlock(CommandBlockEditorInputState),
+    MinecartCommandBlock(MinecartCommandBlockEditorInputState),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -908,7 +911,10 @@ impl CommandSuggestionTextMeasurer for bbb_renderer::Renderer {
 
 impl ChatEntryState {
     fn commands_only(&self) -> bool {
-        matches!(self.owner, ChatEntryOwner::CommandBlock(_))
+        matches!(
+            self.owner,
+            ChatEntryOwner::CommandBlock(_) | ChatEntryOwner::MinecartCommandBlock(_)
+        )
     }
 
     fn suggestion_line_limit(&self) -> usize {
@@ -1460,7 +1466,7 @@ impl ClientInputState {
     pub(crate) fn command_block_editor_is_active(&self) -> bool {
         self.chat_entry
             .as_ref()
-            .is_some_and(|entry| entry.commands_only())
+            .is_some_and(|entry| matches!(entry.owner, ChatEntryOwner::CommandBlock(_)))
     }
 
     pub(crate) fn command_block_editor_hud_state(&self) -> Option<CommandBlockEditorHudState> {
@@ -1495,6 +1501,7 @@ impl ClientInputState {
             || world.structure_block_editor().is_some()
             || world.jigsaw_block_editor().is_some()
             || world.test_instance_block_editor().is_some()
+            || world.minecart_command_block_editor().is_some()
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open();
@@ -1515,7 +1522,7 @@ impl ClientInputState {
                 ChatEntryOwner::CommandBlock(editor) => {
                     Some((editor.open_count, editor.authoritative_revision))
                 }
-                ChatEntryOwner::Chat => None,
+                ChatEntryOwner::Chat | ChatEntryOwner::MinecartCommandBlock(_) => None,
             });
         if current_signature == Some((open_count, authoritative.authoritative_revision)) {
             return;
@@ -1725,7 +1732,7 @@ impl ClientInputState {
             .as_mut()
             .and_then(|entry| match &mut entry.owner {
                 ChatEntryOwner::CommandBlock(editor) => Some(editor),
-                ChatEntryOwner::Chat => None,
+                ChatEntryOwner::Chat | ChatEntryOwner::MinecartCommandBlock(_) => None,
             })
         else {
             return true;
@@ -10789,24 +10796,36 @@ fn handle_chat_entry_key(
                 Some(())
             });
             if hidden.is_none() {
-                let closes_command_block = input
-                    .chat_entry
-                    .as_ref()
-                    .is_some_and(|entry| entry.commands_only());
+                let close_owner = input.chat_entry.as_ref().map(|entry| &entry.owner);
+                let closes_command_block =
+                    matches!(close_owner, Some(ChatEntryOwner::CommandBlock(_)));
+                let closes_minecart_command_block =
+                    matches!(close_owner, Some(ChatEntryOwner::MinecartCommandBlock(_)));
                 input.chat_entry = None;
                 input.chat_scroll_lines = 0;
                 if closes_command_block {
                     world.close_command_block_editor();
                 }
+                if closes_minecart_command_block {
+                    world.close_minecart_command_block_editor();
+                }
             }
         }
         KeyCode::PageUp => {
-            if !input.command_block_editor_is_active() {
+            if input
+                .chat_entry
+                .as_ref()
+                .is_none_or(|entry| !entry.commands_only())
+            {
                 input.chat_scroll_lines = input.chat_scroll_lines.saturating_add(19).min(100);
             }
         }
         KeyCode::PageDown => {
-            if !input.command_block_editor_is_active() {
+            if input
+                .chat_entry
+                .as_ref()
+                .is_none_or(|entry| !entry.commands_only())
+            {
                 input.chat_scroll_lines = input.chat_scroll_lines.saturating_sub(19);
             }
         }
@@ -11573,6 +11592,23 @@ fn submit_chat_entry(
             world.clear_command_block_editor_last_output();
         }
         world.close_command_block_editor();
+        return;
+    }
+    if let ChatEntryOwner::MinecartCommandBlock(editor) = &entry.owner {
+        let track_output = editor.track_output;
+        queue_set_command_minecart_command(
+            counters,
+            net_commands,
+            SetCommandMinecart {
+                entity_id: editor.entity_id,
+                command: entry.text,
+                track_output,
+            },
+        );
+        if !track_output {
+            world.clear_minecart_command_block_editor_last_output();
+        }
+        world.close_minecart_command_block_editor();
         return;
     }
     let Some(command) = normalize_command_entry(&entry.text) else {

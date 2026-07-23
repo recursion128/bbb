@@ -929,6 +929,21 @@ impl SimulationInputRuntime {
             ) {
                 return;
             }
+            if context
+                .input
+                .handle_minecart_command_block_editor_mouse_input(
+                    context.world,
+                    context.net_counters,
+                    context.net_commands,
+                    button,
+                    state,
+                    self.cursor_position,
+                    self.surface_size,
+                    &self.text_measurements,
+                )
+            {
+                return;
+            }
             if context.input.handle_command_block_editor_mouse_input(
                 context.world,
                 context.net_counters,
@@ -1098,7 +1113,9 @@ impl SimulationInputRuntime {
             if context.input.handle_command_suggestion_mouse_wheel(delta) {
                 return;
             }
-            if context.input.command_block_editor_is_active() {
+            if context.input.command_block_editor_is_active()
+                || context.input.minecart_command_block_editor_is_active()
+            {
                 return;
             }
             let scroll = match delta {
@@ -1330,6 +1347,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
+        || world.minecart_command_block_editor().is_some()
         || world.structure_block_editor().is_some()
         || world.jigsaw_block_editor().is_some()
         || world.test_instance_block_editor().is_some()

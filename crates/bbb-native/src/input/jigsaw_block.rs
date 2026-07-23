@@ -214,6 +214,7 @@ impl ClientInputState {
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open()
             || self.command_block_editor_is_active()
+            || self.minecart_command_block_editor_is_active()
             || self.structure_block_editor_is_active()
             || self.test_instance_block_editor_is_active();
         if replaced {

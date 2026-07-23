@@ -36,15 +36,16 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     hud_command_block_editor_layout, hud_jigsaw_block_editor_layout,
-    hud_structure_block_editor_layout, hud_test_instance_block_editor_layout, sign_text_base_color,
-    BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, ConduitModelPart, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine,
-    DebugTextBillboard, EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
+    hud_minecart_command_block_editor_layout, hud_structure_block_editor_layout,
+    hud_test_instance_block_editor_layout, sign_text_base_color, BlockDestroyOverlay,
+    BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment, CloudFrame, ConduitModelPart,
+    DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
+    EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorScreen,
-    HudCommandSuggestionEntry, HudCommandSuggestionTooltip, HudCommandSuggestions,
-    HudCommandSuggestionsLayout, HudDebugCrosshair, HudDebugFrameTimeChart,
+    HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorKind,
+    HudCommandBlockEditorScreen, HudCommandSuggestionEntry, HudCommandSuggestionTooltip,
+    HudCommandSuggestions, HudCommandSuggestionsLayout, HudDebugCrosshair, HudDebugFrameTimeChart,
     HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
     HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOptionsTooltip,
     HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview,
@@ -2362,6 +2363,7 @@ pub(crate) fn advance_simulation(
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_command_block_editor(world, net_counters, net_commands);
+    input.sync_minecart_command_block_editor(world, net_counters, net_commands);
     input.sync_structure_block_editor(world, net_counters, net_commands);
     input.sync_jigsaw_block_editor(world, net_counters, net_commands);
     input.sync_test_instance_block_editor(world, net_counters, net_commands);
@@ -4126,6 +4128,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.command_block_editor().is_some()
+        || world.minecart_command_block_editor().is_some()
         || world.structure_block_editor().is_some()
         || world.jigsaw_block_editor().is_some()
         || world.test_instance_block_editor().is_some()
@@ -5413,13 +5416,16 @@ fn hud_command_block_editor_screen(
     item_runtime: Option<&NativeItemRuntime>,
     surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudCommandBlockEditorScreen> {
-    let state = input.command_block_editor_hud_state()?;
+    let Some(state) = input.command_block_editor_hud_state() else {
+        return hud_minecart_command_block_editor_screen(input, item_runtime, surface_size);
+    };
     let layout = hud_command_block_editor_layout(surface_size);
     let mouse_position = state.mouse_position;
     let hovered = |rect: bbb_renderer::HudCommandBlockEditorRect| {
         mouse_position.is_some_and(|(x, y)| rect.contains(x, y))
     };
     Some(HudCommandBlockEditorScreen {
+        kind: HudCommandBlockEditorKind::Block,
         title: localized_gui_text(
             item_runtime,
             "advMode.setCommand",
@@ -5480,6 +5486,51 @@ fn hud_command_block_editor_screen(
         mode_hovered: hovered(layout.mode),
         conditional_hovered: hovered(layout.conditional),
         automatic_hovered: hovered(layout.automatic),
+        track_output_hovered: hovered(layout.track_output),
+        done_hovered: hovered(layout.done),
+        cancel_hovered: hovered(layout.cancel),
+    })
+}
+
+fn hud_minecart_command_block_editor_screen(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudCommandBlockEditorScreen> {
+    let state = input.minecart_command_block_editor_hud_state()?;
+    let layout = hud_minecart_command_block_editor_layout(surface_size);
+    let mouse_position = state.mouse_position;
+    let hovered = |rect: bbb_renderer::HudCommandBlockEditorRect| {
+        mouse_position.is_some_and(|(x, y)| rect.contains(x, y))
+    };
+    Some(HudCommandBlockEditorScreen {
+        kind: HudCommandBlockEditorKind::Minecart,
+        title: localized_gui_text(
+            item_runtime,
+            "advMode.setCommand",
+            "Set Console Command for Block",
+        ),
+        command_label: localized_gui_text(item_runtime, "advMode.command", "Console Command"),
+        previous_output_label: localized_gui_text(
+            item_runtime,
+            "advMode.previousOutput",
+            "Previous Output",
+        ),
+        previous_output: if state.track_output {
+            state.previous_output
+        } else {
+            "-".to_string()
+        },
+        mode: String::new(),
+        conditional: String::new(),
+        automatic: String::new(),
+        track_output: if state.track_output { "O" } else { "X" }.to_string(),
+        done: localized_gui_text(item_runtime, "gui.done", "Done"),
+        cancel: localized_gui_text(item_runtime, "gui.cancel", "Cancel"),
+        controls_enabled: true,
+        mode_hovered: false,
+        conditional_hovered: false,
+        automatic_hovered: false,
         track_output_hovered: hovered(layout.track_output),
         done_hovered: hovered(layout.done),
         cancel_hovered: hovered(layout.cancel),

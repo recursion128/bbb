@@ -1870,6 +1870,7 @@ pub struct HudSignEditorScreen {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudCommandBlockEditorScreen {
+    pub kind: HudCommandBlockEditorKind,
     pub title: String,
     pub command_label: String,
     pub previous_output_label: String,
@@ -1887,6 +1888,12 @@ pub struct HudCommandBlockEditorScreen {
     pub track_output_hovered: bool,
     pub done_hovered: bool,
     pub cancel_hovered: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudCommandBlockEditorKind {
+    Block,
+    Minecart,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1975,6 +1982,15 @@ pub fn hud_command_block_editor_layout(
             height: 20,
         },
     }
+}
+
+pub fn hud_minecart_command_block_editor_layout(
+    surface_size: PhysicalSize<u32>,
+) -> HudCommandBlockEditorLayout {
+    let mut layout = hud_command_block_editor_layout(surface_size);
+    layout.previous_output.y = 150;
+    layout.track_output.y = 150;
+    layout
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -9328,7 +9344,12 @@ fn push_hud_command_block_editor_screen<'a>(
     let Some(font_atlas) = font_atlas else {
         return;
     };
-    let layout = hud_command_block_editor_layout(surface_size);
+    let layout = match screen.kind {
+        HudCommandBlockEditorKind::Block => hud_command_block_editor_layout(surface_size),
+        HudCommandBlockEditorKind::Minecart => {
+            hud_minecart_command_block_editor_layout(surface_size)
+        }
+    };
     let label_tint = hud_argb_to_tint(0xFFA0A0A0);
     push_hud_debug_options_centered_text(
         vertices,
@@ -9369,7 +9390,10 @@ fn push_hud_command_block_editor_screen<'a>(
             frame_index,
             surface_size,
             &screen.previous_output_label,
-            (layout.previous_output.x.saturating_add(1) as f32, 125.0),
+            (
+                layout.previous_output.x.saturating_add(1) as f32,
+                layout.previous_output.y.saturating_sub(10) as f32,
+            ),
             label_tint,
             1.0,
             true,
@@ -9445,31 +9469,35 @@ fn push_hud_command_block_editor_screen<'a>(
         );
     }
 
-    for (rect, label, hovered, enabled) in [
-        (
-            layout.track_output,
-            screen.track_output.as_str(),
-            screen.track_output_hovered,
-            screen.controls_enabled,
-        ),
-        (
-            layout.mode,
-            screen.mode.as_str(),
-            screen.mode_hovered,
-            screen.controls_enabled,
-        ),
-        (
-            layout.conditional,
-            screen.conditional.as_str(),
-            screen.conditional_hovered,
-            screen.controls_enabled,
-        ),
-        (
-            layout.automatic,
-            screen.automatic.as_str(),
-            screen.automatic_hovered,
-            screen.controls_enabled,
-        ),
+    let mut buttons = vec![(
+        layout.track_output,
+        screen.track_output.as_str(),
+        screen.track_output_hovered,
+        screen.controls_enabled,
+    )];
+    if screen.kind == HudCommandBlockEditorKind::Block {
+        buttons.extend([
+            (
+                layout.mode,
+                screen.mode.as_str(),
+                screen.mode_hovered,
+                screen.controls_enabled,
+            ),
+            (
+                layout.conditional,
+                screen.conditional.as_str(),
+                screen.conditional_hovered,
+                screen.controls_enabled,
+            ),
+            (
+                layout.automatic,
+                screen.automatic.as_str(),
+                screen.automatic_hovered,
+                screen.controls_enabled,
+            ),
+        ]);
+    }
+    buttons.extend([
         (
             layout.done,
             screen.done.as_str(),
@@ -9482,7 +9510,8 @@ fn push_hud_command_block_editor_screen<'a>(
             screen.cancel_hovered,
             true,
         ),
-    ] {
+    ]);
+    for (rect, label, hovered, enabled) in buttons {
         push_hud_debug_options_button(
             vertices,
             commands,
@@ -18741,6 +18770,43 @@ mod tests {
         let wide = hud_command_block_editor_layout(PhysicalSize::new(854, 480));
         assert_eq!(wide.command_input.x, 277);
         assert_eq!(wide.mode.x, 273);
+        assert_eq!(wide.done.y, 252);
+        assert_eq!(wide.cancel.x, 431);
+    }
+
+    #[test]
+    fn minecart_command_block_editor_layout_matches_vanilla_absolute_geometry() {
+        let compact = hud_minecart_command_block_editor_layout(PhysicalSize::new(320, 240));
+        assert_eq!(
+            compact.command_input,
+            HudCommandBlockEditorRect {
+                x: 10,
+                y: 50,
+                width: 300,
+                height: 20,
+            }
+        );
+        assert_eq!(compact.previous_output.x, 10);
+        assert_eq!(compact.previous_output.y, 150);
+        assert_eq!(compact.track_output.x, 290);
+        assert_eq!(compact.track_output.y, 150);
+        assert_eq!(
+            compact.done,
+            HudCommandBlockEditorRect {
+                x: 6,
+                y: 192,
+                width: 150,
+                height: 20,
+            }
+        );
+        assert_eq!(compact.cancel.x, 164);
+
+        let wide = hud_minecart_command_block_editor_layout(PhysicalSize::new(854, 480));
+        assert_eq!(wide.command_input.x, 277);
+        assert_eq!(wide.previous_output.x, 277);
+        assert_eq!(wide.previous_output.y, 150);
+        assert_eq!(wide.track_output.x, 557);
+        assert_eq!(wide.track_output.y, 150);
         assert_eq!(wide.done.y, 252);
         assert_eq!(wide.cancel.x, 431);
     }

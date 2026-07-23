@@ -15,9 +15,9 @@ use bbb_protocol::packets::{
     PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
     PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
     RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, SetBeacon, SetCommandBlock, SetCreativeModeSlot,
-    SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity, TeleportToEntity,
-    TestInstanceBlockAction, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    SelectBundleItem, SelectTradeCommand, SetBeacon, SetCommandBlock, SetCommandMinecart,
+    SetCreativeModeSlot, SetJigsawBlock, SetStructureBlock, SignUpdate, SpectateEntity,
+    TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -274,6 +274,18 @@ pub(crate) fn queue_set_command_block_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SetCommandBlock(command)).is_ok() {
             counters.set_command_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_command_minecart_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetCommandMinecart,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetCommandMinecart(command)).is_ok() {
+            counters.set_command_minecart_commands_queued += 1;
         }
     }
 }

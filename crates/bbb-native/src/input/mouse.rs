@@ -261,6 +261,9 @@ pub(super) fn start_use_item(
     input.use_item_repeat_delay_ticks = USE_ITEM_REPEAT_DELAY_TICKS;
     match camera_target {
         Some(CrosshairTarget::Entity(hit)) => {
+            if world.try_open_minecart_command_block_editor(hit.entity_id) {
+                input.sync_minecart_command_block_editor(world, counters, net_commands);
+            }
             let hand = item_use_hand(world);
             queue_interact_entity_command(
                 counters,
@@ -2075,6 +2078,34 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_on_permitted_command_minecart_opens_editor_and_still_interacts() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_command_minecart(123);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(input.minecart_command_block_editor_is_active());
+        assert!(world.minecart_command_block_editor().is_some());
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        let NetCommand::InteractEntity(interact) = rx.try_recv().unwrap() else {
+            panic!("expected command-minecart interaction");
+        };
+        assert_eq!(interact.entity_id, 123);
+        assert_eq!(interact.hand, InteractionHand::MainHand);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn right_mouse_press_on_entity_uses_offhand_when_selected_hotbar_slot_is_empty() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -2896,6 +2927,55 @@ mod tests {
 
     fn world_with_crosshair_entity(entity_id: i32) -> WorldStore {
         world_with_crosshair_entity_at(entity_id, [0.0, 1.0, 3.0])
+    }
+
+    fn world_with_crosshair_command_minecart(entity_id: i32) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 1,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        assert!(world.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 42,
+            event_id: 26,
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        world.apply_add_entity(AddEntity {
+            id: entity_id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 1.0,
+                z: 3.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world
     }
 
     fn world_with_crosshair_entity_at(entity_id: i32, position: [f64; 3]) -> WorldStore {
