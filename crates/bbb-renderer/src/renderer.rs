@@ -16,8 +16,8 @@ use crate::{
     },
     camera::{
         sanitize_lightmap_block_factor, sanitize_lightmap_brightness_factor, CameraHurtEffect,
-        CameraPose, CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
-        VANILLA_DEFAULT_GLINT_SPEED,
+        CameraPose, CameraSpinningEffect, CameraUniform, ClearColor, FogEnvironment,
+        LightmapEnvironment, TerrainBounds, VANILLA_DEFAULT_GLINT_SPEED,
     },
     clouds::{
         cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
@@ -381,6 +381,7 @@ pub struct Renderer {
     pub(super) entity_model_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) camera_hurt_effect: Option<CameraHurtEffect>,
+    pub(super) camera_spinning_effect: Option<CameraSpinningEffect>,
     pub(super) camera_fov_degrees: f32,
     pub(super) lightmap_environment: LightmapEnvironment,
     pub(super) fog_environment: FogEnvironment,
@@ -1706,6 +1707,7 @@ impl Renderer {
             entity_model_bounds: None,
             camera_pose: None,
             camera_hurt_effect: None,
+            camera_spinning_effect: None,
             camera_fov_degrees: 70.0,
             lightmap_environment: LightmapEnvironment::default(),
             fog_environment: FogEnvironment::default(),
@@ -2232,6 +2234,14 @@ impl Renderer {
             return;
         }
         self.camera_hurt_effect = effect;
+        self.update_camera();
+    }
+
+    pub fn set_camera_spinning_effect(&mut self, effect: Option<CameraSpinningEffect>) {
+        if self.camera_spinning_effect == effect {
+            return;
+        }
+        self.camera_spinning_effect = effect;
         self.update_camera();
     }
 
@@ -2820,11 +2830,12 @@ impl Renderer {
         let aspect = self.config.width as f32 / self.config.height.max(1) as f32;
         let glint_elapsed_millis = self.started_at.elapsed().as_secs_f64() * 1000.0;
         let uniform = if let Some(pose) = self.camera_pose {
-            CameraUniform::from_pose_with_fov_and_hurt(
+            CameraUniform::from_pose_with_effects(
                 pose,
                 aspect,
                 self.camera_fov_degrees,
                 self.camera_hurt_effect,
+                self.camera_spinning_effect,
             )
         } else {
             self.scene_bounds()

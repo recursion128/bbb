@@ -1486,6 +1486,64 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
 }
 
 #[test]
+fn camera_spinning_effect_ticks_and_interpolates_nausea_like_vanilla() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect_with_blend(
+        42,
+        VANILLA_MOB_EFFECT_NAUSEA_ID,
+        260,
+        true,
+    )));
+    let mut spinning = CameraSpinningEffectTickState::default();
+
+    assert_eq!(spinning.effect_for_world(&world, 1.0), None);
+    world.advance_client_level_entity_ticks_with_observation(1);
+    spinning.advance_for_world(1, &world);
+
+    assert_eq!(spinning.effect_for_world(&world, 0.0), None);
+    let effect = spinning.effect_for_world(&world, 0.5).unwrap();
+    assert!((effect.intensity - 1.0 / 300.0).abs() < 1e-6);
+    assert_eq!(effect.angle_degrees, 10.5);
+    let effect = spinning.effect_for_world(&world, 1.0).unwrap();
+    assert!((effect.intensity - 1.0 / 150.0).abs() < 1e-6);
+    assert_eq!(effect.angle_degrees, 14.0);
+}
+
+#[test]
+fn camera_spinning_effect_stops_without_resetting_phase_after_nausea_removal() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NAUSEA_ID, 260,)));
+    let mut spinning = CameraSpinningEffectTickState::default();
+    spinning.advance_for_world(2, &world);
+    assert_eq!(
+        spinning
+            .effect_for_world(&world, 1.0)
+            .unwrap()
+            .angle_degrees,
+        21.0
+    );
+
+    assert!(world.apply_remove_mob_effect(RemoveMobEffect {
+        entity_id: 42,
+        effect_id: VANILLA_MOB_EFFECT_NAUSEA_ID,
+    }));
+    spinning.advance_for_world(3, &world);
+    assert_eq!(spinning.effect_for_world(&world, 1.0), None);
+
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NAUSEA_ID, 260,)));
+    spinning.advance_for_world(1, &world);
+    assert_eq!(
+        spinning
+            .effect_for_world(&world, 0.0)
+            .unwrap()
+            .angle_degrees,
+        21.0
+    );
+}
+
+#[test]
 fn hud_action_bar_and_title_projection_matches_world_state() {
     let mut world = WorldStore::new();
     assert_eq!(hud_action_bar_text_from_world(&world, None, 0.25), None);
@@ -7022,6 +7080,165 @@ fn fog_environment_applies_biome_water_fog_end_distance_modifier() {
 }
 
 #[test]
+fn blindness_overrides_atmospheric_fog_and_darkens_its_color() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    attach_lightmap_local_player(&mut world, 42);
+    let baseline = clear_color_for_world(&world, false);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_BLINDNESS_ID, 10,)));
+
+    let fog = fog_environment_for_world_at_camera(
+        &world,
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.0,
+        false,
+    );
+
+    // lerp(10 / 20, 12 * 16, 5) = 98.5.
+    assert_eq!(fog.environmental_start, 24.625);
+    assert_eq!(fog.environmental_end, 98.5);
+    assert!((fog.sky_end - 78.8).abs() < 1e-5);
+    assert!((fog.cloud_end - 78.8).abs() < 1e-5);
+    // Blindness duration 10 contributes darkness 0.5, then FogRenderer
+    // multiplies the base color by square(1 - darkness) = 0.25.
+    assert_eq!(
+        fog.color[0],
+        ((baseline.r * 255.0) as i32 / 4) as f32 / 255.0
+    );
+    assert_eq!(
+        fog.color[1],
+        ((baseline.g * 255.0) as i32 / 4) as f32 / 255.0
+    );
+    assert_eq!(
+        fog.color[2],
+        ((baseline.b * 255.0) as i32 / 4) as f32 / 255.0
+    );
+}
+
+#[test]
+fn blindness_takes_fog_precedence_over_darkness_and_blocks_sky() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_DARKNESS_ID, 260,)));
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_BLINDNESS_ID, -1,)));
+
+    let fog = fog_environment_for_world_at_camera(
+        &world,
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.0,
+        false,
+    );
+
+    assert_eq!(fog.environmental_start, 1.25);
+    assert_eq!(fog.environmental_end, 5.0);
+    assert_eq!(fog.sky_end, 4.0);
+    assert_eq!(fog.cloud_end, 4.0);
+    assert_eq!(
+        sky_environment_for_world_at_camera(&world, camera_pose_from_world(&world), false),
+        SkyEnvironment::disabled()
+    );
+}
+
+#[test]
+fn darkness_fog_uses_canonical_blend_factor() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect_with_blend(
+        42,
+        VANILLA_MOB_EFFECT_DARKNESS_ID,
+        260,
+        true,
+    )));
+
+    let initial = fog_environment_for_world_at_camera(
+        &world,
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.0,
+        false,
+    );
+    assert_eq!(initial.environmental_end, 192.0);
+
+    world.advance_client_level_entity_ticks_with_observation(11);
+    let blended = fog_environment_for_world_at_camera(
+        &world,
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.0,
+        false,
+    );
+    let expected_end = 192.0 + 0.5 * (15.0 - 192.0);
+    assert!((blended.environmental_start - expected_end * 0.75).abs() < 1e-5);
+    assert!((blended.environmental_end - expected_end).abs() < 1e-5);
+    assert!((blended.sky_end - expected_end).abs() < 1e-5);
+    assert!((blended.cloud_end - expected_end).abs() < 1e-5);
+}
+
+#[test]
+fn camera_effect_fog_and_sky_follow_the_active_camera_entity() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_PLAYER_ID));
+    assert!(world.apply_update_mob_effect(mob_effect(100, VANILLA_MOB_EFFECT_BLINDNESS_ID, -1,)));
+
+    let local_fog = fog_environment_for_world_at_camera(
+        &world,
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.0,
+        false,
+    );
+    assert_ne!(local_fog.environmental_end, 5.0);
+
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
+    let remote_fog = fog_environment_for_world_at_camera(
+        &world,
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.0,
+        false,
+    );
+    assert_eq!(remote_fog.environmental_end, 5.0);
+    assert_eq!(
+        sky_environment_for_world_at_camera(&world, camera_pose_from_world(&world), false),
+        SkyEnvironment::disabled()
+    );
+}
+
+#[test]
+fn night_vision_brightens_atmospheric_fog_unless_darkness_is_present() {
+    let mut world = world_with_custom_dimension_environment();
+    attach_lightmap_local_player(&mut world, 42);
+    let baseline = clear_color_for_world_at_camera(&world, camera_pose_from_world(&world), false);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, 240,)));
+
+    let night_vision =
+        clear_color_for_world_at_camera(&world, camera_pose_from_world(&world), false);
+    assert!(night_vision.r >= baseline.r);
+    assert!(night_vision.g >= baseline.g);
+    assert!(night_vision.b >= baseline.b);
+    assert_ne!(night_vision, baseline);
+    assert_eq!(night_vision.r.max(night_vision.g).max(night_vision.b), 1.0);
+
+    assert!(world.apply_update_mob_effect(mob_effect_with_blend(
+        42,
+        VANILLA_MOB_EFFECT_DARKNESS_ID,
+        260,
+        true,
+    )));
+    let darkness = clear_color_for_world_at_camera(&world, camera_pose_from_world(&world), false);
+    assert_clear_color_close(darkness, baseline);
+}
+
+#[test]
 fn camera_biome_sky_color_uses_vanilla_gaussian_spatial_weights() {
     let mut world = world_with_custom_dimension_environment();
     world.set_local_player_pose(local_player_pose(
@@ -7317,12 +7534,14 @@ fn lightmap_tick_state_blends_local_player_darkness_like_vanilla() {
     assert_eq!(environment.brightness_factor, 0.8);
     assert_eq!(environment.darkness_scale, 0.0);
 
+    world.advance_client_level_entity_ticks_with_observation(1);
     lightmap.advance_for_world(1, &world);
     let environment = lightmap.environment_for_world(&world);
-    let first_tick_factor = 1.0 / VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS as f32;
+    let first_tick_factor = 1.0 / 22.0;
     assert!((environment.brightness_factor - (0.8 - first_tick_factor)).abs() < 1e-6);
     assert!((environment.darkness_scale - 0.45 * first_tick_factor).abs() < 1e-6);
 
+    world.advance_client_level_entity_ticks_with_observation(21);
     lightmap.advance_for_world(21, &world);
     let environment = lightmap.environment_for_world(&world);
     assert_eq!(environment.brightness_factor, 0.0);
@@ -7368,6 +7587,7 @@ fn lightmap_tick_state_advances_night_vision_duration_before_sampling() {
         1.0
     );
 
+    world.advance_client_level_entity_ticks_with_observation(1);
     lightmap.advance_for_world(1, &world);
     let environment = lightmap.environment_for_world(&world);
     let expected = 0.7
@@ -7427,6 +7647,7 @@ fn lightmap_tick_state_prefers_night_vision_over_conduit_water_vision() {
     assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, 240,)));
     let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
 
+    world.advance_client_level_entity_ticks_with_observation(100);
     lightmap.advance_for_world(100, &world);
     let expected = 0.7
         + ((140.0 - VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK) * std::f32::consts::PI * 0.2).sin() * 0.3;

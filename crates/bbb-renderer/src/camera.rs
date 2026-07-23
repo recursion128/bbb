@@ -282,6 +282,16 @@ pub struct CameraHurtEffect {
     pub damage_tilt_strength: f32,
 }
 
+/// Vanilla `GameRenderer`'s portal/nausea projection distortion after the
+/// camera hurt/view-bob transform. Native currently supplies the nausea
+/// contribution; keeping the renderer input generic preserves the shared
+/// projection owner for a future portal contribution.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraSpinningEffect {
+    pub intensity: f32,
+    pub angle_degrees: f32,
+}
+
 impl CameraPose {
     pub const STANDING_EYE_HEIGHT: f32 = 1.62;
 
@@ -583,11 +593,22 @@ impl CameraUniform {
         Self::from_pose_with_fov_and_hurt(pose, aspect, fov_degrees, None)
     }
 
+    #[cfg(test)]
     pub(crate) fn from_pose_with_fov_and_hurt(
         pose: CameraPose,
         aspect: f32,
         fov_degrees: f32,
         hurt: Option<CameraHurtEffect>,
+    ) -> Self {
+        Self::from_pose_with_effects(pose, aspect, fov_degrees, hurt, None)
+    }
+
+    pub(crate) fn from_pose_with_effects(
+        pose: CameraPose,
+        aspect: f32,
+        fov_degrees: f32,
+        hurt: Option<CameraHurtEffect>,
+        spinning: Option<CameraSpinningEffect>,
     ) -> Self {
         let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
         let yaw = pose.y_rot.to_radians();
@@ -611,7 +632,8 @@ impl CameraUniform {
         // Vanilla `GameRenderer.renderLevel`: `projectionMatrix.mul(bobStack.last().pose())`.
         // `bobHurt` is therefore camera-space presentation state on the projection side of
         // the view matrix, not part of `CameraRenderState.viewRotationMatrix`.
-        let projection = projection * camera_hurt_transform(hurt);
+        let projection =
+            projection * camera_hurt_transform(hurt) * camera_spinning_transform(spinning);
         let view = Mat4::look_at_rh(eye, target, Vec3::Y);
 
         Self {
@@ -879,6 +901,28 @@ fn camera_hurt_transform(effect: Option<CameraHurtEffect>) -> Mat4 {
     transform *= Mat4::from_rotation_z((-hurt * 14.0 * strength).to_radians());
     transform *= Mat4::from_rotation_y(hurt_dir.to_radians());
     transform
+}
+
+fn camera_spinning_transform(effect: Option<CameraSpinningEffect>) -> Mat4 {
+    let Some(effect) = effect else {
+        return Mat4::IDENTITY;
+    };
+    if !effect.intensity.is_finite() || effect.intensity <= 0.0 || !effect.angle_degrees.is_finite()
+    {
+        return Mat4::IDENTITY;
+    }
+    let intensity = effect.intensity.clamp(0.0, 1.0);
+    let mut skew = 5.0 / (intensity * intensity + 5.0) - intensity * 0.04;
+    skew *= skew;
+    let axis = Vec3::new(
+        0.0,
+        std::f32::consts::FRAC_1_SQRT_2,
+        std::f32::consts::FRAC_1_SQRT_2,
+    );
+    let angle = effect.angle_degrees.to_radians();
+    Mat4::from_axis_angle(axis, angle)
+        * Mat4::from_scale(Vec3::new(1.0 / skew, 1.0, 1.0))
+        * Mat4::from_axis_angle(axis, -angle)
 }
 
 pub(crate) fn vanilla_glint_texture_offsets(elapsed_millis: f64, glint_speed: f64) -> [f32; 2] {
@@ -1337,6 +1381,64 @@ mod tests {
             }),
         );
         assert_mat4_close(disabled.projection(), base.projection());
+    }
+
+    #[test]
+    fn camera_spinning_transform_matches_vanilla_projection_order() {
+        let effect = CameraSpinningEffect {
+            intensity: 0.5,
+            angle_degrees: 35.0,
+        };
+        let mut skew = 5.0 / (0.5 * 0.5 + 5.0) - 0.5 * 0.04;
+        skew *= skew;
+        let axis = Vec3::new(
+            0.0,
+            std::f32::consts::FRAC_1_SQRT_2,
+            std::f32::consts::FRAC_1_SQRT_2,
+        );
+        let angle = 35.0_f32.to_radians();
+        let expected = Mat4::from_axis_angle(axis, angle)
+            * Mat4::from_scale(Vec3::new(1.0 / skew, 1.0, 1.0))
+            * Mat4::from_axis_angle(axis, -angle);
+        assert_mat4_close(camera_spinning_transform(Some(effect)), expected);
+    }
+
+    #[test]
+    fn camera_uniform_applies_spinning_after_hurt_without_changing_view() {
+        let pose = CameraPose {
+            position: [1.0, 64.0, -2.0],
+            y_rot: 25.0,
+            x_rot: -10.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let base = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 70.0);
+        let hurt = CameraHurtEffect {
+            hurt_time: 5.0,
+            hurt_duration: 10.0,
+            hurt_dir: 20.0,
+            death_time: 0.0,
+            is_dead_or_dying: false,
+            damage_tilt_strength: 1.0,
+        };
+        let spinning = CameraSpinningEffect {
+            intensity: 0.75,
+            angle_degrees: 42.0,
+        };
+        let uniform = CameraUniform::from_pose_with_effects(
+            pose,
+            16.0 / 9.0,
+            70.0,
+            Some(hurt),
+            Some(spinning),
+        );
+        let transform =
+            camera_hurt_transform(Some(hurt)) * camera_spinning_transform(Some(spinning));
+
+        assert_mat4_close(uniform.projection(), base.projection() * transform);
+        assert_mat4_close(
+            uniform.sky_model_view_transform(),
+            base.sky_model_view_transform(),
+        );
     }
 
     #[test]

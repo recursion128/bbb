@@ -206,12 +206,12 @@ use bbb_protocol::attribute_types::{
 use bbb_protocol::entity_types::*;
 use bbb_protocol::menu_types::VANILLA_MENU_TYPE_LOOM_ID;
 use bbb_protocol::mob_effect_types::{
-    VANILLA_BEACON_EFFECT_TIERS, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
-    VANILLA_MOB_EFFECT_DARKNESS_ID, VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_HUNGER_ID,
-    VANILLA_MOB_EFFECT_JUMP_BOOST_ID, VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
-    VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_REGENERATION_ID,
-    VANILLA_MOB_EFFECT_RESISTANCE_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
-    VANILLA_MOB_EFFECT_WITHER_ID,
+    VANILLA_BEACON_EFFECT_TIERS, VANILLA_MOB_EFFECT_BLINDNESS_ID,
+    VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_DARKNESS_ID,
+    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
+    VANILLA_MOB_EFFECT_NAUSEA_ID, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, VANILLA_MOB_EFFECT_POISON_ID,
+    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_RESISTANCE_ID,
+    VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID, VANILLA_MOB_EFFECT_WITHER_ID,
 };
 
 #[cfg(test)]
@@ -386,7 +386,6 @@ const VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES: [(i64, f32); 12] = [
 ];
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
 const VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS: i32 = 200;
-const VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS: i32 = 22;
 const VANILLA_DARKNESS_EFFECT_SCALE_OPTION: f32 = 1.0;
 const VANILLA_WATER_VISION_MAX_TICKS: i32 = 600;
 const VANILLA_WATER_VISION_FAST_RAMP_TICKS: f32 = 100.0;
@@ -1277,14 +1276,50 @@ impl CameraFovTickState {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub(crate) struct CameraSpinningEffectTickState {
+    time_degrees: f32,
+    speed_degrees_per_tick: f32,
+}
+
+impl CameraSpinningEffectTickState {
+    fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) {
+        for _ in 0..ticks {
+            let nausea_intensity = local_player_effect(world, VANILLA_MOB_EFFECT_NAUSEA_ID)
+                .map(|effect| effect.blend_factor(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK))
+                .unwrap_or(0.0);
+            if nausea_intensity > 0.0 {
+                // With no portal contribution yet, vanilla's weighted
+                // `(portal * 20 + nausea * 7) / (portal + nausea)` is exactly 7.
+                self.speed_degrees_per_tick = 7.0;
+                self.time_degrees += self.speed_degrees_per_tick;
+            } else {
+                self.speed_degrees_per_tick = 0.0;
+            }
+        }
+    }
+
+    fn effect_for_world(
+        self,
+        world: &WorldStore,
+        partial_tick: f32,
+    ) -> Option<bbb_renderer::CameraSpinningEffect> {
+        let intensity =
+            local_player_effect(world, VANILLA_MOB_EFFECT_NAUSEA_ID)?.blend_factor(partial_tick);
+        (intensity > 0.0).then_some(bbb_renderer::CameraSpinningEffect {
+            intensity,
+            angle_degrees: self.time_degrees
+                + partial_tick.clamp(0.0, 1.0) * self.speed_degrees_per_tick,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct LightmapTickState {
     random: LevelEventSoundRandomState,
     block_light_flicker: f32,
     brightness_factor: f32,
     client_tick_count: u64,
-    night_vision_effect: LightmapEffectDurationState,
-    darkness_effect: LightmapEffectBlendState,
     water_vision_time: i32,
     end_flash_state: EndFlashLightmapState,
     boss_overlay_world_darkening: f32,
@@ -1300,8 +1335,6 @@ impl Default for LightmapTickState {
             block_light_flicker: 0.0,
             brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
             client_tick_count: 0,
-            night_vision_effect: LightmapEffectDurationState::default(),
-            darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
@@ -1335,8 +1368,6 @@ impl LightmapTickState {
             block_light_flicker: 0.0,
             brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
             client_tick_count: 0,
-            night_vision_effect: LightmapEffectDurationState::default(),
-            darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
@@ -1353,8 +1384,6 @@ impl LightmapTickState {
             block_light_flicker: 0.0,
             brightness_factor: sanitize_lightmap_brightness_factor(brightness_factor),
             client_tick_count: 0,
-            night_vision_effect: LightmapEffectDurationState::default(),
-            darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
@@ -1374,18 +1403,8 @@ impl LightmapTickState {
     }
 
     fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) -> f32 {
-        self.night_vision_effect.sync(local_player_effect_snapshot(
-            world,
-            VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
-        ));
-        self.darkness_effect.sync(local_player_effect_snapshot(
-            world,
-            VANILLA_MOB_EFFECT_DARKNESS_ID,
-        ));
         for _ in 0..ticks {
             self.tick();
-            self.night_vision_effect.tick_duration();
-            self.darkness_effect.tick();
             self.tick_water_vision(world);
             self.tick_end_flash(world);
             self.tick_boss_overlay_world_darkening(world);
@@ -1412,9 +1431,10 @@ impl LightmapTickState {
             self.block_light_flicker + VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
             self.client_tick_count,
             VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
-            self.darkness_effect
-                .factor(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK),
-            self.night_vision_effect.effect(),
+            local_player_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID)
+                .map(|effect| effect.blend_factor(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK))
+                .unwrap_or(0.0),
+            local_player_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID),
             local_player_effect(world, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID),
             self.water_vision(world),
             self.end_flash_sky_factor(world),
@@ -1827,116 +1847,6 @@ fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct LocalPlayerMobEffectSnapshot {
-    entity_id: i32,
-    effect: MobEffectState,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LightmapEffectSync {
-    Unchanged,
-    Added(MobEffectState),
-    Updated,
-    Removed,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-struct LightmapEffectDurationState {
-    subject: Option<(i32, i32)>,
-    observed_effect: Option<MobEffectState>,
-    active_effect: Option<MobEffectState>,
-}
-
-impl LightmapEffectDurationState {
-    fn sync(&mut self, snapshot: Option<LocalPlayerMobEffectSnapshot>) -> LightmapEffectSync {
-        let Some(snapshot) = snapshot else {
-            if self.active_effect.is_none() {
-                return LightmapEffectSync::Unchanged;
-            }
-            self.subject = None;
-            self.observed_effect = None;
-            self.active_effect = None;
-            return LightmapEffectSync::Removed;
-        };
-
-        let subject = (snapshot.entity_id, snapshot.effect.effect_id);
-        let is_new_subject = self.subject != Some(subject);
-        if is_new_subject {
-            self.subject = Some(subject);
-            self.observed_effect = Some(snapshot.effect);
-            self.active_effect = Some(snapshot.effect);
-            return LightmapEffectSync::Added(snapshot.effect);
-        }
-
-        if self.observed_effect != Some(snapshot.effect) {
-            self.observed_effect = Some(snapshot.effect);
-            self.active_effect = Some(snapshot.effect);
-            return LightmapEffectSync::Updated;
-        }
-
-        LightmapEffectSync::Unchanged
-    }
-
-    fn tick_duration(&mut self) {
-        let Some(effect) = &mut self.active_effect else {
-            return;
-        };
-        if effect.duration_ticks != -1 && effect.duration_ticks > 0 {
-            effect.duration_ticks -= 1;
-        }
-    }
-
-    fn effect(&self) -> Option<MobEffectState> {
-        self.active_effect
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-struct LightmapEffectBlendState {
-    duration: LightmapEffectDurationState,
-    factor: f32,
-    factor_previous_frame: f32,
-}
-
-impl LightmapEffectBlendState {
-    fn sync(&mut self, snapshot: Option<LocalPlayerMobEffectSnapshot>) {
-        match self.duration.sync(snapshot) {
-            LightmapEffectSync::Added(effect) => {
-                let factor = if effect.blend {
-                    0.0
-                } else {
-                    vanilla_darkness_effect_factor(effect)
-                };
-                self.factor = factor;
-                self.factor_previous_frame = factor;
-            }
-            LightmapEffectSync::Removed => {
-                self.factor = 0.0;
-                self.factor_previous_frame = 0.0;
-            }
-            LightmapEffectSync::Updated | LightmapEffectSync::Unchanged => {}
-        }
-    }
-
-    fn tick(&mut self) {
-        self.duration.tick_duration();
-        self.factor_previous_frame = self.factor;
-        let target = self
-            .duration
-            .effect()
-            .map(vanilla_darkness_effect_factor)
-            .unwrap_or(0.0);
-        let max_delta = 1.0 / VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS as f32;
-        self.factor += (target - self.factor).clamp(-max_delta, max_delta);
-    }
-
-    fn factor(&self, partial_tick: f32) -> f32 {
-        let partial_tick = sanitize_lightmap_partial_tick(partial_tick);
-        self.factor_previous_frame + (self.factor - self.factor_previous_frame) * partial_tick
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct LocalPlayerLightmapEffects {
     brightness_factor: f32,
@@ -1976,21 +1886,28 @@ fn local_player_lightmap_effects(
     }
 }
 
-fn local_player_effect_snapshot(
-    world: &WorldStore,
-    effect_id: i32,
-) -> Option<LocalPlayerMobEffectSnapshot> {
-    let entity_id = world.local_player_id()?;
-    Some(LocalPlayerMobEffectSnapshot {
-        entity_id,
-        effect: world.entity_effect(entity_id, effect_id)?,
-    })
-}
-
 fn local_player_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectState> {
     world
         .local_player_id()
         .and_then(|player_id| world.entity_effect(player_id, effect_id))
+}
+
+fn camera_entity_id(world: &WorldStore) -> Option<i32> {
+    let camera = world.local_player().camera;
+    if camera.follows_player {
+        world.local_player_id()
+    } else {
+        camera.entity_id
+    }
+}
+
+fn camera_entity_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectState> {
+    camera_entity_id(world).and_then(|entity_id| world.entity_effect(entity_id, effect_id))
+}
+
+fn camera_mob_effect_blocks_sky(world: &WorldStore) -> bool {
+    camera_entity_effect(world, VANILLA_MOB_EFFECT_BLINDNESS_ID).is_some()
+        || camera_entity_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID).is_some()
 }
 
 /// Vanilla `Gui.HeartType.forPlayer` (Gui.java:1438-1450): the base heart
@@ -2013,14 +1930,6 @@ fn vanilla_night_vision_scale(effect: MobEffectState, partial_tick: f32) -> f32 
     } else {
         0.7 + ((effect.duration_ticks as f32 - partial_tick) * std::f32::consts::PI * 0.2).sin()
             * 0.3
-    }
-}
-
-fn vanilla_darkness_effect_factor(effect: MobEffectState) -> f32 {
-    if mob_effect_ends_within(effect, VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS) {
-        0.0
-    } else {
-        1.0
     }
 }
 
@@ -2290,6 +2199,7 @@ pub(crate) struct SimulationFrameState {
     pump_client_ticked_at: Instant,
     now: Instant,
     advanced_ticks: u32,
+    camera_spinning_ticks: CameraSpinningEffectTickState,
     lightmap_environment: LightmapEnvironment,
     clear_color: ClearColor,
     fog_environment: FogEnvironment,
@@ -2324,6 +2234,7 @@ pub(crate) fn advance_simulation(
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
     camera_fov_ticks: &mut CameraFovTickState,
+    camera_spinning_ticks: &mut CameraSpinningEffectTickState,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
     lightmap_ticks: &mut LightmapTickState,
@@ -2584,6 +2495,7 @@ pub(crate) fn advance_simulation(
     // Vanilla Minecraft.tick handles keybinds before GameRenderer.tick, whose
     // Camera.tickFov eases the current camera's target once per client tick.
     camera_fov_ticks.advance_for_world(advanced_ticks, world);
+    camera_spinning_ticks.advance_for_world(advanced_ticks, world);
     let audio_events_for_destroy = audio_events
         .as_mut()
         .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
@@ -2662,6 +2574,7 @@ pub(crate) fn advance_simulation(
         pump_client_ticked_at,
         now,
         advanced_ticks,
+        camera_spinning_ticks: *camera_spinning_ticks,
         lightmap_environment,
         clear_color,
         fog_environment,
@@ -2712,6 +2625,7 @@ pub(crate) fn update_renderer_from_publication(
     let pump_client_ticked_at = state.pump_client_ticked_at;
     let now = state.now;
     let advanced_ticks = state.advanced_ticks;
+    let camera_spinning_ticks = state.camera_spinning_ticks;
     let lightmap_environment = state.lightmap_environment;
     let clear_color = state.clear_color;
     let fog_environment = state.fog_environment;
@@ -3143,6 +3057,7 @@ pub(crate) fn update_renderer_from_publication(
     );
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
+    let camera_spinning_effect = camera_spinning_ticks.effect_for_world(world, entity_partial_tick);
     let camera_fov_degrees = camera_fov_ticks.fov_degrees(entity_partial_tick);
     let hud_locator_bar =
         hud_locator_bar_from_world(world, camera_pose, camera_fov_degrees, entity_partial_tick);
@@ -3692,6 +3607,7 @@ pub(crate) fn update_renderer_from_publication(
             entity_model_instances: entity_instances,
             camera_pose,
             camera_hurt_effect,
+            camera_spinning_effect,
             camera_fov_degrees,
             current_post_effect_id,
             shader_game_time_ticks,

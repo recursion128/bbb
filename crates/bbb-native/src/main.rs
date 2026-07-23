@@ -609,6 +609,7 @@ fn main() -> Result<()> {
     let mut terrain_upload = TerrainUploadState::default();
     let client_animation_ticks = ClientAnimationTickState::default();
     let camera_fov_ticks = CameraFovTickState::default();
+    let camera_spinning_ticks = runtime::CameraSpinningEffectTickState::default();
     let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
     let hud_debug_network_sampler = HudDebugNetworkSampler::default();
     let hud_debug_tps_sampler = HudDebugTpsSampler::default();
@@ -672,6 +673,7 @@ fn main() -> Result<()> {
         net_counters,
         client_animation_ticks,
         camera_fov_ticks,
+        camera_spinning_ticks,
         hud_debug_network_sampler,
         hud_debug_tps_sampler,
         lightmap_ticks,

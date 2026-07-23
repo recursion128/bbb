@@ -54,7 +54,7 @@ pub(crate) fn lightmap_environment_for_world_at_tick(
     partial_tick: f32,
 ) -> LightmapEnvironment {
     let darkness_effect_factor = local_player_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID)
-        .map(vanilla_darkness_effect_factor)
+        .map(|effect| effect.blend_factor(partial_tick))
         .unwrap_or(0.0);
     let night_vision_effect = local_player_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID);
     let conduit_power_effect = local_player_effect(world, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID);
@@ -258,23 +258,74 @@ pub(crate) fn clear_color_for_world_with_environment_colors_and_water_vision(
             colors.camera_forward,
             render_distance_chunks,
         ),
-        CameraFogType::Water => clear_color_from_argb(apply_fog_brightening(
-            rgb_u8_to_argb(
-                colors
-                    .water_fog_color
-                    .unwrap_or(VANILLA_DEFAULT_WATER_FOG_COLOR),
-            ),
-            water_vision,
+        CameraFogType::Water => clear_color_from_argb(rgb_u8_to_argb(
+            colors
+                .water_fog_color
+                .unwrap_or(VANILLA_DEFAULT_WATER_FOG_COLOR),
         )),
     };
-    if hide_lightning_flash
+    let clear = if hide_lightning_flash
         || world.sky_flash_time() == 0
         || colors.fog_type != CameraFogType::Atmospheric
     {
         clear
     } else {
         clear_color_with_sky_flash(clear)
+    };
+    apply_camera_mob_effect_fog_color(
+        world,
+        clear,
+        colors.fog_type,
+        water_vision,
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+    )
+}
+
+fn apply_camera_mob_effect_fog_color(
+    world: &WorldStore,
+    clear: ClearColor,
+    fog_type: CameraFogType,
+    water_vision: f32,
+    partial_tick: f32,
+) -> ClearColor {
+    let blindness = camera_entity_effect(world, VANILLA_MOB_EFFECT_BLINDNESS_ID);
+    let darkness_effect = camera_entity_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID);
+    let darkness = blindness.map_or_else(
+        || {
+            darkness_effect
+                .map(|effect| effect.blend_factor(partial_tick))
+                .unwrap_or(0.0)
+        },
+        |effect| {
+            if mob_effect_ends_within(effect, 19) {
+                effect.duration_ticks as f32 / 20.0
+            } else {
+                1.0
+            }
+        },
+    );
+    let mut color = clear_color_to_argb(clear);
+    if darkness > 0.0 {
+        let brightness = (1.0 - darkness.clamp(0.0, 1.0)).powi(2);
+        color = argb_scale_rgb(color, brightness, brightness, brightness);
     }
+
+    let brighten_factor = match fog_type {
+        CameraFogType::Water => {
+            if world.local_player().camera.follows_player {
+                water_vision
+            } else {
+                1.0
+            }
+        }
+        CameraFogType::Atmospheric if darkness_effect.is_none() => {
+            camera_entity_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID)
+                .map(|effect| vanilla_night_vision_scale(effect, partial_tick))
+                .unwrap_or(0.0)
+        }
+        CameraFogType::Atmospheric => 0.0,
+    };
+    clear_color_from_argb(apply_fog_brightening(color, brighten_factor))
 }
 
 pub(crate) fn sky_environment_for_world_at_camera(
@@ -298,7 +349,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     // `LevelRenderer.renderLevel`'s `shouldRenderSky` argument. Boss fog only
     // suppresses the sky pass; atmospheric fog and End-flash light remain
     // separate consumers of the same aggregate property.
-    if world.boss_overlay_should_create_world_fog() {
+    if world.boss_overlay_should_create_world_fog() || camera_mob_effect_blocks_sky(world) {
         return SkyEnvironment::disabled();
     }
     match world
@@ -774,7 +825,7 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
         fog_color.b as f32,
         fog_color.a as f32,
     ];
-    match colors.fog_type {
+    let base = match colors.fog_type {
         CameraFogType::Atmospheric => {
             let dimension_kind = world
                 .level_info()
@@ -826,7 +877,55 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
                 environmental_end,
             )
         }
+    };
+    camera_mob_effect_fog_environment(
+        world,
+        base,
+        render_distance_chunks,
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+    )
+}
+
+fn camera_mob_effect_fog_environment(
+    world: &WorldStore,
+    base: FogEnvironment,
+    render_distance_chunks: u32,
+    partial_tick: f32,
+) -> FogEnvironment {
+    let render_distance_blocks = render_distance_chunks.clamp(
+        VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    ) as f32
+        * 16.0;
+    if let Some(effect) = camera_entity_effect(world, VANILLA_MOB_EFFECT_BLINDNESS_ID) {
+        let distance = if effect.duration_ticks == -1 {
+            5.0
+        } else {
+            let factor = (effect.duration_ticks as f32 / 20.0).min(1.0);
+            render_distance_blocks + factor * (5.0 - render_distance_blocks)
+        };
+        return FogEnvironment::world_with_visibility_ends(
+            base.color,
+            distance * 0.25,
+            distance,
+            render_distance_chunks,
+            distance * 0.8,
+            distance * 0.8,
+        );
     }
+    if let Some(effect) = camera_entity_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID) {
+        let factor = effect.blend_factor(partial_tick);
+        let distance = render_distance_blocks + factor * (15.0 - render_distance_blocks);
+        return FogEnvironment::world_with_visibility_ends(
+            base.color,
+            distance * 0.75,
+            distance,
+            render_distance_chunks,
+            distance,
+            distance,
+        );
+    }
+    base
 }
 
 /// Projects the world's action-bar overlay state into the renderer's frame
@@ -1519,6 +1618,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
+    pub(crate) camera_spinning_effect: Option<bbb_renderer::CameraSpinningEffect>,
     pub(crate) camera_fov_degrees: f32,
     pub(crate) current_post_effect_id: Option<&'a str>,
     pub(crate) shader_game_time_ticks: f64,
@@ -1806,6 +1906,7 @@ pub(crate) fn apply_renderer_frame(
     let recycled_instances = renderer.replace_entity_model_instances(frame.entity_model_instances);
     entity_render_extraction.recycle_instances(recycled_instances);
     renderer.set_camera_hurt_effect(frame.camera_hurt_effect);
+    renderer.set_camera_spinning_effect(frame.camera_spinning_effect);
     renderer.set_camera_fov_degrees(frame.camera_fov_degrees);
     renderer.set_camera_pose(frame.camera_pose);
     renderer.set_current_post_effect_id(frame.current_post_effect_id);

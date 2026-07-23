@@ -1,7 +1,7 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{
-    CameraFrustum, CameraHurtEffect, CameraPose, ClearColor, FogEnvironment, LevelLighting,
-    LightmapEnvironment, VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR,
+    CameraFrustum, CameraHurtEffect, CameraPose, CameraSpinningEffect, ClearColor, FogEnvironment,
+    LevelLighting, LightmapEnvironment, VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT,
     VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
