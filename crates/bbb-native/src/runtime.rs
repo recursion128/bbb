@@ -2287,6 +2287,7 @@ pub(crate) fn advance_simulation(
     let pump_net_drained_at = Instant::now();
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
+    input.sync_game_event_screen(world, net_counters, net_commands);
     input.sync_sign_editor(world, net_counters, net_commands);
     input.sync_book_screen(world);
     input.sync_command_block_editor(world, net_counters, net_commands);
@@ -4199,6 +4200,7 @@ fn release_input_if_screen_opened(
 
 fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
     world.open_container_id().is_some()
+        || world.game_event_screen().is_some()
         || world.dialog_screen_is_open()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()

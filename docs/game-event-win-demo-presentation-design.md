@@ -56,10 +56,10 @@ shape or add a second play-packet dispatcher.
   Projection supplies the startup fixed key labels W/A/S/D, Space, E, and F2
   because this client has no in-game key-binding configuration.
 - `bbb-native::input::game_event_screen` owns transient interaction state:
-  generation synchronization, focus/hover, win scroll position and last
-  injected monotonic sample, direction, Ctrl modifier count, Space speed-up,
-  and demo link-confirmation state. Production and tests call the same
-  injected-time transition methods.
+  generation synchronization, focus/hover, win scroll position, direction,
+  Ctrl modifier count, Space speed-up, and demo link-confirmation state.
+  Production and tests call the same sanitized render-delta transition
+  methods.
 - A poem win screen starts at scroll position zero, direction `1`, and base
   speed `0.5` pixels per rendered delta tick. Up changes direction to `-1`
   while held; either Ctrl key contributes one modifier; Space toggles speed-up.

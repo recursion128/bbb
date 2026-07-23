@@ -117,6 +117,8 @@ pub struct ChatNarrationRequest {
     pub kind: ChatNarrationKind,
     pub translation_key: Option<String>,
     pub arguments: Vec<super::ChatDecorationArgumentState>,
+    #[serde(default)]
+    pub content_component: Option<bbb_protocol::NbtSummaryValue>,
     pub styled_content: Vec<bbb_protocol::StyledTextRun>,
     pub content: String,
 }

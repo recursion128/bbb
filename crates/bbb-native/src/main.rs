@@ -1193,6 +1193,7 @@ fn enqueue_simulation_window_event(
 
 fn world_wants_cursor(world: &WorldStore) -> bool {
     world.open_container_id().is_some()
+        || world.game_event_screen().is_some()
         || world.dialog_screen_is_open()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()

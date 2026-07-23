@@ -6,7 +6,7 @@ use bbb_protocol::{
         FilterMaskKind as ProtocolFilterMaskKind, LastSeenMessagesUpdate,
         MessageSignature as ProtocolMessageSignature, PackedMessageSignature, PlayerChat,
     },
-    ComponentStyle, NbtSummaryValue, StyledTextRun,
+    ComponentStyle, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, RsaPublicKey};
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,25 @@ const LAST_SEEN_MESSAGES_TRACKER_CAPACITY: usize = 20;
 const CHAT_ACKNOWLEDGEMENT_OFFSET_THRESHOLD: i32 = 64;
 const PROFILE_PUBLIC_KEY_EXPIRY_GRACE_MILLIS: i64 = 8 * 60 * 60 * 1_000;
 const CHAT_DELETION_DELAY_TICKS: u64 = 60;
+
+fn translatable_component_nbt(translation_key: &str, arguments: &[&str]) -> NbtSummaryValue {
+    let mut entries = vec![NbtSummaryEntry {
+        name: "translate".to_string(),
+        value: NbtSummaryValue::String(translation_key.to_string()),
+    }];
+    if !arguments.is_empty() {
+        entries.push(NbtSummaryEntry {
+            name: "with".to_string(),
+            value: NbtSummaryValue::List(
+                arguments
+                    .iter()
+                    .map(|argument| NbtSummaryValue::String((*argument).to_string()))
+                    .collect(),
+            ),
+        });
+    }
+    NbtSummaryValue::Compound(entries)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientChatState {
@@ -397,6 +416,7 @@ impl WorldStore {
                 kind,
                 translation_key: None,
                 arguments: Vec::new(),
+                content_component: None,
                 styled_content,
                 content,
             });
@@ -417,6 +437,7 @@ impl WorldStore {
             styled_content,
             None,
             0,
+            ChatNarrationKind::SystemChat,
         );
     }
 
@@ -429,17 +450,33 @@ impl WorldStore {
             styled_content,
             None,
             0,
+            ChatNarrationKind::SystemChat,
         );
     }
 
     pub fn push_translatable_client_system_chat_message(&mut self, translation_key: &str) {
+        self.push_translatable_client_system_chat_message_with_arguments(
+            translation_key,
+            &[],
+            ChatNarrationKind::SystemChat,
+        );
+    }
+
+    pub fn push_translatable_client_system_chat_message_with_arguments(
+        &mut self,
+        translation_key: &str,
+        arguments: &[&str],
+        narration_kind: ChatNarrationKind,
+    ) {
+        let content_component = translatable_component_nbt(translation_key, arguments);
         self.push_system_chat_message_state(
             ChatMessageKind::ClientSystem,
             translation_key.to_string(),
             Some(translation_key.to_string()),
             Vec::new(),
-            None,
+            Some(content_component),
             0,
+            narration_kind,
         );
     }
 
@@ -468,6 +505,7 @@ impl WorldStore {
             styled_content,
             content_component,
             received_epoch_millis,
+            ChatNarrationKind::SystemChat,
         );
     }
 
@@ -495,6 +533,7 @@ impl WorldStore {
         styled_content: Vec<StyledTextRun>,
         content_component: Option<NbtSummaryValue>,
         received_epoch_millis: i64,
+        narration_kind: ChatNarrationKind,
     ) {
         let source = match kind {
             ChatMessageKind::System => ChatMessageSourceState::SystemServer,
@@ -544,7 +583,7 @@ impl WorldStore {
         if kind == ChatMessageKind::System {
             self.push_chat_report_event(&message, ChatReportEventKind::System, None);
         }
-        self.push_visible_chat_message(message, ChatNarrationKind::SystemChat);
+        self.push_visible_chat_message(message, narration_kind);
         refresh_chat_counters(self);
     }
 
@@ -1083,6 +1122,7 @@ impl WorldStore {
                 arguments: narration
                     .map(|decoration| decoration.arguments.clone())
                     .unwrap_or_default(),
+                content_component: message.content_component.clone(),
                 styled_content: message.styled_content.clone(),
                 content: styled_chat_summary_text(&message.styled_content),
             });

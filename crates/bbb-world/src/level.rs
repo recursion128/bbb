@@ -1,12 +1,14 @@
 use std::collections::BTreeSet;
 
 use bbb_protocol::game_event_types::{
-    VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID, VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID,
+    VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID, VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID,
+    VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID,
     VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID,
     VANILLA_CLIENT_GAME_EVENT_LIMITED_CRAFTING_ID,
     VANILLA_CLIENT_GAME_EVENT_NO_RESPAWN_BLOCK_AVAILABLE_ID,
     VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID, VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID,
     VANILLA_CLIENT_GAME_EVENT_STOP_RAINING_ID, VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
+    VANILLA_CLIENT_GAME_EVENT_WIN_GAME_ID,
 };
 use bbb_protocol::game_types::{
     GameType, VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_NOT_SET_ID,
@@ -22,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     registries::{ClientEnvironmentAttributes, WorldIntProvider, DIMENSION_TYPE_REGISTRY},
-    BlockPos, WorldStore,
+    BlockPos, ChatNarrationKind, ClientGameEventScreenState, WorldStore,
 };
 
 const RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: i8 = 1;
@@ -485,6 +487,32 @@ impl WorldStore {
             VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID => {
                 self.set_game_type_from_game_event_param(event.param);
             }
+            VANILLA_CLIENT_GAME_EVENT_WIN_GAME_ID => {
+                self.open_game_event_screen(|generation| ClientGameEventScreenState::Win {
+                    generation,
+                });
+            }
+            VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID if event.param == 0.0 => {
+                self.open_game_event_screen(|generation| ClientGameEventScreenState::DemoHelp {
+                    generation,
+                });
+            }
+            VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID => {
+                let hint = match event.param {
+                    101.0 => Some(("demo.help.movement", &["W", "A", "S", "D"][..])),
+                    102.0 => Some(("demo.help.jump", &["Space"][..])),
+                    103.0 => Some(("demo.help.inventory", &["E"][..])),
+                    104.0 => Some(("demo.day.6", &["F2"][..])),
+                    _ => None,
+                };
+                if let Some((translation_key, arguments)) = hint {
+                    self.push_translatable_client_system_chat_message_with_arguments(
+                        translation_key,
+                        arguments,
+                        ChatNarrationKind::System,
+                    );
+                }
+            }
             VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID => {
                 self.gameplay.show_death_screen = event.param == 0.0;
             }
@@ -906,6 +934,7 @@ impl WorldStore {
     }
 
     fn clear_level_bound_state(&mut self) {
+        self.clear_game_event_screen();
         self.close_game_rules_screen();
         self.close_command_block_editor();
         self.close_minecart_command_block_editor();
@@ -2258,6 +2287,101 @@ mod tests {
             Some("block.minecraft.spawn.not_valid")
         );
         assert!(message.styled_content.is_empty());
+        assert!(message.content_component.is_some());
+        let narration = store
+            .client_chat()
+            .pending_narrations
+            .last()
+            .expect("system-chat narration");
+        assert_eq!(narration.kind, ChatNarrationKind::SystemChat);
+        assert!(narration.content_component.is_some());
+    }
+
+    #[test]
+    fn win_and_demo_intro_game_events_replace_supported_screens_by_generation() {
+        let mut store = WorldStore::new();
+        assert!(store.open_advancements_screen());
+
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_WIN_GAME_ID,
+            param: 1.0,
+        });
+        let win = store.game_event_screen().expect("win screen");
+        assert_eq!(win, ClientGameEventScreenState::Win { generation: 1 });
+        assert!(!store.advancements_screen_is_open());
+
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID,
+            param: 0.0,
+        });
+        let demo = store.game_event_screen().expect("demo help");
+        assert_eq!(demo, ClientGameEventScreenState::DemoHelp { generation: 2 });
+        assert!(!store.close_game_event_screen(win.generation()));
+        assert!(store.close_game_event_screen(demo.generation()));
+        assert_eq!(store.game_event_screen(), None);
+    }
+
+    #[test]
+    fn demo_hint_game_events_record_rich_translations_and_system_narration() {
+        let mut store = WorldStore::new();
+        let hints = [
+            (101.0, "demo.help.movement", &["W", "A", "S", "D"][..]),
+            (102.0, "demo.help.jump", &["Space"][..]),
+            (103.0, "demo.help.inventory", &["E"][..]),
+            (104.0, "demo.day.6", &["F2"][..]),
+        ];
+
+        for (param, key, arguments) in hints {
+            store.apply_game_event(ProtocolGameEvent {
+                event_id: VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID,
+                param,
+            });
+            let message = store.client_chat().messages.last().unwrap();
+            assert_eq!(message.content_translation_key.as_deref(), Some(key));
+            let component = message.content_component.as_ref().unwrap();
+            let bbb_protocol::NbtSummaryValue::Compound(entries) = component else {
+                panic!("translated hint must be a component compound");
+            };
+            let with = entries
+                .iter()
+                .find(|entry| entry.name == "with")
+                .map(|entry| &entry.value);
+            assert_eq!(
+                with,
+                Some(&bbb_protocol::NbtSummaryValue::List(
+                    arguments
+                        .iter()
+                        .map(|argument| {
+                            bbb_protocol::NbtSummaryValue::String((*argument).to_string())
+                        })
+                        .collect()
+                ))
+            );
+            let narration = store.client_chat().pending_narrations.last().unwrap();
+            assert_eq!(narration.kind, ChatNarrationKind::System);
+            assert_eq!(narration.content_component.as_ref(), Some(component));
+        }
+
+        let message_count = store.client_chat().messages.len();
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID,
+            param: 100.0,
+        });
+        assert_eq!(store.client_chat().messages.len(), message_count);
+    }
+
+    #[test]
+    fn clearing_client_level_closes_game_event_screen() {
+        let mut store = WorldStore::new();
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_WIN_GAME_ID,
+            param: 0.0,
+        });
+        assert!(store.game_event_screen().is_some());
+
+        store.clear_client_level();
+
+        assert_eq!(store.game_event_screen(), None);
     }
 
     #[test]

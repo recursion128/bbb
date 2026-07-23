@@ -175,6 +175,7 @@ mod book;
 mod bundle;
 mod commands;
 mod component_patch;
+pub(crate) mod game_event_screen;
 mod game_rules;
 mod inventory;
 mod jigsaw_block;
@@ -695,6 +696,7 @@ pub(crate) struct ClientInputState {
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
     spectator_gui: spectator_menu::SpectatorGuiInputState,
+    game_event_screen: game_event_screen::GameEventScreenInputState,
 }
 
 /// Immutable input projection consumed by render and event-loop readers.
@@ -1120,6 +1122,7 @@ impl ClientInputState {
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
             || world.game_rules_screen().is_some()
+            || world.game_event_screen().is_some()
             || world.command_block_editor().is_some()
             || world.minecart_command_block_editor().is_some()
             || world.structure_block_editor().is_some()
@@ -2222,6 +2225,7 @@ impl ClientInputState {
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
             || world.game_rules_screen().is_some()
+            || world.game_event_screen().is_some()
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open()
             || self.sign_editor_is_active_or_pending(world)
@@ -10542,6 +10546,17 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
+    if input.handle_game_event_screen_key(
+        counters,
+        world,
+        net_commands,
+        code,
+        pressed,
+        just_pressed,
+    ) {
+        return;
+    }
+
     if input.handle_debug_pause_screen_key(physical_key, state) {
         return;
     }
@@ -10960,6 +10975,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
     }
 
     if world.dialog_screen_is_open()
+        || world.game_event_screen().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
         || world.game_rules_screen().is_some()

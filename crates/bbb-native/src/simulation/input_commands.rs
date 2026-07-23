@@ -25,8 +25,9 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
-        handle_advancements_screen_cursor_moved, handle_advancements_screen_mouse_input,
-        handle_advancements_screen_mouse_wheel, handle_focus_change, handle_inventory_cursor_moved,
+        game_event_screen::GameEventScreenPlatformRequest, handle_advancements_screen_cursor_moved,
+        handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
+        handle_focus_change, handle_inventory_cursor_moved,
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
         handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick,
         handle_mouse_motion, handle_mouse_wheel, handle_text_input_with_item_runtime,
@@ -288,6 +289,12 @@ impl SimulationInputRuntime {
         {
             return;
         }
+        if context.world.game_event_screen().is_some() {
+            context
+                .input
+                .update_screen_cursor_position(self.cursor_position);
+            return;
+        }
         if context.world.dialog_screen_is_open() {
             context
                 .input
@@ -395,6 +402,27 @@ impl SimulationInputRuntime {
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
             self.request_cursor_capture(false, context.platform);
+            return;
+        }
+
+        if context.world.game_event_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            handle_key_input_with_item_runtime(
+                context.input,
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                context.item_runtime.as_ref(),
+                physical_key,
+                state,
+                self.surface_size,
+                &self.text_measurements,
+                None,
+            );
+            collect_game_event_screen_platform_effects(context.input, context.platform);
+            if context.world.game_event_screen().is_none() {
+                self.request_cursor_capture(true, context.platform);
+            }
             return;
         }
 
@@ -894,6 +922,10 @@ impl SimulationInputRuntime {
             }
             return;
         }
+        if context.world.game_event_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            return;
+        }
         if context.world.game_rules_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
             context.input.handle_game_rules_screen_mouse_input(
@@ -1264,6 +1296,10 @@ impl SimulationInputRuntime {
                 .handle_debug_options_screen_mouse_wheel(delta, self.surface_size);
             return;
         }
+        if context.world.game_event_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            return;
+        }
         if context.world.dialog_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             handle_dialog_mouse_wheel(
@@ -1526,6 +1562,7 @@ fn apply_resource_reload_ack(
 
 fn world_wants_cursor(world: &WorldStore) -> bool {
     world.open_container_id().is_some()
+        || world.game_event_screen().is_some()
         || world.dialog_screen_is_open()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
@@ -1620,6 +1657,20 @@ fn collect_dialog_open_uri_effects(world: &mut WorldStore, effects: &RefCell<Vec
             .into_iter()
             .map(PlatformEffect::OpenUri),
     );
+}
+
+fn collect_game_event_screen_platform_effects(
+    input: &mut crate::input::ClientInputState,
+    platform: &mut PlatformEffectCollector<'_>,
+) {
+    for request in input.take_game_event_screen_platform_requests() {
+        platform.submit(match request {
+            GameEventScreenPlatformRequest::OpenUri(url) => PlatformEffect::OpenUri(url),
+            GameEventScreenPlatformRequest::ClipboardWrite(text) => {
+                PlatformEffect::ClipboardWrite(text)
+            }
+        });
+    }
 }
 
 fn flush_platform_effects(

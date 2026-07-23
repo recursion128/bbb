@@ -107,6 +107,10 @@ pub struct ClientUiState {
     pub current_game_rules_screen: Option<crate::GameRulesScreenState>,
     #[serde(default)]
     pub game_rules_screen_generation: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_game_event_screen: Option<ClientGameEventScreenState>,
+    #[serde(default)]
+    pub game_event_screen_generation: u64,
     #[serde(default)]
     pub last_code_of_conduct: Option<CodeOfConductState>,
     #[serde(default)]
@@ -127,6 +131,21 @@ pub enum DialogPreviousScreenState {
     Book { screen: BookScreenState },
     Advancements,
     Stats,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ClientGameEventScreenState {
+    Win { generation: u64 },
+    DemoHelp { generation: u64 },
+}
+
+impl ClientGameEventScreenState {
+    pub fn generation(self) -> u64 {
+        match self {
+            Self::Win { generation } | Self::DemoHelp { generation } => generation,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -406,6 +425,7 @@ impl ClientUiState {
         self.current_advancements_screen = false;
         self.current_stats_screen = false;
         self.current_game_rules_screen = None;
+        self.current_game_event_screen = None;
         self.current_command_block_editor = None;
         self.current_minecart_command_block_editor = None;
         self.current_structure_block_editor = None;
@@ -787,6 +807,40 @@ impl WorldStore {
 
     pub fn client_ui(&self) -> &ClientUiState {
         &self.client_ui
+    }
+
+    pub fn game_event_screen(&self) -> Option<ClientGameEventScreenState> {
+        self.client_ui.current_game_event_screen
+    }
+
+    pub(crate) fn open_game_event_screen(
+        &mut self,
+        screen: impl FnOnce(u64) -> ClientGameEventScreenState,
+    ) -> ClientGameEventScreenState {
+        self.client_ui.replace_screen();
+        self.client_ui.game_event_screen_generation = self
+            .client_ui
+            .game_event_screen_generation
+            .saturating_add(1);
+        let screen = screen(self.client_ui.game_event_screen_generation);
+        self.client_ui.current_game_event_screen = Some(screen);
+        screen
+    }
+
+    pub fn close_game_event_screen(&mut self, generation: u64) -> bool {
+        if self
+            .client_ui
+            .current_game_event_screen
+            .is_none_or(|screen| screen.generation() != generation)
+        {
+            return false;
+        }
+        self.client_ui.current_game_event_screen = None;
+        true
+    }
+
+    pub fn clear_game_event_screen(&mut self) -> bool {
+        self.client_ui.current_game_event_screen.take().is_some()
     }
 
     pub fn current_dialog(&self) -> Option<&DialogState> {

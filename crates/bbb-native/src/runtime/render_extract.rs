@@ -1108,6 +1108,19 @@ fn hud_chat_message_runs(
         return format_localized_projected_chat_runs(template, parent, &arguments);
     }
 
+    if let Some(component) = message.content_component.clone().and_then(|component| {
+        bbb_protocol::RichTextComponent::try_from_component_nbt(component).ok()
+    }) {
+        return localized_component_runs(
+            &component,
+            &bbb_protocol::ComponentStyle::default(),
+            item_runtime,
+        )
+        .into_iter()
+        .map(|run| projected_chat_run(&run.text, &run.style))
+        .collect();
+    }
+
     if let Some(key) = message.content_translation_key.as_deref() {
         let text = localized_chat_text(
             item_runtime,
@@ -1196,6 +1209,18 @@ pub(crate) fn chat_narration_text(
     narration: &bbb_world::ChatNarrationRequest,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> String {
+    if let Some(component) = narration.content_component.clone().and_then(|component| {
+        bbb_protocol::RichTextComponent::try_from_component_nbt(component).ok()
+    }) {
+        return localized_component_runs(
+            &component,
+            &bbb_protocol::ComponentStyle::default(),
+            item_runtime,
+        )
+        .into_iter()
+        .map(|run| run.text)
+        .collect();
+    }
     if let Some(key) = narration.translation_key.as_deref() {
         let template = localized_chat_text(
             item_runtime,

@@ -216,6 +216,7 @@ fn chat_narration_text_uses_styled_content_without_duplicate_projection() {
         kind: bbb_world::ChatNarrationKind::SystemChat,
         translation_key: None,
         arguments: Vec::new(),
+        content_component: None,
         styled_content: vec![
             bbb_protocol::StyledTextRun {
                 text: "hello ".to_string(),
@@ -232,6 +233,61 @@ fn chat_narration_text_uses_styled_content_without_duplicate_projection() {
         content: "fallback".to_string(),
     };
     assert_eq!(chat_narration_text(&narration, None), "hello world");
+}
+
+#[test]
+fn game_event_chat_components_localize_for_hud_and_system_narration() {
+    let root = unique_runtime_temp_dir("game-event-chat-language");
+    write_runtime_bow_item_assets(&root);
+    write_runtime_json(
+        &runtime_assets_dir(&root).join("lang").join("en_us.json"),
+        r#"{
+            "block.minecraft.spawn.not_valid": "No respawn anchor",
+            "demo.help.movement": "Move with %s, %s, %s, and %s"
+        }"#,
+    );
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+    world.apply_game_event(bbb_protocol::packets::GameEvent {
+        event_id:
+            bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_NO_RESPAWN_BLOCK_AVAILABLE_ID,
+        param: 0.0,
+    });
+    world.apply_game_event(bbb_protocol::packets::GameEvent {
+        event_id: bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_DEMO_EVENT_ID,
+        param: 101.0,
+    });
+
+    let messages = hud_chat_messages_from_world(&world, Some(&item_runtime));
+    assert_eq!(
+        messages[0]
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "No respawn anchor"
+    );
+    assert_eq!(
+        messages[1]
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "Move with W, A, S, and D"
+    );
+    let narrations = world.take_pending_chat_narrations();
+    assert_eq!(
+        chat_narration_text(&narrations[0], Some(&item_runtime)),
+        "No respawn anchor"
+    );
+    assert_eq!(narrations[0].kind, bbb_world::ChatNarrationKind::SystemChat);
+    assert_eq!(
+        chat_narration_text(&narrations[1], Some(&item_runtime)),
+        "Move with W, A, S, and D"
+    );
+    assert_eq!(narrations[1].kind, bbb_world::ChatNarrationKind::System);
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
