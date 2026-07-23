@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
     CraftingRecipeDisplaySummary, DataComponentPatchSummary, IngredientSummary, ItemStackSummary,
-    RecipeDisplayEntry, RecipeDisplaySummary, SlotDisplaySummary,
+    RecipeDisplayEntry, RecipeDisplaySummary, SlotDisplaySummary, SlotDisplayValue,
 };
 use bbb_protocol::recipe_wire_types::{vanilla_recipe_book_search_category_ids, RecipeBookType};
 use bbb_world::WorldStore;
@@ -742,8 +742,43 @@ fn push_slot_display_item_stack_candidates(
             return;
         }
     }
-    for child in display.stack_resolving_children() {
-        push_slot_display_item_stack_candidates(&child, item_tag_entries, stacks);
+    if let Ok(value) = display.decode_value() {
+        push_slot_display_value_candidates(&value, item_tag_entries, stacks);
+    }
+}
+
+fn push_slot_display_value_candidates(
+    display: &SlotDisplayValue,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    stacks: &mut Vec<ItemStackSummary>,
+) {
+    match display {
+        SlotDisplayValue::Item { stack } | SlotDisplayValue::ItemStack { stack } => {
+            stacks.push((**stack).clone());
+        }
+        SlotDisplayValue::Tag { tag } => {
+            if let Some(entries) = item_tag_entries.and_then(|tags| tags.get(tag)) {
+                stacks.extend(entries.iter().map(|item_id| ItemStackSummary {
+                    item_id: Some(*item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                }));
+            }
+        }
+        SlotDisplayValue::WithRemainder { input, .. } => {
+            push_slot_display_value_candidates(input, item_tag_entries, stacks);
+        }
+        SlotDisplayValue::Composite { contents } => {
+            for content in contents {
+                push_slot_display_value_candidates(content, item_tag_entries, stacks);
+            }
+        }
+        SlotDisplayValue::Empty
+        | SlotDisplayValue::AnyFuel
+        | SlotDisplayValue::WithAnyPotion { .. }
+        | SlotDisplayValue::OnlyWithComponent { .. }
+        | SlotDisplayValue::Dyed { .. }
+        | SlotDisplayValue::SmithingTrim { .. } => {}
     }
 }
 

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
+use crate::data_component_types::vanilla_data_component_type;
 pub use crate::recipe_wire_types::{RecipeBookType, RecipeDisplayType};
 use crate::recipe_wire_types::{
     VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID, VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
@@ -12,13 +13,17 @@ use crate::recipe_wire_types::{
 };
 
 use super::super::read_resource_location;
-use super::super::{inventory, DataComponentPatchSummary, ItemStackSummary};
+use super::super::{
+    data_components::decode_trim_pattern_holder, inventory, DataComponentPatchSummary,
+    ItemStackSummary, TrimPatternSummary,
+};
 
 const MAX_RECIPE_PROPERTY_SET_ITEMS: usize = 65_536;
 const MAX_RECIPE_PROPERTY_SETS: usize = 4096;
-const MAX_RECIPE_DISPLAY_BODY: usize = 2 * 1024 * 1024;
+pub(super) const MAX_RECIPE_DISPLAY_BODY: usize = 2 * 1024 * 1024;
 const MAX_RECIPE_BOOK_ENTRIES: usize = 65_536;
-const MAX_RECIPE_BOOK_NESTED_LIST: usize = 4096;
+pub(super) const MAX_RECIPE_BOOK_NESTED_LIST: usize = 4096;
+pub(super) const MAX_SLOT_DISPLAY_DEPTH: usize = 64;
 const MAX_STONECUTTER_RECIPE_ENTRIES: usize = 65_536;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,32 +77,75 @@ pub struct SlotDisplaySummary {
     pub tag: Option<String>,
 }
 
-impl SlotDisplaySummary {
-    pub fn stack_resolving_children(&self) -> Vec<SlotDisplaySummary> {
-        self.decode_stack_resolving_children().unwrap_or_default()
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SlotDisplayValue {
+    Empty,
+    AnyFuel,
+    WithAnyPotion {
+        display: Box<SlotDisplayValue>,
+    },
+    OnlyWithComponent {
+        source: Box<SlotDisplayValue>,
+        component_type_id: i32,
+    },
+    Item {
+        stack: Box<ItemStackSummary>,
+    },
+    ItemStack {
+        stack: Box<ItemStackSummary>,
+    },
+    Tag {
+        tag: String,
+    },
+    Dyed {
+        dye: Box<SlotDisplayValue>,
+        target: Box<SlotDisplayValue>,
+    },
+    SmithingTrim {
+        base: Box<SlotDisplayValue>,
+        material: Box<SlotDisplayValue>,
+        pattern: SlotDisplayTrimPatternSummary,
+    },
+    WithRemainder {
+        input: Box<SlotDisplayValue>,
+        remainder: Box<SlotDisplayValue>,
+    },
+    Composite {
+        contents: Vec<SlotDisplayValue>,
+    },
+}
 
-    fn decode_stack_resolving_children(&self) -> Result<Vec<SlotDisplaySummary>> {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SlotDisplayTrimPatternSummary {
+    pub registry_id: Option<i32>,
+    pub direct: Option<TrimPatternSummary>,
+}
+
+impl SlotDisplaySummary {
+    pub fn decode_value(&self) -> Result<SlotDisplayValue> {
         let mut decoder = Decoder::new(&self.raw_payload);
-        let display_type_id = decoder.read_var_i32()?;
+        let budget = SlotDisplayDecodeBudget::new(decoder.position());
+        let (display_type_id, value) = decode_slot_display_value(&mut decoder, 0, &budget)?;
         if display_type_id != self.display_type_id {
-            return Ok(Vec::new());
+            return Err(ProtocolError::InvalidData(format!(
+                "slot display summary type {} does not match raw type {display_type_id}",
+                self.display_type_id
+            )));
         }
-        let children = match display_type_id {
-            VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID => {
-                let input = decode_slot_display_summary(&mut decoder)?;
-                decode_slot_display_summary(&mut decoder)?;
-                vec![input]
-            }
-            VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID => decode_slot_display_list(&mut decoder)?,
-            _ => Vec::new(),
-        };
         if !decoder.is_empty() {
             return Err(ProtocolError::InvalidData(
-                "trailing bytes after slot display children".to_string(),
+                "trailing bytes after slot display value".to_string(),
             ));
         }
-        Ok(children)
+        Ok(value)
+    }
+
+    pub fn stack_resolving_children(&self) -> Vec<SlotDisplayValue> {
+        match self.decode_value() {
+            Ok(SlotDisplayValue::WithRemainder { input, .. }) => vec![*input],
+            Ok(SlotDisplayValue::Composite { contents }) => contents,
+            _ => Vec::new(),
+        }
     }
 }
 
@@ -467,16 +515,23 @@ fn decode_ingredient_summary(decoder: &mut Decoder<'_>) -> Result<IngredientSumm
 }
 
 fn decode_slot_display_summary(decoder: &mut Decoder<'_>) -> Result<SlotDisplaySummary> {
-    let display_start = decoder.remaining().to_vec();
-    let before_len = decoder.remaining_len();
-    let display_type_id = decoder.read_var_i32()?;
-    let body = decode_slot_display_body(decoder, display_type_id)?;
-    let consumed = before_len - decoder.remaining_len();
+    let start = decoder.position();
+    let budget = SlotDisplayDecodeBudget::new(start);
+    let (display_type_id, value) = decode_slot_display_value(decoder, 0, &budget)?;
+    budget.check(decoder)?;
+    let raw_payload = decoder.bytes_from(start).to_vec();
+    let (item_stack, tag) = match value {
+        SlotDisplayValue::Item { stack } | SlotDisplayValue::ItemStack { stack } => {
+            (Some(*stack), None)
+        }
+        SlotDisplayValue::Tag { tag } => (None, Some(tag)),
+        _ => (None, None),
+    };
     Ok(SlotDisplaySummary {
         display_type_id,
-        raw_payload: display_start[..consumed].to_vec(),
-        item_stack: body.item_stack,
-        tag: body.tag,
+        raw_payload,
+        item_stack,
+        tag,
     })
 }
 
@@ -493,106 +548,157 @@ fn decode_slot_display_list(decoder: &mut Decoder<'_>) -> Result<Vec<SlotDisplay
     Ok(displays)
 }
 
-fn skip_slot_display_list(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_slot_display_list(decoder).map(drop)
-}
-
 fn skip_slot_display(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_slot_display_summary(decoder).map(drop)
 }
 
-fn decode_slot_display_body(
+fn decode_slot_display_value(
     decoder: &mut Decoder<'_>,
-    display_type_id: i32,
-) -> Result<SlotDisplayBodySummary> {
-    match display_type_id {
+    depth: usize,
+    budget: &SlotDisplayDecodeBudget,
+) -> Result<(i32, SlotDisplayValue)> {
+    if depth > MAX_SLOT_DISPLAY_DEPTH {
+        return Err(ProtocolError::InvalidData(
+            "slot display tree exceeded max depth".to_string(),
+        ));
+    }
+    budget.check(decoder)?;
+    let display_type_id = decoder.read_var_i32()?;
+    let value = match display_type_id {
         VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID | VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID => {
-            Ok(SlotDisplayBodySummary::default())
+            if display_type_id == VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID {
+                SlotDisplayValue::Empty
+            } else {
+                SlotDisplayValue::AnyFuel
+            }
         }
-        VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID => {
-            skip_slot_display(decoder)?;
-            Ok(SlotDisplayBodySummary::default())
-        }
+        VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID => SlotDisplayValue::WithAnyPotion {
+            display: Box::new(decode_nested_slot_display(decoder, depth, budget)?),
+        },
         VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID => {
-            skip_slot_display(decoder)?;
-            decoder.read_var_i32()?;
-            Ok(SlotDisplayBodySummary::default())
-        }
-        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID => Ok(SlotDisplayBodySummary {
-            item_stack: Some(ItemStackSummary {
-                item_id: Some(inventory::decode_item_holder_id(decoder)?),
-                count: 1,
-                component_patch: DataComponentPatchSummary::default(),
-            }),
-            tag: None,
-        }),
-        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID => {
-            let item_id = inventory::decode_non_empty_item_holder_id(decoder)?;
-            let count = decoder.read_var_i32()?;
-            if count <= 0 {
+            let source = Box::new(decode_nested_slot_display(decoder, depth, budget)?);
+            let component_type_id = decoder.read_var_i32()?;
+            if vanilla_data_component_type(component_type_id).is_none() {
                 return Err(ProtocolError::InvalidData(format!(
-                    "invalid item stack display count {count}"
+                    "invalid vanilla data component type id {component_type_id}"
                 )));
             }
-            let component_patch =
-                super::super::inventory::decode_data_component_patch_summary(decoder)?;
-            Ok(SlotDisplayBodySummary {
-                item_stack: Some(ItemStackSummary {
-                    item_id: Some(item_id),
-                    count,
-                    component_patch,
-                }),
-                tag: None,
-            })
+            SlotDisplayValue::OnlyWithComponent {
+                source,
+                component_type_id,
+            }
         }
-        VANILLA_SLOT_DISPLAY_TYPE_TAG_ID => Ok(SlotDisplayBodySummary {
-            item_stack: None,
-            tag: Some(read_resource_location(decoder)?),
-        }),
-        VANILLA_SLOT_DISPLAY_TYPE_DYED_ID => {
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            Ok(SlotDisplayBodySummary::default())
-        }
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID => SlotDisplayValue::Item {
+            stack: decode_item_slot_display(decoder)?,
+        },
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID => SlotDisplayValue::ItemStack {
+            stack: decode_item_stack_slot_display(decoder)?,
+        },
+        VANILLA_SLOT_DISPLAY_TYPE_TAG_ID => SlotDisplayValue::Tag {
+            tag: read_resource_location(decoder)?,
+        },
+        VANILLA_SLOT_DISPLAY_TYPE_DYED_ID => SlotDisplayValue::Dyed {
+            dye: Box::new(decode_nested_slot_display(decoder, depth, budget)?),
+            target: Box::new(decode_nested_slot_display(decoder, depth, budget)?),
+        },
         VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID => {
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_trim_pattern_holder(decoder)?;
-            Ok(SlotDisplayBodySummary::default())
+            let base = Box::new(decode_nested_slot_display(decoder, depth, budget)?);
+            let material = Box::new(decode_nested_slot_display(decoder, depth, budget)?);
+            let pattern = decode_trim_pattern_holder(decoder)?;
+            SlotDisplayValue::SmithingTrim {
+                base,
+                material,
+                pattern: SlotDisplayTrimPatternSummary {
+                    registry_id: pattern.registry_id,
+                    direct: pattern.direct,
+                },
+            }
         }
-        VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID => {
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            Ok(SlotDisplayBodySummary::default())
+        VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID => SlotDisplayValue::WithRemainder {
+            input: Box::new(decode_nested_slot_display(decoder, depth, budget)?),
+            remainder: Box::new(decode_nested_slot_display(decoder, depth, budget)?),
+        },
+        VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID => SlotDisplayValue::Composite {
+            contents: decode_nested_slot_display_list(decoder, depth, budget)?,
+        },
+        other => {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid slot display type id {other}"
+            )));
         }
-        VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID => {
-            skip_slot_display_list(decoder)?;
-            Ok(SlotDisplayBodySummary::default())
-        }
-        other => Err(ProtocolError::InvalidData(format!(
-            "invalid slot display type id {other}"
-        ))),
-    }
+    };
+    budget.check(decoder)?;
+    Ok((display_type_id, value))
 }
 
-#[derive(Debug, Default)]
-struct SlotDisplayBodySummary {
-    item_stack: Option<ItemStackSummary>,
-    tag: Option<String>,
+fn decode_item_slot_display(decoder: &mut Decoder<'_>) -> Result<Box<ItemStackSummary>> {
+    Ok(Box::new(ItemStackSummary {
+        item_id: Some(inventory::decode_item_holder_id(decoder)?),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    }))
 }
 
-fn skip_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    let holder_id = decoder.read_var_i32()?;
-    if holder_id == 0 {
-        read_resource_location(decoder)?;
-        super::super::decode_component_summary_from_decoder(decoder)?;
-        decoder.read_bool()?;
-    } else if holder_id < 0 {
+fn decode_item_stack_slot_display(decoder: &mut Decoder<'_>) -> Result<Box<ItemStackSummary>> {
+    let item_id = inventory::decode_non_empty_item_holder_id(decoder)?;
+    let count = decoder.read_var_i32()?;
+    if count <= 0 {
         return Err(ProtocolError::InvalidData(format!(
-            "invalid trim pattern holder id {holder_id}"
+            "invalid item stack display count {count}"
         )));
     }
-    Ok(())
+    Ok(Box::new(ItemStackSummary {
+        item_id: Some(item_id),
+        count,
+        component_patch: super::super::inventory::decode_data_component_patch_summary(decoder)?,
+    }))
+}
+
+fn decode_nested_slot_display(
+    decoder: &mut Decoder<'_>,
+    parent_depth: usize,
+    budget: &SlotDisplayDecodeBudget,
+) -> Result<SlotDisplayValue> {
+    decode_slot_display_value(decoder, parent_depth + 1, budget).map(|(_, value)| value)
+}
+
+fn decode_nested_slot_display_list(
+    decoder: &mut Decoder<'_>,
+    parent_depth: usize,
+    budget: &SlotDisplayDecodeBudget,
+) -> Result<Vec<SlotDisplayValue>> {
+    let count = read_bounded_len(
+        decoder,
+        MAX_RECIPE_BOOK_NESTED_LIST,
+        "nested slot display list",
+    )?;
+    budget.check(decoder)?;
+    let mut displays = Vec::with_capacity(count);
+    for _ in 0..count {
+        displays.push(decode_nested_slot_display(decoder, parent_depth, budget)?);
+    }
+    Ok(displays)
+}
+
+struct SlotDisplayDecodeBudget {
+    start: usize,
+}
+
+impl SlotDisplayDecodeBudget {
+    fn new(start: usize) -> Self {
+        Self { start }
+    }
+
+    fn check(&self, decoder: &Decoder<'_>) -> Result<()> {
+        let consumed = decoder.position().saturating_sub(self.start);
+        if consumed > MAX_RECIPE_DISPLAY_BODY {
+            return Err(ProtocolError::PacketTooLarge(
+                consumed,
+                MAX_RECIPE_DISPLAY_BODY,
+            ));
+        }
+        Ok(())
+    }
 }
 
 fn read_bounded_len(

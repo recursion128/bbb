@@ -1,3 +1,6 @@
+use super::recipes::{
+    MAX_RECIPE_BOOK_NESTED_LIST, MAX_RECIPE_DISPLAY_BODY, MAX_SLOT_DISPLAY_DEPTH,
+};
 use super::*;
 use crate::{
     codec::{Decoder, Encoder},
@@ -7,9 +10,11 @@ use crate::{
     },
     recipe_wire_types::{
         VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID, VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID, VANILLA_SLOT_DISPLAY_TYPE_DYED_ID,
         VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
-        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
-        VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID, VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
     },
     RichTextComponent,
 };
@@ -604,13 +609,27 @@ fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
                 },
                 option_display: SlotDisplaySummary {
                     display_type_id: VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
-                    raw_payload: option_display,
+                    raw_payload: option_display.clone(),
                     item_stack: None,
                     tag: None,
                 },
             }],
         })
     );
+    let SlotDisplayValue::SmithingTrim { pattern, .. } =
+        decode_update_recipes_option_display(option_display)
+            .decode_value()
+            .unwrap()
+    else {
+        panic!("expected typed smithing trim display");
+    };
+    let direct = pattern.direct.expect("direct trim pattern");
+    assert_eq!(pattern.registry_id, None);
+    assert_eq!(direct.asset_id, "minecraft:test_trim");
+    assert_eq!(direct.description, "Test Trim");
+    assert!(direct.description_styled.is_some());
+    assert!(direct.description_nbt.is_some());
+    assert!(direct.decal);
 }
 
 #[test]
@@ -662,17 +681,11 @@ fn slot_display_summary_exposes_composite_stack_resolving_children() {
     assert_eq!(
         option_display.stack_resolving_children(),
         vec![
-            SlotDisplaySummary {
-                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
-                raw_payload: item_display,
-                item_stack: Some(item_stack(77, 1)),
-                tag: None,
+            SlotDisplayValue::Item {
+                stack: Box::new(item_stack(77, 1)),
             },
-            SlotDisplaySummary {
-                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
-                raw_payload: tag_display,
-                item_stack: None,
-                tag: Some("minecraft:planks".to_string()),
+            SlotDisplayValue::Tag {
+                tag: "minecraft:planks".to_string(),
             },
         ]
     );
@@ -690,13 +703,248 @@ fn slot_display_summary_exposes_with_remainder_input_for_stack_resolution() {
     let option_display = decode_update_recipes_option_display(option_display.into_inner());
     assert_eq!(
         option_display.stack_resolving_children(),
-        vec![SlotDisplaySummary {
-            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
-            raw_payload: input_display,
-            item_stack: Some(item_stack(55, 1)),
-            tag: None,
+        vec![SlotDisplayValue::Item {
+            stack: Box::new(item_stack(55, 1)),
         }]
     );
+}
+
+#[test]
+fn decodes_all_builtin_slot_display_values_and_preserves_exact_raw_payloads() {
+    let empty = slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+    let any_fuel = slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID);
+    let item = slot_display_item_payload(55);
+    let item_stack_payload = slot_display_item_stack_payload(56, 2);
+    let tag = slot_display_tag_payload("planks");
+    let with_any_potion =
+        slot_display_unary_payload(VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, &item);
+    let only_with_component = slot_display_with_component_payload(&item_stack_payload, 0);
+    let dyed = slot_display_binary_payload(
+        VANILLA_SLOT_DISPLAY_TYPE_DYED_ID,
+        &item,
+        &item_stack_payload,
+    );
+    let smithing_trim = slot_display_smithing_trim_payload(&item, &item_stack_payload, 3);
+    let with_remainder = slot_display_binary_payload(
+        VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
+        &item,
+        &item_stack_payload,
+    );
+    let composite = slot_display_composite_payload(&[item.clone(), tag.clone()]);
+
+    let cases = vec![
+        (empty, SlotDisplayValue::Empty),
+        (any_fuel, SlotDisplayValue::AnyFuel),
+        (
+            with_any_potion,
+            SlotDisplayValue::WithAnyPotion {
+                display: Box::new(SlotDisplayValue::Item {
+                    stack: Box::new(item_stack(55, 1)),
+                }),
+            },
+        ),
+        (
+            only_with_component,
+            SlotDisplayValue::OnlyWithComponent {
+                source: Box::new(SlotDisplayValue::ItemStack {
+                    stack: Box::new(item_stack(56, 2)),
+                }),
+                component_type_id: 0,
+            },
+        ),
+        (
+            item,
+            SlotDisplayValue::Item {
+                stack: Box::new(item_stack(55, 1)),
+            },
+        ),
+        (
+            item_stack_payload,
+            SlotDisplayValue::ItemStack {
+                stack: Box::new(item_stack(56, 2)),
+            },
+        ),
+        (
+            tag,
+            SlotDisplayValue::Tag {
+                tag: "minecraft:planks".to_string(),
+            },
+        ),
+        (
+            dyed,
+            SlotDisplayValue::Dyed {
+                dye: Box::new(SlotDisplayValue::Item {
+                    stack: Box::new(item_stack(55, 1)),
+                }),
+                target: Box::new(SlotDisplayValue::ItemStack {
+                    stack: Box::new(item_stack(56, 2)),
+                }),
+            },
+        ),
+        (
+            smithing_trim,
+            SlotDisplayValue::SmithingTrim {
+                base: Box::new(SlotDisplayValue::Item {
+                    stack: Box::new(item_stack(55, 1)),
+                }),
+                material: Box::new(SlotDisplayValue::ItemStack {
+                    stack: Box::new(item_stack(56, 2)),
+                }),
+                pattern: SlotDisplayTrimPatternSummary {
+                    registry_id: Some(2),
+                    direct: None,
+                },
+            },
+        ),
+        (
+            with_remainder,
+            SlotDisplayValue::WithRemainder {
+                input: Box::new(SlotDisplayValue::Item {
+                    stack: Box::new(item_stack(55, 1)),
+                }),
+                remainder: Box::new(SlotDisplayValue::ItemStack {
+                    stack: Box::new(item_stack(56, 2)),
+                }),
+            },
+        ),
+        (
+            composite,
+            SlotDisplayValue::Composite {
+                contents: vec![
+                    SlotDisplayValue::Item {
+                        stack: Box::new(item_stack(55, 1)),
+                    },
+                    SlotDisplayValue::Tag {
+                        tag: "minecraft:planks".to_string(),
+                    },
+                ],
+            },
+        ),
+    ];
+
+    for (raw_payload, expected) in cases {
+        let summary = decode_update_recipes_option_display(raw_payload.clone());
+        assert_eq!(summary.raw_payload, raw_payload);
+        assert_eq!(summary.decode_value().unwrap(), expected);
+    }
+}
+
+#[test]
+fn slot_display_decode_enforces_recursive_depth_count_and_byte_budgets() {
+    let mut within_depth = slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+    for _ in 0..MAX_SLOT_DISPLAY_DEPTH {
+        within_depth =
+            slot_display_unary_payload(VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, &within_depth);
+    }
+    assert!(decode_update_recipes_option_display(within_depth)
+        .decode_value()
+        .is_ok());
+
+    let mut over_depth = slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+    for _ in 0..=MAX_SLOT_DISPLAY_DEPTH {
+        over_depth =
+            slot_display_unary_payload(VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, &over_depth);
+    }
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &update_recipes_payload(&over_depth),
+    )
+    .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("slot display tree exceeded max depth"));
+
+    let mut over_count = Encoder::new();
+    over_count.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID);
+    over_count.write_var_i32(MAX_RECIPE_BOOK_NESTED_LIST as i32 + 1);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_RECIPES,
+            &update_recipes_payload(&over_count.into_inner()),
+        ),
+        Err(crate::codec::ProtocolError::PacketTooLarge(
+            actual,
+            MAX_RECIPE_BOOK_NESTED_LIST
+        )) if actual == MAX_RECIPE_BOOK_NESTED_LIST + 1
+    ));
+
+    let long_tag = "a".repeat(32_767);
+    let tag_payload = slot_display_tag_payload(&long_tag);
+    let oversized = slot_display_composite_payload(&vec![tag_payload; 65]);
+    assert!(oversized.len() > MAX_RECIPE_DISPLAY_BODY);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_RECIPES,
+            &update_recipes_payload(&oversized),
+        ),
+        Err(crate::codec::ProtocolError::PacketTooLarge(
+            _,
+            MAX_RECIPE_DISPLAY_BODY
+        ))
+    ));
+}
+
+#[test]
+fn slot_display_decode_rejects_invalid_types_holders_components_and_summaries() {
+    let invalid_component = slot_display_with_component_payload(
+        &slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_TYPES.len() as i32,
+    );
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &update_recipes_payload(&invalid_component),
+    )
+    .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("invalid vanilla data component type id"));
+
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &update_recipes_payload(&slot_display_type_payload(11)),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid slot display type id 11"));
+
+    let invalid_holder = slot_display_smithing_trim_payload(
+        &slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
+        &slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
+        -1,
+    );
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_RECIPES,
+            &update_recipes_payload(&invalid_holder),
+        ),
+        Err(crate::codec::ProtocolError::NegativeLength(-1))
+    ));
+
+    let item = slot_display_item_payload(55);
+    let mismatched = SlotDisplaySummary {
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+        raw_payload: item.clone(),
+        item_stack: None,
+        tag: None,
+    };
+    assert!(mismatched
+        .decode_value()
+        .unwrap_err()
+        .to_string()
+        .contains("does not match raw type"));
+
+    let mut trailing = item;
+    trailing.push(0);
+    let trailing = SlotDisplaySummary {
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+        raw_payload: trailing,
+        item_stack: None,
+        tag: None,
+    };
+    assert!(trailing
+        .decode_value()
+        .unwrap_err()
+        .to_string()
+        .contains("trailing bytes after slot display value"));
 }
 
 #[test]
@@ -1168,33 +1416,92 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
 }
 
 fn decode_update_recipes_option_display(option_display: Vec<u8>) -> SlotDisplaySummary {
-    let mut payload = Encoder::new();
-    payload.write_var_i32(0);
-    payload.write_var_i32(1);
-    payload.write_var_i32(2);
-    payload.write_var_i32(11);
-    payload.write_bytes(&option_display);
     let PlayClientbound::UpdateRecipes(UpdateRecipes {
         mut stonecutter_recipes,
         ..
-    }) = decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &payload.into_inner())
-        .unwrap()
+    }) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &update_recipes_payload(&option_display),
+    )
+    .unwrap()
     else {
         panic!("expected update recipes packet");
     };
     stonecutter_recipes.remove(0).option_display
 }
 
+fn update_recipes_payload(option_display: &[u8]) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_var_i32(11);
+    payload.write_bytes(option_display);
+    payload.into_inner()
+}
+
+fn slot_display_type_payload(display_type_id: i32) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(display_type_id);
+    payload.into_inner()
+}
+
+fn slot_display_unary_payload(display_type_id: i32, display: &[u8]) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(display_type_id);
+    payload.write_bytes(display);
+    payload.into_inner()
+}
+
+fn slot_display_binary_payload(display_type_id: i32, first: &[u8], second: &[u8]) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(display_type_id);
+    payload.write_bytes(first);
+    payload.write_bytes(second);
+    payload.into_inner()
+}
+
+fn slot_display_with_component_payload(display: &[u8], component_type_id: i32) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID);
+    payload.write_bytes(display);
+    payload.write_var_i32(component_type_id);
+    payload.into_inner()
+}
+
+fn slot_display_smithing_trim_payload(
+    base: &[u8],
+    material: &[u8],
+    encoded_pattern_holder_id: i32,
+) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID);
+    payload.write_bytes(base);
+    payload.write_bytes(material);
+    payload.write_var_i32(encoded_pattern_holder_id);
+    payload.into_inner()
+}
+
+fn slot_display_composite_payload(contents: &[Vec<u8>]) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID);
+    payload.write_var_i32(contents.len() as i32);
+    for content in contents {
+        payload.write_bytes(content);
+    }
+    payload.into_inner()
+}
+
 fn slot_display_item_payload(item_id: i32) -> Vec<u8> {
     let mut payload = Encoder::new();
-    payload.write_var_i32(4);
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID);
     payload.write_var_i32(item_id);
     payload.into_inner()
 }
 
 fn slot_display_item_stack_payload(item_id: i32, count: i32) -> Vec<u8> {
     let mut payload = Encoder::new();
-    payload.write_var_i32(5);
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID);
     payload.write_var_i32(item_id);
     payload.write_var_i32(count);
     payload.write_var_i32(0);
@@ -1204,7 +1511,7 @@ fn slot_display_item_stack_payload(item_id: i32, count: i32) -> Vec<u8> {
 
 fn slot_display_tag_payload(tag: &str) -> Vec<u8> {
     let mut payload = Encoder::new();
-    payload.write_var_i32(6);
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_TAG_ID);
     payload.write_string(tag);
     payload.into_inner()
 }

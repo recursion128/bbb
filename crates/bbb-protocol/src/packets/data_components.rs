@@ -1810,12 +1810,14 @@ fn decode_material_asset_group_summary(
     Ok((asset_name, override_armor_assets))
 }
 
-struct TrimPatternHolderSummary {
-    registry_id: Option<i32>,
-    direct: Option<TrimPatternSummary>,
+pub(crate) struct TrimPatternHolderSummary {
+    pub(crate) registry_id: Option<i32>,
+    pub(crate) direct: Option<TrimPatternSummary>,
 }
 
-fn decode_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<TrimPatternHolderSummary> {
+pub(crate) fn decode_trim_pattern_holder(
+    decoder: &mut Decoder<'_>,
+) -> Result<TrimPatternHolderSummary> {
     let id = decoder.read_var_i32()?;
     if id < 0 {
         return Err(ProtocolError::NegativeLength(id));
