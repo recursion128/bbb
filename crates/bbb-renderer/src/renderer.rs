@@ -298,6 +298,8 @@ pub struct Renderer {
     pub(super) frame_debug_filled_box_indices: FrameDataBuffer,
     pub(super) frame_debug_text_vertices: FrameDataBuffer,
     pub(super) frame_debug_text_indices: FrameDataBuffer,
+    pub(super) frame_debug_always_on_top_text_vertices: FrameDataBuffer,
+    pub(super) frame_debug_always_on_top_text_indices: FrameDataBuffer,
     pub(super) frame_debug_line_opaque_vertices: FrameDataBuffer,
     pub(super) frame_debug_line_translucent_vertices: FrameDataBuffer,
     pub(super) frame_entity_model_line_vertices: FrameDataBuffer,
@@ -1613,6 +1615,12 @@ impl Renderer {
             ),
             frame_debug_text_vertices: FrameDataBuffer::vertex("bbb-debug-text-frame-vertices"),
             frame_debug_text_indices: FrameDataBuffer::index("bbb-debug-text-frame-indices"),
+            frame_debug_always_on_top_text_vertices: FrameDataBuffer::vertex(
+                "bbb-debug-always-on-top-text-frame-vertices",
+            ),
+            frame_debug_always_on_top_text_indices: FrameDataBuffer::index(
+                "bbb-debug-always-on-top-text-frame-indices",
+            ),
             frame_debug_line_opaque_vertices: FrameDataBuffer::vertex(
                 "bbb-debug-line-opaque-frame-vertices",
             ),

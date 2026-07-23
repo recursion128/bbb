@@ -116,6 +116,7 @@ use crate::{
         visible_entity_name_tag_render_sources, visible_entity_shadow_render_sources,
         EntityRenderVisibilityContext,
     },
+    game_test_highlights::game_test_highlight_gizmos,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
@@ -3543,6 +3544,7 @@ pub(crate) fn update_renderer_from_publication(
         world.local_player_is_spectator(),
         targeted_remote_debug_entity,
     );
+    let game_test_highlight_gizmos = game_test_highlight_gizmos(world);
     // Vanilla `DebugRenderer.refreshRendererList` registers WaterDebugRenderer
     // before HeightMapRenderer, so their shared debugFilledBox submissions keep
     // that renderer order when both custom entries are enabled.
@@ -3550,6 +3552,7 @@ pub(crate) fn update_renderer_from_publication(
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
     debug_filled_boxes.extend(remote_debug_gizmos.filled_boxes);
+    debug_filled_boxes.extend(game_test_highlight_gizmos.filled_boxes);
     let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);
     let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
     debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));
@@ -3557,6 +3560,7 @@ pub(crate) fn update_renderer_from_publication(
         entity_scene_outline.as_ref(),
     ));
     debug_text_billboards.extend(remote_debug_gizmos.text_billboards);
+    debug_text_billboards.extend(game_test_highlight_gizmos.text_billboards);
     let mut debug_lines = debug_collision_cache.lines(input, world, now);
     debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));
     let (debug_sky_light_section_rects, debug_sky_light_section_lines) =

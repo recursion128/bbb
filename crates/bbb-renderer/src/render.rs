@@ -9,7 +9,7 @@ use crate::screen_blur::write_screen_blur_radius;
 use crate::{
     clouds::CloudShape,
     debug_filled_boxes::build_debug_filled_mesh,
-    debug_text_billboards::build_debug_text_mesh,
+    debug_text_billboards::build_debug_text_mesh_for_layer,
     entity_models::{
         fishing_hook_line_segments, upload_elder_guardian_particle_textured_mesh,
         upload_experience_orb_pickup_particle_textured_mesh,
@@ -59,6 +59,7 @@ const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
 const ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL: &str = "bbb-native-entity-translucent-feature-pass";
 const DEBUG_FILLED_BOX_PASS_LABEL: &str = "bbb-native-debug-filled-box-pass";
 const DEBUG_TEXT_PASS_LABEL: &str = "bbb-native-debug-text-pass";
+const DEBUG_ALWAYS_ON_TOP_TEXT_PASS_LABEL: &str = "bbb-native-debug-always-on-top-text-pass";
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
 const ITEM_ENTITY_LINE_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-line-target-pass";
@@ -144,6 +145,7 @@ impl Renderer {
         self.clouds_pass(&mut encoder, &mut stats);
         self.weather_target_pass(&mut encoder, &mut stats);
         self.transparency_combine_pass(&mut encoder, &mut stats);
+        self.debug_always_on_top_text_pass(&mut encoder, &mut stats);
         self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
         self.first_person_item_pass(&frame, &mut encoder, &mut stats);
         self.entity_preview_pip_passes(&mut encoder, &mut stats);
@@ -1120,10 +1122,11 @@ impl Renderer {
         ) else {
             return;
         };
-        let mesh = build_debug_text_mesh(
+        let mesh = build_debug_text_mesh_for_layer(
             &self.debug_text_billboards,
             &self.hud_font_glyphs,
             camera_pose,
+            false,
         );
         let vertex_count = mesh.vertices.len();
         let index_count = mesh.indices.len();
@@ -2294,6 +2297,80 @@ impl Renderer {
             pass.draw(0..3, 0..1);
             stats.transparency_combine_draw_calls += 1;
         }
+    }
+
+    fn debug_always_on_top_text_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let (Some(camera_pose), Some(font_atlas)) = (
+            self.camera_pose,
+            self.item_frame_map_text_font_atlas.as_ref(),
+        ) else {
+            return;
+        };
+        let mesh = build_debug_text_mesh_for_layer(
+            &self.debug_text_billboards,
+            &self.hud_font_glyphs,
+            camera_pose,
+            true,
+        );
+        let vertex_count = mesh.vertices.len();
+        let index_count = mesh.indices.len();
+        let has_vertices = self.frame_debug_always_on_top_text_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&mesh.vertices),
+        );
+        let has_indices = self.frame_debug_always_on_top_text_indices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&mesh.indices),
+        );
+        if !has_vertices || !has_indices {
+            debug_assert_eq!(vertex_count, 0);
+            debug_assert_eq!(index_count, 0);
+            return;
+        }
+
+        let vertex_buffer = self
+            .frame_debug_always_on_top_text_vertices
+            .buffer()
+            .expect("always-on-top debug text vertices uploaded");
+        let index_buffer = self
+            .frame_debug_always_on_top_text_indices
+            .buffer()
+            .expect("always-on-top debug text indices uploaded");
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(DEBUG_ALWAYS_ON_TOP_TEXT_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.transparency_final_target.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.debug_text_pipeline);
+        stats.pipeline_switches += 1;
+        pass.set_bind_group(0, &font_atlas.bind_group, &[]);
+        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..index_count as u32, 0, 0..1);
+        stats.debug_text_draw_calls += 1;
     }
 
     fn transparency_blit_pass(
@@ -4328,6 +4405,7 @@ mod tests {
         "clouds_pass",
         "weather_target_pass",
         "transparency_combine_pass",
+        "debug_always_on_top_text_pass",
         "transparency_blit_pass",
         "first_person_item_pass",
         "entity_preview_pip_passes",
@@ -4483,6 +4561,41 @@ mod tests {
         assert!(text_body.contains("self.item_frame_map_text_font_atlas.as_ref()"));
         assert!(text_body.contains("view: &self.main_target.view"));
         assert!(text_body.contains("view: &self.depth.view"));
+    }
+
+    #[test]
+    fn always_on_top_debug_text_runs_after_composition_with_cleared_depth() {
+        let combine = FRAME_STEPS
+            .iter()
+            .position(|step| *step == "transparency_combine_pass")
+            .expect("transparency combine step");
+        let always_on_top = FRAME_STEPS
+            .iter()
+            .position(|step| *step == "debug_always_on_top_text_pass")
+            .expect("always-on-top debug text step");
+        let blit = FRAME_STEPS
+            .iter()
+            .position(|step| *step == "transparency_blit_pass")
+            .expect("transparency blit step");
+        assert!(combine < always_on_top && always_on_top < blit);
+
+        let source = include_str!("render.rs");
+        let pass_start = source
+            .find("fn debug_always_on_top_text_pass(")
+            .expect("late debug text pass");
+        let pass_end = pass_start
+            + source[pass_start..]
+                .find("\n    }\n\n    fn transparency_blit_pass(")
+                .expect("late debug text pass ends before transparency blit");
+        let pass_body = &source[pass_start..pass_end];
+        assert!(pass_body.contains("camera_pose,\n            true,"));
+        assert!(pass_body.contains("view: &self.transparency_final_target.view"));
+        assert!(pass_body.contains("view: &self.depth.view"));
+        assert!(pass_body.contains("load: wgpu::LoadOp::Clear(1.0)"));
+        assert!(
+            pass_body.contains("frame_debug_always_on_top_text_vertices")
+                && pass_body.contains("frame_debug_always_on_top_text_indices")
+        );
     }
 
     fn depth_copy_to(source: &str, target_depth_texture: &str) -> usize {

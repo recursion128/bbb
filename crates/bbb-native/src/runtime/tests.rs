@@ -5553,6 +5553,12 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let heightmap_extend = runtime_source
         .find("debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));")
         .expect("heightmap boxes should follow water boxes");
+    let game_test_extract = runtime_source
+        .find("let game_test_highlight_gizmos = game_test_highlight_gizmos(world);")
+        .expect("GameTest highlights should project from canonical marker state");
+    let game_test_boxes = runtime_source
+        .find("debug_filled_boxes.extend(game_test_highlight_gizmos.filled_boxes);")
+        .expect("GameTest boxes should follow ordinary debug boxes");
     let solid_faces = runtime_source
         .find("let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);")
         .expect("pump should project solid-face rectangles");
@@ -5567,6 +5573,9 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let selection_text = runtime_source
         .find("debug_text_billboards.extend(debug_selection_text_billboards(")
         .expect("entity debug labels should use the shared 3D text surface");
+    let game_test_text = runtime_source
+        .find("debug_text_billboards.extend(game_test_highlight_gizmos.text_billboards);")
+        .expect("GameTest labels should follow ordinary debug labels");
     let lines = runtime_source
         .find("let mut debug_lines = debug_collision_cache.lines(input, world, now);")
         .expect("pump should project cached collision debug lines");
@@ -5586,14 +5595,17 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
         .find("            debug_filled_boxes,\n")
         .expect("RendererFrame should carry debug filled boxes");
     assert!(
-        camera_pose < samples
+        camera_pose < game_test_extract
+            && game_test_extract < samples
             && samples < boxes
             && boxes < heightmap_extend
-            && heightmap_extend < solid_faces
+            && heightmap_extend < game_test_boxes
+            && game_test_boxes < solid_faces
             && solid_faces < text
             && text < light_text
             && light_text < selection_text
-            && selection_text < lines
+            && selection_text < game_test_text
+            && game_test_text < lines
             && lines < support_lines
             && support_lines < sky_light_sections
             && sky_light_sections < sky_light_rects

@@ -34,6 +34,7 @@ mod entity_scene;
 mod entity_variant_textures;
 mod environment_animate_runtime;
 mod environment_audio_runtime;
+mod game_test_highlights;
 mod hud_assets;
 mod input;
 mod item_entities;

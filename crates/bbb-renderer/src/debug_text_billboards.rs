@@ -27,6 +27,9 @@ pub struct DebugTextBillboard {
     /// `None` centers by `Font.width / 2`; `Some(v)` uses vanilla
     /// `fontX = -v / scale` left adjustment.
     pub adjust_left: Option<f32>,
+    /// Render after world transparency composition with a freshly cleared
+    /// depth attachment, matching vanilla `TextGizmo.setAlwaysOnTop`.
+    pub always_on_top: bool,
 }
 
 impl DebugTextBillboard {
@@ -39,6 +42,7 @@ impl DebugTextBillboard {
             color,
             scale: Self::DEFAULT_SCALE,
             adjust_left: None,
+            always_on_top: false,
         }
     }
 
@@ -187,10 +191,11 @@ pub(super) fn sanitize_debug_text_billboards(
         .collect()
 }
 
-pub(super) fn build_debug_text_mesh(
+pub(super) fn build_debug_text_mesh_for_layer(
     billboards: &[DebugTextBillboard],
     glyphs: &HudFontGlyphMap,
     camera_pose: CameraPose,
+    always_on_top: bool,
 ) -> DebugTextMesh {
     let axes = camera_pose.billboard_axes();
     let mut mesh = DebugTextMesh::default();
@@ -198,12 +203,16 @@ pub(super) fn build_debug_text_mesh(
     // before translucent text, preserving insertion order inside each group.
     for billboard in billboards
         .iter()
-        .filter(|billboard| billboard.is_valid() && billboard.color[3] == 255)
-        .chain(
-            billboards
-                .iter()
-                .filter(|billboard| billboard.is_valid() && billboard.color[3] < 255),
-        )
+        .filter(|billboard| {
+            billboard.is_valid()
+                && billboard.color[3] == 255
+                && billboard.always_on_top == always_on_top
+        })
+        .chain(billboards.iter().filter(|billboard| {
+            billboard.is_valid()
+                && billboard.color[3] < 255
+                && billboard.always_on_top == always_on_top
+        }))
     {
         let width = billboard.text.chars().fold(0_u32, |width, ch| {
             width.saturating_add(debug_text_glyph(ch, glyphs).advance)
@@ -356,7 +365,7 @@ mod tests {
 
     #[test]
     fn debug_text_mesh_centers_font_pixels_and_uses_full_bright_rgba() {
-        let mesh = build_debug_text_mesh(
+        let mesh = build_debug_text_mesh_for_layer(
             &[DebugTextBillboard::centered(
                 [1.0, 2.0, 3.0],
                 "8",
@@ -364,6 +373,7 @@ mod tests {
             )],
             &test_glyphs(),
             camera(),
+            false,
         );
         assert_eq!(mesh.vertices.len(), 4);
         assert_eq!(mesh.indices, [0, 1, 2, 2, 3, 0]);
@@ -384,7 +394,7 @@ mod tests {
     fn debug_text_left_adjustment_matches_text_gizmo_formula() {
         let mut billboard = DebugTextBillboard::centered([0.0; 3], "8", [255; 4]);
         billboard.adjust_left = Some(0.5);
-        let mesh = build_debug_text_mesh(&[billboard], &test_glyphs(), camera());
+        let mesh = build_debug_text_mesh_for_layer(&[billboard], &test_glyphs(), camera(), false);
         // fontX=-0.5/0.32; multiplied by 0.32/16 => -0.5/16.
         // Vanilla yaw 0 maps camera-local +X to world -X.
         assert_eq!(mesh.vertices[0].position[0], 0.5 / 16.0);
@@ -395,10 +405,11 @@ mod tests {
         let translucent = DebugTextBillboard::centered([1.0, 0.0, 0.0], "8", [1, 2, 3, 4]);
         let opaque = DebugTextBillboard::centered([2.0, 0.0, 0.0], "8", [5, 6, 7, 255]);
         let translucent_later = DebugTextBillboard::centered([3.0, 0.0, 0.0], "8", [8, 9, 10, 11]);
-        let mesh = build_debug_text_mesh(
+        let mesh = build_debug_text_mesh_for_layer(
             &[translucent, opaque, translucent_later],
             &test_glyphs(),
             camera(),
+            false,
         );
         assert_eq!(mesh.vertices.len(), 12);
         assert!(mesh.vertices[0..4]
@@ -410,6 +421,30 @@ mod tests {
         assert!(mesh.vertices[8..12]
             .iter()
             .all(|vertex| vertex.color == [8, 9, 10, 11]));
+    }
+
+    #[test]
+    fn debug_text_mesh_separates_standard_and_always_on_top_layers() {
+        let standard = DebugTextBillboard::centered([1.0, 0.0, 0.0], "8", [1, 2, 3, 255]);
+        let mut always_on_top = DebugTextBillboard::centered([2.0, 0.0, 0.0], "8", [4, 5, 6, 255]);
+        always_on_top.always_on_top = true;
+        let billboards = [standard, always_on_top];
+
+        let standard_mesh =
+            build_debug_text_mesh_for_layer(&billboards, &test_glyphs(), camera(), false);
+        let always_on_top_mesh =
+            build_debug_text_mesh_for_layer(&billboards, &test_glyphs(), camera(), true);
+
+        assert_eq!(standard_mesh.vertices.len(), 4);
+        assert!(standard_mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.color == [1, 2, 3, 255]));
+        assert_eq!(always_on_top_mesh.vertices.len(), 4);
+        assert!(always_on_top_mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.color == [4, 5, 6, 255]));
     }
 
     #[test]
@@ -472,11 +507,8 @@ mod tests {
             x_rot: 0.0,
             eye_height: 0.0,
         }));
-        renderer.set_debug_text_billboards(vec![DebugTextBillboard::centered(
-            [0.0, 0.18, 2.0],
-            "8",
-            [0, 0, 0, 255],
-        )]);
+        let mut billboard = DebugTextBillboard::centered([0.0, 0.18, 2.0], "8", [0, 0, 0, 255]);
+        renderer.set_debug_text_billboards(vec![billboard.clone()]);
 
         let pixels = renderer
             .render_offscreen_frame()
@@ -495,6 +527,21 @@ mod tests {
         assert!(
             corner[2] > 128 && corner[0] < 64,
             "background outside the glyph stays blue, got {corner:?}"
+        );
+
+        billboard.always_on_top = true;
+        renderer.set_debug_text_billboards(vec![billboard]);
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("always-on-top debug text frame readback");
+        assert!(
+            (20..44).any(|y| {
+                (20..44).any(|x| {
+                    let pixel = pixels.pixel(x, y);
+                    pixel[0] < 64 && pixel[1] < 64 && pixel[2] < 64
+                })
+            }),
+            "late camera-facing glyph should reach the framebuffer"
         );
     }
 }
