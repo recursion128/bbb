@@ -1,5 +1,7 @@
 # Book screens closure
 
+Status: closed and archived after both packet coverage rows reached their final states.
+
 ## Goal and completion contract
 
 Close the remaining applicable coverage cells for

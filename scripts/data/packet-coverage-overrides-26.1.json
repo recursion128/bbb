@@ -188,10 +188,10 @@
     },
     "play/serverbound/SERVERBOUND_EDIT_BOOK": {
       "ack_response": {"evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleEditBook", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#updateBookContents", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#signBook"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "not-applicable"},
-      "command_surface": {"evidence": ["crates/bbb-control/src/server.rs#net.edit_book", "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::EditBook", "crates/bbb-native/src/input/commands.rs#queue_edit_book_command", "crates/bbb-net/src/driver/commands.rs#send_edit_book"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"},
+      "command_surface": {"evidence": ["crates/bbb-native/src/input/book.rs#submit_unsigned_book", "crates/bbb-native/src/input/book.rs#submit_signed_book", "crates/bbb-native/src/input/commands.rs#queue_edit_book_command", "crates/bbb-net/src/driver/commands.rs#send_edit_book", "vanilla:net/minecraft/client/gui/screens/inventory/BookEditScreen.java#saveChanges", "vanilla:net/minecraft/client/gui/screens/inventory/BookSignScreen.java#saveChanges"], "status": "complete"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_edit_book", "crates/bbb-protocol/src/packets/tests.rs#edit_book_rejects_vanilla_collection_and_utf16_limits", "vanilla:net/minecraft/network/protocol/game/ServerboundEditBookPacket.java#STREAM_CODEC"], "status": "complete"},
-      "state_guard": {"evidence": ["crates/bbb-control/src/server/params.rs#edit_book_pages_param", "crates/bbb-control/src/server/params.rs#edit_book_title_param", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleEditBook", "vanilla:net/minecraft/client/gui/screens/inventory/BookEditScreen.java#saveChanges"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_edit_book_unsigned_packet", "crates/bbb-protocol/src/packets/tests.rs#encodes_edit_book_signed_packet", "crates/bbb-protocol/src/packets/tests.rs#edit_book_rejects_vanilla_collection_and_utf16_limits", "crates/bbb-net/src/driver/commands/tests.rs#send_edit_book_encodes_edit_book_packet", "crates/bbb-control/src/server/tests.rs#net_edit_book_limits_count_utf16_code_units"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"}
+      "state_guard": {"evidence": ["crates/bbb-world/src/client/book.rs#current_book_unsigned_submission", "crates/bbb-world/src/client/book.rs#current_book_signed_submission", "crates/bbb-world/src/client/book.rs#commit_current_book_submission", "crates/bbb-native/src/input/book.rs#submit_unsigned_book", "crates/bbb-native/src/input/book.rs#submit_signed_book", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleEditBook"], "status": "complete"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_edit_book_unsigned_packet", "crates/bbb-protocol/src/packets/tests.rs#encodes_edit_book_signed_packet", "crates/bbb-protocol/src/packets/tests.rs#edit_book_rejects_vanilla_collection_and_utf16_limits", "crates/bbb-net/src/driver/commands/tests.rs#send_edit_book_encodes_edit_book_packet", "crates/bbb-world/src/client/book.rs#book_screen_submission_revalidates_generation_slot_and_writable_component", "crates/bbb-native/src/input/book/tests.rs#book_screen_editor_applies_text_rules_and_done_sends_unsigned_submission", "crates/bbb-native/src/input/book/tests.rs#book_screen_sign_enter_sends_trimmed_title_without_predicting_signed_inventory", "crates/bbb-native/src/input/book/tests.rs#book_screen_failed_unsigned_queue_retains_editor_and_local_inventory"], "status": "complete"}
     },
     "play/serverbound/SERVERBOUND_ENTITY_TAG_QUERY": {
       "ack_response": {"evidence": ["crates/bbb-protocol/src/packets/client_features.rs#decode_tag_query", "crates/bbb-world/src/client/debug_query.rs#apply_tag_query", "crates/bbb-native/src/input.rs#consume_debug_recreate_server_query_response", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleEntityTagQuery"], "status": "complete"},
@@ -1762,11 +1762,12 @@
     "play/clientbound/CLIENTBOUND_OPEN_BOOK": {
       "canonical_apply": {
         "evidence": [
-          "crates/bbb-world/src/client/ui.rs#apply_open_book",
+          "crates/bbb-world/src/client/book.rs#apply_open_book",
+          "crates/bbb-world/src/client/book.rs#book_screen_view_preserves_exact_raw_and_filtered_components",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenBook",
           "vanilla:net/minecraft/client/gui/screens/inventory/BookViewScreen.java#fromItem"
         ],
-        "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -1785,10 +1786,12 @@
         "evidence": [
           "crates/bbb-native/src/input/tests.rs#book_screen_keys_turn_pages_close_and_block_gameplay_input",
           "crates/bbb-native/src/input/tests.rs#book_screen_mouse_clicks_turn_pages_and_close",
+          "crates/bbb-native/src/runtime/book_screen.rs#rich_book_projection_preserves_style_interaction_and_filtered_page",
+          "crates/bbb-native/src/runtime/book_screen.rs#click_event_revalidates_generation_page_and_source_run",
+          "crates/bbb-renderer/src/hud/book/tests.rs#book_screen_hit_uses_wrapped_source_interaction_and_revision_token",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenBook"
         ],
-        "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
@@ -1796,8 +1799,9 @@
           "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
           "crates/bbb-net/src/probe/play.rs#probe_open_book_uses_held_written_book_for_active_screen",
           "crates/bbb-world/src/client/ui.rs#open_book_without_book_access_records_request_without_screen",
-          "crates/bbb-world/src/client/ui.rs#open_book_from_held_written_book_tracks_active_screen",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#open_book_event_uses_held_written_book_for_active_screen"
+          "crates/bbb-world/src/client/book.rs#book_screen_view_preserves_exact_raw_and_filtered_components",
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#open_book_event_uses_held_written_book_for_active_screen",
+          "crates/bbb-native/src/runtime/tests.rs#dedicated_hud_book_screen_replaces_inventory_projection"
         ],
         "status": "complete"
       }

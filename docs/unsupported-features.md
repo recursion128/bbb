@@ -784,15 +784,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   close behavior. Spectator crosshair-click + `ServerboundSpectateEntityPacket`
   and server-confirmed SetCamera handling are covered, but that shortcut and a
   maintenance command do not replace the vanilla spectator menu.
-- Preserve written-book filtered pages and full Component/style/click-event
-  semantics in `BookViewScreen`; the current OpenBook path gates on the held
-  written/writable component and supports literal-page navigation, but flattens
-  pages to strings and does not execute page click events.
-- Implement the writable `BookEditScreen` owner: edit/paginate text, map the
-  selected hotbar/offhand inventory slot, require the held writable-book
-  component, submit unsigned/signed edits, and project the server-confirmed
-  writable/written item. The current `net.edit_book` maintenance command is not
-  an interactive editor or a held-item authority check.
 - Preserve and render full trusted Components for action-bar, title, and
   subtitle packets, including translation, siblings, style/color/font and text
   effects. Their wire is consumed and the vanilla timers/fades/scales are

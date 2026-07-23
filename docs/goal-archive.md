@@ -315,3 +315,7 @@
   权限、编辑、搜索、校验与 changed-only 提交；native 输入和 renderer 复现加载列表及
   放弃确认，两行 packet coverage 全单元 complete，合同见
   `docs/archive/game-rules-screen-closure-design.md`。
+- **2026-07-23（书本屏幕双包闭环）**：world-owned View/Edit/Sign 生命周期保留原始/
+  过滤 Component，普通 UseItem 预测打开编辑器并由 held-slot authority 守卫提交；
+  native 富文本书页、悬浮/点击令牌及签名 UI 闭环，两行 packet coverage 全部适用单元
+  complete，合同见 `docs/archive/book-screens-closure-design.md`。
